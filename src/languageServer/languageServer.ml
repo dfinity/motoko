@@ -8,16 +8,18 @@ module Lsp_t = Lsp.Lsp_t
 
 let jsonrpc_version : string = "2.0"
 
-let notification (params : Lsp_t.notification_message_params) :
-    Lsp_t.notification_message =
+let notification :
+    Lsp_t.notification_message_params -> Lsp_t.notification_message =
+ fun params ->
   Lsp_t.
     {
       notification_message_jsonrpc = jsonrpc_version;
       notification_message_params = params;
     }
 
-let response_result_message (id : int) (result : Lsp_t.response_result) :
-    Lsp_t.response_message =
+let response_result_message :
+    int -> Lsp_t.response_result -> Lsp_t.response_message =
+ fun id result ->
   Lsp_t.
     {
       response_message_jsonrpc = jsonrpc_version;
@@ -26,8 +28,9 @@ let response_result_message (id : int) (result : Lsp_t.response_result) :
       response_message_error = None;
     }
 
-let response_error_message (id : int) (error : Lsp_t.response_error) :
-    Lsp_t.response_message =
+let response_error_message :
+    int -> Lsp_t.response_error -> Lsp_t.response_message =
+ fun id error ->
   Lsp_t.
     {
       response_message_jsonrpc = jsonrpc_version;
@@ -36,25 +39,47 @@ let response_error_message (id : int) (error : Lsp_t.response_error) :
       response_message_error = Some error;
     }
 
-module Channel = struct
-  let log_to_file (oc : out_channel) (lbl : string) (txt : string) : unit =
-    Printf.fprintf oc "[%s] %s\n" lbl txt;
-    flush oc
+module MakeIO (OC : sig
+  val debug_channel : out_channel option
 
-  let send (oc : out_channel) (label : string) (out : string) : unit =
-    let cl = "Content-Length: " ^ string_of_int (String.length out) in
-    print_string cl;
-    print_string "\r\n\r\n";
-    print_string out;
-    flush stdout
+  val in_channel : in_channel
 
-  let send_response (oc : out_channel) : string -> unit = send oc "response"
+  val out_channel : out_channel
+end) =
+struct
+  let log_to_file : string -> string -> unit =
+   fun lbl txt ->
+    Option.iter
+      (fun oc ->
+        Printf.fprintf oc "[%s] %s\n" lbl txt;
+        flush oc)
+      OC.debug_channel
 
-  let send_notification (oc : out_channel) : string -> unit =
-    send oc "notification"
+  let send : string -> unit =
+   fun msg ->
+    let length = String.length msg in
+    Printf.fprintf OC.out_channel "Content-Length: %d\r\n\r\n%s" length msg;
+    flush OC.out_channel
 
-  let show_message (oc : out_channel) (typ : Lsp.MessageType.t) (msg : string) :
-      unit =
+  let read_message : unit -> string * Lsp_t.incoming_message option =
+   fun () ->
+    let clength = input_line OC.in_channel in
+    let cl = "Content-Length: " in
+    let cll = String.length cl in
+    let num =
+      int_of_string String.(trim (sub clength cll (length clength - cll - 1)))
+      + 2
+    in
+    let buffer = Buffer.create num in
+    Buffer.add_channel buffer stdin num;
+    let raw = String.trim (Buffer.contents buffer) in
+    let msg =
+      try Some (Lsp_j.incoming_message_of_string raw) with _ -> None
+    in
+    (raw, msg)
+
+  let show_message : Lsp.MessageType.t -> string -> unit =
+   fun typ msg ->
     let params =
       `WindowShowMessage
         Lsp_t.
@@ -64,10 +89,10 @@ module Channel = struct
           }
     in
     let notification = notification params in
-    send_notification oc (Lsp_j.string_of_notification_message notification)
+    send (Lsp_j.string_of_notification_message notification)
 
-  let publish_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri)
-      (diags : Lsp_t.diagnostic list) : unit =
+  let publish_diags : Lsp_t.document_uri -> Lsp_t.diagnostic list -> unit =
+   fun uri diags ->
     let params =
       `PublishDiagnostics
         Lsp_t.
@@ -77,13 +102,14 @@ module Channel = struct
           }
     in
     let notification = notification params in
-    send_notification oc (Lsp_j.string_of_notification_message notification)
+    send (Lsp_j.string_of_notification_message notification)
 
-  let clear_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri) : unit =
-    publish_diagnostics oc uri []
+  let clear_diagnostics : Lsp_t.document_uri -> unit =
+   fun uri -> publish_diags uri []
 end
 
-let position_of_pos (pos : Source.pos) : Lsp_t.position =
+let position_of_pos : Source.pos -> Lsp_t.position =
+ fun pos ->
   Lsp_t.
     {
       (* The LSP spec requires zero-based positions *)
@@ -91,7 +117,8 @@ let position_of_pos (pos : Source.pos) : Lsp_t.position =
       position_character = pos.Source.column;
     }
 
-let range_of_region (at : Source.region) : Lsp_t.range =
+let range_of_region : Source.region -> Lsp_t.range =
+ fun at ->
   Lsp_t.
     {
       range_start = position_of_pos at.Source.left;
@@ -103,7 +130,8 @@ let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
   | Diag.Info -> Lsp.DiagnosticSeverity.Information
 
-let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic * string =
+let diagnostics_of_message : Diag.message -> Lsp_t.diagnostic * string =
+ fun msg ->
   ( Lsp_t.
       {
         diagnostic_range = range_of_region msg.Diag.at;
@@ -115,39 +143,42 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic * string =
       },
     msg.Diag.at.Source.left.Source.file )
 
-let start entry_point debug =
-  let oc : out_channel =
-    if debug then open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log"
-    else open_out "/dev/null"
+let start : string -> bool -> 'a =
+ fun entry_point debug ->
+  let debug_channel : out_channel option =
+    if debug then Some (open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log")
+    else None
   in
-  let log_to_file = Channel.log_to_file oc in
-  let _ = log_to_file "entry_point" entry_point in
+  let module IO = MakeIO (struct
+    let debug_channel = debug_channel
+
+    let in_channel = stdin
+
+    let out_channel = stdout
+  end) in
+  let _ = IO.log_to_file "entry_point" entry_point in
   let _ =
     Flags.M.iter
-      (fun k v -> log_to_file "package" (Printf.sprintf "%s => %s" k v))
+      (fun k v -> IO.log_to_file "package" (Printf.sprintf "%s => %s" k v))
       !Flags.package_urls
   in
-  let _ = Debug.logger := log_to_file in
-  let publish_diagnostics = Channel.publish_diagnostics oc in
-  let clear_diagnostics = Channel.clear_diagnostics oc in
-  let send_response = Channel.send_response oc in
-  let show_message = Channel.show_message oc in
+  let _ = Debug.logger := IO.log_to_file in
   let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
-  let _ = log_to_file "project_root" project_root in
+  let _ = IO.log_to_file "project_root" project_root in
   let startup_diags = ref [] in
   let files_with_diags = ref [] in
   let vfs = ref Vfs.empty in
   let decl_index =
     let ix =
       match
-        Declaration_index.make_index log_to_file project_root !vfs
+        Declaration_index.make_index IO.log_to_file project_root !vfs
           [ entry_point ]
       with
       | Error errs ->
           List.iter
-            (fun err -> log_to_file "Error" (Diag.string_of_message err))
+            (fun err -> IO.log_to_file "Error" (Diag.string_of_message err))
             errs;
           startup_diags := errs;
           Declaration_index.empty project_root
@@ -164,9 +195,9 @@ let start entry_point debug =
              let _, file = List.hd diags in
              (List.map fst diags, Vfs.uri_from_file file))
     in
-    List.iter clear_diagnostics !files_with_diags;
+    List.iter IO.clear_diagnostics !files_with_diags;
     files_with_diags := List.map snd diags_by_file;
-    List.iter (fun (diags, uri) -> publish_diagnostics uri diags) diags_by_file
+    List.iter (fun (diags, uri) -> IO.publish_diags uri diags) diags_by_file
   in
   let handle_message raw = function
     | Some id, `Initialize params ->
@@ -208,7 +239,7 @@ let start entry_point debug =
               }
         in
         let response = response_result_message id result in
-        send_response (Lsp_j.string_of_response_message response)
+        IO.send (Lsp_j.string_of_response_message response)
     | Some id, `TextDocumentHover params ->
         let uri =
           params.Lsp_t.text_document_position_params_textDocument
@@ -227,13 +258,13 @@ let start entry_point debug =
                   }
           | Some file_content ->
               let result =
-                Hover.hover_handler log_to_file !decl_index position
+                Hover.hover_handler IO.log_to_file !decl_index position
                   file_content project_root
-                  (Vfs.abs_file_from_uri log_to_file uri)
+                  (Vfs.abs_file_from_uri IO.log_to_file uri)
               in
               response_result_message id result
         in
-        send_response (Lsp_j.string_of_response_message response)
+        IO.send (Lsp_j.string_of_response_message response)
     | Some id, `TextDocumentDefinition params ->
         let uri =
           params.Lsp_t.text_document_position_params_textDocument
@@ -255,24 +286,24 @@ let start entry_point debug =
               let result =
                 Definition.definition_handler !decl_index position file_content
                   project_root
-                  (Vfs.abs_file_from_uri log_to_file uri)
+                  (Vfs.abs_file_from_uri IO.log_to_file uri)
               in
               response_result_message id result
         in
-        send_response (Lsp_j.string_of_response_message response)
+        IO.send (Lsp_j.string_of_response_message response)
     | _, `TextDocumentDidOpen params -> vfs := Vfs.open_file params !vfs
     | _, `TextDocumentDidChange params -> vfs := Vfs.update_file params !vfs
     | _, `TextDocumentDidClose params -> vfs := Vfs.close_file params !vfs
     | _, `TextDocumentDidSave _ ->
         let msgs =
           match
-            Declaration_index.make_index log_to_file project_root !vfs
+            Declaration_index.make_index IO.log_to_file project_root !vfs
               [ entry_point ]
           with
           | Error msgs' ->
               List.iter
                 (fun msg ->
-                  log_to_file "rebuild_error" (Diag.string_of_message msg))
+                  IO.log_to_file "rebuild_error" (Diag.string_of_message msg))
                 msgs';
               msgs'
           | Ok (ix, msgs') ->
@@ -283,12 +314,12 @@ let start entry_point debug =
     | None, `Initialized _ ->
         sync_diagnostics !startup_diags;
         startup_diags := [];
-        show_message Lsp.MessageType.Info "Motoko LS initialized"
+        IO.show_message Lsp.MessageType.Info "Motoko LS initialized"
     | Some id, `Shutdown _ ->
         shutdown := true;
         response_result_message id (`ShutdownResponse None)
         |> Lsp_j.string_of_response_message
-        |> send_response
+        |> IO.send
     | _, `Exit _ -> if !shutdown then exit 0 else exit 1
     | Some id, `CompletionRequest params ->
         let uri =
@@ -308,29 +339,18 @@ let start entry_point debug =
                        opened yet";
                   }
           | Some file_content ->
-              Completion.completion_handler !decl_index log_to_file project_root
-                (Vfs.abs_file_from_uri log_to_file uri)
+              Completion.completion_handler !decl_index IO.log_to_file
+                project_root
+                (Vfs.abs_file_from_uri IO.log_to_file uri)
                 file_content position
               |> response_result_message id
         in
-        response |> Lsp_j.string_of_response_message |> send_response
+        IO.send (Lsp_j.string_of_response_message response)
     (* Unhandled messages *)
-    | _ -> log_to_file "unhandled message" raw
+    | _ -> IO.log_to_file "unhandled message" raw
   in
   let rec loop () =
-    let clength = read_line () in
-    let cl = "Content-Length: " in
-    let cll = String.length cl in
-    let num =
-      int_of_string String.(trim (sub clength cll (length clength - cll - 1)))
-      + 2
-    in
-    let buffer = Buffer.create num in
-    Buffer.add_channel buffer stdin num;
-    let raw = String.trim (Buffer.contents buffer) in
-    let message =
-      try Some (Lsp_j.incoming_message_of_string raw) with _ -> None
-    in
+    let raw, message = IO.read_message () in
     ( match message with
     | None -> Debug.log "decoding error" raw
     | Some message ->
