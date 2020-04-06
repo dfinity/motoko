@@ -178,9 +178,7 @@ let prepend_to_start fi (em : extended_module)  =
   }
 
 let _remove_non_canister_exports (em : extended_module) : extended_module =
-  let is_canister_export (exp : export) =
-    let name = Wasm.Utf8.encode exp.it.name in
-    Lib.String.chop_prefix "canister_" name <> None || name = "_start" in
+  let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
   map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
 
 let remove_non_ic_exports (em : extended_module) : extended_module =
@@ -188,8 +186,7 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
    custom types section was only exported for linking, and should not be
    exported in the final module *)
   let is_ic_export (exp : export) =
-    let name = Wasm.Utf8.encode exp.it.name in
-    Lib.String.chop_prefix "canister_" name <> None || name = "_start"
+    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None
   in
 
   let keep_export exp =
