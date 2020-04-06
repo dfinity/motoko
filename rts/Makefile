@@ -46,14 +46,14 @@ TOMMATH_FLAGS = \
 # Various musl flags, in particular telling it to not have long doubles
 # and exclude <errno.h>, which pulls in too many dependencies
 #
-# Note: we use a bit of magic to get rid of invocations to __fwritex
-#       - the headers contain a declaration, we rename it to (__fwritex ## __LINE__)
-#       - similarly the invocation becomes __fwritex_155(...) which we inline immediately
-#       Be aware that upon bumps of the musl sources the line number may move a bit
-#       and will need tweaks below.
+# Note: we use a bit of magic to get rid of invocations to __fwritex (and similar)
+#       - the headers contain a declaration, we rename it to (__fwritex ## __COUNTER__)
+#       - similarly the invocation becomes __fwritex_2(...) which we inline immediately
+#       Be aware that upon bumps of the musl sources the number of occurrences may jump a bit
+#       and will need tweaks/additions below.
 #       Similarly we define include guards (to suppress certain headers), but those should be
 #       pretty stable.
-#       TODO: wasm2wat mo-rts.wasm | grep -F '(import' | grep __fwritex_
+#       TODO: run `wasm2wat mo-rts.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
 #
 #       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
@@ -68,10 +68,10 @@ MUSL_FLAGS = \
   -DNL_ARGMAX=9 \
   -D'TOKENPASTE0(x, y)=x \#\# y' \
   -D'TOKENPASTE(x, y)=TOKENPASTE0(x, y)' \
-  -D'__fwritex=TOKENPASTE(__fwritex_,__LINE__)' \
-  -D'__fwritex_155(s, l, f)=(f->write((f), (s), (l)))' \
-  -D'__towrite=TOKENPASTE(__towrite_,__LINE__)' \
-  -D'__towrite_723(f)=(0)' \
+  -D'__fwritex=TOKENPASTE(__fwritex_,__COUNTER__)' \
+  -D'__fwritex_2(s, l, f)=(f->write((f), (s), (l)))' \
+  -D'__towrite=TOKENPASTE(__towrite_,__COUNTER__)' \
+  -D'__towrite_3(f)=(0)' \
   -D__wasilibc_printscan_no_long_double \
   -D__wasilibc_printscan_full_support_option='""' \
   -D__wasi__ \
