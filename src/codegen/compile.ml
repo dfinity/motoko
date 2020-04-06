@@ -108,7 +108,7 @@ The fields fall into the following categories:
  1. Static global fields. Never change.
     Example: whether we are compiling with -no-system-api
 
- 2. Mutable global fields. Change only monotonously.
+ 2. Mutable global fields. Change only monotonically.
     These are used to register things like functions. This should be monotone
     in the sense that entries are only added, and that the order should not
     matter in a significant way. In some instances, the list contains futures
