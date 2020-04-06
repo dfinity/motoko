@@ -1,11 +1,5 @@
 #include "rts.h"
 
-export long long float_to_I64(double a) {
-  return a;
-}
-export double float_of_I64(long long a) {
-  return a;
-}
 export as_ptr float_fmt(double a) {
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[50];
