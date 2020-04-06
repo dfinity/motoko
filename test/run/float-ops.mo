@@ -26,8 +26,8 @@ assert (Prim.floatMin(-9.7, 4.2) == -9.7);
 assert (Prim.floatMax(9.7, 4.2) == 9.7);
 assert (Prim.floatMax(-9.7, 4.2) == 4.2);
 
-assert (Prim.floatCopysign(-9.7, 4.2) == 9.7);
-assert (Prim.floatCopysign(9.7, -4.2) == -9.7);
+assert (Prim.floatCopySign(-9.7, 4.2) == 9.7);
+assert (Prim.floatCopySign(9.7, -4.2) == -9.7);
 
 assert (-9.7 < 4.2);
 assert (-9.7 <= -9.7);
