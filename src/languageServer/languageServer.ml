@@ -164,6 +164,8 @@ type ls_state = {
        ** their diagnostics once compilation succeeds *)
   shutdown : bool ref;
       (** Have we received the shutdown message?, A quirk of the LSP *)
+  client_capabilities : Lsp_t.client_capabilities option ref;
+      (** What are the capabilities the client reported? *)
 }
 
 let start : string -> bool -> 'a =
@@ -194,9 +196,9 @@ let start : string -> bool -> 'a =
       startup_diagnostics = ref [];
       files_with_diagnostics = ref [];
       shutdown = ref false;
+      client_capabilities = ref None;
     }
   in
-  let client_capabilities = ref None in
   let _ = IO.log_to_file "project_root" project_root in
   let _ =
     ls_state.decl_index :=
@@ -227,7 +229,8 @@ let start : string -> bool -> 'a =
   in
   let handle_message raw = function
     | Some id, `Initialize params ->
-        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
+        ls_state.client_capabilities :=
+          Some params.Lsp_t.initialize_params_capabilities;
         let completion_options =
           Lsp_t.
             {
