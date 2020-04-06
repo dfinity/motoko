@@ -1,5 +1,8 @@
 #include "rts.h"
 
+// this is not intended for native compilation/testing
+#ifdef __wasm__
+
 export as_ptr float_fmt(double a) {
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[50];
@@ -18,3 +21,5 @@ export double float_cos(double a) {
   extern double cos(double);
   return cos(a);
 }
+
+#endif
