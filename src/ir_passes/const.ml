@@ -5,7 +5,7 @@ open Ir
 
 (*
   This module identifies subexpressions that can be compiled statically. This
-  means it must be a constant, immutable value for which the backend can create
+  means each subexpression must be a constant, immutable value for which the backend can create
   the memory representation statically.
 
   This module should stay in sync with the `compile_const_exp` function in
