@@ -181,14 +181,18 @@ let start : string -> bool -> 'a =
 
     let out_channel = stdout
   end) in
-  let _ = IO.log_to_file "entry_point" entry_point in
+  let _ = Debug.logger := IO.log_to_file in
+  let _ = Debug.log "entry_point" entry_point in
   let _ =
     Flags.M.iter
-      (fun k v -> IO.log_to_file "package" (Printf.sprintf "%s => %s" k v))
+      (fun k v -> Debug.log "package" (Printf.sprintf "%s => %s" k v))
       !Flags.package_urls
   in
-  let _ = Debug.logger := IO.log_to_file in
-  let project_root = Sys.getcwd () in
+  let project_root =
+    let root = Sys.getcwd () in
+    Debug.log "project_root" root;
+    root
+  in
   let ls_state =
     {
       vfs = ref Vfs.empty;
@@ -199,16 +203,15 @@ let start : string -> bool -> 'a =
       client_capabilities = ref None;
     }
   in
-  let _ = IO.log_to_file "project_root" project_root in
   let _ =
     ls_state.decl_index :=
       match
-        Declaration_index.make_index IO.log_to_file project_root !(ls_state.vfs)
+        Declaration_index.make_index project_root !(ls_state.vfs)
           [ entry_point ]
       with
       | Error errs ->
           List.iter
-            (fun err -> IO.log_to_file "Error" (Diag.string_of_message err))
+            (fun err -> Debug.log "startup_error" (Diag.string_of_message err))
             errs;
           ls_state.startup_diagnostics := errs;
           Declaration_index.empty project_root
@@ -287,9 +290,9 @@ let start : string -> bool -> 'a =
                   }
           | Some file_content ->
               let result =
-                Hover.hover_handler IO.log_to_file !(ls_state.decl_index)
-                  position file_content project_root
-                  (Vfs.abs_file_from_uri IO.log_to_file uri)
+                Hover.hover_handler !(ls_state.decl_index) position file_content
+                  project_root
+                  (Vfs.abs_file_from_uri uri)
               in
               response_result_message id result
         in
@@ -315,7 +318,7 @@ let start : string -> bool -> 'a =
               let result =
                 Definition.definition_handler !(ls_state.decl_index) position
                   file_content project_root
-                  (Vfs.abs_file_from_uri IO.log_to_file uri)
+                  (Vfs.abs_file_from_uri uri)
               in
               response_result_message id result
         in
@@ -329,13 +332,13 @@ let start : string -> bool -> 'a =
     | _, `TextDocumentDidSave _ ->
         let msgs =
           match
-            Declaration_index.make_index IO.log_to_file project_root
-              !(ls_state.vfs) [ entry_point ]
+            Declaration_index.make_index project_root !(ls_state.vfs)
+              [ entry_point ]
           with
           | Error msgs' ->
               List.iter
                 (fun msg ->
-                  IO.log_to_file "rebuild_error" (Diag.string_of_message msg))
+                  Debug.log "rebuild_error" (Diag.string_of_message msg))
                 msgs';
               msgs'
           | Ok (ix, msgs') ->
@@ -371,15 +374,14 @@ let start : string -> bool -> 'a =
                        opened yet";
                   }
           | Some file_content ->
-              Completion.completion_handler !(ls_state.decl_index)
-                IO.log_to_file project_root
-                (Vfs.abs_file_from_uri IO.log_to_file uri)
+              Completion.completion_handler !(ls_state.decl_index) project_root
+                (Vfs.abs_file_from_uri uri)
                 file_content position
               |> response_result_message id
         in
         IO.send (Lsp_j.string_of_response_message response)
     (* Unhandled messages *)
-    | _ -> IO.log_to_file "unhandled message" raw
+    | _ -> Debug.log "unhandled message" raw
   in
   let rec loop () =
     let raw, message = IO.read_message () in

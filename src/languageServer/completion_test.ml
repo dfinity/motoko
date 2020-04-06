@@ -10,17 +10,13 @@ let extract_cursor input =
   |> String.concat "\n"
   |> fun f -> (f, !cursor_pos)
 
-let dummy_logger _ _ = ()
-
 let prefix_test_case file expected =
   let file, (line, column) = extract_cursor file in
   let show = function
     | None -> "None"
     | Some (m, p) -> "Some (" ^ m ^ ", " ^ p ^ ")"
   in
-  let actual =
-    Completion.find_completion_prefix dummy_logger file line column
-  in
+  let actual = Completion.find_completion_prefix file line column in
   Option.equal ( = ) actual expected
   ||
   ( Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
