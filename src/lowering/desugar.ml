@@ -214,26 +214,28 @@ and build_actor at self_id es obj_typ =
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
   let stabs = List.map (fun ef -> ef.it.S.stab) es in
   let pairs = List.map2 stabilize stabs ds in
-  let fieldss = List.map fst pairs in
-  let fields = List.concat fieldss in
+  let idss = List.map fst pairs in
+  let ids = List.concat idss in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
   let state = fresh_var "state" ty in
   let ds = List.map (fun mk_d -> mk_d state) mk_ds in
   let stableWrite = idE "@stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
   let ds =
+    (* TODO: for better GC, use varD state = Some ... and set to Null before exit *)
     letD state (primE (I.ICStableRead ty) []) ::
     nary_funcD stableWrite []
       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
        blockE
-         [letP (seqP (List.map varP vs)) (* dereference any mutable vars *)
-            (seqE (List.map (fun f -> optE (idE f.T.lab (T.as_opt (f.T.typ)))) fields))]
-         (primE (I.ICStableWrite ty)
+         [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+            (seqE (List.map (fun (i,t) -> optE (idE i t)) ids))]
+          (primE (I.ICStableWrite ty)
             [ newObjE T.Object
                 (List.map2 (fun f v ->
-                     { it = {I.name = f.Type.lab; I.var = id_of_exp v};
+                     { it = {I.name = f.T.lab; I.var = id_of_exp v};
                        at = no_region;
-                       note = f.Type.typ }
+                       note = f.T.typ }
                    ) fields vs)
                 ty])) ::
     ds
@@ -249,7 +251,7 @@ and stabilize stab_opt d =
   | (S.Flexible, _) ->
     ([], fun v -> d)
   | (S.Stable, I.VarD(i, t, e)) ->
-    ([Type.{ lab = i; typ = T.Opt t }],
+    ([(i,t)],
      fun v ->
      let s = fresh_var "s" t in
      varD i t
@@ -259,48 +261,54 @@ and stabilize stab_opt d =
           t)
     )
   | (S.Stable, I.LetD(p, e)) ->
-    assert false
+    assert false;
 (*
-  | (S.Stable, I.LetD(p, e)) ->
-    let fields = fields_of_pat [] p in
-    (fields, fun v ->
-     let s = fresh_var "s" (T.as_opt v.note.I.note_typ) in
-     let p', e_none, e_some, t =
-       let ids = List.map (fun field -> idE field.T.lab field.T.typ) fields in
-       let projs = List.map (fun field -> dotE s field.T.lab field.T.typ) fields in
-       let ts = List.map (fun field -> field.T.typ) fields in
-       seqP (List.map varP ids), seqE ids, seqE projs, T.seq ts
+    let ids = ids_of_pat [] p in
+    (ids, fun v ->
+     let p', e', t =
+       let xs = List.map (fun (i,t) -> idE i t) ids in
+       let projs = List.map (fun (i,t) ->
+         let s = fresh_var "s" t in
+         switch_optE (dotE s i (T.Opt t))
+           (idE i t)
+           (varP s) s t)
+         ids in
+       let ts = List.map (fun (i,t) -> t) ids in
+       seqP (List.map varP xs), seqE projs, T.seq ts
      in
      letP p'
-       (switch_optE v
-          (blockE [letP p e] e_none)
-          (varP s) (e_some)
-         t))
+       (blockE [letP p e]
+         /* dubious semantics - rerun the compound initializer on install/upgrade, but discard
+            components that have been restored from stable store */
+         /* why dubious? wasteful, duplicates side effects
+            Alternative, require RHS e to be in canonical form for p so components can
+            be selectively evaluated/restored */
+       e'))
 
 
-and fields_of_pat acc p = match p.it with
+and ids_of_pat acc p = match p.it with
   | I.WildP ->
     acc
   | I.VarP i ->
-    T.{ lab = i; typ = T.Opt p.note }::acc
+    (i, p.note) :: acc
   | I.TupP ps ->
-    fields_of_pats acc ps
+    ids_of_pats acc ps
   | I.ObjP pfs ->
-    fields_of_pats acc (Ir.pats_of_obj_pat pfs)
+    ids_of_pats acc (Ir.pats_of_obj_pat pfs)
   | I.LitP l ->
     acc
   | I.OptP p ->
-    fields_of_pat acc p
+    ids_of_pat acc p
   | I.TagP (i, p)     ->
-    fields_of_pat acc p
+    ids_of_pat acc p
   | I.AltP (p1, p2)   ->
-    fields_of_pat (fields_of_pat acc p1) p2
+    ids_of_pat (ids_of_pat acc p1) p2
 
-and fields_of_pats acc ps =
+and ids_of_pats acc ps =
   match ps with
   | [] -> acc
   | p::ps' ->
-    fields_of_pats (fields_of_pat acc p) ps'
+    ids_of_pats (ids_of_pat acc p) ps'
 *)
 
 and build_obj at s self_id es obj_typ =
