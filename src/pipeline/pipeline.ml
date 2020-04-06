@@ -544,11 +544,11 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
-let analyze anal_name anal env prog name =
-  phase anal_name name;
+let analyze analysis_name anal env prog name =
+  phase analysis_name name;
   anal env prog;
   if !Flags.check_ir
-  then Check_ir.check_prog !Flags.verbose env anal_name prog
+  then Check_ir.check_prog !Flags.verbose env analysis_name prog
 
 
 (* Compilation *)
