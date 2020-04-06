@@ -143,7 +143,11 @@ let rec exp lvl env e : lazy_bool =
     | AssignE (_, e1) | LabelE (_, _, e1) | DefineE (_, _, e1) ->
       exp_ lvl env e1;
       surely_false
-    | IfE (e1, e2, e3)
+    | IfE (e1, e2, e3) ->
+      exp_ lvl env e1;
+      exp_ lvl env e2;
+      exp_ lvl env e3;
+      surely_false
     | SelfCallE (_, e1, e2, e3) ->
       exp_ NotTopLvl env e1;
       exp_ lvl env e2;
@@ -153,10 +157,10 @@ let rec exp lvl env e : lazy_bool =
       exp_ lvl env e1;
       List.iter (case_ lvl env) cs;
       surely_false
-    | NewObjE _ ->
+    | NewObjE _ -> (* mutable objects *)
       surely_false
     | ActorE _ ->
-      (* TODO: traverse *)
+      (* no point in traversing until the backend supports dynamic actors *)
       surely_false
   in
   set_lazy_const e lb;
