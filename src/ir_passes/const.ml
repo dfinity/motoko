@@ -5,7 +5,7 @@ open Ir
 
 (*
   This module identifies subexpressions that can be compiled statically. This
-  means it must be a constant, immutable value for which the backend can create
+  means each subexpression must be a constant, immutable value for which the backend can create
   the memory representation statically.
 
   This module should stay in sync with the `compile_const_exp` function in
@@ -24,12 +24,12 @@ open Ir
   propagate more knowledge automatically. When one of them knows it is going to
   be surely false, then it updates the corresponding `note.const` field.
 
-  This works even in the presence of recursion, becuase it is monotonous: We start
+  This works even in the presence of recursion, because it is monotonic: We start
   with true (possibly constant) and only use implications to connect these values, so
   all propagations of “false” eventually terminate.
 
   This analysis relies on the fact that AST notes are mutable. So sharing AST
-  nodes would be bad.  Check_ir checks that this is the case.
+  nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
 
 (* The lazy bool value type *)
@@ -143,7 +143,11 @@ let rec exp lvl env e : lazy_bool =
     | AssignE (_, e1) | LabelE (_, _, e1) | DefineE (_, _, e1) ->
       exp_ lvl env e1;
       surely_false
-    | IfE (e1, e2, e3)
+    | IfE (e1, e2, e3) ->
+      exp_ lvl env e1;
+      exp_ lvl env e2;
+      exp_ lvl env e3;
+      surely_false
     | SelfCallE (_, e1, e2, e3) ->
       exp_ NotTopLvl env e1;
       exp_ lvl env e2;
@@ -153,10 +157,10 @@ let rec exp lvl env e : lazy_bool =
       exp_ lvl env e1;
       List.iter (case_ lvl env) cs;
       surely_false
-    | NewObjE _ ->
+    | NewObjE _ -> (* mutable objects *)
       surely_false
     | ActorE _ ->
-      (* TODO: traverse *)
+      (* no point in traversing until the backend supports dynamic actors *)
       surely_false
   in
   set_lazy_const e lb;
