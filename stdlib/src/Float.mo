@@ -16,8 +16,8 @@ module {
   public let trunc : Float -> Float = Prim.floatTrunc;
   public let nearest : Float -> Float = Prim.floatNearest;
 
-  public let min : (Float, Float) -> Float = Prim.min;
-  public let max : (Float, Float) -> Float = Prim.max;
+  public let min : (Float, Float) -> Float = Prim.floatMin;
+  public let max : (Float, Float) -> Float = Prim.floatMax;
 
   public let sin : Float -> Float = Prim.sin;
   public let cos : Float -> Float = Prim.cos;
