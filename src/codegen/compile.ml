@@ -1529,21 +1529,17 @@ module Float = struct
 
   let payload_field = Tagged.header_size
 
-
   let compile_unboxed_const f = G.i Wasm.(Ast.Const (nr (Values.F64 f)))
   let lit f = compile_unboxed_const (Wasm.F64.of_float f)
   let compile_unboxed_zero = lit 0.0
 
-  let compile_box env compile_elem : G.t =
+  let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
     Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.(store Bits64) ^^
-    get_i ^^ compile_elem ^^ G.i (Store {ty = F64Type; align = 2; offset = payload_field; sz = None}) ^^
+    get_i ^^ get_f ^^ G.i (Store {ty = F64Type; align = 2; offset = payload_field; sz = None}) ^^
     get_i
-
-  let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
-      compile_box env get_f
     )
 
   let unbox env = G.i (Load {ty = F64Type; align = 2; offset = 4l; sz = None})
