@@ -94,7 +94,7 @@ and lexp' =
 
 
 (* In the IR, a prim is any AST node that has expr subexpressions, but they are
-all call-by-value. Many passes can treat them uniformly, so they are unified using the
+all call-by-value. Many passes can treat them uniformly, so they are unified
 using the PrimE node. *)
 and prim =
   | CallPrim of Type.typ list         (* function call *)
