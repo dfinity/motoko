@@ -774,7 +774,7 @@ and gather_pat env ve0 pat : val_env =
     | VarP id ->
       check env pat.at (not (T.Env.mem id ve0))
         "duplicate binding for %s in block" id;
-      let val_info = {typ = pat.note; const = false; loc_known = false} in
+      let val_info = {typ = pat.note; const = false; loc_known = env.lvl = TopLvl} in
       T.Env.add id val_info ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
