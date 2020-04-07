@@ -76,15 +76,21 @@ module S = Freevars.S
 
 module M = Env.Make(String)
 
-type env = lazy_bool M.t
+type info = {
+  loc_known : bool;
+  const : lazy_bool;
+}
+type env = info M.t
 
-let arg env a = M.add a.it surely_false env
+
+let no_info = { loc_known = false; const = surely_false }
+let arg env a = M.add a.it no_info env
 let args env as_ = List.fold_left arg env as_
 
 let rec pat env p = match p.it with
   | WildP
   | LitP _ -> env
-  | VarP id -> M.add id surely_false env
+  | VarP id -> M.add id no_info env
   | TupP pats -> List.fold_left pat env pats
   | ObjP pfs -> List.fold_left pat env (pats_of_obj_pat pfs)
   | AltP (pat1, _) | OptP pat1 | TagP (_, pat1) -> pat env pat1
@@ -106,22 +112,26 @@ let set_lazy_const e lb =
 
 (* Traversals *)
 
-let rec exp lvl env e : lazy_bool =
+let rec exp lvl (env : env) e : lazy_bool =
   let lb =
     match e.it with
-    | VarE v -> find v env
+    | VarE v -> (find v env).const
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       exp_ NotTopLvl (args env as_) body;
       begin match lvl with
-      | TopLvl -> surely_true (* top-level functions can always be static *)
+      | TopLvl -> surely_true (* top-level functions can always be const *)
       | NotTopLvl ->
         let lb = maybe_false () in
-        Freevars.M.iter (fun v _ -> required_for (find v env) lb) (Freevars.exp e);
+        Freevars.M.iter (fun v _ ->
+          let info = find v env in
+          if info.loc_known then () else (* static definitions are ok *)
+          required_for info.const lb
+        ) (Freevars.exp e);
         lb
       end
     | NewObjE (Type.(Object | Module), fs, t) when Type.is_immutable_obj t ->
       let lb = maybe_false () in
-      List.iter (fun f -> required_for (find f.it.var env) lb) fs;
+      List.iter (fun f -> required_for (find f.it.var env).const lb) fs;
       lb
     | BlockE (ds, body) ->
       block lvl env (ds, body)
@@ -135,7 +145,7 @@ let rec exp lvl env e : lazy_bool =
     | LitE _ ->
       surely_false
     | DeclareE (id, _, e1) ->
-      exp_ lvl (M.add id surely_false env) e1;
+      exp_ lvl (M.add id no_info env) e1;
       surely_false
     | LoopE e1 | AsyncE (_, e1, _) ->
       exp_ NotTopLvl env e1;
@@ -170,19 +180,22 @@ and exp_ lvl env e : unit = ignore (exp lvl env e)
 and case_ lvl env c : unit =
   exp_ lvl (pat env c.it.pat) c.it.exp
 
-and gather_dec scope dec : env = match dec.it with
-  | LetD ({it = VarP v; _}, e) -> M.add v (maybe_false ()) scope
+and gather_dec lvl scope dec : env =
+  let mk_info const = { loc_known = lvl = TopLvl; const } in
+  match dec.it with
+  | LetD ({it = VarP v; _}, e) ->
+    M.add v (mk_info (maybe_false ())) scope
   | _ ->
     let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
-    S.fold (fun v scope -> M.add v surely_false scope) vs scope
+    S.fold (fun v scope -> M.add v (mk_info surely_false) scope) vs scope
 
-and gather_decs ds : env =
-  List.fold_left gather_dec M.empty ds
+and gather_decs lvl ds : env =
+  List.fold_left (gather_dec lvl) M.empty ds
 
 and check_dec lvl env dec : lazy_bool = match dec.it with
   | LetD ({it = VarP v; _}, e) ->
     let lb = exp lvl env e in
-    required_for lb (M.find v env);
+    required_for lb (M.find v env).const;
     lb
   | LetD (_, e) | VarD (_, _, e) ->
     exp_ lvl env e;
@@ -193,7 +206,7 @@ and check_decs lvl env ds : lazy_bool =
   all lbs
 
 and decs lvl env ds : (env * lazy_bool) =
-  let scope = gather_decs ds in
+  let scope = gather_decs lvl ds in
   let env' = M.adjoin env scope in
   let could_be = check_decs lvl env' ds in
   (env', could_be)
@@ -206,7 +219,8 @@ and block lvl env (ds, body) =
 let analyze scope ((b, _flavor) : prog) =
   (*
   We assume everything in scope is static. Right now, this is only the prelude,
-  which is static. It will blow up in compile if we break this.
+  which is static. It will blow up in compile if we get this wrong.
   *)
-  let env = M.of_seq (Seq.map (fun (v, _typ) -> (v, surely_true)) (Type.Env.to_seq scope.Scope.val_env)) in
+  let static_info = { loc_known = true; const = surely_true } in
+  let env = M.of_seq (Seq.map (fun (v, _typ) -> (v, static_info)) (Type.Env.to_seq scope.Scope.val_env)) in
   ignore (block TopLvl env b)
