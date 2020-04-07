@@ -12,7 +12,7 @@ let notification :
       notification_message_params = params;
     }
 
-module MakeIO (OC : sig
+module MakeIO (Channels : sig
   val debug_channel : out_channel option
 
   val in_channel : in_channel
@@ -26,19 +26,20 @@ struct
       (fun oc ->
         Printf.fprintf oc "[%s] %s\n" lbl txt;
         flush oc)
-      OC.debug_channel
+      Channels.debug_channel
 
   let send : string -> unit =
    fun msg ->
     let length = String.length msg in
-    Printf.fprintf OC.out_channel "Content-Length: %d\r\n\r\n%s" length msg;
-    flush OC.out_channel
+    Printf.fprintf Channels.out_channel "Content-Length: %d\r\n\r\n%s" length
+      msg;
+    flush Channels.out_channel
 
   let read_message : unit -> string * Lsp_t.incoming_message option =
    fun () ->
     let num =
       (* Every LSP message begins with a content length header *)
-      input_line OC.in_channel
+      input_line Channels.in_channel
       |> Lib.String.chop_prefix "Content-Length: "
       (* If this fails the protocol was broken and we abort. Should we recover from this? *)
       |> Option.get
