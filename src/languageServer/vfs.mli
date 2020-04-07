@@ -8,9 +8,9 @@ type uri = string
 
 val uri_from_file : string -> uri
 
-val file_from_uri : (string -> string -> 'a) -> uri -> string
+val file_from_uri : uri -> string
 
-val abs_file_from_uri : (string -> string -> 'a) -> uri -> string
+val abs_file_from_uri : uri -> string
 
 val parse_file : t -> Pipeline.parse_fn
 
