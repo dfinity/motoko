@@ -53,7 +53,7 @@ let import_relative_to_project_root root module_path dependency =
    the prefix relevant to searching completions. For example, given:
 
    List.fi| (where | is the cursor) return `Some ("List", "fi")` *)
-let find_completion_prefix logger file line column : (string * string) option =
+let find_completion_prefix file line column : (string * string) option =
   let open Source in
   (* The LSP sends 0 based line numbers *)
   let line = line + 1 in
@@ -107,7 +107,7 @@ let opt_bind f = function None -> None | Some x -> f x
 
 let is_capital : string -> bool = fun s -> String.capitalize_ascii s = s
 
-let completions index logger project_root file_path file_contents line column =
+let completions index project_root file_path file_contents line column =
   let imported =
     Source_file.parse_module_header project_root file_path file_contents
   in
@@ -133,7 +133,7 @@ let completions index logger project_root file_path file_contents line column =
         completion_item_detail = None;
       }
   in
-  match find_completion_prefix logger file_contents line column with
+  match find_completion_prefix file_contents line column with
   | None ->
       (* If we don't have any prefix to work with, just suggest the
          imported module aliases, as well as top-level definitions in
@@ -193,9 +193,8 @@ let completions index logger project_root file_path file_contents line column =
           completions
       | None -> [] )
 
-let completion_handler index logger project_root file_path file_contents
-    position =
+let completion_handler index project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
   let column = position.Lsp_t.position_character in
   `CompletionResponse
-    (completions index logger project_root file_path file_contents line column)
+    (completions index project_root file_path file_contents line column)

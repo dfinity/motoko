@@ -34,7 +34,6 @@ val find_with_prefix :
   (string * ide_decl list) list
 
 val make_index :
-  (string -> string -> unit) (** A logger *) ->
   string (** The project root *) ->
   Vfs.t ->
   string list (** The entry points *) ->

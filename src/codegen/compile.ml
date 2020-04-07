@@ -1046,7 +1046,7 @@ module Tagged = struct
     | Variant
     | Blob
     | Indirection
-    | SmallWord (* Contains a 32 bit unsigned number *)
+    | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
 
@@ -1062,7 +1062,7 @@ module Tagged = struct
     | Variant -> 9l
     | Blob -> 10l
     | Indirection -> 11l
-    | SmallWord -> 12l
+    | Bits32 -> 12l
     | BigInt -> 13l
     | Concat -> 14l
 
@@ -1371,7 +1371,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Heap.alloc env 2l ^^
     set_i ^^
-    get_i ^^ Tagged.(store SmallWord) ^^
+    get_i ^^ Tagged.(store Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -3341,7 +3341,7 @@ module HeapTraversal = struct
       Tagged.branch env [I32Type]
         [ Tagged.Bits64,
           compile_unboxed_const 3l
-        ; Tagged.SmallWord,
+        ; Tagged.Bits32,
           compile_unboxed_const 2l
         ; Tagged.BigInt,
           compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
