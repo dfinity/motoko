@@ -1029,7 +1029,7 @@ module Tagged = struct
     | Object
     | ObjInd (* The indirection used for object fields *)
     | Array (* Also a tuple *)
-    | Int (* Contains a 64 bit number *)
+    | Bits64 (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
     | Closure
     | Some (* For opt *)
@@ -1045,7 +1045,7 @@ module Tagged = struct
     | Object -> 1l
     | ObjInd -> 2l
     | Array -> 3l
-    | Int -> 5l
+    | Bits64 -> 5l
     | MutBox -> 6l
     | Closure -> 7l
     | Some -> 8l
@@ -1276,7 +1276,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Int) ^^
+    get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1521,7 +1521,7 @@ module Float = struct
        │ tag │    i64    │
        └─────┴─────┴─────┘
 
-     For now the tag stored is that of an Int, because the payload is
+     For now the tag stored is that of a Bits64, because the payload is
      treated opaquely by the RTS. We'll introduce a separate tag when the need of
      debug inspection (or GC representation change) arises.
 
@@ -1538,7 +1538,7 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Int) ^^
+    get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ compile_elem ^^ G.i (Store {ty = F64Type; align = 2; offset = payload_field; sz = None}) ^^
     get_i
 
@@ -3333,7 +3333,7 @@ module HeapTraversal = struct
     Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^
       Tagged.branch env [I32Type]
-        [ Tagged.Int,
+        [ Tagged.Bits64,
           compile_unboxed_const 3l
         ; Tagged.SmallWord,
           compile_unboxed_const 2l
