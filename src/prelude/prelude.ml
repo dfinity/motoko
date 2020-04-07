@@ -180,6 +180,7 @@ func @text_of_Word8(x : Word8) : Text = @text_of_Word (@word8ToNat x);
 func @text_of_Word16(x : Word16) : Text = @text_of_Word (@word16ToNat x);
 func @text_of_Word32(x : Word32) : Text = @text_of_Word (@word32ToNat x);
 func @text_of_Word64(x : Word64) : Text = @text_of_Word (@word64ToNat x);
+func @text_of_Float(x : Float) : Text = (prim "Float->Text" : Float -> Text) x;
 
 
 func @text_of_Bool(b : Bool) : Text {
@@ -433,6 +434,25 @@ func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
+
+// Float operations
+
+func floatAbs(f : Float) : Float = (prim "fabs" : Float -> Float) f;
+func floatSqrt(f : Float) : Float = (prim "fsqrt" : Float -> Float) f;
+func floatCeil(f : Float) : Float = (prim "fceil" : Float -> Float) f;
+func floatFloor(f : Float) : Float = (prim "ffloor" : Float -> Float) f;
+func floatTrunc(f : Float) : Float = (prim "ftrunc" : Float -> Float) f;
+func floatNearest(f : Float) : Float = (prim "fnearest" : Float -> Float) f;
+func floatMin(f : Float, g : Float) : Float = (prim "fmin" : (Float, Float) -> Float) (f, g);
+func floatMax(f : Float, g : Float) : Float = (prim "fmax" : (Float, Float) -> Float) (f, g);
+func floatCopySign(f : Float, g : Float) : Float = (prim "fcopysign" : (Float, Float) -> Float) (f, g);
+func floatToInt64(f : Float) : Int64 = (prim "num_conv_Float_Int64" : Float -> Int64) (f);
+func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> Float) (n);
+
+// Trigonometric functions
+
+func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
+func cos(f : Float) : Float = (prim "fcos" : Float -> Float) f;
 
 // Array utilities
 

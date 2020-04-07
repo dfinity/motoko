@@ -37,6 +37,19 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
         "version": "v1.2.0"
     },
+    "musl-wasi": {
+        "branch": "master",
+        "builtin": false,
+        "description": "WASI libc implementation for WebAssembly",
+        "homepage": "https://wasi.dev",
+        "owner": "WebAssembly",
+        "repo": "wasi-libc",
+        "rev": "4b41c5d5ec64f1219e57e474c027d8552c1503ff",
+        "sha256": "17wlkpl495zs4cl3djdqaf089a4bhbrj87z2i2gm21cvmfqmva7p",
+        "type": "tarball",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/4b41c5d5ec64f1219e57e474c027d8552c1503ff.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "nixpkgs": {
         "branch": "release-20.03",
         "builtin": true,
