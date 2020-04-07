@@ -1513,6 +1513,22 @@ end (* UnboxedSmallWord *)
 
 
 module Float = struct
+  (* We store floats (C doubles) in immutable boxed 64bit heap objects.
+
+     The heap layout of a Float is:
+
+       ┌─────┬─────┬─────┐
+       │ tag │    i64    │
+       └─────┴─────┴─────┘
+
+     For now the tag stored is that of an Int, because the payload is
+     treated opaquely by the RTS. We'll introduce a separate tag when the need of
+     debug inspection (or GC representation change) arises.
+
+  *)
+
+  let payload_field = Tagged.header_size
+
 
   let compile_unboxed_const f = G.i Wasm.(Ast.Const (nr (Values.F64 f)))
   let lit f = compile_unboxed_const (Wasm.F64.of_float f)
@@ -1523,7 +1539,7 @@ module Float = struct
     Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.(store Int) ^^
-    get_i ^^ compile_elem ^^ G.i (Store {ty = F64Type; align = 2; offset = 4l; sz = None}) ^^
+    get_i ^^ compile_elem ^^ G.i (Store {ty = F64Type; align = 2; offset = payload_field; sz = None}) ^^
     get_i
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
