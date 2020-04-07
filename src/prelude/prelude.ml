@@ -354,9 +354,18 @@ func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
 
 // Conversions
 
-let (int64ToInt, int32ToInt, int16ToInt, int8ToInt) = (@int64ToInt, @int32ToInt, @int16ToInt, @int8ToInt);
-let (nat64ToNat, nat32ToNat, nat16ToNat, nat8ToNat) = (@nat64ToNat, @nat32ToNat, @nat16ToNat, @nat8ToNat);
-let (word64ToNat, word32ToNat, word16ToNat, word8ToNat) = (@word64ToNat, @word32ToNat, @word16ToNat, @word8ToNat);
+let int64ToInt = @int64ToInt;
+let int32ToInt = @int32ToInt;
+let int16ToInt = @int16ToInt;
+let int8ToInt = @int8ToInt;
+let nat64ToNat = @nat64ToNat;
+let nat32ToNat = @nat32ToNat;
+let nat16ToNat = @nat16ToNat;
+let nat8ToNat = @nat8ToNat;
+let word64ToNat = @word64ToNat;
+let word32ToNat = @word32ToNat;
+let word16ToNat = @word16ToNat;
+let word8ToNat = @word8ToNat;
 
 func intToInt64(n : Int) : Int64 = (prim "num_conv_Int_Int64" : Int -> Int64) n;
 func int64ToWord64(n : Int64) : Word64 = (prim "num_conv_Int64_Word64" : Int64 -> Word64) n;
