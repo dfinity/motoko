@@ -219,12 +219,20 @@ and build_actor at self_id es obj_typ =
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
-  let state = fresh_var "state" ty in
-  let ds = List.map (fun mk_d -> mk_d state) mk_ds in
+  let state = fresh_var "state" (T.Mut (T.Opt ty)) in
+  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
+  let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let stableWrite = idE "@stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
   let ds =
-    (* TODO: for better GC, use varD state = Some ... and set to Null before exit *)
-    letD state (primE (I.ICStableRead ty) []) ::
+    varD (id_of_exp state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
+    ::
+    nary_funcD get_state []
+      (let v = fresh_var "v" ty in
+       switch_optE (immuteE state)
+         (unreachableE)
+         (varP v) v
+         ty)
+    ::
     nary_funcD stableWrite []
       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
        blockE
@@ -239,6 +247,8 @@ and build_actor at self_id es obj_typ =
                    ) fields vs)
                 ty])) ::
     ds
+    @
+    [expD (assignE state (nullE()))]
   in
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
@@ -249,43 +259,43 @@ and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
   match s, d.it with
   | (S.Flexible, _) ->
-    ([], fun v -> d)
+    ([], fun _ -> d)
   | (S.Stable, I.VarD(i, t, e)) ->
     ([(i,t)],
-     fun v ->
-     let s = fresh_var "s" t in
+     fun get_state ->
+     let v = fresh_var i t in
      varD i t
-       (switch_optE (dotE v i (T.Opt t))
+       (switch_optE (dotE (callE get_state [] unitE) i (T.Opt t))
           e
-          (varP s) s
+          (varP v) v
           t)
     )
   | (S.Stable, I.LetD(p, e)) ->
-    assert false;
-(*
+    if true then assert false;
+    (* TODO: this code is dead for now but I'm maintaining it for future adaptation, if any *)
     let ids = ids_of_pat [] p in
-    (ids, fun v ->
+    (ids, fun get_state ->
      let p', e', t =
        let xs = List.map (fun (i,t) -> idE i t) ids in
        let projs = List.map (fun (i,t) ->
-         let s = fresh_var "s" t in
-         switch_optE (dotE s i (T.Opt t))
+         let v = fresh_var i t in
+         switch_optE (dotE (callE get_state [] unitE) i (T.Opt t))
            (idE i t)
-           (varP s) s t)
+           (varP v) v t)
          ids in
        let ts = List.map (fun (i,t) -> t) ids in
        seqP (List.map varP xs), seqE projs, T.seq ts
      in
      letP p'
        (blockE [letP p e]
-         /* dubious semantics - rerun the compound initializer on install/upgrade, but discard
-            components that have been restored from stable store */
-         /* why dubious? wasteful, duplicates side effects
+         (* dubious semantics - rerun the compound initializer on install/upgrade, but discard
+            components that have been restored from stable store
+            why dubious? wasteful, duplicates side effects
             Alternative, require RHS e to be in canonical form for p so components can
-            be selectively evaluated/restored */
+            be selectively evaluated/restored *)
        e'))
 
-
+(* NB: this code is dead (see above) *)
 and ids_of_pat acc p = match p.it with
   | I.WildP ->
     acc
@@ -304,12 +314,12 @@ and ids_of_pat acc p = match p.it with
   | I.AltP (p1, p2)   ->
     ids_of_pat (ids_of_pat acc p1) p2
 
+(* NB: this code is dead (see above) *)
 and ids_of_pats acc ps =
   match ps with
   | [] -> acc
   | p::ps' ->
     ids_of_pats (ids_of_pat acc p) ps'
-*)
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in

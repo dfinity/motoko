@@ -57,6 +57,7 @@ val ignoreE : exp -> exp
 
 val unitE : exp
 val boolE : bool -> exp
+val nullE : unit -> exp
 
 val callE : exp -> typ list -> exp -> exp
 

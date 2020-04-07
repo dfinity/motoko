@@ -208,6 +208,13 @@ let boolE b =
     note = { note_typ = T.bool; note_eff = T.Triv}
   }
 
+let nullE () =
+  { it = LitE NullLit;
+    at = no_region;
+    note = { note_typ = T.Prim T.Null; note_eff = T.Triv }
+  }
+
+
 let callE exp1 ts exp2 =
   match T.promote (typ exp1) with
   | T.Func (_sort, _control, _, _, ret_tys) ->
