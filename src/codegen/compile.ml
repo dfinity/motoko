@@ -844,6 +844,16 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I64Type; align = 2; offset; sz = None})
 
+  (* Or even as a single 64 bit float *)
+
+  let load_field_float64 (i : int32) : G.t =
+    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    G.i (Load {ty = F64Type; align = 2; offset; sz = None})
+
+  let store_field_float64 (i : int32) : G.t =
+    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    G.i (Store {ty = F64Type; align = 2; offset; sz = None})
+
   (* Create a heap object with instructions that fill in each word *)
   let obj env element_instructions : G.t =
     let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
@@ -1518,7 +1528,7 @@ module Float = struct
      The heap layout of a Float is:
 
        ┌─────┬─────┬─────┐
-       │ tag │    i64    │
+       │ tag │    f64    │
        └─────┴─────┴─────┘
 
      For now the tag stored is that of a Bits64, because the payload is
@@ -1538,11 +1548,11 @@ module Float = struct
     Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.(store Bits64) ^^
-    get_i ^^ get_f ^^ G.i (Store {ty = F64Type; align = 2; offset = payload_field; sz = None}) ^^
+    get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
 
-  let unbox env = G.i (Load {ty = F64Type; align = 2; offset = 4l; sz = None})
+  let unbox env = Heap.load_field_float64 payload_field
 
 end (* Float *)
 
