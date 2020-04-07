@@ -547,6 +547,7 @@ let show_translation =
 let analyze analysis_name analysis env prog name =
   phase analysis_name name;
   analysis env prog;
+  dump_ir Flags.dump_lowering prog;
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose env analysis_name prog
 

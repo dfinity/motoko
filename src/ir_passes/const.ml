@@ -169,8 +169,9 @@ let rec exp lvl (env : env) e : lazy_bool =
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE _ ->
-      (* no point in traversing until the backend supports dynamic actors *)
+    | ActorE (ds, fs, _typ) ->
+      (* this may well be “the” top-level actor, so don’t update lvl here *)
+      ignore (decs lvl env ds);
       surely_false
   in
   set_lazy_const e lb;
