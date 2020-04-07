@@ -8,15 +8,6 @@ module Lsp_t = Lsp.Lsp_t
 
 let jsonrpc_version : string = "2.0"
 
-let notification :
-    Lsp_t.notification_message_params -> Lsp_t.notification_message =
- fun params ->
-  Lsp_t.
-    {
-      notification_message_jsonrpc = jsonrpc_version;
-      notification_message_params = params;
-    }
-
 let response_result_message :
     int -> Lsp_t.response_result -> Lsp_t.response_message =
  fun id result ->
@@ -38,83 +29,6 @@ let response_error_message :
       response_message_result = None;
       response_message_error = Some error;
     }
-
-module MakeIO (OC : sig
-  val debug_channel : out_channel option
-
-  val in_channel : in_channel
-
-  val out_channel : out_channel
-end) =
-struct
-  let log_to_file : string -> string -> unit =
-   fun lbl txt ->
-    Option.iter
-      (fun oc ->
-        Printf.fprintf oc "[%s] %s\n" lbl txt;
-        flush oc)
-      OC.debug_channel
-
-  let send : string -> unit =
-   fun msg ->
-    let length = String.length msg in
-    Printf.fprintf OC.out_channel "Content-Length: %d\r\n\r\n%s" length msg;
-    flush OC.out_channel
-
-  let read_message : unit -> string * Lsp_t.incoming_message option =
-   fun () ->
-    let num =
-      (* Every LSP message begins with a content length header *)
-      input_line OC.in_channel
-      |> Lib.String.chop_prefix "Content-Length: "
-      (* If this fails the protocol was broken and we abort. Should we recover from this? *)
-      |> Option.get
-      (* `input_line` does not consume the trailing \r, so we need to trim it off here *)
-      |> String.trim
-      |> int_of_string
-      (* The protocol terminates the content length header with two \r\n s. Our `input_line`
-         call consumed the first, but we still need to eat the second one, so we add 2 to
-         the length of the message *)
-      |> ( + ) 2
-    in
-
-    let buffer = Buffer.create num in
-    Buffer.add_channel buffer stdin num;
-    let raw = String.trim (Buffer.contents buffer) in
-    let msg =
-      try Some (Lsp_j.incoming_message_of_string raw) with _ -> None
-    in
-    (raw, msg)
-
-  let show_message : Lsp.MessageType.t -> string -> unit =
-   fun typ msg ->
-    let params =
-      `WindowShowMessage
-        Lsp_t.
-          {
-            window_show_message_params_type_ = typ;
-            window_show_message_params_message = msg;
-          }
-    in
-    let notification = notification params in
-    send (Lsp_j.string_of_notification_message notification)
-
-  let publish_diags : Lsp_t.document_uri -> Lsp_t.diagnostic list -> unit =
-   fun uri diags ->
-    let params =
-      `PublishDiagnostics
-        Lsp_t.
-          {
-            publish_diagnostics_params_uri = uri;
-            publish_diagnostics_params_diagnostics = diags;
-          }
-    in
-    let notification = notification params in
-    send (Lsp_j.string_of_notification_message notification)
-
-  let clear_diagnostics : Lsp_t.document_uri -> unit =
-   fun uri -> publish_diags uri []
-end
 
 let position_of_pos : Source.pos -> Lsp_t.position =
  fun pos ->
@@ -174,7 +88,7 @@ let start : string -> bool -> 'a =
     if debug then Some (open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log")
     else None
   in
-  let module IO = MakeIO (struct
+  let module IO = Communication.MakeIO (struct
     let debug_channel = debug_channel
 
     let in_channel = stdin
