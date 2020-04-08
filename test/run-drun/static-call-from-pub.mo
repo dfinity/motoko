@@ -11,7 +11,6 @@ actor {
 // CHECK-NOT: call_indirect
 // CHECK: call $$lambda
 
-// CHECK-LABEL: func $$lambda
+// CHECK-LABEL: (func $$lambda
 // CHECK-NOT: call_indirect
 // CHECK: call $init
-
