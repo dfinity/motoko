@@ -102,19 +102,18 @@ let ocaml_exe = name: bin:
     if nixpkgs.stdenv.isDarwin
     then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
+
+  musl-wasi-sysroot = stdenv.mkDerivation {
+    name = "musl-wasi-sysroot";
+    src = nixpkgs.sources.musl-wasi;
+    phases = [ "unpackPhase" "installPhase" ];
+    installPhase = ''
+      make SYSROOT="$out" include_dirs
+    '';
+  };
 in
 
 rec {
-  musl-wasi-sysroot = stdenv.mkDerivation {
-    name = "musl-wasi-sysroot";
-    buildInputs = [ nixpkgs.sources.musl-wasi ];
-    phases = [ "installPhase" ];
-    installPhase = ''
-      cp --no-preserve=mode ${nixpkgs.sources.musl-wasi}/Makefile ./mk
-      substituteInPlace ./mk --replace "cp -r" "cp --no-preserve=mode -r"
-      make --makefile=$(pwd)/mk -C ${nixpkgs.sources.musl-wasi} SYSROOT="$out" include_dirs
-    '';
-  };
   rts = stdenv.mkDerivation {
     name = "moc-rts";
 
