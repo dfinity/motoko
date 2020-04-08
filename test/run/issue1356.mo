@@ -5,6 +5,26 @@ func matchNat(n : Nat) : Bool =
 // CHECK:        local.get $switch_in
 // CHECK-NEXT:   i32.const -4
 
+
+/*
+
+Example derivations:
+
+-1073741824 as binary: 0b11000000000000000000000000000000
+(arithmetic) shift left by 1: 0b10000000000000000000000000000000
+rotate left by 1: 0b00000000000000000000000000000001
+this is 1.
+
+1073741823 as binary: 0b00111111111111111111111111111111
+(arithmetic) shift left by 1: 0b01111111111111111111111111111110
+rotate left by 1: 0b11111111111111111111111111111100
+this is -4.
+
+Note: the topmost 2 bits must be equal for the compact form at all times.
+In the encoding result lsb is the sign, the bit left to it must be 0.
+
+*/
+
 func matchInt(n : Int) : Bool =
          switch n { case (-1073741824) true
                   ; case 1073741823 true
