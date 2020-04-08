@@ -449,6 +449,8 @@ func floatCopySign(f : Float, g : Float) : Float = (prim "fcopysign" : (Float, F
 func floatToInt64(f : Float) : Int64 = (prim "num_conv_Float_Int64" : Float -> Int64) (f);
 func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> Float) (n);
 
+let floatToText = @text_of_Float;
+
 // Trigonometric functions
 
 func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
