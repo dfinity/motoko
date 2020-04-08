@@ -110,7 +110,7 @@ module SR = struct
      Which is not really expected or important.
   *)
   let eq (t1 : t) (t2 : t) = match t1, t2 with
-    | Const (p1, _), Const (p2, _) -> p1 = p2
+    | Const (p1, _), Const (p2, _) -> p1 == p2
     | _ -> t1 = t2
 
 end (* SR *)
@@ -1807,14 +1807,18 @@ end
 
 (* TODO: Move to right place *)
 let is_unboxable n =
+  (* NB: Only correct on 64 bit architectures *)
   let open Int32 in
-  let lower_bound = shift_left 3l 30 in (* actually negative *)
-  let upper_bound = shift_right_logical minus_one 2 in
+  let lower_bound = to_int (shift_left 3l 30) in (* actually negative *)
+  let upper_bound = to_int (shift_right_logical minus_one 2) in
   lower_bound <= n && n <= upper_bound
 
 let is_unboxable_big n =
+  false
+  (*
   let open Big_int in
-  is_int_big_int n && is_unboxable (Int32.of_int (int_of_big_int n))
+  is_int_big_int n && is_unboxable (int_of_big_int n)
+  *)
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
@@ -2029,6 +2033,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_n ^^ compile_unboxed_one ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if_ [I32Type]
+            (* TODO: its fishy that this goes through compile_lit, why not compile_unboxed_const *)
             (compile_lit env (Big_int.big_int_of_int 0x40000000))
             begin
               compile_unboxed_zero ^^
@@ -4623,42 +4628,74 @@ module Lit = struct
 *)
 
 let static_nat32 env i =
-  if is_unboxable i
+  if is_unboxable (Int32.to_int i)
   then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
-  else raise (Invalid_argument "static: large Nat")
+  else raise (Invalid_argument "static: large i32")
+
+let static_bigint env n =
+  if is_unboxable_big n
+  then
+    let i = Int32.of_int (Big_int.int_of_big_int n) in
+    Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+  else
+    (* See enum mp_sign *)
+    let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
+
+    let n = Big_int.abs_big_int n in
+
+    let limbs =
+      (* see MP_DIGIT_BIT *)
+      let twoto28 = Big_int.power_int_positive_int 2 28 in
+      let rec go n =
+        if Big_int.sign_big_int n = 0
+        then []
+        else
+          let (a, b) = Big_int.quomod_big_int n twoto28 in
+          [ Int32.of_int (Big_int.int_of_big_int b) ] @ go a
+      in go n
+    in
+    (* how many 32 bit digits *)
+    let size = Int32.of_int (List.length limbs) in
+
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
+    let len = bytes_of_int32 (Int32.(mul Heap.word_size size)) in
+    let payload = String.concat "" (List.map bytes_of_int32 limbs) in
+    let data_blob = E.add_static_bytes env (tag ^ len ^ payload) in
+    let data_ptr = Int32.(add data_blob Blob.unskewed_payload_offset) in
+
+    (* cf. mp_int in tommath.h *)
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.BigInt) in
+    let used = bytes_of_int32 size in
+    let alloc = bytes_of_int32 size in
+    let sign = bytes_of_int32 sign in
+    let dp = bytes_of_int32 data_ptr in
+    E.add_static_bytes env (tag ^ used ^ alloc ^ sign ^ dp)
 
 let static env lit =
   let open Ir in
-  try match lit with
+  match lit with
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> Bool.unboxed_val false
     | BoolLit true  -> Bool.unboxed_val true
     | IntLit n
-    | NatLit n when is_unboxable_big n ->
-      let i = Int32.of_int (Big_int.int_of_big_int n) in
-      Int32.(logor (shift_left i 2) (shift_right_logical i 31))
-    | IntLit n
-    | NatLit n      -> raise (Invalid_argument "static: large Nat")
+    | NatLit n      -> static_bigint env n
     | Word8Lit n    -> Value.Word8.to_bits n
     | Word16Lit n   -> Value.Word16.to_bits n
     | Word32Lit i   -> static_nat32 env i
-    | Word64Lit n   -> assert false
+    | Word64Lit n   -> raise (Invalid_argument "static: word64")
     | Int8Lit n     -> UnboxedSmallWord.unboxed_val env Type.Int8 (Value.Int_8.to_int n)
     | Nat8Lit n     -> UnboxedSmallWord.unboxed_val env Type.Nat8 (Value.Nat8.to_int n)
     | Int16Lit n    -> UnboxedSmallWord.unboxed_val env Type.Int16 (Value.Int_16.to_int n)
     | Nat16Lit n    -> UnboxedSmallWord.unboxed_val env Type.Nat16 (Value.Nat16.to_int n)
     | Int32Lit i    -> static_nat32 env (Int32.of_int (Value.Int_32.to_int i))
-    | Int64Lit n    -> assert false
+    | Int64Lit n    -> raise (Invalid_argument "static: int64")
     | Nat32Lit i    -> static_nat32 env (Int32.of_int (Value.Nat32.to_int i))
-    | Nat64Lit n    -> assert false
+    | Nat64Lit n    -> raise (Invalid_argument "static: nat64")
     | CharLit c     -> Int32.(shift_left (of_int c) 8)
     | NullLit       -> Opt.null_lit
     | TextLit t
     | BlobLit t     -> Blob.static_lit env t
     | FloatLit _    -> raise (Invalid_argument "static: float")
-  with Failure _ ->
-    Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
-    assert false
 
 end (* Lit *)
 
