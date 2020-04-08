@@ -693,6 +693,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
           check false "complex pattern in constant BlockE"
         ) ds;
       check e.note.Note.const "non-constant body in constant BlockE"
+    | LitE _ -> ()
     | _ -> check false "unexpected constant expression"
   end;
 

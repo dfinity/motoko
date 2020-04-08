@@ -51,6 +51,9 @@ module Const = struct
      * do not require Wasm code to be be executed (e.g. in `start`)
      * can be used directly (e.g. Call, not CallIndirect)
      * can be turned into Vanilla heap data on demand
+     * all literals
+       (this makes this dependent on the Ir module, which is not very
+       principled, but convenient)
      * (future work)
        vanilla heap representation may be placed in static heap and shared
   *)
@@ -60,9 +63,11 @@ module Const = struct
     | Message of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
     | Obj of (string * t) list
+    | Lit of Ir.lit
 
-  (* A constant known value together with a static memory location
-     (filled on demand)
+  (* A constant known value together with a vanilla pointer.
+     Typicall a static memory location, could be an unboxed scalar.
+     Filled on demand.
    *)
   and t = (int32 Lib.Promise.t * v)
 
@@ -934,9 +939,12 @@ module Bool = struct
      This allows us to use the result of the WebAssembly comparison operators
      directly, and to use the booleans directly with WebAssembly’s If.
   *)
-  let lit = function
-    | false -> compile_unboxed_zero
-    | true -> compile_unboxed_one
+  let unboxed_val = function
+    | false -> 0l
+    | true -> 1l
+
+  let lit b =
+    compile_unboxed_const (unboxed_val b)
 
   let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
@@ -1159,7 +1167,8 @@ module Opt = struct
   let payload_field = Tagged.header_size
 
   (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
-  let null = compile_unboxed_const 5l
+  let null_val = 5l
+  let null = compile_unboxed_const null_val
 
   let is_some env =
     null ^^
@@ -1470,8 +1479,11 @@ module UnboxedSmallWord = struct
     E.then_trap_with env "codepoint out of range" ^^
     get_n ^^ box_codepoint
 
+  let unboxed_val env ty v =
+    Int32.(shift_left (of_int v) (to_int (shift_of_type ty)))
+
   let lit env ty v =
-    compile_unboxed_const Int32.(shift_left (of_int v) (to_int (shift_of_type ty)))
+    compile_unboxed_const (unboxed_val env ty v)
 
   (* Wrapping implementation for multiplication and exponentiation. *)
 
@@ -2446,12 +2458,13 @@ module Blob = struct
 
   let len_field = Int32.add Tagged.header_size 0l
 
-  let lit env s =
+  let static_val env s =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
     let len = bytes_of_int32 (Int32.of_int (String.length s)) in
     let data = tag ^ len ^ s in
-    let ptr = E.add_static_bytes env data in
-    compile_unboxed_const ptr
+    E.add_static_bytes env data
+
+  let lit env s = compile_unboxed_const (static_val env s)
 
   let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
       let (set_x, get_x) = new_local env "x" in
@@ -4508,6 +4521,50 @@ module GC = struct
 
 end (* GC *)
 
+module Lit = struct
+(* Literal values. Many can be unboxed *)
+
+(* Returns a vanilla representation, either unboxed or a pointer
+   to static data (added with E.add_static_bytes)
+*)
+let static env lit =
+  let open Ir in
+  try match lit with
+    (* Booleans are directly in Vanilla representation *)
+    | BoolLit false -> Bool.unboxed_val false
+    | BoolLit true  -> Bool.unboxed_val true
+    | IntLit n
+    | NatLit n
+    when Big_int.(is_int_big_int n
+                      && int_of_big_int n >= Int32.(to_int (shift_left 3l 30))
+                      && int_of_big_int n <= Int32.(to_int (shift_right_logical minus_one 2))) ->
+      let i = Int32.of_int (Big_int.int_of_big_int n) in
+      Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    | IntLit n
+    | NatLit n      -> assert false
+    | Word8Lit n    -> Value.Word8.to_bits n
+    | Word16Lit n   -> Value.Word16.to_bits n
+    | Word32Lit n   -> assert false
+    | Word64Lit n   -> assert false
+    | Int8Lit n     -> UnboxedSmallWord.unboxed_val env Type.Int8 (Value.Int_8.to_int n)
+    | Nat8Lit n     -> UnboxedSmallWord.unboxed_val env Type.Nat8 (Value.Nat8.to_int n)
+    | Int16Lit n    -> UnboxedSmallWord.unboxed_val env Type.Int16 (Value.Int_16.to_int n)
+    | Nat16Lit n    -> UnboxedSmallWord.unboxed_val env Type.Nat16 (Value.Nat16.to_int n)
+    | Int32Lit n    -> assert false
+    | Nat32Lit n    -> assert false
+    | Int64Lit n    -> assert false
+    | Nat64Lit n    -> assert false
+    | CharLit c     -> Int32.(shift_left (of_int c) 8)
+    | NullLit       -> Opt.null_val
+    | TextLit t
+    | BlobLit t     -> Blob.static_val env t
+    | FloatLit _    -> assert false
+  with Failure _ ->
+    Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
+    assert false
+
+end (* Lit *)
+
 module StackRep = struct
   open SR
 
@@ -4603,6 +4660,10 @@ module StackRep = struct
       Dfinity.actor_public_field env name
     | Const.Obj fs ->
       Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
+    | Const.Lit l ->
+      let ptr = Lit.static env l in
+      Lib.Promise.fulfill p ptr;
+      compile_unboxed_const ptr
 
   let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
@@ -6938,6 +6999,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
+  | LitE l -> (Const.t_of_v (Const.Lit l), fun _ _ -> ())
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
