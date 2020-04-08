@@ -88,12 +88,23 @@ let start : string -> bool -> int option -> 'a =
     if debug then Some (open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log")
     else None
   in
+  let in_channel, out_channel =
+    match port with
+    | None -> (stdin, stdout)
+    | Some port ->
+        let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+        Unix.bind sock
+          (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1", port));
+        Unix.listen sock 1;
+        let s, _ = Unix.accept sock in
+        (Unix.in_channel_of_descr s, Unix.out_channel_of_descr s)
+  in
   let module IO = Communication.MakeIO (struct
     let debug_channel = debug_channel
 
-    let in_channel = stdin
+    let in_channel = in_channel
 
-    let out_channel = stdout
+    let out_channel = out_channel
   end) in
   let _ = Debug.logger := IO.log_to_file in
   let _ = Debug.log "entry_point" entry_point in
