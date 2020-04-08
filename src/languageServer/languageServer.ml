@@ -82,8 +82,8 @@ type ls_state = {
       (** What are the capabilities the client reported? *)
 }
 
-let start : string -> bool -> 'a =
- fun entry_point debug ->
+let start : string -> bool -> int option -> 'a =
+ fun entry_point debug port ->
   let debug_channel : out_channel option =
     if debug then Some (open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log")
     else None
