@@ -90,6 +90,7 @@ module SR = struct
     | UnboxedTuple of int
     | UnboxedWord64
     | UnboxedWord32
+    | UnboxedFloat64
     | Unreachable
     | Const of Const.t
 
@@ -491,7 +492,7 @@ let bytes_of_int32 (i : int32) : string =
 (* A common variant of todo *)
 
 let todo_trap env fn se = todo fn se (E.trap_with env ("TODO: " ^ fn))
-let todo_trap_SR env fn se = todo fn se (SR.Unreachable, E.trap_with env ("TODO: " ^ fn))
+let _todo_trap_SR env fn se = todo fn se (SR.Unreachable, E.trap_with env ("TODO: " ^ fn))
 
 (* Locals *)
 
@@ -509,6 +510,10 @@ let new_local env name =
 
 let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
+  in (set_i, get_i)
+
+let new_float_local env name =
+  let (set_i, get_i, _) = new_local_ env F64Type name
   in (set_i, get_i)
 
 (* Some common code macros *)
@@ -715,6 +720,10 @@ module RTS = struct
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_next" [I32Type] [I32Type];
+    E.add_func_import env "rts" "float_pow" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "float_sin" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_cos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_fmt" [F64Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -839,6 +848,16 @@ module Heap = struct
   let store_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I64Type; align = 2; offset; sz = None})
+
+  (* Or even as a single 64 bit float *)
+
+  let load_field_float64 (i : int32) : G.t =
+    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    G.i (Load {ty = F64Type; align = 2; offset; sz = None})
+
+  let store_field_float64 (i : int32) : G.t =
+    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
   let obj env element_instructions : G.t =
@@ -1514,6 +1533,42 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
+
+module Float = struct
+  (* We store floats (C doubles) in immutable boxed 64bit heap objects.
+
+     The heap layout of a Float is:
+
+       ┌─────┬─────┬─────┐
+       │ tag │    f64    │
+       └─────┴─────┴─────┘
+
+     For now the tag stored is that of a Bits64, because the payload is
+     treated opaquely by the RTS. We'll introduce a separate tag when the need of
+     debug inspection (or GC representation change) arises.
+
+  *)
+
+  let payload_field = Tagged.header_size
+
+  let compile_unboxed_const f = G.i Wasm.(Ast.Const (nr (Values.F64 f)))
+  let lit f = compile_unboxed_const (Wasm.F64.of_float f)
+  let compile_unboxed_zero = lit 0.0
+
+  let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
+    let (set_i, get_i) = new_local env "boxed_f64" in
+    Heap.alloc env 3l ^^
+    set_i ^^
+    get_i ^^ Tagged.(store Bits64) ^^
+    get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
+    get_i
+    )
+
+  let unbox env = Heap.load_field_float64 payload_field
+
+end (* Float *)
+
+
 module ReadBuf = struct
   (*
   Combinators to safely read from a dynamic buffer.
@@ -1589,6 +1644,12 @@ module ReadBuf = struct
     check_space env get_buf (compile_unboxed_const 8l) ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+    advance get_buf (compile_unboxed_const 8l)
+
+  let read_float64 env get_buf =
+    check_space env get_buf (compile_unboxed_const 8l) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 8l)
 
   let read_blob env get_buf get_len =
@@ -3678,7 +3739,7 @@ module Serialization = struct
       | Prim (Int8|Nat8|Word8) -> inc_data_size (compile_unboxed_const 1l)
       | Prim (Int16|Nat16|Word16) -> inc_data_size (compile_unboxed_const 2l)
       | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
-      | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
+      | Prim (Int64|Nat64|Word64|Float) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
       | Prim Null -> G.nop
       | Any -> G.nop
@@ -3789,6 +3850,11 @@ module Serialization = struct
         get_x ^^
         BigNum.compile_store_to_data_buf_signed env ^^
         advance_data_buf
+      | Prim Float ->
+        get_data_buf ^^
+        get_x ^^ Float.unbox env ^^
+        G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 8l ^^ advance_data_buf
       | Prim (Int64|Nat64|Word64) ->
         get_data_buf ^^
         get_x ^^ BoxedWord64.unbox env ^^
@@ -4020,6 +4086,10 @@ module Serialization = struct
             get_data_buf ^^
             BigNum.compile_load_from_data_buf env true
           end
+      | Prim Float ->
+        assert_prim_typ t ^^
+        ReadBuf.read_float64 env get_data_buf ^^
+        Float.box env
       | Prim (Int64|Nat64|Word64) ->
         assert_prim_typ t ^^
         ReadBuf.read_word64 env get_data_buf ^^
@@ -4591,12 +4661,14 @@ module StackRep = struct
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
     | Prim (Text | Blob | Principal) -> Vanilla
+    | Prim Float -> UnboxedFloat64
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> [I32Type]
     | UnboxedWord64 -> [I64Type]
     | UnboxedWord32 -> [I32Type]
+    | UnboxedFloat64 -> [F64Type]
     | UnboxedTuple 0 -> []
     | UnboxedTuple 1 -> [I32Type]
     | UnboxedTuple n ->
@@ -4608,6 +4680,7 @@ module StackRep = struct
     | Vanilla -> "Vanilla"
     | UnboxedWord64 -> "UnboxedWord64"
     | UnboxedWord32 -> "UnboxedWord32"
+    | UnboxedFloat64 -> "UnboxedFloat64"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
     | Const _ -> "Const"
@@ -4638,12 +4711,9 @@ module StackRep = struct
 
   let drop env (sr_in : t) =
     match sr_in with
-    | Vanilla -> G.i Drop
-    | UnboxedWord64 -> G.i Drop
-    | UnboxedWord32 -> G.i Drop
+    | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | Const _ -> G.nop
-    | Unreachable -> G.nop
+    | Const _ | Unreachable -> G.nop
 
   let rec materialize env (p, cv) =
     if Lib.Promise.is_fulfilled p
@@ -4680,6 +4750,9 @@ module StackRep = struct
 
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
+
+    | UnboxedFloat64, Vanilla -> Float.box env
+    | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const c, Vanilla -> materialize env c
     | Const c, UnboxedTuple 0 -> G.nop
@@ -5449,7 +5522,7 @@ let compile_lit env lit =
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t
     | BlobLit t     -> SR.Vanilla, Blob.lit env t
-    | FloatLit _    -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
+    | FloatLit f    -> SR.UnboxedFloat64, Float.compile_unboxed_const f
   with Failure _ ->
     Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
     SR.Unreachable, E.trap_with env "static literal overflow"
@@ -5509,11 +5582,15 @@ let compile_unop env t op =
       get_n ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Sub))
     )
+  | NegOp, Type.(Prim Float) ->
+    SR.UnboxedFloat64, SR.UnboxedFloat64,
+    let (set_f, get_f) = new_float_local env "f" in
+    set_f ^^ Float.compile_unboxed_zero ^^ get_f ^^ G.i (Binary (Wasm.Values.F64 F64Op.Sub))
   | NotOp, Type.(Prim Word64) ->
      SR.UnboxedWord64, SR.UnboxedWord64,
      compile_const_64 (-1L) ^^
      G.i (Binary (Wasm.Values.I64 I64Op.Xor))
-  | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
+  | NotOp, Type.(Prim (Word8 | Word16 | Word32 as ty)) ->
      StackRep.of_type t, StackRep.of_type t,
      compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Xor))
@@ -5799,11 +5876,13 @@ let compile_binop env t op =
   | Type.Prim Type.(Int8 | Int16 as ty),      AddOp -> compile_smallInt_kernel env ty "add" I32Op.Add
   | Type.(Prim Nat32),                        AddOp -> compile_Nat32_kernel env "add" I64Op.Add
   | Type.Prim Type.(Nat8 | Nat16 as ty),      AddOp -> compile_smallNat_kernel env ty "add" I32Op.Add
+  | Type.(Prim Float),                        AddOp -> G.i (Binary (Wasm.Values.F64 F64Op.Add))
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
   | Type.(Prim Int32),                        SubOp -> compile_Int32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Int8|Int16 as ty)),           SubOp -> compile_smallInt_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Nat32),                        SubOp -> compile_Nat32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Nat8|Nat16 as ty)),           SubOp -> compile_smallNat_kernel env ty "sub" I32Op.Sub
+  | Type.(Prim Float),                        SubOp -> G.i (Binary (Wasm.Values.F64 F64Op.Sub))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.compile_word_mul env ty
   | Type.(Prim Int32),                        MulOp -> compile_Int32_kernel env "mul" I64Op.Mul
   | Type.(Prim Int16),                        MulOp -> compile_smallInt_kernel env Type.Int16 "mul" I32Op.Mul
@@ -5813,6 +5892,7 @@ let compile_binop env t op =
   | Type.(Prim Nat16),                        MulOp -> compile_smallNat_kernel env Type.Nat16 "mul" I32Op.Mul
   | Type.(Prim Nat8),                         MulOp -> compile_smallNat_kernel' env Type.Nat8 "mul"
                                                          (compile_shrU_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
+  | Type.(Prim Float),                        MulOp -> G.i (Binary (Wasm.Values.F64 F64Op.Mul))
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32 as ty)), DivOp ->
     G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
     UnboxedSmallWord.msb_adjust ty
@@ -5834,6 +5914,7 @@ let compile_binop env t op =
               get_res
           end
           get_res)
+  | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp -> UnboxedSmallWord.compile_word_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
@@ -5981,6 +6062,7 @@ let compile_binop env t op =
       BigNum.compile_unsigned_pow
       (powNat64_shortcut (BoxedWord64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
+  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "float_pow"
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
@@ -6033,6 +6115,7 @@ let compile_eq env = function
   | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.Non -> G.i Unreachable
+  | Type.(Prim Float) -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
   | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
 
 let get_relops = Operator.(function
@@ -6062,9 +6145,14 @@ let compile_relop env t op =
   | Type.(Prim Text), _ -> Text.compare env op
   | Type.(Prim (Blob|Principal)), _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
+  | Type.(Prim Float), NeqOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ne))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
   | _, NeqOp -> compile_eq env t ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+  | Type.(Prim Float), GtOp -> G.i (Compare (Wasm.Values.F64 F64Op.Gt))
+  | Type.(Prim Float), GeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ge))
+  | Type.(Prim Float), LeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Le))
+  | Type.(Prim Float), LtOp -> G.i (Compare (Wasm.Values.F64 F64Op.Lt))
   | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
 let compile_load_field env typ name =
@@ -6350,7 +6438,17 @@ and compile_exp (env : E.t) ae exp =
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
-          UnboxedSmallWord.check_and_box_codepoint
+        UnboxedSmallWord.check_and_box_codepoint
+
+      | Float, Int64 ->
+        SR.UnboxedWord64,
+        compile_exp_as env ae SR.UnboxedFloat64 e ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.TruncSF64))
+
+      | Int64, Float ->
+        SR.UnboxedFloat64,
+        compile_exp_as env ae SR.UnboxedWord64 e ^^
+        G.i (Convert (Wasm.Values.F64 F64Op.ConvertSI64))
 
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
@@ -6385,6 +6483,69 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       BigNum.compile_abs env
+
+    | OtherPrim "fabs", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Abs))
+
+    | OtherPrim "fsqrt", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Sqrt))
+
+    | OtherPrim "fceil", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Ceil))
+
+    | OtherPrim "ffloor", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Floor))
+
+    | OtherPrim "ftrunc", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Trunc))
+
+    | OtherPrim "fnearest", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Nearest))
+
+    | OtherPrim "fmin", [e; f] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_exp_as env ae SR.UnboxedFloat64 f ^^
+      G.i (Binary (Wasm.Values.F64 F64Op.Min))
+
+    | OtherPrim "fmax", [e; f] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_exp_as env ae SR.UnboxedFloat64 f ^^
+      G.i (Binary (Wasm.Values.F64 F64Op.Max))
+
+    | OtherPrim "fcopysign", [e; f] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_exp_as env ae SR.UnboxedFloat64 f ^^
+      G.i (Binary (Wasm.Values.F64 F64Op.CopySign))
+
+    | OtherPrim "Float->Text", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_fmt"
+
+    | OtherPrim "fsin", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_sin"
+
+    | OtherPrim "fcos", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_cos"
 
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
