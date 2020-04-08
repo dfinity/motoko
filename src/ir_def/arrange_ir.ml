@@ -29,9 +29,12 @@ let rec exp e = match e.it with
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
-  | ActorE (ds, fs, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [typ t]
+  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
+
+and upgrade { pre; post } =
+  "Upgrade" $$ ["Pre" $$ [exp pre]; "Post" $$ [exp post]]
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]

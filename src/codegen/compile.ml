@@ -6623,7 +6623,7 @@ and compile_exp (env : E.t) ae exp =
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
       get_r
-  | ActorE (ds, fs, _) ->
+  | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
     (*
@@ -7047,10 +7047,10 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
     | _ -> ds, e.it in
 
   let find_last_actor (ds,e) = match find_last_expr ds e with
-    | ds1, ActorE (ds2, fs, _) ->
-      Some (ds1 @ ds2, fs)
-    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, _);_}) ->
-      Some (ds1 @ ds2, fs)
+    | ds1, ActorE (ds2, fs, up, _) ->
+      Some (ds1 @ ds2, fs, up)
+    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, _);_}) ->
+      Some (ds1 @ ds2, fs, up)
     | _, _ ->
       None
   in
@@ -7061,7 +7061,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       (* If the last program ends with an actor, then consider this the current actor  *)
       | [(prog, _flavor)] ->
         begin match find_last_actor prog with
-        | Some (ds, fs) -> main_actor env ae ds fs
+        | Some (ds, fs, up) -> main_actor env ae ds fs up
         | None ->
           let (_ae, code) = compile_prog env ae prog in
           code
@@ -7097,7 +7097,7 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env ae1 ds fs =
+and main_actor env ae1 ds fs { pre; post } =
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 

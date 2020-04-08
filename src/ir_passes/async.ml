@@ -358,8 +358,8 @@ let transform mode env prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, typ) ->
-      ActorE (t_decs ds, t_fields fs, t_typ typ)
+    | ActorE (ds, fs, {pre; post}, typ) ->
+      ActorE (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false

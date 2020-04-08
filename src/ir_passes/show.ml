@@ -311,12 +311,14 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, typ) ->
+  | ActorE (ds, fields, {pre; post}, typ) ->
     (* compare with transform below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields, typ)
+    ActorE (decls @ ds', fields,
+      {pre = t_exp env1 pre; post = t_exp env1 post},
+      typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function

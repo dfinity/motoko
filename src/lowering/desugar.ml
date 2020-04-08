@@ -222,7 +222,7 @@ and build_actor at self_id es obj_typ =
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
-  let stableWrite = idE "@stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
+  let stableWrite = fresh_var "stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
   let ds =
     varD (id_of_exp state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
     ::
@@ -253,7 +253,10 @@ and build_actor at self_id es obj_typ =
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  I.ActorE (ds', fs, obj_typ)
+  I.ActorE (ds', fs,
+    { I.pre = callE stableWrite [] (tupE []); (* inline instead? *)
+      I.post = tupE []},
+    obj_typ)
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -261,7 +264,7 @@ and stabilize stab_opt d =
   | (S.Flexible, _) ->
     ([], fun _ -> d)
   | (S.Stable, I.VarD(i, t, e)) ->
-    ([(i,t)],
+    ([(i, t)],
      fun get_state ->
      let v = fresh_var i t in
      varD i t
@@ -415,8 +418,8 @@ and dec' at n d = match d with
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (ds, fs, t) ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, t)})
+    | I.VarP i, I.ActorE (ds, fs, u, t) ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
