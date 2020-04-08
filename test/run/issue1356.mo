@@ -4,7 +4,7 @@ func matchNat(n : Nat) : Bool =
 // CHECK-LABEL: (func $matchNat
 // CHECK:        local.get $switch_in
 // CHECK-NEXT:   i32.const -4
-
+// CHECK-NEXT:   $B_eq
 
 /*
 
@@ -32,16 +32,22 @@ func matchInt(n : Int) : Bool =
 // CHECK-LABEL: (func $matchInt
 // CHECK:        local.get $switch_in
 // CHECK-NEXT:   i32.const 1
+// CHECK-NEXT:   $B_eq
 // CHECK:        local.get $switch_in
 // CHECK-NEXT:   i32.const -4
+// CHECK-NEXT:   $B_eq
 
 func match8(n : Word8) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match8
 // CHECK:        i32.const 704643072
+// CHECK-NEXT:   i32.eq
+// N.B.: 704643072 == 0x2a000000 == 42 << 24
 
 func match16(n : Word16) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match16
 // CHECK:        i32.const 2752512
+// CHECK-NEXT:   i32.eq
+// N.B.: 2752512 == 0x002a0000 == 42 << 16
 
 assert (matchNat(1073741823));
 assert (matchInt(-1073741824));
