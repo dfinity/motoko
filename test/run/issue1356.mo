@@ -1,3 +1,10 @@
+func matchNat(n : Nat) : Bool =
+         switch n { case 1073741823 true
+                  ; case _ false };
+// CHECK-LABEL: (func $matchNat
+// CHECK:        local.get $switch_in
+// CHECK-NEXT:   i32.const -4
+
 func matchInt(n : Int) : Bool =
          switch n { case (-1073741824) true
                   ; case 1073741823 true
@@ -16,6 +23,7 @@ func match16(n : Word16) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match16
 // CHECK:        i32.const 2752512
 
+assert (matchNat(1073741823));
 assert (matchInt(-1073741824));
 assert (matchInt(1073741823));
 assert (match8(42));
