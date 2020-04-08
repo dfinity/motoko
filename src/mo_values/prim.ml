@@ -193,11 +193,35 @@ let num_conv_prim t1 t2 =
   | T.Word32, T.Char -> fun _ v k ->
     let i = Conv.int_of_word32_u (as_word32 v)
     in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then k (Char i) else raise (Invalid_argument "character value out of bounds")
+  | T.Float, T.Int64 -> fun _ v k -> k (Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v)))))
+  | T.Int64, T.Float -> fun _ v k -> k (Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))))
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
-let prim = function
+let prim =
+  let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
+  function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
-
+  | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
+  | "fsqrt" -> fun _ v k -> k (Float (Float.sqrt (as_float v)))
+  | "fceil" -> fun _ v k -> k (Float (Float.ceil (as_float v)))
+  | "ffloor" -> fun _ v k -> k (Float (Float.floor (as_float v)))
+  | "ftrunc" -> fun _ v k -> k (Float (Float.trunc (as_float v)))
+  | "fnearest" -> fun _ v k -> k (Float (Float.nearest (as_float v)))
+  | "fmin" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] -> k (Float (Float.min (as_float a) (as_float b)))
+     | _ -> assert false)
+  | "fmax" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] -> k (Float (Float.max (as_float a) (as_float b)))
+     | _ -> assert false)
+  | "fcopysign" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] -> k (Float (Float.copysign (as_float a) (as_float b)))
+     | _ -> assert false)
+  | "Float->Text" -> fun _ v k -> k (Text (Float.to_string (as_float v)))
+  | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
+  | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->

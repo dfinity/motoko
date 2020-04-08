@@ -73,6 +73,18 @@ actor a {
     c += Prim.int64ToInt(i64);
     Prim.debugPrintInt(c);
   };
+  var f : Float = 0.0;
+  public func incfloat(f64 : Float) : () {
+    f += f64;
+    assert(f == 42.0);
+    Prim.debugPrint(debug_show(f));
+    c += Prim.int64ToInt(Prim.floatToInt64(f));
+    Prim.debugPrintInt(c);
+    f += Prim.int64ToFloat(Prim.intToInt64(c));
+    Prim.debugPrint(debug_show(f));
+    f += Prim.int64ToFloat(Prim.intToInt64(-c));
+    Prim.debugPrint(debug_show(f));
+  };
 
   public func go() : () {
     a.incn(0);
@@ -113,6 +125,7 @@ actor a {
     a.inci(42);
     a.inci(-42);
     a.incn(2**31 - 1); // highest compact
+    a.incfloat(42.0);
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
