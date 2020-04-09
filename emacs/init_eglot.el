@@ -25,16 +25,16 @@
 ;;======== SETTINGS ==========
 ;; Change this to point to the directory where you cloned the
 ;; motoko repo
-(setq mo/installation-directory "~/code/motoko")
+(defvar mo/installation-directory "~/code/motoko")
 
 ;; Change this to the command that starts the mo-ide binary on your machine.
 ;; If you want to customize further or pass additional arguments, check out
 ;; mo/lsp-startup.
-(setq mo/lsp-command "mo-ide")
+(defvar mo/lsp-command "mo-ide")
 
 ;; Change nil to t if you want to use vim bindings for editing and
 ;; navigation
-(setq mo/use-evil nil)
+(defvar mo/use-evil nil)
 ;;============================
 
 (defun mo/vessel-args ()
