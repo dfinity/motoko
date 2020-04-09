@@ -1840,10 +1840,6 @@ let is_unboxable n =
   let upper_bound = to_int (shift_right_logical minus_one 2) in
   lower_bound <= n && n <= upper_bound
 
-let is_unboxable_big n =
-  let open Big_int in
-  is_int_big_int n && is_unboxable (int_of_big_int n)
-
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* Compact BigNums are a representation of signed 31-bit bignums (of the
@@ -4669,45 +4665,6 @@ let static_nat32 env i =
   then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
   else raise (Invalid_argument "static: large i32")
 
-let static_bigint env n =
-  if is_unboxable_big n
-  then
-    let i = Int32.of_int (Big_int.int_of_big_int n) in
-    Int32.(logor (shift_left i 2) (shift_right_logical i 31))
-  else
-    (* See enum mp_sign *)
-    let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
-
-    let n = Big_int.abs_big_int n in
-
-    let limbs =
-      (* see MP_DIGIT_BIT *)
-      let twoto28 = Big_int.power_int_positive_int 2 28 in
-      let rec go n =
-        if Big_int.sign_big_int n = 0
-        then []
-        else
-          let (a, b) = Big_int.quomod_big_int n twoto28 in
-          [ Int32.of_int (Big_int.int_of_big_int b) ] @ go a
-      in go n
-    in
-    (* how many 32 bit digits *)
-    let size = Int32.of_int (List.length limbs) in
-
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
-    let len = bytes_of_int32 (Int32.(mul Heap.word_size size)) in
-    let payload = String.concat "" (List.map bytes_of_int32 limbs) in
-    let data_blob = E.add_static_bytes env (tag ^ len ^ payload) in
-    let data_ptr = Int32.(add data_blob Blob.unskewed_payload_offset) in
-
-    (* cf. mp_int in tommath.h *)
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.BigInt) in
-    let used = bytes_of_int32 size in
-    let alloc = bytes_of_int32 size in
-    let sign = bytes_of_int32 sign in
-    let dp = bytes_of_int32 data_ptr in
-    E.add_static_bytes env (tag ^ used ^ alloc ^ sign ^ dp)
-
 (* Materializes a Const.lit: If necessary, puts
    bytes into static memory, and returns a vanilla value.
 *)
@@ -4715,7 +4672,7 @@ let vanilla_of_lit env (lit : Const.lit) : int32 =
   match lit with
     (* Booleans are directly in Vanilla representation *)
     | Const.Vanilla n  -> n
-    | Const.BigInt n   -> static_bigint env n
+    | Const.BigInt n   -> BigNum.lit_vanilla env n
     | Const.Word32 n   -> static_nat32 env n
     | Const.Word64 n   -> raise (Invalid_argument "static: int64")
     | Const.Float64 n  -> raise (Invalid_argument "static: float")
