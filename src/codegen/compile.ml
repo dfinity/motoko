@@ -86,6 +86,7 @@ module Const = struct
     | Message of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
     | Obj of (string * t) list
+    | Array of t list
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -4774,6 +4775,8 @@ module StackRep = struct
       | Const.Float64 f  -> Float.vanilla_lit env f
       | Const.Blob t     -> Blob.vanilla_lit env t
 
+
+  (* need to remove Const.PublicMethod, as it is not const *)
   let rec materialize env (p, cv) : G.t =
     if Lib.Promise.is_fulfilled p
     then compile_unboxed_const (Lib.Promise.value p)
@@ -4790,6 +4793,15 @@ module StackRep = struct
     | Const.Obj fs ->
       (* TODO: allocate statically here *)
       Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
+    | Const.Array cs ->
+      let ptrs = List.map (materialize env) cs in
+      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
+      let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
+      let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
+      let data = tag ^ len ^ payload in
+      let ptr = E.add_static_bytes env data in
+      Lib.Promise.fulfill p ptr;
+      compile_unboxed_const ptr
     | Const.Lit l ->
       let ptr = materialize_lit env l in
       Lib.Promise.fulfill p ptr;
@@ -7227,6 +7239,11 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
     let member_ct = List.assoc name fs in
     (member_ct, fill)
   | LitE l -> (Const.t_of_v (Const.Lit (const_lit_of_lit l)), fun _ _ -> ())
+  | PrimE (ArrayPrim (Const, _), es) ->
+    let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
+    Const.t_of_v (Const.Array cs),
+    (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =

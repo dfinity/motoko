@@ -137,6 +137,12 @@ let rec exp lvl (env : env) e : lazy_bool =
       block lvl env (ds, body)
     | PrimE (DotPrim n, [e1]) ->
       exp lvl env e1
+    | PrimE (ArrayPrim (Const, _), es) ->
+      let lb = maybe_false () in
+      List.iter (fun e ->
+        let lb' = exp lvl env e in
+        required_for lb' lb) es;
+      lb
     | LitE _ ->
       surely_true
 

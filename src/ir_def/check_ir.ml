@@ -682,6 +682,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       ) (Freevars.exp exp)
     | NewObjE (Type.(Object | Module), fs, t) when T.is_immutable_obj t ->
       List.iter (fun f -> check_var "NewObjE" f.it.var) fs
+    | PrimE (ArrayPrim (Const, _), es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant array with non-constant subexpression"
+      ) es
     | PrimE (DotPrim n, [e1]) ->
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
     | BlockE (ds, e) ->
