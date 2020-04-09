@@ -14,19 +14,19 @@ let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
 let uri_from_file path =
   "file://" ^ Lib.FilePath.make_absolute (Sys.getcwd ()) path
 
-let file_from_uri logger uri =
+let file_from_uri uri =
   match Lib.String.chop_prefix file_uri_prefix uri with
   | Some file -> file
   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      let _ = Debug.log "error" ("Failed to strip filename from: " ^ uri) in
       uri
 
-let abs_file_from_uri logger uri =
+let abs_file_from_uri uri =
   Lib.FilePath.normalise
     ( match Lib.String.chop_prefix "file://" uri with
     | Some file -> file
     | None ->
-        let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+        let _ = Debug.log "error" ("Failed to strip filename from: " ^ uri) in
         uri )
 
 let empty = VfsStore.empty

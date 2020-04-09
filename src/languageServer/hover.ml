@@ -12,9 +12,8 @@ let hover_detail = function
 let markup_content (msg : string) : Lsp.markup_content =
   Lsp.{ markup_content_kind = "plaintext"; markup_content_value = msg }
 
-let hover_handler (logger : string -> string -> unit) (index : DI.t)
-    (position : Lsp.position) (file_contents : string) (project_root : string)
-    (file_path : string) =
+let hover_handler (index : DI.t) (position : Lsp.position)
+    (file_contents : string) (project_root : string) (file_path : string) =
   let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
   let toplevel_decls =
     current_uri_opt

@@ -327,7 +327,7 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
         acc)
     scope.Scope.lib_env initial_index
 
-let make_index_inner logger project_root vfs entry_points : t Diag.result =
+let make_index_inner project_root vfs entry_points : t Diag.result =
   let package_paths =
     List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ())
   in
@@ -339,7 +339,7 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
     match package_env with
     | Result.Error errs ->
         List.iter
-          (fun err -> logger "lib_index_errors" (Diag.string_of_message err))
+          (fun err -> Debug.log "lib_index_errors" (Diag.string_of_message err))
           errs;
         empty project_root
     | Result.Ok ((libs, scope), _) ->
@@ -354,7 +354,7 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
         | Result.Error errs ->
             List.iter
               (fun err ->
-                logger "actor_index_errors" (Diag.string_of_message err))
+                Debug.log "actor_index_errors" (Diag.string_of_message err))
               errs;
             acc
         | Result.Ok ((prog, idl_scope, actor_opt), _) ->
@@ -370,7 +370,7 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
   |> Diag.map (fun (libs, _, scope) ->
          index_from_scope project_root actor_index libs scope)
 
-let make_index logger project_root vfs entry_points : t Diag.result =
+let make_index project_root vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner logger project_root vfs entry_points
+  try make_index_inner project_root vfs entry_points
   with _ -> Diag.return (empty project_root)
