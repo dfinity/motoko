@@ -2744,6 +2744,14 @@ module Arr = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
+
+  let vanilla_lit env ptrs =
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
+    let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
+    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
+    let data = tag ^ len ^ payload in
+    E.add_static_bytes env data
+
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tagged.obj env Tagged.Array
@@ -4580,15 +4588,7 @@ module GC = struct
     G.i (Call (nr (E.built_in env "get_heap_size")))
 
   let store_static_roots env =
-    let roots = E.get_static_roots env in
-
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
-    let len = bytes_of_int32 (Int32.of_int (List.length roots)) in
-    let payload = String.concat "" (List.map bytes_of_int32 roots) in
-    let data = tag ^ len ^ payload in
-    let ptr = E.add_static_bytes env data in
-    ptr
-
+    Arr.vanilla_lit env (E.get_static_roots env)
 
 end (* GC *)
 
