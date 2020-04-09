@@ -16,7 +16,7 @@
 ;;
 ;; 2. Start Emacs from your command line like so:
 ;;
-;; `emacs -q --load ~/code/motoko/emacs/init_eglot.el`
+;; `emacs -q --load ~/motoko/emacs/init_eglot.el`
 ;;
 ;; (adjust to match the path to this file)
 ;;
@@ -25,12 +25,18 @@
 ;;======== SETTINGS ==========
 ;; Change this to point to the directory where you cloned the
 ;; motoko repo
-(defvar mo/installation-directory "~/code/motoko")
+(defvar mo/installation-directory "~/motoko")
 
 ;; Change this to the command that starts the mo-ide binary on your machine.
 ;; If you want to customize further or pass additional arguments, check out
 ;; mo/lsp-startup.
 (defvar mo/lsp-command "mo-ide")
+
+;; Change this to point to dfx's cache if you don't want to work against the
+;; stdlib version in your compiler checkout. If you don't want the std library
+;; or manage it through vessel set this to `nil`
+(defvar mo/stdlib-args
+  `("--package" "stdlib" ,(concat mo/installation-directory "/stdlib/src")))
 
 ;; Change nil to t if you want to use vim bindings for editing and
 ;; navigation
@@ -48,6 +54,7 @@
   (let* ((entry-point (read-file-name "Entry Point: "))
          (command `(,mo/lsp-command
                     "--canister-main" ,(expand-file-name entry-point)
+                    ,@mo/stdlib-args
                     ,@(mo/vessel-args)
                     ;; DON'T CHANGE THIS
                     "--port" :autoport)))
