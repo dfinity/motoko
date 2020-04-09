@@ -1,0 +1,15 @@
+Hash for 
+Expected: 0x0
+Actual:   0x0
+Hash for id
+Expected: 0x5BDB
+Actual:   0x5BDB
+Hash for description
+Expected: 0x5F1D_08FC
+Actual:   0x5F1D_08FC
+Hash for short_name
+Expected: 0xC26B_482E
+Actual:   0xC26B_482E
+Hash for Hi ☃
+Expected: 0x5497_B9CE
+Actual:   0x5497_B9CE

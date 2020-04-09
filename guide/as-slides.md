@@ -1,4 +1,4 @@
-% "ActorScript"
+% "Motoko"
 
 # Overview
 
@@ -56,10 +56,10 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 ### Status
 
 * great team!
-* interpreter/compiler up and running via `dvm`.
+* interpreter/compiler up and running via `drun`.
 * compiles multiple files by concatenation
   (good enough for the Produce Exchange)
-* documentation (see [draft](actorscript-guide.pdf), 30 pages)
+* documentation (see [draft](motoko-guide.pdf), 30 pages)
 
 ### Backlog
 
@@ -108,9 +108,9 @@ structural record types, JS-like, fields can be mutable
 
 * `{var x : Int; color : Color}`
 
-* `shared {x : Int; color: Color}`
+* `{x : Int; color: Color}`
 
-shared (think serializable) objects have immutable fields of sharable types.
+objects with immutable fields of sharable types are sharable.
 
 ### Actor types
 
@@ -188,7 +188,7 @@ AS distinguishes sharable types:
 
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
-  - any `shared` object type is sharable
+  - an object type is sharable if its fields are sharable and immutable
   - any `actor` type is sharable
   - `[T]` and `?T`  are sharable if `T` is sharable.
   - `(T1,...,Tn)` is sharable if `T1`,..., `Tn` all sharable.
@@ -197,8 +197,7 @@ AS distinguishes sharable types:
 
 ### ... Sharability
 
- * `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
-* `shared` object must have sharable fields
+* `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
 * actor fields must re `shared` functions
 
 (actors \& shared functions serialized by *reference*, other types serialzed by *value*)
@@ -224,12 +223,12 @@ AS distinguishes sharable types:
 * Unary & binary, arithmetic & logical operators
   - `- x`, `not b`, `a + b`, `a & b` ...
 
-### (Shared) Objects
+### (Sharable) Objects
 
-* `shared` (think serializable) objects have immutable fields of sharable type:
+* sharable (think serializable) objects have immutable fields of sharable type:
 
   ```
-  shared { x = 0; color = Colors.Red }
+  { x = 0; color = Colors.Red }
   ```
 
 * full `object`s can be mutable, stateful
@@ -237,8 +236,8 @@ AS distinguishes sharable types:
   ``` swift
   object {
     private var c = 0;
-    inc() { c += 1 };
-    get() : Int { c }
+    public func inc() { c += 1 };
+    public func get() : Int { c }
   }
   ```
 
@@ -253,8 +252,8 @@ Actors are restricted objects:
 ```
 actor {
   private var c = 0;
-  inc() { c += 1 };
-  get() : async Int { c }
+  public func inc() { c += 1 };
+  public func get() : async Int { c }
 }
 ```
 
@@ -485,8 +484,8 @@ Classes as functions returning objects:
 ```
  class Counter(init : Int) {
     private var state : Int = init;
-    inc() { state += 1; };
-    get() : Int { state; };
+    public func inc() { state += 1; };
+    public func get() : Int { state; };
   }
 ```
 
@@ -513,9 +512,9 @@ let ? name = d.find(1);
 ### Actor Declarations
 
 ```
-actor Server =  {
+actor Server {
  private shared func broadcast():(){...};
- subscribe(c : Client): async Post {
+ public func subscribe(c : Client): async Post {
    ...
    return broadcast;
  };
@@ -546,7 +545,7 @@ alice.start("Alice", Server); // async send as function call
 
 * connects internal primitives with surface syntax (types, operations)
 * conversions like `intToWord32`
-* side-effecting operations `printInt`
+* side-effecting operations `debugPrintInt`
   (tie into execution environment)
 * utilities like `hashInt`, `clzWord32`
 
@@ -563,7 +562,7 @@ alice.start("Alice", Server); // async send as function call
 ### Chat Server
 
 ```
-actor Server = {
+actor Server {
   private var clients : List<Client> = null;
 
   private shared broadcast(message : Text) {
@@ -577,8 +576,8 @@ actor Server = {
   };
 ```
 ```
-  subscribe(client : Client) : async Post {
-    let cs = new {head = client; var tail = clients};
+  public func subscribe(client : Client) : async Post {
+    let cs = {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;
   };
@@ -598,7 +597,7 @@ type Server = actor { subscribe : Client -> async Post; };
 
 actor class Client() = this {
   private var name : Text = "";
-  start(n : Text , s : Server) {
+  public func start(n : Text , s : Server) {
     name := n;
     let _ = async {
        let post = await s.subscribe(this);
@@ -608,8 +607,8 @@ actor class Client() = this {
   };
 ```
 ```
-  send(msg : Text) {
-    print(name # " received " # msg # "\n");
+  public func send(msg : Text) {
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 ```
@@ -629,7 +628,7 @@ charlie.start("Charlie", Server);
 output
 
 ```
-[nix-shell:~/actorscript/guide]$ ../src/asc -r chat.as
+[nix-shell:~/motoko/guide]$ ../src/moc -r chat.mo
 charlie received hello from bob
 alice received hello from bob
 bob received hello from bob
@@ -662,16 +661,16 @@ bob received goodbye from charlie
   - Other entities: Produce and truck types, regions, reservations
 
 - As a communication tool:
-  Substance: Demonstrate example ActorScript app
+  Substance: Demonstrate example Motoko app
   Process: Document internal development process
 
-- [WIP: Canister in ActorScript](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange)
+- [WIP: Canister in Motoko](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange)
 
 ### Produce Exchange: Define MVP
 
 [**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 
-[**MVP on ActorScript Canister**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
+[**MVP on Motoko Canister**](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
 
 **Summary:**
 
@@ -688,13 +687,13 @@ bob received goodbye from charlie
 
 **Summary:**
 
- - People: SDK + ActorScript teams.
+ - People: SDK + Motoko teams.
  - Feature-based criteria: Same as MVP.
  - Test-based criteria: Automated tests.
  - Operational criteria: Run on DFINITY node.
  - Performance criteria: Run at certain scales / rates.
 
-### [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
+### [Produce exchange server components](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
 
 - **Server types**: Types for client-server messages
 - **Server actor**: Interface for client-server messages
@@ -702,28 +701,28 @@ bob received goodbye from charlie
 - **Server model implementation**: Implements the actor
 
 
-### [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
+### [Standard library](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#motoko-standard-library)
 
 Why?
 
 - Gather reusable components,
   (e.g., collections for **server model types**)
-- Codify best ActorScript practices
+- Codify best Motoko practices
 
 How?
 
-- ActorScript supports some namespace management, and multiple input files.
-- [Documentation](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library) generated from the source code
+- Motoko supports some namespace management, and multiple input files.
+- [Documentation](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#motoko-standard-library) generated from the source code
 
 
-### [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange)
+### [Standard library: Produce exchange](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#produce-exchange)
 
 We focus on abstractions for implementing the database for the produce exchange:
 
-- [Document Table](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md): Mutable collection of immutable documents.
+- [Document Table](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/docTable.md): Mutable collection of immutable documents.
 
-- [Hash trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
+- [Hash trie](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
 
-- [Association list](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
+- [Association list](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
 
 # (not yet) The End

@@ -1,0 +1,2 @@
+import "recursion.did";
+service S : s

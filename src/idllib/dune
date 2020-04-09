@@ -1,0 +1,11 @@
+(library
+  (name idllib)
+  (libraries lib wasm lang_utils)
+)
+
+(menhir
+  (modules parser)
+  (flags -v --strict)
+  (infer false)
+)
+(ocamllex lexer)

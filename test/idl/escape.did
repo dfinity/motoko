@@ -1,0 +1,5 @@
+type t = record {"'":nat; "\"":nat; "\"'":nat; "\\\n'\"":nat; };
+service E : {
+  "\n'\"''\"\"\r\t": (t) -> ();
+}
+

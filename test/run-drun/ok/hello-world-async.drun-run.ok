@@ -1,0 +1,4 @@
+ingress System
+debug.print: Hello 
+debug.print: World!
+ingress Completed: Canister: Payload: 0x4449444c0000

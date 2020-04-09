@@ -1,19 +1,21 @@
-ActorScript 0.1 interpreter
+Motoko 0.1 interpreter
 -- Parsing stdin:
-> -- Parsing empty.as:
--- Checking empty.as:
--- Definedness empty.as:
+> -- Parsing lib/empty.mo:
+-- Checking empty.mo:
+-- Definedness empty.mo:
 -- Checking stdin:
--- Interpreting empty.as:
+-- Definedness stdin:
+-- Interpreting empty.mo:
 -- Interpreting stdin:
 -- Finished stdin:
-{} : module {}
+let anon-import-1.1 : module {...}
 
 -- Parsing stdin:
 > -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting stdin:
 -- Finished stdin:
-{} : module {}
+let anon-import-2.1 : module {...}
 
 -- Parsing stdin:
 > 

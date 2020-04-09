@@ -1,0 +1,13 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query any(0x4449444c00017f)
+debug.print: ok: null
+← completed: 0x4449444c0000
+→ query any(0x4449444c016e71010000)
+debug.print: ok: null
+← completed: 0x4449444c0000
+→ query any(0x4449444c016e7101000103466f6f)
+debug.print: ok: Foo
+← completed: 0x4449444c0000

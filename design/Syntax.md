@@ -1,4 +1,4 @@
-# ActorScript Syntax (Sketch)
+# Motoko Syntax (Sketch)
 
 Productions marked * probably deferred to later versions.
 
@@ -7,21 +7,26 @@ Productions marked * probably deferred to later versions.
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  (shared|actor)? { <typ-field>;* }             object
+  (actor|module|object)? { <typ-field>;* }                      actor / module / object (default)
+  { <typ-tag>;* }                               variant
+  { # }                                         empty variant
   [ var? <typ> ]                                array
   ? <typ>                                       option
-  shared <typ-params>? <typ> -> <typ>  function
+  shared? <typ-params>? <typ> -> <typ>          function
   async <typ>                                   future
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
-* <typ> | <typ>                                 union
-* # <id>                                        atom
+  Error                                         errors/exceptions
 
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
   var <id> : <typ>                              mutable
   <id> <typ-params>? <params> : <typ>           function (short-hand)
+
+<typ-tag> ::=                                 variant type fields
+  # <id> : <typ>                                tag
+  # <id>                                        unit tag (short-hand)
 
 <typ-args> ::=                                type arguments
   < <typ>,* >
@@ -50,7 +55,9 @@ Productions marked * probably deferred to later versions.
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
+  new { <exp-field>;* }                          object
   <exp> . <id>                                   object projection
+  # <id> <exp>?                                  variant injection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
   <exp> <binop>= <exp>                           binary update
@@ -62,7 +69,7 @@ Productions marked * probably deferred to later versions.
   <exp> and <exp>                                conjunction
   <exp> or <exp>                                 disjunction
   if <exp> <exp> (else <exp>)?                   conditional
-  switch <exp> { (case <pat> <exp>)+ }           switch
+  switch <exp> { (case <pat> <exp>;)+ }           switch
   while <exp> <exp>                              while loop
   loop <exp> (while <exp>)?                      loop
   for <id>? in <exp> <exp>                       iteration
@@ -75,13 +82,12 @@ Productions marked * probably deferred to later versions.
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
-* throw <exp>                                    raise exception
-* try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
-* # <id>                                             atom
+  throw <exp>                                    raise error (only in async)
+  try <exp> catch <pat> <exp>                    try (only in async)
+* try <exp> catch { (case <pat> <exp>;) +} (<finally> <exp>)?  try-finally
 
 <exp-field> ::=                                object expression fields
-  private? dec                                   field
-  private? <id> = <exp>                          short-hand
+  var? <id> = <exp>                              field
 ```
 
 ## Patterns
@@ -91,15 +97,16 @@ Productions marked * probably deferred to later versions.
   <id>                                           variable
   <unop>? <lit>                                  literal
   ( <pat>,* )                                    tuple or brackets
+  { <pat-field>;* }                              object pattern
+  # <id> <pat>?                                  variant pattern
   ? <pat>                                        option
   <pat> : <typ>                                  type annotation
   <pat> or <pat>                                 disjunctive pattern
 * <pat> and <pat>                                conjunctive pattern
-* { <pat-field>;* }                              object pattern
 * async <pat>                                    asynchronous
 
 <pat-field> ::=                                object pattern fields
-* <id> = <pat>                                   field
+  <id> = <pat>                                   field
 ```
 
 ## Declarations
@@ -108,12 +115,14 @@ Productions marked * probably deferred to later versions.
   <exp>                                                       expression
   let <pat> = <exp>                                           immutable
   var <id> (: <typ>)? = <exp>                                 mutable
-  (new|object|actor|shared) <id>? =? { <exp-field>;* }        object
+  (actor|module|object) <id>? =? { <dec-field>;* }            object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
-  type <id> <typ-params>? = <typ>                             type
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
-  module <id>? =? { <dec>* }                                  module
+  type <id> <typ-params>? = <typ>                             type
   import <id>? =? <text>                                      import
+
+<dec-field> ::=                                          object declaration fields
+  (public|private|system)? (flexible|stable)? dec             field
 ```
 
 ## Programs

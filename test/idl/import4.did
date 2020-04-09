@@ -1,0 +1,4 @@
+type A = nat;
+import "import1.did";
+import "import5.did";
+type B = nat;
