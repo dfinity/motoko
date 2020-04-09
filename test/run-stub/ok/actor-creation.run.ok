@@ -1,9 +1,0 @@
-main actor creating a
-a created
-main actor calling a.foo()
-a.foo() called
-a creating b
-b created
-a calling b.foo()
-a.foo() done
-b.foo() called

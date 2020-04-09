@@ -85,6 +85,7 @@ e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
 e(Char) = nat32
 e(Text) = text
+e(Principal) = principal
 e({ <typ-field>;* }) = record { ef(<typ-field>);* }
 e(variant { <typ-field>;* }) = variant { ef(<typ-field>);* }
 e([<typ>]) = vec (e(<typ>))
@@ -111,7 +112,7 @@ em : <typ-field> -> <methtype>
 em(<id> : <typ>) = unescape(<id>) : efn(<typ>)
 
 unescape : <id> -> <nat>|<name>
-unescape("_" <nat> "_") = <nat>
+unescape("_" <nat> "_") = <nat>  if <nat> is 32-bit
 unescape(<id> "_") = <id>
 unescape(<id>) = <id>
 ```
@@ -130,21 +131,28 @@ i(int<n>) = Int<n> for n = 8, 16, 32, 64
 i(float64) = Float
 i(text) = Text
 i(reserved) = Any
+i(empty) = None
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if Motoko had a bytes type, it would show up here
 i(record { <datatype>;^N }) = ( i(<datatype>),^N ) if n > 1 // matches tuple short-hand
 i(record { <fieldtype>;* }) = { if(<fieldtype>);* }
-i(variant { <fieldtype>;* }) = variant { if(<typ-field>);* }
+i(variant { <fieldtype>;* }) = variant { ivf(<fieldtype>);* }
 i(func <functype>) = ifn(<functype>)
 i(service { <methtype>;* }) = actor { im(<methtype>);* }
+i(principal) = Principal
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = escape_number(<nat>) : i(<datatype>) // also for implicit labels
 
+ivf : <fieldtype> -> <typ>
+ivf(<name> : null) = escape(<name>) : ()
+ivf(<nat> : null) = "_" <nat> "_": ()
+ivf(<fieldtype> = if(<fieldtype>) otherwise
+
 ifn : <functype> -> <typ>
-ifn((<datatype>,*) -> () oneway) = shared ia(<as>) -> ()
+ifn((<datatype>,*) -> () oneway) = shared ia(<datatype>) -> ()
 ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared query? ia(<datatype1>,*) -> async ia(<datatype2>,*)
 
 ia : <argtype>,* -> <typ>
@@ -228,8 +236,8 @@ escape <name> = escape_number(hash(<name>))  otherwise
    ```
    In other words: Motoko subtyping must be contained in IDL subtyping.
 
- * There is no way to produce `float32` or functions with a `query` annotation.
-   Importing interfaces that contain these types fails.
+ * There is no way to produce `float32`.
+   Importing interfaces that contain `float32` types fails.
 
  * The functions `escape`/`unescape` ensure round-tripping of IDL field names
    through Motoko types. See `IDL-Motoko.proofs.md` for details.
@@ -312,15 +320,3 @@ just suggestions.
 
   is treated by `moc` by reading `foo.did` as if  the developer had
   run `didc path/to/foo.did -o path/to/foo.mo`.
-
-## Provisional Scaffolding adjustments
-
-At the time of writing, the underlying transport mechanism on the Internet Computer has no notion of a “sequence of references”, as expected by the IDL spec. This means that the IDL types `service …` and `func …` are not usable.
-
-To work around this and at least support passing references to _public_ canister and to _public_ canister methods, and until this mismatch is resolved, we implement `e` as follows:
-
-```
-e(actor { <typ-field>;* }) = blob
-e(shared <typ1> -> <typ2>) = (blob, text)
-```
-where the `blob` is an actor id, and the `text` a method name.

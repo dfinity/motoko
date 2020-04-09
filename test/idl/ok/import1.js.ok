@@ -1,8 +1,7 @@
 export default ({ IDL }) => {
- const t = IDL.Arr(IDL.Nat8)
+ const t = IDL.Vec(IDL.Nat8)
  const t1 = t
  const UserId = IDL.Nat
  const t2 = UserId
- const actor_S = new IDL.ActorInterface({'f': IDL.Func([t, t1, t2], [])});
- return actor_S;
+ return IDL.Service({'f': IDL.Func([t, t1, t2], [], [])});
 };

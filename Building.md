@@ -32,28 +32,19 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 You can get a development environment that is independent of nix (although
 installing all required tools without nix is out of scope).
 
- * Use your system’s package manager to install `ocaml` and
+ * Use your system’s package manager to install `ocaml` (4.07) and
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages:
    ```
-   opam install num vlq yojson menhir
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
    ```
- * Install the `wasm` Ocaml package. We use a newer version than is on opam, and a
-   fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
-   the precise repository and version. You can use `nix` to fetch the correct
-   source for you, and run the manual installation inside:
-   ```
-   cp -R $(nix-build --no-out-link -Q -A wasm.src)/interpreter /tmp/interpreter
-   cd /tmp/interpreter
-   make install
-   ```
- * Install various command line tools used by, in particuar, the test suite:
+ * Install various command line tools used by, in particular, the test suite:
    ```
    nix-env -i -f . -A wasmtime
    nix-env -i -f . -A filecheck
    nix-env -i -f . -A wabt
    nix-env -i -f . -A drun
-   nix-env -i -f . -A ic-stub
+   nix-env -i -f . -A ic-run
    ```
  * Building the Motoko runtime without nix is tricky. But you can run
    ```
@@ -87,3 +78,15 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    _pass_ it the path to the binary.)
 
 
+## Updating Haskell Packages
+
+When the `.cabal` file of a Haskell package is changed you need to make sure the
+corresponding `default.nix` file (stored in `nix/generated/`) is kept in sync
+with it.
+
+As mentioned in the `nix/generate.nix` files, these files are automatically
+generated. See `nix/generate.nix` for the command to update them.
+
+Don't worry if you forget to update the `default.nix` file, the CI job
+`check-generated` checks if these files are in sync and fail with a diff if
+they aren't.

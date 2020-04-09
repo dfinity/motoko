@@ -54,7 +54,7 @@ let record_fields fs =
 
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
-%token FUNC TYPE SERVICE IMPORT
+%token FUNC TYPE SERVICE IMPORT PRINCIPAL
 %token SEMICOLON COMMA COLON EQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
@@ -92,6 +92,7 @@ prim_typ :
 ref_typ :
   | FUNC t=func_typ { t }
   | SERVICE ts=actor_typ { ServT ts @@ at $sloc }
+  | PRINCIPAL { PrincipalT @@ at $sloc }
 
 field_typ :
   | n=NAT COLON t=data_typ
@@ -172,12 +173,16 @@ def :
   | IMPORT file=TEXT
     { ImportD (file, ref "") @@ at $sloc }
 
+id_opt :
+  | (* empty *) { }
+  | id { }
+
 actor :
   | (* empty *) { None }
-  | SERVICE id=id tys=actor_typ
-    { Some (ActorD(id, ServT tys @@ at $loc(tys)) @@ at $sloc) }
-  | SERVICE id=id COLON x=id
-    { Some (ActorD(id, VarT x @@ x.at) @@ at $sloc) }
+  | SERVICE id_opt COLON tys=actor_typ
+    { Some (ServT tys @@ at $loc(tys)) }
+  | SERVICE id_opt COLON x=id
+    { Some (VarT x @@ x.at) }
 
 (* Programs *)
 

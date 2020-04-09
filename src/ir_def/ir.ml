@@ -25,13 +25,13 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
+  | BlobLit of string
 
 (* Patterns *)
-type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
-type 'a phrase = ('a, typ_note) Source.annotated_phrase
+type 'a phrase = ('a, Note.t) Source.annotated_phrase
 
-type typ_bind' = {con : Type.con; bound : Type.typ}
+type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
 type unop = Operator.unop
@@ -64,34 +64,20 @@ and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit                                (* literal *)
-  | TupE of exp list                           (* tuple *)
-  | ProjE of exp * int                         (* tuple projection *)
-  | OptE of exp                                (* option injection *)
-  | TagE of id * exp                           (* variant injection *)
-  | DotE of exp * Type.lab                     (* object projection *)
-  | ActorDotE of exp * Type.lab                (* actor field access *)
-  | AssignE of exp * exp                       (* assignment *)
-  | ArrayE of mut * Type.typ * exp list        (* array *)
-  | IdxE of exp * exp                          (* array indexing *)
-  | CallE of exp * Type.typ list * exp         (* function call *)
+  | AssignE of lexp * exp                      (* assignment *)
   | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
-  | BreakE of id * exp                         (* break *)
-  | RetE of exp                                (* return *)
-  | AsyncE of exp                              (* async *)
-  | AwaitE of exp                              (* await *)
-  | AssertE of exp                             (* assertion *)
+  | AsyncE of typ_bind * exp * Type.typ        (* async *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of id * dec list * field list * Type.typ (* actor *)
+  | ActorE of dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
-  | ThrowE of exp                              (* throw *)
   | TryE of exp * case list                    (* try/catch *)
 
 and field = (field', Type.typ) Source.annotated_phrase
@@ -100,18 +86,47 @@ and field' = {name : Type.lab; var : id} (* the var is by reference, not by valu
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+and lexp = (lexp', Type.typ) Source.annotated_phrase
+and lexp' =
+  | VarLE of id                                (* variable *)
+  | IdxLE of exp * exp                         (* array indexing *)
+  | DotLE of exp * Type.lab                    (* object projection *)
+
+
+(* In the IR, a prim is any AST node that has expr subexpressions, but they are
+all call-by-value. Many passes can treat them uniformly, so they are unified
+using the PrimE node. *)
 and prim =
+  | CallPrim of Type.typ list         (* function call *)
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
+  | TupPrim                           (* the tuple constructor *)
+  | ProjPrim of int                   (* tuple projection *)
+  | OptPrim                           (* option injection *)
+  | TagPrim of id                     (* variant injection *)
+  | DotPrim of Type.lab               (* object projection *)
+  | ActorDotPrim of Type.lab          (* actor field access *)
+  | ArrayPrim of mut * Type.typ       (* array constructor *)
+  | IdxPrim                           (* array indexing *)
+  | BreakPrim of id                   (* break *)
+  | RetPrim                           (* return *)
+  | AwaitPrim                         (* await *)
+  | AssertPrim                        (* assertion *)
+  | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
+  | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
+  | ActorOfIdBlob of Type.typ
+  | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
+  | SelfRef of Type.typ               (* returns the self actor ref *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
+  (* backend stuff *)
   | CPSAwait
-  | CPSAsync
+  | CPSAsync of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
-  | ICErrorCodePrim
+  | ICCallerPrim
   | ICCallPrim
 
 
@@ -120,8 +135,7 @@ and prim =
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                          (* immutable *)
-  | VarD of id * exp                           (* mutable *)
-  | TypD of Type.con                           (* type *)
+  | VarD of id * Type.typ * exp                           (* mutable *)
 
 (* Literals *)
 
@@ -145,6 +159,7 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
+  | BlobLit b     -> Printf.sprintf "%s" b
   | FloatLit f    -> Value.Float.to_pretty_string f
 
 (* Flavor *)

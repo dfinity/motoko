@@ -1,10 +1,12 @@
+import Prim "mo:prim";
+
 // checks
 
 ignore (switch (object {}) { case {a} 42 });
 
 // checks
 
-for ({} in [object {}].vals()) { debugPrint "hey" };
+for ({} in [object {}].vals()) { Prim.debugPrint "hey" };
 
 // infers
 

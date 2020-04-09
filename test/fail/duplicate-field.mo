@@ -29,7 +29,7 @@ ignore(object {public func foo() = (); public func nxnnbkddcv() = ()});
 };
 
 {
-ignore(actor {public func foo() = (); public func nxnnbkddcv() = ()});
+ignore(actor {public func foo() {}; public func nxnnbkddcv() {}});
 };
 
 {

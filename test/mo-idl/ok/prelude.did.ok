@@ -1,6 +1,6 @@
-type Text_1 = Nat_1;
-type Nat_1 = null;
+type Text = Nat;
+type Nat = null;
 type Id = int;
-service A {
-  "f": (Nat_1, Text_1) -> (Id);
+service : {
+  "f": (Nat, Text) -> (Id);
 }

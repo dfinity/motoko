@@ -1,22 +1,16 @@
-unsupported.mo:19.19-19.21: type error, shared, async function must be called within an await expression
-  (This is a limitation of the current version.)
-unsupported.mo:23.16-23.18: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-unsupported.mo:28.8-28.9: type error, argument to await must be a call expression
-  (This is a limitation of the current version.)
-unsupported.mo:32.17-32.29: type error, unsupported async block
-  (This is a limitation of the current version.)
 unsupported.mo:4.5-4.41: type error, a shared function cannot be private
   (This is a limitation of the current version.)
-unsupported.mo:38.26-38.29: type error, a shared function is only allowed as a public field of an actor
+unsupported.mo:36.26-36.29: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)
-unsupported.mo:41.10-41.18: type error, unsupported async block
+unsupported.mo:50.3-50.35: type error, actor classes are not supported; use an actor declaration instead
   (This is a limitation of the current version.)
-unsupported.mo:62.3-62.35: type error, actor classes are not supported; use an actor declaration instead
+unsupported.mo:54.3-54.42: type error, actor classes are not supported; use an actor declaration instead
   (This is a limitation of the current version.)
-unsupported.mo:66.45-66.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.mo:58.45-58.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
-unsupported.mo:70.37-70.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.mo:62.37-62.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
-unsupported.mo:76.34-76.37: type error, freestanding async expression not yet supported
+unsupported.mo:72.34-72.37: type error, a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version.)
+unsupported.mo:73.27-73.30: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)

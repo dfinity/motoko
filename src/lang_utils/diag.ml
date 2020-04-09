@@ -1,6 +1,6 @@
 open Mo_config
 
-type severity = Warning | Error
+type severity = Warning | Error | Info
 type message = {
   sev : severity;
   at : Source.region;
@@ -9,19 +9,21 @@ type message = {
 }
 type messages = message list
 
-type 'a result = ('a * messages, messages) Pervasives.result
+type 'a result = ('a * messages, messages) Stdlib.result
 
 let return x = Ok (x, [])
 
+let warn at cat text = Ok ((), [{ sev = Warning; at; cat; text}])
+
 let map f = function
-  | Pervasives.Error msgs -> Pervasives.Error msgs
+  | Stdlib.Error msgs -> Stdlib.Error msgs
   | Ok (x, msgs) -> Ok (f x, msgs)
 
 let bind x f = match x with
-  | Pervasives.Error msgs -> Pervasives.Error msgs
+  | Stdlib.Error msgs -> Stdlib.Error msgs
   | Ok (y, msgs1) -> match f y with
     | Ok (z, msgs2) -> Ok (z, msgs1 @ msgs2)
-    | Pervasives.Error msgs2 -> Error (msgs1 @ msgs2)
+    | Stdlib.Error msgs2 -> Error (msgs1 @ msgs2)
 
 let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> function
   | [] -> return []
@@ -34,7 +36,7 @@ let rec traverse_ : ('a -> unit result) -> 'a list -> unit result = fun f -> fun
 let rec fold : ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result = fun f acc -> function
   | [] -> return acc
   | x :: xs -> bind (f acc x) (fun y -> fold f y xs)
-             
+
 type msg_store = messages ref
 let add_msg s m = s := m :: !s
 let add_msgs s ms = s := List.rev ms @ !s
@@ -48,11 +50,12 @@ let fatal_error at text = { sev = Error; at; cat = "fatal"; text }
 let string_of_message msg =
   let label = match msg.sev with
     | Error -> Printf.sprintf "%s error"  msg.cat
-    | Warning -> "warning" in
+    | Warning -> "warning" 
+    | Info -> "info" in
   Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
 
 let print_message msg =
-  if msg.sev = Warning && not !Flags.print_warnings
+  if msg.sev <> Error && not !Flags.print_warnings
   then ()
   else Printf.eprintf "%s%!" (string_of_message msg)
 
@@ -67,7 +70,7 @@ let with_message_store f =
   | _ -> Error msgs
 
 let flush_messages : 'a result -> 'a option = function
-  | Pervasives.Error msgs -> print_messages msgs; None
+  | Stdlib.Error msgs -> print_messages msgs; None
   | Ok (x, msgs) -> print_messages msgs; Some x
 
 let run r = match flush_messages r with

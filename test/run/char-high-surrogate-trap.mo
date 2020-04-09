@@ -1,1 +1,2 @@
-let _ = word32ToChar 0xdfff
+import Prim "mo:prim";
+let _ = Prim.word32ToChar 0xdfff
