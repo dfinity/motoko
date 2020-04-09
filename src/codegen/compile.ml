@@ -2474,9 +2474,27 @@ module Object = struct
 
   module FieldEnv = Env.Make(String)
 
+  (* This is for static objects *)
+  let vanilla_lit env (fs : (string * int32) list) : int32 =
+    let (hashes, ptrs) = fs |>
+      List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr)) |>
+      List.sort compare |>
+      List.split
+    in
+
+    let data = String.concat "" (List.map bytes_of_int32 hashes) in
+    let hash_ptr = E.add_static_bytes env data in
+
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Object) in
+    let len = bytes_of_int32 (Int32.of_int (List.length fs)) in
+    let hp = bytes_of_int32 hash_ptr in
+    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
+    let data = tag ^ len ^ hp ^ payload in
+    E.add_static_bytes env data
+
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
-  let lit_raw env fs =
+  let lit_raw env (fs : (string * (unit -> G.t)) list ) =
     let name_pos_map =
       fs |>
       (* We could store only public fields in the object, but
@@ -4785,11 +4803,8 @@ module StackRep = struct
     | Const.Fun fi -> Closure.static_closure env fi
     | Const.Message fi -> assert false
     | Const.Obj fs ->
-      (* TODO: allocate statically here *)
-      (*
-      Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
-      *)
-      assert false
+      let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
+      Object.vanilla_lit env fs'
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
