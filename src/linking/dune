@@ -1,0 +1,4 @@
+(library
+  (name linking)
+  (libraries lib wasm_exts)
+)

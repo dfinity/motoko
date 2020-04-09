@@ -1,0 +1,4 @@
+(library
+  (name mo_idl)
+  (libraries lib idllib lang_utils mo_types mo_def)
+)

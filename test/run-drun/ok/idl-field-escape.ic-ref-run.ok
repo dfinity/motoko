@@ -1,0 +1,12 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query foo1(0x4449444c0000)
+← completed: 0x4449444c016c01868eb7027f0100
+→ query foo2(0x4449444c0000)
+← completed: 0x4449444c016c01868eb7027f0100
+→ query out(0x4449444c0000)
+← completed: 0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858
+→ query input(0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858)
+← completed: 0x4449444c0000

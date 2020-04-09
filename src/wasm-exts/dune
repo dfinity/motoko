@@ -1,0 +1,4 @@
+(library
+  (name wasm_exts)
+  (libraries wasm vlq yojson lib prelude)
+)

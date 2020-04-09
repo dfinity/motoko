@@ -1,0 +1,3 @@
+import "diamond4.did";
+type t2 = vec t;
+

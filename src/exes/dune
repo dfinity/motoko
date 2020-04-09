@@ -1,0 +1,25 @@
+(executable
+ (name moc)
+ (modules moc)
+ (libraries profiler pipeline)
+)
+(executable
+ (name mo_ide)
+ (modules mo_ide)
+ (libraries languageServer)
+)
+(executable
+ (name mo_ld)
+ (modules mo_ld)
+ (libraries wasm_exts linking)
+)
+(executable
+ (name didc)
+ (modules didc)
+ (libraries idllib)
+)
+(executable
+ (name deser)
+ (modules deser)
+ (libraries stdio num)
+)

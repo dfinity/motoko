@@ -1,0 +1,80 @@
+{
+    "common": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/common",
+        "rev": "96395685d062093ba0848bc94f8ba2cb3202cda3",
+        "type": "git"
+    },
+    "dfinity": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
+        "rev": "1bb028c22ce4efb669555cba46bec91f9e6cca0e",
+        "type": "git"
+    },
+    "esm": {
+        "builtin": false,
+        "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
+        "type": "tarball",
+        "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz",
+        "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
+        "version": "3.2.25"
+    },
+    "ic-ref": {
+        "ref": "release-0.2",
+        "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
+        "rev": "f298af99efd9b93cd49707d443ad835c0260dee3",
+        "type": "git"
+    },
+    "libtommath": {
+        "builtin": false,
+        "description": "LibTomMath is a free open source portable number theoretic multiple-precision integer library written entirely in C.",
+        "homepage": "https://www.libtom.net",
+        "owner": "libtom",
+        "repo": "libtommath",
+        "sha256": "0cj4xdbh874hi8hx9ajygqk5411cnv260mfjrn68fsi9a6dw56ff",
+        "type": "tarball",
+        "url": "https://github.com/libtom/libtommath/archive/v1.2.0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
+        "version": "v1.2.0"
+    },
+    "musl-wasi": {
+        "branch": "master",
+        "builtin": false,
+        "description": "WASI libc implementation for WebAssembly",
+        "homepage": "https://wasi.dev",
+        "owner": "WebAssembly",
+        "repo": "wasi-libc",
+        "rev": "86550c37ab14962233f73413ea0e0c0e57d056d7",
+        "sha256": "16qbfkvsz8ks73r1jmwy0q8dshzmbj6cc72zvb7krin0dhmb5krf",
+        "type": "tarball",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/86550c37ab14962233f73413ea0e0c0e57d056d7.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "release-20.03",
+        "builtin": true,
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "homepage": null,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d63f95896ca8c5480629ef59fd46d6c50e3f98d0",
+        "sha256": "1nq65cczxjcvfy0m4hxyl4hbcxdqsqhdnr58n9h30zbsdv6vl6b4",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/d63f95896ca8c5480629ef59fd46d6c50e3f98d0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ocaml-vlq": {
+        "branch": "v0.2.0",
+        "builtin": false,
+        "description": "A library to encode/decode numbers in OCaml.",
+        "homepage": null,
+        "owner": "flowtype",
+        "repo": "ocaml-vlq",
+        "rev": "115bf0fef38018f31ac6386fef17a00bd8307218",
+        "sha256": "09jdgih2n2qwpxnlbcca4xa193rwbd1nw7prxaqlg134l4mbya83",
+        "type": "tarball",
+        "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "version": "v0.2.0"
+    }
+}

@@ -29,7 +29,9 @@ google-chrome --js-flags="--experimental-wasm-mv" http://127.0.0.1:8000/debug.ht
     };
     const importObject = {env};
 
+    console.profile();
     const wa = await createWebAssembly(file, importObject);
+    console.profileEnd();
     exports = wa.instance.exports;
     console.info('got exports', exports);
 

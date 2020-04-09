@@ -1,8 +1,9 @@
--- Parsing ListClient.as:
--- Parsing ListLib.as:
--- Checking ListLib.as:
--- Definedness ListLib.as:
--- Checking ListClient.as:
--- Definedness ListClient.as:
--- Interpreting ListLib.as:
--- Interpreting ListClient.as:
+-- Parsing ListClient.mo:
+-- Parsing ListLib.mo:
+-- Checking ListLib.mo:
+-- Definedness ListLib.mo:
+-- Checking ListClient.mo:
+let List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
+-- Definedness ListClient.mo:
+-- Interpreting ListLib.mo:
+-- Interpreting ListClient.mo:

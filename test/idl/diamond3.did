@@ -1,0 +1,2 @@
+import "diamond4.did";
+type t3 = opt t;

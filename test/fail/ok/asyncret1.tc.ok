@@ -1,2 +1,1 @@
-asyncret1.as:1.42-1.43: type error, shared function has non-async result type
-  C/1
+asyncret1.mo:1.39-1.40: type error, shared function must have syntactic return type `()` or `async <typ>`

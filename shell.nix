@@ -1,5 +1,3 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
-  test-dvm ? true,
+{ system ? builtins.currentSystem,
 }:
-(import ./default.nix { inherit nixpkgs test-dvm; export-shell = true; }).shell
-
+(import ./default.nix { inherit system; }).shell
