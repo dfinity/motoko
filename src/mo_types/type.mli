@@ -98,6 +98,7 @@ val prim : string -> prim
 val is_non : typ -> bool
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
+val is_immutable_obj : typ -> bool
 val is_variant : typ -> bool
 val is_array : typ -> bool
 val is_opt : typ -> bool

@@ -429,6 +429,10 @@ let as_async_sub default_scope t = match promote t with
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
 
+let is_immutable_obj obj_type =
+  let _, fields = as_obj_sub [] obj_type in
+  List.for_all (fun f -> not (is_mut f.typ)) fields
+
 
 let lookup_val_field l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in

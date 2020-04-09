@@ -28,7 +28,12 @@ let immute_typ p =
 
 (* Scope *)
 
-type val_env = T.typ T.Env.t
+type val_info = {
+  typ : T.typ;
+  loc_known : bool;
+  const : bool;
+}
+type val_env = val_info T.Env.t
 
 type scope =
   { val_env : val_env;
@@ -48,8 +53,11 @@ type ret_env = T.typ option
 *)
 type con_env = T.ConSet.t
 
+type lvl = TopLvl | NotTopLvl
+
 type env =
   { flavor : Ir.flavor;
+    lvl  : lvl;
     vals : val_env;
     cons : con_env;
     labs : lab_env;
@@ -60,7 +68,8 @@ type env =
 
 let env_of_scope scope flavor : env =
   { flavor;
-    vals = scope.Scope.val_env;
+    lvl = TopLvl;
+    vals = T.Env.map (fun typ -> { typ; loc_known = true; const = true }) scope.Scope.val_env;
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
@@ -332,12 +341,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   check (E.infer_effect_exp exp <= E.eff exp)
     "inferred effect not a subtype of expected effect";
   (* check typing *)
-  match exp.it with
+  begin match exp.it with
   | VarE id ->
-    let t0 = try T.Env.find id env.vals with
-             |  Not_found -> error env exp.at "unbound variable %s" id
+    let { typ; loc_known; const } =
+      try T.Env.find id env.vals
+      with Not_found -> error env exp.at "unbound variable %s" id
     in
-      t0 <~ t
+    typ <~ t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -558,7 +568,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: t;
     check_cases env T.catch t cases;
   | LoopE exp1 ->
-    check_exp env exp1;
+    check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;
     T.Non <: t (* vacuously true *)
   | LabelE (id, t0, exp1) ->
@@ -574,14 +584,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 = typ exp1 in
     let env' =
       {(adjoin_cons env ce)
-       with labs = T.Env.empty; rets = Some t1; async = Some c} in
+       with labs = T.Env.empty; rets = Some t1; async = Some c; lvl = NotTopLvl} in
     check_exp env' exp1;
     let t1' = T.open_ [t0] (T.close [c] t1)  in
     t1' <: T.Any; (* vacuous *)
     T.Async (t0, t1') <: t
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
-    let env' = adjoin_vals env (T.Env.singleton id t0) in
+    let val_info = { typ = t0; loc_known = false; const = false } in
+    let env' = adjoin_vals env (T.Env.singleton id val_info) in
     check_exp env' exp1;
     (typ exp1) <: t
   | DefineE (id, mut, exp1) ->
@@ -589,7 +600,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     begin
       match T.Env.find_opt id env.vals with
       | None -> error env exp.at "unbound variable %s" id
-      | Some t0 ->
+      | Some { typ = t0; const; loc_known } ->
+        check (not const) "cannot use DefineE on const variable";
         match mut with
         | Const ->
           typ exp1 <: t0
@@ -612,7 +624,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control (fun () -> List.hd ts) ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some codom; async = None} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = None; lvl = NotTopLvl} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
@@ -626,7 +638,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
     List.iter (check_typ env) ts;
-    check_exp env exp_f;
+    check_exp { env with lvl = NotTopLvl } exp_f;
     check_exp env exp_k;
     check_exp env exp_r;
     typ exp_f <: T.unit;
@@ -654,6 +666,35 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1 <: T.Obj (s0, val_tfs0);
 
     t0 <: t
+  end;
+  (* check const annotation *)
+  let check_var ctxt v =
+    check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
+  if exp.note.Note.const
+  then begin
+    match exp.it with
+    | VarE id -> check_var "VarE" id
+    | FuncE (x, s, c, tp, as_ , ts, body) ->
+      if env.lvl = NotTopLvl then
+      Freevars.M.iter (fun v _ ->
+        if (T.Env.find v env.vals).loc_known then () else
+        check_var "FuncE" v
+      ) (Freevars.exp exp)
+    | NewObjE (Type.(Object | Module), fs, t) when T.is_immutable_obj t ->
+      List.iter (fun f -> check_var "NewObjE" f.it.var) fs
+    | PrimE (DotPrim n, [e1]) ->
+      check e1.note.Note.const "constant DotPrim on non-constant subexpression"
+    | BlockE (ds, e) ->
+      List.iter (fun d -> match d.it with
+        | VarD _ -> check false "VarD in constant BlockE"
+        | LetD ({it = VarP _; _}, exp) ->
+          check exp.note.Note.const "non-constant RHS in constant BlockE"
+        | _ ->
+          check false "complex pattern in constant BlockE"
+        ) ds;
+      check e.note.Note.const "non-constant body in constant BlockE"
+    | _ -> check false "unexpected constant expression"
+  end;
 
 
 and check_lexp env (lexp:Ir.lexp) : unit =
@@ -666,10 +707,12 @@ and check_lexp env (lexp:Ir.lexp) : unit =
   (* check typing *)
   match lexp.it with
   | VarLE id ->
-    let t0 = try T.Env.find id env.vals with
-             |  Not_found -> error env lexp.at "unbound variable %s" id
+    let { typ = t0; const; loc_known } =
+      try T.Env.find id env.vals
+      with Not_found -> error env lexp.at "unbound variable %s" id
     in
-      t0 <: t
+    check (not const) "cannot assign to constant variable";
+    t0 <: t
   | DotLE (exp1, n) ->
     begin
       let t1 = typ exp1 in
@@ -715,7 +758,9 @@ and check_args env args =
       check env a.at (not (T.Env.mem a.it ve))
         "duplicate binding for %s in argument list" a.it;
       check_typ env a.note;
-      go (T.Env.add a.it a.note ve) as_
+      let val_info = {typ = a.note; const = false; loc_known = false} in
+      let env' = T.Env.add a.it val_info ve in
+      go env' as_
   in go T.Env.empty args
 
 (* Patterns *)
@@ -729,7 +774,8 @@ and gather_pat env ve0 pat : val_env =
     | VarP id ->
       check env pat.at (not (T.Env.mem id ve0))
         "duplicate binding for %s in block" id;
-      T.Env.add id pat.note ve (*TBR*)
+      let val_info = {typ = pat.note; const = false; loc_known = env.lvl = TopLvl} in
+      T.Env.add id val_info ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
     | ObjP pfs ->
@@ -752,7 +798,7 @@ and check_pat env pat : val_env =
   let t = pat.note in
   match pat.it with
   | WildP -> T.Env.empty
-  | VarP id -> T.Env.singleton id pat.note
+  | VarP id -> T.Env.singleton id { typ = pat.note; const = false; loc_known = env.lvl = TopLvl }
   | LitP NullLit ->
     t <: T.Opt T.Any;
     T.Env.empty
@@ -821,8 +867,9 @@ and type_exp_fields env s fs : T.field list =
 
 and type_exp_field env s f : T.field =
   let {name; var} = f.it in
-  let t = try T.Env.find var env.vals with
-          | Not_found -> error env f.at "field typing for %s not found" name
+  let { typ = t; const; loc_known } =
+    try T.Env.find var env.vals
+    with Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
@@ -871,14 +918,20 @@ and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
     let ve = gather_pat env scope.val_env pat in
+    (* patch the ve for a const binding *)
+    let ve = match pat.it with
+      | VarP id when exp.note.Note.const ->
+        T.Env.add id { (T.Env.find id ve) with const = true } ve
+      | _ -> ve in
     { val_env = ve }
   | VarD (id, t, exp) ->
     check_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
-    let ve =  T.Env.add id (T.Mut t) scope.val_env in
-    { val_env = ve}
+    let val_info = {typ = T.Mut t; const = false; loc_known = env.lvl = TopLvl} in
+    let ve = T.Env.add id val_info scope.val_env in
+    { val_env = ve }
 
 (* Programs *)
 

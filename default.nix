@@ -49,7 +49,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune
+    pkgs.dune_2
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
@@ -102,6 +102,15 @@ let ocaml_exe = name: bin:
     if nixpkgs.stdenv.isDarwin
     then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
+
+  musl-wasi-sysroot = stdenv.mkDerivation {
+    name = "musl-wasi-sysroot";
+    src = nixpkgs.sources.musl-wasi;
+    phases = [ "unpackPhase" "installPhase" ];
+    installPhase = ''
+      make SYSROOT="$out" include_dirs
+    '';
+  };
 in
 
 rec {
@@ -116,6 +125,8 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${nixpkgs.sources.libtommath}
+      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
     '';
 
     doCheck = true;
@@ -206,11 +217,6 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
-
-	    if test -e ${dir}/_out/stats.csv
-	    then
-	      cp ${dir}/_out/stats.csv $out
-	    fi
           '';
       }; in
 
@@ -218,7 +224,13 @@ rec {
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
           export PERF_OUT=$out
-        '' + args.checkPhase;
+        '' + args.checkPhase + ''
+          if ! grep -q ^gas/ $out
+          then
+            echo "perf stats do not include gas. change in drun output format?" >&2
+            exit 1
+          fi
+        '';
       }); in
 
     let qc = testDerivation {
@@ -489,6 +501,8 @@ rec {
     shellHook = llvmEnv;
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
+    MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
+    MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
