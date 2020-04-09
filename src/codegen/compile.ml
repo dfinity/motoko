@@ -1747,7 +1747,7 @@ sig
   val compile_load_from_data_buf : E.t -> bool -> G.t
 
   (* literals *)
-  val lit_vanilla : E.t -> Big_int.big_int -> int32
+  val vanilla_lit : E.t -> Big_int.big_int -> int32
 
   (* arithmetic *)
   val compile_abs : E.t -> G.t
@@ -2040,11 +2040,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
 
-  let lit_vanilla env = function
+  let vanilla_lit env = function
     | n when Big_int.is_int_big_int n && BitTagged.can_unbox (Big_int.int_of_big_int n) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       Int32.(logor (shift_left i 2) (shift_right_logical i 31))
-    | n -> Num.lit_vanilla env n
+    | n -> Num.vanilla_lit env n
 
   let compile_neg env =
     Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -2053,7 +2053,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_n ^^ compile_unboxed_one ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if_ [I32Type]
-            (compile_unboxed_const (lit_vanilla env (Big_int.big_int_of_int 0x40000000)))
+            (compile_unboxed_const (vanilla_lit env (Big_int.big_int_of_int 0x40000000)))
             begin
               compile_unboxed_zero ^^
               get_n ^^ extend ^^
@@ -2313,7 +2313,7 @@ module BigNumLibtommath : BigNumType = struct
     | false -> E.call_import env "rts" "bigint_leb128_decode"
     | true -> E.call_import env "rts" "bigint_sleb128_decode"
 
-  let lit_vanilla env n =
+  let vanilla_lit env n =
     (* See enum mp_sign *)
     let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
 
@@ -5575,7 +5575,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
 let compile_lit env lit =
   match const_lit_of_lit lit with
   | Const.Vanilla n -> SR.Vanilla, compile_unboxed_const n
-  | Const.BigInt n  -> SR.Vanilla, compile_unboxed_const (BigNum.lit_vanilla env n)
+  | Const.BigInt n  -> SR.Vanilla, compile_unboxed_const (BigNum.vanilla_lit env n)
   | Const.Word32 n  -> SR.UnboxedWord32, compile_unboxed_const n
   | Const.Word64 n  -> SR.UnboxedWord64, compile_const_64 n
   | Const.Float64 f -> SR.UnboxedFloat64, Float.compile_unboxed_const f
