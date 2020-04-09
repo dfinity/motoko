@@ -280,11 +280,11 @@ let interpret_lit env lit : V.value =
 
 let check_call_conv exp call_conv =
   let open Call_conv in
-  let exp_call_conv = call_conv_of_typ exp.note.note_typ in
+  let exp_call_conv = call_conv_of_typ exp.note.Note.typ in
   if not (exp_call_conv = call_conv) then
     failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-      (T.string_of_typ exp.note.note_typ)
+      (T.string_of_typ exp.note.Note.typ)
       (string_of_call_conv exp_call_conv)
       (string_of_call_conv call_conv))
 
@@ -384,7 +384,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | CPSAsync _, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         let (_, f) = V.as_func v1 in
-        let typ = exp.note.note_typ in
+        let typ = exp.note.Note.typ in
         begin match typ with
         | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
           let call_conv_f = CC.call_conv_of_typ f_dom in

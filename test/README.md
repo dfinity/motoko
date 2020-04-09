@@ -72,8 +72,8 @@ For these tests the test suite records the following numbers:
 * Size of the produced Wasm binary.
 * Gas consumed by a single run in drun [not yet implemented]
 
-The numbers are written to `_out/stats.csv`, and are also the output of the nix
-derivation `tests.perf`.
+The numbers are written to the file specified by `$PERF_OUT` (and end up being
+the output of the nix derivation `tests.perf`.
 
 The format is a simple CSV format, as consumed by
 [gipeda](https://github.com/nomeata/gipeda).

@@ -8,16 +8,9 @@ module Lsp_t = Lsp.Lsp_t
 
 let jsonrpc_version : string = "2.0"
 
-let notification (params : Lsp_t.notification_message_params) :
-    Lsp_t.notification_message =
-  Lsp_t.
-    {
-      notification_message_jsonrpc = jsonrpc_version;
-      notification_message_params = params;
-    }
-
-let response_result_message (id : int) (result : Lsp_t.response_result) :
-    Lsp_t.response_message =
+let response_result_message :
+    int -> Lsp_t.response_result -> Lsp_t.response_message =
+ fun id result ->
   Lsp_t.
     {
       response_message_jsonrpc = jsonrpc_version;
@@ -26,8 +19,9 @@ let response_result_message (id : int) (result : Lsp_t.response_result) :
       response_message_error = None;
     }
 
-let response_error_message (id : int) (error : Lsp_t.response_error) :
-    Lsp_t.response_message =
+let response_error_message :
+    int -> Lsp_t.response_error -> Lsp_t.response_message =
+ fun id error ->
   Lsp_t.
     {
       response_message_jsonrpc = jsonrpc_version;
@@ -36,62 +30,17 @@ let response_error_message (id : int) (error : Lsp_t.response_error) :
       response_message_error = Some error;
     }
 
-module Channel = struct
-  let log_to_file (oc : out_channel) (lbl : string) (txt : string) : unit =
-    Printf.fprintf oc "[%s] %s\n" lbl txt;
-    flush oc
-
-  let send (oc : out_channel) (label : string) (out : string) : unit =
-    let cl = "Content-Length: " ^ string_of_int (String.length out) in
-    print_string cl;
-    print_string "\r\n\r\n";
-    print_string out;
-    flush stdout
-
-  let send_response (oc : out_channel) : string -> unit = send oc "response"
-
-  let send_notification (oc : out_channel) : string -> unit =
-    send oc "notification"
-
-  let show_message (oc : out_channel) (typ : Lsp.MessageType.t) (msg : string) :
-      unit =
-    let params =
-      `WindowShowMessage
-        Lsp_t.
-          {
-            window_show_message_params_type_ = typ;
-            window_show_message_params_message = msg;
-          }
-    in
-    let notification = notification params in
-    send_notification oc (Lsp_j.string_of_notification_message notification)
-
-  let publish_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri)
-      (diags : Lsp_t.diagnostic list) : unit =
-    let params =
-      `PublishDiagnostics
-        Lsp_t.
-          {
-            publish_diagnostics_params_uri = uri;
-            publish_diagnostics_params_diagnostics = diags;
-          }
-    in
-    let notification = notification params in
-    send_notification oc (Lsp_j.string_of_notification_message notification)
-
-  let clear_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri) : unit =
-    publish_diagnostics oc uri []
-end
-
-let position_of_pos (pos : Source.pos) : Lsp_t.position =
+let position_of_pos : Source.pos -> Lsp_t.position =
+ fun pos ->
   Lsp_t.
     {
       (* The LSP spec requires zero-based positions *)
-      position_line = (if pos.Source.line > 0 then pos.Source.line - 1 else 0);
+      position_line = max 0 (pos.Source.line - 1);
       position_character = pos.Source.column;
     }
 
-let range_of_region (at : Source.region) : Lsp_t.range =
+let range_of_region : Source.region -> Lsp_t.range =
+ fun at ->
   Lsp_t.
     {
       range_start = position_of_pos at.Source.left;
@@ -103,7 +52,8 @@ let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
   | Diag.Info -> Lsp.DiagnosticSeverity.Information
 
-let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic * string =
+let diagnostics_of_message : Diag.message -> Lsp_t.diagnostic * string =
+ fun msg ->
   ( Lsp_t.
       {
         diagnostic_range = range_of_region msg.Diag.at;
@@ -115,45 +65,71 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic * string =
       },
     msg.Diag.at.Source.left.Source.file )
 
-let start entry_point debug =
-  let oc : out_channel =
-    if debug then open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log"
-    else open_out "/dev/null"
+(** A record with all the mutable state and caches the Language Server needs *)
+type ls_state = {
+  decl_index : Declaration_index.t ref;  (** Our index of known definitions *)
+  vfs : Vfs.t ref;
+      (** The virtual file system. Our knowledge of opened files and their contents *)
+  startup_diagnostics : Diag.messages ref;
+      (** Diagnostics we encountered when building the index on startup. These need to
+       ** be cached here because we can't report them until initialization is completed  *)
+  files_with_diagnostics : Vfs.uri list ref;
+      (** All files with known diagnostics. We need to store them so that we can clear
+       ** their diagnostics once compilation succeeds *)
+  shutdown : bool ref;
+      (** Have we received the shutdown message?, A quirk of the LSP *)
+  client_capabilities : Lsp_t.client_capabilities option ref;
+      (** What are the capabilities the client reported? *)
+}
+
+let start : string -> bool -> 'a =
+ fun entry_point debug ->
+  let debug_channel : out_channel option =
+    if debug then Some (open_out_gen [ Open_append; Open_creat ] 0o666 "ls.log")
+    else None
   in
-  let log_to_file = Channel.log_to_file oc in
-  let _ = log_to_file "entry_point" entry_point in
+  let module IO = Communication.MakeIO (struct
+    let debug_channel = debug_channel
+
+    let in_channel = stdin
+
+    let out_channel = stdout
+  end) in
+  let _ = Debug.logger := IO.log_to_file in
+  let _ = Debug.log "entry_point" entry_point in
   let _ =
     Flags.M.iter
-      (fun k v -> log_to_file "package" (Printf.sprintf "%s => %s" k v))
+      (fun k v -> Debug.log "package" (Printf.sprintf "%s => %s" k v))
       !Flags.package_urls
   in
-  let _ = Debug.logger := log_to_file in
-  let publish_diagnostics = Channel.publish_diagnostics oc in
-  let clear_diagnostics = Channel.clear_diagnostics oc in
-  let send_response = Channel.send_response oc in
-  let show_message = Channel.show_message oc in
-  let shutdown = ref false in
-  let client_capabilities = ref None in
-  let project_root = Sys.getcwd () in
-  let _ = log_to_file "project_root" project_root in
-  let startup_diags = ref [] in
-  let files_with_diags = ref [] in
-  let vfs = ref Vfs.empty in
-  let decl_index =
-    let ix =
+  let project_root =
+    let root = Sys.getcwd () in
+    Debug.log "project_root" root;
+    root
+  in
+  let ls_state =
+    {
+      vfs = ref Vfs.empty;
+      decl_index = ref (Declaration_index.empty project_root);
+      startup_diagnostics = ref [];
+      files_with_diagnostics = ref [];
+      shutdown = ref false;
+      client_capabilities = ref None;
+    }
+  in
+  let _ =
+    ls_state.decl_index :=
       match
-        Declaration_index.make_index log_to_file project_root !vfs
+        Declaration_index.make_index project_root !(ls_state.vfs)
           [ entry_point ]
       with
       | Error errs ->
           List.iter
-            (fun err -> log_to_file "Error" (Diag.string_of_message err))
+            (fun err -> Debug.log "startup_error" (Diag.string_of_message err))
             errs;
-          startup_diags := errs;
+          ls_state.startup_diagnostics := errs;
           Declaration_index.empty project_root
       | Ok (ix, _) -> ix
-    in
-    ref ix
   in
   let sync_diagnostics msgs =
     let diags_by_file =
@@ -162,15 +138,16 @@ let start entry_point debug =
       |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
       |> List.map (fun diags ->
              let _, file = List.hd diags in
-             (List.map fst diags, Vfs.uri_from_file file))
+             (Vfs.uri_from_file file, List.map fst diags))
     in
-    List.iter clear_diagnostics !files_with_diags;
-    files_with_diags := List.map snd diags_by_file;
-    List.iter (fun (diags, uri) -> publish_diagnostics uri diags) diags_by_file
+    List.iter IO.clear_diagnostics !(ls_state.files_with_diagnostics);
+    ls_state.files_with_diagnostics := List.map fst diags_by_file;
+    List.iter (Lib.Fun.uncurry IO.publish_diags) diags_by_file
   in
   let handle_message raw = function
     | Some id, `Initialize params ->
-        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
+        ls_state.client_capabilities :=
+          Some params.Lsp_t.initialize_params_capabilities;
         let completion_options =
           Lsp_t.
             {
@@ -208,7 +185,7 @@ let start entry_point debug =
               }
         in
         let response = response_result_message id result in
-        send_response (Lsp_j.string_of_response_message response)
+        IO.send (Lsp_j.string_of_response_message response)
     | Some id, `TextDocumentHover params ->
         let uri =
           params.Lsp_t.text_document_position_params_textDocument
@@ -216,7 +193,7 @@ let start entry_point debug =
         in
         let position = params.Lsp_t.text_document_position_params_position in
         let response =
-          match Vfs.read_file uri !vfs with
+          match Vfs.read_file uri !(ls_state.vfs) with
           | None ->
               response_error_message id
                 Lsp_t.
@@ -227,13 +204,13 @@ let start entry_point debug =
                   }
           | Some file_content ->
               let result =
-                Hover.hover_handler log_to_file !decl_index position
-                  file_content project_root
-                  (Vfs.abs_file_from_uri log_to_file uri)
+                Hover.hover_handler !(ls_state.decl_index) position file_content
+                  project_root
+                  (Vfs.abs_file_from_uri uri)
               in
               response_result_message id result
         in
-        send_response (Lsp_j.string_of_response_message response)
+        IO.send (Lsp_j.string_of_response_message response)
     | Some id, `TextDocumentDefinition params ->
         let uri =
           params.Lsp_t.text_document_position_params_textDocument
@@ -241,7 +218,7 @@ let start entry_point debug =
         in
         let position = params.Lsp_t.text_document_position_params_position in
         let response =
-          match Vfs.read_file uri !vfs with
+          match Vfs.read_file uri !(ls_state.vfs) with
           | None ->
               response_error_message id
                 Lsp_t.
@@ -253,43 +230,46 @@ let start entry_point debug =
                   }
           | Some file_content ->
               let result =
-                Definition.definition_handler !decl_index position file_content
-                  project_root
-                  (Vfs.abs_file_from_uri log_to_file uri)
+                Definition.definition_handler !(ls_state.decl_index) position
+                  file_content project_root
+                  (Vfs.abs_file_from_uri uri)
               in
               response_result_message id result
         in
-        send_response (Lsp_j.string_of_response_message response)
-    | _, `TextDocumentDidOpen params -> vfs := Vfs.open_file params !vfs
-    | _, `TextDocumentDidChange params -> vfs := Vfs.update_file params !vfs
-    | _, `TextDocumentDidClose params -> vfs := Vfs.close_file params !vfs
+        IO.send (Lsp_j.string_of_response_message response)
+    | _, `TextDocumentDidOpen params ->
+        ls_state.vfs := Vfs.open_file params !(ls_state.vfs)
+    | _, `TextDocumentDidChange params ->
+        ls_state.vfs := Vfs.update_file params !(ls_state.vfs)
+    | _, `TextDocumentDidClose params ->
+        ls_state.vfs := Vfs.close_file params !(ls_state.vfs)
     | _, `TextDocumentDidSave _ ->
         let msgs =
           match
-            Declaration_index.make_index log_to_file project_root !vfs
+            Declaration_index.make_index project_root !(ls_state.vfs)
               [ entry_point ]
           with
           | Error msgs' ->
               List.iter
                 (fun msg ->
-                  log_to_file "rebuild_error" (Diag.string_of_message msg))
+                  Debug.log "rebuild_error" (Diag.string_of_message msg))
                 msgs';
               msgs'
           | Ok (ix, msgs') ->
-              decl_index := ix;
+              ls_state.decl_index := ix;
               msgs'
         in
         sync_diagnostics msgs
     | None, `Initialized _ ->
-        sync_diagnostics !startup_diags;
-        startup_diags := [];
-        show_message Lsp.MessageType.Info "Motoko LS initialized"
+        sync_diagnostics !(ls_state.startup_diagnostics);
+        ls_state.startup_diagnostics := [];
+        IO.show_message Lsp.MessageType.Info "Motoko LS initialized"
     | Some id, `Shutdown _ ->
-        shutdown := true;
+        ls_state.shutdown := true;
         response_result_message id (`ShutdownResponse None)
         |> Lsp_j.string_of_response_message
-        |> send_response
-    | _, `Exit _ -> if !shutdown then exit 0 else exit 1
+        |> IO.send
+    | _, `Exit _ -> if !(ls_state.shutdown) then exit 0 else exit 1
     | Some id, `CompletionRequest params ->
         let uri =
           params.Lsp_t.text_document_position_params_textDocument
@@ -297,7 +277,7 @@ let start entry_point debug =
         in
         let position = params.Lsp_t.text_document_position_params_position in
         let response =
-          match Vfs.read_file uri !vfs with
+          match Vfs.read_file uri !(ls_state.vfs) with
           | None ->
               response_error_message id
                 Lsp_t.
@@ -308,29 +288,17 @@ let start entry_point debug =
                        opened yet";
                   }
           | Some file_content ->
-              Completion.completion_handler !decl_index log_to_file project_root
-                (Vfs.abs_file_from_uri log_to_file uri)
+              Completion.completion_handler !(ls_state.decl_index) project_root
+                (Vfs.abs_file_from_uri uri)
                 file_content position
               |> response_result_message id
         in
-        response |> Lsp_j.string_of_response_message |> send_response
+        IO.send (Lsp_j.string_of_response_message response)
     (* Unhandled messages *)
-    | _ -> log_to_file "unhandled message" raw
+    | _ -> Debug.log "unhandled message" raw
   in
   let rec loop () =
-    let clength = read_line () in
-    let cl = "Content-Length: " in
-    let cll = String.length cl in
-    let num =
-      int_of_string String.(trim (sub clength cll (length clength - cll - 1)))
-      + 2
-    in
-    let buffer = Buffer.create num in
-    Buffer.add_channel buffer stdin num;
-    let raw = String.trim (Buffer.contents buffer) in
-    let message =
-      try Some (Lsp_j.incoming_message_of_string raw) with _ -> None
-    in
+    let raw, message = IO.read_message () in
     ( match message with
     | None -> Debug.log "decoding error" raw
     | Some message ->

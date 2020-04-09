@@ -89,7 +89,7 @@ and assignEs vars exp : dec list =
   | _, _ ->
     let tup = fresh_var "tup" (typ exp) in
     letD tup exp ::
-    List.mapi (fun i v -> expD (assignE v (projE v i))) vars
+    List.mapi (fun i v -> expD (assignE v (projE (varE v) i))) vars
 
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
@@ -209,15 +209,15 @@ and dec' env d =
         in
         let l_typ = Type.unit in
         let body =
-          blockE (List.map2 (fun t i -> varD (id_of_exp t) (typ i) i) temps ids) (
+          blockE (List.map2 (fun t i -> varD (id_of_var t) (typ_of_var i) (varE i)) temps ids) (
             loopE (
               labelE label l_typ (blockE
-                (List.map2 (fun a t -> letD (exp_of_arg a) (immuteE t)) as_ temps)
+                (List.map2 (fun a t -> letD (var_of_arg a) (immuteE (varE t))) as_ temps)
                 (retE exp0'))
             )
           )
         in
-        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, List.map arg_of_exp ids, typT, body)})
+        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, List.map arg_of_var ids, typT, body)})
       else
         LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, as_, typT, exp0')})
     end,

@@ -28,9 +28,8 @@ type lit =
   | BlobLit of string
 
 (* Patterns *)
-type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
-type 'a phrase = ('a, typ_note) Source.annotated_phrase
+type 'a phrase = ('a, Note.t) Source.annotated_phrase
 
 type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
@@ -100,7 +99,7 @@ and lexp' =
 
 
 (* In the IR, a prim is any AST node that has expr subexpressions, but they are
-all call-by-value. Many passes can treat them uniformly, so they are unified using the
+all call-by-value. Many passes can treat them uniformly, so they are unified
 using the PrimE node. *)
 and prim =
   | CallPrim of Type.typ list         (* function call *)
