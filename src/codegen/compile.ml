@@ -4775,33 +4775,29 @@ module StackRep = struct
       | Const.Blob t     -> Blob.vanilla_lit env t
 
 
-  (* need to remove Const.PublicMethod, as it is not const *)
-  let rec materialize env (p, cv) : G.t =
-    if Lib.Promise.is_fulfilled p
-    then compile_unboxed_const (Lib.Promise.value p)
-    else match cv with
-    | Const.Fun fi ->
-      let ptr = Closure.static_closure env fi in
-      Lib.Promise.fulfill p ptr;
-      compile_unboxed_const ptr
-    | Const.Message fi ->
-      assert false
+  let rec materialize_const_t env (p, cv) : int32 =
+    begin if not (Lib.Promise.is_fulfilled p)
+    then Lib.Promise.fulfill p (materialize_const_v env cv)
+    end;
+    Lib.Promise.value p
+
+  and materialize_const_v env = function
+    | Const.Fun fi -> Closure.static_closure env fi
+    | Const.Message fi -> assert false
     | Const.Obj fs ->
       (* TODO: allocate statically here *)
+      (*
       Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
+      *)
+      assert false
     | Const.Array cs ->
-      let ptrs = List.map (materialize env) cs in
+      let ptrs = List.map (materialize_const_t env) cs in
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
       let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
       let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
       let data = tag ^ len ^ payload in
-      let ptr = E.add_static_bytes env data in
-      Lib.Promise.fulfill p ptr;
-      compile_unboxed_const ptr
-    | Const.Lit l ->
-      let ptr = materialize_lit env l in
-      Lib.Promise.fulfill p ptr;
-      compile_unboxed_const ptr
+      E.add_static_bytes env data
+    | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -4822,7 +4818,7 @@ module StackRep = struct
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
-    | Const c, Vanilla -> materialize env c
+    | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
