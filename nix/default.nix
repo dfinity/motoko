@@ -12,7 +12,7 @@ let
       overlays = [
         (self: super: { sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; }; })
         # Selecting the ocaml version
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
+        # (self: super: { ocamlPackages = super.ocamlPackages; })
         # Additional ocaml package
         (
           self: super: {

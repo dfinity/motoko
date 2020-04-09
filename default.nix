@@ -49,7 +49,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune
+    pkgs.dune_2
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
