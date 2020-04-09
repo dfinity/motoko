@@ -56,7 +56,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 ### Status
 
 * great team!
-* interpreter/compiler up and running via `dvm`.
+* interpreter/compiler up and running via `drun`.
 * compiles multiple files by concatenation
   (good enough for the Produce Exchange)
 * documentation (see [draft](motoko-guide.pdf), 30 pages)

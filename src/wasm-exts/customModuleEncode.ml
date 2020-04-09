@@ -108,7 +108,6 @@ let encode (em : extended_module) =
     let vu32 i = vu64 Int64.(logand (of_int32 i) 0xffffffffL)
     let vs7 i = vs64 (Int64.of_int i)
     let vs32 i = vs64 (Int64.of_int32 i)
-    let vs33 i = vs64 (Wasm.I64_convert.extend_i32_s i)
     let f32 x = u32 (Wasm.F32.to_bits x)
     let f64 x = u64 (Wasm.F64.to_bits x)
 
@@ -122,9 +121,8 @@ let encode (em : extended_module) =
     let string bs = len (String.length bs); put_string s bs
     let name n = string (Wasm.Utf8.encode n)
     let list f xs = List.iter f xs
-    let opt f xo = Lib.Option.iter f xo
+    let opt f xo = Option.iter f xo
     let vec f xs = len (List.length xs); list f xs
-    let veci f xs = len (List.length xs); List.iteri f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p
     let patch_gap32 p n =
@@ -149,9 +147,8 @@ let encode (em : extended_module) =
     let elem_type = function
       | FuncRefType -> vs7 (-0x10)
 
-    let stack_type = vec value_type
     let func_type = function
-      | FuncType (ins, out) -> vs7 (-0x20); stack_type ins; stack_type out
+      | FuncType (ins, out) -> vs7 (-0x20); vec value_type ins; vec value_type out
 
     let limits vu {min; max} =
       bool (max <> None); vu min; opt vu max
@@ -183,10 +180,12 @@ let encode (em : extended_module) =
 
     let var x = vu32 x.it
 
-    let block_type = function
-      | VarBlockType x -> vs33 x.it
-      | ValBlockType None -> vs7 (-0x40)
-      | ValBlockType (Some t) -> value_type t
+    let stack_type = function
+      | [] -> vs7 (-0x40)
+      | [t] -> value_type t
+      | _ ->
+        Code.error Wasm.Source.no_region
+          "cannot encode stack type with arity > 1 (yet)"
 
     let rec instr e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
@@ -195,10 +194,10 @@ let encode (em : extended_module) =
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
-      | Block (ts, es) -> op 0x02; block_type ts; list instr es; end_ ()
-      | Loop (ts, es) -> op 0x03; block_type ts; list instr es; end_ ()
+      | Block (ts, es) -> op 0x02; stack_type ts; list instr es; end_ ()
+      | Loop (ts, es) -> op 0x03; stack_type ts; list instr es; end_ ()
       | If (ts, es1, es2) ->
-        op 0x04; block_type ts; list instr es1;
+        op 0x04; stack_type ts; list instr es1;
         if es2 <> [] then op 0x05;
         list instr es2; end_ ()
 
@@ -543,50 +542,6 @@ let encode (em : extended_module) =
     let data_section data =
       section 11 (vec memory_segment) data (data <> [])
 
-    (* DFINITY Types section *)
-
-    (*
-    The dfinity types are specified in terms of function ids excluding
-    imports, which is unidiomatic. We use real function ids internally,
-    so we have to work around it here.
-    *)
-    let count_fun_imports (em : extended_module) =
-      let is_fun_import imp = match imp.it.idesc.it with
-            | FuncImport _ -> true
-            | _ -> false in
-      Lib.List32.length (List.filter is_fun_import em.module_.imports)
-
-    let dfinity_type = function
-        | CustomModule.I32      -> vu32 0x7fl
-        | CustomModule.DataBuf  -> vu32 0x6cl
-        | CustomModule.ElemBuf  -> vu32 0x6bl
-        | CustomModule.ActorRef -> vu32 0x6fl
-        | CustomModule.FuncRef  -> vu32 0x6dl
-
-    let dfinity_fun_type (_fi, param_types) =
-      vu32 0x60l; (* function type op code *)
-      vec dfinity_type param_types;
-      vu32 0l
-
-    let dfinity_fun_type_map ni i (fi, _param_types) =
-      vu32 (Int32.sub fi ni);
-      vu32 (Int32.of_int i)
-
-    let dfinity_types_section ni tys =
-      (* We could deduplicate the types here *)
-      custom_section "types" (vec dfinity_fun_type) tys (tys <> []);
-      custom_section "typeMap" (veci (dfinity_fun_type_map ni)) tys (tys <> [])
-
-    (* DFINITY Persist section *)
-
-    let dfinity_persist_global (i, sort) =
-      vu32 0x03l; (* a global *)
-      vu32 i; (* the index *)
-      dfinity_type sort
-
-    let dfinity_persist_section pgs =
-      custom_section "persist" (vec dfinity_persist_global) pgs (pgs <> [])
-
     (* Name section *)
 
     let assoc_list : 'a. ('a -> unit) -> (int32 * 'a) list -> unit = fun f xs ->
@@ -626,8 +581,6 @@ let encode (em : extended_module) =
       code_section m.funcs;
       data_section m.data;
       (* other optional sections *)
-      dfinity_types_section (count_fun_imports em) em.types;
-      dfinity_persist_section em.persist;
       name_section em.name;
   end
   in E.module_ em;

@@ -1,4 +1,5 @@
-service A {
+service A:
+{
   f : (nat) -> ();
   g : f;
 }

@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 type Tree<A> = {#leaf : A; #branch : (Tree<A>, Tree<A>)};
 
 func size<A>(t : Tree<A>) : Nat {
@@ -10,8 +12,8 @@ func size<A>(t : Tree<A>) : Nat {
 let tt1 : Tree<Int> = #branch(#leaf 1, #leaf (-1));
 let tt2 = #leaf ""; // infers type {#leaf : Text} which is a subtype of Tree<Text>
 
-debugPrintNat(size<Int>(tt1)); debugPrint "\n";
-debugPrintNat(size<Text>(tt2)); debugPrint "\n";
+Prim.debugPrintNat(size<Int>(tt1));
+Prim.debugPrintNat(size<Text>(tt2));
 
 
 // subtyping

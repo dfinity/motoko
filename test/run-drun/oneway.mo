@@ -1,59 +1,60 @@
-actor Oneway {
+import Prim "mo:prim";
+actor a {
   // test that oneways can locally try/throw
   public func oneway() : () {
-    ignore (
-      async {
-        debugPrint "1";
-        try {
-          throw (error("Error"));
-          debugPrint "unreachable";
-        }
-        catch e { debugPrint "2"};
-      }
-    )
+    Prim.debugPrint "1";
+    try {
+      throw (Prim.error("Error"));
+      Prim.debugPrint "unreachable";
+    }
+    catch e { Prim.debugPrint "2"};
   };
 
   // test that oneways can locally try/throw
   // using `=` syntax
   public func onewayAlt() : () =
     ignore (
-      async {
-        debugPrint "3";
+      (async {
+        Prim.debugPrint "3";
         try {
-          throw (error("Error"));
-          debugPrint "unreachable";
+          throw (Prim.error("Error"));
+          Prim.debugPrint "unreachable";
         }
-        catch e { debugPrint "4"};
-      }
+        catch e { Prim.debugPrint "4"};
+      }) : async ()
     );
 
 
   // test that throws from oneways are silently discarded (because replies are eager)
   public func discard() : () {
-    ignore (
-      async {
-        debugPrint "5";
-        throw (error("ignored"));
-        debugPrint "unreachable";
-      }
-    )
+    Prim.debugPrint "5";
+    throw (Prim.error("ignored"));
+    Prim.debugPrint "unreachable";
   };
 
   // test that throws from oneways are silently discarded (because replies are eager)
   // using `=` syntax
   public func discardAlt() : () =
     ignore (
-      async {
-        debugPrint "6";
-        throw (error("ignored"));
-        debugPrint "unreachable";
-      }
+      (async {
+        Prim.debugPrint "6";
+        throw (Prim.error("ignored"));
+        Prim.debugPrint "unreachable";
+      }) : async ()
     );
 
-
   // TODO test await and calls to shared functions
-}
-//CALL ingress oneway 0x4449444C0000
-//CALL ingress onewayAlt 0x4449444C0000
-//CALL ingress discard 0x4449444C0000
-//CALL ingress discardAlt 0x4449444C0000
+
+  public func go() {
+    Prim.debugPrint("A");
+    oneway();
+    Prim.debugPrint("B");
+    onewayAlt();
+    Prim.debugPrint("C");
+    discard();
+    Prim.debugPrint("D");
+    discardAlt();
+    Prim.debugPrint("E");
+  };
+};
+a.go(); //OR-CALL ingress go 0x4449444C0000

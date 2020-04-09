@@ -1,4 +1,4 @@
-import Event "Event.mo";
+import Event "Event";
 
 module {
   public type EventHandler<Value, Error> = Event.Type<Value, Error> -> ();

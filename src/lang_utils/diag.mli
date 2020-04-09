@@ -1,6 +1,6 @@
 (* A common data type for diagnostic messages *)
 
-type severity = Warning | Error
+type severity = Warning | Error | Info
 
 type message = {
   sev : severity;
@@ -22,7 +22,7 @@ An extension of the built-in result type that also reports diagnostic messages.
 Both success and failure can come with messages)
 *)
 
-type 'a result = ('a * messages, messages) Pervasives.result
+type 'a result = ('a * messages, messages) Stdlib.result
 
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result
@@ -33,6 +33,7 @@ val fold: ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result
 val flush_messages : 'a result -> 'a option
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
+val warn : Source.region -> string -> string -> unit result
 
 (*
 An impure, but more more convenient interface.

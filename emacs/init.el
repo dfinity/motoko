@@ -6,9 +6,11 @@
 ;; your personal configuration.
 ;;
 ;; Requirements:
-;; - Emacs 26 or newer
-;; - `as-ide` binary (Can be generated with `make as-ide` in the
-;;   compiler repo)
+;; 1. Emacs 26 or newer
+;; 2. dfx
+;;   OR
+;; 2. mo-ide binary (Can be generated with `make mo-ide` in the
+;;    compiler repo)
 ;;
 ;; How to use:
 ;;
@@ -20,21 +22,24 @@
 ;;
 ;; (adjust to match the path to this file)
 ;;
-;; 3. Open an AS source file in an AS project and select the project
-;; root from the menu
+;; 3. Open a Motoko source file in a Motoko project and select the
+;; project root from the menu
 
 ;;======== SETTINGS ==========
-;; Change this to point to your `as-ide` binary, or leave it if the
-;; binary can be found on your PATH
-(setq as/ide-binary "as-ide")
+;; Change this to the command that starts the language server on your
+;; machine. In a dfx project with dfx on your path that is just `dfx
+;; ide`. If you have a more complicated setup you have to pass the
+;; proper entry point and library paths to the `mo-ide` binary
+;; yourself.
+(setq mo/lsp-command '("dfx" "_language-service"))
 
 ;; Change this to point to the directory where you cloned the
 ;; motoko repo
-(setq as/installation-directory "~/code/motoko")
+(setq mo/installation-directory "~/code/motoko")
 
 ;; Change nil to t if you want to use vim bindings for editing and
 ;; navigation
-(setq as/use-evil nil)
+(setq mo/use-evil nil)
 ;;============================
 
 (require 'package)
@@ -58,10 +63,10 @@
 
 (use-package swift-mode :ensure t)
 (eval-and-compile
-  (defun as/as-mode-load-path ()
-    (format "%s/emacs" as/installation-directory)))
+  (defun mo/mo-mode-load-path ()
+    (format "%s/emacs" mo/installation-directory)))
 (use-package motoko-mode
-  :load-path (lambda () (list (as/as-mode-load-path)))
+  :load-path (lambda () (list (mo/mo-mode-load-path)))
   :config
   (add-hook 'motoko-mode-hook 'flycheck-mode)
   (add-hook 'motoko-mode-hook 'lsp)
@@ -74,9 +79,9 @@
   (add-to-list 'lsp-language-id-configuration '(motoko-mode . "motoko"))
   (lsp-register-client
    (make-lsp-client
-    :new-connection (lsp-stdio-connection as/ide-binary)
+    :new-connection (lsp-stdio-connection mo/lsp-command)
     :major-modes '(motoko-mode)
-    :server-id 'asls)))
+    :server-id 'mo-lsp)))
 
 (use-package lsp-ui :ensure t :commands lsp-ui-mode
   :config (setq lsp-ui-sideline-enable nil))
@@ -85,7 +90,7 @@
 (use-package yasnippet :ensure t)
 (use-package flycheck :ensure t)
 
-(when as/use-evil
+(when mo/use-evil
   (use-package evil
     :ensure t
     :init

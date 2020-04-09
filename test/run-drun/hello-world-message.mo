@@ -1,6 +1,7 @@
+import Prim "mo:prim";
 actor {
   public func hello() {
-    debugPrint("Hello World!\n");
+    Prim.debugPrint("Hello World!");
   }
 }
 

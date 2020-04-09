@@ -29,10 +29,7 @@ pointer to a data array.
 */
 
 void* mp_alloc(size_t l) {
-  as_ptr r = alloc_bytes (2*sizeof(void*) + l);
-  FIELD(r, 0) = TAG_BLOB;
-  FIELD(r, 1) = l;
-  return &FIELD(r,2);
+  return alloc(l);
 }
 
 export void* mp_calloc(size_t n, size_t size) {
@@ -181,6 +178,9 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }
+export bool bigint_ne(as_ptr a, as_ptr b) {
+  return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) != 0;
+}
 export bool bigint_lt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) < 0;
 }
@@ -268,19 +268,19 @@ export int bigint_leb128_size(as_ptr n) {
   return ((x + 6) / 7); // divide by 7, round up
 }
 
-void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf) {
+void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf, bool add_bit) {
   // now the number should be positive
   if (mp_isneg(tmp)) bigint_trap();
   while (true) {
     buf[0] = (unsigned char)(mp_get_u32(tmp)); // get low bits
     CHECK(mp_div_2d(tmp, 7, tmp, NULL));
-    if (mp_iszero(tmp)) {
-      // we are done. high bit should be cleared anyways
-      return;
-    } else {
+    if (!mp_iszero(tmp) || (add_bit && (buf[0] & 1<<6))) {
       // more bytes to come, set high bit and continue
       buf[0] |= 1<<7;
       buf++;
+    } else {
+      // we are done. high bit should be cleared anyways
+      return;
     }
   }
 }
@@ -288,17 +288,8 @@ void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf) {
 export void bigint_leb128_encode(as_ptr n, unsigned char *buf) {
   mp_int tmp;
   CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
-  bigint_leb128_encode_go(&tmp, buf);
+  bigint_leb128_encode_go(&tmp, buf, false);
 }
-
-
-int leb128_encoding_size(unsigned char *buf) {
-  // zoom to the end
-  int i = 0;
-  while (buf[i] & (1<<7)) i++;
-  return i+1;
-}
-
 
 export int bigint_2complement_bits(as_ptr n) {
   if (mp_isneg(BIGINT_PAYLOAD(n))) {
@@ -327,9 +318,10 @@ export void bigint_sleb128_encode(as_ptr n, unsigned char *buf) {
     CHECK(mp_init(&big));
     CHECK(mp_2expt(&big, 7*bytes));
     CHECK(mp_add(&tmp, &big, &tmp));
+    bigint_leb128_encode_go(&tmp, buf, false);
+  } else {
+    bigint_leb128_encode_go(&tmp, buf, true);
   }
-
-  bigint_leb128_encode_go(&tmp, buf);
 }
 
 /* (S)LEB128 Decoding */

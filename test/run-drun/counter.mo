@@ -1,11 +1,12 @@
+import Prim "mo:prim";
 actor {
   var c = 1;
   public func inc() {
     c += 1;
-    debugPrintNat c; debugPrint "\n";
+    Prim.debugPrintNat c
   };
   public func printCounter () {
-    debugPrintNat c; debugPrint "\n";
+    Prim.debugPrintNat c
   };
   public func get() : async Nat {
     return c
