@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 open Ir_def
 
 module V = Value
@@ -10,11 +10,13 @@ type flags = {
   print_depth : int
 }
 
-type scope = V.def V.Env.t
+type state
+val initial_state : unit -> state
 
+type scope
 val empty_scope : scope
 val adjoin_scope : scope -> scope -> scope
 
 exception Trap of Source.region * string
 
-val interpret_prog : flags -> scope -> Ir.prog -> scope
+val interpret_prog : flags -> state -> scope -> Ir.prog -> scope

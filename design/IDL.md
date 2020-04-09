@@ -60,7 +60,7 @@ This is a summary of the grammar proposed:
 ```
 <prog>  ::= <def>;* <actor>;?
 <def>   ::= type <id> = <datatype> | import <text>
-<actor> ::= service <id> : (<actortype> | <id>)
+<actor> ::= service <id>? : (<actortype> | <id>)
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
@@ -89,6 +89,7 @@ This is a summary of the grammar proposed:
 <reftype>  ::=
   | func <functype>
   | service <actortype>
+  | principal
 
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
@@ -266,7 +267,6 @@ Text strings are represented by the type `text` and consist of a sequence of Uni
 ```
 **Note:** The `text` type is distinguished from `vec nat8` (a UTF-8 string) or `vec nat32` (a sequence of code points) in order to allow bindings to map it to a suitable string type, and enable the binary format to select an efficient internal representation independently.
 
-
 #### Null
 
 The type `null` has exactly one value (the *null* value) and therefor carries no information. It can e.g. be used as a placeholder for optional fields that ought to be added to a record in future upgrades, or for *variant cases* that do not need any value, see below.
@@ -327,7 +327,7 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 ```
 We identify `<fieldtype>` lists in a record type up to reordering.
 
-The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
+The id is described as a simple unsigned integer that has to fit the 32 bit value range. It can be given in either decimal or hexadecimal notation:
 
 ```
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
@@ -424,7 +424,24 @@ type tree = variant {
 
 ### References
 
-A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
+A third form of value are *references*. They represent first-class handles to (possibly remote) *functions*, *services*, or *principals*.
+
+#### Actor References
+
+An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
+
+```
+<reftype> ::= ... | service <actortype>
+```
+
+##### Example
+
+```
+type broker = service {
+  findCounterService : (name : text) ->
+    (service {up : () -> (); current : () -> nat});
+}
+```
 
 #### Function References
 
@@ -442,24 +459,13 @@ type engine = service {
 }
 ```
 
-#### Actor References
+#### Principal References
 
-An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
-
-```
-<reftype> ::= ... | service <actortype>
-```
-
-
-##### Example
+A *principal reference* points to an identity, such as an actor or a user. Through this, we can authenticate or authorize other services or users.
 
 ```
-type broker = service {
-  findCounterService : (name : text) ->
-    (service {up : () -> (); current : () -> nat});
-}
+<reftype> ::= ... | principal | ...
 ```
-
 
 ### Type Definitions
 
@@ -537,18 +543,6 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-**TODO: unsound, fix**
-
-To make these constraints as flexible as possible, two special rules apply:
-
- * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
-
-  - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
-  - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
-
-Future extensions: defaults, including for variants?
-
-
 ### Rules
 
 #### Primitive Types
@@ -620,54 +614,7 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* }
 record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-**TODO: Rules below are unsound as is, need fixing!**
-
-In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-```
-TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
-```
-type T = {};
-actor { f : T -> T };
-```
-can safely be upgraded to
-```
-type T' = {x : opt text};
-actor { f : T' -> T' };
-```
-for all first-order uses of `T`, because both of the following hold:
-```
-upgrade T' <: T
-upgrade T <: T'
-```
-And hence:
-```
-upgrade (T' -> T')  <:  (T -> T)
-```
-for some version of a type `upgrade T`.
-Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
-```
-actor { g : (h : T -> T) -> ()}
-```
-Upgrading `T` as above contra-variantly requires
-```
-upgrade (T -> T)  <:  (T' -> T')
-```
-which also holds.
-
-Note: Subtyping still needs to be transitive . We must not allow:
-```
-record {x : opt text} <: record {} <: record {x : opt nat}
-```
-**TODO: Sanity continues from here.**
-
+**NOTE**: There is a need for a mechanism to also remove fields (which means adding a field when a record appears as an argument). The precise mechanism is still work in progress.
 
 #### Variants
 
@@ -774,20 +721,6 @@ record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <f
   ~> \x.{f2 x with <nat> = f1 x.<nat>}
 ```
 
-TODO: Fix
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-  ~> \x.{f x; <nat> = null}
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-  ~> \x.{f x; <nat> = null}
-```
-
-
 #### Variants
 
 ```
@@ -858,7 +791,7 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server code in ActorScript could be:
+With this IDL file, the server code in Motoko could be:
 ```
 actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
@@ -897,6 +830,21 @@ Note:
 
 
 ### Serialisation
+
+This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+
+Serialisation is defined by three functions `T`, `M`, and `R` given below.
+
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references and principal references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
+
+Likewise, there are two forms of IDL values for function references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
+
 
 #### Notation
 
@@ -952,6 +900,7 @@ T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
   sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
+T(principal)= sleb128(-24)                                        // 0x68
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -1015,8 +964,14 @@ M : (<nat>, <val>) -> <fieldtype> -> i8*
 M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
-M(r : service <actortype>) = .
-M(r : func <functype>)     = .
+M(ref(r) : service <actortype>) = i8(0)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec nat8)
+
+M(ref(r)   : func <functype>) = i8(0)
+M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
+
+M(ref(r) : principal) = i8(0)
+M(id(v*) : principal) = i8(1) M(v* : vec nat8)
 ```
 
 
@@ -1040,8 +995,12 @@ R : (<nat>, <val>) -> <fieldtype> -> <ref>*
 R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
-R(r : service <actortype>) = r
-R(r : func <functype>)     = r
+R(ref(r) : service <actortype>) = r
+R(id(b*) : service <actortype>) = .
+R(ref(r)   : func <functype>) = r
+R(pub(s,n) : func <functype>) = .
+R(ref(r) : principal) = r
+R(id(b*) : principal) = .
 ```
 
 Note:
@@ -1053,7 +1012,7 @@ Note:
 
 Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -23). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -24). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
 * A value corresponding to a future type is called a *future value*. It is represented by two LEB128-encoded counts, *m* and *n*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
@@ -1091,27 +1050,32 @@ The types of these values are assumed to be known from context, so the syntax do
 ```
 <val> ::=
   | <primval> | <consval> | <refval>
+  | ( <annval> )
+
+<annval> ::=
+  | <val>
   | <val> : <datatype>
 
 <primval> ::=
-  | <nat> | <int> | <float>     (TODO: same as ActorScript grammar plus sign)
-  | <text>                      (TODO: same as ActorScript grammar)
+  | <nat> | <int> | <float>     (TODO: same as Motoko grammar plus sign)
+  | <text>                      (TODO: same as Motoko grammar)
   | true | false
   | null
 
 <consval> ::=
   | opt <val>
-  | vec { <val>;* }
+  | vec { <annval>;* }
   | record { <fieldval>;* }
   | variant { <fieldval> }
 
-<fieldval> ::= <nat> = <val>
+<fieldval> ::= <nat> = <annval>
 
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
+  | principal <text>           (principal URI)
 
-<arg> ::= ( <val>,* )
+<arg> ::= ( <annval>,* )
 
 ```
 
@@ -1124,8 +1088,8 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
   | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
 
 <fieldval> ::= ...
-  | <name> = <val>         :=  <hash(name)> = <val>
-  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <name> = <annval>      :=  <hash(name)> = <annval>
+  | <annval>               :=  N = <annval>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> = null   (only in variants)
   | <name>                 :=  <name> = null  (only in variants)
 ```

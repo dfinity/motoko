@@ -1,0 +1,6 @@
+type Text = Nat;
+type Nat = null;
+type Id = int;
+service : {
+  "f": (Nat, Text) -> (Id);
+}

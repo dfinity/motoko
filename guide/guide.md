@@ -26,6 +26,7 @@ TODO:
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
 * [ ] Queries
 * [ ] Remove Shared type
+* [ ] Document .vals and .key for arrays. Iter type.
 -->
 
 # Introduction
@@ -138,9 +139,10 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and async assert await break case catch class continue else
-false for func if in new not null object or label let loop
-private public return shared switch true try type var while
+actor and async assert await break case catch class continue debug
+else false for func if in import module not null object or label
+let loop private public return shared try throw debug_show query
+switch true type var while
 ```
 
 ## Identifiers
@@ -355,7 +357,7 @@ An absent `<sort>?` abbreviates `object`.
 
 ## Primitive types
 
-ActorScript provides the following primitive type identifiers, including support for Booleans, signed and unsigned integers and machine words of various sizes, characters and text.
+Motoko provides the following primitive type identifiers, including support for Booleans, signed and unsigned integers and machine words of various sizes, characters and text.
 
 The category of a type determines the operators (unary, binary, relational and in-place update via assigment) applicable to values of that type.
 
@@ -1040,7 +1042,7 @@ Otherwise, `r2` is false and the result is `()`.
 The for expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 
 * `<exp1>` has type `{ next : () -> ?T; }`;
-* pattern `<pat>` has type `U`; and,
+* pattern `<pat>` has type `T`; and,
 * expression `<exp2>` has type `()` (in the environment extended with `<pat>`'s bindings).
 
 The `for`-expression is syntactic sugar for
@@ -1058,7 +1060,7 @@ for ( <pat> in <exp1> ) <exp2> :=
   }
 ```
 
-where `x` is fresh identifier.
+where `x` is a fresh identifier.
 
 In particular, the `for` loops will trap if evaluation of `<exp1>` traps; as soon as some value of `x.next()` traps or the value of `x.next()` does not match pattern `<pat>`.
 

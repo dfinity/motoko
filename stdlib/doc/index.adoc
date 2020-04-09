@@ -1,0 +1,53 @@
+= The Motoko Standard Library
+:toc:
+:toc: right
+:sectanchors:
+
+This is the reference manual for the Motoko standard library. The following chapters each describe one module provided by the standard library. You can import the module under a name of your choice, e.g.
+....
+import List "mo:stdlib/List"
+....
+
+or
+
+....
+import L "mo:stdlib/List"
+....
+
+For most basic types (<<mod-Int,`Int`>>, <<mod-Char,`Char`>>) there is one module with common operations on them. Additionally, there are more advanced data structures (<<mod-Trie,`Trie`>>) and utility modules (<<mod-Iter,`Iter`>>, <<mod-Debug,`Debug`>>).
+
+// Primitive data types
+
+include::Nat.adoc[leveloffset=+1]
+include::Int.adoc[leveloffset=+1]
+include::Char.adoc[leveloffset=+1]
+include::Text.adoc[leveloffset=+1]
+include::Float.adoc[leveloffset=+1]
+include::None.adoc[leveloffset=+1]
+include::Option.adoc[leveloffset=+1]
+include::Function.adoc[leveloffset=+1]
+include::Array.adoc[leveloffset=+1]
+include::Blob.adoc[leveloffset=+1]
+include::Principal.adoc[leveloffset=+1]
+
+// Complex data structures
+
+include::Result.adoc[leveloffset=+1]
+include::Iter.adoc[leveloffset=+1]
+include::Buf.adoc[leveloffset=+1]
+include::List.adoc[leveloffset=+1]
+include::AssocList.adoc[leveloffset=+1]
+include::Hash.adoc[leveloffset=+1]
+include::HashMap.adoc[leveloffset=+1]
+include::Trie.adoc[leveloffset=+1]
+include::TrieMap.adoc[leveloffset=+1]
+include::TrieSet.adoc[leveloffset=+1]
+
+// Utilities
+include::Prelude.adoc[leveloffset=+1]
+include::Debug.adoc[leveloffset=+1]
+
+
+// At this point I’d like to include a proper index,
+// auto-generated with all functions. But that’s waiting for
+// https://github.com/asciidoctor/asciidoctor/pull/3160

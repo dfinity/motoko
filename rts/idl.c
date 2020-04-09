@@ -72,8 +72,6 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 #define IDL_PRIM_reserved (-16)
 #define IDL_PRIM_empty    (-17)
 
-#define IDL_PRIM_lowest   (-17)
-
 #define IDL_CON_opt       (-18)
 #define IDL_CON_vec       (-19)
 #define IDL_CON_record    (-20)
@@ -81,6 +79,19 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 #define IDL_CON_func      (-22)
 #define IDL_CON_service   (-23)
 
+#define IDL_REF_principal (-24)
+
+static bool is_primitive_type(int32_t ty) {
+  static const int32_t IDL_PRIM_lowest = -17;
+  return ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal);
+}
+
+static void check_typearg(int32_t ty, uint32_t n_types) {
+  // arguments to type constructors can be:
+  if (is_primitive_type(ty)) return;  // primitive types
+  if (ty >=0 && ty < n_types) return; // type indices.
+  idl_trap_with("invalid type argument");
+}
 
 /*
  * This function parses the IDL magic header and type description. It
@@ -94,6 +105,8 @@ export int32_t read_i32_of_sleb128(buf *buf) {
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
 export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
+  if (buf->p == buf->e) idl_trap_with("empty input");
+
   // Magic bytes (DIDL)
   if (read_word(buf) != 0x4C444944) idl_trap_with("missing magic bytes");
 
@@ -113,36 +126,38 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
-    if (ty >= IDL_PRIM_lowest) {
-      idl_trap_with("type index too high"); // illegal
+    if (ty >= 0) {
+      idl_trap_with("illeagal type table"); // illegal      
+    } else if (is_primitive_type(ty)) {
+      idl_trap_with("primitive type in type table"); // illegal
     } else if (ty == IDL_CON_opt) {
       int32_t t = read_i32_of_sleb128(buf);
-      if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+      check_typearg(t, n_types);
     } else if (ty == IDL_CON_vec) {
       int32_t t = read_i32_of_sleb128(buf);
-      if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+      check_typearg(t, n_types);
     } else if (ty == IDL_CON_record) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
     } else if (ty == IDL_CON_variant) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
     } else if (ty == IDL_CON_func) {
       // arg types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
       // ret types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
       // annotations
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
@@ -155,18 +170,18 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
         (buf->p) += size;
         // type
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
-    } else {
-      // no support for future types yet
-      idl_trap_with("future type");
+    } else { // future type
+      uint32_t n = read_u32_of_leb128(buf);
+      advance(buf, n);
     }
   }
   // Now read the main types
   *main_types_out = buf->p;
   for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
     int32_t t = read_i32_of_sleb128(buf);
-    if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+    check_typearg(t, n_types);
   }
 
   *typtbl_out = typtbl;
@@ -225,6 +240,14 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         return;
       case IDL_PRIM_empty:
         idl_trap_with("skip_any: encountered empty");
+      case IDL_REF_principal:
+        {
+          if (read_byte(b)) {
+            uint32_t len = read_u32_of_leb128(b);
+            advance(b, len);
+          }
+          return;
+        }
       default:
         idl_trap_with("skip_any: unknown prim");
     }
@@ -250,9 +273,9 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         for (uint32_t n = read_u32_of_leb128(&tb); n > 0; n--) {
           skip_leb128(&tb);
           int32_t it = read_i32_of_sleb128(&tb);
-	  // This is just a quick check; we should be keeping
-	  // track of all enclosing records to detect larger loops
-	  if (it == t) idl_trap_with("skip_any: recursive record");
+          // This is just a quick check; we should be keeping
+          // track of all enclosing records to detect larger loops
+          if (it == t) idl_trap_with("skip_any: recursive record");
           skip_any(b, typtbl, it, depth + 1);
         }
         return;
@@ -271,8 +294,20 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         return;
       }
 
-      default:
-        idl_trap_with("skip_any: unknown tycon");
+      case IDL_CON_func:
+        idl_trap_with("skip_any: func");
+
+      case IDL_CON_service:
+        idl_trap_with("skip_any: service");
+
+      default: { // future type
+        uint32_t n_data = read_u32_of_leb128(b);
+        uint32_t n_ref = read_u32_of_leb128(b);
+        advance(b, n_data);
+        if (n_ref > 0) {
+          idl_trap_with("skip_any: skipping references");
+        }
+      }
     }
   }
 }

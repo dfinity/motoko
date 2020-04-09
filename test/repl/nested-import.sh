@@ -1,4 +1,4 @@
 #!/bin/bash
-${ASC:-$(dirname "$BASH_SOURCE")/../../src/asc} -v -i <<__END__ | grep Parsing
-import "lib/nested.as";
+${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -v -i <<__END__ | grep Parsing
+import "lib/nested";
 __END__

@@ -1,0 +1,12 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go_tt(0x4449444c0000)
+← completed: 0x4449444c000171034f6e65
+→ update go_ta(0x4449444c0000)
+← completed: 0x4449444c000171034f6e65
+→ update go_at(0x4449444c0000)
+← completed: 0x4449444c000171034f6e65
+→ update go_aa(0x4449444c0000)
+← completed: 0x4449444c000171034f6e65

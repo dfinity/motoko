@@ -58,18 +58,18 @@ let parse_file filename : parse_result =
 (* Type checking *)
 
 let check_prog senv prog
-  : Typing.scope Diag.result =
+  : (Typing.scope * Syntax.typ option) Diag.result =
   phase "Checking" prog.Source.note;
   let r = Typing.check_prog senv prog in
   (match r with
-   | Ok (scope, _) ->
+   | Ok ((scope, _), _) ->
       if !Flags.verbose then print_stat_te scope;
    | Error _ -> ());
   r
 
 (* Imported file loading *)
 
-type load_result = (Syntax.prog * Typing.scope) Diag.result
+type load_result = (Syntax.prog * Typing.scope * Syntax.typ option) Diag.result
 
 module LibEnv = Env.Make(String)
 
@@ -99,7 +99,7 @@ let chase_imports senv imports =
             Diag.bind (Resolve_import.resolve prog base) (fun imports ->
                 Diag.bind (go_set imports) (fun () ->
                     Diag.bind (merge_env imports senv !lib_env) (fun base_env ->
-                        Diag.bind (check_prog base_env prog) (fun scope ->
+                        Diag.bind (check_prog base_env prog) (fun (scope, _) ->
                             lib_env := LibEnv.add file scope !lib_env;
                             pending := S.remove file !pending;
                             Diag.return ()
@@ -113,22 +113,23 @@ let load_prog parse senv =
       Diag.bind (Resolve_import.resolve prog base) (fun imports ->
           Diag.bind (chase_imports senv imports) (fun lib_env ->
               Diag.bind (merge_env imports senv lib_env) (fun base_env ->
-                  Diag.bind (check_prog base_env prog) (fun scope ->
-                      Diag.return (prog, scope))))))
-   
+                  Diag.bind (check_prog base_env prog) (fun (scope, actor) ->
+                      Diag.return (prog, scope, actor))))))
+
 (* Only type checking *)
 
 let initial_stat_env = Typing.empty_scope
 
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
-let check_prog prog : Typing.scope Diag.result = check_prog initial_stat_env prog
-                                  
+let check_prog prog : Typing.scope Diag.result =
+  Diag.bind (check_prog initial_stat_env prog) (fun (scope, _) -> Diag.return scope)
+
 (* JS Compilation *)
 
 type compile_result = Buffer.t Diag.result
                     
 let compile_js_file file : compile_result =
   Diag.bind (check_file file)
-    (fun (prog, senv) ->
+    (fun (prog, senv, _) ->
       phase "JS Compiling" file;
       Diag.return (Compile_js.compile senv prog))

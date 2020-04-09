@@ -1,1 +1,1 @@
-(unknown location): import error, file self-import.as must not depend on itself
+self-import.mo:1.1-1.21: import error, file self-import.mo must not depend on itself
