@@ -53,7 +53,7 @@ module Const = struct
        (* projection of Ir.list. NB: pure, no access to env *)
        const_lit_of_lit : Ir.lit -> Const.lit (* NB: pure, no access to env *)
        (* creates vanilla representation (e.g. to put in static data structures *)
-       vanilla_of_lit : E.env -> Const.lit -> i32
+       vanilla_lit : E.env -> Const.lit -> i32
        (* creates efficient stack representation *)
        compile_lit : E.env -> Const.lit -> (SR.t, code)
 
@@ -4668,11 +4668,11 @@ let static_nat32 env i =
 (* Materializes a Const.lit: If necessary, puts
    bytes into static memory, and returns a vanilla value.
 *)
-let vanilla_of_lit env (lit : Const.lit) : int32 =
+let vanilla_lit env (lit : Const.lit) : int32 =
   match lit with
     (* Booleans are directly in Vanilla representation *)
     | Const.Vanilla n  -> n
-    | Const.BigInt n   -> BigNum.lit_vanilla env n
+    | Const.BigInt n   -> BigNum.vanilla_lit env n
     | Const.Word32 n   -> static_nat32 env n
     | Const.Word64 n   -> raise (Invalid_argument "static: int64")
     | Const.Float64 n  -> raise (Invalid_argument "static: float")
@@ -4777,7 +4777,7 @@ module StackRep = struct
       (* TODO: allocate statically here *)
       Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
     | Const.Lit l ->
-      let ptr = Lit.vanilla_of_lit env l in
+      let ptr = Lit.vanilla_lit env l in
       Lib.Promise.fulfill p ptr;
       compile_unboxed_const ptr
 
