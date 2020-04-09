@@ -1,8 +1,6 @@
 export default ({ IDL }) => {
  const t =
-  IDL.Obj({'\"': IDL.Nat, '\'': IDL.Nat, '\"\'': IDL.Nat, '\\\n\'\"': IDL.Nat
-   })
- const actor_E = new IDL.ActorInterface({
-  '\n\'\"\'\'\"\"\r\t': IDL.Func(IDL.Obj({'0': t}), IDL.Obj({}))});
- return actor_E;
+  IDL.Record({'\"': IDL.Nat, '\'': IDL.Nat, '\"\'': IDL.Nat,
+   '\\\n\'\"': IDL.Nat})
+ return IDL.Service({'\n\'\"\'\'\"\"\r\t': IDL.Func([t], [], [])});
 };

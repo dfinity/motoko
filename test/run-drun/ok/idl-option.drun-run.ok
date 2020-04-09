@@ -1,7 +1,7 @@
-ingress(0) System
+ingress System
 debug.print: ok: null
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
+Ok: Payload: 0x4449444c0000
 debug.print: ok: null
-ingress(2) Completed: Canister: Payload: 0x4449444c0000
+Ok: Payload: 0x4449444c0000
 debug.print: ok: Foo
-ingress(3) Completed: Canister: Payload: 0x4449444c0000
+Ok: Payload: 0x4449444c0000

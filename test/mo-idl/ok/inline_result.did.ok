@@ -1,4 +1,4 @@
-service anon_inline_result {
+service : {
   "f": (opt nat) -> (variant {
                        "err": text;
                        "ok": nat;

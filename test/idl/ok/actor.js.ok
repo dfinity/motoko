@@ -1,11 +1,9 @@
 export default ({ IDL }) => {
  const o = IDL.Rec()
- const f = IDL.Func(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Int8}))
- const h = IDL.Func(IDL.Obj({'0': f}), IDL.Obj({'0': f}))
+ const f = IDL.Func([IDL.Int8], [IDL.Int8], [])
+ const h = IDL.Func([f], [f], [])
  const g = f
  o.fill(IDL.Opt(o))
- const actor_g = new IDL.ActorInterface({
-  'f': IDL.Func(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': h})), 'g': f, 
-  'h': g, 'o': IDL.Func(IDL.Obj({'0': o}), IDL.Obj({'0': o}))});
- return actor_g;
+ return IDL.Service({'f': IDL.Func([IDL.Nat], [h], []), 'g': f, 'h': g,
+  'o': IDL.Func([o], [o], [])});
 };

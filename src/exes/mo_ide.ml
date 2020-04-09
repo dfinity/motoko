@@ -1,3 +1,5 @@
+open Mo_config
+
 let entry_point : string option ref = ref None
 let debug = ref false
 
@@ -14,6 +16,8 @@ let argspec =
       Arg.String set_entry_point,
       " specifies the entry point for the current project"
     ]
+    @ Args.error_args
+    @ Args.package_args
 
 let () =
   Arg.parse argspec ignore usage;

@@ -32,6 +32,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | PrimE _
   | VarE _
   | LitE _
+  | ActorUrlE _
   | ImportE _
   | FuncE _ ->
     T.Triv
@@ -82,7 +83,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE exp1 ->
+  | AsyncE _ ->
     T.Triv
   | ThrowE _
   | TryE _
@@ -106,6 +107,7 @@ and effect_dec dec =
 and infer_effect_dec dec =
   match dec.it with
   | ExpD e
+  | IgnoreD e
   | LetD (_,e)
   | VarD (_, e) ->
     effect_exp e

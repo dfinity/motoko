@@ -1,6 +1,7 @@
-import Array "../../../array.mo";
-import Int "../../../int.mo";
-import Text "../../../text.mo";
+import Debug "mo:stdlib/Debug";
+import Array "mo:stdlib/Array";
+import Int "mo:stdlib/Int";
+import Text "mo:stdlib/Text";
 
 module {
   public type Group = {
@@ -42,10 +43,10 @@ module {
   public func run(groups_ : [Group]) : Bool {
     let (groups, status) = getGroups(groups_);
     printGroups(groups, "");
-    debugPrint("\n");
-    debugPrint(printStatus(status));
-    debugPrint("\n");
-    debugPrint("\n");
+    Debug.print("\n");
+    Debug.print(printStatus(status));
+    Debug.print("\n");
+    Debug.print("\n");
     status.failed == 0;
   };
 
@@ -86,7 +87,7 @@ module {
           case (_, _, _) { ":" # printStatus(status); };
         };
       };
-      debugPrint(newline # indent # group.name # statusText # "\n");
+      Debug.print(newline # indent # group.name # statusText # "\n");
       printGroups(group.groups, indent # "  ");
     };
   };

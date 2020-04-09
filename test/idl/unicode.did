@@ -6,7 +6,8 @@ type A = record {
 };
 type B = variant { ""; "空的"; "  空的  "; "1⃣️2⃣️3⃣️"; };
 
-service C {
+service C:
+{
   "函数名": (A) -> (B);
   "": (nat) -> (nat);
   "👀": (nat) -> (nat) query;

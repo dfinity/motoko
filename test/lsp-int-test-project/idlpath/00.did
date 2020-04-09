@@ -1,0 +1,3 @@
+service : {
+  "add_counter": (nat) -> () oneway;
+}

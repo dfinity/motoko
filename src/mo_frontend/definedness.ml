@@ -11,7 +11,7 @@ here in for blocks (function decs).
 *)
 
 open Mo_def
-
+open Mo_types
 open Source
 open Syntax
 
@@ -86,12 +86,15 @@ let rec exp msgs e : f = match e.it with
   | RetE e              -> eagerify (exp msgs e)
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
-
+  | FuncE (_, sort_pat, tp, p, t, _, e) ->
+    (match sort_pat.it with
+     | Type.Local ->
+       delayify (exp msgs e /// pat msgs p)
+     | Type.Shared (_, p1) ->
+      delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
   (* The rest remaining cases just collect the uses of subexpressions: *)
-  | LitE l              -> M.empty
-  | PrimE _             -> M.empty
-  | ImportE _           -> M.empty
+  | LitE _ | ActorUrlE _
+  | PrimE _ | ImportE _ -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
@@ -119,7 +122,7 @@ let rec exp msgs e : f = match e.it with
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | LabelE (i, t, e)    -> exp msgs e
   | DebugE e            -> exp msgs e
-  | AsyncE e            -> exp msgs e
+  | AsyncE (_, e)    -> exp msgs e
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
@@ -153,7 +156,7 @@ and exp_fields msgs efs : f =
   decs msgs (List.map (fun ef -> ef.it.dec) efs)
 
 and dec msgs d = match d.it with
-  | ExpD e -> (exp msgs e, S.empty)
+  | ExpD e | IgnoreD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)

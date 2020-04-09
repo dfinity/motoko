@@ -4,10 +4,10 @@ A simple language for writing Dfinity actors.
 
 ## User Documentation & Samples
 
+* [Building, installing, developing on Motoko](Building.md).
 * [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/users-guide/latest/download/1/as-slides.html) ([sources](guide/as-slides.md)).
 * [Draft (incomplete) manual](guide/guide.md).
-* [Prelude](src/prelude/prelude.ml).
-* Beginnings of [standard library](stdlib).
+* [Standard library](stdlib).
 * [Small samples](samples).
 * [Produce Exchange](stdlib/examples/produce-exchange).
 
@@ -211,12 +211,12 @@ A simple language for writing Dfinity actors.
 ## Example
 
 ```
-import List "as:std/list";
+import List "mo:std/list";
 
 type Post = shared Text -> ();
 
 actor class Server() = {
-  private var clients : List<Client> = List.empty<Client>();
+  private var clients : List.List<Client> = List.empty<Client>();
 
   private func broadcast(msg : Text) {
     for (client in List.iter(clients)) {
@@ -258,7 +258,7 @@ charlie.go();
 
 ## Syntax
 
-See [here](design/Syntax.html).
+See [here](design/Syntax.md).
 
 
 ## Semantics
@@ -268,4 +268,4 @@ TODO ...
 
 ## Implementation
 
-See [here](design/Implementation.html)
+See [here](design/Implementation.md)

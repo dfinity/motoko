@@ -11,7 +11,7 @@ type typ_info = {
     typ : typ;
     is_rec : bool;
   }
-          
+
 (* Gather type definitions from actor and sort the definitions in topological order *)              
 let chase_env env actor =
   let new_env = ref [] in
@@ -19,6 +19,7 @@ let chase_env env actor =
   let rec chase t =
     match t.it with
     | PrimT _ -> ()
+    | PrincipalT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -31,15 +32,13 @@ let chase_env env actor =
     | VecT t -> chase t
     | RecordT fs -> chase_fields fs
     | VariantT fs -> chase_fields fs
-    | FuncT (ms, fs1, fs2) -> chase_fields fs1; chase_fields fs2
+    | FuncT (ms, fs1, fs2) -> List.iter chase fs1; List.iter chase fs2
     | PreT -> assert false
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
   in
-  match actor.it with
-  | ActorD (_, t) ->
-     chase t;
-     List.rev (!new_env)
+  chase actor;
+  List.rev (!new_env)
 
 (* Given a topologically sorted type definition list, infer which types are recursive *)
 let infer_rec env_list =
@@ -48,6 +47,7 @@ let infer_rec env_list =
   let rec go t =
     match t.it with
     | PrimT _ -> ()
+    | PrincipalT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -58,7 +58,7 @@ let infer_rec env_list =
     | VecT t -> go t
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
-    | FuncT (_, fs1, fs2) -> go_fields fs1; go_fields fs2
+    | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
     | preT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
@@ -84,14 +84,19 @@ let pp_prim p =
   | Int16 -> "Int16"
   | Int32 -> "Int32"
   | Int64 -> "Int64"
-  | Float32 -> "Float"
-  | Float64 -> "Float"
+  | Float32 -> "Float32"
+  | Float64 -> "Float64"
   | Bool -> "Bool"
   | Text -> "Text"
-  | Null -> "Unit"
+  | Null -> "Null"
   | Reserved -> "None"
-  | Empty -> "Empty"
-  
+  | Empty -> "None"
+
+let pp_mode ppf m =
+  match m.it with
+  | Oneway -> str ppf "'oneway'"
+  | Query -> str ppf "'query'"
+
 let rec concat ppf f sep list =
   match list with
   | [] -> ()
@@ -103,20 +108,22 @@ let rec pp_typ ppf t =
   (match t.it with
   | VarT s -> id ppf s
   | PrimT p -> str ppf ("IDL."^(pp_prim p))
+  | PrincipalT -> str ppf "IDL.Principal"
   | RecordT ts -> pp_fields ppf ts
-  | VecT t -> str ppf "IDL.Arr("; pp_typ ppf t; str ppf ")";
+  | VecT t -> str ppf "IDL.Vec("; pp_typ ppf t; str ppf ")";
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
      str ppf "IDL.Func(";
-     pp_fields ppf t1;
+     pp_args ppf t1;
      kwd ppf ",";
-     pp_fields ppf t2;
+     pp_args ppf t2;
+     kwd ppf ",";
+     pp_modes ppf ms;
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
-     kwd ppf "new";
-     str ppf "IDL.ActorInterface({";
+     str ppf "IDL.Service({";
      concat ppf pp_meth "," ts;
      str ppf "})";
      pp_close_box ppf ();
@@ -124,9 +131,23 @@ let rec pp_typ ppf t =
   );
   pp_close_box ppf ()
 
+and pp_args ppf args =
+  pp_open_box ppf 1;
+  str ppf "[";
+  concat ppf pp_typ "," args;
+  str ppf "]";
+  pp_close_box ppf ()
+
+and pp_modes ppf modes =
+  pp_open_box ppf 1;
+  str ppf "[";
+  concat ppf pp_mode "," modes;
+  str ppf "]";
+  pp_close_box ppf ()  
+
 and pp_fields ppf fs =
   pp_open_box ppf 1;
-  str ppf "IDL.Obj({";
+  str ppf "IDL.Record({";
   concat ppf pp_field "," fs;
   str ppf "})";
   pp_close_box ppf ()
@@ -135,9 +156,8 @@ and pp_field ppf tf =
   pp_open_box ppf 1;
   let f_name =
     match tf.it.label.it with
-    | Id n -> Lib.Uint32.to_string n
     | Named name -> name
-    | Unnamed n -> Lib.Uint32.to_string n
+    | Id n | Unnamed n -> "_" ^ (Lib.Uint32.to_string n) ^ "_"
   in quote_name ppf f_name; kwd ppf ":"; pp_typ ppf tf.it.typ;
   pp_close_box ppf ()
 
@@ -174,31 +194,22 @@ let pp_rec ppf x =
   pp_close_box ppf ();
   pp_print_cut ppf ()
 
-let pp_actor ppf actor recs =
-  match actor.it with
-   | ActorD (x, t) ->
-      let x = ("actor_" ^ x.it) @@ x.at in
-      pp_open_hovbox ppf 1;
-      kwd ppf "const";
-      (match t.it with
-       | ServT tp ->
-          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-          str ppf "IDL.ActorInterface({";
-          concat ppf pp_meth "," tp;
-          str ppf "});"
-       | VarT var ->
-          id ppf x; space ppf (); kwd ppf "=";
-          if TS.mem var.it recs then
-            str ppf (var.it ^ ".__typ;")
-          else
-            str ppf var.it;
-       | _ -> assert false
-      );
-      pp_close_box ppf ();      
-      pp_force_newline ppf ();
-      pp_open_hovbox ppf 0;
-      kwd ppf "return"; id ppf x; str ppf ";";
-      pp_close_box ppf ()
+let pp_actor ppf t recs =
+  pp_open_hovbox ppf 1;
+  kwd ppf "return";
+  (match t.it with
+   | ServT tp ->
+      str ppf "IDL.Service({";
+      concat ppf pp_meth "," tp;
+      str ppf "});"
+   | VarT var ->
+      if TS.mem var.it recs then
+        str ppf (var.it ^ ".getType();")
+      else
+        str ppf var.it;
+   | _ -> assert false
+  );
+  pp_close_box ppf ()    
 
 let pp_header ppf () =
   pp_open_vbox ppf 1;
@@ -224,7 +235,7 @@ let pp_prog ppf env prog =
      List.iter (pp_dec ppf) env_list;
      pp_actor ppf actor recs;
      pp_footer ppf ()
-   
+
 let compile (scope : Typing.scope) (prog : Syntax.prog) =
   let buf = Buffer.create 100 in
   let ppf = formatter_of_buffer buf in

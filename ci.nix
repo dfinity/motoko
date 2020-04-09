@@ -1,17 +1,13 @@
 { src ? { rev = null; } }:
 let
-  nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { };
-  nixpkgs-linux = (import ./nix/nixpkgs.nix).nixpkgs { system = "x86_64-linux"; };
-  nixpkgs-darwin = (import ./nix/nixpkgs.nix).nixpkgs { system = "x86_64-darwin"; };
+  nixpkgs = import ./nix { };
   inject-rev = drv: drv.overrideAttrs (attrs: { rev = src.rev; });
 
-  linux = import ./default.nix { nixpkgs = nixpkgs-linux; };
-  darwin = import ./default.nix { nixpkgs = nixpkgs-darwin; };
+  linux = import ./default.nix { system = "x86_64-linux"; };
+  darwin = import ./default.nix { system = "x86_64-darwin"; };
 in
 linux // {
   darwin = darwin.all-systems-go;
-  moc-tar-x86_64-darwin = darwin.moc-tar;
-  moc-tar-x86_64-linux = linux.moc-tar;
   all-systems-go = inject-rev (nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [

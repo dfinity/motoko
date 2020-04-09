@@ -20,7 +20,7 @@ let range_of_region at =
 let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
     val source = Js.string "motoko"
-    val severity = match msg.sev with Diag.Error -> 1 | Diag.Warning -> 2
+    val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info)  -> 2
     val range = range_of_region msg.at
     val message = Js.string msg.text
   end)
@@ -41,7 +41,6 @@ let js_check source =
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
-    | "dfinity" -> Flags.AncientMode
     | _ -> Flags.WasmMode
   in
   match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with

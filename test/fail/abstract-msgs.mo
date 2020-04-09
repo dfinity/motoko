@@ -19,5 +19,5 @@
 
 // Phantom parameters are fine
 { type X<B <: Any> = shared () -> ();
-  func foo<A <: Any>() { shared func bar(f : X<A>) = (); () }
+  func foo<A <: Any>() { shared func bar(f : X<A>) {}; () }
 };

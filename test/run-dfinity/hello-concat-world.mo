@@ -1,1 +1,0 @@
-debugPrint("Hello " # "World!\n");

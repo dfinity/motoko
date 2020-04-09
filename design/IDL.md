@@ -7,7 +7,7 @@ To document, discover, and interact with actors on the platform, we need an inte
 * Language-independent description of actor interfaces and the data they
 exchange (names, parameter and result formats of actor methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
-* Extensible, backwards-compatible
+* Extensible, backwards-compatibleBecuase this is an old branch that does things that cause headaches to the infra team, closing. One cold also update it and reopen; as long as the bulid system is recent it’s fine to keep them around in open state.
 * Well-formedness is checkable
 * Deterministic mapping to serialised representation
 * Human-readable and machine-readable
@@ -60,7 +60,7 @@ This is a summary of the grammar proposed:
 ```
 <prog>  ::= <def>;* <actor>;?
 <def>   ::= type <id> = <datatype> | import <text>
-<actor> ::= service <id> : (<actortype> | <id>)
+<actor> ::= service <id>? : (<actortype> | <id>)
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
@@ -88,6 +88,7 @@ This is a summary of the grammar proposed:
 <reftype>  ::=
   | func <functype>
   | service <actortype>
+  | principal
 
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
@@ -265,7 +266,6 @@ Text strings are represented by the type `text` and consist of a sequence of Uni
 ```
 **Note:** The `text` type is distinguished from `vec nat8` (a UTF-8 string) or `vec nat32` (a sequence of code points) in order to allow bindings to map it to a suitable string type, and enable the binary format to select an efficient internal representation independently.
 
-
 #### Null
 
 The type `null` has exactly one value (the *null* value) and therefor carries no information. It can e.g. be used as a placeholder for optional fields that ought to be added to a record in future upgrades, or for *variant cases* that do not need any value, see below.
@@ -337,7 +337,7 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 ```
 We identify `<fieldtype>` lists in a record type up to reordering.
 
-The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
+The id is described as a simple unsigned integer that has to fit the 32 bit value range. It can be given in either decimal or hexadecimal notation:
 
 ```
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
@@ -434,7 +434,24 @@ type tree = variant {
 
 ### References
 
-A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
+A third form of value are *references*. They represent first-class handles to (possibly remote) *functions*, *services*, or *principals*.
+
+#### Actor References
+
+An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
+
+```
+<reftype> ::= ... | service <actortype>
+```
+
+##### Example
+
+```
+type broker = service {
+  findCounterService : (name : text) ->
+    (service {up : () -> (); current : () -> nat});
+}
+```
 
 #### Function References
 
@@ -452,24 +469,13 @@ type engine = service {
 }
 ```
 
-#### Actor References
+#### Principal References
 
-An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
-
-```
-<reftype> ::= ... | service <actortype>
-```
-
-
-##### Example
+A *principal reference* points to an identity, such as an actor or a user. Through this, we can authenticate or authorize other services or users.
 
 ```
-type broker = service {
-  findCounterService : (name : text) ->
-    (service {up : () -> (); current : () -> nat});
-}
+<reftype> ::= ... | principal | ...
 ```
-
 
 ### Type Definitions
 
@@ -562,7 +568,6 @@ Taken together, the rules allow even round-tripping record types to be upgraded 
 
 Possible future extensions: defaults for options, including for variants?
 
-
 ### Rules
 
 #### Primitive Types
@@ -633,6 +638,7 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* }
 --------------------------------------------------------------------------------------------
 record { <fieldtype>;* <nat> : <datatype> } <: record { <fieldtype'>;* <nat> : <datatype'> }
 ```
+
 In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
 ```
 record { <fieldtype>;* } <: record { <fieldtype'>;* }
@@ -943,6 +949,21 @@ Note:
 
 ### Serialisation
 
+This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+
+Serialisation is defined by three functions `T`, `M`, and `R` given below.
+
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references and principal references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
+
+Likewise, there are two forms of IDL values for function references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
+
+
 #### Notation
 
 `T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`). The bytes are sequenced according to increasing significance (least significant byte first, a.k.a. little-endian).
@@ -997,6 +1018,7 @@ T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
   sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
+T(principal)= sleb128(-24)                                        // 0x68
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -1060,8 +1082,14 @@ M : (<nat>, <val>) -> <fieldtype> -> i8*
 M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
-M(r : service <actortype>) = .
-M(r : func <functype>)     = .
+M(ref(r) : service <actortype>) = i8(0)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec nat8)
+
+M(ref(r)   : func <functype>) = i8(0)
+M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
+
+M(ref(r) : principal) = i8(0)
+M(id(v*) : principal) = i8(1) M(v* : vec nat8)
 ```
 
 
@@ -1085,8 +1113,12 @@ R : (<nat>, <val>) -> <fieldtype> -> <ref>*
 R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
-R(r : service <actortype>) = r
-R(r : func <functype>)     = r
+R(ref(r) : service <actortype>) = r
+R(id(b*) : service <actortype>) = .
+R(ref(r)   : func <functype>) = r
+R(pub(s,n) : func <functype>) = .
+R(ref(r) : principal) = r
+R(id(b*) : principal) = .
 ```
 
 Note:
@@ -1098,7 +1130,7 @@ Note:
 
 Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -23). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -24). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
 * A value corresponding to a future type is called a *future value*. It is represented by two LEB128-encoded counts, *m* and *n*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
@@ -1163,6 +1195,7 @@ For that reason, the syntax is designed for easy readability instead of convenie
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
+  | principal <text>           (principal URI)
 
 <arg> ::= ( <annval>,* )
 
@@ -1177,8 +1210,8 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
   | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
 
 <fieldval> ::= ...
-  | <name> = <val>         :=  <hash(name)> = <val>
-  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <name> = <annval>      :=  <hash(name)> = <annval>
+  | <annval>               :=  N = <annval>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> = null   (only in variants)
   | <name>                 :=  <name> = null  (only in variants)
 ```

@@ -26,6 +26,7 @@ TODO:
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
 * [ ] Queries
 * [ ] Remove Shared type
+* [ ] Document .vals and .key for arrays. Iter type.
 -->
 
 # Introduction
@@ -1041,7 +1042,7 @@ Otherwise, `r2` is false and the result is `()`.
 The for expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 
 * `<exp1>` has type `{ next : () -> ?T; }`;
-* pattern `<pat>` has type `U`; and,
+* pattern `<pat>` has type `T`; and,
 * expression `<exp2>` has type `()` (in the environment extended with `<pat>`'s bindings).
 
 The `for`-expression is syntactic sugar for
@@ -1059,7 +1060,7 @@ for ( <pat> in <exp1> ) <exp2> :=
   }
 ```
 
-where `x` is fresh identifier.
+where `x` is a fresh identifier.
 
 In particular, the `for` loops will trap if evaluation of `<exp1>` traps; as soon as some value of `x.next()` traps or the value of `x.next()` does not match pattern `<pat>`.
 

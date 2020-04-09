@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 let p = object {public let x = 3; let y = 2; public func get_y() : Int = y};
 assert(p.x == 3);
 assert(p.get_y() == 2);
@@ -41,7 +42,16 @@ assert (get_a () == -42);
 let row : (Nat, Int, {c : Char; d : Text}) = (100, -42, {c = 'C'; d = "D"});
 
 func foo () : Int = switch row {
-  case (a : Int, -42, {c} : {c : Char}) (word32ToNat(charToWord32 c))  // OK
+  case (a : Int, -42, {c} : {c : Char}) (Prim.word32ToNat(Prim.charToWord32 c))  // OK
 };
 
-assert (foo () == 67)
+assert (foo () == 67);
+
+// matching on type-annotated fields
+
+func baz () : Int = switch {a = 42} {
+  case {a : Int} a  // OK
+};
+
+func full_name({first_name : Text; last_name : Text}) : Text =
+    first_name # " " # last_name;

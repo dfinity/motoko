@@ -26,7 +26,7 @@ let string_of_mode m =
   match m.it with
   | Oneway -> " oneway"
   | Query -> " query"
-                 
+
 let ($$) head inner = Node (head, inner)
 
 and id i = Atom i.it
@@ -53,8 +53,9 @@ and typ t = match t.it with
   | VecT t       -> "VecT" $$ [typ t]
   | OptT t              -> "OptT" $$ [typ t]
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
-  | FuncT (ms, s, t) -> "FuncT" $$ List.map typ_field s @ List.map typ_field t @ List.map mode ms
+  | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
   | ServT ts -> "ServT" $$ List.map typ_meth ts
+  | PrincipalT -> Atom "PrincipalT"
   | PreT -> Atom "PreT"
                         
 and dec d = match d.it with
@@ -65,8 +66,8 @@ and dec d = match d.it with
 
 and actor a = match a with
   | None -> Atom "NoActor"
-  | Some {it=ActorD (x, t); _} -> 
-     "ActorD" $$ id x :: [typ t]
+  | Some t -> 
+     "Actor" $$ [typ t]
     
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
@@ -100,6 +101,7 @@ let rec pp_typ ppf t =
      pp_print_break ppf 0 (-2);
      str ppf "}";
      pp_close_box ppf ()
+  | PrincipalT -> str ppf "principal"
   | PreT -> assert false);
   pp_close_box ppf ()
 and pp_fields ppf name fs =
@@ -133,7 +135,7 @@ and pp_args ppf fs =
   let n = List.length fs in
   str ppf "(";
   List.iteri (fun i f ->
-      pp_field ppf f;
+      pp_typ ppf f;
       if i < n-1 then
         kwd ppf ",";
     ) fs;
@@ -177,21 +179,18 @@ let pp_dec ppf d =
 let pp_actor ppf actor =
   (match actor with
   | None -> ()
-  | Some {it = ActorD (id, {it=ServT ms; _}); _} ->
+  | Some {it=ServT ms; _} ->
      pp_open_vbox ppf 2;
      pp_open_hbox ppf ();
-     kwd ppf "service";
-     kwd ppf id.it;
-     str ppf "{";
+     str ppf "service : {";
      pp_close_box ppf ();
      List.iter (fun m -> pp_print_cut ppf (); pp_meth ppf m; str ppf ";") ms;
      pp_print_break ppf 0 (-2);
      str ppf "}";
      pp_close_box ppf ()
-  | Some {it = ActorD (id, {it=VarT x; _}); _} ->
+  | Some {it=VarT x; _} ->
      pp_open_hbox ppf ();
      kwd ppf "service";
-     kwd ppf id.it;
      kwd ppf ":";
      str ppf x.it;
      pp_close_box ppf ()

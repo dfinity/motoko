@@ -102,7 +102,9 @@ let pick_val vs = function
   | T.Word64 -> pick_word (module V.Word64) (fun x -> V.Word64 x) vs
   | T.Char -> pick_char vs
   | T.Text
+  | T.Blob
   | T.Error
+  | T.Principal
   | T.Float -> Any
 
 let rec expand_notval t n vs : desc list =

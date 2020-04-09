@@ -1,7 +1,5 @@
 export default ({ IDL }) => {
- const actor_num = new IDL.ActorInterface({
-  'f': IDL.Func(IDL.Obj({'0': IDL.Nat8}), IDL.Obj({'0': IDL.Int16})),
-  'g': IDL.Func(IDL.Obj({'0': IDL.Nat64}), IDL.Obj({'0': IDL.Int64})),
-  'h': IDL.Func(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Nat}))});
- return actor_num;
+ return IDL.Service({'f': IDL.Func([IDL.Nat8], [IDL.Int16], []),
+  'g': IDL.Func([IDL.Nat64], [IDL.Int64], []),
+  'h': IDL.Func([IDL.Int8], [IDL.Nat], [])});
 };

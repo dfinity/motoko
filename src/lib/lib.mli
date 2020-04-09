@@ -2,9 +2,6 @@
 
 module Fun :
 sig
-  val id : 'a -> 'a
-  val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
-
   val curry : ('a * 'b -> 'c) -> ('a -> 'b -> 'c)
   val uncurry : ('a -> 'b -> 'c) -> ('a * 'b -> 'c)
 
@@ -14,6 +11,7 @@ end
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
+  val concat_map : ('a -> 'b list) -> 'a list -> 'b list
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
@@ -27,12 +25,14 @@ sig
 
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
-  val map_filter : ('a -> 'b option) -> 'a list -> 'b list
   val first_opt : ('a -> 'b option) -> 'a list -> 'b option
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
   val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
+  val is_prefix : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
+
+  val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 end
 
 module List32 :
@@ -72,17 +72,14 @@ sig
   end
 end
 
+module Seq :
+sig
+  val for_all : ('a -> bool) -> 'a Seq.t -> bool
+end
+
 module Option :
 sig
-  val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
   val get : 'a option -> 'a -> 'a
-  val value : 'a option -> 'a
-  val map : ('a -> 'b) -> 'a option -> 'b option
-  val some : 'a -> 'a option
-  val iter : ('a -> unit) -> 'a option -> unit
-  val bind : 'a option -> ('a -> 'b option) -> 'b option
-  val is_some : 'a option -> bool
-  val is_none : 'a option -> bool
 end
 
 module Promise :
@@ -108,6 +105,7 @@ sig
   type t
   val to_string : t -> string
   val of_string : string -> t
+  val of_string_opt : string -> t option
   val of_int : int -> t
   val to_int : t -> int
   val of_int32 : int32 -> t
@@ -134,4 +132,55 @@ sig
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
   val lightweight_escaped : string -> string
+end
+
+module CRC :
+sig
+  val crc8 : string -> int
+end
+
+module Hex :
+sig
+  val hexdigit : char -> int
+  val bytes_of_hex : string -> string
+  val int_of_hex_byte : string -> int
+
+  val hex_of_byte  : int -> string
+  val hex_of_char  : char -> string
+  val hex_of_bytes : string -> string
+end
+
+module FilePath :
+sig
+  (**
+   * Normalises a file path
+   *)
+  val normalise : string -> string
+
+  (**
+   * Makes one path relative to another path.
+   *
+   * Examples:
+   *
+   * relative_to "/home/foo" "/home/foo/project" = Some "project"
+   * relative_to "/home/foo" "/home/foo/project/lib" = Some "project/lib"
+   * relative_to "/home/foo" "/home/bar/project" = None
+   * relative_to "foo/bar" "foo/bar/project" = Some "project"
+   *)
+  val relative_to : string -> string -> string option
+
+  val make_absolute : string -> string -> string
+
+  (**
+   * Checks whether one path is nested below another.
+   * Must only be called on two absolute paths!
+   *
+   * Examples:
+   *
+   * is_subpath "/home" "/home/path" = true
+   * is_subpath "/home" "/path" = false
+   * is_subpath "/home/path" "/home" = false
+   * is_subpath "/home" "/homepath" = false
+   *)
+  val is_subpath : string -> string -> bool
 end

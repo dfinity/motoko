@@ -14,13 +14,16 @@ as_ptr alloc_bytes(size_t n) {
     if (ptr == NULL) { printf("OOM\n"); exit(1); };
     return ((as_ptr)ptr) - 1;
 };
+as_ptr alloc_words(size_t n) {
+    return alloc_bytes(sizeof(uint32_t) * n);
+};
 
-void idl_trap() {
-  printf("IDL trap\n");
+void rts_trap(const char* str, size_t n) {
+   printf("RTS trap: %.*s\n", (int)n, str);
   abort();
 }
-void bigint_trap() {
-  printf("Bigint trap\n");
+void bigint_trap(const char* str, size_t n) {
+   printf("Bigint trap: %.*s\n", (int)n, str);
   abort();
 }
 
@@ -83,5 +86,4 @@ int main(int argc, char** argv) {
   free(input);
   return 0;
 }
-
 
