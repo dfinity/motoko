@@ -6660,10 +6660,42 @@ and compile_exp (env : E.t) ae exp =
     | ICStableWrite ty, [e] ->
       SR.unit,
       compile_exp_as env ae SR.Vanilla e ^^
-      (* TODO:
-         don't discard but serialise value of e : ty to stable store
-      *)
-      G.i Drop
+      let (set_dst, get_dst) = new_local env "dst" in
+      let (set_len, get_len) = new_local env "len" in
+      Serialization.serialize env [ty] ^^
+      set_dst ^^
+      set_len ^^
+
+      let (set_pages, get_pages) = new_local env "len" in
+      get_len ^^ compile_divU_const page_size ^^
+      compile_add_const 1l ^^
+      set_pages ^^
+
+      (* grow stable memory if needed *)
+      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+      get_pages ^^
+      E.call_import env "ic0" "stable_size" ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      set_pages_needed ^^
+
+      get_pages_needed ^^
+      compile_unboxed_zero ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+      G.if_ []
+        ( get_pages_needed ^^
+          E.call_import env "ic0" "stable_grow" ^^
+          (* Check result *)
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.then_trap_with env "Cannot grow stable memory."
+        ) G.nop
+      ^^
+
+      (* copy to stable memory *)
+      get_dst ^^
+      compile_unboxed_const 0l ^^
+      get_len ^^
+      E.call_import env "ic0" "stable_write"
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
