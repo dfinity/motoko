@@ -122,13 +122,14 @@ module SR = struct
   let bool = Vanilla
 
   (* Because t contains Const.t, and that contains Const.v, and that contains
-     lit, and that contains Big_int, we cannot just use normal `=`. So we have
-     to write our own equality.
+     Const.lit, and that contains Big_int, we cannot just use normal `=`. So we
+     have to write our own equality.
 
-     This is, I believe, used when joining branches. So for Const, we just compare
-     the promises, and do not descent into the Const.v. This is conservative;
-     the only downside is that if a branch returns different Const.t with
-     (semantically) the same Const.v we do not propagate that as Const.
+     This equalty is, I believe, used when joining branches. So for Const, we
+     just compare the promises, and do not descent into the Const.v. This is
+     conservative; the only downside is that if a branch returns different
+     Const.t with (semantically) the same Const.v we do not propagate that as
+     Const, but materialize before the branch.
      Which is not really expected or important.
   *)
   let eq (t1 : t) (t2 : t) = match t1, t2 with
@@ -516,14 +517,22 @@ let compile_eq64_const i =
 
 let bytes_of_int32 (i : int32) : string =
   let b = Buffer.create 4 in
-  let i1 = Int32.to_int i land 0xff in
-  let i2 = (Int32.to_int i lsr 8) land 0xff in
-  let i3 = (Int32.to_int i lsr 16) land 0xff in
-  let i4 = (Int32.to_int i lsr 24) land 0xff in
-  Buffer.add_char b (Char.chr i1);
-  Buffer.add_char b (Char.chr i2);
-  Buffer.add_char b (Char.chr i3);
-  Buffer.add_char b (Char.chr i4);
+  Buffer.add_char b (Char.chr (Int32.to_int i land 0xff));
+  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 8) land 0xff));
+  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 16) land 0xff));
+  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 24) land 0xff));
+  Buffer.contents b
+
+let bytes_of_int64 (i : int64) : string =
+  let b = Buffer.create 8 in
+  Buffer.add_char b (Char.chr (Int64.to_int i land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 8) land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 16) land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 24) land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 32) land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 40) land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 48) land 0xff));
+  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 56) land 0xff));
   Buffer.contents b
 
 (* A common variant of todo *)
@@ -1336,6 +1345,14 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
+  let vanilla_lit env i =
+    if BitTagged.can_unbox (Int64.to_int i)
+    then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
+    else
+      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
+      let payload = bytes_of_int64 i in
+      E.add_static_bytes env (tag ^ payload)
+
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
@@ -1420,6 +1437,14 @@ module BoxedSmallWord = struct
   *)
 
   let payload_field = Tagged.header_size
+
+  let vanilla_lit env i =
+    if BitTagged.can_unbox (Int32.to_int i)
+    then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    else
+      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits32) in
+      let payload = bytes_of_int32 i in
+      E.add_static_bytes env (tag ^ payload)
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
@@ -1596,6 +1621,11 @@ module Float = struct
   let compile_unboxed_const f = G.i Wasm.(Ast.Const (nr (Values.F64 f)))
   let lit f = compile_unboxed_const (Wasm.F64.of_float f)
   let compile_unboxed_zero = lit 0.0
+
+  let vanilla_lit env f =
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
+    let payload = bytes_of_int64 (Wasm.F64.to_bits f) in
+    E.add_static_bytes env (tag ^ payload)
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
@@ -1831,14 +1861,6 @@ module I32Leb = struct
     compile_sleb128_size get_x
 
 end
-
-(* TODO: Move to right place *)
-let is_unboxable n =
-  (* NB: Only correct on 64 bit architectures *)
-  let open Int32 in
-  let lower_bound = to_int (shift_left 3l 30) in (* actually negative *)
-  let upper_bound = to_int (shift_right_logical minus_one 2) in
-  lower_bound <= n && n <= upper_bound
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
@@ -4653,33 +4675,6 @@ module GC = struct
 
 end (* GC *)
 
-module Lit = struct
-(* Literal values. Many can be unboxed *)
-
-(* Returns a vanilla representation, either unboxed or a pointer
-   to static data (added with E.add_static_bytes)
-*)
-
-let static_nat32 env i =
-  if is_unboxable (Int32.to_int i)
-  then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
-  else raise (Invalid_argument "static: large i32")
-
-(* Materializes a Const.lit: If necessary, puts
-   bytes into static memory, and returns a vanilla value.
-*)
-let vanilla_lit env (lit : Const.lit) : int32 =
-  match lit with
-    (* Booleans are directly in Vanilla representation *)
-    | Const.Vanilla n  -> n
-    | Const.BigInt n   -> BigNum.vanilla_lit env n
-    | Const.Word32 n   -> static_nat32 env n
-    | Const.Word64 n   -> raise (Invalid_argument "static: int64")
-    | Const.Float64 n  -> raise (Invalid_argument "static: float")
-    | Const.Blob t     -> Blob.vanilla_lit env t
-
-end (* Lit *)
-
 module StackRep = struct
   open SR
 
@@ -4739,6 +4734,14 @@ module StackRep = struct
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
     | Const _, Const _ -> Vanilla
+
+    | Const _, UnboxedWord32 -> UnboxedWord32
+    | UnboxedWord32, Const _ -> UnboxedWord32
+    | Const _, UnboxedWord64 -> UnboxedWord64
+    | UnboxedWord64, Const _ -> UnboxedWord64
+    | Const _, UnboxedFloat64 -> UnboxedFloat64
+    | UnboxedFloat64, Const _ -> UnboxedFloat64
+
     | Const _, UnboxedTuple 0 -> UnboxedTuple 0
     | UnboxedTuple 0, Const _-> UnboxedTuple 0
     | _, _ ->
@@ -4760,7 +4763,20 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec materialize env (p, cv) =
+  (* Materializes a Const.lit: If necessary, puts
+     bytes into static memory, and returns a vanilla value.
+  *)
+  let materialize_lit env (lit : Const.lit) : int32 =
+    match lit with
+      (* Booleans are directly in Vanilla representation *)
+      | Const.Vanilla n  -> n
+      | Const.BigInt n   -> BigNum.vanilla_lit env n
+      | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
+      | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
+      | Const.Float64 f  -> Float.vanilla_lit env f
+      | Const.Blob t     -> Blob.vanilla_lit env t
+
+  let rec materialize env (p, cv) : G.t =
     if Lib.Promise.is_fulfilled p
     then compile_unboxed_const (Lib.Promise.value p)
     else match cv with
@@ -4777,7 +4793,7 @@ module StackRep = struct
       (* TODO: allocate statically here *)
       Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
     | Const.Lit l ->
-      let ptr = Lit.vanilla_lit env l in
+      let ptr = materialize_lit env l in
       Lib.Promise.fulfill p ptr;
       compile_unboxed_const ptr
 
@@ -4803,7 +4819,7 @@ module StackRep = struct
     | Const c, Vanilla -> materialize env c
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
-    | Const (_, Const.Lit (Const.Float64 n)), UnboxedFloat64 -> Float.compile_unboxed_const n
+    | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
@@ -5572,14 +5588,11 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
+let const_of_lit lit =
+  Const.t_of_v (Const.Lit (const_lit_of_lit lit))
+
 let compile_lit env lit =
-  match const_lit_of_lit lit with
-  | Const.Vanilla n -> SR.Vanilla, compile_unboxed_const n
-  | Const.BigInt n  -> SR.Vanilla, compile_unboxed_const (BigNum.vanilla_lit env n)
-  | Const.Word32 n  -> SR.UnboxedWord32, compile_unboxed_const n
-  | Const.Word64 n  -> SR.UnboxedWord64, compile_const_64 n
-  | Const.Float64 f -> SR.UnboxedFloat64, Float.compile_unboxed_const f
-  | Const.Blob b    -> SR.Vanilla, compile_unboxed_const (Blob.vanilla_lit env b)
+  SR.Const (const_of_lit lit), G.nop
 
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
@@ -6932,55 +6945,56 @@ and compile_lit_pat env l =
     compile_lit_as env SR.Vanilla l ^^
     BigNum.compile_eq env
   | Nat8Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Nat8)
   | Nat16Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Nat16)
   | Nat32Lit _ ->
     BoxedSmallWord.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Nat32)
   | Nat64Lit _ ->
     BoxedWord64.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Nat64)
   | Int8Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Int8)
   | Int16Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Int16)
   | Int32Lit _ ->
     BoxedSmallWord.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Int32)
   | Int64Lit _ ->
     BoxedWord64.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Int64)
   | Word8Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Word8)
   | Word16Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Word16)
   | Word32Lit _ ->
     BoxedSmallWord.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Word32)
   | CharLit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Char)
   | Word64Lit _ ->
     BoxedWord64.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Word64)
   | TextLit t
   | BlobLit t ->
-    Blob.lit env t ^^
+    compile_lit_as env SR.Vanilla l ^^
     Text.compare env Operator.EqOp
-  | FloatLit _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
+  | FloatLit _ ->
+    todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@

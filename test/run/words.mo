@@ -304,7 +304,4 @@ func w32 (n : Word32) = assert (switch n { case 0 false; case 1 false; case 4_29
 func w64 (n : Word64) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
 
 
-w8 42;
-w16 65000;
 w32 4_294_967_295;
-w64 42;
