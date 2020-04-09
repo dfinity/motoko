@@ -222,7 +222,7 @@ and build_actor at self_id es obj_typ =
   let ds = letD state
      { it = I.LitE (I.NullLit);
        at = no_region;
-       note = {I.note_typ = state.note.I.note_typ; I.note_eff = T.Triv}
+       note = { Note.def with Note.typ = typ_of_var state }
      }::ds in
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
@@ -237,25 +237,25 @@ and stabilize stab_opt d =
   | (S.Stable, I.VarD(i, t, e)) ->
     ([Type.{ lab = i; typ = t }],
      fun v ->
-     let s = fresh_var "s" (T.as_opt v.note.I.note_typ) in
+     let s = fresh_var "s" (T.as_opt (typ_of_var v)) in
      varD i t
-       (switch_optE v
+       (switch_optE (varE v)
           e
-          (varP s) (dotE s i t)
+          (varP s) (dotE (varE s) i t)
           t)
     )
   | (S.Stable, I.LetD(p, e)) ->
     let fields = fields_of_pat [] p in
     (fields, fun v ->
-     let s = fresh_var "s" (T.as_opt v.note.I.note_typ) in
+     let s = fresh_var "s" (T.as_opt (typ_of_var v)) in
      let p', e_none, e_some, t =
-       let ids = List.map (fun field -> idE field.T.lab field.T.typ) fields in
-       let projs = List.map (fun field -> dotE s field.T.lab field.T.typ) fields in
+       let ids = List.map (fun field -> var field.T.lab field.T.typ) fields in
+       let projs = List.map (fun field -> dotE (varE s) field.T.lab field.T.typ) fields in
        let ts = List.map (fun field -> field.T.typ) fields in
-       seqP (List.map varP ids), seqE ids, seqE projs, T.seq ts
+       seqP (List.map varP ids), seqE (List.map varE ids), seqE projs, T.seq ts
      in
      letP p'
-       (switch_optE v
+       (switch_optE (varE v)
           (blockE [letP p e] e_none)
           (varP s) (e_some)
          t))
