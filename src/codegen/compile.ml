@@ -96,7 +96,6 @@ module Const = struct
 
   let t_of_v v = (Lib.Promise.make (), v)
 
-
 end (* Const *)
 
 module SR = struct
@@ -996,12 +995,12 @@ module Bool = struct
      This allows us to use the result of the WebAssembly comparison operators
      directly, and to use the booleans directly with WebAssembly’s If.
   *)
-  let unboxed_val = function
+  let vanilla_lit = function
     | false -> 0l
     | true -> 1l
 
   let lit b =
-    compile_unboxed_const (unboxed_val b)
+    compile_unboxed_const (vanilla_lit b)
 
   let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
@@ -1009,7 +1008,6 @@ end (* Bool *)
 
 
 module BitTagged = struct
-  let scalar_shift = 2l
 
   (* This module takes care of pointer tagging:
 
@@ -1021,7 +1019,7 @@ module BitTagged = struct
      We use the constants ptr_skew and ptr_unskew to change a pointer as a
      signpost where we switch between raw pointers to skewed ones.
 
-     This means we can store a small unboxed scalar x as (x << 2), and still
+     This means we can store a small unboxed scalar x as (x `rotl` 2), and still
      tell it apart from a pointer.
 
      We actually use the *second* lowest bit to tell a pointer apart from a
@@ -1031,6 +1029,15 @@ module BitTagged = struct
      these for false and true, matching the result of WebAssembly’s comparison
      operators.
   *)
+  let scalar_shift = 2l
+
+  let can_unbox (n : int) =
+    (* NB: This code is only correct on 64 bit build architectures *)
+    let open Int32 in
+    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
+    let upper_bound = to_int (shift_right_logical minus_one 2) in
+    lower_bound <= n && n <= upper_bound
+
   let if_unboxed env retty is1 is2 =
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
@@ -1224,11 +1231,11 @@ module Opt = struct
   let payload_field = Tagged.header_size
 
   (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
-  let null_lit = 5l
-  let null = compile_unboxed_const null_lit
+  let null_vanialla_lit = 5l
+  let null_lit = compile_unboxed_const null_vanialla_lit
 
   let is_some env =
-    null ^^
+    null_lit ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
   let inject env e = Tagged.obj env Tagged.Some [e]
@@ -1536,7 +1543,7 @@ module UnboxedSmallWord = struct
     E.then_trap_with env "codepoint out of range" ^^
     get_n ^^ box_codepoint
 
-  let unboxed_val ty v =
+  let vanilla_lit ty v =
     Int32.(shift_left (of_int v) (to_int (shift_of_type ty)))
 
   (* Wrapping implementation for multiplication and exponentiation. *)
@@ -2038,7 +2045,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ Num.compile_is_negative env)
 
   let lit_vanilla env = function
-    | n when is_unboxable_big n ->
+    | n when Big_int.is_int_big_int n && BitTagged.can_unbox (Big_int.int_of_big_int n) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.lit_vanilla env n
@@ -2348,7 +2355,7 @@ module BigNumLibtommath : BigNumType = struct
     let dp = bytes_of_int32 data_ptr in
     let ptr = E.add_static_bytes env (tag ^ used ^ alloc ^ sign ^ dp) in
     ptr
-  
+
   let assert_nonneg env =
     Func.share_code1 env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
@@ -2578,13 +2585,13 @@ module Blob = struct
 
   let len_field = Int32.add Tagged.header_size 0l
 
-  let static_lit env s =
+  let vanilla_lit env s =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
     let len = bytes_of_int32 (Int32.of_int (String.length s)) in
     let data = tag ^ len ^ s in
     E.add_static_bytes env data
 
-  let lit env s = compile_unboxed_const (static_lit env s)
+  let lit env s = compile_unboxed_const (vanilla_lit env s)
 
   let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
       let (set_x, get_x) = new_local env "x" in
@@ -4175,14 +4182,14 @@ module Serialization = struct
         ReadBuf.read_byte env get_data_buf
       | Prim Null ->
         assert_prim_typ t ^^
-        Opt.null
+        Opt.null_lit
       | Any ->
         (* Skip values of any possible type *)
         get_data_buf ^^ get_typtbl ^^ get_idltyp ^^ compile_unboxed_const 0l ^^
         E.call_import env "rts" "skip_any" ^^
 
         (* Any vanilla value works here *)
-        Opt.null
+        Opt.null_lit
       | Prim Blob ->
         assert_blob_typ env ^^
         read_blob ()
@@ -4191,7 +4198,7 @@ module Serialization = struct
         read_byte_tagged
           [ E.trap_with env "IDL error: unexpected principal reference"
             ; read_blob ()
-          ]           
+          ]
       | Prim Text ->
         assert_prim_typ t ^^
         read_text ()
@@ -4255,14 +4262,14 @@ module Serialization = struct
         check_prim_typ (Prim Null) ^^
         G.if_ [I32Type]
           begin
-                Opt.null
+                Opt.null_lit
           end
           begin
             let (set_idltyp, get_idltyp) = new_local env "idltyp" in
             with_composite_typ (-18l) (fun get_typ_buf ->
               ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
               read_byte_tagged
-                [ Opt.null
+                [ Opt.null_lit
                 ; Opt.inject env (get_idltyp ^^ go env t)
                 ]
             )
@@ -5586,24 +5593,24 @@ let nat64_to_int64 n =
 
 let const_lit_of_lit : Ir.lit -> Const.lit = function
   (* Booleans are directly in Vanilla representation *)
-  | BoolLit false -> Const.Vanilla (Bool.unboxed_val false)
-  | BoolLit true  -> Const.Vanilla (Bool.unboxed_val true)
+  | BoolLit false -> Const.Vanilla (Bool.vanilla_lit false)
+  | BoolLit true  -> Const.Vanilla (Bool.vanilla_lit true)
   | IntLit n
   | NatLit n      -> Const.BigInt n
   | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n)
   | Word16Lit n   -> Const.Vanilla (Value.Word16.to_bits n)
   | Word32Lit n   -> Const.Word32 n
   | Word64Lit n   -> Const.Word64 n
-  | Int8Lit n     -> Const.Vanilla (UnboxedSmallWord.unboxed_val Type.Int8 (Value.Int_8.to_int n))
-  | Nat8Lit n     -> Const.Vanilla (UnboxedSmallWord.unboxed_val Type.Nat8 (Value.Nat8.to_int n))
-  | Int16Lit n    -> Const.Vanilla (UnboxedSmallWord.unboxed_val Type.Int16 (Value.Int_16.to_int n))
-  | Nat16Lit n    -> Const.Vanilla (UnboxedSmallWord.unboxed_val Type.Nat16 (Value.Nat16.to_int n))
+  | Int8Lit n     -> Const.Vanilla (UnboxedSmallWord.vanilla_lit Type.Int8 (Value.Int_8.to_int n))
+  | Nat8Lit n     -> Const.Vanilla (UnboxedSmallWord.vanilla_lit Type.Nat8 (Value.Nat8.to_int n))
+  | Int16Lit n    -> Const.Vanilla (UnboxedSmallWord.vanilla_lit Type.Int16 (Value.Int_16.to_int n))
+  | Nat16Lit n    -> Const.Vanilla (UnboxedSmallWord.vanilla_lit Type.Nat16 (Value.Nat16.to_int n))
   | Int32Lit n    -> Const.Word32 (Int32.of_int (Value.Int_32.to_int n))
   | Nat32Lit n    -> Const.Word32 (Int32.of_int (Value.Nat32.to_int n))
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 n))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
-  | NullLit       -> Const.Vanilla Opt.null_lit
+  | NullLit       -> Const.Vanilla Opt.null_vanialla_lit
   | TextLit t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
@@ -5615,7 +5622,7 @@ let compile_lit env lit =
   | Const.Word32 n  -> SR.UnboxedWord32, compile_unboxed_const n
   | Const.Word64 n  -> SR.UnboxedWord64, compile_const_64 n
   | Const.Float64 f -> SR.UnboxedFloat64, Float.compile_unboxed_const f
-  | Const.Blob b    -> SR.Vanilla, compile_unboxed_const (Blob.static_lit env b)
+  | Const.Blob b    -> SR.Vanilla, compile_unboxed_const (Blob.vanilla_lit env b)
 
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
