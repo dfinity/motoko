@@ -30,7 +30,8 @@ func checkpointJuliett() {};
     let d : Word64 = -15;
     let e : Word64 = 20000;
 
-// CHECK: local.get $c
+// this is the value of c
+// CHECK: i32.const 35651060
 // CHECK-NOT: call $box_i64
 // CHECK: call $printW64ln
     printW64ln(+c);
@@ -91,8 +92,9 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointBravo
     checkpointBravo();
-// CHECK: local.get $c
-// CHECK-NOT: call $box_i32
+// this is the value of c
+// CHECK: i32.const 35651060
+// CHECK-NOT: call $box_i64
 // CHECK: call $printW32ln
     printW32ln(+c);
     printW32ln(-c);
@@ -156,9 +158,11 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointDelta
     checkpointDelta();
-// CHECK: local.get $a
+// this is the value of a
+// CHECK: i32.const 299302912
+// this is the value of b
+// CHECK: i32.const 458752
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 16 bits!
-// CHECK-NEXT: local.get $b
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
@@ -175,7 +179,8 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointEcho
    checkpointEcho();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 16 bits and clamp it to 4 bits!
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
@@ -192,14 +197,16 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // CHECK-NEXT: call $rotl<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <<> b);
 
 // CHECK: call $checkpointGolf
    checkpointGolf();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // CHECK-NEXT: call $rotr<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <>> b);
@@ -239,7 +246,8 @@ func checkpointJuliett() {};
     printW8ln(c - a);
 // CHECK: call $checkpointHotel
     checkpointHotel();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 24 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
@@ -257,7 +265,8 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointIndia
     checkpointIndia();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 24 bits and clamp it to 3 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
@@ -274,11 +283,13 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointJuliett
     checkpointJuliett();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // CHECK-NEXT: call $rotl<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <<> b);
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // CHECK-NEXT: call $rotr<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <>> b);
@@ -304,4 +315,7 @@ func w32 (n : Word32) = assert (switch n { case 0 false; case 1 false; case 4_29
 func w64 (n : Word64) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
 
 
+w8 42;
+w16 65000;
 w32 4_294_967_295;
+w64 42;

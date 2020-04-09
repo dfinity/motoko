@@ -524,16 +524,9 @@ let bytes_of_int32 (i : int32) : string =
   Buffer.contents b
 
 let bytes_of_int64 (i : int64) : string =
-  let b = Buffer.create 8 in
-  Buffer.add_char b (Char.chr (Int64.to_int i land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 8) land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 16) land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 24) land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 32) land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 40) land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 48) land 0xff));
-  Buffer.add_char b (Char.chr ((Int64.to_int i lsr 56) land 0xff));
-  Buffer.contents b
+  let open Int64 in
+  bytes_of_int32 (to_int32 (logand i 0xffffffffL)) ^
+  bytes_of_int32 (to_int32 (shift_right i 32))
 
 (* A common variant of todo *)
 
@@ -1040,13 +1033,6 @@ module BitTagged = struct
   *)
   let scalar_shift = 2l
 
-  let can_unbox (n : int) =
-    (* NB: This code is only correct on 64 bit build architectures *)
-    let open Int32 in
-    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
-    let upper_bound = to_int (shift_right_logical minus_one 2) in
-    lower_bound <= n && n <= upper_bound
-
   let if_unboxed env retty is1 is2 =
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
@@ -1064,6 +1050,11 @@ module BitTagged = struct
   let if_both_unboxed env retty is1 is2 =
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
     if_unboxed env retty is1 is2
+
+  let can_unbox (n : int64) =
+    let lower_bound = 0L in (* TBR *)
+    let upper_bound = Int64.shift_left 1L 30 in
+    lower_bound <= n && n < upper_bound
 
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
@@ -1346,7 +1337,7 @@ module BoxedWord64 = struct
   let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
-    if BitTagged.can_unbox (Int64.to_int i)
+    if BitTagged.can_unbox i
     then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
     else
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
@@ -1439,7 +1430,7 @@ module BoxedSmallWord = struct
   let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
-    if BitTagged.can_unbox (Int32.to_int i)
+    if BitTagged.can_unbox (Int64.of_int (Int32.to_int i))
     then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     else
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits32) in
@@ -2062,8 +2053,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
 
+  let can_unbox (n : int) =
+    (* NB: This code is only correct on 64 bit build architectures *)
+    let open Int32 in
+    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
+    let upper_bound = to_int (shift_right_logical minus_one 2) in
+    lower_bound <= n && n <= upper_bound
+
   let vanilla_lit env = function
-    | n when Big_int.is_int_big_int n && BitTagged.can_unbox (Big_int.int_of_big_int n) ->
+    | n when Big_int.is_int_big_int n && can_unbox (Big_int.int_of_big_int n) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.vanilla_lit env n
