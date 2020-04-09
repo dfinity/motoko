@@ -84,7 +84,6 @@ module Const = struct
   type v =
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
-    | PublicMethod of int32 * string
     | Obj of (string * t) list
     | Array of t list
     | Lit of lit
@@ -4787,9 +4786,6 @@ module StackRep = struct
       compile_unboxed_const ptr
     | Const.Message fi ->
       assert false
-    | Const.PublicMethod (_, name) ->
-      Dfinity.get_self_reference env ^^
-      Dfinity.actor_public_field env name
     | Const.Obj fs ->
       (* TODO: allocate statically here *)
       Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
@@ -4856,11 +4852,14 @@ module VarEnv = struct
     | HeapStatic of int32
     (* Not materialized (yet), statically known constant, static location on demand *)
     | Const of Const.t
+    (* public method *)
+    | PublicMethod of int32 * string
 
   let is_non_local : varloc -> bool = function
     | Local _ -> false
     | HeapInd _ -> false
     | HeapStatic _ -> true
+    | PublicMethod _ -> true
     | Const _ -> true
 
   type lvl = TopLvl | NotTopLvl
@@ -4920,6 +4919,9 @@ module VarEnv = struct
   let add_local_heap_static (ae : t) name ptr =
       { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
 
+  let add_local_public_method (ae : t) name (fi, exported_name) =
+      { ae with vars = NameEnv.add name (PublicMethod (fi, exported_name) : varloc) ae.vars }
+
   let add_local_const (ae : t) name cv =
       { ae with vars = NameEnv.add name (Const cv : varloc) ae.vars }
 
@@ -4974,6 +4976,7 @@ module Var = struct
       get_new_val ^^
       Heap.store_field 1l
     | Some (Const _) -> fatal "set_val: %s is const" var
+    | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
   (* Returns the payload (optimized representation) *)
@@ -4986,6 +4989,10 @@ module Var = struct
       SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
     | Some (Const c) ->
       SR.Const c, G.nop
+    | Some (PublicMethod (_, name)) ->
+      SR.Vanilla,
+      Dfinity.get_self_reference env ^^
+      Dfinity.actor_public_field env name
     | None -> assert false
 
   (* Returns the payload (vanilla representation) *)
@@ -5523,8 +5530,9 @@ module AllocHow = struct
     match l with
     | VarEnv.Const _ -> (Const : how)
     | VarEnv.HeapStatic _ -> StoreStatic
-    | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
     | VarEnv.HeapInd _ -> StoreHeap
+    | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
+    | VarEnv.PublicMethod _ -> LocalMut
     ) ae.VarEnv.vars
 
   let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
@@ -7140,8 +7148,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
     let fi = match const with
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
-    let cv = Const.t_of_v (Const.PublicMethod (fi, (E.NameEnv.find v v2en))) in
-    let pre_ae1 = VarEnv.add_local_const pre_ae v cv in
+    let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for constant expressions *)
@@ -7310,13 +7317,11 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
     )
 
 and export_actor_field env  ae (f : Ir.field) =
-  let sr, code = Var.get_val env ae f.it.var in
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
-  let fi = match sr with
-    | SR.Const (_, Const.PublicMethod (fi, _)) -> fi
+  let fi =
+    match VarEnv.lookup_var ae f.it.var with
+    | Some (VarEnv.PublicMethod (fi, _)) -> fi
     | _ -> assert false in
-  (* There should be no code associated with this *)
-  assert (G.is_nop code);
 
   E.add_export env (nr {
     name = Wasm.Utf8.decode (match E.mode env with
