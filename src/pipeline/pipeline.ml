@@ -544,6 +544,12 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
+let analyze analysis_name analysis env prog name =
+  phase analysis_name name;
+  analysis env prog;
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose env analysis_name prog
+
 
 (* Compilation *)
 
@@ -581,10 +587,12 @@ let lower_prog mode senv libs progs name =
   let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
+  analyze "constness analysis" Const.analyze initial_stat_env prog_ir name;
   prog_ir
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
+  analyze "constness analysis" Const.analyze initial_stat_env prelude_ir "prelude";
   let name = name_progs progs in
   let prog_ir = lower_prog mode initial_stat_env libs progs name in
   phase "Compiling" name;

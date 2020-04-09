@@ -27,8 +27,7 @@ module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 let selfcallE ts e1 e2 e3 =
  { it = SelfCallE (ts, e1, e2, e3);
   at = no_region;
-  note = { note_typ = T.unit;
-           note_eff = T.Triv }
+  note = Note.{ def with typ = T.unit }
 }
 
 let error_ty =
@@ -59,11 +58,11 @@ let new_asyncT =
       new_async_ret unary (T.Var ("T", 0))
     )
 
-let new_asyncE =
-  idE "@new_async" new_asyncT
+let new_asyncE () =
+  varE (var "@new_async" new_asyncT)
 
 let new_async t1 =
-  let call_new_async = callE new_asyncE [t1] (tupE []) in
+  let call_new_async = callE (new_asyncE ()) [t1] (tupE []) in
   let async = fresh_var "async" (typ (projE call_new_async 0)) in
   let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
@@ -78,12 +77,14 @@ let new_nary_async_reply mode ts1 =
   let nary_async =
     match ts1 with
     | [t] ->
-      unary_async
+      varE unary_async
     | ts ->
       let k' = fresh_var "k" (contT t1) in
       let r' = fresh_var "r" err_contT in
-      let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
-      [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
+      let seq_of_v' = tupE (List.mapi (fun i _ -> projE (varE v') i) ts) in
+      [k';r'] -->* (
+        varE unary_async -*- (tupE[([v'] -->* (varE k' -*- seq_of_v')); varE r'])
+      )
   in
   (* construct the n-ary reply callback that sends a sequence of values to fulfill the async *)
   let nary_reply =
@@ -91,27 +92,27 @@ let new_nary_async_reply mode ts1 =
       match ts1 with
       | [t] ->
         let v = fresh_var "rep" t in
-        [v],v
+        [v], varE v
       | ts ->
         let vs = fresh_vars "rep" ts in
-        vs, tupE vs
+        vs, tupE (List.map varE vs)
     in
-    vs -->* (unary_fulfill -*- seq_of_vs)
+    vs -->* (varE unary_fulfill -*- seq_of_vs)
   in
   let async,reply,reject =
     fresh_var "async" (typ nary_async),
     fresh_var "reply" (typ nary_reply),
-    fresh_var "reject" (typ fail)
+    fresh_var "reject" (typ_of_var fail)
   in
     (async, reply, reject),
       blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
-        (tupE [nary_async; nary_reply; fail])
+        (tupE [nary_async; nary_reply; varE fail])
 
 let letEta e scope =
   match e.it with
   | VarE _ -> scope e (* pure, so reduce *)
   | _  -> let f = fresh_var "x" (typ e) in
-          letD f e :: (scope f) (* maybe impure; sequence *)
+          letD f e :: (scope (varE f)) (* maybe impure; sequence *)
 
 let isAwaitableFunc exp =
   match typ exp with
@@ -223,8 +224,10 @@ let transform mode env prog =
 
   let rec t_exp (exp: exp) =
     { it = t_exp' exp;
-      note = { note_typ = t_typ exp.note.note_typ;
-               note_eff = exp.note.note_eff};
+      note = Note.{ def with
+        typ = t_typ exp.note.typ;
+        eff = exp.note.eff
+      };
       at = exp.at;
     }
   and t_exp' (exp:exp) =
@@ -245,14 +248,16 @@ let transform mode env prog =
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
       (blockE [
                letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
-               let v = fresh_var "v" (T.seq ts1) in (* flatten v, here and below? *)
-               let ic_reply = v --> (ic_replyE ts1 v) in
-               let e = fresh_var "e" T.catch in
-               let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
+               let ic_reply = (* flatten v, here and below? *)
+                 let v = fresh_var "v" (T.seq ts1) in
+                 v --> (ic_replyE ts1 (varE v)) in
+               let ic_reject =
+                 let e = fresh_var "e" T.catch in
+                 [e] -->* (ic_rejectE (errorMessageE (varE e))) in
                let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
-               expD (selfcallE ts1 exp' nary_reply reject)
+               expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
                ]
-               nary_async
+               (varE nary_async)
       ).it
     | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
@@ -269,11 +274,11 @@ let transform mode env prog =
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
-                      [ expD (ic_callE v1 (seqE vs) nary_reply reject) ]
+                      [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
                     )
                   )
          )
-         nary_async)
+         (varE nary_async))
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
@@ -320,10 +325,12 @@ let transform mode env prog =
                        []) ->
                   (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
-              let v = fresh_var "v" t1 in
-              let k = v --> (ic_replyE ret_tys v) in
-              let e = fresh_var "e" T.catch in
-              let r = [e] -->* (ic_rejectE (errorMessageE e)) in
+              let k =
+                let v = fresh_var "v" t1 in
+                v --> (ic_replyE ret_tys (varE v)) in
+              let r =
+                let e = fresh_var "e" T.catch in
+                [e] -->* (ic_rejectE (errorMessageE (varE e))) in
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
@@ -347,10 +354,12 @@ let transform mode env prog =
                        []) ->
                   (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
-              let v = fresh_var "v" t1 in
-              let k = v --> tupE [] in (* discard return *)
-              let e = fresh_var "e" T.catch in
-              let r = [e] -->* tupE [] in (* discard error *)
+              let k =
+                let v = fresh_var "v" t1 in
+                v --> tupE [] in (* discard return *)
+              let r =
+                let e = fresh_var "e" T.catch in
+                [e] -->* tupE [] in (* discard error *)
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
             | Returns, _ ->
