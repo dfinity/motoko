@@ -2254,29 +2254,43 @@ module BigNumLibtommath : BigNumType = struct
     | true -> E.call_import env "rts" "bigint_sleb128_decode"
 
   let compile_lit env n =
-    let limb_size = 31 in
-    let twoto = Big_int.power_int_positive_int 2 limb_size in
+    (* See enum mp_sign *)
+    let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
 
-    compile_unboxed_const 0l ^^
-    E.call_import env "rts" "bigint_of_word32" ^^
+    let n = Big_int.abs_big_int n in
 
-    let rec go n =
-      if Big_int.sign_big_int n = 0
-      then G.nop
-      else
-        let (a, b) = Big_int.quomod_big_int n twoto in
-        go a ^^
-        compile_unboxed_const (Int32.of_int limb_size) ^^
-        E.call_import env "rts" "bigint_lsh" ^^
-        compile_unboxed_const (Big_int.int32_of_big_int b) ^^
-        E.call_import env "rts" "bigint_of_word32" ^^
-        E.call_import env "rts" "bigint_add" in
+    (* copied from Blob *)
+    let header_size = Int32.add Tagged.header_size 1l in
+    let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size)) in
 
-    go (Big_int.abs_big_int n) ^^
+    let limbs =
+      (* see MP_DIGIT_BIT *)
+      let twoto28 = Big_int.power_int_positive_int 2 28 in
+      let rec go n =
+        if Big_int.sign_big_int n = 0
+        then []
+        else
+          let (a, b) = Big_int.quomod_big_int n twoto28 in
+          [ Int32.of_int (Big_int.int_of_big_int b) ] @ go a
+      in go n
+    in
+    (* how many 32 bit digits *)
+    let size = Int32.of_int (List.length limbs) in
 
-    if Big_int.sign_big_int n < 0
-      then E.call_import env "rts" "bigint_neg"
-      else G.nop
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
+    let len = bytes_of_int32 (Int32.(mul Heap.word_size size)) in
+    let payload = String.concat "" (List.map bytes_of_int32 limbs) in
+    let data_blob = E.add_static_bytes env (tag ^ len ^ payload) in
+    let data_ptr = Int32.(add data_blob unskewed_payload_offset) in
+
+    (* cf. mp_int in tommath.h *)
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.BigInt) in
+    let used = bytes_of_int32 size in
+    let alloc = bytes_of_int32 size in
+    let sign = bytes_of_int32 sign in
+    let dp = bytes_of_int32 data_ptr in
+    let ptr = E.add_static_bytes env (tag ^ used ^ alloc ^ sign ^ dp) in
+    compile_unboxed_const ptr
 
   let assert_nonneg env =
     Func.share_code1 env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -6817,55 +6831,56 @@ and compile_lit_pat env l =
     compile_lit_as env SR.Vanilla l ^^
     BigNum.compile_eq env
   | Nat8Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Nat8)
   | Nat16Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Nat16)
   | Nat32Lit _ ->
     BoxedSmallWord.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Nat32)
   | Nat64Lit _ ->
     BoxedWord64.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Nat64)
   | Int8Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Int8)
   | Int16Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Int16)
   | Int32Lit _ ->
     BoxedSmallWord.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Int32)
   | Int64Lit _ ->
     BoxedWord64.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Int64)
   | Word8Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Word8)
   | Word16Lit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Word16)
   | Word32Lit _ ->
     BoxedSmallWord.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Word32)
   | CharLit _ ->
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Char)
   | Word64Lit _ ->
     BoxedWord64.unbox env ^^
-    snd (compile_lit env l) ^^
+    compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Word64)
   | TextLit t
   | BlobLit t ->
-    Blob.lit env t ^^
+    compile_lit_as env SR.Vanilla l ^^
     Text.compare env Operator.EqOp
-  | FloatLit _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
+  | FloatLit _ ->
+    todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@
