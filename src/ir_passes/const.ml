@@ -169,7 +169,7 @@ let rec exp lvl (env : env) e : lazy_bool =
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE (ds, fs, { pre; post} , _typ) ->
+    | ActorE (ds, fs, {pre; post}, _typ) ->
       (* this may well be “the” top-level actor, so don’t update lvl here *)
       let (env', _) = decs lvl env ds in
       exp_ lvl env' pre;
