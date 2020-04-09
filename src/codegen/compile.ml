@@ -2494,10 +2494,6 @@ module Object = struct
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
-  let is_immutable obj_type =
-    let _, fields = Type.as_obj_sub [] obj_type in
-    List.for_all (fun f -> not (Type.is_mut f.Type.typ)) fields
-
   let idx env obj_type name =
     compile_unboxed_const (Mo_types.Hash.hash name) ^^
     idx_hash env (is_mut_field env obj_type name)
@@ -4644,7 +4640,7 @@ module StackRep = struct
     | UnboxedFloat64 -> "UnboxedFloat64"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
-    | Const _ -> "StaticThing"
+    | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | _, _ when sr1 = sr2 -> sr1
@@ -4655,6 +4651,8 @@ module StackRep = struct
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
     | Const _, Const _ -> Vanilla
+    | Const _, UnboxedTuple 0 -> UnboxedTuple 0
+    | UnboxedTuple 0, Const _-> UnboxedTuple 0
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
@@ -5341,7 +5339,6 @@ module AllocHow = struct
 
   let map_of_set = Freevars.map_of_set
   let set_of_map = Freevars.set_of_map
-  let disjoint s1 s2 = S.is_empty (S.inter s1 s2)
 
   (* Various filters used in the set operations below *)
   let is_local_mut _ = function
@@ -5352,15 +5349,6 @@ module AllocHow = struct
     | LocalImmut -> true
     | LocalMut -> true
     | _ -> false
-
-  let is_not_const _ : how -> bool = function
-    | Const -> false
-    | _ -> true
-
-  let require_closure _ : how -> bool = function
-    | Const -> false
-    | StoreStatic -> false
-    | _ -> true
 
   let how_captured lvl how seen captured =
     (* What to do so that we can capture something?
@@ -5380,22 +5368,6 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let rec is_const_exp exp = match exp.it with
-    | FuncE _ -> true
-    | VarE _ -> true
-    | BlockE (ds, e) ->
-      List.for_all is_const_dec ds && is_const_exp e
-    | NewObjE (Type.(Object | Module), _, t) ->
-      Object.is_immutable t
-    | PrimE (DotPrim n, [e]) ->
-      is_const_exp e
-    | _ -> false
-
-  and is_const_dec dec = match dec.it with
-    | VarD _ -> false
-    | LetD ({it = VarP v; _}, e) -> is_const_exp e
-    | LetD _ -> false
-
   let dec lvl how_outer (seen, how0) dec =
     let how_all = disjoint_union how_outer how0 in
 
@@ -5408,18 +5380,9 @@ module AllocHow = struct
       | VarD _ ->
       map_of_set LocalMut d
 
-      (* Constant expressions on the top-level:
-        - need to be constant forms
-        - all non-captured free variables must be constant
-        - all captured variables must be constant or static-heap, if not on top level
-          (stuff captured on the top level will always be static-heap, via how2 below)
-      *)
-      | LetD ({it = VarP _; _}, e) when
-        is_const_exp e &&
-        disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_const how_all)) &&
-        (lvl = VarEnv.TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
+      (* Constant expressions (trusting static_vals.ml) *)
+      | LetD ({it = VarP _; _}, e) when e.note.Note.const
       -> map_of_set (Const : how) d
-
 
       (* Everything else needs at least a local *)
       | _ ->
@@ -6170,7 +6133,9 @@ let rec compile_lexp (env : E.t) ae lexp =
 
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
-  match exp.it with
+  if exp.note.Note.const
+  then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
+  else match exp.it with
   | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.Note.typ) es ->
     (* Handle dead code separately, so that we can rely on useful type
        annotations below *)
