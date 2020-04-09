@@ -6,5 +6,9 @@
 import Prim "mo:prim";
 import Blob "Blob";
 module {
-  public func hash(x : Principal) : Word32 = Blob.hash (Prim.blobOfPrincipal x);
+  public let hash : Principal -> Word32 =
+    func(x) = Blob.hash (Prim.blobOfPrincipal x);
+
+  public let fromActor : (actor {}) -> Principal =
+    Prim.principalOfActor;
 }
