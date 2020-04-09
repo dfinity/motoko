@@ -47,6 +47,17 @@ module Const = struct
   (* Literals, as used in constant values. This is a projection of Ir.Lit,
      combining cases whose difference we no longer care about.
      Should be still precise enough to map to the cases supported by SR.t.
+
+     In other words: It is the smallest type that allows for
+
+       (* projection of Ir.list. NB: pure, no access to env *)
+       const_lit_of_lit : Ir.lit -> Const.lit (* NB: pure, no access to env *)
+       (* creates vanilla representation (e.g. to put in static data structures *)
+       vanilla_of_lit : E.env -> Const.lit -> i32
+       (* creates efficient stack representation *)
+       compile_lit : E.env -> Const.lit -> (SR.t, code)
+
+
   *)
   type lit =
     | Vanilla of int32 (* small words, no static data, already in vanilla format *)
