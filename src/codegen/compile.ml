@@ -2843,6 +2843,14 @@ module Arr = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
+
+  let vanilla_lit env ptrs =
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
+    let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
+    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
+    let data = tag ^ len ^ payload in
+    E.add_static_bytes env data
+
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tagged.obj env Tagged.Array
@@ -4807,11 +4815,7 @@ module StackRep = struct
       Object.vanilla_lit env fs'
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
-      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
-      let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
-      let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
-      let data = tag ^ len ^ payload in
-      E.add_static_bytes env data
+      Arr.vanilla_lit env ptrs
     | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
