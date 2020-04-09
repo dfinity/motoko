@@ -4719,7 +4719,7 @@ let vanilla_of_lit env (lit : Const.lit) : int32 =
     | Const.Word32 n   -> static_nat32 env n
     | Const.Word64 n   -> raise (Invalid_argument "static: int64")
     | Const.Float64 n  -> raise (Invalid_argument "static: float")
-    | Const.Blob t     -> Blob.static_lit env t
+    | Const.Blob t     -> Blob.vanilla_lit env t
 
 end (* Lit *)
 

@@ -138,7 +138,7 @@ let rec exp lvl (env : env) e : lazy_bool =
     | PrimE (DotPrim n, [e1]) ->
       exp lvl env e1
     | LitE _ ->
-      surely_false (* TODO *)
+      surely_true
 
     (* All the following expressions cannot be const, but we still need to descend *)
     | PrimE (_, es) ->
