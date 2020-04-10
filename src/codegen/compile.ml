@@ -5499,7 +5499,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BoolLit true  -> Const.Vanilla (Bool.vanilla_lit true)
   | IntLit n
   | NatLit n      -> Const.BigInt n
-  | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n)
+  | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n) (* already Msb-aligned *)
   | Word16Lit n   -> Const.Vanilla (Value.Word16.to_bits n)
   | Word32Lit n   -> Const.Word32 n
   | Word64Lit n   -> Const.Word64 n
