@@ -89,7 +89,7 @@ module Const = struct
     (* | Lit of lit   -- will come in subsequent PR *)
 
   (* A constant known value together with a vanilla pointer.
-     Typicall a static memory location, could be an unboxed scalar.
+     Typically a static memory location, could be an unboxed scalar.
      Filled on demand.
    *)
   and t = (int32 Lib.Promise.t * v)
@@ -1217,8 +1217,8 @@ module Opt = struct
   let payload_field = Tagged.header_size
 
   (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
-  let null_vanialla_lit = 5l
-  let null_lit = compile_unboxed_const null_vanialla_lit
+  let null_vanilla_lit = 5l
+  let null_lit = compile_unboxed_const null_vanilla_lit
 
   let is_some env =
     null_lit ^^
@@ -5510,7 +5510,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 n))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
-  | NullLit       -> Const.Vanilla Opt.null_vanialla_lit
+  | NullLit       -> Const.Vanilla Opt.null_vanilla_lit
   | TextLit t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
