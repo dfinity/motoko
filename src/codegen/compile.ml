@@ -48,12 +48,14 @@ module Const = struct
      combining cases whose details we no longer care about.
      Should be still precise enough to map to the cases supported by SR.t.
 
-     In other words: It is the smallest type that allows for
+     In other words: It is the smallest type that allows these three functions:
 
        (* projection of Ir.list. NB: pure, no access to env *)
        const_lit_of_lit : Ir.lit -> Const.lit (* NB: pure, no access to env *)
+
        (* creates vanilla representation (e.g. to put in static data structures *)
        vanilla_of_lit : E.env -> Const.lit -> i32
+
        (* creates efficient stack representation *)
        compile_lit : E.env -> Const.lit -> (SR.t, code)
 
