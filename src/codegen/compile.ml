@@ -2843,7 +2843,6 @@ module Arr = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
-
   let vanilla_lit env ptrs =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
     let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
