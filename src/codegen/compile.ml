@@ -59,8 +59,8 @@ module Const = struct
        (* creates efficient stack representation *)
        compile_lit : E.env -> Const.lit -> (SR.t, code)
 
-
   *)
+  
   type lit =
     | Vanilla of int32 (* small words, no static data, already in vanilla format *)
     | BigInt of Big_int.big_int
