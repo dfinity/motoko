@@ -4734,10 +4734,10 @@ module VarEnv = struct
     | PublicMethod of int32 * string
 
   let is_non_local : varloc -> bool = function
-    | Local _ -> false
+    | Local _
     | HeapInd _ -> false
-    | HeapStatic _ -> true
-    | PublicMethod _ -> true
+    | HeapStatic _
+    | PublicMethod _
     | Const _ -> true
 
   type lvl = TopLvl | NotTopLvl
