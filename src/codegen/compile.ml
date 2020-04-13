@@ -4280,6 +4280,33 @@ module Serialization = struct
       Dfinity.system_call env "ic0" "msg_arg_data_copy"
     | _ -> assert false
 
+  (* return the initial i32 in stable memory recording the size of the following stable data *)
+  let stable_data_size env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      (* read size from initial word of (assumed non-empty) stable memory*)
+      let (set_size, get_size) = new_local env "size" in
+      Heap.alloc env 1l ^^ set_size ^^
+
+      compile_unboxed_const 0l ^^
+      get_size ^^ compile_add_const ptr_unskew ^^
+      compile_unboxed_const 4l ^^
+      Dfinity.system_call env "ic0" "stable_read" ^^
+
+      get_size ^^ load_ptr
+    | _ -> assert false
+
+  (* copy the stable data from stable memory from offset 4 *)
+  let stable_data_copy env get_dest get_length =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      get_dest ^^
+      (compile_unboxed_const 4l) ^^
+      get_length ^^
+      Dfinity.system_call env "ic0" "stable_write"
+    | _ -> assert false
+
+
   let serialize env ts : G.t =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
@@ -4338,7 +4365,7 @@ module Serialization = struct
       | Flags.WasmMode | Flags.WASIMode -> assert false
     )
 
-  let deserialize env ts =
+  let deserialize_aux source_size source_copy env ts =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
@@ -4349,9 +4376,9 @@ module Serialization = struct
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
 
       (* Allocate space for the data buffer and copy it *)
-      argument_data_size env ^^ set_data_size ^^
+      source_size env ^^ set_data_size ^^
       get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
-      argument_data_copy env get_data_start get_data_size ^^
+      source_copy env get_data_start get_data_size ^^
 
       (* Allocate space for the reference buffer and copy it *)
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
@@ -4400,6 +4427,11 @@ module Serialization = struct
           end G.nop
       )
     )))))
+
+  let deserialize env ts = deserialize_aux argument_data_size argument_data_copy env ts
+
+  let destabilize env t = deserialize_aux stable_data_size stable_data_copy env [t]
+
 
 end (* Serialization *)
 
@@ -6652,7 +6684,35 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       E.call_import env "ic0" "stable_size" ^^
       G.if_ [I32Type]
-        ( E.trap_with env "todo:stable read"
+        (
+         Serialization.destabilize env ty
+(* TBD
+         (* grow memory if needed *)
+         let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+         E.call_import env "ic0" "stable_size" ^^
+         G.i MemorySize ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+         set_pages_needed ^^
+
+         get_pages_needed ^^
+         compile_unboxed_zero ^^
+         G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+         G.if_ []
+          (get_pages_needed ^^
+           G.i MemoryGrow ^^
+           (* Check result *)
+           compile_unboxed_zero ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+           E.then_trap_with env "Cannot grow memory."
+          ) G.nop
+         ^^
+         (* copy from stable memory *)
+         compile_unboxed_const 0l ^^
+         compile_unboxed_const 0l ^^
+         E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
+         E.call_import env "ic0" "stable_read"
+        (* HERE *)
+ *)
         )
         (let (_, fs) = Type.as_obj ty in
          let fs' = List.map
@@ -6670,7 +6730,9 @@ and compile_exp (env : E.t) ae exp =
       set_len ^^
 
       let (set_pages, get_pages) = new_local env "len" in
-      get_len ^^ compile_divU_const page_size ^^
+      get_len ^^
+      compile_add_const 4l ^^  (* reserve one word for size *)
+      compile_divU_const page_size ^^
       compile_add_const 1l ^^
       set_pages ^^
 
@@ -6694,9 +6756,16 @@ and compile_exp (env : E.t) ae exp =
         ) G.nop
       ^^
 
-      (* copy to stable memory *)
+      (* write len to initial word of stable memory*)
+      let (set_size, get_size) = new_local env "size" in
+      Heap.alloc env 1l ^^ set_size ^^
+      get_size ^^ get_len ^^ store_ptr ^^
+      get_size ^^ compile_add_const ptr_unskew ^^ compile_unboxed_const 0l ^^ compile_unboxed_const 4l ^^
+      Dfinity.system_call env "ic0" "stable_write" ^^
+
+      (* copy data to following stable memory *)
       get_dst ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_const 4l ^^
       get_len ^^
       E.call_import env "ic0" "stable_write"
 
