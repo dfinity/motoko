@@ -52,7 +52,7 @@ public class Buf<X> (initCapacity : Nat) {
     if (count == elems.len()) {
       let size =
         if (count == 0)
-          initCapacity
+          (if (initCapacity > 0) initCapacity else 1)
         else
           2 * elems.len();
       let elems2 = A.init<X>(size, elem);
