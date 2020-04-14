@@ -47,7 +47,7 @@ module StaticBytes = struct
 
   type t_ =
     | I32 of int32
-    (* | I64 of int64 needed with #1368 *)
+    | I64 of int64
     | Seq of t
     | Bytes of string
 
@@ -57,7 +57,7 @@ module StaticBytes = struct
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
     | I32 i -> Buffer.add_int32_le buf i
-    (* | I64 i -> Buffer.add_int64_be buf i *)
+    | I64 i -> Buffer.add_int64_le buf i
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
 
@@ -80,7 +80,7 @@ module Const = struct
        const_lit_of_lit : Ir.lit -> Const.lit (* NB: pure, no access to env *)
 
        (* creates vanilla representation (e.g. to put in static data structures *)
-       vanilla_of_lit : E.env -> Const.lit -> i32
+       vanilla_lit : E.env -> Const.lit -> i32
 
        (* creates efficient stack representation *)
        compile_lit : E.env -> Const.lit -> (SR.t, code)
@@ -546,16 +546,12 @@ let compile_eq64_const i =
 
 let bytes_of_int32 (i : int32) : string =
   let b = Buffer.create 4 in
-  Buffer.add_char b (Char.chr (Int32.to_int i land 0xff));
-  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 8) land 0xff));
-  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 16) land 0xff));
-  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 24) land 0xff));
+  let i = Int32.to_int i in
+  Buffer.add_char b (Char.chr (i land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 8) land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 16) land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 24) land 0xff));
   Buffer.contents b
-
-let bytes_of_int64 (i : int64) : string =
-  let open Int64 in
-  bytes_of_int32 (to_int32 (logand i 0xffffffffL)) ^
-  bytes_of_int32 (to_int32 (shift_right i 32))
 
 (* A common variant of todo *)
 
@@ -1062,13 +1058,6 @@ module BitTagged = struct
   *)
   let scalar_shift = 2l
 
-  let can_unbox (n : int) =
-    (* NB: This code is only correct on 64 bit build architectures *)
-    let open Int32 in
-    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
-    let upper_bound = to_int (shift_right_logical minus_one 2) in
-    lower_bound <= n && n <= upper_bound
-
   let if_unboxed env retty is1 is2 =
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
@@ -1470,9 +1459,10 @@ module BoxedSmallWord = struct
     if BitTagged.can_unbox (Int64.of_int (Int32.to_int i))
     then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     else
-      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits32) in
-      let payload = bytes_of_int32 i in
-      E.add_static_bytes env (tag ^ payload)
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits32);
+        I32 i
+      ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
@@ -1651,9 +1641,10 @@ module Float = struct
   let compile_unboxed_zero = lit 0.0
 
   let vanilla_lit env f =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
-    let payload = bytes_of_int64 (Wasm.F64.to_bits f) in
-    E.add_static_bytes env (tag ^ payload)
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Bits64);
+      I64 (Wasm.F64.to_bits f)
+    ]
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
@@ -2089,6 +2080,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     BitTagged.if_unboxed env [I32Type]
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
+
+  let can_unbox (n : int) =
+    (* NB: This code is only correct on 64 bit build architectures *)
+    let open Int32 in
+    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
+    let upper_bound = to_int (shift_right_logical minus_one 2) in
+    lower_bound <= n && n <= upper_bound
 
   let vanilla_lit env = function
     | n when Big_int.is_int_big_int n && can_unbox (Big_int.int_of_big_int n) ->
@@ -7282,7 +7280,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
-  | LitE l -> (Const.t_of_v (Const.Lit (const_lit_of_lit l)), fun _ _ -> ())
+  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
     Const.t_of_v (Const.Array cs),
