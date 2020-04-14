@@ -7261,7 +7261,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
-  | LitE l -> (Const.t_of_v (Const.Lit (const_lit_of_lit l)), fun _ _ -> ())
+  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
