@@ -56,7 +56,7 @@ module StaticBytes = struct
   let i32s is = Seq (List.map (fun i -> I32 i) is)
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
-    | I32 i -> Buffer.add_int32_be buf i
+    | I32 i -> Buffer.add_int32_le buf i
     (* | I64 i -> Buffer.add_int64_be buf i *)
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
