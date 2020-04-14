@@ -2930,19 +2930,19 @@ module Lifecycle = struct
 
   (* Which states may come before this *)
   let pre_states = function
-    | PreInit -> [InPostUpgrade]
+    | PreInit -> []
     (*
     | InStart -> [PreInit]
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate]
+    | Idle -> [InInit; InUpdate; InPostUpgrade]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
-    | InPostUpgrade -> [PreInit]
+    | InPostUpgrade -> [Idle]
 
   let get env =
     compile_unboxed_const ptr ^^
@@ -2959,7 +2959,7 @@ module Lifecycle = struct
       G.block_ [] (
         let rec go = function
         | [] -> E.trap_with env
-                  ("internal error: unexpected state" (*^string_of_state new_state*))
+          ("internal error: unexpected state entering " ^ string_of_state new_state)
         | (s::ss) ->
           get env ^^ compile_eq_const (int_of_state s) ^^
           G.if_ [] (G.i (Br (nr 1l))) G.nop ^^
@@ -3107,16 +3107,19 @@ module Dfinity = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env1 ->
       Lifecycle.trans env Lifecycle.InInit ^^
+
       G.i (Call (nr start_fi)) ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect"))) ^^
+
       Lifecycle.trans env Lifecycle.Idle
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
-    })
+      });
+    fi
 
   let get_self_reference env =
     match E.mode env with
@@ -3241,8 +3244,9 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env start_fi rts_start_fi =
+let export_upgrade_methods env init_fi =
   if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
+
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
 
@@ -3250,25 +3254,21 @@ let export_upgrade_scaffold env start_fi rts_start_fi =
       | Some _ -> G.i (Call (nr (E.built_in env "pre_exp")))
       | None -> G.nop) ^^
 
-      Lifecycle.trans env Lifecycle.PostPreUpgrade
-  )) in
+      Lifecycle.trans env Lifecycle.PostPreUpgrade))
+  in
 
   let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+
+      G.i (Call (nr init_fi)) ^^
+
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
 
       (match E.NameEnv.find_opt "post_exp" !(env.E.built_in_funcs) with
       | Some _ -> G.i (Call (nr (E.built_in env "post_exp")))
       | None -> G.nop) ^^
 
-      G.i (Call (nr (rts_start_fi))) ^^
-
-      Lifecycle.set env Lifecycle.PreInit ^^
-      Lifecycle.trans env Lifecycle.InInit ^^
-      G.i (Call (nr (start_fi))) ^^
-      (* Collect garbage *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
-      Lifecycle.trans env Lifecycle.Idle
-  )) in
+      Lifecycle.trans env Lifecycle.Idle))
+  in
 
   E.add_export env (nr {
     name = Wasm.Utf8.decode "canister_pre_upgrade";
@@ -7303,9 +7303,13 @@ and main_actor env ae1 ds fs { pre; post } =
 
   decls_code
 
-and conclude_module env start_fi start_fi_o =
+and conclude_module env init_fi_o start_fi_o =
 
   FuncDec.export_async_method env;
+
+  (match init_fi_o with
+   | Some init_fi -> Dfinity.export_upgrade_methods env init_fi
+   | None -> ());
 
   let static_roots = GC.store_static_roots env in
 
@@ -7318,12 +7322,11 @@ and conclude_module env start_fi start_fi_o =
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Heap.get_heap_base env ^^ Heap.set_heap_ptr env ^^
     match start_fi_o with
-    | Some fi -> G.i (Call fi)
-    | None -> G.nop
+    | Some fi ->
+      G.i (Call fi)
+    | None ->
+      Lifecycle.set env Lifecycle.PreInit
   )) in
-
-  Dfinity.export_upgrade_scaffold env start_fi rts_start_fi;
-
 
   Dfinity.default_exports env;
 
@@ -7396,8 +7399,11 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
 
   let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
-  let start_fi_o = match E.mode env with
-    | Flags.ICMode | Flags.RefMode -> Dfinity.export_init env start_fi; None
-    | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
+  let init_fi_o, start_fi_o = match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      (Some (Dfinity.export_init env start_fi), None)
+    | Flags.WasmMode | Flags.WASIMode->
+      (None, Some (nr start_fi))
+  in
 
-  conclude_module env start_fi start_fi_o
+  conclude_module env init_fi_o start_fi_o

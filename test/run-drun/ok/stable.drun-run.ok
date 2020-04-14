@@ -5,6 +5,7 @@ ingress Completed: Canister: Payload: 0x4449444c0000
 Ok: Payload: 0x4449444c0000
 ingress Completed: Canister: Payload: 0x4449444c0000
 Ok: Payload: 0x4449444c0000
+debug.print: init'ed
 ingress System
 Ok: Payload: 0x4449444c0000
 ingress Completed: Canister: Payload: 0x4449444c0000
