@@ -37,6 +37,12 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
         "version": "v1.2.0"
     },
+    "motoko-base": {
+        "ref": "next-moc",
+        "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
+        "rev": "2941dc26dca4a3d3896b7fb6d01bb4192fb467ab",
+        "type": "git"
+    },
     "musl-wasi": {
         "branch": "master",
         "builtin": false,

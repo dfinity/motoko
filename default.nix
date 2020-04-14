@@ -353,16 +353,6 @@ rec {
     '';
   };
 
-  stdlib = stdenv.mkDerivation {
-    name = "stdlib";
-    src = subpath ./stdlib/src;
-    phases = "unpackPhase installPhase";
-    installPhase = ''
-      mkdir -p $out
-      cp ./*.mo $out
-    '';
-  };
-
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
@@ -375,9 +365,9 @@ rec {
     '';
   };
 
-  stdlib-tests = stdenv.mkDerivation {
-    name = "stdlib-tests";
-    src = subpath ./stdlib/test;
+  base-tests = stdenv.mkDerivation {
+    name = "base-tests";
+    src = nixpkgs.sources.motoko-base;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     installPhase = "touch $out";
@@ -386,65 +376,10 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc STDLIB=${stdlib}
+      make MOC=moc -C test
+      make MOC=moc -C examples
     '';
   };
-
-  examples =
-    let example_subdir = dir: stdenv.mkDerivation {
-      name = dir;
-      src = subpath "./stdlib/examples/${dir}";
-      phases = "unpackPhase checkPhase installPhase";
-      doCheck = true;
-      installPhase = "touch $out";
-      buildInputs = [
-        nixpkgs.bash
-        moc
-        nixpkgs.wasmtime
-      ];
-      checkPhase = ''
-        make MOC=moc STDLIB=${stdlib}
-      '';
-    }; in
-    {
-      actorspec        = example_subdir "actorspec";
-      rx               = example_subdir "rx";
-      produce-exchange = example_subdir "produce-exchange";
-    };
-
-
-  stdlib-doc = stdenv.mkDerivation {
-    name = "stdlib-doc";
-    src = subpath ./stdlib/doc;
-    outputs = [ "out" "adocs" ];
-    buildInputs = with nixpkgs;
-      [ bash perl asciidoctor html-proofer ];
-    buildPhase = ''
-      patchShebangs .
-      make STDLIB=${stdlib}
-    '';
-
-    doCheck = true;
-    # These ones are needed for htmlproofer
-    LOCALE_ARCHIVE = nixpkgs.lib.optionalString nixpkgs.stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
-    LANG = "en_US.UTF-8";
-    LC_TYPE = "en_US.UTF-8";
-    LANGUAGE = "en_US.UTF-8";
-    checkPhase = ''
-      htmlproofer --disable-external _out/
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv _out/* $out/
-      mkdir -p $out/nix-support
-      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
-
-      mkdir -p $adocs
-      mv _build/*.adoc $adocs/
-    '';
-  };
-  stdlib-adocs = stdlib-doc.adocs;
 
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
@@ -465,17 +400,13 @@ rec {
       deser
       samples
       rts
-      stdlib
-      stdlib-tests
-      stdlib-doc
-      stdlib-adocs
+      base-tests
       users-guide
       ic-ref
       shell
       check-formatting
       check-generated
-    ] ++ builtins.attrValues tests
-      ++ builtins.attrValues examples;
+    ] ++ builtins.attrValues tests;
   };
 
   shell = nixpkgs.mkShell {
