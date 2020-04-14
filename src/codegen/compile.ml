@@ -2470,15 +2470,14 @@ module Object = struct
       List.split
     in
 
-    let data = String.concat "" (List.map bytes_of_int32 hashes) in
-    let hash_ptr = E.add_static_bytes env data in
+    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Object) in
-    let len = bytes_of_int32 (Int32.of_int (List.length fs)) in
-    let hp = bytes_of_int32 hash_ptr in
-    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
-    let data = tag ^ len ^ hp ^ payload in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Object);
+      I32 (Int32.of_int (List.length fs));
+      I32 hash_ptr;
+      i32s ptrs;
+    ]
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
