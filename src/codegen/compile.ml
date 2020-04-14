@@ -42,23 +42,51 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 exception CodegenError of string
 let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
+module StaticBytes = struct
+  (* A very simple DSL to describe static memory *)
+
+  type t_ =
+    | I32 of int32
+    (* | I64 of int64 needed with #1368 *)
+    | Seq of t
+    | Bytes of string
+
+  and t = t_ list
+
+  let i32s is = Seq (List.map (fun i -> I32 i) is)
+
+  let rec add : Buffer.t -> t_ -> unit = fun buf -> function
+    | I32 i -> Buffer.add_int32_le buf i
+    (* | I64 i -> Buffer.add_int64_be buf i *)
+    | Seq xs -> List.iter (add buf) xs
+    | Bytes b -> Buffer.add_string buf b
+
+  let as_bytes : t -> string = fun xs ->
+    let buf = Buffer.create 16 in
+    List.iter (add buf) xs;
+    Buffer.contents buf
+
+end (* StaticBytes *)
+
 module Const = struct
 
   (* Literals, as used in constant values. This is a projection of Ir.Lit,
-     combining cases whose difference we no longer care about.
+     combining cases whose details we no longer care about.
      Should be still precise enough to map to the cases supported by SR.t.
 
-     In other words: It is the smallest type that allows for
+     In other words: It is the smallest type that allows these three functions:
 
        (* projection of Ir.list. NB: pure, no access to env *)
        const_lit_of_lit : Ir.lit -> Const.lit (* NB: pure, no access to env *)
+
        (* creates vanilla representation (e.g. to put in static data structures *)
-       vanilla_lit : E.env -> Const.lit -> i32
+       vanilla_of_lit : E.env -> Const.lit -> i32
+
        (* creates efficient stack representation *)
        compile_lit : E.env -> Const.lit -> (SR.t, code)
 
-
   *)
+
   type lit =
     | Vanilla of int32 (* small words, no static data, already in vanilla format *)
     | BigInt of Big_int.big_int
@@ -89,7 +117,7 @@ module Const = struct
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
-     Typicall a static memory location, could be an unboxed scalar.
+     Typically a static memory location, could be an unboxed scalar.
      Filled on demand.
    *)
   and t = (int32 Lib.Promise.t * v)
@@ -435,12 +463,13 @@ module E = struct
   let get_end_of_table env : int32 =
     !(env.end_of_table)
 
-  let add_static_bytes (env : t) data : int32 =
-    match StringEnv.find_opt data !(env.static_strings)  with
+  let add_static (env : t) (data : StaticBytes.t) : int32 =
+    let b = StaticBytes.as_bytes data in
+    match StringEnv.find_opt b !(env.static_strings)  with
     | Some ptr -> ptr
     | None ->
-      let ptr = add_mutable_static_bytes env data  in
-      env.static_strings := StringEnv.add data ptr !(env.static_strings);
+      let ptr = add_mutable_static_bytes env b  in
+      env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
   let get_end_of_static_memory env : int32 =
@@ -1033,6 +1062,13 @@ module BitTagged = struct
   *)
   let scalar_shift = 2l
 
+  let can_unbox (n : int) =
+    (* NB: This code is only correct on 64 bit build architectures *)
+    let open Int32 in
+    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
+    let upper_bound = to_int (shift_right_logical minus_one 2) in
+    lower_bound <= n && n <= upper_bound
+
   let if_unboxed env retty is1 is2 =
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
@@ -1231,8 +1267,8 @@ module Opt = struct
   let payload_field = Tagged.header_size
 
   (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
-  let null_vanialla_lit = 5l
-  let null_lit = compile_unboxed_const null_vanialla_lit
+  let null_vanilla_lit = 5l
+  let null_lit = compile_unboxed_const null_vanilla_lit
 
   let is_some env =
     null_lit ^^
@@ -1311,11 +1347,11 @@ module Closure = struct
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =
-    let tag = bytes_of_int32 Tagged.(int_of_tag Closure) in
-    let len = bytes_of_int32 (E.add_fun_ptr env fi) in
-    let zero = bytes_of_int32 0l in
-    let data = tag ^ len ^ zero in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Closure);
+      I32 (E.add_fun_ptr env fi);
+      I32 0l
+    ]
 
 end (* Closure *)
 
@@ -1340,9 +1376,10 @@ module BoxedWord64 = struct
     if BitTagged.can_unbox i
     then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
     else
-      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
-      let payload = bytes_of_int64 i in
-      E.add_static_bytes env (tag ^ payload)
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits64);
+        I64 i
+      ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
@@ -2053,13 +2090,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
 
-  let can_unbox (n : int) =
-    (* NB: This code is only correct on 64 bit build architectures *)
-    let open Int32 in
-    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
-    let upper_bound = to_int (shift_right_logical minus_one 2) in
-    lower_bound <= n && n <= upper_bound
-
   let vanilla_lit env = function
     | n when Big_int.is_int_big_int n && can_unbox (Big_int.int_of_big_int n) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
@@ -2357,19 +2387,21 @@ module BigNumLibtommath : BigNumType = struct
     (* how many 32 bit digits *)
     let size = Int32.of_int (List.length limbs) in
 
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
-    let len = bytes_of_int32 (Int32.(mul Heap.word_size size)) in
-    let payload = String.concat "" (List.map bytes_of_int32 limbs) in
-    let data_blob = E.add_static_bytes env (tag ^ len ^ payload) in
+    let data_blob = E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Blob);
+      I32 Int32.(mul Heap.word_size size);
+      i32s limbs
+    ] in
     let data_ptr = Int32.(add data_blob unskewed_payload_offset) in
 
     (* cf. mp_int in tommath.h *)
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.BigInt) in
-    let used = bytes_of_int32 size in
-    let alloc = bytes_of_int32 size in
-    let sign = bytes_of_int32 sign in
-    let dp = bytes_of_int32 data_ptr in
-    let ptr = E.add_static_bytes env (tag ^ used ^ alloc ^ sign ^ dp) in
+    let ptr = E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag BigInt);
+      I32 size;
+      I32 size; (* alloc *)
+      I32 sign;
+      I32 data_ptr;
+    ] in
     ptr
 
   let assert_nonneg env =
@@ -2482,15 +2514,14 @@ module Object = struct
       List.split
     in
 
-    let data = String.concat "" (List.map bytes_of_int32 hashes) in
-    let hash_ptr = E.add_static_bytes env data in
+    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Object) in
-    let len = bytes_of_int32 (Int32.of_int (List.length fs)) in
-    let hp = bytes_of_int32 hash_ptr in
-    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
-    let data = tag ^ len ^ hp ^ payload in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Object);
+      I32 (Int32.of_int (List.length fs));
+      I32 hash_ptr;
+      i32s ptrs;
+    ]
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
@@ -2512,8 +2543,7 @@ module Object = struct
     let hashes = fs |>
       List.map (fun (n,_) -> Mo_types.Hash.hash n) |>
       List.sort compare in
-    let data = String.concat "" (List.map bytes_of_int32 hashes) in
-    let hash_ptr = E.add_static_bytes env data in
+    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
@@ -2620,10 +2650,11 @@ module Blob = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let vanilla_lit env s =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
-    let len = bytes_of_int32 (Int32.of_int (String.length s)) in
-    let data = tag ^ len ^ s in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Blob);
+      I32 (Int32.of_int (String.length s));
+      Bytes s;
+    ]
 
   let lit env s = compile_unboxed_const (vanilla_lit env s)
 
@@ -2844,11 +2875,11 @@ module Arr = struct
     )
 
   let vanilla_lit env ptrs =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
-    let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
-    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
-    let data = tag ^ len ^ payload in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Array);
+      I32 (Int32.of_int (List.length ptrs));
+      i32s ptrs;
+    ]
 
   (* Compile an array literal. *)
   let lit env element_instructions =
@@ -4862,10 +4893,10 @@ module VarEnv = struct
     | PublicMethod of int32 * string
 
   let is_non_local : varloc -> bool = function
-    | Local _ -> false
+    | Local _
     | HeapInd _ -> false
-    | HeapStatic _ -> true
-    | PublicMethod _ -> true
+    | HeapStatic _
+    | PublicMethod _
     | Const _ -> true
 
   type lvl = TopLvl | NotTopLvl
@@ -5594,7 +5625,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BoolLit true  -> Const.Vanilla (Bool.vanilla_lit true)
   | IntLit n
   | NatLit n      -> Const.BigInt n
-  | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n)
+  | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n) (* already Msb-aligned *)
   | Word16Lit n   -> Const.Vanilla (Value.Word16.to_bits n)
   | Word32Lit n   -> Const.Word32 n
   | Word64Lit n   -> Const.Word64 n
@@ -5607,7 +5638,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 n))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
-  | NullLit       -> Const.Vanilla Opt.null_vanialla_lit
+  | NullLit       -> Const.Vanilla Opt.null_vanilla_lit
   | TextLit t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
