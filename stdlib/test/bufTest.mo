@@ -71,7 +71,7 @@ func natIterEq(a:I.Iter<Nat>, b:I.Iter<Nat>) : Bool {
   assert (natIterEq(c.iter(), natArrayIter(c.clone().toArray())));
   assert (c.toVarArray().len() == len);
   assert (natIterEq(c.iter(), natVarArrayIter(c.clone().toVarArray())));
-}
+};
 
 // regression test: initially-empty buffers grow, element-by-element
 {
@@ -84,4 +84,4 @@ func natIterEq(a:I.Iter<Nat>, b:I.Iter<Nat>) : Bool {
   c.add(0);
   assert (c.toArray().len() == 2);
   assert (c.toVarArray().len() == 2);
-}
+};
