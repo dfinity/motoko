@@ -42,6 +42,32 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 exception CodegenError of string
 let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
+module StaticBytes = struct
+  (* A very simple DSL to describe static memory *)
+
+  type t_ =
+    | I32 of int32
+    (* | I64 of int64 needed with #1368 *)
+    | Seq of t
+    | Bytes of string
+
+  and t = t_ list
+
+  let i32s is = Seq (List.map (fun i -> I32 i) is)
+
+  let rec add : Buffer.t -> t_ -> unit = fun buf -> function
+    | I32 i -> Buffer.add_int32_le buf i
+    (* | I64 i -> Buffer.add_int64_be buf i *)
+    | Seq xs -> List.iter (add buf) xs
+    | Bytes b -> Buffer.add_string buf b
+
+  let as_bytes : t -> string = fun xs ->
+    let buf = Buffer.create 16 in
+    List.iter (add buf) xs;
+    Buffer.contents buf
+
+end (* StaticBytes *)
+
 module Const = struct
 
   (* Literals, as used in constant values. This is a projection of Ir.Lit,
@@ -60,7 +86,7 @@ module Const = struct
        compile_lit : E.env -> Const.lit -> (SR.t, code)
 
   *)
-  
+
   type lit =
     | Vanilla of int32 (* small words, no static data, already in vanilla format *)
     | BigInt of Big_int.big_int
@@ -421,12 +447,13 @@ module E = struct
   let get_end_of_table env : int32 =
     !(env.end_of_table)
 
-  let add_static_bytes (env : t) data : int32 =
-    match StringEnv.find_opt data !(env.static_strings)  with
+  let add_static (env : t) (data : StaticBytes.t) : int32 =
+    let b = StaticBytes.as_bytes data in
+    match StringEnv.find_opt b !(env.static_strings)  with
     | Some ptr -> ptr
     | None ->
-      let ptr = add_mutable_static_bytes env data  in
-      env.static_strings := StringEnv.add data ptr !(env.static_strings);
+      let ptr = add_mutable_static_bytes env b  in
+      env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
   let get_end_of_static_memory env : int32 =
@@ -1298,11 +1325,11 @@ module Closure = struct
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =
-    let tag = bytes_of_int32 Tagged.(int_of_tag Closure) in
-    let len = bytes_of_int32 (E.add_fun_ptr env fi) in
-    let zero = bytes_of_int32 0l in
-    let data = tag ^ len ^ zero in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Closure);
+      I32 (E.add_fun_ptr env fi);
+      I32 0l
+    ]
 
 end (* Closure *)
 
@@ -2316,19 +2343,21 @@ module BigNumLibtommath : BigNumType = struct
     (* how many 32 bit digits *)
     let size = Int32.of_int (List.length limbs) in
 
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
-    let len = bytes_of_int32 (Int32.(mul Heap.word_size size)) in
-    let payload = String.concat "" (List.map bytes_of_int32 limbs) in
-    let data_blob = E.add_static_bytes env (tag ^ len ^ payload) in
+    let data_blob = E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Blob);
+      I32 Int32.(mul Heap.word_size size);
+      i32s limbs
+    ] in
     let data_ptr = Int32.(add data_blob unskewed_payload_offset) in
 
     (* cf. mp_int in tommath.h *)
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.BigInt) in
-    let used = bytes_of_int32 size in
-    let alloc = bytes_of_int32 size in
-    let sign = bytes_of_int32 sign in
-    let dp = bytes_of_int32 data_ptr in
-    let ptr = E.add_static_bytes env (tag ^ used ^ alloc ^ sign ^ dp) in
+    let ptr = E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag BigInt);
+      I32 size;
+      I32 size; (* alloc *)
+      I32 sign;
+      I32 data_ptr;
+    ] in
     ptr
 
   let assert_nonneg env =
@@ -2471,8 +2500,7 @@ module Object = struct
     let hashes = fs |>
       List.map (fun (n,_) -> Mo_types.Hash.hash n) |>
       List.sort compare in
-    let data = String.concat "" (List.map bytes_of_int32 hashes) in
-    let hash_ptr = E.add_static_bytes env data in
+    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
@@ -2579,10 +2607,11 @@ module Blob = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let vanilla_lit env s =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
-    let len = bytes_of_int32 (Int32.of_int (String.length s)) in
-    let data = tag ^ len ^ s in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Blob);
+      I32 (Int32.of_int (String.length s));
+      Bytes s;
+    ]
 
   let lit env s = compile_unboxed_const (vanilla_lit env s)
 
@@ -2803,11 +2832,11 @@ module Arr = struct
     )
 
   let vanilla_lit env ptrs =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
-    let len = bytes_of_int32 (Int32.of_int (List.length ptrs)) in
-    let payload = String.concat "" (List.map bytes_of_int32 ptrs) in
-    let data = tag ^ len ^ payload in
-    E.add_static_bytes env data
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Array);
+      I32 (Int32.of_int (List.length ptrs));
+      i32s ptrs;
+    ]
 
   (* Compile an array literal. *)
   let lit env element_instructions =
