@@ -545,10 +545,11 @@ let compile_eq64_const i =
 
 let bytes_of_int32 (i : int32) : string =
   let b = Buffer.create 4 in
-  Buffer.add_char b (Char.chr (Int32.to_int i land 0xff));
-  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 8) land 0xff));
-  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 16) land 0xff));
-  Buffer.add_char b (Char.chr ((Int32.to_int i lsr 24) land 0xff));
+  let i = Int32.to_int i in
+  Buffer.add_char b (Char.chr (i land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 8) land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 16) land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 24) land 0xff));
   Buffer.contents b
 
 (* A common variant of todo *)
