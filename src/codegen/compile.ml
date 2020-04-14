@@ -47,7 +47,7 @@ module StaticBytes = struct
 
   type t_ =
     | I32 of int32
-    (* | I64 of int64 needed with #1368 *)
+    | I64 of int64
     | Seq of t
     | Bytes of string
 
@@ -57,7 +57,7 @@ module StaticBytes = struct
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
     | I32 i -> Buffer.add_int32_le buf i
-    (* | I64 i -> Buffer.add_int64_be buf i *)
+    | I64 i -> Buffer.add_int64_le buf i
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
 
@@ -550,11 +550,6 @@ let bytes_of_int32 (i : int32) : string =
   Buffer.add_char b (Char.chr ((Int32.to_int i lsr 16) land 0xff));
   Buffer.add_char b (Char.chr ((Int32.to_int i lsr 24) land 0xff));
   Buffer.contents b
-
-let bytes_of_int64 (i : int64) : string =
-  let open Int64 in
-  bytes_of_int32 (to_int32 (logand i 0xffffffffL)) ^
-  bytes_of_int32 (to_int32 (shift_right i 32))
 
 (* A common variant of todo *)
 
@@ -1368,9 +1363,10 @@ module BoxedWord64 = struct
     if BitTagged.can_unbox i
     then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
     else
-      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
-      let payload = bytes_of_int64 i in
-      E.add_static_bytes env (tag ^ payload)
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits64);
+        I64 i
+      ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
@@ -1461,9 +1457,10 @@ module BoxedSmallWord = struct
     if BitTagged.can_unbox (Int64.of_int (Int32.to_int i))
     then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     else
-      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits32) in
-      let payload = bytes_of_int32 i in
-      E.add_static_bytes env (tag ^ payload)
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits32);
+        I32 i
+      ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
@@ -1642,9 +1639,10 @@ module Float = struct
   let compile_unboxed_zero = lit 0.0
 
   let vanilla_lit env f =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Bits64) in
-    let payload = bytes_of_int64 (Wasm.F64.to_bits f) in
-    E.add_static_bytes env (tag ^ payload)
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Bits64);
+      I64 (Wasm.F64.to_bits f)
+    ]
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
