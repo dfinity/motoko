@@ -1,13 +1,11 @@
 import Prim "mo:prim";
 actor {
   Prim.debugPrint ("init'ed");
-
-  stable var always10 = 10;
-  stable var c = 1;
-  public func inc() { c += 1; };
+  stable var c = "a";
+  public func inc() { c #= "a"; };
   public query func check(n : Int) : async () {
-    assert (c == n);
-    assert (always10 == 10);
+    Prim.debugPrint(c);
+    assert (c.len() == n);
   };
 }
 

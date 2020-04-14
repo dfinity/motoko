@@ -2898,6 +2898,18 @@ module Lifecycle = struct
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
 
+  let string_of_state state = match state with
+    | PreInit -> "PreInit"
+    | InInit -> "InInit"
+    | Idle -> "Idle"
+    | InUpdate -> "InUpdate"
+    | InQuery -> "InQuery"
+    | PostQuery -> "PostQuery"
+    | InPreUpgrade -> "InPreUpgrade"
+    | PostPreUpgrade -> "PostPreUpgrade"
+    | InPostUpgrade -> "InPostUpgrade"
+  let _ = ref string_of_state
+
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
     (*
@@ -2918,7 +2930,7 @@ module Lifecycle = struct
 
   (* Which states may come before this *)
   let pre_states = function
-    | PreInit -> []
+    | PreInit -> [InPostUpgrade]
     (*
     | InStart -> [PreInit]
     | Started -> [InStart]
@@ -2946,13 +2958,15 @@ module Lifecycle = struct
     Func.share_code0 env name [] (fun env ->
       G.block_ [] (
         let rec go = function
-        | [] -> E.trap_with env "internal error: unexpected state"
+        | [] -> E.trap_with env
+                  ("internal error: unexpected state" (*^string_of_state new_state*))
         | (s::ss) ->
           get env ^^ compile_eq_const (int_of_state s) ^^
           G.if_ [] (G.i (Br (nr 1l))) G.nop ^^
           go ss
         in go (pre_states new_state)
-      ) ^^
+        ) ^^
+(*      Dfinity.compile_static_print ("entering state "^(string_of_state newstate)) ^^ *)
       set env new_state
     )
 
@@ -3092,8 +3106,8 @@ module Dfinity = struct
   let export_init env start_fi =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env1 ->
-      G.i (Call (nr start_fi)) ^^
       Lifecycle.trans env Lifecycle.InInit ^^
+      G.i (Call (nr start_fi)) ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect"))) ^^
       Lifecycle.trans env Lifecycle.Idle
@@ -3227,41 +3241,14 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env =
+let export_upgrade_scaffold env start_fi rts_start_fi =
   if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
-      (* TODO:
-         call wellknown (internal) @stableWrite function of
-         actor to serialize stable decs' composite value to stable store
-         (utilizing type-indexed prim call `ICStableWrite ty [e]`)
-      *)
 
-      (* grow stable memory if needed *)
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      G.i MemorySize ^^
-      E.call_import env "ic0" "stable_size" ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
-
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          E.call_import env "ic0" "stable_grow" ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow stable memory."
-        ) G.nop
-      ^^
-
-      (* copy to stable memory *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      G.i MemorySize ^^ compile_mul_const page_size ^^
-      E.call_import env "ic0" "stable_write" ^^
+      (match E.NameEnv.find_opt "pre_exp" !(env.E.built_in_funcs) with
+      | Some _ -> G.i (Call (nr (E.built_in env "pre_exp")))
+      | None -> G.nop) ^^
 
       Lifecycle.trans env Lifecycle.PostPreUpgrade
   )) in
@@ -3269,34 +3256,18 @@ let export_upgrade_scaffold env =
   let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
 
-      (* grow memory if needed *)
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      E.call_import env "ic0" "stable_size" ^^
-      G.i MemorySize ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
+      (match E.NameEnv.find_opt "post_exp" !(env.E.built_in_funcs) with
+      | Some _ -> G.i (Call (nr (E.built_in env "post_exp")))
+      | None -> G.nop) ^^
 
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          G.i MemoryGrow ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow memory."
-        ) G.nop
-      ^^
+      G.i (Call (nr (rts_start_fi))) ^^
 
-      (* copy from stable memory *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
-      E.call_import env "ic0" "stable_read" ^^
-
-      (* set, not trans, as we just copied the memory over *)
-      Lifecycle.set env Lifecycle.Idle
+      Lifecycle.set env Lifecycle.PreInit ^^
+      Lifecycle.trans env Lifecycle.InInit ^^
+      G.i (Call (nr (start_fi))) ^^
+      (* Collect garbage *)
+      G.i (Call (nr (E.built_in env "collect"))) ^^
+      Lifecycle.trans env Lifecycle.Idle
   )) in
 
   E.add_export env (nr {
@@ -4288,8 +4259,8 @@ module Serialization = struct
       let (set_size, get_size) = new_local env "size" in
       Heap.alloc env 1l ^^ set_size ^^
 
-      compile_unboxed_const 0l ^^
       get_size ^^ compile_add_const ptr_unskew ^^
+      compile_unboxed_const 0l ^^
       compile_unboxed_const 4l ^^
       Dfinity.system_call env "ic0" "stable_read" ^^
 
@@ -4301,9 +4272,9 @@ module Serialization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       get_dest ^^
-      (compile_unboxed_const 4l) ^^
+      compile_unboxed_const 4l ^^
       get_length ^^
-      Dfinity.system_call env "ic0" "stable_write"
+      Dfinity.system_call env "ic0" "stable_read"
     | _ -> assert false
 
 
@@ -4431,6 +4402,7 @@ module Serialization = struct
   let deserialize env ts = deserialize_aux argument_data_size argument_data_copy env ts
 
   let destabilize env t = deserialize_aux stable_data_size stable_data_copy env [t]
+  let _ = destabilize
 
 
 end (* Serialization *)
@@ -6678,41 +6650,15 @@ and compile_exp (env : E.t) ae exp =
            1. return record of nulls
       * On upgrade:
            1. deserialize stable store to v : ty,
-           inserting null values for missing fields.
+           (TODO: inserting null values for missing fields.)
            2. return v
 *)
       SR.Vanilla,
+      (*  Dfinity.compile_static_print env "ICStableRead" ^^ *)
       E.call_import env "ic0" "stable_size" ^^
       G.if_ [I32Type]
-        (
+        ((* Dfinity.compile_static_print env "destabilize" ^^ *)
          Serialization.destabilize env ty
-(* TBD
-         (* grow memory if needed *)
-         let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-         E.call_import env "ic0" "stable_size" ^^
-         G.i MemorySize ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-         set_pages_needed ^^
-
-         get_pages_needed ^^
-         compile_unboxed_zero ^^
-         G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-         G.if_ []
-          (get_pages_needed ^^
-           G.i MemoryGrow ^^
-           (* Check result *)
-           compile_unboxed_zero ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-           E.then_trap_with env "Cannot grow memory."
-          ) G.nop
-         ^^
-         (* copy from stable memory *)
-         compile_unboxed_const 0l ^^
-         compile_unboxed_const 0l ^^
-         E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
-         E.call_import env "ic0" "stable_read"
-        (* HERE *)
- *)
         )
         (let (_, fs) = Type.as_obj ty in
          let fs' = List.map
@@ -6722,12 +6668,13 @@ and compile_exp (env : E.t) ae exp =
 
     | ICStableWrite ty, [e] ->
       SR.unit,
+      (* Dfinity.compile_static_print env "(ICStableWrite" ^^ *)
       compile_exp_as env ae SR.Vanilla e ^^
       let (set_dst, get_dst) = new_local env "dst" in
       let (set_len, get_len) = new_local env "len" in
       Serialization.serialize env [ty] ^^
-      set_dst ^^
       set_len ^^
+      set_dst ^^
 
       let (set_pages, get_pages) = new_local env "len" in
       get_len ^^
@@ -6760,15 +6707,17 @@ and compile_exp (env : E.t) ae exp =
       let (set_size, get_size) = new_local env "size" in
       Heap.alloc env 1l ^^ set_size ^^
       get_size ^^ get_len ^^ store_ptr ^^
-      get_size ^^ compile_add_const ptr_unskew ^^ compile_unboxed_const 0l ^^ compile_unboxed_const 4l ^^
+
+      compile_unboxed_const 0l ^^
+      get_size ^^ compile_add_const ptr_unskew ^^ compile_unboxed_const 4l ^^
       Dfinity.system_call env "ic0" "stable_write" ^^
 
       (* copy data to following stable memory *)
-      get_dst ^^
       compile_unboxed_const 4l ^^
+      get_dst ^^
       get_len ^^
       E.call_import env "ic0" "stable_write"
-
+      (* ^^ Dfinity.compile_static_print env "ICStableWrite)" *)
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -7346,15 +7295,19 @@ and main_actor env ae1 ds fs { pre; post } =
   (* Export the public functions *)
   List.iter (export_actor_field env ae2) fs;
 
+  (* Define upgrade hooks *)
+  Func.define_built_in env "pre_exp" [] [] (fun env ->
+    compile_exp_as env ae2 SR.unit pre);
+  Func.define_built_in env "post_exp" [] [] (fun env ->
+    compile_exp_as env ae2 SR.unit post);
+
   decls_code
 
-and conclude_module env start_fi_o =
+and conclude_module env start_fi start_fi_o =
 
   FuncDec.export_async_method env;
 
   let static_roots = GC.store_static_roots env in
-
-  Dfinity.export_upgrade_scaffold env;
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
@@ -7368,6 +7321,9 @@ and conclude_module env start_fi_o =
     | Some fi -> G.i (Call fi)
     | None -> G.nop
   )) in
+
+  Dfinity.export_upgrade_scaffold env start_fi rts_start_fi;
+
 
   Dfinity.default_exports env;
 
@@ -7444,4 +7400,4 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
     | Flags.ICMode | Flags.RefMode -> Dfinity.export_init env start_fi; None
     | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
 
-  conclude_module env start_fi_o
+  conclude_module env start_fi start_fi_o
