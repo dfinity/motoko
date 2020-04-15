@@ -92,6 +92,7 @@ sig
   val is_fulfilled : 'a t -> bool
   val value : 'a t -> 'a
   val value_opt : 'a t -> 'a option
+  val lazy_value : 'a t -> (unit -> 'a) -> 'a
 end
 
 module Int :
