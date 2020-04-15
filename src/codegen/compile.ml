@@ -2464,10 +2464,11 @@ module Object = struct
 
   (* This is for static objects *)
   let vanilla_lit env (fs : (string * int32) list) : int32 =
-    let (hashes, ptrs) = fs |>
-      List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr)) |>
-      List.sort compare |>
-      List.split
+    let open List in
+    let (hashes, ptrs) = fs
+      |> map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
+      |> sort compare
+      |> split
     in
 
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
@@ -4758,10 +4759,7 @@ module StackRep = struct
     | Const _ | Unreachable -> G.nop
 
   let rec materialize_const_t env (p, cv) : int32 =
-    begin if not (Lib.Promise.is_fulfilled p)
-    then Lib.Promise.fulfill p (materialize_const_v env cv)
-    end;
-    Lib.Promise.value p
+    Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
   and materialize_const_v env = function
     | Const.Fun fi -> Closure.static_closure env fi
