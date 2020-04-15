@@ -153,7 +153,7 @@ module SR = struct
      have to write our own equality.
 
      This equalty is, I believe, used when joining branches. So for Const, we
-     just compare the promises, and do not descent into the Const.v. This is
+     just compare the promises, and do not descend into the Const.v. This is
      conservative; the only downside is that if a branch returns different
      Const.t with (semantically) the same Const.v we do not propagate that as
      Const, but materialize before the branch.
