@@ -87,13 +87,6 @@ let no_info = { loc_known = false; const = surely_false }
 let arg env a = M.add a.it no_info env
 let args env as_ = List.fold_left arg env as_
 
-let rec is_irrefutable p = match p.it with
-  | TupP pats -> List.for_all is_irrefutable pats
-  | ObjP pfs -> List.for_all (fun (pf : pat_field) -> is_irrefutable pf.it.pat) pfs
-  | AltP (pat1, _) -> is_irrefutable pat1
-  | WildP | VarP _ -> true
-  | TagP _ | LitP _ | OptP _ -> false
-
 let rec pat env p = match p.it with
   | WildP
   | LitP _ -> env
@@ -192,7 +185,7 @@ and case_ lvl env c : unit =
 and gather_dec lvl scope dec : env =
   let mk_info const = { loc_known = lvl = TopLvl; const } in
   let ok = match dec.it with
-  | LetD (p, _) -> is_irrefutable p
+  | LetD (p, _) -> Ir_utils.is_irrefutable p
   | VarD _ -> false
   in
   S.fold (fun v scope ->

@@ -7180,7 +7180,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for constant expressions *)
-  | LetD (_, e) when e.note.Note.const ->
+  | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
     let (extend, fill) = compile_const_dec env pre_ae dec in
     ( extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
 
