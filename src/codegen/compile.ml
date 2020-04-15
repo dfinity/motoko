@@ -2908,7 +2908,6 @@ module Lifecycle = struct
     | InPreUpgrade -> "InPreUpgrade"
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
-  let _ = ref string_of_state
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4235,48 +4234,6 @@ module Serialization = struct
       end
     )
 
-  let argument_data_size env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Dfinity.system_call env "ic0" "msg_arg_data_size"
-    | _ -> assert false
-
-  let argument_data_copy env get_dest get_length =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      get_dest ^^
-      (compile_unboxed_const 0l) ^^
-      get_length ^^
-      Dfinity.system_call env "ic0" "msg_arg_data_copy"
-    | _ -> assert false
-
-  (* return the initial i32 in stable memory recording the size of the following stable data *)
-  let stable_data_size env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      (* read size from initial word of (assumed non-empty) stable memory*)
-      let (set_size, get_size) = new_local env "size" in
-      Heap.alloc env 1l ^^ set_size ^^
-
-      get_size ^^ compile_add_const ptr_unskew ^^
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 4l ^^
-      Dfinity.system_call env "ic0" "stable_read" ^^
-
-      get_size ^^ load_ptr
-    | _ -> assert false
-
-  (* copy the stable data from stable memory from offset 4 *)
-  let stable_data_copy env get_dest get_length =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      get_dest ^^
-      compile_unboxed_const 4l ^^
-      get_length ^^
-      Dfinity.system_call env "ic0" "stable_read"
-    | _ -> assert false
-
-
   let serialize env ts : G.t =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
@@ -4335,76 +4292,171 @@ module Serialization = struct
       | Flags.WasmMode | Flags.WASIMode -> assert false
     )
 
-  let deserialize_aux source_size source_copy env ts =
+  let deserialize_core source_size source_copy env ts_name ts =
+    let (set_data_size, get_data_size) = new_local env "data_size" in
+    let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+    let (set_data_start, get_data_start) = new_local env "data_start" in
+    let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+    let (set_arg_count, get_arg_count) = new_local env "arg_count" in
+
+    (* Allocate space for the data buffer and copy it *)
+    source_size env ^^ set_data_size ^^
+    get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
+    source_copy env get_data_start get_data_size ^^
+
+    (* Allocate space for the reference buffer and copy it *)
+    compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
+
+    (* Allocate space for out parameters of parse_idl_header *)
+    Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
+    Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
+
+    (* Set up read buffers *)
+    ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
+
+    ReadBuf.set_ptr get_data_buf get_data_start ^^
+    ReadBuf.set_size get_data_buf get_data_size ^^
+    ReadBuf.set_ptr get_ref_buf get_refs_start ^^
+    ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
+
+    (* Go! *)
+    get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
+    E.call_import env "rts" "parse_idl_header" ^^
+
+    (* set up a dedicated read buffer for the list of main types *)
+    ReadBuf.alloc env (fun get_main_typs_buf ->
+      ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+      ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
+      ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
+
+      get_arg_count ^^
+      compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
+      E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
+
+      G.concat_map (fun t ->
+        get_data_buf ^^ get_ref_buf ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^
+        ReadBuf.read_sleb128 env get_main_typs_buf ^^
+        deserialize_go env t
+      ) ts ^^
+
+      get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
+      G.if_ []
+        begin
+          ReadBuf.is_empty env get_data_buf ^^
+          E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
+          ReadBuf.is_empty env get_ref_buf ^^
+          E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
+        end G.nop
+    )))))
+
+  let argument_data_size env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Dfinity.system_call env "ic0" "msg_arg_data_size"
+    | _ -> assert false
+
+  let argument_data_copy env get_dest get_length =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      get_dest ^^
+      (compile_unboxed_const 0l) ^^
+      get_length ^^
+      Dfinity.system_call env "ic0" "msg_arg_data_copy"
+    | _ -> assert false
+
+  let deserialize env ts =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
-      let (set_data_size, get_data_size) = new_local env "data_size" in
-      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
-      let (set_data_start, get_data_start) = new_local env "data_start" in
-      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
-      let (set_arg_count, get_arg_count) = new_local env "arg_count" in
-
-      (* Allocate space for the data buffer and copy it *)
-      source_size env ^^ set_data_size ^^
-      get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
-      source_copy env get_data_start get_data_size ^^
-
-      (* Allocate space for the reference buffer and copy it *)
-      compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
-
-      (* Allocate space for out parameters of parse_idl_header *)
-      Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
-      Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
-
-      (* Set up read buffers *)
-      ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
-
-      ReadBuf.set_ptr get_data_buf get_data_start ^^
-      ReadBuf.set_size get_data_buf get_data_size ^^
-      ReadBuf.set_ptr get_ref_buf get_refs_start ^^
-      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
-
-      (* Go! *)
-      get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
-      E.call_import env "rts" "parse_idl_header" ^^
-
-      (* set up a dedicated read buffer for the list of main types *)
-      ReadBuf.alloc env (fun get_main_typs_buf ->
-        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
-        ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
-
-        ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
-
-        get_arg_count ^^
-        compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
-        E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
-
-        G.concat_map (fun t ->
-          get_data_buf ^^ get_ref_buf ^^
-          get_typtbl_ptr ^^ load_unskewed_ptr ^^
-          ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          deserialize_go env t
-        ) ts ^^
-
-        get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
-        G.if_ []
-          begin
-            ReadBuf.is_empty env get_data_buf ^^
-            E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
-            ReadBuf.is_empty env get_ref_buf ^^
-            E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
-          end G.nop
-      )
-    )))))
-
-  let deserialize env ts = deserialize_aux argument_data_size argument_data_copy env ts
-
-  let destabilize env t = deserialize_aux stable_data_size stable_data_copy env [t]
-  let _ = destabilize
-
+        deserialize_core argument_data_size argument_data_copy env ts_name ts)
 
 end (* Serialization *)
+
+(* Stabilization (Serilization to stable memory) *)
+
+module Stabilization = struct
+
+  let stabilize env t =
+    let (set_dst, get_dst) = new_local env "dst" in
+    let (set_len, get_len) = new_local env "len" in
+    Serialization.serialize env [t] ^^
+    set_len ^^
+    set_dst ^^
+
+    let (set_pages, get_pages) = new_local env "len" in
+    get_len ^^
+    compile_add_const 4l ^^  (* reserve one word for size *)
+    compile_divU_const page_size ^^
+    compile_add_const 1l ^^
+    set_pages ^^
+
+    (* grow stable memory if needed *)
+    let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+    get_pages ^^
+    E.call_import env "ic0" "stable_size" ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    set_pages_needed ^^
+
+    get_pages_needed ^^
+    compile_unboxed_zero ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+    G.if_ []
+      ( get_pages_needed ^^
+        E.call_import env "ic0" "stable_grow" ^^
+        (* Check result *)
+        compile_unboxed_zero ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+        E.then_trap_with env "Cannot grow stable memory."
+      ) G.nop
+    ^^
+
+    (* write len to initial word of stable memory*)
+    let (set_size, get_size) = new_local env "size" in
+    Heap.alloc env 1l ^^ set_size ^^
+    get_size ^^ get_len ^^ store_ptr ^^
+
+    compile_unboxed_const 0l ^^
+    get_size ^^ compile_add_const ptr_unskew ^^ compile_unboxed_const 4l ^^
+    Dfinity.system_call env "ic0" "stable_write" ^^
+
+    (* copy data to following stable memory *)
+    compile_unboxed_const 4l ^^
+    get_dst ^^
+    get_len ^^
+    E.call_import env "ic0" "stable_write"
+
+
+  (* return the initial i32 in stable memory recording the size of the following stable data *)
+  let stable_data_size env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      (* read size from initial word of (assumed non-empty) stable memory*)
+      let (set_size, get_size) = new_local env "size" in
+      Heap.alloc env 1l ^^ set_size ^^
+
+      get_size ^^ compile_add_const ptr_unskew ^^
+      compile_unboxed_const 0l ^^
+      compile_unboxed_const 4l ^^
+      Dfinity.system_call env "ic0" "stable_read" ^^
+
+      get_size ^^ load_ptr
+    | _ -> assert false
+
+  (* copy the stable data from stable memory from offset 4 *)
+  let stable_data_copy env get_dest get_length =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      get_dest ^^
+      compile_unboxed_const 4l ^^
+      get_length ^^
+      Dfinity.system_call env "ic0" "stable_read"
+    | _ -> assert false
+
+  let destabilize env t =
+    let t_name = Serialization.typ_id t in
+    Serialization.deserialize_core stable_data_size stable_data_copy env t_name [t]
+end
 
 module GC = struct
   (* This is a very simple GC:
@@ -6655,7 +6707,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       E.call_import env "ic0" "stable_size" ^^
       G.if_ [I32Type]
-        (Serialization.destabilize env ty)
+        (Stabilization.destabilize env ty)
         (let (_, fs) = Type.as_obj ty in
          let fs' = List.map
            (fun f -> (f.Type.lab, fun () -> Opt.null))
@@ -6665,53 +6717,8 @@ and compile_exp (env : E.t) ae exp =
     | ICStableWrite ty, [e] ->
       SR.unit,
       compile_exp_as env ae SR.Vanilla e ^^
-      let (set_dst, get_dst) = new_local env "dst" in
-      let (set_len, get_len) = new_local env "len" in
-      Serialization.serialize env [ty] ^^
-      set_len ^^
-      set_dst ^^
+      Stabilization.stabilize env ty
 
-      let (set_pages, get_pages) = new_local env "len" in
-      get_len ^^
-      compile_add_const 4l ^^  (* reserve one word for size *)
-      compile_divU_const page_size ^^
-      compile_add_const 1l ^^
-      set_pages ^^
-
-      (* grow stable memory if needed *)
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      get_pages ^^
-      E.call_import env "ic0" "stable_size" ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
-
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          E.call_import env "ic0" "stable_grow" ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow stable memory."
-        ) G.nop
-      ^^
-
-      (* write len to initial word of stable memory*)
-      let (set_size, get_size) = new_local env "size" in
-      Heap.alloc env 1l ^^ set_size ^^
-      get_size ^^ get_len ^^ store_ptr ^^
-
-      compile_unboxed_const 0l ^^
-      get_size ^^ compile_add_const ptr_unskew ^^ compile_unboxed_const 4l ^^
-      Dfinity.system_call env "ic0" "stable_write" ^^
-
-      (* copy data to following stable memory *)
-      compile_unboxed_const 4l ^^
-      get_dst ^^
-      get_len ^^
-      E.call_import env "ic0" "stable_write"
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
