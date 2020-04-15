@@ -3227,8 +3227,8 @@ module Dfinity = struct
   let export_init env start_fi =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env1 ->
-      G.i (Call (nr start_fi)) ^^
       Lifecycle.trans env Lifecycle.InInit ^^
+      G.i (Call (nr start_fi)) ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect"))) ^^
       Lifecycle.trans env Lifecycle.Idle
