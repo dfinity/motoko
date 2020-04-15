@@ -186,7 +186,7 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =

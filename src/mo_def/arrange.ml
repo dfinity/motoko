@@ -112,7 +112,7 @@ and obj_sort s = match s.it with
   | Type.Object -> Atom "Object"
   | Type.Actor -> Atom "Actor"
   | Type.Module -> Atom "Module"
-
+  | Type.Memory -> Atom "Memory"
 
 and sort_pat sp = match sp.it with
   | Type.Local -> Atom "Local"

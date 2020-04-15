@@ -4,7 +4,7 @@ type lab = string
 type var = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module
+type obj_sort = Object | Actor | Module | Memory
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared

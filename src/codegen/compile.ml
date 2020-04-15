@@ -693,6 +693,7 @@ module RTS = struct
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "try_find_field" [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
@@ -3624,7 +3625,7 @@ module Serialization = struct
           add_leb128 i;
           add_idx t;
         ) ts
-      | Obj (Object, fs) ->
+      | Obj ((Object | Memory), fs) ->
         add_sleb128 (-20);
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
@@ -3723,12 +3724,12 @@ module Serialization = struct
         G.concat_mapi (fun i t ->
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           size env t
-        ) ts
-      | Obj (Object, fs) ->
+          ) ts
+      | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           size env f.typ
-        ) (sort_by_hash fs)
+          ) (sort_by_hash fs)
       | Array t ->
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
@@ -3867,7 +3868,7 @@ module Serialization = struct
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           write env t
         ) ts
-      | Obj (Object, fs) ->
+      | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h,f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           write env f.typ
@@ -4107,7 +4108,7 @@ module Serialization = struct
         read_byte_tagged
           [ E.trap_with env "IDL error: unexpected principal reference"
             ; read_blob ()
-          ]           
+          ]
       | Prim Text ->
         assert_prim_typ t ^^
         read_text ()
@@ -4146,6 +4147,35 @@ module Serialization = struct
               E.call_import env "rts" "find_field" ^^ set_n ^^
 
               ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+          ) (sort_by_hash fs)) ^^
+
+          (* skip all possible trailing extra fields *)
+          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n ^^
+          E.call_import env "rts" "skip_fields"
+          )
+      | Obj (Memory, fs) ->
+        (* similar to Object case, but insert nulls for missing fields *)
+        with_composite_typ (-20l) (fun get_typ_buf ->
+          let (set_n, get_n) = new_local env "memory_fields" in
+          let (set_found_ptr, get_found_ptr) = new_local env "found_ptr" in
+          Heap.alloc env 1l ^^ set_found_ptr ^^
+          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
+          Object.lit_raw env (List.map (fun (h,f) ->
+            assert (is_opt f.typ);
+            f.Type.lab, fun () ->
+              (* skip all possible intermediate extra fields *)
+              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Lib.Uint32.to_int32 h) ^^ get_n ^^
+              get_found_ptr ^^ compile_add_const ptr_unskew ^^
+              E.call_import env "rts" "try_find_field" ^^ set_n ^^
+
+              get_found_ptr ^^ load_ptr ^^
+              G.if_ [I32Type]
+                begin
+                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+                end
+                begin
+                  Opt.null
+                end
           ) (sort_by_hash fs)) ^^
 
           (* skip all possible trailing extra fields *)
@@ -4379,6 +4409,10 @@ end (* Serialization *)
 module Stabilization = struct
 
   let stabilize env t =
+    let t = Type.( match t with
+      | Obj (Object,fs) -> Obj (Memory, fs)
+      | _ -> assert false )
+    in
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
     Serialization.serialize env [t] ^^
@@ -4455,6 +4489,10 @@ module Stabilization = struct
     | _ -> assert false
 
   let destabilize env t =
+    let t = Type.(match t with
+      | Obj (Object,fs) -> Obj (Memory, fs)
+      | _ -> assert false)
+    in
     let t_name = Serialization.typ_id t in
     Serialization.deserialize_core stable_data_size stable_data_copy env t_name [t]
 end
