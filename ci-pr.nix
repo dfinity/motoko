@@ -61,7 +61,7 @@ let
 
       if cmp -s ${wasm-hash-base} ${wasm-hash-pr}
       then
-        echo "This PR does not affect the produced Webassembly code." >> $out/report
+        echo "This PR does not affect the produced WebAssembly code." >> $out/report
       else
         diff-stats ${baseJobs.tests.perf} ${prJobs.tests.perf} > $out/report;
       fi
@@ -77,5 +77,4 @@ import ./ci.nix { inherit src; } //
 nixpkgs.lib.optionalAttrs (src ? mergeBase) {
   inherit perf-delta;
 }
-
 
