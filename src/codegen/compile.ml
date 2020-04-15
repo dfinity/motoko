@@ -47,7 +47,7 @@ module StaticBytes = struct
 
   type t_ =
     | I32 of int32
-    (* | I64 of int64 needed with #1368 *)
+    | I64 of int64
     | Seq of t
     | Bytes of string
 
@@ -57,7 +57,7 @@ module StaticBytes = struct
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
     | I32 i -> Buffer.add_int32_le buf i
-    (* | I64 i -> Buffer.add_int64_be buf i *)
+    | I64 i -> Buffer.add_int64_le buf i
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
 
@@ -80,7 +80,7 @@ module Const = struct
        const_lit_of_lit : Ir.lit -> Const.lit (* NB: pure, no access to env *)
 
        (* creates vanilla representation (e.g. to put in static data structures *)
-       vanilla_of_lit : E.env -> Const.lit -> i32
+       vanilla_lit : E.env -> Const.lit -> i32
 
        (* creates efficient stack representation *)
        compile_lit : E.env -> Const.lit -> (SR.t, code)
@@ -113,7 +113,7 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
-    (* | Lit of lit   -- will come in subsequent PR *)
+    | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
      Typically a static memory location, could be an unboxed scalar.
@@ -147,6 +147,21 @@ module SR = struct
   let unit = UnboxedTuple 0
 
   let bool = Vanilla
+
+  (* Because t contains Const.t, and that contains Const.v, and that contains
+     Const.lit, and that contains Big_int, we cannot just use normal `=`. So we
+     have to write our own equality.
+
+     This equalty is, I believe, used when joining branches. So for Const, we
+     just compare the promises, and do not descend into the Const.v. This is
+     conservative; the only downside is that if a branch returns different
+     Const.t with (semantically) the same Const.v we do not propagate that as
+     Const, but materialize before the branch.
+     Which is not really expected or important.
+  *)
+  let eq (t1 : t) (t2 : t) = match t1, t2 with
+    | Const (p1, _), Const (p2, _) -> p1 == p2
+    | _ -> t1 = t2
 
 end (* SR *)
 
@@ -530,14 +545,11 @@ let compile_eq64_const i =
 
 let bytes_of_int32 (i : int32) : string =
   let b = Buffer.create 4 in
-  let i1 = Int32.to_int i land 0xff in
-  let i2 = (Int32.to_int i lsr 8) land 0xff in
-  let i3 = (Int32.to_int i lsr 16) land 0xff in
-  let i4 = (Int32.to_int i lsr 24) land 0xff in
-  Buffer.add_char b (Char.chr i1);
-  Buffer.add_char b (Char.chr i2);
-  Buffer.add_char b (Char.chr i3);
-  Buffer.add_char b (Char.chr i4);
+  let i = Int32.to_int i in
+  Buffer.add_char b (Char.chr (i land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 8) land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 16) land 0xff));
+  Buffer.add_char b (Char.chr ((i lsr 24) land 0xff));
   Buffer.contents b
 
 (* A common variant of todo *)
@@ -1045,13 +1057,6 @@ module BitTagged = struct
   *)
   let scalar_shift = 2l
 
-  let can_unbox (n : int) =
-    (* NB: This code is only correct on 64 bit build architectures *)
-    let open Int32 in
-    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
-    let upper_bound = to_int (shift_right_logical minus_one 2) in
-    lower_bound <= n && n <= upper_bound
-
   let if_unboxed env retty is1 is2 =
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
@@ -1069,6 +1074,11 @@ module BitTagged = struct
   let if_both_unboxed env retty is1 is2 =
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
     if_unboxed env retty is1 is2
+
+  let can_unbox (n : int64) =
+    let lower_bound = 0L in (* TBR *)
+    let upper_bound = Int64.shift_left 1L 30 in
+    lower_bound <= n && n < upper_bound
 
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
@@ -1350,6 +1360,15 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
+  let vanilla_lit env i =
+    if BitTagged.can_unbox i
+    then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
+    else
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits64);
+        I64 i
+      ]
+
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
@@ -1434,6 +1453,15 @@ module BoxedSmallWord = struct
   *)
 
   let payload_field = Tagged.header_size
+
+  let vanilla_lit env i =
+    if BitTagged.can_unbox (Int64.of_int (Int32.to_int i))
+    then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    else
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits32);
+        I32 i
+      ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
@@ -1610,6 +1638,12 @@ module Float = struct
   let compile_unboxed_const f = G.i Wasm.(Ast.Const (nr (Values.F64 f)))
   let lit f = compile_unboxed_const (Wasm.F64.of_float f)
   let compile_unboxed_zero = lit 0.0
+
+  let vanilla_lit env f =
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Bits64);
+      I64 (Wasm.F64.to_bits f)
+    ]
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
@@ -2046,8 +2080,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
 
+  let can_unbox (n : int) =
+    (* NB: This code is only correct on 64 bit build architectures *)
+    let open Int32 in
+    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
+    let upper_bound = to_int (shift_right_logical minus_one 2) in
+    lower_bound <= n && n <= upper_bound
+
   let vanilla_lit env = function
-    | n when Big_int.is_int_big_int n && BitTagged.can_unbox (Big_int.int_of_big_int n) ->
+    | n when Big_int.is_int_big_int n && can_unbox (Big_int.int_of_big_int n) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.vanilla_lit env n
@@ -4729,7 +4770,7 @@ module StackRep = struct
     | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
-    | _, _ when sr1 = sr2 -> sr1
+    | _, _ when SR.eq sr1 sr2 -> sr1
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
     | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
@@ -4737,6 +4778,14 @@ module StackRep = struct
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
     | Const _, Const _ -> Vanilla
+
+    | Const _, UnboxedWord32 -> UnboxedWord32
+    | UnboxedWord32, Const _ -> UnboxedWord32
+    | Const _, UnboxedWord64 -> UnboxedWord64
+    | UnboxedWord64, Const _ -> UnboxedWord64
+    | Const _, UnboxedFloat64 -> UnboxedFloat64
+    | UnboxedFloat64, Const _ -> UnboxedFloat64
+
     | Const _, UnboxedTuple 0 -> UnboxedTuple 0
     | UnboxedTuple 0, Const _-> UnboxedTuple 0
     | _, _ ->
@@ -4758,6 +4807,19 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
+  (* Materializes a Const.lit: If necessary, puts
+     bytes into static memory, and returns a vanilla value.
+  *)
+  let materialize_lit env (lit : Const.lit) : int32 =
+    match lit with
+      (* Booleans are directly in Vanilla representation *)
+      | Const.Vanilla n  -> n
+      | Const.BigInt n   -> BigNum.vanilla_lit env n
+      | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
+      | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
+      | Const.Float64 f  -> Float.vanilla_lit env f
+      | Const.Blob t     -> Blob.vanilla_lit env t
+
   let rec materialize_const_t env (p, cv) : int32 =
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
@@ -4767,9 +4829,10 @@ module StackRep = struct
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
       Object.vanilla_lit env fs'
+    | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
-    if sr_in = sr_out
+    if eq sr_in sr_out
     then G.nop
     else match sr_in, sr_out with
     | Unreachable, Unreachable -> G.nop
@@ -4788,6 +4851,9 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
+    | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
+    | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
+    | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
@@ -5568,14 +5634,11 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
+let const_of_lit lit =
+  Const.t_of_v (Const.Lit (const_lit_of_lit lit))
+
 let compile_lit env lit =
-  match const_lit_of_lit lit with
-  | Const.Vanilla n -> SR.Vanilla, compile_unboxed_const n
-  | Const.BigInt n  -> SR.Vanilla, compile_unboxed_const (BigNum.vanilla_lit env n)
-  | Const.Word32 n  -> SR.UnboxedWord32, compile_unboxed_const n
-  | Const.Word64 n  -> SR.UnboxedWord64, compile_const_64 n
-  | Const.Float64 f -> SR.UnboxedFloat64, Float.compile_unboxed_const f
-  | Const.Blob b    -> SR.Vanilla, compile_unboxed_const (Blob.vanilla_lit env b)
+  SR.Const (const_of_lit lit), G.nop
 
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
@@ -7210,6 +7273,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
+  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =

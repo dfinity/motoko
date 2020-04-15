@@ -138,12 +138,12 @@ let rec exp lvl (env : env) e : lazy_bool =
       block lvl env (ds, body)
     | PrimE (DotPrim n, [e1]) ->
       exp lvl env e1
+    | LitE _ ->
+      surely_true
 
     (* All the following expressions cannot be const, but we still need to descend *)
     | PrimE (_, es) ->
       List.iter (exp_ lvl env) es;
-      surely_false
-    | LitE _ ->
       surely_false
     | DeclareE (id, _, e1) ->
       exp_ lvl (M.add id no_info env) e1;
