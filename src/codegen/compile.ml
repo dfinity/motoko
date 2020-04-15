@@ -2503,9 +2503,27 @@ module Object = struct
 
   module FieldEnv = Env.Make(String)
 
+  (* This is for static objects *)
+  let vanilla_lit env (fs : (string * int32) list) : int32 =
+    let open List in
+    let (hashes, ptrs) = fs
+      |> map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
+      |> sort compare
+      |> split
+    in
+
+    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
+
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Object);
+      I32 (Int32.of_int (List.length fs));
+      I32 hash_ptr;
+      i32s ptrs;
+    ]
+
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
-  let lit_raw env fs =
+  let lit_raw env (fs : (string * (unit -> G.t)) list ) =
     let name_pos_map =
       fs |>
       (* We could store only public fields in the object, but
@@ -4802,23 +4820,16 @@ module StackRep = struct
       | Const.Float64 f  -> Float.vanilla_lit env f
       | Const.Blob t     -> Blob.vanilla_lit env t
 
-  let rec materialize env (p, cv) : G.t =
-    if Lib.Promise.is_fulfilled p
-    then compile_unboxed_const (Lib.Promise.value p)
-    else match cv with
-    | Const.Fun fi ->
-      let ptr = Closure.static_closure env fi in
-      Lib.Promise.fulfill p ptr;
-      compile_unboxed_const ptr
-    | Const.Message fi ->
-      assert false
+  let rec materialize_const_t env (p, cv) : int32 =
+    Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
+
+  and materialize_const_v env = function
+    | Const.Fun fi -> Closure.static_closure env fi
+    | Const.Message fi -> assert false
     | Const.Obj fs ->
-      (* TODO: allocate statically here *)
-      Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
-    | Const.Lit l ->
-      let ptr = materialize_lit env l in
-      Lib.Promise.fulfill p ptr;
-      compile_unboxed_const ptr
+      let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
+      Object.vanilla_lit env fs'
+    | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -4839,7 +4850,7 @@ module StackRep = struct
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
-    | Const c, Vanilla -> materialize env c
+    | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
