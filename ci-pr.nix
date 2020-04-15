@@ -46,7 +46,7 @@ let
   wasm-hash-base = wasm-hash-for baseJobs.moc;
   wasm-hash-pr = wasm-hash-for prJobs.moc;
 
-  # This jobs compares the performance numbers of the current revision
+  # This job compares the performance numbers of the current revision
   # with the mergeBase revision
   #
   # to test locally, use something like
@@ -77,4 +77,3 @@ import ./ci.nix { inherit src; } //
 nixpkgs.lib.optionalAttrs (src ? mergeBase) {
   inherit perf-delta;
 }
-
