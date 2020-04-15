@@ -2966,7 +2966,6 @@ module Lifecycle = struct
           go ss
         in go (pre_states new_state)
         ) ^^
-(*      Dfinity.compile_static_print ("entering state "^(string_of_state newstate)) ^^ *)
       set env new_state
     )
 
@@ -6654,12 +6653,9 @@ and compile_exp (env : E.t) ae exp =
            2. return v
 *)
       SR.Vanilla,
-      (*  Dfinity.compile_static_print env "ICStableRead" ^^ *)
       E.call_import env "ic0" "stable_size" ^^
       G.if_ [I32Type]
-        ((* Dfinity.compile_static_print env "destabilize" ^^ *)
-         Serialization.destabilize env ty
-        )
+        (Serialization.destabilize env ty)
         (let (_, fs) = Type.as_obj ty in
          let fs' = List.map
            (fun f -> (f.Type.lab, fun () -> Opt.null))
@@ -6668,7 +6664,6 @@ and compile_exp (env : E.t) ae exp =
 
     | ICStableWrite ty, [e] ->
       SR.unit,
-      (* Dfinity.compile_static_print env "(ICStableWrite" ^^ *)
       compile_exp_as env ae SR.Vanilla e ^^
       let (set_dst, get_dst) = new_local env "dst" in
       let (set_len, get_len) = new_local env "len" in
@@ -6717,7 +6712,6 @@ and compile_exp (env : E.t) ae exp =
       get_dst ^^
       get_len ^^
       E.call_import env "ic0" "stable_write"
-      (* ^^ Dfinity.compile_static_print env "ICStableWrite)" *)
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
