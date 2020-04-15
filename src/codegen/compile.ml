@@ -4369,11 +4369,12 @@ module Serialization = struct
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
-        deserialize_core argument_data_size argument_data_copy env ts_name ts)
+      deserialize_core argument_data_size argument_data_copy env ts_name ts)
 
 end (* Serialization *)
 
-(* Stabilization (Serilization to stable memory) *)
+
+(* Stabilization (serialization to/from stable memory) *)
 
 module Stabilization = struct
 
