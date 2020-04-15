@@ -365,6 +365,16 @@ rec {
     '';
   };
 
+  base-src = stdenv.mkDerivation {
+    name = "base-src";
+    phases = "unpackPhase installPhase";
+    src = nixpkgs.sources.motoko-base + "/src";
+    installPhase = ''
+      mkdir -p $out
+      cp -rv * $out
+    '';
+  };
+
   base-tests = stdenv.mkDerivation {
     name = "base-tests";
     src = nixpkgs.sources.motoko-base;
@@ -400,6 +410,7 @@ rec {
       deser
       samples
       rts
+      base-src
       base-tests
       users-guide
       ic-ref

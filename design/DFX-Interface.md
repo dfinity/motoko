@@ -34,6 +34,9 @@ the top-level `default.nix`:
 * `mo-ide`: contains `bin/mo-ide`
 * `didc`: contains `bin/didc`
 * `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
+* `base-src`: contains the base library, directly in the top level directory,
+  as `*.mo` files. It does not contain extra files (test files, for example)
+
 
 The `default.nix` file itself takes an optional `system` parameter which is
 either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
