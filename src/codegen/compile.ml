@@ -4575,13 +4575,13 @@ module Stabilization = struct
     ^^
 
     (* write len to initial word of stable memory*)
-    let (set_size, get_size) = new_local env "size" in
-    Heap.alloc env 1l ^^ set_size ^^
-    get_size ^^ get_len ^^ store_ptr ^^
+    Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
 
-    compile_unboxed_const 0l ^^
-    get_size ^^ compile_add_const ptr_unskew ^^ compile_unboxed_const 4l ^^
-    Dfinity.system_call env "ic0" "stable_write" ^^
+      get_size_ptr ^^ get_len ^^ store_unskewed_ptr ^^
+
+      compile_unboxed_const 0l ^^
+      get_size_ptr ^^ compile_unboxed_const 4l ^^
+      Dfinity.system_call env "ic0" "stable_write") ^^
 
     (* copy data to following stable memory *)
     compile_unboxed_const 4l ^^
@@ -4595,15 +4595,10 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       (* read size from initial word of (assumed non-empty) stable memory*)
-      let (set_size, get_size) = new_local env "size" in
-      Heap.alloc env 1l ^^ set_size ^^
-
-      get_size ^^ compile_add_const ptr_unskew ^^
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 4l ^^
-      Dfinity.system_call env "ic0" "stable_read" ^^
-
-      get_size ^^ load_ptr
+      Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
+        get_size_ptr ^^ compile_unboxed_const 0l ^^  compile_unboxed_const 4l ^^
+        Dfinity.system_call env "ic0" "stable_read" ^^
+        get_size_ptr ^^ load_unskewed_ptr)
     | _ -> assert false
 
   (* copy the stable data from stable memory from offset 4 *)
