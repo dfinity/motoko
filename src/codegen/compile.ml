@@ -4322,7 +4322,7 @@ module Serialization = struct
                   ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
                 end
                 begin
-                  E.trap_with env (Printf.sprintf "IDL error: did not find tuple field %s in record" f.lab)
+                  E.trap_with env (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
 
