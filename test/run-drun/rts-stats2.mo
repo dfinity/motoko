@@ -19,10 +19,9 @@ actor a {
   };
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    // 20_472 at some point
-    // why not 10000?
-    assert (Prim.rts_reclaimed() > 20000);
-    assert (Prim.rts_reclaimed() < 21000);
+    // 10_716 at some point
+    assert (Prim.rts_reclaimed() > 10000);
+    assert (Prim.rts_reclaimed() < 12000);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 10_008 at some point
@@ -37,5 +36,7 @@ actor a {
 
 //CALL ingress foo "DIDL\x00\x00"
 //CALL ingress check_A "DIDL\x00\x00"
+//CALL ingress check_A "DIDL\x00\x00"
 //CALL ingress bar "DIDL\x00\x00"
+//CALL ingress check_B "DIDL\x00\x00"
 //CALL ingress check_B "DIDL\x00\x00"

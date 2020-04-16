@@ -842,7 +842,7 @@ module Heap = struct
     G.i (GlobalSet (nr (E.get_global env "reclaimed")))
 
   let get_reclaimed env =
-    G.i (GlobalGet (nr (E.get_global env "allocations")))
+    G.i (GlobalGet (nr (E.get_global env "reclaimed")))
 
   let note_live_size env =
     (* assumes size of live set on the stack *)
