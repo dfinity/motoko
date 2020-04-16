@@ -488,4 +488,8 @@ func blobOfPrincipal(id : Principal) : Blob = {
   ((prim "cast" : Principal -> Blob) id)
 };
 
+func principalOfActor(act : actor {}) : Principal = {
+  ((prim "cast" : (actor {}) -> Principal) act)
+};
+
 |}
