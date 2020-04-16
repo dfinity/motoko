@@ -113,6 +113,7 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
+    | Array of t list
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -4829,6 +4830,9 @@ module StackRep = struct
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
       Object.vanilla_lit env fs'
+    | Const.Array cs ->
+      let ptrs = List.map (materialize_const_t env) cs in
+      Arr.vanilla_lit env ptrs
     | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
@@ -7274,6 +7278,11 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
     let member_ct = List.assoc name fs in
     (member_ct, fill)
   | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
+  | PrimE (ArrayPrim (Const, _), es) ->
+    let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
+    Const.t_of_v (Const.Array cs),
+    (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
