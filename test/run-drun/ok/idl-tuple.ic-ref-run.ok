@@ -14,3 +14,5 @@
 ← completed: 0x4449444c00037c7c7c050581848c20
 → query len3a(0x4449444c026c030071017502016e000200710548656c6c6f010203040005576f726c64)
 ← completed: 0x4449444c00037c7c7c050581848c20
+→ query len3a(0x4449444c016c02007101750200710548656c6c6f0102030405576f726c64)
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: did not find tuple field in record"
