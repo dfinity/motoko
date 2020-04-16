@@ -688,7 +688,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
         | VarD _ -> check false "VarD in constant BlockE"
-        | LetD (_, e1) ->
+        | LetD (p, e1) ->
+          check (Ir_utils.is_irrefutable p) "refutable pattern in constant BlockE";
           check e1.note.Note.const "non-constant RHS in constant BlockE"
       ) ds;
       check e.note.Note.const "non-constant body in constant BlockE"

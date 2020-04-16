@@ -198,12 +198,12 @@ and gather_decs lvl ds : env =
   List.fold_left (gather_dec lvl) M.empty ds
 
 and check_dec lvl env dec : lazy_bool = match dec.it with
-  | LetD (p, e) ->
+  | LetD (p, e) when Ir_utils.is_irrefutable p ->
     let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
     let lb = exp lvl env e in
     S.iter (fun v -> required_for lb (M.find v env).const) vs;
     lb
-  | VarD (_, _, e) ->
+  | VarD (_, _, e) | LetD (_, e) ->
     exp_ lvl env e;
     surely_false
 
