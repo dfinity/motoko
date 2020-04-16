@@ -118,9 +118,10 @@ let rec exp lvl (env : env) e : lazy_bool =
     | VarE v -> (find v env).const
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       exp_ NotTopLvl (args env as_) body;
-      begin match lvl with
-      | TopLvl -> surely_true (* top-level functions can always be const *)
-      | NotTopLvl ->
+      begin match s, lvl with
+      | Type.Shared _, _ -> surely_false (* shared functions are not const for now *)
+      | _, TopLvl -> surely_true (* top-level functions can always be const *)
+      | _, NotTopLvl ->
         let lb = maybe_false () in
         Freevars.M.iter (fun v _ ->
           let info = find v env in
@@ -137,12 +138,18 @@ let rec exp lvl (env : env) e : lazy_bool =
       block lvl env (ds, body)
     | PrimE (DotPrim n, [e1]) ->
       exp lvl env e1
+    | PrimE (ArrayPrim (Const, _), es) ->
+      let lb = maybe_false () in
+      List.iter (fun e ->
+        let lb' = exp lvl env e in
+        required_for lb' lb) es;
+      lb
+    | LitE _ ->
+      surely_true
 
     (* All the following expressions cannot be const, but we still need to descend *)
     | PrimE (_, es) ->
       List.iter (exp_ lvl env) es;
-      surely_false
-    | LitE _ ->
       surely_false
     | DeclareE (id, _, e1) ->
       exp_ lvl (M.add id no_info env) e1;
