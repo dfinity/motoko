@@ -323,7 +323,7 @@ Preconditions:
           pointed to by tb
   typtbl: the type table
   tag:    the desired tag
-  n:      the number of fields left
+  n:      the number of fields left in the data
 
 If the tag exists:
   return value: 1
