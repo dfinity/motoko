@@ -312,25 +312,58 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
   }
 }
 
-export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t remaining_fields) {
-  while (remaining_fields-- > 0) {
+/*
+This finds a field in a record.
+
+Preconditions:
+  tb:     points into the type table,
+          into the sequence of tags/types that are the argument of IDL_CON_record,
+	  at the tag
+  b:      points into the data buffer, at value corresponding to the field
+          pointed to by tb
+  typtbl: the type table
+  tag:    the desired tag
+  n:      the number of fields left
+
+If the tag exists:
+  return value: 1
+  tb:    points at the type corresponding to the found field
+  b:     points at the value corresponding to the found field
+  n:     the number of fields left after the found field
+
+If the tag does not exist:
+  return value: 0
+  tb:    points at the tag of the first field with a higher tag
+         or at the end of the buffer
+  b:     points at the value corresponding to that field
+         or at the value past the record
+  n:     the number of fields left, including the field poited to by tb
+*/
+export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t *n) {
+  while (*n > 0) {
+    uint8_t *last_p = tb->p;
     uint32_t this_tag = read_u32_of_leb128(tb);
     if (this_tag < tag) {
       int32_t it = read_i32_of_sleb128(tb);
       skip_any(b, typtbl, it, 0);
+      (*n)--;
     } else if (tag == this_tag) {
-      return remaining_fields;
+      (*n)--;
+      return 1;
     } else {
-      idl_trap_with("expected record field skipped");
+      // rewind reading tag
+      tb->p = last_p;
+      return 0;
     }
   }
-  idl_trap_with("expected record field missing");
+  return 0;
 }
 
-export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint32_t remaining_fields) {
-  while (remaining_fields-- > 0) {
+export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint8_t *n) {
+  while (*n > 0) {
     skip_leb128(tb);
     int32_t it = read_i32_of_sleb128(tb);
     skip_any(b, typtbl, it, 0);
+    (*n)--;
   }
 }

@@ -972,6 +972,8 @@ module Stack = struct
      just overwrite static data.
 
      We sometimes use the stack space if we need small amounts of scratch space.
+
+     All pointers here are unskewed.
   *)
 
   let end_ = page_size (* 64k of stack *)
@@ -4195,6 +4197,15 @@ module Serialization = struct
           f get_typ_buf
         ) in
 
+      let with_record_typ f = with_composite_typ (-20l) (fun get_typ_buf ->
+        Stack.with_words env "get_n_ptr" 1l (fun get_n_ptr ->
+          get_n_ptr ^^
+          ReadBuf.read_leb128 env get_typ_buf ^^
+          store_unskewed_ptr ^^
+          f get_typ_buf get_n_ptr
+        )
+      ) in
+
       let assert_blob_typ env =
         with_composite_typ (-19l) (fun get_typ_buf ->
           ReadBuf.read_sleb128 env get_typ_buf ^^
@@ -4278,40 +4289,45 @@ module Serialization = struct
         Tuple.from_stack env 0
       (* Composite types *)
       | Tup ts ->
-        with_composite_typ (-20l) (fun get_typ_buf ->
-          let (set_n, get_n) = new_local env "record_fields" in
-          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
-
+        with_record_typ (fun get_typ_buf get_n_ptr ->
           G.concat_mapi (fun i t ->
             (* skip all possible intermediate extra fields *)
-            get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Int32.of_int i) ^^ get_n ^^
-            E.call_import env "rts" "find_field" ^^ set_n ^^
-
-            ReadBuf.read_sleb128 env get_typ_buf ^^ go env t
+            get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Int32.of_int i) ^^ get_n_ptr ^^
+            E.call_import env "rts" "find_field" ^^
+            G.if_ [I32Type]
+              begin
+                ReadBuf.read_sleb128 env get_typ_buf ^^ go env t
+              end
+              begin
+                E.trap_with env "IDL error: did not find tuple field in record"
+              end
           ) ts ^^
 
           (* skip all possible trailing extra fields *)
-          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n ^^
+          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
           E.call_import env "rts" "skip_fields" ^^
 
           Tuple.from_stack env (List.length ts)
         )
       | Obj (Object, fs) ->
-        with_composite_typ (-20l) (fun get_typ_buf ->
-          let (set_n, get_n) = new_local env "record_fields" in
-          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
+        with_record_typ (fun get_typ_buf get_n_ptr ->
 
           Object.lit_raw env (List.map (fun (h,f) ->
             f.Type.lab, fun () ->
               (* skip all possible intermediate extra fields *)
-              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Lib.Uint32.to_int32 h) ^^ get_n ^^
-              E.call_import env "rts" "find_field" ^^ set_n ^^
-
-              ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Lib.Uint32.to_int32 h) ^^ get_n_ptr ^^
+              E.call_import env "rts" "find_field" ^^
+              G.if_ [I32Type]
+                begin
+                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+                end
+                begin
+                  E.trap_with env (Printf.sprintf "IDL error: did not find tuple field %s in record" f.lab)
+                end
           ) (sort_by_hash fs)) ^^
 
           (* skip all possible trailing extra fields *)
-          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n ^^
+          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
           E.call_import env "rts" "skip_fields"
         )
       | Array t ->
