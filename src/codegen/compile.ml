@@ -816,7 +816,13 @@ module Heap = struct
     E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
 
     (* counter for total allocations *)
-    E.add_global64 env "allocations" Mutable 0L
+    E.add_global64 env "allocations" Mutable 0L;
+
+    (* counter for total reclaimed bytes *)
+    E.add_global64 env "reclaimed" Mutable 0L;
+
+    (* counter for max live bytes *)
+    E.add_global64 env "max_live" Mutable 0L
 
   let count_allocations env =
     (* assumes number of allocated bytes on the stack *)
@@ -827,6 +833,32 @@ module Heap = struct
 
   let get_total_allocation env =
     G.i (GlobalGet (nr (E.get_global env "allocations")))
+
+  let add_reclaimed env =
+    (* assumes number of reclaimed bytes on the stack *)
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    G.i (GlobalGet (nr (E.get_global env "reclaimed"))) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+    G.i (GlobalSet (nr (E.get_global env "reclaimed")))
+
+  let get_reclaimed env =
+    G.i (GlobalGet (nr (E.get_global env "allocations")))
+
+  let note_live_size env =
+    (* assumes size of live set on the stack *)
+    let (set_live_size, get_live_size) = new_local env "live_size" in
+    set_live_size ^^
+    get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    G.i (GlobalGet (nr (E.get_global env "max_live"))) ^^
+    G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+    G.if_ [] G.nop begin
+      get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      G.i (GlobalSet (nr (E.get_global env "max_live")))
+    end
+
+  let get_max_live_size env =
+    G.i (GlobalGet (nr (E.get_global env "max_live")))
+
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
@@ -863,7 +895,7 @@ module Heap = struct
       (* return the current pointer (skewed) *)
       get_skewed_heap_ptr env ^^
 
-      (* Cound allocated bytes *)
+      (* Count allocated bytes *)
       get_n ^^ compile_mul_const word_size ^^
       count_allocations env ^^
 
@@ -4678,6 +4710,7 @@ module GC = struct
       let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
       Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
+      let get_end_from_space = get_begin_to_space in
       Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
       Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
 
@@ -4714,6 +4747,15 @@ module GC = struct
         get_begin_to_space
         get_end_to_space
         (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
+
+      (* Note some stats *)
+      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      Heap.note_live_size env ^^
+
+      get_end_from_space ^^ get_begin_from_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      Heap.add_reclaimed env ^^
 
       (* Copy the to-space to the beginning of memory. *)
       get_begin_from_space ^^ compile_add_const ptr_unskew ^^
@@ -6691,6 +6733,14 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "rts_total_allocation", [] ->
       SR.Vanilla,
       Heap.get_total_allocation env ^^ BigNum.from_word64 env
+
+    | OtherPrim "rts_reclaimed", [] ->
+      SR.Vanilla,
+      Heap.get_reclaimed env ^^ BigNum.from_word64 env
+
+    | OtherPrim "rts_max_live_size", [] ->
+      SR.Vanilla,
+      Heap.get_max_live_size env ^^ BigNum.from_word64 env
 
     | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
