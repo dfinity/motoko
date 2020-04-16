@@ -4283,7 +4283,7 @@ module Serialization = struct
 
           Tuple.from_stack env (List.length ts)
         )
-      | Obj ((Object|Memory) as sort, fs) ->
+      | Obj ((Object | Memory) as sort, fs) ->
         with_record_typ (fun get_typ_buf get_n_ptr ->
 
           Object.lit_raw env (List.map (fun (h,f) ->
