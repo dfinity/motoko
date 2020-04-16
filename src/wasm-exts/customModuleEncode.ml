@@ -892,7 +892,7 @@ let encode (em : extended_module) =
     let debug_addr_section seqs =
       let debug_addr_section_body seqs =
         unit(fun start ->
-            Promise.fulfill (References.find 0 !dw_references) 0; (* FIXME: SHOULD NOT BE Promise at all, constant *)
+            Promise.fulfill (References.find 0 !dw_references) 8; (* FIXME: SHOULD NOT BE Promise at all, constant *)
             write16 0x0005; (* version *)
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)
