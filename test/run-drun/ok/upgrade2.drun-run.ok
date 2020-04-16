@@ -1,0 +1,2 @@
+debug.print: init'ed 2
+ingress Err: IC0503: Canister ic:2A012B trapped explicitly: assertion failed at upgrade2.mo:5.26-5.38

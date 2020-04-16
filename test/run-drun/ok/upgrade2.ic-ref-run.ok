@@ -1,0 +1,5 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+debug.print: init'ed 2
+← rejected (RC_CANISTER_ERROR): Initialization trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at upgrade2.mo:5.26-5.38"
