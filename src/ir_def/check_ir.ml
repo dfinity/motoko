@@ -675,6 +675,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     match exp.it with
     | VarE id -> check_var "VarE" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
+      check (s = T.Local) "constant FuncE cannot be of shared sort";
       if env.lvl = NotTopLvl then
       Freevars.M.iter (fun v _ ->
         if (T.Env.find v env.vals).loc_known then () else
@@ -682,6 +683,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       ) (Freevars.exp exp)
     | NewObjE (Type.(Object | Module), fs, t) when T.is_immutable_obj t ->
       List.iter (fun f -> check_var "NewObjE" f.it.var) fs
+    | PrimE (ArrayPrim (Const, _), es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant array with non-constant subexpression"
+      ) es
     | PrimE (DotPrim n, [e1]) ->
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
     | BlockE (ds, e) ->
@@ -693,6 +698,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
           check false "complex pattern in constant BlockE"
         ) ds;
       check e.note.Note.const "non-constant body in constant BlockE"
+    | LitE _ -> ()
     | _ -> check false "unexpected constant expression"
   end;
 
