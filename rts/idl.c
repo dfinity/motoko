@@ -337,7 +337,7 @@ If the tag does not exist:
          or at the end of the buffer
   b:     points at the value corresponding to that field
          or at the value past the record
-  n:     the number of fields left, including the field poited to by tb
+  n:     the number of fields left, including the field pointed to by tb
 */
 export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t *n) {
   while (*n > 0) {
