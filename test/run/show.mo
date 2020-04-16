@@ -37,3 +37,7 @@ Prim.debugPrint(debug_show (42 : Nat8));
 Prim.debugPrint(debug_show (42 : Int32));
 Prim.debugPrint(debug_show (Prim.intToInt64 (-42)));
 Prim.debugPrint(debug_show '☃');
+Prim.debugPrint(debug_show 0.0);
+Prim.debugPrint(debug_show (-0.0));
+Prim.debugPrint(debug_show (-42.0));
+Prim.debugPrint(debug_show (1000000.12345));
