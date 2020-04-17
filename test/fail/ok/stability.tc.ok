@@ -1,0 +1,7 @@
+stability.mo:2.20-2.28: type error, found illegal stability declaration on field of non-actor
+stability.mo:3.4-3.10: type error, misplaced stability modifier; expected on var and let declarations only
+stability.mo:4.4-4.12: type error, misplaced stability modifier; expected on var and let declarations only
+stability.mo:5.4-5.12: type error, misplaced stability modifier; expected on var and let declarations only
+stability.mo:6.4-6.12: type error, misplaced stability modifier; expected on var and let declarations only
+stability.mo:9.15-9.16: type error, variable y is declared stable but has non-stable type var [var Int]
+stability.mo:11.15-11.16: type error, variable f is declared stable but has non-stable type () -> ()
