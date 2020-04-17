@@ -1,10 +1,10 @@
 RUNFLAGS = -d
 
 all:
-	../run.sh $(RUNFLAGS) *.mo
+	../run.sh $(RUNFLAGS) *.mo *.drun
 
 accept:
-	../run.sh $(RUNFLAGS) -a *.mo
+	../run.sh $(RUNFLAGS) -a *.mo *.drun
 
 clean:
 	rm -rf _out
