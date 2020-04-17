@@ -7480,13 +7480,13 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env ae1 ds fs { pre; post } =
+and main_actor env ae1 ds fs up =
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
   let (ae2, decls_code) = compile_decs_public env ae1 ds v2en
-    (Freevars.eager_vars (Freevars.exps [pre; post]))
+    (Freevars.captured_vars (Freevars.upgrade up))
   in
 
   (* Export the public functions *)
@@ -7494,9 +7494,9 @@ and main_actor env ae1 ds fs { pre; post } =
 
   (* Define upgrade hooks *)
   Func.define_built_in env "pre_exp" [] [] (fun env ->
-    compile_exp_as env ae2 SR.unit pre);
+    compile_exp_as env ae2 SR.unit up.pre);
   Func.define_built_in env "post_exp" [] [] (fun env ->
-    compile_exp_as env ae2 SR.unit post);
+    compile_exp_as env ae2 SR.unit up.post);
 
   decls_code
 

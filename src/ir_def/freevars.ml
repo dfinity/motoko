@@ -87,7 +87,7 @@ let rec exp e : f = match e.it with
   | TryE (e, cs)        -> exp e ++ cases cs
   | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
 
-and upgrade {pre; post} = exp pre ++ exp post
+and upgrade {pre; post} = under_lambda (exp pre) ++ under_lambda (exp post)
 
 and fields fs = unions (fun f -> id f.it.var) fs
 
