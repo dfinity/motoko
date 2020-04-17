@@ -1685,8 +1685,9 @@ and check_stab env sort scope fields =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
     | Some t ->
-      if not (T.stable (T.as_immut t)) then
-        local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t)
+      let t1 = T.as_immut t in
+      if not (T.stable t1) then
+        local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
   in
   if sort <> T.Actor then
     List.iter (fun ef ->
@@ -1704,13 +1705,17 @@ and check_stab env sort scope fields =
     | Some {it=Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
+(*
     | Some {it=Stable; _}, LetD (pat, _) ->
+      // restrict exp to canonical for pat?
+      // Otherwise how to we tease apart the individual initializers?
       let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
+*)
     | Some {it=Flexible; _} , (VarD _ | LetD _) -> []
     | Some stab, _ when stab.at <> Source.no_region ->
-      local_error env stab.at "misplaced stability modifier; expected on var and let declarations only";
+      local_error env stab.at "misplaced stability modifier: expected on var declarations only";
       []
     | _ -> []) fields
   in
