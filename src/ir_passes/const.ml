@@ -21,7 +21,7 @@ open Ir
   * Blocks can be const if
     - all RHSs are const, and
     - no mutable variable are defined, and
-    - pattern matchins is side-effect free, i.e. irrefutable
+    - pattern matching is side-effect free, i.e. irrefutable
   * Functions can be const if they do not reqiure a closure.
     This is the case if every free variables is
     - const or
@@ -32,7 +32,7 @@ open Ir
   * Projections can be const if they cannot fail (so no array index) and
     their argument ist const
 
-  I say “can be const” becauese the analysis does not have to be complete, just
+  I say “can be const” because the analysis does not have to be complete, just
   conservative.
 
   ## How does the analysis work?
@@ -43,7 +43,7 @@ open Ir
   subexpressions are.
 
   As always, recursion makes things harder. But not too much, thanks to a trick:
-  We pass down a custom type called `lazy_bool`. It denotes a boolean value,
+  we pass down a custom type called `lazy_bool`. It denotes a boolean value,
   just we do not know which one yet.  But we can still do operations like
   implication and conjunction on these values.
 
@@ -72,7 +72,7 @@ let (>>) cb1 cb2 = fun () -> cb1 (); cb2 ()
 type lazy_bool' =
   | SurelyTrue
   | SurelyFalse
-  | MaybeFalse of callback (* who to notify when turning false *)
+  | MaybeFalse of callback (* whom to notify when turning false *)
 type lazy_bool = lazy_bool' ref
 
 let set_false (l : lazy_bool) =
