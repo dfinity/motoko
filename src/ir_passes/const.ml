@@ -30,7 +30,7 @@ open Ir
   * Data structures can be const if they are immutable and all components are
     const
   * Projections can be const if they cannot fail (so no array index) and
-    their argument ist const
+    their argument is const
 
   I say “can be const” because the analysis does not have to be complete, just
   conservative.
