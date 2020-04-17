@@ -7485,7 +7485,9 @@ and main_actor env ae1 ds fs { pre; post } =
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae2, decls_code) = compile_decs_public env ae1 ds v2en Freevars.S.empty in
+  let (ae2, decls_code) = compile_decs_public env ae1 ds v2en
+    (Freevars.eager_vars (Freevars.exps [pre; post]))
+  in
 
   (* Export the public functions *)
   List.iter (export_actor_field env ae2) fs;
