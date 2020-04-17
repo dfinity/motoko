@@ -4536,14 +4536,25 @@ end (* Serialization *)
 
 module Stabilization = struct
 
+  (* The collection of stable variables is represented as a
+     a stable object of optional fields, but deserialized specially replacing
+     expected, but missing, fields by Null values.
+     To guide type-driven serialization accordingly,
+     we replace the expected Object sort by pseudo-sort Memory. *)
+
+  let as_memory t = Type.(
+     assert (stable t);
+     match t with
+     | Obj (Object, fs) ->
+       assert (List.for_all (fun f -> is_opt f.typ) fs);
+       Obj (Memory, fs)
+     | _ -> assert false)
+
   let stabilize env t =
-    let t = Type.( match t with
-      | Obj (Object,fs) -> Obj (Memory, fs)
-      | _ -> assert false )
-    in
+    let t1 = as_memory t in
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
-    Serialization.serialize env [t] ^^
+    Serialization.serialize env [t1] ^^
     set_len ^^
     set_dst ^^
 
@@ -4612,12 +4623,10 @@ module Stabilization = struct
     | _ -> assert false
 
   let destabilize env t =
-    let t = Type.(match t with
-      | Obj (Object,fs) -> Obj (Memory, fs)
-      | _ -> assert false)
-    in
-    let t_name = Serialization.typ_id t in
-    Serialization.deserialize_core stable_data_size stable_data_copy env t_name [t]
+    let t1 = as_memory t in
+    let t1_name = Serialization.typ_id t1 in
+    Serialization.deserialize_core stable_data_size stable_data_copy env t1_name [t1]
+
 end
 
 module GC = struct
