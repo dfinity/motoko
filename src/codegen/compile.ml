@@ -102,11 +102,8 @@ module Const = struct
      * do not require Wasm code to be be executed (e.g. in `start`)
      * can be used directly (e.g. Call, not CallIndirect)
      * can be turned into Vanilla heap data on demand
-     * all literals
-       (this makes this dependent on the Ir module, which is not very
-       principled, but convenient)
-     * (future work)
-       vanilla heap representation may be placed in static heap and shared
+
+     See ir_passes/const.ml for what precisely we can compile as const now.
   *)
 
   type v =
@@ -7248,6 +7245,9 @@ and compile_prog env ae (ds, e) =
   let (sr, code2) = compile_exp env ae' e in
   (ae', code1 ^^ code2 ^^ StackRep.drop env sr)
 
+(* This compiles expressions determined to be const as per the analysis in
+   ir_passes/const.ml. See there for more details.
+*)
 and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->

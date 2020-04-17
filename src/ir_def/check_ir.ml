@@ -30,6 +30,7 @@ let immute_typ p =
 
 type val_info = {
   typ : T.typ;
+  (* see ir_passes/const.ml for the next two *)
   loc_known : bool;
   const : bool;
 }
@@ -668,6 +669,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t0 <: t
   end;
   (* check const annotation *)
+  (* see ir_passes/const.ml for an explanation *)
   let check_var ctxt v =
     check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
   if exp.note.Note.const
