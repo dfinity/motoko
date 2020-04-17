@@ -11,7 +11,7 @@ type obj_sort =
    Object
  | Actor
  | Module
- | Memory          (* (codegen only): stable memory serialization format *)
+ | Memory          (* (IR only): stable memory *)
 
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a

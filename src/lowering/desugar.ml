@@ -222,6 +222,7 @@ and build_actor at self_id es obj_typ =
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
+  let stableWrite = fresh_var "stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
   let ds =
     varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
     ::
@@ -232,6 +233,19 @@ and build_actor at self_id es obj_typ =
          (varP v) (varE v)
          ty)
     ::
+    nary_funcD stableWrite []
+      (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+       blockE
+         [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+            (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))]
+          (primE (I.ICStableWrite ty)
+            [ newObjE T.Object
+                (List.map2 (fun f v ->
+                     { it = {I.name = f.T.lab; I.var = id_of_var v};
+                       at = no_region;
+                       note = f.T.typ }
+                   ) fields vs)
+                ty])) ::
     ds
     @
     [expD (assignE state (nullE()))]
@@ -239,23 +253,9 @@ and build_actor at self_id es obj_typ =
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  let pre =
-    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
-    blockE
-      [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-         (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))]
-      (primE (I.ICStableWrite ty)
-         [ newObjE T.Object
-             (List.map2 (fun f v ->
-                { it = {I.name = f.T.lab; I.var = id_of_var v};
-                  at = no_region;
-                  note = f.T.typ }
-                ) fields vs)
-             ty])
-  in
   I.ActorE (ds', fs,
-    { I.pre = pre;
-      I.post = tupE [] },
+    { I.pre = callE (varE stableWrite) [] (tupE []); (* inline instead? *)
+      I.post = tupE []},
     obj_typ)
 
 and stabilize stab_opt d =
