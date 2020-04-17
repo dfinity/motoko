@@ -22,7 +22,7 @@ open Ir
     - all RHSs are const, and
     - no mutable variable are defined, and
     - pattern matching is side-effect free, i.e. irrefutable
-  * Functions can be const if they do not reqiure a closure.
+  * Functions can be const if they do not require a closure.
     This is the case if every free variables is
     - const or
     - bound at the top level (`loc_known = true` below)
