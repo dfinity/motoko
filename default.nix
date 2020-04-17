@@ -227,7 +227,7 @@ rec {
         '' + args.checkPhase + ''
           # export stats to hydra
           mkdir -p $out/nix-support
-          tr ';' '\t' < $out/stats.csv > $out/nix-support/hydra-metrics
+          tr '/;' '_\t' < $out/stats.csv > $out/nix-support/hydra-metrics
 
           # sanity check
           if ! grep -q ^gas/ $out/stats.csv
