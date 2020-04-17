@@ -113,7 +113,8 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
-    | Array of t list (* also tuples *)
+    | Unit
+    | Array of t list (* also tuples, but not nullary *)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -2984,7 +2985,8 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let compile_unit = compile_unboxed_one
+  let unit_vanilla_lit = 1l
+  let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
   let load_n n = Heap.load_field (Int32.add Arr.header_size n)
@@ -4846,6 +4848,7 @@ module StackRep = struct
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
       Object.vanilla_lit env fs'
+    | Const.Unit -> Tuple.unit_vanilla_lit
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
@@ -7302,6 +7305,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
   | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
+  | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
@@ -7334,7 +7338,7 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
     ) ae pfs
   | AltP (p1, p2) -> destruct_const_pat ae p1 const
   | TupP ps ->
-    let cs = match const with (_ , Const.Array cs) -> cs | _ -> assert false in
+    let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
     List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
