@@ -113,7 +113,7 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
-    | Array of t list
+    | Array of t list (* also tuples *)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -4875,7 +4875,9 @@ module StackRep = struct
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
-
+    | Const (_, Const.Array cs), UnboxedTuple n ->
+      assert (n = List.length cs);
+      G.concat_map (fun c -> compile_unboxed_const (materialize_const_t env c)) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -7293,8 +7295,15 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
+  | PrimE (ProjPrim i, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let cs = match object_ct with
+      | _, Const.Array cs -> cs
+      | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
+    (List.nth cs i, fill)
   | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
-  | PrimE (ArrayPrim (Const, _), es) ->
+  | PrimE (ArrayPrim (Const, _), es)
+  | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
     Const.t_of_v (Const.Array cs),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
