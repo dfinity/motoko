@@ -68,7 +68,7 @@ remove that line. This allows different behavior with the interpreter and in
 ### Multiple Motoko test files
 
 These only make sense with `-d`. Create a `foo.drun` file that is a mostly
-unmodiifed input with one exception: You can reference `foo/bar.mo` files where
+unmodified input with one exception: You can reference `foo/bar.mo` files where
 `drun` expects a `.wasm` file. `run.sh` will find these files, compile them to
 `.wasm` and put that file name into the script before passing it to `drun`.
 
