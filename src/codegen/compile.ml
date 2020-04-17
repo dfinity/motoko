@@ -7322,7 +7322,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and destruct_const_pat ae pat const = match pat.it with
+and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
   | ObjP pfs ->
@@ -7333,8 +7333,10 @@ and destruct_const_pat ae pat const = match pat.it with
       | None -> assert false
     ) ae pfs
   | AltP (p1, p2) -> destruct_const_pat ae p1 const
+  | TupP ps ->
+    let cs = match const with (_ , Const.Array cs) -> cs | _ -> assert false in
+    List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
-  | TupP _ -> raise (Invalid_argument "TupP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
   | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
 
