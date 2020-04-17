@@ -222,6 +222,7 @@ rec {
     let perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
+          mkdir -p $out
           export PERF_OUT=$out/stats.csv
         '' + args.checkPhase + ''
           # export stats to hydra
@@ -229,7 +230,7 @@ rec {
           cp $out/stats.csv $out/nix-support/hydra-metrics # right format?
 
           # sanity check
-          if ! grep -q ^gas/ $out/perf-stats.csv
+          if ! grep -q ^gas/ $out/stats.csv
           then
             echo "perf stats do not include gas. change in drun output format?" >&2
             exit 1
