@@ -230,6 +230,8 @@ and check_con env c =
   begin
     env.seen := T.ConSet.add c !(env.seen);
     let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
+    check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
@@ -683,6 +685,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       ) (Freevars.exp exp)
     | NewObjE (Type.(Object | Module), fs, t) when T.is_immutable_obj t ->
       List.iter (fun f -> check_var "NewObjE" f.it.var) fs
+    | PrimE (ArrayPrim (Const, _), es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant array with non-constant subexpression"
+      ) es
     | PrimE (DotPrim n, [e1]) ->
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
     | BlockE (ds, e) ->
