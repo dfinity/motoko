@@ -190,22 +190,26 @@ and case_ lvl env c : unit =
 
 and gather_dec lvl scope dec : env =
   let mk_info const = { loc_known = lvl = TopLvl; const } in
-  match dec.it with
-  | LetD ({it = VarP v; _}, e) ->
-    M.add v (mk_info (maybe_false ())) scope
-  | _ ->
-    let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
-    S.fold (fun v scope -> M.add v (mk_info surely_false) scope) vs scope
+  let ok = match dec.it with
+  | LetD (p, _) -> Ir_utils.is_irrefutable p
+  | VarD _ -> false
+  in
+  S.fold (fun v scope ->
+    if ok
+    then M.add v (mk_info (maybe_false ())) scope
+    else M.add v (mk_info surely_false) scope
+  ) (snd (Freevars.dec dec)) scope (* TODO: implement gather_dec more directly *)
 
 and gather_decs lvl ds : env =
   List.fold_left (gather_dec lvl) M.empty ds
 
 and check_dec lvl env dec : lazy_bool = match dec.it with
-  | LetD ({it = VarP v; _}, e) ->
+  | LetD (p, e) when Ir_utils.is_irrefutable p ->
+    let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
     let lb = exp lvl env e in
-    required_for lb (M.find v env).const;
+    S.iter (fun v -> required_for lb (M.find v env).const) vs;
     lb
-  | LetD (_, e) | VarD (_, _, e) ->
+  | VarD (_, _, e) | LetD (_, e) ->
     exp_ lvl env e;
     surely_false
 

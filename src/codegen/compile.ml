@@ -5558,7 +5558,7 @@ module AllocHow = struct
       map_of_set LocalMut d
 
       (* Constant expressions (trusting static_vals.ml) *)
-      | LetD ({it = VarP _; _}, e) when e.note.Note.const
+      | LetD (_, e) when e.note.Note.const
       -> map_of_set (Const : how) d
 
       (* Everything else needs at least a local *)
@@ -7200,7 +7200,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for constant expressions *)
-  | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
+  | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
     let (extend, fill) = compile_const_dec env pre_ae dec in
     ( extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
 
@@ -7313,19 +7313,35 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
+and destruct_const_pat ae pat const = match pat.it with
+  | WildP -> ae
+  | VarP v -> VarEnv.add_local_const ae v const
+  | ObjP pfs ->
+    let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
+    List.fold_left (fun ae (pf : pat_field) ->
+      match List.find_opt (fun (n, _) -> pf.it.name = n) fs with
+      | Some (_, c) -> destruct_const_pat ae pf.it.pat c
+      | None -> assert false
+    ) ae pfs
+  | AltP (p1, p2) -> destruct_const_pat ae p1 const
+  | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
+  | TupP _ -> raise (Invalid_argument "TupP in static irrefutable pattern")
+  | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
+  | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
+
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
   (* This returns a _function_ to extend the VarEnv, instead of doing it, because
   it needs to be extended twice: Once during the pass that gets the outer, static values
-  (no forward references), and then to implement the `fill`, which compiles the body
+  (no forward references), and then to implement the `fill`, which compiles the bodies
   of functions (may contain forward references.) *)
   match dec.it with
   (* This should only contain constants (cf. is_const_exp) *)
-  | LetD ({it = VarP v; _}, e) ->
+  | LetD (p, e) ->
     let (const, fill) = compile_const_exp env pre_ae e in
-    (fun ae -> VarEnv.add_local_const ae v const),
+    (fun ae -> destruct_const_pat ae p const),
     (fun env ae -> fill env ae)
 
-  | _ -> fatal "compile_const_dec: Unexpected dec form"
+  | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
 
 and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
