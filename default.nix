@@ -480,7 +480,7 @@ rec {
       shell
       check-formatting
       check-generated
-    ] ++ builtins.attrValues tests
+    ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"])
       ++ builtins.attrValues examples;
   };
 
