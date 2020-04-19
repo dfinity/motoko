@@ -1,0 +1,4 @@
+install ic:2A012B life/life.mo ""
+ingress ic:2A012B test "DIDL\x00\x00"
+
+
