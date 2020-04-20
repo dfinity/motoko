@@ -750,6 +750,7 @@ let encode (em : extended_module) =
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
     let zero_terminated str = put_string s str; u8 0
     let writeBlock1 str = let len = String.length str in assert (len < 256); u8 len; put_string s str
+    let writeBlockLEB str = let len = String.length str in assert (len < 256); uleb128 len; put_string s str
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
@@ -812,6 +813,11 @@ let encode (em : extended_module) =
         begin function
           | StringAttribute (attr, str) -> writeBlock1 str
           | _ -> failwith "dw_FORM_block1"
+        end
+      | f when dw_FORM_exprloc = f ->
+        begin function
+          | StringAttribute (attr, str) -> writeBlockLEB str
+          | _ -> failwith "dw_FORM_exprloc"
         end
       | f when dw_FORM_flag = f ->
         begin function

@@ -509,10 +509,23 @@ let dw_OP_call_ref = 0x9a
 let dw_OP_form_tls_address = 0x9b
 let dw_OP_call_frame_cfa = 0x9c
 let dw_OP_bit_piece = 0x9d
+let dw_OP_implicit_value = 0x9e
+let dw_OP_stack_value = 0x9f
+let dw_OP_implicit_pointer = 0xa0
+let dw_OP_addrx = 0xa1
+let dw_OP_constx = 0xa2
+let dw_OP_entry_value = 0xa3
+let dw_OP_const_type = 0xa4
+let dw_OP_regval_type = 0xa5
+let dw_OP_deref_type = 0xa6
+let dw_OP_xderef_type = 0xa7
+let dw_OP_convert = 0xa8
+let dw_OP_reinterpret = 0xa9
+
 let dw_OP_lo_user = 0xe0
 let dw_OP_hi_user = 0xff
 
-let dw_OP_WASM_location = 0xeb (* see module Location, below *)
+let dw_OP_WASM_location = 0xed (* see module Location, below *)
 
 module Machine =
 struct
@@ -617,7 +630,7 @@ end
 module Location =
 struct
 (*
-DW_OP_WASM_location := 0xEB ;; available DWARF extension code
+DW_OP_WASM_location := 0xED ;; available DWARF extension code
 
 wasm-op := wasm-local | wasm-global | wasm-operand-stack
 
