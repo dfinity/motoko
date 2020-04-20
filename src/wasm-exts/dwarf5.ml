@@ -611,7 +611,7 @@ let moves u8 uleb sleb u32 =
   let extended5 lne = u8 0; u8 5; u8 (- lne) in
   let noisy = false in
   let rec chase = function
-  | [] -> Printf.printf "DONE\n"
+  | [] -> if noisy then Printf.printf "DONE\n"
   | op :: tail when dw_LNS_copy = op -> if noisy then Printf.printf "COPY\n"; standard op; chase tail
   | op :: offs :: tail when dw_LNS_advance_pc = op -> if noisy then Printf.printf "+PC\n"; standard op; uleb offs; chase tail
   | op :: delta :: tail when dw_LNS_advance_line = op -> if noisy then Printf.printf "+LINE %d\n" delta; standard op; sleb delta; chase tail
