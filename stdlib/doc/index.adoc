@@ -40,6 +40,7 @@ include::AssocList.adoc[leveloffset=+1]
 include::Hash.adoc[leveloffset=+1]
 include::HashMap.adoc[leveloffset=+1]
 include::Trie.adoc[leveloffset=+1]
+include::RedBlackTree.adoc[leveloffset=+1]
 include::TrieMap.adoc[leveloffset=+1]
 include::TrieSet.adoc[leveloffset=+1]
 
