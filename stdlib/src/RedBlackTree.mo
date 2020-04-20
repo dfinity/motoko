@@ -152,4 +152,23 @@ func findRec<X, Y>(x:X, compareTo:(X, X) -> Comp, t:Tree<X, Y>) : ?Y {
   }
 };
 
+
+public func height<X, Y>(t:Tree<X, Y>) : Nat {
+  switch t {
+    case (#leaf) 0;
+    case (#node(_, l, _, r)) {
+           Nat.max(height(l), height(r))
+         }
+  }
+};
+
+public func size<X, Y>(t:Tree<X, Y>) : Nat {
+  switch t {
+    case (#leaf) 0;
+    case (#node(_, l, _, r)) {
+           size(l) + size(r)
+         };
+  }
+};
+
 }
