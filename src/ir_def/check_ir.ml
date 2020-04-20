@@ -30,6 +30,7 @@ let immute_typ p =
 
 type val_info = {
   typ : T.typ;
+  (* see ir_passes/const.ml for the next two *)
   loc_known : bool;
   const : bool;
 }
@@ -230,6 +231,8 @@ and check_con env c =
   begin
     env.seen := T.ConSet.add c !(env.seen);
     let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
+    check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
@@ -686,6 +689,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t0 <: t
   end;
   (* check const annotation *)
+  (* see ir_passes/const.ml for an explanation *)
   let check_var ctxt v =
     check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
   if exp.note.Note.const
@@ -710,11 +714,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
         | VarD _ -> check false "VarD in constant BlockE"
-        | LetD ({it = VarP _; _}, exp) ->
-          check exp.note.Note.const "non-constant RHS in constant BlockE"
-        | _ ->
-          check false "complex pattern in constant BlockE"
-        ) ds;
+        | LetD (p, e1) ->
+          check (Ir_utils.is_irrefutable p) "refutable pattern in constant BlockE";
+          check e1.note.Note.const "non-constant RHS in constant BlockE"
+      ) ds;
       check e.note.Note.const "non-constant body in constant BlockE"
     | LitE _ -> ()
     | _ -> check false "unexpected constant expression"
@@ -789,7 +792,7 @@ and check_args env args =
 
 (* Patterns *)
 
-and gather_pat env ve0 pat : val_env =
+and gather_pat env const ve0 pat : val_env =
   let rec go ve pat =
     match pat.it with
     | WildP
@@ -798,7 +801,7 @@ and gather_pat env ve0 pat : val_env =
     | VarP id ->
       check env pat.at (not (T.Env.mem id ve0))
         "duplicate binding for %s in block" id;
-      let val_info = {typ = pat.note; const = false; loc_known = env.lvl = TopLvl} in
+      let val_info = {typ = pat.note; const; loc_known = env.lvl = TopLvl} in
       T.Env.add id val_info ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
@@ -941,12 +944,7 @@ and gather_block_decs env decs =
 and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
-    let ve = gather_pat env scope.val_env pat in
-    (* patch the ve for a const binding *)
-    let ve = match pat.it with
-      | VarP id when exp.note.Note.const ->
-        T.Env.add id { (T.Env.find id ve) with const = true } ve
-      | _ -> ve in
+    let ve = gather_pat env exp.note.Note.const scope.val_env pat in
     { val_env = ve }
   | VarD (id, t, exp) ->
     check_typ env t;
