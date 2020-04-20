@@ -35,10 +35,7 @@ module {
         (7, "enthusiast"),
       ];
 
-    func compareNats(x:Nat, y:Nat) : RBT.Comp =
-      if (x < y) #lt else if (x > y) #gt else #eq;
-
-    var t = RBT.RBTree<Nat, Text>(compareNats);
+    var t = RBT.RBTree<Nat, Text>(Nat.compare);
 
     for ((num, lab) in sorted.vals()) {
       Debug.print (Nat.toText num);
