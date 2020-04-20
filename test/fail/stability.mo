@@ -15,4 +15,8 @@ actor {
    //public stable shared func pub() {}; //what does this even mean, actually? reject?
    var w : Int = 0; // accept as flexible, warn in future?
    let u : Int = 0; // accept as flexible, warn in future?
+
+   // hash-collisions
+   stable var foo = ();
+   stable var nxnnbkddcv = ();
 }

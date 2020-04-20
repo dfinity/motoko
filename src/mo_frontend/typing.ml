@@ -1692,12 +1692,16 @@ and check_stab env sort scope fields =
   if sort <> T.Actor then
     List.iter (fun ef ->
       match ef.it.stab with
-      |  Some stab -> local_error env stab.at "found illegal stability declaration on field of non-actor" 
+      |  Some stab ->
+         local_error env stab.at
+           "misplaced stability declaration on field of non-actor"
       |  None -> ()) fields
   else
     List.iter (fun ef ->
       match ef.it.stab with
-      |  None -> local_error env ef.it.dec.at "missing required stability declaration on actor field"
+      |  None ->
+         local_error env ef.it.dec.at
+           "missing required stability declaration on actor field"
       |  Some _ -> ()) fields;
   let idss = List.map (fun ef ->
     match ef.it.stab, ef.it.dec.it with
@@ -1705,7 +1709,7 @@ and check_stab env sort scope fields =
     | Some {it=Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
-(*
+(* TBD
     | Some {it=Stable; _}, LetD (pat, _) ->
       // restrict exp to canonical for pat?
       // Otherwise how to we tease apart the individual initializers?
@@ -1719,7 +1723,7 @@ and check_stab env sort scope fields =
       []
     | _ -> []) fields
   in
-  check_ids env "stable variable" "actor" (List.concat idss)
+  check_ids env "actor" "stable variable" (List.concat idss)
 
 
 (* Blocks and Declarations *)
