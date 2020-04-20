@@ -1,8 +1,8 @@
-import Debug "mo:stdlib/debug";
+import Debug "mo:stdlib/Debug";
 import I "mo:stdlib/Iter";
 import List "mo:stdlib/List";
-import Nat "mo:stdlib/nat";
-import P "mo:stdlib/prelude";
+import Nat "mo:stdlib/Nat";
+import P "mo:stdlib/Prelude";
 
 module {
 

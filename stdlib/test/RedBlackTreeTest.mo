@@ -1,6 +1,6 @@
-import Debug "mo:stdlib/debug";
-import P "mo:stdlib/prelude";
-import Nat "mo:stdlib/nat";
+import Debug "mo:stdlib/Debug";
+import P "mo:stdlib/Prelude";
+import Nat "mo:stdlib/Nat";
 //import Render "../render/render";
 import I "mo:stdlib/Iter";
 import List "mo:stdlib/List";
