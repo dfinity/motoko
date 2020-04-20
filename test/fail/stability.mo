@@ -16,7 +16,7 @@ actor {
    var w : Int = 0; // accept as flexible, warn in future?
    let u : Int = 0; // accept as flexible, warn in future?
 
-   // hash-collisions
+   // reject hash collisions
    stable var foo = ();
    stable var nxnnbkddcv = ();
 }
