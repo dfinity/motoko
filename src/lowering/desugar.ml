@@ -267,10 +267,9 @@ and stabilize stab_opt d =
      let v = fresh_var i t in
      varD i t
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
-          e
-          (varP v) (varE v)
-          t)
-    )
+         e
+         (varP v) (varE v)
+         t))
   | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
     let t = p.note in
     ([(i, t)],
@@ -278,10 +277,9 @@ and stabilize stab_opt d =
      let v = fresh_var i t in
      letP p
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
-          e
-          (varP v) (varE v)
-          t)
-    )
+         e
+         (varP v) (varE v)
+         t))
   | (S.Stable, I.LetD _) ->
     assert false
 
