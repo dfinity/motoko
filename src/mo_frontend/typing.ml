@@ -1689,21 +1689,18 @@ and check_stab env sort scope fields =
       if not (T.stable t1) then
         local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
   in
-  if sort <> T.Actor then
-    List.iter (fun ef ->
-      match ef.it.stab with
-      |  Some stab ->
-         local_error env stab.at
-           "misplaced stability declaration on field of non-actor"
-      |  None -> ()) fields
-  else
-    List.iter (fun ef ->
-      match ef.it.stab with
-      |  None ->
-         local_error env ef.it.dec.at
-           "missing required stability declaration on actor field"
-      |  Some _ -> ()) fields;
   let idss = List.map (fun ef ->
+    begin
+      match ef.it.stab with
+      | Some stab ->
+        if sort <> T.Actor then
+          local_error env stab.at
+            "misplaced stability declaration on field of non-actor"
+      | None ->
+        if sort = T.Actor then
+          warn env ef.it.dec.at
+            "missing required stability declaration on actor field"
+    end;
     match ef.it.stab, ef.it.dec.it with
     | None, _ -> []
     | Some {it = Stable; _}, VarD (id, _) ->
