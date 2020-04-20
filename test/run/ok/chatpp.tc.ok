@@ -1,0 +1,5 @@
+chatpp.mo:17.3-17.23: warning, missing recommended stability declaration on actor field
+chatpp.mo:18.3-18.40: warning, missing recommended stability declaration on actor field
+chatpp.mo:62.3-83.4: warning, missing recommended stability declaration on actor field
+chatpp.mo:88.3-88.23: warning, missing recommended stability declaration on actor field
+chatpp.mo:89.3-89.31: warning, missing recommended stability declaration on actor field

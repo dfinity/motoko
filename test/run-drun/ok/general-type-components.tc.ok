@@ -1,0 +1,3 @@
+general-type-components.mo:19.3-19.26: warning, missing recommended stability declaration on actor field
+general-type-components.mo:20.3-22.4: warning, missing recommended stability declaration on actor field
+general-type-components.mo:24.3-24.21: warning, missing recommended stability declaration on actor field

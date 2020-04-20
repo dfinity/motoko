@@ -1,0 +1,3 @@
+chat.mo:7.3-7.36: warning, missing recommended stability declaration on actor field
+chat.mo:32.3-32.23: warning, missing recommended stability declaration on actor field
+chat.mo:33.3-33.31: warning, missing recommended stability declaration on actor field

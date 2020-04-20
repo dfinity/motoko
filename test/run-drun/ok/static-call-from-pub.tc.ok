@@ -1,0 +1,1 @@
+static-call-from-pub.mo:2.5-2.19: warning, missing recommended stability declaration on actor field
