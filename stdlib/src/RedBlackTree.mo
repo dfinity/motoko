@@ -19,7 +19,6 @@ public type Tree<X, Y> = {
   #leaf;
 };
 
-
 public class RBTree<X, Y>(compareTo:(X, X) -> Comp) {
 
   var tree: Tree<X, Y> = (#leaf : Tree<X, Y>);
@@ -70,49 +69,6 @@ public func toIter<X, Y>(t:Tree<X, Y>, dir:{#l2r; #r2l}) : I.Iter<(X, Y)> {
     };
   }
 };
-
-
-/*
-Triggers compiler Error:
-  Fatal error: exception "Assert_failure mo_frontend/coverage.ml:300:4"
-
-public func height<X, Y>(t:Tree<X, Y>) : Nat {
-  switch t {
-    case (#leaf) 0;
-    case (#node(_, _, l, r)) {
-           ExtNat.max(height(l), height(r))
-         }
-  }
-};
-*/
-
-
-/*
-Triggers compiler error:
-  Fatal error: exception "Assert_failure mo_frontend/coverage.ml:300:4"
-
-public func size<X, Y>(t:Tree<X, Y>) : Nat {
-  switch t {
-    case (#leaf) 0;
-    case (#node(_, _, l, r)) {
-           size(l) + size(r)
-         };
-  }
-};
-*/
-
-/*
- To do: Check invariants for tests:
-
- isRedBlack =def=
-
- binarySearchOrder( )
- and
- noRedRed( )
- and
- okBlackHeight( )
-*/
-
 
 func removeRec<X, Y>(x:X, compareTo:(X, X) -> Comp, t:Tree<X, Y>)
   : (?Y, Tree<X, Y>)
