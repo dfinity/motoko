@@ -1706,7 +1706,7 @@ and check_stab env sort scope fields =
   let idss = List.map (fun ef ->
     match ef.it.stab, ef.it.dec.it with
     | None, _ -> []
-    | Some {it=Stable; _}, VarD (id, _) ->
+    | Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
 (* TBD
