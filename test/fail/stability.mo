@@ -1,7 +1,7 @@
 actor {
    flexible let o = object {
       flexible let x = 1 //reject
-   }; 
+   };
    stable type T = Int;  // reject
    flexible type U = Int; // reject
    flexible ignore 666; // reject
@@ -9,7 +9,7 @@ actor {
 
    stable var x : Int = 0; //accept
    stable var y : [var Int] = [var]; // reject
-   stable let z = 1; // accept 
+   stable let z = 1; // accept
    stable let z1 : Nat = 1; //accept
    stable let ((z2 : Nat)) = 1; //accept
    stable let (p,q) = (1,2); // reject (for now, maybe forever)
@@ -17,7 +17,7 @@ actor {
    stable let f = func(){}; // reject
    flexible var a : [var Int] = [var]; //accept
    //public stable shared func pub() {}; //what does this even mean, actually? reject?
-   
+
    var w : Int = 0; // accept as flexible, but warn?
    let u : Int = 0; // ditto
 
