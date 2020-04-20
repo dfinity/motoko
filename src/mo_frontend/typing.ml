@@ -1717,7 +1717,7 @@ and check_stab env sort scope fields =
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
 *)
-    | Some {it=Flexible; _} , (VarD _ | LetD _) -> []
+    | Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | Some stab, _ when stab.at <> Source.no_region ->
       local_error env stab.at "misplaced stability modifier: expected on var declarations only";
       []
