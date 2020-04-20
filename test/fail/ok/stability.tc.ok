@@ -1,11 +1,15 @@
-stability.mo:2.20-2.28: type error, misplaced stability declaration on field of non-actor
-stability.mo:3.4-3.10: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:4.4-4.12: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:5.4-5.12: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:6.4-6.12: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:9.15-9.16: type error, variable y is declared stable but has non-stable type [var Int]
-stability.mo:10.4-10.10: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:11.4-11.10: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:12.4-12.10: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:13.4-13.10: type error, misplaced stability modifier: expected on var declarations only
-stability.mo:21.15-21.25: type error, stable variable names foo and nxnnbkddcv in actor type have colliding hashes
+stability.mo:3.7-3.15: type error, misplaced stability declaration on field of non-actor
+stability.mo:5.4-5.10: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:6.4-6.12: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:7.4-7.12: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:8.4-8.12: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:11.15-11.16: type error, variable y is declared stable but has non-stable type [var Int]
+stability.mo:15.4-15.10: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:16.4-16.10: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:17.15-17.16: type error, variable f is declared stable but has non-stable type () -> ()
+stability.mo:21.4-21.19: warning, missing recommended stability declaration on actor field
+stability.mo:22.4-22.19: warning, missing recommended stability declaration on actor field
+stability.mo:29.4-29.17: warning, missing recommended stability declaration on actor field
+stability.mo:30.12-30.26: warning, missing recommended stability declaration on actor field
+stability.mo:31.4-31.25: warning, missing recommended stability declaration on actor field
+stability.mo:26.15-26.25: type error, stable variable names foo and nxnnbkddcv in actor type have colliding hashes

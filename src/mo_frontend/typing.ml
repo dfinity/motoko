@@ -1680,6 +1680,13 @@ and infer_obj env s fields at : T.typ =
   end;
   t
 
+and stable_pat pat =
+  match pat.it with
+  | VarP _ -> true
+  | ParP pat'
+  | AnnotP (pat', _) -> stable_pat pat'
+  | _ -> false
+
 and check_stab env sort scope fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
@@ -1690,33 +1697,26 @@ and check_stab env sort scope fields =
         local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
   in
   let idss = List.map (fun ef ->
-    begin
-      match ef.it.stab with
-      | Some stab ->
-        if sort <> T.Actor then
-          local_error env stab.at
-            "misplaced stability declaration on field of non-actor"
-      | None ->
-        if sort = T.Actor then
-          warn env ef.it.dec.at
-            "missing required stability declaration on actor field"
-    end;
-    match ef.it.stab, ef.it.dec.it with
-    | None, _ -> []
-    | Some {it = Stable; _}, VarD (id, _) ->
+    match sort, ef.it.stab, ef.it.dec.it with
+    | (T.Object | T.Module), None, _ -> []
+    | (T.Object | T.Module), Some stab, _ ->
+      local_error env stab.at
+        "misplaced stability declaration on field of non-actor";
+      []
+    | T.Actor, None, (VarD _ | LetD _) ->
+      warn env ef.it.dec.at
+        "missing recommended stability declaration on actor field";
+      []
+    | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
-(* TBD
-    | Some {it=Stable; _}, LetD (pat, _) ->
-      // restrict exp to canonical for pat?
-      // Otherwise how to we tease apart the individual initializers?
+    | T.Actor, Some {it = Stable; _}, LetD (pat, _) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
-*)
-    | Some {it = Flexible; _} , (VarD _ | LetD _) -> []
-    | Some stab, _ when stab.at <> Source.no_region ->
-      local_error env stab.at "misplaced stability modifier: expected on var declarations only";
+    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
+    | T.Actor, Some stab, _ ->
+      local_error env stab.at "misplaced stability modifier: expected on var or simple let declarations only";
       []
     | _ -> []) fields
   in

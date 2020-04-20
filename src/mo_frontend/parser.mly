@@ -84,15 +84,20 @@ let share_dec d =
   | LetD (p, e) -> LetD (p, share_exp e) @? d.at
   | _ -> d
 
-let share_stab stab_opt  =
+let share_stab stab_opt dec =
   match stab_opt with
-  | None -> Some (Flexible @@ no_region)
+  | None ->
+    (match dec.it with
+     | VarD _
+     | LetD _ ->
+       Some (Flexible @@ no_region)
+     | _ -> None)
   | _ -> stab_opt
 
 let share_expfield (ef : exp_field) =
   if ef.it.vis.it = Private
-  then {ef with it = {ef.it with stab = share_stab ef.it.stab}}
-  else {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab}}
+  then ef
+  else {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab ef.it.dec}}
 
 %}
 

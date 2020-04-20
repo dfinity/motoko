@@ -271,6 +271,20 @@ and stabilize stab_opt d =
           (varP v) (varE v)
           t)
     )
+  | (S.Stable, I.LetD({it = I.VarP i; _} as p,e)) ->
+    let t = p.note in
+    ([(i, t)],
+     fun get_state ->
+     let v = fresh_var i t in
+     letP p
+       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+          e
+          (varP v) (varE v)
+          t)
+    )
+  | (S.Stable, I.LetD _) ->
+    assert false
+(*
   | (S.Stable, I.LetD(p, e)) ->
     if true then assert false;
     (* TODO: this code is dead for now but I'm maintaining it for future adaptation, if any *)
@@ -321,7 +335,7 @@ and ids_of_pats acc ps =
   | [] -> acc
   | p::ps' ->
     ids_of_pats (ids_of_pat acc p) ps'
-
+*)
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s.it fs obj_typ in
