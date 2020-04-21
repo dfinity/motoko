@@ -1705,7 +1705,7 @@ and check_stab env sort scope fields =
       []
     | T.Actor, None, (VarD _ | LetD _) ->
       warn env ef.it.dec.at
-        "missing recommended stability declaration on actor field";
+        "missing stability declaration on actor field";
       []
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
