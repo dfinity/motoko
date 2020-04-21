@@ -202,6 +202,7 @@ rule token mode = parse
   | "debug" { DEBUG }
   | "else" { ELSE }
   | "false" { BOOL false }
+  | "flexible" { FLEXIBLE }
   | "for" { FOR }
   | "func" { FUNC }
   | "if" { IF }
@@ -220,6 +221,7 @@ rule token mode = parse
   | "public" { PUBLIC }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "stable" { STABLE }
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }

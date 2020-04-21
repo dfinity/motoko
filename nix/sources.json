@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "96395685d062093ba0848bc94f8ba2cb3202cda3",
+        "rev": "125a9794f110d0599629cfa2cfd3568972ed1043",
         "type": "git"
     },
     "dfinity": {
@@ -63,10 +63,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "d63f95896ca8c5480629ef59fd46d6c50e3f98d0",
-        "sha256": "1nq65cczxjcvfy0m4hxyl4hbcxdqsqhdnr58n9h30zbsdv6vl6b4",
+        "rev": "e79d1e83f91b6c7a92f899b0a356ea6d770fb426",
+        "sha256": "1qh0sl3szadxpnvp1baby2zw10lsbpkynyjhy2d4kf6qzj95v2nl",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/d63f95896ca8c5480629ef59fd46d6c50e3f98d0.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/e79d1e83f91b6c7a92f899b0a356ea6d770fb426.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

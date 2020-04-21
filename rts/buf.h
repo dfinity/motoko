@@ -11,7 +11,7 @@ This mirrors module ReadBuf in `compile.ml`
 
 typedef struct {
   uint8_t *p;
-  uint8_t *e;
+  uint8_t *e; // points at first byte past the buffer
 } buf;
 
 extern uint8_t read_byte(buf *buf);

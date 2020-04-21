@@ -796,7 +796,7 @@ and interpret_obj env sort fields (k : V.value V.cont) =
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
   match fields with
   | [] -> ve_ex, ve_in
-  | {it = {dec; vis}; _}::fields' ->
+  | {it = {dec; vis; _}; _}::fields' ->
     let ve' = declare_dec dec in
     let ve_ex' = if vis.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
     let ve_in' = V.Env.adjoin ve_in ve' in
