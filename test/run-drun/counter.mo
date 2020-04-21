@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor {
-  var c = 1;
+  flexible var c = 1;
   public func inc() {
     c += 1;
     Prim.debugPrintNat c

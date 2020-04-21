@@ -11,9 +11,11 @@ ingress Completed: Canister: Payload: 0x4449444c0000
 debug.print: init'ed 1
 ingress System
 debug.print: 3
+debug.print: aaa
 Ok: Payload: 0x4449444c0000
 ingress Completed: Canister: Payload: 0x4449444c0000
 debug.print: 4
+debug.print: aaa
 Ok: Payload: 0x4449444c0000
 debug.print: init'ed 2
 ingress System
