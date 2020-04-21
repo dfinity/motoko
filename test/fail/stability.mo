@@ -7,7 +7,7 @@ actor {
    flexible ignore 666; // reject
    flexible (); // reject
 
-   stable var x : Int = 0; //accept
+   stable var x : Int = 0; // accept
    stable var y : [var Int] = [var]; // reject
    stable let z = 1; // accept
    stable let z1 : Nat = 1; //accept
