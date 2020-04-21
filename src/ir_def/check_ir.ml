@@ -709,8 +709,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e1 ->
         check e1.note.Note.const "constant array with non-constant subexpression"
       ) es
-    | PrimE (DotPrim n, [e1]) ->
+    | PrimE (TupPrim, es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant tuple with non-constant subexpression"
+      ) es
+    | PrimE (DotPrim _, [e1]) ->
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
+    | PrimE (ProjPrim _, [e1]) ->
+      check e1.note.Note.const "constant ProjPrim on non-constant subexpression"
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
         | VarD _ -> check false "VarD in constant BlockE"

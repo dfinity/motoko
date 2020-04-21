@@ -110,7 +110,8 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
-    | Array of t list
+    | Unit
+    | Array of t list (* also tuples, but not nullary *)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -3013,7 +3014,8 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let compile_unit = compile_unboxed_one
+  let unit_vanilla_lit = 1l
+  let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
   let load_n n = Heap.load_field (Int32.add Arr.header_size n)
@@ -4964,6 +4966,7 @@ module StackRep = struct
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
       Object.vanilla_lit env fs'
+    | Const.Unit -> Tuple.unit_vanilla_lit
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
@@ -4993,7 +4996,9 @@ module StackRep = struct
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
-
+    | Const (_, Const.Array cs), UnboxedTuple n ->
+      assert (n = List.length cs);
+      G.concat_map (fun c -> compile_unboxed_const (materialize_const_t env c)) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -7446,8 +7451,16 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
+  | PrimE (ProjPrim i, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let cs = match object_ct with
+      | _, Const.Array cs -> cs
+      | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
+    (List.nth cs i, fill)
   | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
-  | PrimE (ArrayPrim (Const, _), es) ->
+  | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
+  | PrimE (ArrayPrim (Const, _), es)
+  | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
     Const.t_of_v (Const.Array cs),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
@@ -7466,7 +7479,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and destruct_const_pat ae pat const = match pat.it with
+and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
   | ObjP pfs ->
@@ -7477,8 +7490,10 @@ and destruct_const_pat ae pat const = match pat.it with
       | None -> assert false
     ) ae pfs
   | AltP (p1, p2) -> destruct_const_pat ae p1 const
+  | TupP ps ->
+    let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
+    List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
-  | TupP _ -> raise (Invalid_argument "TupP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
   | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
 
