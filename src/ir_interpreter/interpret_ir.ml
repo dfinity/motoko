@@ -440,6 +440,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
+      | ICStableRead t, [] ->
+        let (_, tfs) = T.as_obj t in
+        let ve = List.fold_left
+          (fun ve' tf -> V.Env.add tf.T.lab V.Null ve')
+          V.Env.empty tfs
+        in
+        k (V.Obj ve)
+      | ICStableWrite _, [v1] ->
+        k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Text env.self)
       | _ ->
@@ -524,7 +533,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> V.Func (cc, f)
     in
     k v
-  | ActorE (ds, fs, _) ->
+  | ActorE (ds, fs, _, _) ->
     let self = V.fresh_id () in
     let env0 = {env with self = self} in
     let ve = declare_decs ds V.Env.empty in

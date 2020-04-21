@@ -119,8 +119,11 @@ and t_exp' context exp' =
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
-  | ActorE (ds, ids, t) ->
-    ActorE (t_decs context ds, ids, t)
+  | ActorE (ds, ids, { pre; post }, t) ->
+    ActorE (t_decs context ds, ids,
+      { pre = t_exp LabelEnv.empty pre;
+        post = t_exp LabelEnv.empty post},
+      t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
   | PrimE (p, exps) ->
