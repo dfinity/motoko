@@ -168,19 +168,15 @@ let rec exp lvl (env : env) e : lazy_bool =
         lb
       end
     | NewObjE (Type.(Object | Module), fs, t) when Type.is_immutable_obj t ->
-      let lb = maybe_false () in
-      List.iter (fun f -> required_for (find f.it.var env).const lb) fs;
-      lb
+      all (List.map (fun f -> (find f.it.var env).const) fs)
     | BlockE (ds, body) ->
       block lvl env (ds, body)
-    | PrimE (DotPrim n, [e1]) ->
-      exp lvl env e1
+    | PrimE (TupPrim, es)
     | PrimE (ArrayPrim (Const, _), es) ->
-      let lb = maybe_false () in
-      List.iter (fun e ->
-        let lb' = exp lvl env e in
-        required_for lb' lb) es;
-      lb
+      all (List.map (fun e -> exp lvl env e) es)
+    | PrimE (DotPrim _, [e1])
+    | PrimE (ProjPrim _, [e1]) ->
+      exp lvl env e1
     | LitE _ ->
       surely_true
 
@@ -251,8 +247,7 @@ and check_dec lvl env dec : lazy_bool = match dec.it with
     surely_false
 
 and check_decs lvl env ds : lazy_bool =
-  let lbs = List.map (check_dec lvl env) ds in
-  all lbs
+  all (List.map (check_dec lvl env) ds)
 
 and decs lvl env ds : (env * lazy_bool) =
   let scope = gather_decs lvl ds in
