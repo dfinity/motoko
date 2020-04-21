@@ -13,7 +13,7 @@ actor a {
     // 8 at some point
     assert (Prim.rts_max_live_size() < 100);
   };
-  var v : [var ()] = [var];
+  flexible var v : [var ()] = [var];
   public func bar() {
     v := Prim.Array_init<()>(2500, ());
   };
