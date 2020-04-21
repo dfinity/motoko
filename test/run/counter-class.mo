@@ -1,5 +1,5 @@
 actor class Counter(i : Int) {
-  var j = i;
+  flexible var j = i;
 
   public func dec() {
    showCounter(j);

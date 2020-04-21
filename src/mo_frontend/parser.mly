@@ -90,7 +90,7 @@ let share_stab stab_opt dec =
     (match dec.it with
      | VarD _
      | LetD _ ->
-       Some (Flexible @@ no_region)
+       Some (Flexible @@ dec.at)
      | _ -> None)
   | _ -> stab_opt
 

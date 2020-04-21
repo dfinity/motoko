@@ -1,5 +1,5 @@
 actor {
-    func init() {};
+    flexible func init() {};
     public func reset() {
         init()
     };

@@ -2,5 +2,3 @@ data-params.mo:51.9-51.11: warning, this pattern consuming type
   ?Text
 does not cover value
   null
-data-params.mo:3.3-3.18: warning, missing recommended stability declaration on actor field
-data-params.mo:76.3-76.22: warning, missing recommended stability declaration on actor field

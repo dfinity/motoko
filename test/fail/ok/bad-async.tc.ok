@@ -7,4 +7,3 @@ bad-async.mo:7.17-7.21: type error, ill-scoped await: expected async type from c
   scope $top-level is the global scope
 bad-async.mo:5.36: info, start of scope $foo2 mentioned in error at bad-async.mo:7.11-7.21
 bad-async.mo:8.5: info, end of scope $foo2 mentioned in error at bad-async.mo:7.11-7.21
-bad-async.mo:3.5-3.29: warning, missing recommended stability declaration on actor field

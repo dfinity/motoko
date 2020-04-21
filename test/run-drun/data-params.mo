@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor a {
-  var c : Int = 0;
+  flexible var c : Int = 0;
   public func inci(n : Int) : () {
     c += n;
     Prim.debugPrintInt(c);
@@ -73,7 +73,7 @@ actor a {
     c += Prim.int64ToInt(i64);
     Prim.debugPrintInt(c);
   };
-  var f : Float = 0.0;
+  flexible var f : Float = 0.0;
   public func incfloat(f64 : Float) : () {
     f += f64;
     assert(f == 42.0);
