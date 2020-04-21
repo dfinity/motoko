@@ -6831,7 +6831,7 @@ and compile_exp (env : E.t) ae exp =
       *)
       let (_, fs) = Type.as_obj ty in
       let fs' = List.map
-        (fun f -> (f.Type.lab, fun () -> Opt.null))
+        (fun f -> (f.Type.lab, fun () -> Opt.null_lit))
         fs
       in
       SR.Vanilla,
