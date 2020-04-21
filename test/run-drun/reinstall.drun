@@ -1,0 +1,6 @@
+install ic:2A012B reinstall/a.mo ""
+query ic:2A012B check "DIDL\x00\x00"
+# change this to reinstall once drun supports that
+install ic:2A012B reinstall/b.mo ""
+query ic:2A012B check "DIDL\x00\x00"
+

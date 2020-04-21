@@ -63,7 +63,7 @@ let
       then
         echo "This PR does not affect the produced WebAssembly code." >> $out/report
       else
-        diff-stats ${baseJobs.tests.perf} ${prJobs.tests.perf} > $out/report;
+        diff-stats ${baseJobs.tests.perf}/stats.csv ${prJobs.tests.perf}/stats.csv > $out/report;
       fi
 
       echo "report perf-delta $out report" >> $out/nix-support/hydra-build-products
