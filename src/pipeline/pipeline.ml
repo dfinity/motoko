@@ -197,7 +197,7 @@ let rec lib_of_prog' imps at = function
   | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
   | ds ->
     let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d} @@ d.at) ds in
+    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
     let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
     imps, {it = ExpD obj; at; note = empty_typ_note}
 
