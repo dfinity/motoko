@@ -132,6 +132,13 @@ and vis v = match v.it with
   | Public  -> Atom "Public"
   | Private -> Atom "Private"
 
+and stab s_opt = match s_opt with
+  | None -> Atom "(Flexible)"
+  | Some s ->
+    (match s.it with
+    | Flexible -> Atom "Flexible"
+    | Stable -> Atom "Stable")
+
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
 
@@ -142,7 +149,7 @@ and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and exp_field (ef : exp_field)
-  = "Field" $$ [dec ef.it.dec; vis ef.it.vis]
+  = "Field" $$ [dec ef.it.dec; vis ef.it.vis; stab ef.it.stab]
 
 and operator_type t = Atom (Type.string_of_typ t)
 
