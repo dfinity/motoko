@@ -1,7 +1,7 @@
 // A simple Counter actor.
 
 actor class Counter(i : Int) {
-  var c = i;
+  flexible var c = i;
 
   // Decrement counter
   public func dec() {

@@ -1,7 +1,7 @@
 // top-level actor objects are supported
 actor Counter {
 
-    shared func bad_private_shared() { }; // unsupported private shared
+    flexible shared func bad_private_shared() { }; // unsupported private shared
 
     public func ok_actorarg(a:actor{}) : async () {};
 

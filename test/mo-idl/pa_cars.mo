@@ -29,7 +29,7 @@ actor class PACars(dmv : DMV) {
     }
   };
 
-  private func reserveSpot(user : User, carInfo : CarInfo, location : Location, timeSpan : TimeSpan) : Result {
+  flexible func reserveSpot(user : User, carInfo : CarInfo, location : Location, timeSpan : TimeSpan) : Result {
     // Do the actual work of registering the parking spot for the
     // given car in the given time span
     return null;

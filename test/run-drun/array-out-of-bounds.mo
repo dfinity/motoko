@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 actor a {
-  let xs = [0, 1, 2, 3, 4];
-  let ys = [];
+  flexible let xs = [0, 1, 2, 3, 4];
+  flexible let ys = [];
 
   public func foo1() {
     ignore(xs[5]);
