@@ -70,6 +70,8 @@ let primE prim es =
     | ICReplyPrim _ -> T.Non
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
+    | ICStableRead t -> t
+    | ICStableWrite _ -> T.unit
     | CastPrim (t1, t2) -> t2
     | _ -> assert false (* implement more as needed *)
   in
@@ -194,6 +196,13 @@ let boolE b =
     at = no_region;
     note = Note.{ def with typ = T.bool }
   }
+
+let nullE () =
+  { it = LitE NullLit;
+    at = no_region;
+    note = Note.{ def with typ = T.Prim T.Null }
+  }
+
 
 let callE exp1 ts exp2 =
   match T.promote (typ exp1) with

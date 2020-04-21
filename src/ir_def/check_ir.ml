@@ -332,6 +332,13 @@ let isAsyncE exp =
     -> true
   | _ -> false
 
+let store_typ t  =
+  T.stable t &&
+  match t with
+  | T.Obj(T.Object, fts) ->
+    List.for_all (fun f -> T.is_opt f.T.typ) fts
+  | _ -> false
+
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
@@ -508,6 +515,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+    | ICStableRead t1, [] ->
+      check (store_typ t1) "Invalid type argument to ICStableRead";
+      t1 <: t
+    | ICStableWrite t1, [exp1] ->
+      check (store_typ t1) "Invalid type argument to ICStableWrite";
+      typ exp1 <: t1;
+      T.unit <: t
     | NumConvPrim (p1, p2), [e] ->
       (* we could check if this conversion is supported *)
       typ e <: T.Prim p1;
@@ -647,11 +661,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, t0) ->
+  | ActorE (ds, fs, { pre; post}, t0) ->
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
+    check_exp env'' pre;
+    check_exp env'' post;
+    typ pre <: T.unit;
+    typ post <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

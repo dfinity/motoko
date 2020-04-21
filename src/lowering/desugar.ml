@@ -186,7 +186,7 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =
@@ -210,11 +210,117 @@ and with_self i typ decs =
 
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
+  let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+  let stabs = List.map (fun ef -> ef.it.S.stab) es in
+  let pairs = List.map2 stabilize stabs ds in
+  let idss = List.map fst pairs in
+  let ids = List.concat idss in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
+  let mk_ds = List.map snd pairs in
+  let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
+  let state = fresh_var "state" (T.Mut (T.Opt ty)) in
+  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
+  let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
+  let ds =
+    varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
+    ::
+    nary_funcD get_state []
+      (let v = fresh_var "v" ty in
+       switch_optE (immuteE (varE state))
+         (unreachableE)
+         (varP v) (varE v)
+         ty)
+    ::
+    ds
+    @
+    [expD (assignE state (nullE()))]
+  in
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  I.ActorE (ds', fs, obj_typ)
+  I.ActorE (ds', fs,
+    { I.pre =
+       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+        blockE
+          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))]
+          (primE (I.ICStableWrite ty)
+             [ newObjE T.Object
+                 (List.map2 (fun f v ->
+                      { it = {I.name = f.T.lab; I.var = id_of_var v};
+                        at = no_region;
+                        note = f.T.typ }
+                    ) fields vs)
+                 ty]));
+      I.post = tupE []},
+    obj_typ)
+
+and stabilize stab_opt d =
+  let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
+  match s, d.it with
+  | (S.Flexible, _) ->
+    ([], fun _ -> d)
+  | (S.Stable, I.VarD(i, t, e)) ->
+    ([(i, t)],
+     fun get_state ->
+     let v = fresh_var i t in
+     varD i t
+       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+          e
+          (varP v) (varE v)
+          t)
+    )
+  | (S.Stable, I.LetD(p, e)) ->
+    if true then assert false;
+    (* TODO: this code is dead for now but I'm maintaining it for future adaptation, if any *)
+    let ids = ids_of_pat [] p in
+    (ids, fun get_state ->
+     let p', e', t =
+       let xs = List.map (fun (i,t) -> var i t) ids in
+       let projs = List.map (fun (i,t) ->
+         let v = fresh_var i t in
+         switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+           (varE (var i t))
+           (varP v) (varE v) t)
+         ids in
+       let ts = List.map (fun (i,t) -> t) ids in
+       seqP (List.map varP xs), seqE projs, T.seq ts
+     in
+     letP p'
+       (blockE [letP p e]
+         (* dubious semantics - rerun the compound initializer on install/upgrade, but discard
+            components that have been restored from stable store
+            why dubious? wasteful, duplicates side effects
+            Alternative, require RHS e to be in canonical form for p so components can
+            be selectively evaluated/restored *)
+       e'))
+
+(* NB: this code is dead (see above) *)
+and ids_of_pat acc p = match p.it with
+  | I.WildP ->
+    acc
+  | I.VarP i ->
+    (i, p.note) :: acc
+  | I.TupP ps ->
+    ids_of_pats acc ps
+  | I.ObjP pfs ->
+    ids_of_pats acc (Ir.pats_of_obj_pat pfs)
+  | I.LitP l ->
+    acc
+  | I.OptP p ->
+    ids_of_pat acc p
+  | I.TagP (i, p)     ->
+    ids_of_pat acc p
+  | I.AltP (p1, p2)   ->
+    ids_of_pat (ids_of_pat acc p1) p2
+
+(* NB: this code is dead (see above) *)
+and ids_of_pats acc ps =
+  match ps with
+  | [] -> acc
+  | p::ps' ->
+    ids_of_pats (ids_of_pat acc p) ps'
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -295,8 +401,9 @@ and block force_unit ds =
   | _, _ ->
     (decs ds, tupE [])
 
+and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
+
 and decs ds =
-  let is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true in
   List.map dec (List.filter is_not_typD ds)
 
 and dec d = { (phrase' dec' d) with note = () }
@@ -309,8 +416,8 @@ and dec' at n d = match d with
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (ds, fs, t) ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, t)})
+    | I.VarP i, I.ActorE (ds, fs, u, t) ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)

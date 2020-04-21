@@ -1,14 +1,20 @@
 import Prim "mo:prim";
 actor {
   Prim.debugPrint ("init'ed");
-  stable var c = "a";
-  public func inc() { c #= "a"; };
+
+/*
+  stable let always10 = 10;
+  stable let () = ();
+  stable let (fst,snd) = ("hello","world");
+*/
+  stable var c = 1;
+  stable var b = true;
+  public func inc() { c += 1; };
   public query func check(n : Int) : async () {
-    Prim.debugPrint(c);
-    assert (c.len() == n);
+    assert (c == n);
+//    assert (always10 == 10);
   };
 }
-
 //CALL query check "DIDL\x00\x01\x7d\x01"
 //CALL ingress inc "DIDL\x00\x00"
 //CALL query check "DIDL\x00\x01\x7d\x02"
