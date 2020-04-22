@@ -839,6 +839,8 @@ let encode (em : extended_module) =
       | _ -> failwith("cannot write form")
 
     let info_section_start = ref 0
+    let subprogram_sizes = Promise.make ()
+
     let rec writeTag = function
       | Tag (r, t, contentsRevd) ->
         Printf.printf "WRITING TAG: 0x%x\n" t; 
@@ -851,7 +853,7 @@ let encode (em : extended_module) =
         let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
-          | RangeAttribute (a, r) -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form (IntAttribute (a, 15(*FIXME*)))
+          | RangeAttribute (a, r) -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
           | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
           | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
@@ -936,7 +938,10 @@ let encode (em : extended_module) =
                 index := !index + 1;
                 uleb128 (en - st))
               sequence_bounds;
-            u8 Dwarf5.dw_RLE_end_of_list
+            u8 Dwarf5.dw_RLE_end_of_list;
+
+            (* extract the subprogram sizes to an array *)
+            Promise.fulfill subprogram_sizes (Array.of_seq (Seq.map (fun (st, _, en) -> en - st) (Sequ.to_seq sequence_bounds)))
         );
 
         in
