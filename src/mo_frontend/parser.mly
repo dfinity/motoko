@@ -108,7 +108,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
@@ -600,6 +600,7 @@ vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
   | PUBLIC { Public @@ at $sloc }
+  | SYSTEM { System @@ at $sloc }
 
 stab :
   | (* empty *) { None }

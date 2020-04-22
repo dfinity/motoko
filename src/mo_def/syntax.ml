@@ -113,7 +113,7 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private
+and vis' = Public | Private | System
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible

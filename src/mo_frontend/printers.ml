@@ -39,6 +39,7 @@ let string_of_symbol symbol : string =
   | X (T T_SHARED) -> "shared"
   | X (T T_SEMICOLON_EOL) -> ";" (* suppress the \n *)
   | X (T T_SEMICOLON) -> ";"
+  | X (T T_SYSTEM) -> "system"
   | X (T T_RPAR) -> ")"
   | X (T T_ROTROP) -> binop "<>>"
   | X (T T_ROTRASSIGN) -> binassign "<>>="
