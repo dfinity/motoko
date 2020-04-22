@@ -180,6 +180,7 @@ func @text_of_Word8(x : Word8) : Text = @text_of_Word (@word8ToNat x);
 func @text_of_Word16(x : Word16) : Text = @text_of_Word (@word16ToNat x);
 func @text_of_Word32(x : Word32) : Text = @text_of_Word (@word32ToNat x);
 func @text_of_Word64(x : Word64) : Text = @text_of_Word (@word64ToNat x);
+func @text_of_Float(x : Float) : Text = (prim "Float->Text" : Float -> Text) x;
 
 
 func @text_of_Bool(b : Bool) : Text {
@@ -321,7 +322,7 @@ The primitive definitions.
 
 This module should contain everything that cannot be implemented in plain
 Motoko. It is available via `import Prim "mo:prim"`. Normal user code would
-usually not import that module directly, but through the stdlib, which takes
+usually not import that module directly, but through base, which takes
 care of providing a proper module structure, e.g. exposing Array_tabulate
 through Array.tabulate.
 *)
@@ -344,6 +345,8 @@ func debugPrintChar(x : Char) { debugPrint (charToText x) };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
+func rts_reclaimed() : Nat { (prim "rts_reclaimed" : () -> Nat) () };
+func rts_max_live_size() : Nat { (prim "rts_max_live_size" : () -> Nat) () };
 func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () -> Nat) () };
 func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
 
@@ -353,58 +356,58 @@ func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
 
 // Conversions
 
-func int64ToInt(n : Int64) : Int = (prim "num_conv_Int64_Int" : Int64 -> Int) n;
+let int64ToInt = @int64ToInt;
+let int32ToInt = @int32ToInt;
+let int16ToInt = @int16ToInt;
+let int8ToInt = @int8ToInt;
+let nat64ToNat = @nat64ToNat;
+let nat32ToNat = @nat32ToNat;
+let nat16ToNat = @nat16ToNat;
+let nat8ToNat = @nat8ToNat;
+let word64ToNat = @word64ToNat;
+let word32ToNat = @word32ToNat;
+let word16ToNat = @word16ToNat;
+let word8ToNat = @word8ToNat;
+
 func intToInt64(n : Int) : Int64 = (prim "num_conv_Int_Int64" : Int -> Int64) n;
 func int64ToWord64(n : Int64) : Word64 = (prim "num_conv_Int64_Word64" : Int64 -> Word64) n;
 func word64ToInt64(n : Word64) : Int64 = (prim "num_conv_Word64_Int64" : Word64 -> Int64) n;
-func int32ToInt(n : Int32) : Int = (prim "num_conv_Int32_Int" : Int32 -> Int) n;
 func intToInt32(n : Int) : Int32 = (prim "num_conv_Int_Int32" : Int -> Int32) n;
 func int32ToWord32(n : Int32) : Word32 = (prim "num_conv_Int32_Word32" : Int32 -> Word32) n;
 func word32ToInt32(n : Word32) : Int32 = (prim "num_conv_Word32_Int32" : Word32 -> Int32) n;
-func int16ToInt(n : Int16) : Int = (prim "num_conv_Int16_Int" : Int16 -> Int) n;
 func intToInt16(n : Int) : Int16 = (prim "num_conv_Int_Int16" : Int -> Int16) n;
 func int16ToWord16(n : Int16) : Word16 = (prim "num_conv_Int16_Word16" : Int16 -> Word16) n;
 func word16ToInt16(n : Word16) : Int16 = (prim "num_conv_Word16_Int16" : Word16 -> Int16) n;
-func int8ToInt(n : Int8) : Int = (prim "num_conv_Int8_Int" : Int8 -> Int) n;
 func intToInt8(n : Int) : Int8 = (prim "num_conv_Int_Int8" : Int -> Int8) n;
 func int8ToWord8(n : Int8) : Word8 = (prim "num_conv_Int8_Word8" : Int8 -> Word8) n;
 func word8ToInt8(n : Word8) : Int8 = (prim "num_conv_Word8_Int8" : Word8 -> Int8) n;
 
-func nat64ToNat(n : Nat64) : Nat = (prim "num_conv_Nat64_Nat" : Nat64 -> Nat) n;
 func natToNat64(n : Nat) : Nat64 = (prim "num_conv_Nat_Nat64" : Nat -> Nat64) n;
 func nat64ToWord64(n : Nat64) : Word64 = (prim "num_conv_Nat64_Word64" : Nat64 -> Word64) n;
 func word64ToNat64(n : Word64) : Nat64 = (prim "num_conv_Word64_Nat64" : Word64 -> Nat64) n;
-func nat32ToNat(n : Nat32) : Nat = (prim "num_conv_Nat32_Nat" : Nat32 -> Nat) n;
 func natToNat32(n : Nat) : Nat32 = (prim "num_conv_Nat_Nat32" : Nat -> Nat32) n;
 func nat32ToWord32(n : Nat32) : Word32 = (prim "num_conv_Nat32_Word32" : Nat32 -> Word32) n;
 func word32ToNat32(n : Word32) : Nat32 = (prim "num_conv_Word32_Nat32" : Word32 -> Nat32) n;
-func nat16ToNat(n : Nat16) : Nat = (prim "num_conv_Nat16_Nat" : Nat16 -> Nat) n;
 func natToNat16(n : Nat) : Nat16 = (prim "num_conv_Nat_Nat16" : Nat -> Nat16) n;
 func nat16ToWord16(n : Nat16) : Word16 = (prim "num_conv_Nat16_Word16" : Nat16 -> Word16) n;
 func word16ToNat16(n : Word16) : Nat16 = (prim "num_conv_Word16_Nat16" : Word16 -> Nat16) n;
-func nat8ToNat(n : Nat8) : Nat = (prim "num_conv_Nat8_Nat" : Nat8 -> Nat) n;
 func natToNat8(n : Nat) : Nat8 = (prim "num_conv_Nat_Nat8" : Nat -> Nat8) n;
 func nat8ToWord8(n : Nat8) : Word8 = (prim "num_conv_Nat8_Word8" : Nat8 -> Word8) n;
 func word8ToNat8(n : Word8) : Nat8 = (prim "num_conv_Word8_Nat8" : Word8 -> Nat8) n;
 
-
 func natToWord8(n : Nat) : Word8 = (prim "num_conv_Nat_Word8" : Nat -> Word8) n;
-func word8ToNat(n : Word8) : Nat = (prim "num_conv_Word8_Nat" : Word8 -> Nat) n;
 func intToWord8(n : Int) : Word8 = (prim "num_conv_Int_Word8" : Int -> Word8) n;
 func word8ToInt(n : Word8) : Int = (prim "num_conv_Word8_Int" : Word8 -> Int) n;
 
 func natToWord16(n : Nat) : Word16 = (prim "num_conv_Nat_Word16" : Nat -> Word16) n;
-func word16ToNat(n : Word16) : Nat = (prim "num_conv_Word16_Nat" : Word16 -> Nat) n;
 func intToWord16(n : Int) : Word16 = (prim "num_conv_Int_Word16" : Int -> Word16) n;
 func word16ToInt(n : Word16) : Int = (prim "num_conv_Word16_Int" : Word16 -> Int) n;
 
 func natToWord32(n : Nat) : Word32 = (prim "num_conv_Nat_Word32" : Nat -> Word32) n;
-func word32ToNat(n : Word32) : Nat = (prim "num_conv_Word32_Nat" : Word32 -> Nat) n;
 func intToWord32(n : Int) : Word32 = (prim "num_conv_Int_Word32" : Int -> Word32) n;
 func word32ToInt(n : Word32) : Int = (prim "num_conv_Word32_Int" : Word32 -> Int) n;
 
 func natToWord64(n : Nat) : Word64 = (prim "num_conv_Nat_Word64" : Nat -> Word64) n;
-func word64ToNat(n : Word64) : Nat = (prim "num_conv_Word64_Nat" : Word64 -> Nat) n;
 func intToWord64(n : Int) : Word64 = (prim "num_conv_Int_Word64" : Int -> Word64) n;
 func word64ToInt(n : Word64) : Int = (prim "num_conv_Word64_Int" : Word64 -> Int) n;
 
@@ -433,6 +436,27 @@ func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
+
+// Float operations
+
+func floatAbs(f : Float) : Float = (prim "fabs" : Float -> Float) f;
+func floatSqrt(f : Float) : Float = (prim "fsqrt" : Float -> Float) f;
+func floatCeil(f : Float) : Float = (prim "fceil" : Float -> Float) f;
+func floatFloor(f : Float) : Float = (prim "ffloor" : Float -> Float) f;
+func floatTrunc(f : Float) : Float = (prim "ftrunc" : Float -> Float) f;
+func floatNearest(f : Float) : Float = (prim "fnearest" : Float -> Float) f;
+func floatMin(f : Float, g : Float) : Float = (prim "fmin" : (Float, Float) -> Float) (f, g);
+func floatMax(f : Float, g : Float) : Float = (prim "fmax" : (Float, Float) -> Float) (f, g);
+func floatCopySign(f : Float, g : Float) : Float = (prim "fcopysign" : (Float, Float) -> Float) (f, g);
+func floatToInt64(f : Float) : Int64 = (prim "num_conv_Float_Int64" : Float -> Int64) (f);
+func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> Float) (n);
+
+let floatToText = @text_of_Float;
+
+// Trigonometric functions
+
+func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
+func cos(f : Float) : Float = (prim "fcos" : Float -> Float) f;
 
 // Array utilities
 
@@ -464,6 +488,10 @@ func errorMessage(e : Error) : Text = {
 
 func blobOfPrincipal(id : Principal) : Blob = {
   ((prim "cast" : Principal -> Blob) id)
+};
+
+func principalOfActor(act : actor {}) : Principal = {
+  ((prim "cast" : (actor {}) -> Principal) act)
 };
 
 |}

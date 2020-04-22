@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "2139631132d8206ff3a514794a5a5fd36af9c895",
+        "rev": "fa5190ac6a299744e1174a576fa540b7fd856bff",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "9f947598f82d7782a3da4e6c0cf8a7b3ac6d5947",
+        "rev": "1bb028c22ce4efb669555cba46bec91f9e6cca0e",
         "type": "git"
     },
     "esm": {
@@ -37,15 +37,36 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
         "version": "v1.2.0"
     },
-    "nixpkgs": {
-        "branch": "nixpkgs-unstable",
-        "homepage": "https://github.com/NixOS/nixpkgs",
-        "owner": "NixOS",
-        "repo": "nixpkgs-channels",
-        "rev": "ca3531850844e185d483fb878fcd00c6b44069e5",
-        "sha256": "1s1zhzdbmdd7l936g7ydzsjqdi5k5ch6vpjilil0jiwjhrpkw3m4",
+    "motoko-base": {
+        "ref": "next-moc",
+        "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
+        "rev": "2941dc26dca4a3d3896b7fb6d01bb4192fb467ab",
+        "type": "git"
+    },
+    "musl-wasi": {
+        "branch": "master",
+        "builtin": false,
+        "description": "WASI libc implementation for WebAssembly",
+        "homepage": "https://wasi.dev",
+        "owner": "WebAssembly",
+        "repo": "wasi-libc",
+        "rev": "86550c37ab14962233f73413ea0e0c0e57d056d7",
+        "sha256": "16qbfkvsz8ks73r1jmwy0q8dshzmbj6cc72zvb7krin0dhmb5krf",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/ca3531850844e185d483fb878fcd00c6b44069e5.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/86550c37ab14962233f73413ea0e0c0e57d056d7.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "release-20.03",
+        "builtin": true,
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "homepage": null,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e79d1e83f91b6c7a92f899b0a356ea6d770fb426",
+        "sha256": "1qh0sl3szadxpnvp1baby2zw10lsbpkynyjhy2d4kf6qzj95v2nl",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/e79d1e83f91b6c7a92f899b0a356ea6d770fb426.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

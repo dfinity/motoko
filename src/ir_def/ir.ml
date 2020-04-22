@@ -28,9 +28,8 @@ type lit =
   | BlobLit of string
 
 (* Patterns *)
-type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
-type 'a phrase = ('a, typ_note) Source.annotated_phrase
+type 'a phrase = ('a, Note.t) Source.annotated_phrase
 
 type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
@@ -77,9 +76,14 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of dec list * field list * Type.typ (* actor *)
+  | ActorE of dec list * field list * upgrade * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | TryE of exp * case list                    (* try/catch *)
+
+and upgrade = {
+  pre : exp;
+  post : exp
+}
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
@@ -95,7 +99,7 @@ and lexp' =
 
 
 (* In the IR, a prim is any AST node that has expr subexpressions, but they are
-all call-by-value. Many passes can treat them uniformly, so they are unified using the
+all call-by-value. Many passes can treat them uniformly, so they are unified
 using the PrimE node. *)
 and prim =
   | CallPrim of Type.typ list         (* function call *)
@@ -129,6 +133,8 @@ and prim =
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
+  | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
+  | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
 
 
 (* Declarations *)

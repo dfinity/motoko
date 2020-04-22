@@ -13,12 +13,10 @@ let max_eff e1 e2 =
   | _ , T.Await -> T.Await
   | T.Await,_ -> T.Await
 
-let typ phrase = phrase.note.note_typ
+let typ phrase = phrase.note.Note.typ
+let eff phrase = phrase.note.Note.eff
 
-let eff phrase = phrase.note.note_eff
-
-let is_triv phrase  =
-    eff phrase = T.Triv
+let is_triv phrase = eff phrase = T.Triv
 
 let effect_exp (exp: exp) : T.eff = eff exp
 

@@ -1,4 +1,4 @@
-unsupported.mo:4.5-4.41: type error, a shared function cannot be private
+unsupported.mo:4.14-4.50: type error, a shared function cannot be private
   (This is a limitation of the current version and flag -ref-system-api.)
 unsupported.mo:36.26-36.29: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version and flag -ref-system-api.)

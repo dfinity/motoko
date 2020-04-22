@@ -280,11 +280,11 @@ let interpret_lit env lit : V.value =
 
 let check_call_conv exp call_conv =
   let open Call_conv in
-  let exp_call_conv = call_conv_of_typ exp.note.note_typ in
+  let exp_call_conv = call_conv_of_typ exp.note.Note.typ in
   if not (exp_call_conv = call_conv) then
     failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-      (T.string_of_typ exp.note.note_typ)
+      (T.string_of_typ exp.note.Note.typ)
       (string_of_call_conv exp_call_conv)
       (string_of_call_conv call_conv))
 
@@ -384,7 +384,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | CPSAsync _, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         let (_, f) = V.as_func v1 in
-        let typ = exp.note.note_typ in
+        let typ = exp.note.Note.typ in
         begin match typ with
         | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
           let call_conv_f = CC.call_conv_of_typ f_dom in
@@ -440,6 +440,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
+      | ICStableRead t, [] ->
+        let (_, tfs) = T.as_obj t in
+        let ve = List.fold_left
+          (fun ve' tf -> V.Env.add tf.T.lab V.Null ve')
+          V.Env.empty tfs
+        in
+        k (V.Obj ve)
+      | ICStableWrite _, [v1] ->
+        k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Text env.self)
       | _ ->
@@ -524,7 +533,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> V.Func (cc, f)
     in
     k v
-  | ActorE (ds, fs, _) ->
+  | ActorE (ds, fs, _, _) ->
     let self = V.fresh_id () in
     let env0 = {env with self = self} in
     let ve = declare_decs ds V.Env.empty in

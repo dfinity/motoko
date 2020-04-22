@@ -196,15 +196,18 @@ do
   fi
 
   if [ ${file: -3} == ".mo" ]
-  then base=$(basename $file .mo)
+  then base=$(basename $file .mo); ext=mo
   elif [ ${file: -3} == ".sh" ]
-  then base=$(basename $file .sh)
+  then base=$(basename $file .sh); ext=sh
   elif [ ${file: -4} == ".wat" ]
-  then base=$(basename $file .wat)
+  then base=$(basename $file .wat); ext=wat
   elif [ ${file: -4} == ".did" ]
-  then base=$(basename $file .did)
+  then base=$(basename $file .did); ext=did
+  elif [ ${file: -5} == ".drun" ]
+  then base=$(basename $file .drun); ext=drun
   else
-    echo "Unknown file extension in $file, expected .mo, .sh, .wat or .did"; exit 1
+    echo "Unknown file extension in $file"
+    echo "Supported extensions: .mo .sh .wat .did .drun"
     failures=yes
     continue
   fi
@@ -220,13 +223,13 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.*
+  rm -rf $out/$base $out/$base.*
 
   # First run all the steps, and remember what to diff
   diff_files=
 
-  if [ ${file: -3} == ".mo" ]
-  then
+  case $ext in
+  "mo")
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
 
@@ -342,7 +345,7 @@ do
               run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
             fi
           else
@@ -363,16 +366,56 @@ do
 	rm -f $mangled
       fi
     fi
-  elif [ ${file: -3} == ".sh" ]
-  then
+  ;;
+  "drun")
+    if [ $DTESTS != yes ]
+    then
+      $ECHO ""
+      echo "Running .drun files only make sense with $0 -d";
+      continue
+    fi
+
+    if [ $HAVE_DRUN != yes ]
+    then
+      $ECHO "skipped (no drun)";
+      continue
+    fi
+
+    # The file is a drun script, so a multi-canister project
+    mkdir -p $out/$base
+
+    # collect all .mo files referenced from the file
+    mo_files="$(grep -o '[^[:space:]]\+\.mo' $file |sort -u)"
+
+    for mo_file in $mo_files
+    do
+      mo_base=$(basename $mo_file .mo)
+      if [ "$(dirname $mo_file)" != "$base" ];
+      then
+        $ECHO ""
+        echo "$file references $mo_file which is not in directory $base"
+        exit 1
+      fi
+
+      run $mo_base.comp $MOC $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.wasm
+    done
+
+    # mangle drun script
+    LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.wasm," < $file > $out/$base/$base.drun
+
+    # run drun
+    run drun $DRUN_WRAPPER $out/$base/$base.drun
+
+  ;;
+  "sh")
     # The file is a shell script, just run it
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
     normalize $out/$base.stdout
     normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
-  elif [ ${file: -4} == ".wat" ]
-  then
+  ;;
+  "wat")
     # The file is a .wat file, so we are expected to test linking
     $ECHO -n " [mo-ld]"
     rm -f $out/$base.{base,lib,linked}.{wasm,wat,o}
@@ -385,8 +428,8 @@ do
         run wasm2wat wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat
         diff_files="$diff_files $base.linked.wat"
     fi
-
-  else
+  ;;
+  "did")
     # The file is a .did file, so we are expected to test the idl
     # Typecheck
     $ECHO -n " [tc]"
@@ -413,7 +456,11 @@ do
         run node node -r esm $out/$base.js
       fi
     fi
-  fi
+  ;;
+  *)
+    echo "Unknown extentions $ext";
+    exit 1
+  esac
   $ECHO ""
 
   if [ $ACCEPT = yes ]

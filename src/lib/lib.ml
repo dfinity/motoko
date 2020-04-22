@@ -405,6 +405,9 @@ struct
   let is_fulfilled p = !p <> None
   let value_opt p = !p
   let value p = match !p with Some x -> x | None -> raise Promise
+  let lazy_value p f =
+    (if not (is_fulfilled p) then fulfill p (f ()));
+    value p
 end
 
 module FilePath =

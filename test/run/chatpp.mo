@@ -14,8 +14,8 @@ type ClientData = {
 };
 
 actor class Server() = {
-  var nextId : Nat = 0;
-  var clients : List<ClientData> = null;
+  flexible var nextId : Nat = 0;
+  flexible var clients : List<ClientData> = null;
 
 /*
   // casualty of scope-awaits - can't abstract out a sequential broadcast function
@@ -59,7 +59,7 @@ actor class Server() = {
     };
   };
 
-  func unsubscribe(id : Nat) {
+  flexible func unsubscribe(id : Nat) {
     var prev : List<ClientData> = null;
     var next = clients;
     loop {
@@ -85,8 +85,8 @@ actor class Server() = {
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
-  var name : Text = "";
-  var server : ?Server  = null;
+  flexible var name : Text = "";
+  flexible var server : ?Server  = null;
 
   public func go(n : Text, s : Server) {
     name := n;

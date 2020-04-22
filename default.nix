@@ -23,18 +23,17 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   llvmBuildInputs = [
-    nixpkgs.clang # for native building
-    nixpkgs.clang_9 # for wasm building
-    nixpkgs.lld_9 # for wasm building
+    nixpkgs.clang_10 # for native/wasm building
+    nixpkgs.lld_10 # for wasm building
   ];
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
   # provided wrapper that sets various include paths etc).
   # But for some reason it does not handle building for Wasm well, so
-  # there we use plain clang-9. There is no stdlib there anyways.
+  # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang"
-    export WASM_CLANG="clang-9"
+    export CLANG="${nixpkgs.clang_10}/bin/clang"
+    export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
   '';
 in
@@ -49,7 +48,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune
+    pkgs.dune_2
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
@@ -102,6 +101,15 @@ let ocaml_exe = name: bin:
     if nixpkgs.stdenv.isDarwin
     then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
+
+  musl-wasi-sysroot = stdenv.mkDerivation {
+    name = "musl-wasi-sysroot";
+    src = nixpkgs.sources.musl-wasi;
+    phases = [ "unpackPhase" "installPhase" ];
+    installPhase = ''
+      make SYSROOT="$out" include_dirs
+    '';
+  };
 in
 
 rec {
@@ -116,6 +124,8 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${nixpkgs.sources.libtommath}
+      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
     '';
 
     doCheck = true;
@@ -206,19 +216,26 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
-
-	    if test -e ${dir}/_out/stats.csv
-	    then
-	      cp ${dir}/_out/stats.csv $out
-	    fi
           '';
       }; in
 
     let perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
-          export PERF_OUT=$out
-        '' + args.checkPhase;
+          mkdir -p $out
+          export PERF_OUT=$out/stats.csv
+        '' + args.checkPhase + ''
+          # export stats to hydra
+          mkdir -p $out/nix-support
+          tr '/;' '_\t' < $out/stats.csv > $out/nix-support/hydra-metrics
+
+          # sanity check
+          if ! grep -q ^gas/ $out/stats.csv
+          then
+            echo "perf stats do not include gas. change in drun output format?" >&2
+            exit 1
+          fi
+        '';
       }); in
 
     let qc = testDerivation {
@@ -342,16 +359,6 @@ rec {
     '';
   };
 
-  stdlib = stdenv.mkDerivation {
-    name = "stdlib";
-    src = subpath ./stdlib/src;
-    phases = "unpackPhase installPhase";
-    installPhase = ''
-      mkdir -p $out
-      cp ./*.mo $out
-    '';
-  };
-
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
@@ -364,9 +371,19 @@ rec {
     '';
   };
 
-  stdlib-tests = stdenv.mkDerivation {
-    name = "stdlib-tests";
-    src = subpath ./stdlib/test;
+  base-src = stdenv.mkDerivation {
+    name = "base-src";
+    phases = "unpackPhase installPhase";
+    src = nixpkgs.sources.motoko-base + "/src";
+    installPhase = ''
+      mkdir -p $out
+      cp -rv * $out
+    '';
+  };
+
+  base-tests = stdenv.mkDerivation {
+    name = "base-tests";
+    src = nixpkgs.sources.motoko-base;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     installPhase = "touch $out";
@@ -375,65 +392,10 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc STDLIB=${stdlib}
+      make MOC=moc -C test
+      make MOC=moc -C examples
     '';
   };
-
-  examples =
-    let example_subdir = dir: stdenv.mkDerivation {
-      name = dir;
-      src = subpath "./stdlib/examples/${dir}";
-      phases = "unpackPhase checkPhase installPhase";
-      doCheck = true;
-      installPhase = "touch $out";
-      buildInputs = [
-        nixpkgs.bash
-        moc
-        nixpkgs.wasmtime
-      ];
-      checkPhase = ''
-        make MOC=moc STDLIB=${stdlib}
-      '';
-    }; in
-    {
-      actorspec        = example_subdir "actorspec";
-      rx               = example_subdir "rx";
-      produce-exchange = example_subdir "produce-exchange";
-    };
-
-
-  stdlib-doc = stdenv.mkDerivation {
-    name = "stdlib-doc";
-    src = subpath ./stdlib/doc;
-    outputs = [ "out" "adocs" ];
-    buildInputs = with nixpkgs;
-      [ bash perl asciidoctor html-proofer ];
-    buildPhase = ''
-      patchShebangs .
-      make STDLIB=${stdlib}
-    '';
-
-    doCheck = true;
-    # These ones are needed for htmlproofer
-    LOCALE_ARCHIVE = nixpkgs.lib.optionalString nixpkgs.stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
-    LANG = "en_US.UTF-8";
-    LC_TYPE = "en_US.UTF-8";
-    LANGUAGE = "en_US.UTF-8";
-    checkPhase = ''
-      htmlproofer --disable-external _out/
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv _out/* $out/
-      mkdir -p $out/nix-support
-      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
-
-      mkdir -p $adocs
-      mv _build/*.adoc $adocs/
-    '';
-  };
-  stdlib-adocs = stdlib-doc.adocs;
 
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
@@ -454,17 +416,14 @@ rec {
       deser
       samples
       rts
-      stdlib
-      stdlib-tests
-      stdlib-doc
-      stdlib-adocs
+      base-src
+      base-tests
       users-guide
       ic-ref
       shell
       check-formatting
       check-generated
-    ] ++ builtins.attrValues tests
-      ++ builtins.attrValues examples;
+    ] ++ builtins.attrValues tests;
   };
 
   shell = nixpkgs.mkShell {
@@ -489,6 +448,8 @@ rec {
     shellHook = llvmEnv;
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
+    MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
+    MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 

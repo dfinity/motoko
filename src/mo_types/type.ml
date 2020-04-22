@@ -7,7 +7,12 @@ type control =
   | Promises       (* shared function producing a future value upon call *)
   | Replies        (* (IR only): responds asynchronously using `reply` *)
 
-type obj_sort = Object | Actor | Module
+type obj_sort =
+   Object
+ | Actor
+ | Module
+ | Memory          (* (codegen only): stable memory serialization format *)
+
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -429,6 +434,10 @@ let as_async_sub default_scope t = match promote t with
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
 
+let is_immutable_obj obj_type =
+  let _, fields = as_obj_sub [] obj_type in
+  List.for_all (fun f -> not (is_mut f.typ)) fields
+
 
 let lookup_val_field l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
@@ -651,6 +660,9 @@ let is_shared_func t =
   match normalize t with
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
+
+(* stable types : TODO extend to mutable *)
+let stable t = shared t
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
@@ -1155,6 +1167,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Memory -> "memory "
 
 let string_of_func_sort = function
   | Local -> ""

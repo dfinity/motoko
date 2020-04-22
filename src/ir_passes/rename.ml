@@ -36,8 +36,13 @@ and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, t)  -> let ds', rho' = decs rho ds
-                           in ActorE (ds', fields rho' fs, t)
+  | ActorE (ds, fs, { pre; post }, t) ->
+    let ds', rho' = decs rho ds in
+    ActorE
+      (ds',
+       fields rho' fs,
+       {pre = exp rho' pre; post = exp rho' post},
+       t)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
                            in BlockE (ds', exp rho' e1)

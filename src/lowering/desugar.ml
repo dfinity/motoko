@@ -37,8 +37,8 @@ let apply_sign op l = Syntax.(match op, l with
 
 let phrase f x = { x with it = f x.it }
 
-let typ_note : S.typ_note -> I.typ_note =
-  fun {S.note_typ;S.note_eff} -> {I.note_typ;I.note_eff}
+let typ_note : S.typ_note -> Note.t =
+  fun {S.note_typ;S.note_eff} -> Note.{def with typ = note_typ; eff = note_eff}
 
 let phrase' f x =
   { x with it = f x.at x.note x.it }
@@ -58,7 +58,7 @@ and exp e =
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE e ->
-    I.(PrimE (ActorOfIdBlob note.note_typ, [url e]))
+    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -72,7 +72,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    obj at s None es note.I.note_typ
+    obj at s None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -87,7 +87,7 @@ and exp' at note = function
     end
   | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->
-    let t = T.as_array note.I.note_typ in
+    let t = T.as_array note.Note.typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
@@ -96,7 +96,7 @@ and exp' at note = function
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
-    let args, wrap, control, res_tys = to_args note.I.note_typ po p in
+    let args, wrap, control, res_tys = to_args note.Note.typ po p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
@@ -125,7 +125,7 @@ and exp' at note = function
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
-  | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
+  | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -143,7 +143,7 @@ and exp' at note = function
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (tb, e) ->
     I.AsyncE (typ_bind tb, exp e,
-              match note.I.note_typ with
+              match note.Note.typ with
               | T.Async (t, _) -> t
               | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
@@ -154,7 +154,7 @@ and exp' at note = function
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
     | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
-    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
@@ -164,7 +164,7 @@ and url e =
     | S.AnnotE (e,_) -> url e
     | _ ->
       let transformed = typed_phrase' (url' e) e in
-      I.{ transformed with note = { transformed.note with note_typ = T.blob } }
+      { transformed with note = Note.{ transformed.note with typ = T.blob } }
 
 and url' e at _ _ = I.(PrimE (BlobOfIcUrl, [exp e]))
 
@@ -186,7 +186,7 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =
@@ -206,15 +206,82 @@ and build_fields obj_typ =
     | _ -> assert false
 
 and with_self i typ decs =
-  let_no_shadow (idE i typ) (selfRefE typ) decs
+  let_no_shadow (var i typ) (selfRefE typ) decs
 
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
+  let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+  let stabs = List.map (fun ef -> ef.it.S.stab) es in
+  let pairs = List.map2 stabilize stabs ds in
+  let idss = List.map fst pairs in
+  let ids = List.concat idss in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
+  let mk_ds = List.map snd pairs in
+  let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
+  let state = fresh_var "state" (T.Mut (T.Opt ty)) in
+  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
+  let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
+  let ds =
+    varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
+    ::
+    nary_funcD get_state []
+      (let v = fresh_var "v" ty in
+       switch_optE (immuteE (varE state))
+         (unreachableE)
+         (varP v) (varE v)
+         ty)
+    ::
+    ds
+    @
+    [expD (assignE state (nullE()))]
+  in
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  I.ActorE (ds', fs, obj_typ)
+  I.ActorE (ds', fs,
+    { I.pre =
+       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+        blockE
+          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))]
+          (primE (I.ICStableWrite ty)
+             [ newObjE T.Object
+                 (List.map2 (fun f v ->
+                      { it = {I.name = f.T.lab; I.var = id_of_var v};
+                        at = no_region;
+                        note = f.T.typ }
+                    ) fields vs)
+                 ty]));
+      I.post = tupE []},
+    obj_typ)
+
+and stabilize stab_opt d =
+  let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
+  match s, d.it with
+  | (S.Flexible, _) ->
+    ([], fun _ -> d)
+  | (S.Stable, I.VarD(i, t, e)) ->
+    ([(i, t)],
+     fun get_state ->
+     let v = fresh_var i t in
+     varD i t
+       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+         e
+         (varP v) (varE v)
+         t))
+  | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
+    let t = p.note in
+    ([(i, t)],
+     fun get_state ->
+     let v = fresh_var i t in
+     letP p
+       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+         e
+         (varP v) (varE v)
+         t))
+  | (S.Stable, I.LetD _) ->
+    assert false
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -222,7 +289,7 @@ and build_obj at s self_id es obj_typ =
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
-    | Some id -> let self = idE id.it obj_typ in [ letD self obj_e ], self
+    | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
   in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
 
 and typ_binds tbs = List.map typ_bind tbs
@@ -247,8 +314,8 @@ and array_dotE array_ty proj e =
       then T.Array (T.Mut varA)
       else T.Array varA in
     let ty_param = {T.var = "A"; sort = T.Type; T.bound = T.Any} in
-    let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
-    callE f [element_ty] e in
+    let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
+    callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
     | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
     | false, "len"  -> call "@immut_array_len"  [] [T.nat]
@@ -264,8 +331,8 @@ and array_dotE array_ty proj e =
 and blob_dotE proj e =
   let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
   let call name t1 t2 =
-    let f = idE name (fun_ty [T.blob] [fun_ty t1 t2]) in
-    callE f [] e in
+    let f = var name (fun_ty [T.blob] [fun_ty t1 t2]) in
+    callE (varE f) [] e in
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
     | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
@@ -274,8 +341,8 @@ and blob_dotE proj e =
 and text_dotE proj e =
   let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
   let call name t1 t2 =
-    let f = idE name (fun_ty [T.text] [fun_ty t1 t2]) in
-    callE f [] e in
+    let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
+    callE (varE f) [] e in
   match proj with
     | "len"   -> call "@text_len"   [] [T.nat]
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
@@ -287,16 +354,17 @@ and block force_unit ds =
   | _, S.ExpD e ->
     (decs prefix, exp e)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
-    (decs ds, idE x.it e.note.S.note_typ)
+    (decs ds, varE (var x.it e.note.S.note_typ))
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
-    (decs prefix @ [letD x (exp e'); letP (pat p') x], x)
+    (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
   | _ , S.IgnoreD _ (* redundant, but explicit *)
   | _, _ ->
     (decs ds, tupE [])
 
+and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
+
 and decs ds =
-  let is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true in
   List.map dec (List.filter is_not_typD ds)
 
 and dec d = { (phrase' dec' d) with note = () }
@@ -309,8 +377,8 @@ and dec' at n d = match d with
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (ds, fs, t) ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, t)})
+    | I.VarP i, I.ActorE (ds, fs, u, t) ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
@@ -338,9 +406,9 @@ and dec' at n d = match d with
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
-           note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
+           note = Note.{ def with typ = obj_typ } });
       at = at;
-      note = { I.note_typ = fun_typ; I.note_eff = T.Triv }
+      note = Note.{ def with typ = fun_typ }
     } in
     I.LetD (varPat, fn)
 
@@ -426,12 +494,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
       (fun e -> e)
     | S.WildP ->
       let v = fresh_var "param" p.note in
-      arg_of_exp v,
+      arg_of_var v,
       (fun e -> e)
     |  _ ->
       let v = fresh_var "param" p.note in
-      arg_of_exp v,
-      (fun e -> blockE [letP (pat p) v] e)
+      arg_of_var v,
+      (fun e -> blockE [letP (pat p) (varE v)] e)
   in
 
   let args, wrap =
@@ -439,7 +507,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, (S.AnnotP _ | S.ParP _) -> assert false
     | _, S.WildP ->
       let vs = fresh_vars "ignored" tys in
-      List.map arg_of_exp vs,
+      List.map arg_of_var vs,
       (fun e -> e)
     | 1, _ ->
       let a, wrap = to_arg p in
@@ -454,8 +522,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
       ) ps ([], fun e -> e)
     | _, _ ->
       let vs = fresh_vars "param" tys in
-      List.map arg_of_exp vs,
-      (fun e -> blockE [letP (pat p) (tupE vs)] e)
+      List.map arg_of_var vs,
+      (fun e -> blockE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
   let wrap_po e =
@@ -467,7 +535,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
-              [{ it = {Ir.name = "caller"; var = id_of_exp v};
+              [{ it = {Ir.name = "caller"; var = id_of_var v};
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
