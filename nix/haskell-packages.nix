@@ -9,11 +9,7 @@ nix: subpath:
 
   lsp-test = nix.haskell.lib.dontCheck self.lsp-test_0_10_1_0;
 
-  lsp-int = super.callPackage ../test/lsp-int {};
+  lsp-int = super.callPackage generated/lsp-int.nix {};
 
-  qc-motoko = super.callPackage ../test/random {};
-
-  winter = super.callPackage ../winter {};
-
-  ic-stub = super.callPackage ../ic-stub {};
+  qc-motoko = super.callPackage generated/random.nix {};
 }

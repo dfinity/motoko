@@ -14,5 +14,5 @@ expected one of token or <phrase> sequence:
   <binassign> <exp(ob)>
   and <exp_bin(ob)>
   <unop> <exp_bin(ob)>
-  <typ_args>? <exp_nullary(ob)>
+  <inst> <exp_nullary(ob)>
   [ <exp(ob)> ]
