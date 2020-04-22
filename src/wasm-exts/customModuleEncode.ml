@@ -72,6 +72,7 @@ let allocate_reference_slot () =
 
 type dwarf_artifact = Tag of int option * int * dwarf_artifact list
                     | IntAttribute of int * int
+                    | RangeAttribute of int * int
                     | StringAttribute of int * string
                     | FunctionsAttribute of int
 
@@ -194,6 +195,11 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, !sequence_number))
       | Nop, {line; column; _} when -line = dw_AT_low_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
+
+      | Nop, {line; column; _} when -line = dw_AT_high_pc && tag = dw_TAG_subprogram ->
+        add_dwarf_attribute (RangeAttribute (-line, !sequence_number))
+
+
       | Nop, {line; column; _} when -line = dw_AT_high_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_decl_line ->
@@ -845,6 +851,7 @@ let encode (em : extended_module) =
         let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
+          | RangeAttribute (a, r) -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form (IntAttribute (a, 15(*FIXME*)))
           | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
           | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
