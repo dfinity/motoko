@@ -267,60 +267,21 @@ and stabilize stab_opt d =
      let v = fresh_var i t in
      varD i t
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
-          e
-          (varP v) (varE v)
-          t)
-    )
-  | (S.Stable, I.LetD(p, e)) ->
-    if true then assert false;
-    (* TODO: this code is dead for now but I'm maintaining it for future adaptation, if any *)
-    let ids = ids_of_pat [] p in
-    (ids, fun get_state ->
-     let p', e', t =
-       let xs = List.map (fun (i,t) -> var i t) ids in
-       let projs = List.map (fun (i,t) ->
-         let v = fresh_var i t in
-         switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
-           (varE (var i t))
-           (varP v) (varE v) t)
-         ids in
-       let ts = List.map (fun (i,t) -> t) ids in
-       seqP (List.map varP xs), seqE projs, T.seq ts
-     in
-     letP p'
-       (blockE [letP p e]
-         (* dubious semantics - rerun the compound initializer on install/upgrade, but discard
-            components that have been restored from stable store
-            why dubious? wasteful, duplicates side effects
-            Alternative, require RHS e to be in canonical form for p so components can
-            be selectively evaluated/restored *)
-       e'))
-
-(* NB: this code is dead (see above) *)
-and ids_of_pat acc p = match p.it with
-  | I.WildP ->
-    acc
-  | I.VarP i ->
-    (i, p.note) :: acc
-  | I.TupP ps ->
-    ids_of_pats acc ps
-  | I.ObjP pfs ->
-    ids_of_pats acc (Ir.pats_of_obj_pat pfs)
-  | I.LitP l ->
-    acc
-  | I.OptP p ->
-    ids_of_pat acc p
-  | I.TagP (i, p)     ->
-    ids_of_pat acc p
-  | I.AltP (p1, p2)   ->
-    ids_of_pat (ids_of_pat acc p1) p2
-
-(* NB: this code is dead (see above) *)
-and ids_of_pats acc ps =
-  match ps with
-  | [] -> acc
-  | p::ps' ->
-    ids_of_pats (ids_of_pat acc p) ps'
+         e
+         (varP v) (varE v)
+         t))
+  | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
+    let t = p.note in
+    ([(i, t)],
+     fun get_state ->
+     let v = fresh_var i t in
+     letP p
+       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+         e
+         (varP v) (varE v)
+         t))
+  | (S.Stable, I.LetD _) ->
+    assert false
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in

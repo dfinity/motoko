@@ -1675,9 +1675,53 @@ and infer_obj env s fields at : T.typ =
             "a shared function cannot be private"
       ) fields;
     end;
-    if s = T.Module then Static.fields env.msgs fields
+    if s = T.Module then Static.fields env.msgs fields;
+    check_stab env s scope fields;
   end;
   t
+
+and stable_pat pat =
+  match pat.it with
+  | VarP _ -> true
+  | ParP pat'
+  | AnnotP (pat', _) -> stable_pat pat'
+  | _ -> false
+
+and check_stab env sort scope fields =
+  let check_stable id at =
+    match T.Env.find_opt id scope.Scope.val_env with
+    | None -> assert false
+    | Some t ->
+      let t1 = T.as_immut t in
+      if not (T.stable t1) then
+        local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
+  in
+  let idss = List.map (fun ef ->
+    match sort, ef.it.stab, ef.it.dec.it with
+    | (T.Object | T.Module), None, _ -> []
+    | (T.Object | T.Module), Some stab, _ ->
+      local_error env stab.at
+        "misplaced stability declaration on field of non-actor";
+      []
+    | T.Actor, None, (VarD _ | LetD _) ->
+      warn env ef.it.dec.at
+        "missing stability declaration on actor field";
+      []
+    | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
+      check_stable id.it id.at;
+      [id]
+    | T.Actor, Some {it = Stable; _}, LetD (pat, _) when stable_pat pat ->
+      let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
+      List.iter (fun id -> check_stable id pat.at) ids;
+      List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
+    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
+    | T.Actor, Some stab, _ ->
+      local_error env stab.at "misplaced stability modifier: expected on var or simple let declarations only";
+      []
+    | _ -> []) fields
+  in
+  check_ids env "actor" "stable variable" (List.concat idss)
+
 
 (* Blocks and Declarations *)
 
