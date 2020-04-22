@@ -5,7 +5,7 @@
 Each actor in {proglang} may use, but may _never directly share_, an
 internal mutable state.
 
-Later, we discuss <<chapter-sharing, sharing among actors>>, where
+Later, we discuss link:sharing{outfilesuffix}[sharing among actors], where
 actors send and receive _immutable_ data, and also handles to each
 others external entry points, which serve as _shareable functions_.
 Unlike those cases of shareable data, a key {proglang} design
@@ -16,9 +16,9 @@ In this chapter, we continue using minimal
 examples to show how to introduce (private) actor state, and use
 mutation operations to change it over time.
 
-In <<chapter-local-objects, the next chapter>>, we introduce the
+In link:local-objects-classes{outfilesuffix}[local objects and classes], we introduce the
 syntax for local objects, and a minimal `counter` actor with a single
-mutable variable.  In the <<chapter-actors, following chapter>>, we
+mutable variable.  In the link:actors-async{outfilesuffix}[following chapter], we
 show an actor with the same behavior, exposing the counter variable
 indirectly behind an associated service interface for using it
 remotely.
@@ -90,7 +90,7 @@ As with `+=`, this combined form avoids repeating the assigned
 variable's name on the right hand side of the (special) assignment
 operator `#=`.
 
-The <<syntax-ops-assignment, full list of assignment operations>>
+The link:language-manual{outfilesuffix}#syntax-ops-assignment[full list of assignment operations]
 lists numerical, logical, and textual operations over appropriate
 types (number, boolean and text values, respectively).
 
@@ -186,9 +186,7 @@ let x : Nat = a[2] + a[0] ;
 ....
 
 Every array access in {proglang} is safe.  Accesses that are out of
-bounds will not access memory unsafely, but instead will cause the
-<<overview-traps, program to trap>>, as with an <<overview-traps,
-assertion failure>>.
+bounds will not access memory unsafely, but instead will cause the program to trap, as with an link:basic-concepts{outfilesuffix}#overview-traps[assertion failure].
 
 === Allocate an immutable array with varying content
 
@@ -237,10 +235,10 @@ Above, we introduced _immutable_ arrays, which share the same projection syntax 
 
 Because {proglang}'s type system enforces that remote actors do not share their mutable state, the {proglang} type system introduces a firm distinction between mutable and immutable arrays that impacts typing, subtyping and the language abstractions for asynchronous communication.
 
-Locally, the mutable arrays can not be used in places that expect immutable ones, since <<intro-array-subtyping, {proglang}'s definition of subtyping for arrays>> (correctly) distinguishes those cases for the purposes of type soundness.
+Locally, the mutable arrays can not be used in places that expect immutable ones, since {proglang}'s definition of link:language-manual{outfilesuffix}#subtyping[subtyping] for arrays (correctly) distinguishes those cases for the purposes of type soundness.
 Additionally, in terms of
-<<chapter-sharing, actor communication>>, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages.
-Unlike immutable arrays, mutable arrays have <<chapter-sharing, _non-shareable types_>>.
+actor communication, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages.
+Unlike immutable arrays, mutable arrays have _non-shareable types_.
 
 === Allocate a mutable array of constants
 
@@ -281,13 +279,16 @@ a[2] := 42 ;
 [[intro-array-subtyping]]
 === Subtyping does not permit _mutable_ to be used as _immutable_
 
-<<subtyping, subtyping in {proglang}>> does not permit us to use a mutable array of type `[var Nat]` in places that expect an immutable one of type `[Nat]`.
+Subtyping in {proglang} does not permit us to use a mutable array of type `[var Nat]` in places that expect an immutable one of type `[Nat]`.
 
-There are two reasons for this.  First, as with all mutable state, mutable arrays require <<subtyping, different rules for sound subtyping>>.
-In particular, mutable arrays have a less flexible subtyping definition, necessarily.  Second, {proglang} forbids uses of mutable arrays across <<chapter-actors,asynchronous communication>>, where mutable state is never shared.
+There are two reasons for this.
+First, as with all mutable state, mutable arrays require different rules for sound subtyping.
+In particular, mutable arrays have a less flexible subtyping definition, necessarily.
+Second, {proglang} forbids uses of mutable arrays across link:actors-async{outfilesuffix}[asynchronous communication], where mutable state is never shared.
 
 == The Array module
 
-The {proglang} standard library provides <<stdlib-array, additional array operations>>.
+The {proglang} standard library provides additional array operations.
+For more information about using arrays, see the link:stdlib/array{outfilesuffix}[Array] library descriptions.
 
 Many common operations for arrays reside in the standard library, since the the {proglang} language intentionally places features that can be written in {proglang} into this library, and not the set of compiler and language builtin features.
