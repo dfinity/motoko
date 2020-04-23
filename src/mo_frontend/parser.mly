@@ -220,6 +220,7 @@ seplist1(X, SEP) :
 
 %inline tag :
   | HASH id=ID { id @@ at $sloc }
+  | HASH SYSTEM { "system" @@ at $sloc } // HACK to be removed once we revise Prim.ErrorCode
 
 %inline typ_id :
   | id=ID { id @= at $sloc }

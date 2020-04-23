@@ -222,7 +222,7 @@ rule token mode = parse
   | "return" { RETURN }
   | "shared" { SHARED }
   | "stable" { STABLE }
-  | "system" { SYSTEM }
+  | "_system" { SYSTEM }
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }

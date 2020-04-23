@@ -1676,9 +1676,30 @@ and infer_obj env s fields at : T.typ =
       ) fields;
     end;
     if s = T.Module then Static.fields env.msgs fields;
+    check_system_fields env s scope fields;
     check_stab env s scope fields;
   end;
   t
+
+and check_system_fields env sort scope fields =
+  List.iter (fun ef ->
+      match sort, ef.it.vis.it, ef.it.dec.it with
+      | T.Actor, vis,
+        LetD({ it = VarP ({ it = "preupgrade" | "postupgrade"; _ } as id); _ },
+             { it = FuncE _; _ }) ->
+        (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type  *)
+        if vis = System then
+          begin
+            let t = T.Env.find id.it scope.Scope.val_env in
+            let t' = T.Func(T.Local, T.Returns, [], [], []) in
+            if not (T.sub t t') then
+              local_error env ef.at "system function %s is declared with type %s, expecting type %s" id.it (T.string_of_typ t) (T.string_of_typ t')
+          end
+        else warn env id.at "this function has the name, %s, of a system method, but is declared without system visibility" id.it
+      | _, System, _ ->
+        local_error env ef.it.vis.at "misplaced system visibility, did you mean private?"
+      | _ -> ())
+  fields
 
 and stable_pat pat =
   match pat.it with
