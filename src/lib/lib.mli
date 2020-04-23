@@ -14,6 +14,7 @@ sig
   val concat_map : ('a -> 'b list) -> 'a list -> 'b list
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
+
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
