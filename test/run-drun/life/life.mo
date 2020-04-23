@@ -47,12 +47,12 @@ class Grid(n : Nat) {
 };
 
 actor Life {
-    var current = Grid 32;
-    var next = Grid (current.size());
+    flexible var current = Grid 32;
+    flexible var next = Grid (current.size());
 
     stable var state : [[Word8]] = [];
 
-    func update() {
+    flexible func update() {
         let n = current.size();
         var i = 0;
         while (i < n) {
@@ -69,12 +69,12 @@ actor Life {
         P.debugPrint(current.toText());       
     };
 
-    /*system*/ func pre_upgrade() {
+    system flexible func preupgrade() {
         let n = current.size();
         state := P.Array_tabulate<[Word8]>(n,func i { P.Array_tabulate<Word8>(n, func j { current.get(i,j) }) });
     };
 
-    /*system*/ func post_uprade() {
+    system flexible func postupgrade() {
         let n = state.len();
         current := Grid(n);
         next := Grid(current.size());
