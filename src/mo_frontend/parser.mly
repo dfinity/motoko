@@ -95,9 +95,9 @@ let share_stab stab_opt dec =
   | _ -> stab_opt
 
 let share_expfield (ef : exp_field) =
-  if ef.it.vis.it = Private
-  then ef
-  else {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab ef.it.dec}}
+  if ef.it.vis.it = Public
+  then {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab ef.it.dec}}
+  else ef
 
 %}
 
