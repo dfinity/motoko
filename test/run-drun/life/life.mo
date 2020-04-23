@@ -2,98 +2,118 @@ import P = "mo:prim";
 
 object Random {
   var state = 1;
-  public func next() : Word8 { 
+  public func next() : Bool { 
     state := (123138118391*state + 133489131) % 9999; 
-    let n : Word8 = if (state % 2 == 0) 0 else 1;
-    P.debugPrintNat(P.word8ToNat n);
-    n };
+    (state % 2 == 0) 
+  };
 };
 
-class Grid(n : Nat) { 
-  public func size() : Nat { n};
-  func pred(i : Nat) : Nat = if (i == 0) n - 1 else i-1;
-  func succ(i : Nat) : Nat = if (i == n - 1) 0 else i+1;
-  let grid = 
-    P.Array_tabulate(n, func (i:Nat):[var Word8] { P.Array_init(n, 2:Word8)});
-  public func get(i:Nat, j:Nat) : Word8 { grid[i][j] };
-  public func set(i:Nat, j:Nat, v : Word8) { grid[i][j] := v };
-  public func living(i : Nat, j : Nat) : Word8 { 
-      get(pred i, pred j) + get(pred i, j) + get(pred i, succ j) +
-      get(i, pred j)                      + get(     i, succ j) +
-      get(succ i, pred j) + get(succ i, j) + get(succ i, succ j)
-  };
-  public func next(i:Nat, j:Nat) : Word8 { 
-      let l : Word8 = living(i,j);
-      switch (get(i,j)) {
-        case 1 (if (l == (2 : Word8) or l == (3: Word8)) 1 else 0);
-        case 0 (if (l == (3 : Word8)) 1 else 0);
-        case _ (Random.next());
+type Cell = Bool;
+
+class Grid(state : [[Cell]]) { 
+
+  let n = state.len();
+  
+  public func size() : Nat { n };
+
+  let grid = P.Array_tabulate(n, func (i:Nat):[var Cell] { 
+      let a = P.Array_init(n, false);
+      let si = state[i];
+      assert (si.len() == n);
+      for(j in si.keys()) {
+        a[j] := si[j];
       };
+      a
+    });
+   
+  public func get(i:Nat, j:Nat) : Cell { grid[i][j]  };
+
+  public func set(i:Nat, j:Nat, v : Cell) { grid[i][j] := v };
+  
+  func pred(i : Nat) : Nat = (n + i - 1) % n;
+  func succ(i : Nat) : Nat = (i + 1) % n;
+  func count(i:Nat, j:Nat) : Nat { if (grid[i][j]) 1 else 0 };
+  func living(i : Nat, j : Nat) : Nat { 
+      count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
+      count(     i, pred j)                    + count(     i, succ j) +
+      count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
   };
+  func nextCell(i:Nat, j:Nat) : Cell { 
+    let l : Nat = living(i,j);
+    if (get(i,j))
+      l == 2 or l == 3
+    else 
+      l == 3;
+  };
+
+  public func Next(dst : Grid) {
+    var i = 0;
+    while (i < n) {
+      var j = 0;  
+      while (j < n) {
+        dst.set(i, j, nextCell(i, j));  
+        j += 1;        
+        };
+      i += 1;
+    };
+  };
+  
+  public func toState() : [[Cell]] {
+    P.Array_tabulate<[Cell]>(n, 
+      func i { P.Array_tabulate<Cell>(n, func j { get(i,j) }) });
+  };
+
   public func toText() : Text {
     var t = "\n";
     var i = 0;
     while (i < n) {
       var j = 0;
       while (j < n) {
-        t #= if (get(i,j) == (1 : Word8)) "O" else " ";
+        t #= if (get(i,j)) "O" else " ";
         j += 1;        
       };
       t #= "\n";
       i += 1;
     };
     t
-  }
+  };
 };
 
 actor Life {
-    flexible var current = Grid 32;
-    flexible var next = Grid (current.size());
+   
+    stable var n = 32;
+    stable var state : [[Cell]] = 
+      P.Array_tabulate<[Cell]>(n, func i { P.Array_tabulate<Cell>(n, func j { Random.next(); }) });
 
-    stable var state : [[Word8]] = [];
+    flexible var src = Grid(state);
+    flexible var dst = Grid(state);
 
-    flexible func update() {
-        let n = current.size();
-        var i = 0;
-        while (i < n) {
-          var j = 0;  
-          while (j < n) {
-            next.set(i, j, current.next(i, j));  
-            j += 1;        
-          };
-          i += 1;
-        };
-        let temp = current;
-        current := next;
-        next := temp; 
-        P.debugPrint(current.toText());       
+    flexible func update(c : Nat) {
+      var i = c;
+      while (i > 0) {
+        src.Next(dst);
+        let temp = src;
+        src := dst;
+        dst := temp; 
+        //P.debugPrint(src.toText());  
+        i -= 1;
+      };     
     };
 
     system flexible func preupgrade() {
-        let n = current.size();
-        state := P.Array_tabulate<[Word8]>(n,func i { P.Array_tabulate<Word8>(n, func j { current.get(i,j) }) });
+      state := src.toState();
     };
 
     system flexible func postupgrade() {
-        let n = state.len();
-        current := Grid(n);
-        next := Grid(current.size());
-        var i = 0;
-        while (i < n) {
-          var j = 0;  
-          while (j < n) {
-            current.set(i, j, state[i][j]);  
-            j += 1;        
-          };
-          i += 1;
-        };
+      P.debugPrint("upgraded!");
     };
 
-    public func test() {
-        var c = 0;
-        while (c < 100) {
-            update();
-            c += 1;
-        }
-    }
+    public func advance(n : Nat) : async () {
+       update n;
+    };
+
+    public query func show() : async () {
+       P.debugPrint(src.toText());
+    };
+
 };
