@@ -984,14 +984,17 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 let open List in
                 iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
 
-                u8 1; (* directory_entry_format_count *)
-                iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+                let format (l, f) = uleb128 l; uleb128 f in
+                let vec_format = vec_by u8 format in
+
+                (* directory_entry_format_count, directory_entry_formats *)
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_string];
 
                 (* directories_count, directories *)
                 vec_uleb128 zero_terminated ["/Users/ggreif/motoko/"];
 
-                (* file_name_entry_format_count, file_name_entry_format *)
-                vec_by u8 uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+                (* file_name_entry_format_count, file_name_entry_formats *)
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_string];
 
                 (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
 
