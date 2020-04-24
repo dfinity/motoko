@@ -243,7 +243,7 @@ let dw_attr : dw_AT -> t =
   | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
   | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
   | Discr r -> fakeColumn r dw_AT_discr Nop
-  | TypeRef i -> assert (i <> 1) ;fakeColumn i dw_AT_type Nop
+  | TypeRef i -> fakeColumn i dw_AT_type Nop
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
   | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
   | Const_value v -> fakeColumn v dw_AT_const_value Nop
@@ -291,8 +291,8 @@ let rec dw_tag : dw_TAG -> t =
     fakeBlock dw_TAG_compile_unit
       (dw_attrs
          [ Producer "DFINITY Motoko compiler, version 0.1";
-           Language dw_LANG_Swift; Name file; Stmt_list 1;
-           Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 0; Ranges ]) ^^
+           Language dw_LANG_Swift; Name file; Stmt_list 0;
+           Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 8; Ranges ]) ^^
       base_types ^^
       builtin_types
   | Subprogram (name, pos) ->
@@ -431,7 +431,7 @@ and dw_prim_type_ref prim =
           variant_part ^^
           dw_tag_children_done
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
-      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); nop, 3(* FIXME *)
+      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); dw_prim_type_ref Bool (* FIXME, this is "Bool" for now *)
 (* | _ -> assert false (* TODO *)*)
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;

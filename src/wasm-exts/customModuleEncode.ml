@@ -58,15 +58,14 @@ let to_string s =
 
 module References = Map.Make (struct type t = int let compare = compare end)
 
-let dw_references = ref References.(add 1 (Promise.make ()) (singleton 0 (Promise.make ())))
-   (* 0: this is the reference into the .debug_addr section
-      1: Stmt_list, reference into the .debug_line section *)
-let num_dw_references = ref 2
+let dw_references = ref References.empty
+let num_dw_references = ref 1 (* 0 would mean: "this tag doesn't fulfill a reference" *)
 let allocate_reference_slot () =
-  num_dw_references := 1 + !num_dw_references; (* FIXME: increment after! *)
   Printf.printf "ALLOCATED SLOT: %d\n" !num_dw_references;
-  dw_references := References.add !num_dw_references (Promise.make ()) !dw_references;
-  !num_dw_references
+  let have = !num_dw_references in
+  dw_references := References.add have (Promise.make ()) !dw_references;
+  num_dw_references := 1 + have;
+  have
 
 (* DWARF factlets, a.k.a. DIEs *)
 
@@ -805,12 +804,12 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; assert (i <> 1); uleb128 (Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; uleb128 (Promise.value (References.find i !dw_references))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->
         begin function
-          | IntAttribute (attr, i) -> write32 (Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> write32 i
           | FunctionsAttribute attr ->
             write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
@@ -843,7 +842,7 @@ let encode (em : extended_module) =
 
     let rec writeTag = function
       | Tag (r, t, contentsRevd) ->
-        Printf.printf "WRITING TAG: 0x%x\n" t; 
+        Printf.printf "WRITING TAG: 0x%x\n" t;
         begin match r with
         | Some refi -> Printf.printf "FULFILLING: %d\n" refi; Promise.fulfill (References.find refi !dw_references) (pos s - !info_section_start)
         | None -> assert (t <> Dwarf5.dw_TAG_base_type)
@@ -907,7 +906,6 @@ let encode (em : extended_module) =
     let debug_addr_section seqs =
       let debug_addr_section_body seqs =
         unit(fun start ->
-            Promise.fulfill (References.find 0 !dw_references) 8; (* FIXME: SHOULD NOT BE Promise at all, constant *)
             write16 0x0005; (* version *)
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)
@@ -957,7 +955,6 @@ let encode (em : extended_module) =
         in
 
         unit(fun start ->
-            Promise.fulfill (References.find 1 !dw_references) 0;
             write16 0x0005;
             u8 4;
             u8 0; (* segment_selector_size *)
