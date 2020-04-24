@@ -127,7 +127,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
     if (ty >= 0) {
-      idl_trap_with("illeagal type table"); // illegal      
+      idl_trap_with("illegal type table"); // illegal
     } else if (is_primitive_type(ty)) {
       idl_trap_with("primitive type in type table"); // illegal
     } else if (ty == IDL_CON_opt) {

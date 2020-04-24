@@ -214,6 +214,8 @@ let transform mode env prog =
     | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
     | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
     | SelfRef t -> SelfRef (t_typ t)
+    | ICStableRead t -> ICStableRead (t_typ t)
+    | ICStableWrite t -> ICStableWrite (t_typ t)
     | p -> p
 
   and t_field {lab; typ} =
@@ -365,8 +367,8 @@ let transform mode env prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, typ) ->
-      ActorE (t_decs ds, t_fields fs, t_typ typ)
+    | ActorE (ds, fs, {pre; post}, typ) ->
+      ActorE (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false

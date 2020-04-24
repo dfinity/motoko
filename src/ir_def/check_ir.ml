@@ -30,6 +30,7 @@ let immute_typ p =
 
 type val_info = {
   typ : T.typ;
+  (* see ir_passes/const.ml for the next two *)
   loc_known : bool;
   const : bool;
 }
@@ -331,6 +332,13 @@ let isAsyncE exp =
     -> true
   | _ -> false
 
+let store_typ t  =
+  T.stable t &&
+  match t with
+  | T.Obj(T.Object, fts) ->
+    List.for_all (fun f -> T.is_opt f.T.typ) fts
+  | _ -> false
+
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
@@ -507,6 +515,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+    | ICStableRead t1, [] ->
+      check (store_typ t1) "Invalid type argument to ICStableRead";
+      t1 <: t
+    | ICStableWrite t1, [exp1] ->
+      check (store_typ t1) "Invalid type argument to ICStableWrite";
+      typ exp1 <: t1;
+      T.unit <: t
     | NumConvPrim (p1, p2), [e] ->
       (* we could check if this conversion is supported *)
       typ e <: T.Prim p1;
@@ -646,11 +661,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, t0) ->
+  | ActorE (ds, fs, { pre; post}, t0) ->
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
+    check_exp env'' pre;
+    check_exp env'' post;
+    typ pre <: T.unit;
+    typ post <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -670,6 +689,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t0 <: t
   end;
   (* check const annotation *)
+  (* see ir_passes/const.ml for an explanation *)
   let check_var ctxt v =
     check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
   if exp.note.Note.const
@@ -689,8 +709,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e1 ->
         check e1.note.Note.const "constant array with non-constant subexpression"
       ) es
-    | PrimE (DotPrim n, [e1]) ->
+    | PrimE (TupPrim, es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant tuple with non-constant subexpression"
+      ) es
+    | PrimE (DotPrim _, [e1]) ->
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
+    | PrimE (ProjPrim _, [e1]) ->
+      check e1.note.Note.const "constant ProjPrim on non-constant subexpression"
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
         | VarD _ -> check false "VarD in constant BlockE"

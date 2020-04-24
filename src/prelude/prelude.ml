@@ -322,7 +322,7 @@ The primitive definitions.
 
 This module should contain everything that cannot be implemented in plain
 Motoko. It is available via `import Prim "mo:prim"`. Normal user code would
-usually not import that module directly, but through the stdlib, which takes
+usually not import that module directly, but through base, which takes
 care of providing a proper module structure, e.g. exposing Array_tabulate
 through Array.tabulate.
 *)
@@ -345,6 +345,8 @@ func debugPrintChar(x : Char) { debugPrint (charToText x) };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
+func rts_reclaimed() : Nat { (prim "rts_reclaimed" : () -> Nat) () };
+func rts_max_live_size() : Nat { (prim "rts_max_live_size" : () -> Nat) () };
 func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () -> Nat) () };
 func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
 

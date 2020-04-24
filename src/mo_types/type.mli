@@ -4,7 +4,7 @@ type lab = string
 type var = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module
+type obj_sort = Object | Actor | Module | Memory
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -177,6 +177,9 @@ val concrete : typ -> bool
 val shared : typ -> bool
 val find_unshared : typ -> typ option
 val is_shared_func : typ -> bool
+
+val stable : typ -> bool
+
 val inhabited : typ -> bool
 val span : typ -> int option
 

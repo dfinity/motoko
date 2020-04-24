@@ -102,18 +102,16 @@ module Const = struct
      * do not require Wasm code to be be executed (e.g. in `start`)
      * can be used directly (e.g. Call, not CallIndirect)
      * can be turned into Vanilla heap data on demand
-     * all literals
-       (this makes this dependent on the Ir module, which is not very
-       principled, but convenient)
-     * (future work)
-       vanilla heap representation may be placed in static heap and shared
+
+     See ir_passes/const.ml for what precisely we can compile as const now.
   *)
 
   type v =
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
-    | Array of t list
+    | Unit
+    | Array of t list (* also tuples, but not nullary *)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -816,7 +814,13 @@ module Heap = struct
     E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
 
     (* counter for total allocations *)
-    E.add_global64 env "allocations" Mutable 0L
+    E.add_global64 env "allocations" Mutable 0L;
+
+    (* counter for total reclaimed bytes *)
+    E.add_global64 env "reclaimed" Mutable 0L;
+
+    (* counter for max live bytes *)
+    E.add_global64 env "max_live" Mutable 0L
 
   let count_allocations env =
     (* assumes number of allocated bytes on the stack *)
@@ -827,6 +831,32 @@ module Heap = struct
 
   let get_total_allocation env =
     G.i (GlobalGet (nr (E.get_global env "allocations")))
+
+  let add_reclaimed env =
+    (* assumes number of reclaimed bytes on the stack *)
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    G.i (GlobalGet (nr (E.get_global env "reclaimed"))) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+    G.i (GlobalSet (nr (E.get_global env "reclaimed")))
+
+  let get_reclaimed env =
+    G.i (GlobalGet (nr (E.get_global env "reclaimed")))
+
+  let note_live_size env =
+    (* assumes size of live set on the stack *)
+    let (set_live_size, get_live_size) = new_local env "live_size" in
+    set_live_size ^^
+    get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    G.i (GlobalGet (nr (E.get_global env "max_live"))) ^^
+    G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+    G.if_ [] G.nop begin
+      get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      G.i (GlobalSet (nr (E.get_global env "max_live")))
+    end
+
+  let get_max_live_size env =
+    G.i (GlobalGet (nr (E.get_global env "max_live")))
+
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
@@ -863,7 +893,7 @@ module Heap = struct
       (* return the current pointer (skewed) *)
       get_skewed_heap_ptr env ^^
 
-      (* Cound allocated bytes *)
+      (* Count allocated bytes *)
       get_n ^^ compile_mul_const word_size ^^
       count_allocations env ^^
 
@@ -2984,7 +3014,8 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let compile_unit = compile_unboxed_one
+  let unit_vanilla_lit = 1l
+  let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
   let load_n n = Heap.load_field (Int32.add Arr.header_size n)
@@ -3036,6 +3067,17 @@ module Lifecycle = struct
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
 
+  let string_of_state state = match state with
+    | PreInit -> "PreInit"
+    | InInit -> "InInit"
+    | Idle -> "Idle"
+    | InUpdate -> "InUpdate"
+    | InQuery -> "InQuery"
+    | PostQuery -> "PostQuery"
+    | InPreUpgrade -> "InPreUpgrade"
+    | PostPreUpgrade -> "PostPreUpgrade"
+    | InPostUpgrade -> "InPostUpgrade"
+
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
     (*
@@ -3062,13 +3104,13 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate]
+    | Idle -> [InInit; InUpdate; InPostUpgrade]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
-    | InPostUpgrade -> [PreInit]
+    | InPostUpgrade -> [Idle]
 
   let get env =
     compile_unboxed_const ptr ^^
@@ -3084,13 +3126,14 @@ module Lifecycle = struct
     Func.share_code0 env name [] (fun env ->
       G.block_ [] (
         let rec go = function
-        | [] -> E.trap_with env "internal error: unexpected state"
+        | [] -> E.trap_with env
+          ("internal error: unexpected state entering " ^ string_of_state new_state)
         | (s::ss) ->
           get env ^^ compile_eq_const (int_of_state s) ^^
           G.if_ [] (G.i (Br (nr 1l))) G.nop ^^
           go ss
         in go (pre_states new_state)
-      ) ^^
+        ) ^^
       set env new_state
     )
 
@@ -3231,16 +3274,19 @@ module Dfinity = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env1 ->
       Lifecycle.trans env Lifecycle.InInit ^^
+
       G.i (Call (nr start_fi)) ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect"))) ^^
+
       Lifecycle.trans env Lifecycle.Idle
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
-    })
+      });
+    fi
 
   let get_self_reference env =
     match E.mode env with
@@ -3365,72 +3411,31 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env =
+let export_upgrade_methods env init_fi =
   if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
+
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
 
-      (* grow stable memory if needed *)
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      G.i MemorySize ^^
-      E.call_import env "ic0" "stable_size" ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
+      (match E.NameEnv.find_opt "pre_exp" !(env.E.built_in_funcs) with
+      | Some _ -> G.i (Call (nr (E.built_in env "pre_exp")))
+      | None -> G.nop) ^^
 
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          E.call_import env "ic0" "stable_grow" ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow stable memory."
-        ) G.nop
-      ^^
-
-      (* copy to stable memory *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      G.i MemorySize ^^ compile_mul_const page_size ^^
-      E.call_import env "ic0" "stable_write" ^^
-
-      Lifecycle.trans env Lifecycle.PostPreUpgrade
-  )) in
+      Lifecycle.trans env Lifecycle.PostPreUpgrade))
+  in
 
   let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+
+      G.i (Call (nr init_fi)) ^^
+
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
 
-      (* grow memory if needed *)
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      E.call_import env "ic0" "stable_size" ^^
-      G.i MemorySize ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
+      (match E.NameEnv.find_opt "post_exp" !(env.E.built_in_funcs) with
+      | Some _ -> G.i (Call (nr (E.built_in env "post_exp")))
+      | None -> G.nop) ^^
 
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          G.i MemoryGrow ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow memory."
-        ) G.nop
-      ^^
-
-      (* copy from stable memory *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
-      E.call_import env "ic0" "stable_read" ^^
-
-      (* set, not trans, as we just copied the memory over *)
-      Lifecycle.set env Lifecycle.Idle
-  )) in
+      Lifecycle.trans env Lifecycle.Idle))
+  in
 
   E.add_export env (nr {
     name = Wasm.Utf8.decode "canister_pre_upgrade";
@@ -3788,7 +3793,7 @@ module Serialization = struct
           add_leb128 i;
           add_idx t;
         ) ts
-      | Obj (Object, fs) ->
+      | Obj ((Object | Memory), fs) ->
         add_sleb128 (-20);
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
@@ -3887,12 +3892,12 @@ module Serialization = struct
         G.concat_mapi (fun i t ->
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           size env t
-        ) ts
-      | Obj (Object, fs) ->
+          ) ts
+      | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           size env f.typ
-        ) (sort_by_hash fs)
+          ) (sort_by_hash fs)
       | Array t ->
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
@@ -4031,7 +4036,7 @@ module Serialization = struct
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           write env t
         ) ts
-      | Obj (Object, fs) ->
+      | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h,f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           write env f.typ
@@ -4309,7 +4314,7 @@ module Serialization = struct
 
           Tuple.from_stack env (List.length ts)
         )
-      | Obj (Object, fs) ->
+      | Obj ((Object | Memory) as sort, fs) ->
         with_record_typ (fun get_typ_buf get_n_ptr ->
 
           Object.lit_raw env (List.map (fun (h,f) ->
@@ -4322,14 +4327,20 @@ module Serialization = struct
                   ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
                 end
                 begin
-                  E.trap_with env (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
+                  match sort with
+                  | Object ->
+                    E.trap_with env (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
+                  | Memory ->
+                    assert (is_opt f.typ);
+                    Opt.null_lit
+                  | _ -> assert false
                 end
           ) (sort_by_hash fs)) ^^
 
           (* skip all possible trailing extra fields *)
           get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
           E.call_import env "rts" "skip_fields"
-        )
+          )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
@@ -4412,21 +4423,6 @@ module Serialization = struct
       end
     )
 
-  let argument_data_size env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Dfinity.system_call env "ic0" "msg_arg_data_size"
-    | _ -> assert false
-
-  let argument_data_copy env get_dest get_length =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      get_dest ^^
-      (compile_unboxed_const 0l) ^^
-      get_length ^^
-      Dfinity.system_call env "ic0" "msg_arg_data_copy"
-    | _ -> assert false
-
   let serialize env ts : G.t =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
@@ -4485,70 +4481,184 @@ module Serialization = struct
       | Flags.WasmMode | Flags.WASIMode -> assert false
     )
 
+  let deserialize_core source_size source_copy env ts_name ts =
+    let (set_data_size, get_data_size) = new_local env "data_size" in
+    let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+    let (set_data_start, get_data_start) = new_local env "data_start" in
+    let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+    let (set_arg_count, get_arg_count) = new_local env "arg_count" in
+
+    (* Allocate space for the data buffer and copy it *)
+    source_size env ^^ set_data_size ^^
+    get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
+    source_copy env get_data_start get_data_size ^^
+
+    (* Allocate space for the reference buffer and copy it *)
+    compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
+
+    (* Allocate space for out parameters of parse_idl_header *)
+    Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
+    Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
+
+    (* Set up read buffers *)
+    ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
+
+    ReadBuf.set_ptr get_data_buf get_data_start ^^
+    ReadBuf.set_size get_data_buf get_data_size ^^
+    ReadBuf.set_ptr get_ref_buf get_refs_start ^^
+    ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
+
+    (* Go! *)
+    get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
+    E.call_import env "rts" "parse_idl_header" ^^
+
+    (* set up a dedicated read buffer for the list of main types *)
+    ReadBuf.alloc env (fun get_main_typs_buf ->
+      ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+      ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
+      ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
+
+      get_arg_count ^^
+      compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
+      E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
+
+      G.concat_map (fun t ->
+        get_data_buf ^^ get_ref_buf ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^
+        ReadBuf.read_sleb128 env get_main_typs_buf ^^
+        deserialize_go env t
+      ) ts ^^
+
+      get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
+      G.if_ []
+        begin
+          ReadBuf.is_empty env get_data_buf ^^
+          E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
+          ReadBuf.is_empty env get_ref_buf ^^
+          E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
+        end G.nop
+    )))))
+
+  let argument_data_size env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Dfinity.system_call env "ic0" "msg_arg_data_size"
+    | _ -> assert false
+
+  let argument_data_copy env get_dest get_length =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      get_dest ^^
+      (compile_unboxed_const 0l) ^^
+      get_length ^^
+      Dfinity.system_call env "ic0" "msg_arg_data_copy"
+    | _ -> assert false
+
   let deserialize env ts =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
-      let (set_data_size, get_data_size) = new_local env "data_size" in
-      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
-      let (set_data_start, get_data_start) = new_local env "data_start" in
-      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
-      let (set_arg_count, get_arg_count) = new_local env "arg_count" in
-
-      (* Allocate space for the data buffer and copy it *)
-      argument_data_size env ^^ set_data_size ^^
-      get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
-      argument_data_copy env get_data_start get_data_size ^^
-
-      (* Allocate space for the reference buffer and copy it *)
-      compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
-
-      (* Allocate space for out parameters of parse_idl_header *)
-      Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
-      Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
-
-      (* Set up read buffers *)
-      ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
-
-      ReadBuf.set_ptr get_data_buf get_data_start ^^
-      ReadBuf.set_size get_data_buf get_data_size ^^
-      ReadBuf.set_ptr get_ref_buf get_refs_start ^^
-      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
-
-      (* Go! *)
-      get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
-      E.call_import env "rts" "parse_idl_header" ^^
-
-      (* set up a dedicated read buffer for the list of main types *)
-      ReadBuf.alloc env (fun get_main_typs_buf ->
-        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
-        ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
-
-        ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
-
-        get_arg_count ^^
-        compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
-        E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
-
-        G.concat_map (fun t ->
-          get_data_buf ^^ get_ref_buf ^^
-          get_typtbl_ptr ^^ load_unskewed_ptr ^^
-          ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          deserialize_go env t
-        ) ts ^^
-
-        get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
-        G.if_ []
-          begin
-            ReadBuf.is_empty env get_data_buf ^^
-            E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
-            ReadBuf.is_empty env get_ref_buf ^^
-            E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
-          end G.nop
-      )
-    )))))
+      deserialize_core argument_data_size argument_data_copy env ts_name ts)
 
 end (* Serialization *)
+
+
+(* Stabilization (serialization to/from stable memory) *)
+
+module Stabilization = struct
+
+  (* The collection of stable variables is represented as a
+     a stable object of optional fields, but deserialized specially replacing
+     expected, but missing, fields by Null values.
+     To guide type-driven serialization accordingly,
+     we replace the expected Object sort by pseudo-sort Memory. *)
+
+  let as_memory t = Type.(
+     assert (stable t);
+     match t with
+     | Obj (Object, fs) ->
+       assert (List.for_all (fun f -> is_opt f.typ) fs);
+       Obj (Memory, fs)
+     | _ -> assert false)
+
+  let stabilize env t =
+    let t1 = as_memory t in
+    let (set_dst, get_dst) = new_local env "dst" in
+    let (set_len, get_len) = new_local env "len" in
+    Serialization.serialize env [t1] ^^
+    set_len ^^
+    set_dst ^^
+
+    let (set_pages, get_pages) = new_local env "len" in
+    get_len ^^
+    compile_add_const 4l ^^  (* reserve one word for size *)
+    compile_divU_const page_size ^^
+    compile_add_const 1l ^^
+    set_pages ^^
+
+    (* grow stable memory if needed *)
+    let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+    get_pages ^^
+    E.call_import env "ic0" "stable_size" ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    set_pages_needed ^^
+
+    get_pages_needed ^^
+    compile_unboxed_zero ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+    G.if_ []
+      ( get_pages_needed ^^
+        E.call_import env "ic0" "stable_grow" ^^
+        (* Check result *)
+        compile_unboxed_zero ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+        E.then_trap_with env "Cannot grow stable memory."
+      ) G.nop
+    ^^
+
+    (* write len to initial word of stable memory*)
+    Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
+
+      get_size_ptr ^^ get_len ^^ store_unskewed_ptr ^^
+
+      compile_unboxed_const 0l ^^
+      get_size_ptr ^^ compile_unboxed_const 4l ^^
+      Dfinity.system_call env "ic0" "stable_write") ^^
+
+    (* copy data to following stable memory *)
+    compile_unboxed_const 4l ^^
+    get_dst ^^
+    get_len ^^
+    E.call_import env "ic0" "stable_write"
+
+
+  (* return the initial i32 in stable memory recording the size of the following stable data *)
+  let stable_data_size env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      (* read size from initial word of (assumed non-empty) stable memory*)
+      Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
+        get_size_ptr ^^ compile_unboxed_const 0l ^^  compile_unboxed_const 4l ^^
+        Dfinity.system_call env "ic0" "stable_read" ^^
+        get_size_ptr ^^ load_unskewed_ptr)
+    | _ -> assert false
+
+  (* copy the stable data from stable memory from offset 4 *)
+  let stable_data_copy env get_dest get_length =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      get_dest ^^
+      compile_unboxed_const 4l ^^
+      get_length ^^
+      Dfinity.system_call env "ic0" "stable_read"
+    | _ -> assert false
+
+  let destabilize env t =
+    let t1 = as_memory t in
+    let t1_name = Serialization.typ_id t1 in
+    Serialization.deserialize_core stable_data_size stable_data_copy env t1_name [t1]
+
+end
 
 module GC = struct
   (* This is a very simple GC:
@@ -4678,6 +4788,7 @@ module GC = struct
       let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
       Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
+      let get_end_from_space = get_begin_to_space in
       Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
       Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
 
@@ -4714,6 +4825,15 @@ module GC = struct
         get_begin_to_space
         get_end_to_space
         (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
+
+      (* Note some stats *)
+      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      Heap.note_live_size env ^^
+
+      get_end_from_space ^^ get_begin_from_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      Heap.add_reclaimed env ^^
 
       (* Copy the to-space to the beginning of memory. *)
       get_begin_from_space ^^ compile_add_const ptr_unskew ^^
@@ -4846,6 +4966,7 @@ module StackRep = struct
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
       Object.vanilla_lit env fs'
+    | Const.Unit -> Tuple.unit_vanilla_lit
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
@@ -4875,7 +4996,9 @@ module StackRep = struct
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
-
+    | Const (_, Const.Array cs), UnboxedTuple n ->
+      assert (n = List.length cs);
+      G.concat_map (fun c -> compile_unboxed_const (materialize_const_t env c)) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -6692,6 +6815,14 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       Heap.get_total_allocation env ^^ BigNum.from_word64 env
 
+    | OtherPrim "rts_reclaimed", [] ->
+      SR.Vanilla,
+      Heap.get_reclaimed env ^^ BigNum.from_word64 env
+
+    | OtherPrim "rts_max_live_size", [] ->
+      SR.Vanilla,
+      Heap.get_max_live_size env ^^ BigNum.from_word64 env
+
     | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
       ClosureTable.count env ^^ Prim.prim_word32toNat env
@@ -6813,7 +6944,31 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
-      end
+        end
+
+    | ICStableRead ty, [] ->
+(*
+      * On initial install:
+           1. return record of nulls
+      * On upgrade:
+           1. deserialize stable store to v : ty,
+           (TODO: inserting null values for missing fields.)
+           2. return v
+*)
+      SR.Vanilla,
+      E.call_import env "ic0" "stable_size" ^^
+      G.if_ [I32Type]
+        (Stabilization.destabilize env ty)
+        (let (_, fs) = Type.as_obj ty in
+         let fs' = List.map
+           (fun f -> (f.Type.lab, fun () -> Opt.null_lit))
+            fs in
+         Object.lit_raw env fs')
+
+    | ICStableWrite ty, [e] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Stabilization.stabilize env ty
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
@@ -6918,7 +7073,7 @@ and compile_exp (env : E.t) ae exp =
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
       get_r
-  | ActorE (ds, fs, _) ->
+  | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
     (*
@@ -7248,6 +7403,9 @@ and compile_prog env ae (ds, e) =
   let (sr, code2) = compile_exp env ae' e in
   (ae', code1 ^^ code2 ^^ StackRep.drop env sr)
 
+(* This compiles expressions determined to be const as per the analysis in
+   ir_passes/const.ml. See there for more details.
+*)
 and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
@@ -7293,8 +7451,16 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
+  | PrimE (ProjPrim i, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let cs = match object_ct with
+      | _, Const.Array cs -> cs
+      | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
+    (List.nth cs i, fill)
   | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
-  | PrimE (ArrayPrim (Const, _), es) ->
+  | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
+  | PrimE (ArrayPrim (Const, _), es)
+  | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
     Const.t_of_v (Const.Array cs),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
@@ -7313,7 +7479,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and destruct_const_pat ae pat const = match pat.it with
+and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
   | ObjP pfs ->
@@ -7324,8 +7490,10 @@ and destruct_const_pat ae pat const = match pat.it with
       | None -> assert false
     ) ae pfs
   | AltP (p1, p2) -> destruct_const_pat ae p1 const
+  | TupP ps ->
+    let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
+    List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
-  | TupP _ -> raise (Invalid_argument "TupP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
   | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
 
@@ -7354,10 +7522,10 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
     | _ -> ds, e.it in
 
   let find_last_actor (ds,e) = match find_last_expr ds e with
-    | ds1, ActorE (ds2, fs, _) ->
-      Some (ds1 @ ds2, fs)
-    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, _);_}) ->
-      Some (ds1 @ ds2, fs)
+    | ds1, ActorE (ds2, fs, up, _) ->
+      Some (ds1 @ ds2, fs, up)
+    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, _);_}) ->
+      Some (ds1 @ ds2, fs, up)
     | _, _ ->
       None
   in
@@ -7368,7 +7536,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       (* If the last program ends with an actor, then consider this the current actor  *)
       | [(prog, _flavor)] ->
         begin match find_last_actor prog with
-        | Some (ds, fs) -> main_actor env ae ds fs
+        | Some (ds, fs, up) -> main_actor env ae ds fs up
         | None ->
           let (_ae, code) = compile_prog env ae prog in
           code
@@ -7402,25 +7570,35 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env ae1 ds fs =
+and main_actor env ae1 ds fs up =
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae2, decls_code) = compile_decs_public env ae1 ds v2en Freevars.S.empty in
+  let (ae2, decls_code) = compile_decs_public env ae1 ds v2en
+    (Freevars.captured_vars (Freevars.upgrade up))
+  in
 
   (* Export the public functions *)
   List.iter (export_actor_field env ae2) fs;
 
+  (* Define upgrade hooks *)
+  Func.define_built_in env "pre_exp" [] [] (fun env ->
+    compile_exp_as env ae2 SR.unit up.pre);
+  Func.define_built_in env "post_exp" [] [] (fun env ->
+    compile_exp_as env ae2 SR.unit up.post);
+
   decls_code
 
-and conclude_module env start_fi_o =
+and conclude_module env init_fi_o start_fi_o =
 
   FuncDec.export_async_method env;
 
-  let static_roots = GC.store_static_roots env in
+  (match init_fi_o with
+   | Some init_fi -> Dfinity.export_upgrade_methods env init_fi
+   | None -> ());
 
-  Dfinity.export_upgrade_scaffold env;
+  let static_roots = GC.store_static_roots env in
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
@@ -7431,8 +7609,10 @@ and conclude_module env start_fi_o =
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Heap.get_heap_base env ^^ Heap.set_heap_ptr env ^^
     match start_fi_o with
-    | Some fi -> G.i (Call fi)
-    | None -> G.nop
+    | Some fi ->
+      G.i (Call fi)
+    | None ->
+      Lifecycle.set env Lifecycle.PreInit
   )) in
 
   Dfinity.default_exports env;
@@ -7506,8 +7686,11 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
 
   let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
-  let start_fi_o = match E.mode env with
-    | Flags.ICMode | Flags.RefMode -> Dfinity.export_init env start_fi; None
-    | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
+  let init_fi_o, start_fi_o = match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      (Some (Dfinity.export_init env start_fi), None)
+    | Flags.WasmMode | Flags.WASIMode->
+      (None, Some (nr start_fi))
+  in
 
-  conclude_module env start_fi_o
+  conclude_module env init_fi_o start_fi_o

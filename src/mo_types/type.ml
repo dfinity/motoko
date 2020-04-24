@@ -7,7 +7,12 @@ type control =
   | Promises       (* shared function producing a future value upon call *)
   | Replies        (* (IR only): responds asynchronously using `reply` *)
 
-type obj_sort = Object | Actor | Module
+type obj_sort =
+   Object
+ | Actor
+ | Module
+ | Memory          (* (codegen only): stable memory serialization format *)
+
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -656,6 +661,9 @@ let is_shared_func t =
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
+(* stable types : TODO extend to mutable *)
+let stable t = shared t
+
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
@@ -1159,6 +1167,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Memory -> "memory "
 
 let string_of_func_sort = function
   | Local -> ""

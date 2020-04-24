@@ -5,20 +5,47 @@ open Ir
 
 (*
   This module identifies subexpressions that can be compiled statically. This
-  means each subexpression must be a constant, immutable value for which the backend can create
-  the memory representation statically.
+  means each subexpression must be a constant, immutable value for which the
+  backend can create the memory representation statically.
 
-  This module should stay in sync with the `compile_const_exp` function in
-  `codegen/compile.ml`.
+  This module should stay in sync with the
+   * the `compile_const_exp` function in `codegen/compile.ml`
+   * the `Const.t` type in `codegen/compile.ml.
+   * the checks in Check_ir.
+
+  ## What is const?
+
+  The high-level idea is
+
+  * Variables can be const if their definition is const (beware, recursion!)
+  * Blocks can be const if
+    - all RHSs are const, and
+    - no mutable variable are defined, and
+    - pattern matching is side-effect free, i.e. irrefutable
+  * Functions can be const if they do not require a closure.
+    This is the case if every free variables is
+    - const or
+    - bound at the top level (`loc_known = true` below)
+  * Literals can be const
+  * Data structures can be const if they are immutable and all components are
+    const
+  * Projections can be const if they cannot fail (so no array index) and
+    their argument is const
+
+  I say “can be const” because the analysis does not have to be complete, just
+  conservative.
+
+  ## How does the analysis work?
 
   If we didn't have recursion, this would be simple: We'd pass down an environment
   mapping all free variables to whether they are constant or not (bool E.t), use this
   in the VarE case, and otherwise const-able expressions are constant when their
   subexpressions are.
 
-  As always, recursion makes things hard. But not too much: We pass down a custom type
-  called `lazy_bool`. It denotes a boolean value, just we do not know which one yet.
-  But we can still do operations like implications and conjunction on these values.
+  As always, recursion makes things harder. But not too much, thanks to a trick:
+  we pass down a custom type called `lazy_bool`. It denotes a boolean value,
+  just we do not know which one yet.  But we can still do operations like
+  implication and conjunction on these values.
 
   Internally, these lazy_bool values keep track of their dependencies, and
   propagate more knowledge automatically. When one of them knows it is going to
@@ -32,12 +59,20 @@ open Ir
   nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
 
+(* A type for callbacks *)
+
+type callback = unit -> unit
+
+let do_nothing : callback = fun () -> ()
+
+let (>>) cb1 cb2 = fun () -> cb1 (); cb2 ()
+
 (* The lazy bool value type *)
 
 type lazy_bool' =
   | SurelyTrue
   | SurelyFalse
-  | MaybeFalse of (unit -> unit) (* who to notify when turning false *)
+  | MaybeFalse of callback (* whom to notify when turning false *)
 type lazy_bool = lazy_bool' ref
 
 let set_false (l : lazy_bool) =
@@ -53,11 +88,11 @@ let when_false (l : lazy_bool) (act : unit -> unit) =
   | SurelyTrue -> ()
   | SurelyFalse -> act ()
   | MaybeFalse when_false ->
-    l := MaybeFalse (fun () -> act (); when_false ())
+    l := MaybeFalse (act >> when_false)
 
 let surely_true = ref SurelyTrue (* sharing is ok *)
 let surely_false = ref SurelyFalse (* sharing is ok *)
-let maybe_false () = ref (MaybeFalse (fun () -> ()))
+let maybe_false () = ref (MaybeFalse do_nothing)
 
 let required_for (a : lazy_bool) (b : lazy_bool) =
   when_false a (fun () -> set_false b)
@@ -119,31 +154,29 @@ let rec exp lvl (env : env) e : lazy_bool =
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       exp_ NotTopLvl (args env as_) body;
       begin match s, lvl with
-      | Type.Shared _, _ -> surely_false (* shared functions are not const for now *)
-      | _, TopLvl -> surely_true (* top-level functions can always be const *)
+      (* shared functions are not const for now *)
+      | Type.Shared _, _ -> surely_false
+      (* top-level functions can always be const (all free variables are top-level) *)
+      | _, TopLvl -> surely_true
       | _, NotTopLvl ->
         let lb = maybe_false () in
         Freevars.M.iter (fun v _ ->
-          let info = find v env in
-          if info.loc_known then () else (* static definitions are ok *)
-          required_for info.const lb
+          let {loc_known; const} = find v env in
+          if loc_known then () else (* static definitions are ok *)
+          required_for const lb
         ) (Freevars.exp e);
         lb
       end
     | NewObjE (Type.(Object | Module), fs, t) when Type.is_immutable_obj t ->
-      let lb = maybe_false () in
-      List.iter (fun f -> required_for (find f.it.var env).const lb) fs;
-      lb
+      all (List.map (fun f -> (find f.it.var env).const) fs)
     | BlockE (ds, body) ->
       block lvl env (ds, body)
-    | PrimE (DotPrim n, [e1]) ->
-      exp lvl env e1
+    | PrimE (TupPrim, es)
     | PrimE (ArrayPrim (Const, _), es) ->
-      let lb = maybe_false () in
-      List.iter (fun e ->
-        let lb' = exp lvl env e in
-        required_for lb' lb) es;
-      lb
+      all (List.map (fun e -> exp lvl env e) es)
+    | PrimE (DotPrim _, [e1])
+    | PrimE (ProjPrim _, [e1]) ->
+      exp lvl env e1
     | LitE _ ->
       surely_true
 
@@ -176,9 +209,11 @@ let rec exp lvl (env : env) e : lazy_bool =
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE (ds, fs, _typ) ->
+    | ActorE (ds, fs, {pre; post}, _typ) ->
       (* this may well be “the” top-level actor, so don’t update lvl here *)
-      ignore (decs lvl env ds);
+      let (env', _) = decs lvl env ds in
+      exp_ lvl env' pre;
+      exp_ lvl env' post;
       surely_false
   in
   set_lazy_const e lb;
@@ -214,8 +249,7 @@ and check_dec lvl env dec : lazy_bool = match dec.it with
     surely_false
 
 and check_decs lvl env ds : lazy_bool =
-  let lbs = List.map (check_dec lvl env) ds in
-  all lbs
+  all (List.map (check_dec lvl env) ds)
 
 and decs lvl env ds : (env * lazy_bool) =
   let scope = gather_decs lvl ds in

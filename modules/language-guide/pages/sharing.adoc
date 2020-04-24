@@ -1,0 +1,12 @@
+= Sharing among distinct actors
+
+CAUTION: Not complete
+
+== Shared data
+
+== Shared functions
+
+[[example-notify]]
+== Example: Notification service
+
+CAUTION: Not complete (todo: simple example of a callback-using service)

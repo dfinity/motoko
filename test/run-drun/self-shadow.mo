@@ -1,7 +1,7 @@
 actor foo {
   public func foo() {};
 
-  func go() {
+  flexible func go() {
     let bar = actor bar { public func bar() {} }
   };
 

@@ -76,9 +76,14 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of dec list * field list * Type.typ (* actor *)
+  | ActorE of dec list * field list * upgrade * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | TryE of exp * case list                    (* try/catch *)
+
+and upgrade = {
+  pre : exp;
+  post : exp
+}
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
@@ -128,6 +133,8 @@ and prim =
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
+  | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
+  | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
 
 
 (* Declarations *)

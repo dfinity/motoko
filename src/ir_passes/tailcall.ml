@@ -127,7 +127,7 @@ and exp' env e  : exp' = match e.it with
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
     SelfCallE (ts, exp1', exp2', exp3')
-  | ActorE (ds, fs, t)  -> ActorE (ds, fs, t) (* TODO: descent into ds *)
+  | ActorE (ds, fs, u, t)  -> ActorE (ds, fs, u, t) (* TODO(1358): descent into ds  *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 

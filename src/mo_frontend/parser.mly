@@ -84,10 +84,20 @@ let share_dec d =
   | LetD (p, e) -> LetD (p, share_exp e) @? d.at
   | _ -> d
 
+let share_stab stab_opt dec =
+  match stab_opt with
+  | None ->
+    (match dec.it with
+     | VarD _
+     | LetD _ ->
+       Some (Flexible @@ dec.at)
+     | _ -> None)
+  | _ -> stab_opt
+
 let share_expfield (ef : exp_field) =
   if ef.it.vis.it = Private
   then ef
-  else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
+  else {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab ef.it.dec}}
 
 %}
 
@@ -112,6 +122,7 @@ let share_expfield (ef : exp_field) =
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
+%token FLEXIBLE STABLE
 %token<string> DOT_NUM
 %token<string> NAT
 %token<string> FLOAT
@@ -176,6 +187,7 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
+%type<Mo_def.Syntax.stab option> stab
 
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
@@ -406,7 +418,7 @@ lit :
 (* Default {} to block or object, respectively *)
 bl : { fun ds -> BlockE(ds) }
 ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun d -> {dec = d; vis = Public @@ d.at} @@ d.at) ds) }
+         List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
   | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
@@ -566,11 +578,11 @@ catch :
 exp_field_nonvar :
   | x=id EQ e=exp(ob)
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
-      {dec = d; vis = Public @@ x.at} @@ at $sloc }
+      {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
 
 exp_field :
   | ef=exp_field_nonvar { ef }
-  | d=dec_var { {dec = d; vis = Public @@ d.at} @@ at $sloc }
+  | d=dec_var { {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
 
 exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar
@@ -578,17 +590,21 @@ exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
     { ef::efs }
   | d=dec_var semicolon efs=exp_field_list_unamb
-    { ({dec = d; vis = Public @@ d.at} @@ at $sloc) :: efs }
+    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
 
 dec_field :
-  | v=vis d=dec
-    { {dec = d; vis = v} @@ at $sloc }
+  | v=vis s=stab d=dec
+    { {dec = d; vis = v; stab = s} @@ at $sloc }
 
 vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
   | PUBLIC { Public @@ at $sloc }
 
+stab :
+  | (* empty *) { None }
+  | FLEXIBLE { Some (Flexible @@ at $sloc) }
+  | STABLE { Some (Stable @@ at $sloc) }
 
 (* Patterns *)
 
