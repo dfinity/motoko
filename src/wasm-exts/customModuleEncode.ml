@@ -294,7 +294,8 @@ let encode (em : extended_module) =
     let name n = string (Wasm.Utf8.encode n)
     let list f xs = List.iter f xs
     let opt f xo = Option.iter f xo
-    let vec f xs = len (List.length xs); list f xs
+    let vec_by l f xs = l (List.length xs); list f xs
+    let vec f xs = vec_by len f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p
     let patch_gap32 p n =
@@ -754,6 +755,7 @@ let encode (em : extended_module) =
     let write16 = Buffer.add_int16_le s.buf
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
     let zero_terminated str = put_string s str; u8 0
+    let vec_uleb128 = vec_by uleb128
     let writeBlock1 str = let len = String.length str in assert (len < 256); u8 len; put_string s str
     let writeBlockLEB str = let len = String.length str in assert (len < 256); uleb128 len; put_string s str
 
@@ -985,16 +987,17 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 u8 1; (* directory_entry_format_count *)
                 iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
 
-                uleb128 1; (* directories_count *)
-                iter zero_terminated ["/Users/ggreif/motoko/"];
+                (* directories_count, directories *)
+                vec_uleb128 zero_terminated ["/Users/ggreif/motoko/"];
 
-                u8 1; (* file_name_entry_format_count *)
-                iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+                (* file_name_entry_format_count, file_name_entry_format *)
+                vec_by u8 uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+
+                (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
 
                 let record_file (_, {file; _}) = ignore (add_file_string file) in
                 Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
-                uleb128 (length !file_strings);
-                iter zero_terminated (rev_map fst !file_strings);
+                vec_uleb128 zero_terminated (rev_map fst !file_strings);
             );
 
             (* build the statement loc -> addr map *)
