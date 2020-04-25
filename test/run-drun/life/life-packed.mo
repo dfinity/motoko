@@ -18,8 +18,8 @@ type State = {
 
 class Grid(state : State) {
   
-  let (n:Nat,bits:[var Word64]) = 
-    (switch state {
+  let (n:Nat, bits:[var Word64]) = 
+    switch state {
       case (#unpacked css) {
         let n = css.len();
         let len = ((n * n) % 64) + 1;
@@ -28,24 +28,23 @@ class Grid(state : State) {
         while (i < n) {
          var j = 0;
          while (j < n) {
-         let bit = P.natToWord64((i*n)+j);
-         let mask : Word64 = 1 << (bit % 64);
-         bits[P.word64ToNat(bit >> 64:Word64)] |= mask;
-         j += 1;
+          let bit = P.natToWord64((i*n)+j);
+          let mask : Word64 = 1 << (bit % 64);
+          bits[P.word64ToNat(bit >> 64:Word64)] |= mask;
+          j += 1;
          };
          i += 1;
         };
         (n,bits)
-       } : (Nat,[var Word64]);
+       };
       case (#packed {size;bits}) {
         let ws = P.Array_init<Word64>(bits.len(), 0);
         for (n in bits.keys()) {
           ws[n] := P.nat64ToWord64(bits[n]);
         };
         (size, ws)
-        }  : (Nat,[var Word64])})
-      : (Nat,[var Word64]);
-  
+        }
+    };
   
   public func size() : Nat { n };
 
