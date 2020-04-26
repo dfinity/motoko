@@ -135,12 +135,6 @@ let string_of_trivia : ('a -> string) -> 'a trivia -> string =
 let string_of_trivia_lf : line_feed trivia -> string =
   string_of_trivia string_of_line_feed
 
-type token_ann = {
-  range : Lexing.position * Lexing.position;
-  leading_trivia : line_feed trivia list;
-  trailing_trivia : void trivia list;
-}
-
 let is_lineless_trivia : token -> void trivia option = function
   | SPACE n -> Some (Space n)
   | TAB n -> Some (Tab n)
@@ -150,3 +144,9 @@ let is_lineless_trivia : token -> void trivia option = function
 let is_trivia : token -> line_feed trivia option = function
   | LINEFEED lf -> Some (Line lf)
   | t -> Option.map (map_trivia absurd) (is_lineless_trivia t)
+
+type annotation = {
+  range : Lexing.position * Lexing.position;
+  leading_trivia : line_feed trivia list;
+  trailing_trivia : void trivia list;
+}

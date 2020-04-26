@@ -112,15 +112,10 @@ let source_to_parser_token :
   | ST.COMMENT c -> Error (ST.Comment c)
 
 type source_token_triple = ST.token * Lexing.position * Lexing.position
-
-type token_triple = Parser.token * Lexing.position * Lexing.position
-
+type source_token = Parser.token * ST.annotation
 let un_triple (t, _, _) = t
 
-let source_to_parser_triple (t, s, e) = (source_to_parser_token t, s, e)
-
-let token : L.mode -> Lexing.lexbuf -> unit -> ST.token_ann * Parser.token =
- fun mode lexbuf ->
+let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) : unit -> source_token =
   let lookahead : source_token_triple option ref = ref None in
   let next () : source_token_triple =
     match !lookahead with
@@ -139,7 +134,7 @@ let token : L.mode -> Lexing.lexbuf -> unit -> ST.token_ann * Parser.token =
         tkn
     | Some t -> t
   in
-  let next_token () : ST.token_ann * Parser.token =
+  let next_source_token () : source_token =
     let rec eat_leading acc =
       let tkn, start, end_ = next () in
       match source_to_parser_token tkn with
@@ -154,10 +149,7 @@ let token : L.mode -> Lexing.lexbuf -> unit -> ST.token_ann * Parser.token =
       | None -> List.rev acc
     in
     let leading_trivia, (token, start, end_) = eat_leading [] in
-    (* List.iter (fun t -> print_endline (ST.string_of_trivia_lf t)) leading_trivia; *)
     let trailing_trivia = eat_trailing [] in
-    (* List.iter
-     *   (fun t -> print_endline (ST.string_of_trivia ST.absurd t))
-     *   trailing_trivia; *)
-    (ST.{ range = (start, end_); leading_trivia; trailing_trivia }, token)
-  in next_token
+    (token, ST.{ range = (start, end_); leading_trivia; trailing_trivia })
+  in
+  next_source_token
