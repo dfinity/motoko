@@ -211,7 +211,7 @@ and with_self i typ decs =
 and call_system_func_opt name es =
   Lib.List.first_opt (fun es ->
     match es.it with
-    | { S.vis = { it = S.System; _};
+    | { S.vis = { it = S.System; _ };
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
         _
       } when id.it = name
@@ -605,4 +605,3 @@ let transform p = prog p
 
 let transform_graph libraries progs =
   prog (combine_files libraries progs)
-

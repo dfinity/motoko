@@ -423,7 +423,7 @@ rec {
       shell
       check-formatting
       check-generated
-    ] ++ builtins.attrValues tests;
+    ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
   };
 
   shell = nixpkgs.mkShell {
