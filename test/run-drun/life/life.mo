@@ -34,9 +34,9 @@ class Grid(state : [[Cell]]) {
   func succ(i : Nat) : Nat { (i + 1) % n };
   func count(i : Nat, j : Nat) : Nat { if (grid[i][j]) 1 else 0 };
   func living(i : Nat, j : Nat) : Nat {
-      count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
-      count(     i, pred j)                    + count(     i, succ j) +
-      count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
+    count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
+    count(     i, pred j)                    + count(     i, succ j) +
+    count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
   };
   func nextCell(i : Nat, j : Nat) : Cell {
     let l : Nat = living(i,j);
