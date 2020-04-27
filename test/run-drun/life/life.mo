@@ -53,7 +53,7 @@ class Grid(state : [[Cell]]) {
       while (j < n) {
         dst.set(i, j, nextCell(i, j));
         j += 1;
-        };
+      };
       i += 1;
     };
   };
