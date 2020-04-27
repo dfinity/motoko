@@ -74,6 +74,6 @@ module Make
 
   (* TEMPORARY *)
 
-  val entry: 'a I.checkpoint -> (Lexing.lexbuf -> unit -> (token * Lexing.position * Lexing.position)) -> Lexing.lexbuf -> 'a
+  val entry: 'a I.checkpoint -> (unit -> (token * Lexing.position * Lexing.position)) -> 'a
 
 end

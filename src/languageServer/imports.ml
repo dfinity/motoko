@@ -7,14 +7,15 @@ module Lsp = Lsp.Lsp_t
 
 type import = string * string
 
-let parse_with mode lexer parser =
-  Ok (Parsing.parse 0 (parser lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer)
+let parse_with mode lexbuf parser =
+  let _, tknzr = Lexer_conv.tokenizer mode lexbuf in
+  Ok (Parsing.parse 0 (parser lexbuf.Lexing.lex_curr_p) tknzr lexbuf)
 
 let parse_string s =
   try
     let lexer = Lexing.from_string s in
     let parse = Parser.Incremental.parse_module_header in
-    ignore (parse_with Lexer.Normal lexer parse);
+    ignore (parse_with Lexer_new.Normal lexer parse);
     []
   with
   | Parser_lib.Imports is -> is

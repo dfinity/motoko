@@ -79,5 +79,5 @@ type error_detail = int
 exception Error of string
 
 let parse error_detail checkpoint lexer lexbuf =
-  try E.entry checkpoint lexer lexbuf with E.Error (_, explanations) ->
-    raise (Error (error_message error_detail (Lexing.lexeme lexbuf) explanations))
+  try E.entry checkpoint lexer with E.Error ((start, end_), explanations) ->
+    raise (Error (error_message error_detail Lexing.(sub_lexeme lexbuf start.pos_cnum end_.pos_cnum) explanations))
