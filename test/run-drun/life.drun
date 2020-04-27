@@ -1,7 +1,18 @@
 install ic:2A012B life/life.mo ""
 ingress ic:2A012B advance "DIDL\x00\x01\x7d\x0F"
 query ic:2A012B show "DIDL\x00\x00"
+# try a self-upgrade from life
 upgrade ic:2A012B life/life.mo ""
+query ic:2A012B show "DIDL\x00\x00"
+ingress ic:2A012B advance "DIDL\x00\x01\x7d\x0F"
+query ic:2A012B show "DIDL\x00\x00"
+#upgrade from life to life-packed
+upgrade ic:2A012B life/life-packed.mo ""
+query ic:2A012B show "DIDL\x00\x00"
+ingress ic:2A012B advance "DIDL\x00\x01\x7d\x01"
+query ic:2A012B show "DIDL\x00\x00"
+# try a self-upgrade from life-packed
+upgrade ic:2A012B life/life-packed.mo ""
 query ic:2A012B show "DIDL\x00\x00"
 ingress ic:2A012B advance "DIDL\x00\x01\x7d\x0F"
 query ic:2A012B show "DIDL\x00\x00"
