@@ -16,7 +16,7 @@ class Grid(state : [[Cell]]) {
 
   public func size() : Nat { n };
 
-  let grid = P.Array_tabulate(n, func (i:Nat):[var Cell] {
+  let grid = P.Array_tabulate(n, func (i : Nat) : [var Cell] {
       let a = P.Array_init(n, false);
       let si = state[i];
       assert (si.len() == n);
