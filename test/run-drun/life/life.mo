@@ -69,7 +69,7 @@ class Grid(state : [[Cell]]) {
     while (i < n) {
       var j = 0;
       while (j < n) {
-        t #= if (get(i,j)) "O" else " ";
+        t #= if (get(i, j)) "O" else " ";
         j += 1;
       };
       t #= "\n";
