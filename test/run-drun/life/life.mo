@@ -30,8 +30,8 @@ class Grid(state : [[Cell]]) {
 
   public func set(i:Nat, j:Nat, v : Cell) { grid[i][j] := v };
 
-  func pred(i : Nat) : Nat = (n + i - 1) % n;
-  func succ(i : Nat) : Nat = (i + 1) % n;
+  func pred(i : Nat) : Nat { (n + i - 1) % n };
+  func succ(i : Nat) : Nat { (i + 1) % n };
   func count(i:Nat, j:Nat) : Nat { if (grid[i][j]) 1 else 0 };
   func living(i : Nat, j : Nat) : Nat {
       count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
