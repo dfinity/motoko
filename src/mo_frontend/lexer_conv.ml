@@ -1,6 +1,28 @@
 module L = Lexer_new
 module ST = Source_token
 
+type pos = { line : int; column : int }
+
+let pos_of_lexpos : Lexing.position -> pos =
+ fun lexpos ->
+  Lexing.{ line = lexpos.pos_lnum; column = lexpos.pos_cnum - lexpos.pos_bol }
+
+module TrivTable = Map.Make (struct
+  type t = pos
+
+  let compare p1 p2 = compare p1 p2
+end)
+
+type trivia_info = {
+  leading_trivia : ST.line_feed ST.trivia list;
+  trailing_trivia : ST.void ST.trivia list;
+}
+
+type triv_table = trivia_info TrivTable.t
+
+(* Horrible to use a global table here *)
+let trivia_table : triv_table ref = ref TrivTable.empty
+
 let source_to_parser_token :
     ST.token -> (Parser.token, ST.line_feed ST.trivia) result = function
   | ST.EOF -> Ok Parser.EOF
@@ -112,7 +134,9 @@ let source_to_parser_token :
   | ST.COMMENT c -> Error (ST.Comment c)
 
 type source_token_triple = ST.token * Lexing.position * Lexing.position
+
 type source_token = Parser.token * ST.annotation
+
 let un_triple (t, _, _) = t
 
 let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) : unit -> source_token =
@@ -124,7 +148,9 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) : unit -> source_token =
         t
     | None ->
         let tkn = L.token mode lexbuf in
-        (tkn, Lexing.lexeme_start_p lexbuf, Lexing.lexeme_end_p lexbuf)
+        let start = Lexing.lexeme_start_p lexbuf in
+        let end_ = Lexing.lexeme_end_p lexbuf in
+        (tkn, start, end_)
   in
   let peek () : source_token_triple =
     match !lookahead with
@@ -149,7 +175,54 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) : unit -> source_token =
       | None -> List.rev acc
     in
     let leading_trivia, (token, start, end_) = eat_leading [] in
-    let trailing_trivia = eat_trailing [] in
+
+    let trailing_trivia =
+      match token with Parser.SEMICOLON_EOL -> [] | _ -> eat_trailing []
+    in
+    trivia_table :=
+      TrivTable.add (pos_of_lexpos start)
+        { leading_trivia; trailing_trivia }
+        !trivia_table;
     (token, ST.{ range = (start, end_); leading_trivia; trailing_trivia })
   in
   next_source_token
+
+let simplistic_docs : string -> (string * string) list =
+ fun input ->
+  let next = tokenizer L.Normal (Lexing.from_string input) in
+  let rec find_public () =
+    match next () with
+    | Parser.PUBLIC, ann ->
+        ann.ST.leading_trivia
+        |> List.map ST.string_of_trivia_lf
+        |> String.concat "" |> Option.some
+    | Parser.EOF, _ -> None
+    | _ -> find_public ()
+  in
+  let rec find_ident () =
+    match next () with
+    | Parser.ID name, _ -> Some name
+    | Parser.EOF, _ -> None
+    | _ -> find_ident ()
+  in
+
+  let rec find_docs acc =
+    match (find_public (), find_ident ()) with
+    | Some doc, Some ident -> find_docs ((ident, doc) :: acc)
+    | _ -> List.rev acc
+  in
+
+  find_docs []
+
+let input =
+  {|
+ /// Yo I'm a doc comment
+ public func myFunc()
+ /// Type comment
+ public type MyType
+|}
+
+let main () =
+  List.iter
+    (fun (func, doc) -> Printf.printf "%s: \"%s\"\n" func doc)
+    (simplistic_docs input)

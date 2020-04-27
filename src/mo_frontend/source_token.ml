@@ -150,3 +150,9 @@ type annotation = {
   leading_trivia : line_feed trivia list;
   trailing_trivia : void trivia list;
 }
+
+let dummy_annotation = {
+   range = Lexing.dummy_pos, Lexing.dummy_pos;
+   leading_trivia = [];
+   trailing_trivia = [];
+}
