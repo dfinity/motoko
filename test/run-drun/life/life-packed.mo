@@ -81,9 +81,9 @@ class Grid(state : State) {
   func count(i : Nat, j : Nat) : Nat { if (get(i,j)) 1 else 0 };
 
   func living(i : Nat, j : Nat) : Nat {
-      count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
-      count(     i, pred j)                    + count(     i, succ j) +
-      count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
+    count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
+    count(     i, pred j)                    + count(     i, succ j) +
+    count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
   };
 
   func nextCell(i : Nat, j : Nat) : Cell {
@@ -131,12 +131,12 @@ actor Life {
     let words = P.Array_tabulate<Nat64>(len,
       func i {
         var word : Word64 = 0;
-        for (i in below(64)) {
+        for (j in below(64)) {
           let bit : Word64 = if (Random.next()) 0 else 1;
             word |= bit;
-	          word <<= 1;
-	      };
-	      P.word64ToNat64(word);
+            word <<= 1;
+         };
+         P.word64ToNat64(word);
       });
     #life_packed { size = n; bits = words };
   };
