@@ -46,7 +46,7 @@ class Grid(state : [[Cell]]) {
       l == 3;
   };
 
-  public func Next(dst : Grid) {
+  public func next(dst : Grid) {
     var i = 0;
     while (i < n) {
       var j = 0;
