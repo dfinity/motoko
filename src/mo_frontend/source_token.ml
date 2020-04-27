@@ -1,5 +1,7 @@
 type line_feed = LF | CRLF
 
+type 'l trivia = Comment of string | Space of int | Tab of int | Line of 'l
+
 type token =
   | EOF
   | LET
@@ -109,11 +111,119 @@ type token =
   | TAB of int (* shudders *)
   | COMMENT of string
 
+let to_parser_token :
+    token -> (Parser.token, line_feed trivia) result = function
+  | EOF -> Ok Parser.EOF
+  | LET -> Ok Parser.LET
+  | VAR -> Ok Parser.VAR
+  | LPAR -> Ok Parser.LPAR
+  | RPAR -> Ok Parser.RPAR
+  | LBRACKET -> Ok Parser.LBRACKET
+  | RBRACKET -> Ok Parser.RBRACKET
+  | LCURLY -> Ok Parser.LCURLY
+  | RCURLY -> Ok Parser.RCURLY
+  | AWAIT -> Ok Parser.AWAIT
+  | ASYNC -> Ok Parser.ASYNC
+  | BREAK -> Ok Parser.BREAK
+  | CASE -> Ok Parser.CASE
+  | CATCH -> Ok Parser.CATCH
+  | CONTINUE -> Ok Parser.CONTINUE
+  | LABEL -> Ok Parser.LABEL
+  | DEBUG -> Ok Parser.DEBUG
+  | IF -> Ok Parser.IF
+  | IGNORE -> Ok Parser.IGNORE
+  | IN -> Ok Parser.IN
+  | ELSE -> Ok Parser.ELSE
+  | SWITCH -> Ok Parser.SWITCH
+  | LOOP -> Ok Parser.LOOP
+  | WHILE -> Ok Parser.WHILE
+  | FOR -> Ok Parser.FOR
+  | RETURN -> Ok Parser.RETURN
+  | TRY -> Ok Parser.TRY
+  | THROW -> Ok Parser.THROW
+  | ARROW -> Ok Parser.ARROW
+  | ASSIGN -> Ok Parser.ASSIGN
+  | FUNC -> Ok Parser.FUNC
+  | TYPE -> Ok Parser.TYPE
+  | OBJECT -> Ok Parser.OBJECT
+  | ACTOR -> Ok Parser.ACTOR
+  | CLASS -> Ok Parser.CLASS
+  | PUBLIC -> Ok Parser.PUBLIC
+  | PRIVATE -> Ok Parser.PRIVATE
+  | SHARED -> Ok Parser.SHARED
+  | QUERY -> Ok Parser.QUERY
+  | SEMICOLON -> Ok Parser.SEMICOLON
+  | SEMICOLON_EOL -> Ok Parser.SEMICOLON_EOL
+  | COMMA -> Ok Parser.COMMA
+  | COLON -> Ok Parser.COLON
+  | SUB -> Ok Parser.SUB
+  | DOT -> Ok Parser.DOT
+  | QUEST -> Ok Parser.QUEST
+  | AND -> Ok Parser.AND
+  | OR -> Ok Parser.OR
+  | NOT -> Ok Parser.NOT
+  | IMPORT -> Ok Parser.IMPORT
+  | MODULE -> Ok Parser.MODULE
+  | DEBUG_SHOW -> Ok Parser.DEBUG_SHOW
+  | ASSERT -> Ok Parser.ASSERT
+  | ADDOP -> Ok Parser.ADDOP
+  | SUBOP -> Ok Parser.SUBOP
+  | MULOP -> Ok Parser.MULOP
+  | DIVOP -> Ok Parser.DIVOP
+  | MODOP -> Ok Parser.MODOP
+  | POWOP -> Ok Parser.POWOP
+  | ANDOP -> Ok Parser.ANDOP
+  | OROP -> Ok Parser.OROP
+  | XOROP -> Ok Parser.XOROP
+  | SHLOP -> Ok Parser.SHLOP
+  | USHROP -> Ok Parser.USHROP
+  | SSHROP -> Ok Parser.SSHROP
+  | ROTLOP -> Ok Parser.ROTLOP
+  | ROTROP -> Ok Parser.ROTROP
+  | EQOP -> Ok Parser.EQOP
+  | NEQOP -> Ok Parser.NEQOP
+  | LEOP -> Ok Parser.LEOP
+  | LTOP -> Ok Parser.LTOP
+  | GTOP -> Ok Parser.GTOP
+  | GEOP -> Ok Parser.GEOP
+  | HASH -> Ok Parser.HASH
+  | EQ -> Ok Parser.EQ
+  | LT -> Ok Parser.LT
+  | GT -> Ok Parser.GT
+  | PLUSASSIGN -> Ok Parser.PLUSASSIGN
+  | MINUSASSIGN -> Ok Parser.MINUSASSIGN
+  | MULASSIGN -> Ok Parser.MULASSIGN
+  | DIVASSIGN -> Ok Parser.DIVASSIGN
+  | MODASSIGN -> Ok Parser.MODASSIGN
+  | POWASSIGN -> Ok Parser.POWASSIGN
+  | CATASSIGN -> Ok Parser.CATASSIGN
+  | ANDASSIGN -> Ok Parser.ANDASSIGN
+  | ORASSIGN -> Ok Parser.ORASSIGN
+  | XORASSIGN -> Ok Parser.XORASSIGN
+  | SHLASSIGN -> Ok Parser.SHLASSIGN
+  | USHRASSIGN -> Ok Parser.USHRASSIGN
+  | SSHRASSIGN -> Ok Parser.SSHRASSIGN
+  | ROTLASSIGN -> Ok Parser.ROTLASSIGN
+  | ROTRASSIGN -> Ok Parser.ROTRASSIGN
+  | NULL -> Ok Parser.NULL
+  | DOT_NUM s -> Ok (Parser.DOT_NUM s)
+  | NAT s -> Ok (Parser.NAT s)
+  | FLOAT s -> Ok (Parser.FLOAT s)
+  | CHAR u -> Ok (Parser.CHAR u)
+  | BOOL b -> Ok (Parser.BOOL b)
+  | ID s -> Ok (Parser.ID s)
+  | TEXT s -> Ok (Parser.TEXT s)
+  | PRIM -> Ok Parser.PRIM
+  | UNDERSCORE -> Ok Parser.UNDERSCORE
+  (*Trivia *)
+  | SPACE n -> Error (Space n)
+  | LINEFEED lf -> Error (Line lf)
+  | TAB n -> Error (Tab n)
+  | COMMENT c -> Error (Comment c)
+
 type void = { next : void }
 
 let rec absurd : void -> 'a = fun { next } -> absurd next
-
-type 'l trivia = Comment of string | Space of int | Tab of int | Line of 'l
 
 let map_trivia : ('a -> 'b) -> 'a trivia -> 'b trivia =
  fun f -> function
