@@ -50,7 +50,7 @@ WASM_FLAGS = \
    --target=wasm32-unknown-emscripten -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
-
+   -gdwarf-5
 #
 # Build targets
 #

@@ -471,7 +471,7 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop /* nixpkgs.rustc nixpkgs.cargo */ nixpkgs.rustup ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 

@@ -952,8 +952,8 @@ let encode (em : extended_module) =
 
         let file_strings = ref [] in
         let add_file_string = function
-          | "" -> 0 (* assign 0 as a file number for unknown *)
-          | str -> add_string (function | [] -> 1 | (_, p) :: _ -> 1 + p) file_strings str
+          | "" -> 0 (* FIXME: None! assign 0 as a file number for unknown *)
+          | str -> add_string (function | [] -> 0 | (_, p) :: _ -> 1 + p) file_strings str
         in
 
         unit(fun start ->
