@@ -16,64 +16,58 @@ class Grid(state : [[Cell]]) {
 
   public func size() : Nat { n };
 
-  let grid = P.Array_tabulate(n, func (i:Nat):[var Cell] {
+  let grid = P.Array_tabulate(n, func (i : Nat) : [var Cell] {
       let a = P.Array_init(n, false);
       let si = state[i];
       assert (si.len() == n);
-      for(j in si.keys()) {
+      for (j in si.keys()) {
         a[j] := si[j];
       };
       a
     });
 
-  public func get(i:Nat, j:Nat) : Cell { grid[i][j]  };
+  public func get(i : Nat, j : Nat) : Cell { grid[i][j] };
 
-  public func set(i:Nat, j:Nat, v : Cell) { grid[i][j] := v };
+  public func set(i : Nat, j : Nat, v : Cell) { grid[i][j] := v };
 
-  func pred(i : Nat) : Nat = (n + i - 1) % n;
-  func succ(i : Nat) : Nat = (i + 1) % n;
-  func count(i:Nat, j:Nat) : Nat { if (grid[i][j]) 1 else 0 };
+  func pred(i : Nat) : Nat { (n + i - 1) % n };
+  func succ(i : Nat) : Nat { (i + 1) % n };
+  func count(i : Nat, j : Nat) : Nat { if (grid[i][j]) 1 else 0 };
   func living(i : Nat, j : Nat) : Nat {
-      count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
-      count(     i, pred j)                    + count(     i, succ j) +
-      count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
+    count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
+    count(     i, pred j)                    + count(     i, succ j) +
+    count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
   };
-  func nextCell(i:Nat, j:Nat) : Cell {
-    let l : Nat = living(i,j);
-    if (get(i,j))
+  func nextCell(i : Nat, j : Nat) : Cell {
+    let l : Nat = living(i, j);
+    if (get(i, j))
       l == 2 or l == 3
     else
       l == 3;
   };
 
-  public func Next(dst : Grid) {
-    var i = 0;
-    while (i < n) {
-      var j = 0;
-      while (j < n) {
+  public func next(dst : Grid) {
+    for (i in grid.keys()) {
+      let gi = grid[i];
+      for (j in gi.keys()) {
         dst.set(i, j, nextCell(i, j));
-        j += 1;
-        };
-      i += 1;
+      };
     };
   };
 
   public func toState() : [[Cell]] {
     P.Array_tabulate<[Cell]>(n,
-      func i { P.Array_tabulate<Cell>(n, func j { get(i,j) }) });
+      func i { P.Array_tabulate<Cell>(n, func j { get(i, j) }) });
   };
 
   public func toText() : Text {
     var t = "\n";
-    var i = 0;
-    while (i < n) {
-      var j = 0;
-      while (j < n) {
-        t #= if (get(i,j)) "O" else " ";
-        j += 1;
+    for (i in grid.keys()) {
+      let gi = grid[i];
+      for (j in gi.keys()) {
+        t #= if (get(i, j)) "O" else " ";
       };
       t #= "\n";
-      i += 1;
     };
     t
   };
@@ -91,11 +85,10 @@ actor Life {
     flexible func update(c : Nat) {
       var i = c;
       while (i > 0) {
-        src.Next(dst);
+        src.next(dst);
         let temp = src;
         src := dst;
         dst := temp;
-        //P.debugPrint(src.toText());
         i -= 1;
       };
     };
@@ -109,7 +102,7 @@ actor Life {
     };
 
     public func advance(n : Nat) : async () {
-       update n;
+       update(n);
     };
 
     public query func show() : async () {
