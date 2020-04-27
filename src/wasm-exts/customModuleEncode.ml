@@ -94,7 +94,7 @@ let encode (em : extended_module) =
   (* modify reference *)
   let modif r f = r := f !r in
 
-  let rec add_source x = function
+  let rec add_source x = function (* FIXME: use add_string *)
     | [] ->
       sources := !sources @ [ x ];
       sourcesContent := !sourcesContent @ [ "" ];
@@ -105,7 +105,7 @@ let encode (em : extended_module) =
   sources := !sources @ [ "prelude" ];
   sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
-  let add_string gen strings str =
+  let add_string gen strings str = (* FIXME: perform suffix compression *)
     let strs = !strings in
     match List.assoc_opt str strs with
     | Some v -> v
