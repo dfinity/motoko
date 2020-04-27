@@ -10,6 +10,6 @@ exception Error of string
 
 val parse : error_detail ->
             'a Parser.MenhirInterpreter.checkpoint ->
-            (Lexing.lexbuf -> Parser.token) ->
+            (Lexing.lexbuf -> unit -> Parser.token * Lexing.position * Lexing.position) ->
             Lexing.lexbuf ->
             'a

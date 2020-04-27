@@ -171,7 +171,7 @@ module Make
     I.loop_handle_undo
       (fun v -> v)
       fail
-      (lexer_lexbuf_to_supplier lexer lexbuf)
+      (lexer lexbuf)
       start
 
   (* TEMPORARY could also publish a list of the terminal symbols that
