@@ -168,11 +168,7 @@ module Make
       | _ ->
           assert false
     in
-    I.loop_handle_undo
-      (fun v -> v)
-      fail
-      lexer
-      start
+    I.loop_handle_undo Fun.id fail lexer start
 
   (* TEMPORARY could also publish a list of the terminal symbols that
      do not cause an error *)

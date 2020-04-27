@@ -93,8 +93,11 @@ let parse_with mode lexer parser name =
   with
     | Lexer_new.Error (at, msg) ->
       error at "syntax" msg
-    | Parsing.Error msg ->
-      error (Lexer_new.region lexer) "syntax" msg
+    | Parsing.Error (msg, start, end_) ->
+      error Source.{
+        left = Lexer_new.convert_pos start;
+        right = Lexer_new.convert_pos end_;
+      } "syntax" msg
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
