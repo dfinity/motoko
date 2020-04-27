@@ -159,8 +159,8 @@ let infer_mut mut : T.typ -> T.typ =
 (* System method types *)
 
 let system_funcs = [
-  ("preupgrade", T.Func(T.Local, T.Returns, [], [], []));
-  ("postupgrade", T.Func(T.Local, T.Returns, [], [], []))
+    ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
   ]
 
 (* Imports *)
