@@ -491,9 +491,3 @@ let dw_statement { Source.left; Source.right } =
   let right = { left with line = - left.line } in
   (* FIXME *)assert (left.file = "" || Wasm_exts.CustomModuleEncode.is_dwarf_statement { left; right });
   fun _ _ x -> (Nop @@ { left; right }) :: x
-
-(*
-                                             TODO: reference numbers for certain tags, counted up here,
-                                                                         sent to emitter
-                                                                         retrieved by references, secoffs.
- *)
