@@ -20,7 +20,7 @@ class Grid(state : [[Cell]]) {
       let a = P.Array_init(n, false);
       let si = state[i];
       assert (si.len() == n);
-      for(j in si.keys()) {
+      for (j in si.keys()) {
         a[j] := si[j];
       };
       a
