@@ -131,6 +131,7 @@ and mut m = match m.it with
 and vis v = match v.it with
   | Public  -> Atom "Public"
   | Private -> Atom "Private"
+  | System -> Atom "System"
 
 and stab s_opt = match s_opt with
   | None -> Atom "(Flexible)"

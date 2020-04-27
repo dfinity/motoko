@@ -95,9 +95,9 @@ let share_stab stab_opt dec =
   | _ -> stab_opt
 
 let share_expfield (ef : exp_field) =
-  if ef.it.vis.it = Private
-  then ef
-  else {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab ef.it.dec}}
+  if ef.it.vis.it = Public
+  then {ef with it = {ef.it with dec = share_dec ef.it.dec; stab = share_stab ef.it.stab ef.it.dec}}
+  else ef
 
 %}
 
@@ -108,7 +108,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
@@ -220,6 +220,7 @@ seplist1(X, SEP) :
 
 %inline tag :
   | HASH id=ID { id @@ at $sloc }
+  | HASH SYSTEM { "system" @@ at $sloc } // HACK to be removed once we revise Prim.ErrorCode
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -600,6 +601,7 @@ vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
   | PUBLIC { Public @@ at $sloc }
+  | SYSTEM { System @@ at $sloc }
 
 stab :
   | (* empty *) { None }

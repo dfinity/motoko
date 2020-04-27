@@ -156,6 +156,13 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+(* System method types *)
+
+let system_funcs = [
+    ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
+  ]
+
 (* Imports *)
 
 let check_import env at f ri =
@@ -1676,9 +1683,39 @@ and infer_obj env s fields at : T.typ =
       ) fields;
     end;
     if s = T.Module then Static.fields env.msgs fields;
+    check_system_fields env s scope fields;
     check_stab env s scope fields;
   end;
   t
+
+and check_system_fields env sort scope fields =
+  List.iter (fun ef ->
+    match sort, ef.it.vis.it, ef.it.dec.it with
+    | T.Actor, vis,
+      LetD({ it = VarP id; _ },
+           { it = FuncE _; _ }) ->
+      begin
+        match List.assoc_opt id.it system_funcs with
+        | Some t ->
+          (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
+          if vis = System then
+            begin
+              let t1 = T.Env.find id.it scope.Scope.val_env in
+              if not (T.sub t1 t) then
+                local_error env ef.at "system function %s is declared with type %s, expecting type %s" id.it
+                  (T.string_of_typ t1) (T.string_of_typ t)
+            end
+          else warn env id.at "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
+        | None ->
+          if vis = System then
+            local_error env id.at "unexpected system method named %s: expected %s"
+              id.it (String.concat " or " (List.map fst system_funcs))
+          else ()
+      end
+    | _, System, _ ->
+      local_error env ef.it.vis.at "misplaced system visibility, did you mean private?"
+    | _ -> ())
+  fields
 
 and stable_pat pat =
   match pat.it with

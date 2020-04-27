@@ -208,6 +208,16 @@ and build_fields obj_typ =
 and with_self i typ decs =
   let_no_shadow (var i typ) (selfRefE typ) decs
 
+and call_system_func_opt name es =
+  Lib.List.first_opt (fun es ->
+    match es.it with
+    | { S.vis = { it = S.System; _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
+        _
+      } when id.it = name
+      -> Some (callE (varE (var id.it p.note)) [] (tupE []))
+    | _ -> None) es
+
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
@@ -243,8 +253,11 @@ and build_actor at self_id es obj_typ =
     { I.pre =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE
-          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))]
+          ((match call_system_func_opt "preupgrade" es with
+            | Some call -> [expD call]
+            | None -> []) @
+           [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+              (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
           (primE (I.ICStableWrite ty)
              [ newObjE T.Object
                  (List.map2 (fun f v ->
@@ -253,7 +266,9 @@ and build_actor at self_id es obj_typ =
                         note = f.T.typ }
                     ) fields vs)
                  ty]));
-      I.post = tupE []},
+        I.post = match call_system_func_opt "postupgrade" es with
+                 | Some call -> call
+                 | None -> tupE []},
     obj_typ)
 
 and stabilize stab_opt d =
@@ -590,4 +605,3 @@ let transform p = prog p
 
 let transform_graph libraries progs =
   prog (combine_files libraries progs)
-
