@@ -109,7 +109,7 @@ actor Life {
     };
 
     public func advance(n : Nat) : async () {
-       update n;
+       update(n);
     };
 
     public query func show() : async () {
