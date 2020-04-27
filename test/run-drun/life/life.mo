@@ -47,14 +47,11 @@ class Grid(state : [[Cell]]) {
   };
 
   public func next(dst : Grid) {
-    var i = 0;
-    while (i < n) {
-      var j = 0;
-      while (j < n) {
+    for (i in grid.keys()) {
+      let gi = grid[i];
+      for (j in gi.keys()) {
         dst.set(i, j, nextCell(i, j));
-        j += 1;
       };
-      i += 1;
     };
   };
 
@@ -65,15 +62,12 @@ class Grid(state : [[Cell]]) {
 
   public func toText() : Text {
     var t = "\n";
-    var i = 0;
-    while (i < n) {
-      var j = 0;
-      while (j < n) {
+    for (i in grid.keys()) {
+      let gi = grid[i];
+      for (j in gi.keys()) {
         t #= if (get(i, j)) "O" else " ";
-        j += 1;
       };
       t #= "\n";
-      i += 1;
     };
     t
   };
@@ -95,7 +89,6 @@ actor Life {
         let temp = src;
         src := dst;
         dst := temp;
-        //P.debugPrint(src.toText());
         i -= 1;
       };
     };
