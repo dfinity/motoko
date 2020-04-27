@@ -60,7 +60,7 @@ class Grid(state : [[Cell]]) {
 
   public func toState() : [[Cell]] {
     P.Array_tabulate<[Cell]>(n,
-      func i { P.Array_tabulate<Cell>(n, func j { get(i,j) }) });
+      func i { P.Array_tabulate<Cell>(n, func j { get(i, j) }) });
   };
 
   public func toText() : Text {
