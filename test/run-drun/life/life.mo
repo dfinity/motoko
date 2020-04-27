@@ -26,9 +26,9 @@ class Grid(state : [[Cell]]) {
       a
     });
 
-  public func get(i:Nat, j:Nat) : Cell { grid[i][j]  };
+  public func get(i : Nat, j : Nat) : Cell { grid[i][j] };
 
-  public func set(i:Nat, j:Nat, v : Cell) { grid[i][j] := v };
+  public func set(i : Nat, j : Nat, v : Cell) { grid[i][j] := v };
 
   func pred(i : Nat) : Nat { (n + i - 1) % n };
   func succ(i : Nat) : Nat { (i + 1) % n };
