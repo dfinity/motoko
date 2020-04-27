@@ -91,7 +91,7 @@ actor Life {
     flexible func update(c : Nat) {
       var i = c;
       while (i > 0) {
-        src.Next(dst);
+        src.next(dst);
         let temp = src;
         src := dst;
         dst := temp;
