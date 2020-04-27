@@ -38,7 +38,7 @@ class Grid(state : [[Cell]]) {
       count(     i, pred j)                    + count(     i, succ j) +
       count(succ i, pred j) + count(succ i, j) + count(succ i, succ j)
   };
-  func nextCell(i:Nat, j:Nat) : Cell {
+  func nextCell(i : Nat, j : Nat) : Cell {
     let l : Nat = living(i,j);
     if (get(i,j))
       l == 2 or l == 3
