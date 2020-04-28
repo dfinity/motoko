@@ -619,7 +619,7 @@ let shared t =
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) ->
         s = Actor ||
-          (not (s = Actor) && List.for_all (fun f -> go f.typ) fs)
+          (s = Object && List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
