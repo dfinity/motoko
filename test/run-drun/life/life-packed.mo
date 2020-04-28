@@ -26,8 +26,8 @@ func writeBit(bits : [var Word64], index : Nat, v : Bool) {
     bits[P.word64ToNat(bit >> 6 : Word64)] |= mask
   }
   else {
-    let mask : Word64 = 0xFFFF_FFFF_FFFF_FFFF ^ (1 << (bit % 64));
-    bits[P.word64ToNat(bit >> 6 : Word64)] &= mask;
+    let mask : Word64 = 1 << (bit % 64);
+    bits[P.word64ToNat(bit >> 6 : Word64)] &= ^mask;
   }
 };
 
