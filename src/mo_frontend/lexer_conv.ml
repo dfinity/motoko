@@ -91,7 +91,7 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     let token =
       match token with
       | Parser.GT when leading_ws && trailing_ws -> Parser.GTOP
-      | Parser.LT when leading_ws && trailing_ws -> Parser.GTOP
+      | Parser.LT when leading_ws && trailing_ws -> Parser.LTOP
       | _ -> token
     in
     trivia_table :=
