@@ -363,6 +363,10 @@ let is_whitespace : 'a trivia -> bool = function
   | Space _ | Tab _ | Line _ -> true
   | Comment _ -> false
 
+let is_line_feed : token -> bool = function
+  | LINEFEED _ -> true
+  | _ -> false
+
 type annotation = {
   range : Lexing.position * Lexing.position;
   leading_trivia : line_feed trivia list;

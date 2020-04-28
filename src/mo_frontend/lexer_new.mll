@@ -119,7 +119,6 @@ rule token mode = parse
   | "{" { LCURLY }
   | "}" { RCURLY }
   | ";" { SEMICOLON }
-  | ";\n" { Lexing.new_line lexbuf; SEMICOLON_EOL }
   | "," { COMMA }
   | ":" { COLON }
   | "<:" { SUB }

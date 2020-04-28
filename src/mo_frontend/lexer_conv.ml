@@ -63,6 +63,8 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     let rec eat_leading acc =
       let tkn, start, end_ = next () in
       match ST.to_parser_token tkn with
+      | Ok Parser.SEMICOLON when ST.is_line_feed (un_triple (peek ())) ->
+        (List.rev acc, (Parser.SEMICOLON_EOL, start, end_))
       | Ok t -> (List.rev acc, (t, start, end_))
       | Error t -> eat_leading (t :: acc)
     in
@@ -75,9 +77,7 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     in
     let leading_trivia, (token, start, end_) = eat_leading [] in
     let leading_ws = has_trailing_ws (!last_trailing @ leading_trivia) in
-    let trailing_trivia =
-      match token with Parser.SEMICOLON_EOL -> [] | _ -> eat_trailing []
-    in
+    let trailing_trivia = eat_trailing [] in
     let trailing_ws =
       if trailing_trivia = [] then
         peek ()
