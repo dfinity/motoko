@@ -3,7 +3,7 @@ actor a {
   public func ping() : async () {
   };
 
-  public func go() {
+  public func go() : async () {
     let s0 = Prim.rts_heap_size();
     let a = Prim.Array_init<()>(2500, ());
     await ping();

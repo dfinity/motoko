@@ -7,7 +7,7 @@ class range(x : Nat, y : Nat) {
 
 
 actor a {
-  public func go() {
+  public func go()  : async () {
     {
       var i = 0;
       i := 0;

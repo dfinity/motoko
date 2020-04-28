@@ -6,7 +6,7 @@ let a = actor {
   public func world() : async Text {
     "World!"
   };
-  public func go() {
+  public func go() : async () {
     Prim.debugPrint((await hello()) # (await world()));
   };
 };
