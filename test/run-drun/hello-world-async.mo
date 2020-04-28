@@ -3,7 +3,7 @@ actor a {
   public func world() {
     Prim.debugPrint("World!");
   };
-  public func go() {
+  public func go() : async () {
     a.world();
     Prim.debugPrint("Hello ");
   };

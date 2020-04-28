@@ -31,7 +31,7 @@ let a = actor {
     public func g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
        { await f3 xyz; };
 
-  public func go() {
+  public func go() : async () {
 
     Prim.debugPrint "first-order";
 

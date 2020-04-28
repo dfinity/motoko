@@ -10,7 +10,7 @@ actor a {
   public func ping() : async () {
     Prim.debugPrint "ping()";
   };
-  public func go() {
+  public func go() : async () {
     Prim.debugPrint "go1";
     throws();
     await ping(); // in-order delivery guarantees that throw ran
