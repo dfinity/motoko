@@ -16,18 +16,18 @@ class below(u : Nat) {
 func readBit(bits : [var Word64], index : Nat) : Bool {
   let bit = P.natToWord64(index);
   let mask : Word64 = 1 << (bit % 64);
-  (bits[P.word64ToNat(bit >> 6 : Word64)] & mask) == mask
+  (bits[P.word64ToNat(bit >> 6)] & mask) == mask
 };
 
 func writeBit(bits : [var Word64], index : Nat, v : Bool) {
   let bit = P.natToWord64(index);
   if v {
     let mask : Word64 = 1 << (bit % 64);
-    bits[P.word64ToNat(bit >> 6 : Word64)] |= mask
+    bits[P.word64ToNat(bit >> 6)] |= mask
   }
   else {
     let mask : Word64 = 1 << (bit % 64);
-    bits[P.word64ToNat(bit >> 6 : Word64)] &= ^mask;
+    bits[P.word64ToNat(bit >> 6)] &= ^mask;
   }
 };
 
