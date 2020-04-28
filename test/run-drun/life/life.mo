@@ -11,10 +11,10 @@ object Random {
 type Cell = Bool;
 
 type State = {
-   #life : [[Cell]];
+   #v1 : [[Cell]];
 };
 
-class Grid((#life state) : State) {
+class Grid((#v1 state) : State) {
 
   let n = state.len();
 
@@ -63,7 +63,7 @@ class Grid((#life state) : State) {
   };
 
   public func toState() :  State {
-    #life (
+    #v1 (
       P.Array_tabulate<[Cell]>(n,
         func i { P.Array_tabulate<Cell>(n, func j { get(i, j) }) }))
   };
@@ -84,7 +84,7 @@ actor Life {
 
   stable var state : State =
     { let n = 32;
-      #life (
+      #v1 (
       	 P.Array_tabulate<[Cell]>(n,
            func i { P.Array_tabulate<Cell>(n, func j { Random.next(); }) })
       )
@@ -93,6 +93,7 @@ actor Life {
   flexible var src = Grid(state);
   flexible var dst = Grid(state);
 
+  // TODO(1427)
   flexible func update(c : Nat) {
     var i = c;
     while (i > 0) {
@@ -104,10 +105,12 @@ actor Life {
     };
   };
 
+  // TODO(1427)
   system flexible func preupgrade() {
    state := src.toState();
   };
 
+  // TODO(1427)
   system flexible func postupgrade() {
     P.debugPrint("upgraded!");
   };

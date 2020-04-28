@@ -34,15 +34,15 @@ func writeBit(bits : [var Word64], index : Nat, v : Bool) {
 type Cell = Bool;
 
 type State = {
-  #life : [[Cell]];
-  #life_packed : {size : Nat; bits : [Nat64]}
+  #v1 : [[Cell]];
+  #v2 : {size : Nat; bits : [Nat64]}
 };
 
 class Grid(state : State) {
 
-  let (n:Nat, bits:[var Word64]) =
+  let (n : Nat, bits : [var Word64]) =
     switch state {
-      case (#life css) {
+      case (#v1 css) {
         let n = css.len();
         let len = (n * n) / 64 + 1;
         let bits = P.Array_init<Word64>(len, 0);
@@ -53,7 +53,7 @@ class Grid(state : State) {
         };
         (n, bits)
       };
-      case (#life_packed {size; bits}) {
+      case (#v2 {size; bits}) {
         let ws = P.Array_init<Word64>(bits.len(), 0);
         for (n in bits.keys()) {
           ws[n] := P.nat64ToWord64(bits[n]);
@@ -102,7 +102,7 @@ class Grid(state : State) {
 
   public func toState() : State {
     let ws = bits;
-    #life_packed {
+    #v2 {
       size = n;
       bits = P.Array_tabulate<Nat64>(ws.len(), func i
         { P.word64ToNat64(ws[i])})
@@ -136,12 +136,13 @@ actor Life {
          };
          P.word64ToNat64(word);
       });
-    #life_packed { size = n; bits = words };
+    #v2 { size = n; bits = words };
   };
 
   flexible var src = Grid(state);
   flexible var dst = Grid(state);
 
+  // TODO(1427)
   flexible func update(c : Nat) {
     var i = c;
     while (i > 0) {
@@ -153,10 +154,12 @@ actor Life {
     };
   };
 
+  // TODO(1427)
   system flexible func preupgrade() {
     state := src.toState();
   };
 
+  // TODO(1427)
   system flexible func postupgrade() {
     P.debugPrint("upgraded!");
   };
