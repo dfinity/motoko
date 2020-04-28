@@ -16,20 +16,18 @@ class below(u : Nat) {
 func readBit(bits : [var Word64], index : Nat) : Bool {
   let bit = P.natToWord64(index);
   let mask : Word64 = 1 << (bit % 64);
-  (bits[P.word64ToNat(bit >> 6:Word64)] & mask) == mask
+  (bits[P.word64ToNat(bit >> 6 : Word64)] & mask) == mask
 };
 
 func writeBit(bits : [var Word64], index : Nat, v : Bool) {
   let bit = P.natToWord64(index);
   if v {
     let mask : Word64 = 1 << (bit % 64);
-    bits[P.word64ToNat(bit >> 6:Word64)] |= mask
+    bits[P.word64ToNat(bit >> 6 : Word64)] |= mask
   }
   else {
-    let mask : Word64 =
-    0xFFFF_FFFF_FFFF_FFFF ^
-     (1 << (bit % 64));
-    bits[P.word64ToNat(bit >> 6:Word64)] &= mask;
+    let mask : Word64 = 0xFFFF_FFFF_FFFF_FFFF ^ (1 << (bit % 64));
+    bits[P.word64ToNat(bit >> 6 : Word64)] &= mask;
   }
 };
 
@@ -37,7 +35,7 @@ type Cell = Bool;
 
 type State = {
   #life : [[Cell]];
-  #life_packed : { size: Nat; bits : [Nat64] }
+  #life_packed : {size : Nat; bits : [Nat64]}
 };
 
 class Grid(state : State) {
@@ -46,12 +44,12 @@ class Grid(state : State) {
     switch state {
       case (#life css) {
         let n = css.len();
-        let len = ((n * n) / 64) + 1;
+        let len = (n * n) / 64 + 1;
         let bits = P.Array_init<Word64>(len, 0);
         for (i in css.keys()) {
-         for (j in css[i].keys()) {
-          writeBit(bits, (i * n) + j, css[i][j]);
-         };
+          for (j in css[i].keys()) {
+            writeBit(bits, i * n + j, css[i][j]);
+          };
         };
         (n, bits)
       };
@@ -67,18 +65,18 @@ class Grid(state : State) {
   public func size() : Nat { n };
 
   public func get(i : Nat, j : Nat) : Cell {
-    readBit(bits, (i * n) + j);
+    readBit(bits, i * n + j);
   };
 
   public func set(i : Nat, j : Nat, v : Cell) {
-    writeBit(bits, (i * n) + j, v);
+    writeBit(bits, i * n + j, v);
   };
 
   func pred(i : Nat) : Nat { (n + i - 1) % n };
 
   func succ(i : Nat) : Nat { (i + 1) % n };
 
-  func count(i : Nat, j : Nat) : Nat { if (get(i,j)) 1 else 0 };
+  func count(i : Nat, j : Nat) : Nat { if (get(i, j)) 1 else 0 };
 
   func living(i : Nat, j : Nat) : Nat {
     count(pred i, pred j) + count(pred i, j) + count(pred i, succ j) +
@@ -88,7 +86,7 @@ class Grid(state : State) {
 
   func nextCell(i : Nat, j : Nat) : Cell {
     let l : Nat = living(i, j);
-    if (get(i,j))
+    if (get(i, j))
       l == 2 or l == 3
     else
       l == 3;
@@ -127,7 +125,7 @@ actor Life {
 
   stable var state : State = {
     let n = 32;
-    let len = ((n * n) / 64) + 1;
+    let len = (n * n) / 64 + 1;
     let words = P.Array_tabulate<Nat64>(len,
       func i {
         var word : Word64 = 0;
