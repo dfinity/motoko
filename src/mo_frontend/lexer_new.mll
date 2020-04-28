@@ -165,9 +165,6 @@ rule token mode = parse
   | "<<>=" { ROTLASSIGN }
   | "<>>=" { ROTRASSIGN }
   | "#=" { CATASSIGN }
-
-  | space">"space { GTOP } (*TBR*)
-  | space"<"space { LTOP } (*TBR*)
   | "->" { ARROW }
   | "_" { UNDERSCORE }
 

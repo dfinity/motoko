@@ -255,6 +255,10 @@ let is_trivia : token -> line_feed trivia option = function
   | LINEFEED lf -> Some (Line lf)
   | t -> Option.map (map_trivia absurd) (is_lineless_trivia t)
 
+let is_whitespace : 'a trivia -> bool = function
+  | Space _ | Tab _ | Line _ -> true
+  | Comment _ -> false
+
 type annotation = {
   range : Lexing.position * Lexing.position;
   leading_trivia : line_feed trivia list;

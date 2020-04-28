@@ -34,6 +34,7 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     TrivTable.find_opt { line; column } !trivia_table
   in
   let lookahead : source_token_triple option ref = ref None in
+  let last_trailing : ST.line_feed ST.trivia list ref = ref [] in
   let next () : source_token_triple =
     match !lookahead with
     | Some t ->
@@ -54,6 +55,11 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     | Some t -> t
   in
   let next_source_token () : source_token =
+    let has_leading_ws = function
+      | [] -> false
+      | x :: _ -> ST.is_whitespace x
+    in
+    let has_trailing_ws xs = has_leading_ws (List.rev xs) in
     let rec eat_leading acc =
       let tkn, start, end_ = next () in
       match ST.to_parser_token tkn with
@@ -67,15 +73,31 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
           eat_trailing (t :: acc)
       | None -> List.rev acc
     in
-    let leading_trivia, ((token, start, end_) as triple) = eat_leading [] in
-
+    let leading_trivia, (token, start, end_) = eat_leading [] in
+    let leading_ws = has_trailing_ws (!last_trailing @ leading_trivia) in
     let trailing_trivia =
       match token with Parser.SEMICOLON_EOL -> [] | _ -> eat_trailing []
+    in
+    let trailing_ws =
+      if trailing_trivia = [] then
+        peek ()
+        |> un_triple
+        |> ST.to_parser_token
+        |> Result.fold ~ok:(Fun.const false) ~error:ST.is_whitespace
+      else has_leading_ws trailing_trivia
+    in
+    last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
+    (* Disambiguate Lexer hacks *)
+    let token =
+      match token with
+      | Parser.GT when leading_ws && trailing_ws -> Parser.GTOP
+      | Parser.LT when leading_ws && trailing_ws -> Parser.GTOP
+      | _ -> token
     in
     trivia_table :=
       TrivTable.add (pos_of_lexpos start)
         { leading_trivia; trailing_trivia }
         !trivia_table;
-    triple
+    (token, start, end_)
   in
   (lookup_trivia, next_source_token)
