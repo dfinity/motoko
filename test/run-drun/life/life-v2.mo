@@ -21,13 +21,13 @@ func readBit(bits : [var Word64], index : Nat) : Bool {
 
 func writeBit(bits : [var Word64], index : Nat, v : Bool) {
   let bit = P.natToWord64(index);
+  let mask : Word64 = 1 << (bit % 64);
+  let i = P.word64ToNat(bit >> 6);
   if v {
-    let mask : Word64 = 1 << (bit % 64);
-    bits[P.word64ToNat(bit >> 6)] |= mask
+    bits[i] |= mask
   }
   else {
-    let mask : Word64 = 1 << (bit % 64);
-    bits[P.word64ToNat(bit >> 6)] &= ^mask;
+    bits[i] &= ^mask;
   }
 };
 
