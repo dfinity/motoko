@@ -59,17 +59,19 @@ let assign_op lhs rhs_f at =
 let let_or_exp named x e' at =
   if named
   then LetD(VarP(x) @! at, e' @? at) @? at
+       (* If you change the above regions,
+          modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjE (sort, _) ->
-      sort.it = Type.Module
-    | FuncE _ ->
-      true
-    | _ -> false)
+     | ObjE (sort, _) ->
+       sort.it = Type.Module
+     | FuncE _ ->
+       true
+     | _ -> false)
   | _ -> false
 
 let share_typ t =
@@ -109,14 +111,15 @@ let share_expfield (ef : exp_field) =
   if ef.it.vis.it = Public
   then
     {ef with it = {ef.it with
-       dec = share_dec ef.it.dec;
-       stab = share_stab ef.it.stab ef.it.dec}}
+      dec = share_dec ef.it.dec;
+      stab = share_stab ef.it.stab ef.it.dec}}
   else
     if is_sugared_func_or_module (ef.it.dec) then
       {ef with it =
-        {ef.it with stab = match ef.it.stab with
-	 | None -> Some (Flexible @@ ef.it.dec.at)
-	 | some -> some}
+        {ef.it with stab =
+          match ef.it.stab with
+          | None -> Some (Flexible @@ ef.it.dec.at)
+          | some -> some}
       }
     else ef
 
