@@ -28,6 +28,15 @@ let rec un_varp : Syntax.pat -> (string * Source.region) option = function
       Wasm.Sexpr.print 80 (Arrange.pat pat);
       None
 
+let un_obj_typ : Syntax.typ -> (string * Source.region) list option = function
+  | Source.{ it = Syntax.ObjT (_, fields); _ } ->
+      Some
+        (List.map
+           (fun Source.{ it = (tf : Syntax.typ_field'); at; _ } ->
+             (tf.Syntax.id.Source.it, at))
+           fields)
+  | _ -> None
+
 let un_func_dec : Syntax.dec -> (string * (string * Source.region) list) option
     = function
   | Source.
@@ -43,6 +52,12 @@ let un_func_dec : Syntax.dec -> (string * (string * Source.region) list) option
         _;
       } ->
       Some (name, List.filter_map un_varp args)
+  | _ -> None
+
+let un_typ_dec : Syntax.dec -> (string * Source.region * Syntax.typ) option =
+  function
+  | Source.{ it = Syntax.TypD ({ it = name; _ }, _, typ); at; _ } ->
+      Some (name, at, typ)
   | _ -> None
 
 let print_leading : Lexer_conv.trivia_info -> unit =
@@ -66,6 +81,7 @@ let simplistic_docs : Lexing.lexbuf -> unit =
   let un = un_module prog in
   List.iter
     (fun Source.{ it = Syntax.{ dec; vis }; at; _ } ->
+      print_endline "";
       let info = find_trivia at in
       match un_func_dec dec with
       | Some (name, args) ->
@@ -77,12 +93,27 @@ let simplistic_docs : Lexing.lexbuf -> unit =
               print_leading (find_trivia pos);
               Printf.printf "  arg %s\n" name)
             args
-      | None ->
-          print_leading info;
-          Wasm.Sexpr.print 80 (Arrange.dec dec))
+      | None -> (
+          match un_typ_dec dec with
+          | Some (name, pos, typ) -> (
+              print_leading info;
+              Printf.printf "type %s\n" name;
+              match un_obj_typ typ with
+              | Some fields ->
+                  List.iter
+                    (fun (name, pos) ->
+                      Printf.printf "  ";
+                      print_leading (find_trivia pos);
+                      Printf.printf "  field %s\n" name)
+                    fields
+              | None -> () )
+          | None ->
+              print_leading info;
+              Wasm.Sexpr.print 80 (Arrange.dec dec) ))
     un
 
-(* let () = simplistic_docs (Lexing.from_channel (open_in file)) *)
+let run_docs () = simplistic_docs (Lexing.from_channel (open_in file))
+
 let string_of_lex_pos pos =
   Lexing.(Printf.sprintf "%d:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol))
 
@@ -158,14 +189,14 @@ let list_files_recursively dir =
   in
   loop [] [ dir ]
 
-let () =
+let run_lex_diff () =
   let files =
     list_files_recursively "../test/run"
     |> List.filter (fun f -> Filename.extension f = ".mo")
   in
   let test_cases =
     [
-{|#bar;
+      {|#bar;
 #foo(#bar);
 [#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday];
 |};
@@ -194,3 +225,7 @@ let () =
 
   compare_lexers_priv (fun () -> Lexing.from_string Prelude.prelude);
   compare_lexers_priv (fun () -> Lexing.from_string Prelude.prim_module)
+
+let () = run_docs ()
+
+(* let () = run_lex_diff () *)
