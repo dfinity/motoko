@@ -197,10 +197,12 @@ let encode (em : extended_module) =
 
       | Nop, {line; column; _} when -line = dw_AT_high_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (RangeAttribute (-line, !sequence_number))
-
-
       | Nop, {line; column; _} when -line = dw_AT_high_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
+
+
+      | Nop, {line; file; _} when -line = dw_AT_decl_file ->
+        add_dwarf_attribute (StringAttribute (-line, file))
       | Nop, {line; column; _} when -line = dw_AT_decl_line ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_decl_column ->

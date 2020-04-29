@@ -175,6 +175,7 @@ type dw_AT = Producer of string
            | High_pc of int
            | Addr_base of int
            | Ranges
+           | Decl_file of string
            | Decl_line of int
            | Decl_column of int
            | Prototyped of bool
@@ -234,6 +235,7 @@ let dw_attr : dw_AT -> t =
   | High_pc h -> fakeColumn h dw_AT_high_pc Nop
   | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
   | Ranges -> fakeColumn 0(* FIXME *) dw_AT_ranges Nop
+  | Decl_file f -> fakeFile f dw_AT_decl_file Nop
   | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
@@ -297,7 +299,7 @@ let rec dw_tag : dw_TAG -> t =
       builtin_types
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
-      (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
+      (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     fakeBlock dw_TAG_formal_parameter
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location "\xED\x00\x01\x9F"(*FIXME*)])
