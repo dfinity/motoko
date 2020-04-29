@@ -77,7 +77,7 @@ actor QR {
     }, "", arrays)
   };
 
-  public func go() {
+  public func go() : async () {
     let tests = [
       (#Version 1, #M, #Numeric, "01234567"),
       (#Version 1, #Q, #Alphanumeric, "HELLO WORLD"),

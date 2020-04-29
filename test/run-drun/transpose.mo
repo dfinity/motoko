@@ -7,7 +7,7 @@ actor a {
     }
   };
 
-  public func go() {
+  public func go() : async () {
     let x = await a.transpose([(1,"Hi"), (2, "Ho")]);
     assert (x.ints[0] == 1);
     assert (x.ints[1] == 2);

@@ -24,10 +24,11 @@ fi
 
 export LANG=C.UTF-8
 
-# this number is determined empirically: how many extra batches are needed
-# until all call-trees have finished (even those that return early).
-# Usually darwin needs more! (Should go away with DFN-1269)
-EXTRA_BATCHES=100
+# this could be used to delay drun to make it more deterministic, but
+# it doesn't work reliably and slows down the test significantly.
+# so until DFN-1269 fixes this properly, let's just not run
+# affected tests on drun (only ic-ref-run).
+EXTRA_BATCHES=1
 
 if [ "${1: -5}" = ".drun" ]
 then
