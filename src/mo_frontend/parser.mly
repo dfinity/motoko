@@ -211,8 +211,8 @@ let share_expfield (sugar, (ef : exp_field)) =
 %type<(bool * Mo_def.Syntax.dec) list> dec_list_unamb
 %type<Mo_def.Syntax.id * (bool * Mo_def.Syntax.exp_field) list> class_body
 %type<Mo_def.Syntax.case> catch case
-%type<(bool * Mo_def.Syntax.dec)list -> Mo_def.Syntax.exp'> bl ob
-%type<(bool * Mo_def.Syntax.dec)list> import_list
+%type<(bool * Mo_def.Syntax.dec) list -> Mo_def.Syntax.exp'> bl ob
+%type<(bool * Mo_def.Syntax.dec) list> import_list
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
 
@@ -446,7 +446,7 @@ lit :
 (* Default {} to block or object, respectively *)
 bl : { fun ds -> BlockE(List.map snd ds) }
 ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun (_,d) -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
+         List.map (fun (_, d) -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
   | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
