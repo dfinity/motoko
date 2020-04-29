@@ -1,0 +1,5 @@
+ingress System
+debug.print: destination_invalid:Canister ic:C0FEFED00D41 does not exist
+debug.print: canister_reject:ball
+debug.print: canister_error:IC0503: Canister ic:2A012B trapped explicitly: assertion failed at error-codes.mo:10.33-10.50
+ingress Completed: Canister: Payload: 0x4449444c0000
