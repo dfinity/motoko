@@ -3338,11 +3338,18 @@ module Dfinity = struct
   let error_code env =
     let (set_code, get_code) = new_local env "code" in
     system_call env "ic0" "msg_reject_code" ^^ set_code ^^
-    get_code ^^ compile_unboxed_const 4l ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    G.if_ [I32Type]
-      (Variant.inject env "error" Tuple.compile_unit)
-      (Variant.inject env "system" Tuple.compile_unit)
+    List.fold_right (fun (tag, const) code ->
+      get_code ^^ compile_unboxed_const const ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if_ [I32Type]
+        (Variant.inject env tag Tuple.compile_unit)
+        code)
+      ["sys_fatal", 1l;
+       "sys_transient", 2l;
+       "destination_invalid", 3l;
+       "canister_reject", 4l;
+       "canister_error", 5l]
+      (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env))
 
   let error_message env =
     let (set_len, get_len) = new_local env "len" in

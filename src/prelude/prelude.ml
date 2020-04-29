@@ -469,12 +469,18 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 };
 
 // Error
-
-type ErrorCode = {#error; #system}; /* TBC */
+type ErrorCode = {
+  #sys_fatal;
+  #sys_transient;
+  #destination_invalid;
+  #canister_reject;
+  #canister_error;
+  #future : Word32;
+};
 
 // creation and inspection of abstract error
 func error(message : Text) : Error = {
-  let e = (#error, message);
+  let e = (#canister_reject, message);
   ((prim "cast" : (ErrorCode, Text) -> Error) e)
 };
 func errorCode(e : Error) : ErrorCode = {
