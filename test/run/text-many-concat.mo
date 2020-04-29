@@ -1,23 +1,37 @@
 import Prim "mo:prim";
+
+// right-leaning tree
 {
 var output : Text = "";
 var i = 1000000;
 while (i > 0) {
-  output := "WHOOHOO\n" # output;
+  output := "WHOOHOOO" # output;
   i -= 1;
 };
-Prim.debugPrint(output);
+Prim.debugPrint("Ignore Diff: " # output);
 };
 
+// left-leaning tree
 {
 var output : Text = "";
 var i = 1000000;
 while (i > 0) {
-  output := "WHOOHOO\n" # output;
+  output := "WHOOHOOO" # output;
   i -= 1;
 };
-Prim.debugPrint(output);
-}
+Prim.debugPrint("Ignore Diff: " # output);
+};
+
+// complete tree (cannot go too dep, grows exponential)
+{
+var output : Text = "WHOOHOOO";
+var i = 20;
+while (i > 0) {
+  output := output # output;
+  i -= 1;
+};
+Prim.debugPrint("Ignore Diff: " # output);
+};
 
 //SKIP run
 //SKIP run-ir
