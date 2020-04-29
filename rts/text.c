@@ -100,8 +100,17 @@ export void text_to_buf(text_t s, char *buf) {
   if (TAG(s) == TAG_BLOB) {
     as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
   } else {
-    text_to_buf(CONCAT_ARG1(s), buf);
-    text_to_buf(CONCAT_ARG2(s), buf + BLOB_LEN(CONCAT_ARG1(s)));
+    as_ptr s1 = CONCAT_ARG1(s);
+    as_ptr s2 = CONCAT_ARG2(s);
+    // the second recursion will be tail-called by clang, so make sure
+    // we recurse on the smaller (hopefully less high) tree first
+    if (CONCAT_LEN(s1) < CONCAT_LEN(s2)) {
+      text_to_buf(s1, buf);
+      text_to_buf(s2, buf + BLOB_LEN(s1));
+    } else {
+      text_to_buf(s2, buf + BLOB_LEN(s1));
+      text_to_buf(s1, buf);
+    }
   }
 }
 
