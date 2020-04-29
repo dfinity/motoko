@@ -4,7 +4,7 @@ import Prim "mo:prim";
 // aborted.
 
 actor a {
-  public func go() {
+  public func go() : async (){
     ignore(async {
         ignore ((0-1):Int);
         Prim.debugPrint("This is reachable.");
