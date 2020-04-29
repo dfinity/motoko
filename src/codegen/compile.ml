@@ -2907,7 +2907,7 @@ module Arr = struct
 
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
-    Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+    Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
       get_idx ^^
       BigNum.fits_unsigned_bits env 32 ^^
       E.else_trap_with env "Array index out of bounds" ^^
