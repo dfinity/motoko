@@ -67,7 +67,7 @@ actor a {
   };
 
 };
+
 ignore (a.go()); //OR-CALL ingress go 0x4449444C0000
-//SKIP run
-//SKIP run-ir
-//SKIP run-low
+a.go(); //OR-CALL ingress go 0x4449444C0000
+
