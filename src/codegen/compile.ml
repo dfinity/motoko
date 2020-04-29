@@ -2891,7 +2891,7 @@ module Arr = struct
      Does bounds checking *)
   let idx env =
     Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      (* No need to check the lower bound, we interpret is as unsigned *)
+      (* No need to check the lower bound, we interpret idx as unsigned *)
       (* Check the upper bound *)
       get_idx ^^
       get_array ^^ Heap.load_field len_field ^^
@@ -2904,6 +2904,19 @@ module Arr = struct
       get_array ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
+
+  (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
+  let idx_bigint env =
+    Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_idx ^^
+      BigNum.fits_unsigned_bits env 32 ^^
+      E.else_trap_with env "Array index out of bounds" ^^
+
+      get_array ^^
+      get_idx ^^ BigNum.to_word32 env ^^
+      idx env
+  )
+
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
@@ -6425,8 +6438,7 @@ let rec compile_lexp (env : E.t) ae lexp =
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
-     BigNum.to_word32 env ^^
-     Arr.idx env,
+     Arr.idx_bigint env,
      store_ptr
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
@@ -6551,8 +6563,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* offset to array *)
       compile_exp_vanilla env ae e2 ^^ (* idx *)
-      BigNum.to_word32 env ^^
-      Arr.idx env ^^
+      Arr.idx_bigint env ^^
       load_ptr
 
     | BreakPrim name, [e] ->

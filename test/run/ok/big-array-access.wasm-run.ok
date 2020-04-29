@@ -1,0 +1,7 @@
+Array index out of bounds
+
+Error: failed to process main module `_out/big-array-access.wasm`
+
+Caused by:
+    0: Instantiation failed during setup
+    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
