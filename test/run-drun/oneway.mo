@@ -58,3 +58,6 @@ actor a {
   };
 };
 a.go(); //OR-CALL ingress go 0x4449444C0000
+
+// do not run with drun, hit by nondeterminism in https://dfinity.atlassian.net/browse/DFN-1269
+//SKIP comp
