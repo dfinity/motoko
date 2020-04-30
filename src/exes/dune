@@ -23,8 +23,3 @@
  (modules deser)
  (libraries stdio num)
 )
-(executable
- (name mo_docs)
- (modules mo_docs)
- (libraries mo_frontend mo_def)
-)

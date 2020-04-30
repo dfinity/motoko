@@ -8,7 +8,6 @@ MOC_TARGET = _build/default/exes/moc.exe
 DIDC_TARGET = _build/default/exes/didc.exe
 MOC_JS_TARGET = _build/default/js/mo_js.bc.js
 DESER_TARGET = _build/default/exes/deser.exe
-MO_DOCS_TARGET = _build/default/exes/mo_docs.exe
 
 DUNE_OPTS ?=
 
@@ -26,7 +25,6 @@ all:
 	@ln -fs $(MOC_JS_TARGET) moc.js
 	@ln -fs $(DIDC_TARGET) didc
 	@ln -fs $(DESER_TARGET) deser
-	@ln -fs $(MO_DOCS_TARGET) mo-docs
 
 moc:
 	dune build $(DUNE_OPTS) $(MOC_TARGET)
@@ -51,10 +49,6 @@ didc:
 deser:
 	dune build $(DUNE_OPTS) $(DESER_TARGET)
 	@ln -fs $(DESER_TARGET) deser
-
-mo-docs:
-	dune build $(DUNE_OPTS) $(MO_DOCS_TARGET)
-	@ln -fs $(MO_DOCS_TARGET) mo-docs
 
 unit-tests:
 	dune runtest $(DUNE_OPTS)
