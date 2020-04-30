@@ -14,17 +14,7 @@ actor a {
   public func go() : async () {
 
     try {
-        await invalid.request();
-    }
-    catch e {
-      switch (P.errorCode(e), P.errorMessage(e)) {
-        case (#destination_invalid, m) { P.debugPrint("destination_invalid:" # m)};
-        case _ { assert false; }
-      }
-    };
-
-    try {
-        await throwText("ball");
+      await throwText("ball");
     }
     catch e {
       switch (P.errorCode(e), P.errorMessage(e)) {
@@ -36,7 +26,7 @@ actor a {
     };
 
     try {
-        await trap();
+      await trap();
     }
     catch e {
       switch (P.errorCode(e), P.errorMessage(e)) {
@@ -56,9 +46,18 @@ actor a {
         case (#canister_reject) { assert false};
         case (#future (n : Nat32)) {assert false};
       };
+    };
+
+    // do this last while it crashes drun
+    try {
+      await invalid.request();
     }
-
-
+    catch e {
+      switch (P.errorCode(e), P.errorMessage(e)) {
+        case (#destination_invalid, m) { P.debugPrint("destination_invalid:" # m)};
+        case _ { assert false; }
+      }
+    };
   }
 };
 

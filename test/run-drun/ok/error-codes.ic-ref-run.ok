@@ -3,8 +3,8 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-debug.print: destination_invalid:canister does not exist: ic:c0fefed00d41
 debug.print: canister_reject:ball
 Trap: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
 debug.print: canister_error:canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
+debug.print: destination_invalid:canister does not exist: ic:c0fefed00d41
 ← completed: 0x4449444c0000
