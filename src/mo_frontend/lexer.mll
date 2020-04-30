@@ -73,7 +73,7 @@ let letter = ['a'-'z''A'-'Z']
 let symbol =
   ['+''-''*''/''\\''^''~''=''<''>''!''?''@''#''$''%''&''|'':''`''.''\'']
 
-let space = [' ''\t''\r''\n']
+let space = [' ''\t''\n''\r']
 let ascii = ['\x00'-'\x7f']
 let ascii_no_nl = ['\x00'-'\x09''\x0b'-'\x7f']
 let utf8cont = ['\x80'-'\xbf']
@@ -215,13 +215,13 @@ rule token mode = parse
   | "public" { PUBLIC }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "stable" { STABLE }
+  | "system" { SYSTEM }
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
   | "query" { QUERY }
-  | "stable" { STABLE }
   | "switch" { SWITCH }
-  | "system" { SYSTEM }
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }
