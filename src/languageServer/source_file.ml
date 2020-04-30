@@ -16,27 +16,26 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
   let _, tknzr = Lexer_conv.tokenizer Lexer.Normal lexbuf in
   let next () =
     let t, start, end_ = tknzr () in
-    t, Lexer.convert_pos start, Lexer.convert_pos end_
+    (t, Lexer.convert_pos start, Lexer.convert_pos end_)
   in
   let pos_past_cursor pos =
     pos.Source.line > line
     || (pos.Source.line = line && pos.Source.column >= column)
   in
-  let rec loop (tkn, start, end_) = match tkn with
+  let rec loop (tkn, start, end_) =
+    match tkn with
     | _ when pos_past_cursor start -> None
     | Parser.ID ident -> (
         match next () with
-        | (Parser.DOT, start, end_) -> (
+        | Parser.DOT, start, end_ -> (
             match next () with
             | (Parser.ID prefix, start, end_) as next_token ->
-                if pos_past_cursor end_ then
-                  Some (CQualified (ident, prefix))
+                if pos_past_cursor end_ then Some (CQualified (ident, prefix))
                 else loop next_token
             | (_, start, _) as next_token ->
                 if pos_past_cursor start then Some (CIdent ident)
                 else loop next_token )
-        | (_, start, _) when pos_past_cursor start ->
-            Some (CIdent ident)
+        | _, start, _ when pos_past_cursor start -> Some (CIdent ident)
         | tkn -> loop tkn )
     | Parser.EOF -> None
     | _ -> loop (next ())
