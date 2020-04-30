@@ -159,7 +159,7 @@ let reject async v =
   | V.Tup [ _code; message ] ->
     (* mask the error code before rejecting *)
     Scheduler.queue
-      (fun () -> reject_async async (V.Tup [V.Variant("error", V.unit); message]))
+      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]))
   | _ -> assert false
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
@@ -429,7 +429,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ICRejectPrim, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reject = Option.get env.rejects in
-        let e = V.Tup [V.Variant ("error", V.unit); v1] in
+        let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
       | ICCallPrim, [v1; v2; kv; rv] ->
         let call_conv, f = V.as_func v1 in

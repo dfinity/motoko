@@ -3336,27 +3336,35 @@ module Dfinity = struct
       assert false
 
   let error_code env =
-    let (set_code, get_code) = new_local env "code" in
-    system_call env "ic0" "msg_reject_code" ^^ set_code ^^
-    get_code ^^ compile_unboxed_const 4l ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    G.if_ [I32Type]
-      (Variant.inject env "error" Tuple.compile_unit)
-      (Variant.inject env "system" Tuple.compile_unit)
-
+     Func.share_code0 env "error_code" [I32Type] (fun env ->
+      let (set_code, get_code) = new_local env "code" in
+      system_call env "ic0" "msg_reject_code" ^^ set_code ^^
+      List.fold_right (fun (tag, const) code ->
+        get_code ^^ compile_unboxed_const const ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if_ [I32Type]
+          (Variant.inject env tag Tuple.compile_unit)
+          code)
+        ["system_fatal", 1l;
+         "system_transient", 2l;
+         "destination_invalid", 3l;
+         "canister_reject", 4l;
+         "canister_error", 5l]
+        (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env)))
   let error_message env =
-    let (set_len, get_len) = new_local env "len" in
-    let (set_blob, get_blob) = new_local env "blob" in
-    system_call env "ic0" "msg_reject_msg_size" ^^
-    set_len ^^
+    Func.share_code0 env "error_message" [I32Type] (fun env ->
+      let (set_len, get_len) = new_local env "len" in
+      let (set_blob, get_blob) = new_local env "blob" in
+      system_call env "ic0" "msg_reject_msg_size" ^^
+      set_len ^^
 
-    get_len ^^ Blob.alloc env ^^ set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed ^^
-    compile_unboxed_const 0l ^^
-    get_len ^^
-    system_call env "ic0" "msg_reject_msg_copy" ^^
+      get_len ^^ Blob.alloc env ^^ set_blob ^^
+      get_blob ^^ Blob.payload_ptr_unskewed ^^
+      compile_unboxed_const 0l ^^
+      get_len ^^
+      system_call env "ic0" "msg_reject_msg_copy" ^^
 
-    get_blob
+      get_blob)
 
   let error_value env =
     Func.share_code0 env "error_value" [I32Type] (fun env ->

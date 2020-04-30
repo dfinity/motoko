@@ -468,13 +468,19 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-// Error
-
-type ErrorCode = {#error; #system}; /* TBC */
+// Error codes
+type ErrorCode = {
+  #system_fatal;
+  #system_transient;
+  #destination_invalid;
+  #canister_reject;
+  #canister_error;
+  #future : Nat32;
+};
 
 // creation and inspection of abstract error
 func error(message : Text) : Error = {
-  let e = (#error, message);
+  let e = (#canister_reject, message);
   ((prim "cast" : (ErrorCode, Text) -> Error) e)
 };
 func errorCode(e : Error) : ErrorCode = {

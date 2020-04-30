@@ -108,13 +108,16 @@ let error = Prim Error
 let char = Prim Char
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "error"; typ = unit }
+  { lab = "canister_reject"; typ = unit }
 ]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system"; typ = unit}
-      (* TBC *)
+    { lab = "system_fatal"; typ = unit};
+    { lab = "system_transient"; typ = unit};
+    { lab = "destination_invalid"; typ = unit};
+    { lab = "canister_error"; typ = unit};
+    { lab = "future"; typ = Prim Nat32};
   ])
 
 let throw = Prim Error
