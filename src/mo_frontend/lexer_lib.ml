@@ -1,3 +1,8 @@
+(**
+  This module exists so it can be included by lexer.ml. This way
+  source_lexer.ml can use these definitions but stay internal to
+  lexer.ml.
+*)
 type mode = Normal | Privileged
 
 exception Error of Source.region * string

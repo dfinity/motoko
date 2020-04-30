@@ -9,6 +9,7 @@ let pos_of_lexpos : Lexing.position -> pos =
 
 module TrivTable = Map.Make (struct
   type t = pos
+
   let compare p1 p2 = compare p1 p2
 end)
 
@@ -20,6 +21,7 @@ type trivia_info = {
 type triv_table = trivia_info TrivTable.t
 
 type source_token = ST.token * Lexing.position * Lexing.position
+
 type parser_token = Parser.token * Lexing.position * Lexing.position
 
 let un_triple (t, _, _) = t
@@ -27,12 +29,14 @@ let un_triple (t, _, _) = t
 let is_gt = function ST.GT -> true | _ -> false
 
 let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
-    (int * int -> trivia_info option) * (unit -> parser_token) =
+    (unit -> parser_token) * (int * int -> trivia_info option) =
   let trivia_table : triv_table ref = ref TrivTable.empty in
   let lookup_trivia (line, column) =
     TrivTable.find_opt { line; column } !trivia_table
   in
   let lookahead : source_token option ref = ref None in
+  (* We keep the trailing whitespace of the previous token
+     around so we can disambiguate operators *)
   let last_trailing : ST.line_feed ST.trivia list ref = ref [] in
   let next () : source_token =
     match !lookahead with
@@ -54,21 +58,20 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
     | Some t -> t
   in
   let next_source_token () : parser_token =
-    let has_leading_ws = function
-      | [] -> false
-      | x :: _ -> ST.is_whitespace x
+    let has_whitespace triv =
+      List.find_opt ST.is_whitespace triv |> Option.is_some
     in
-    let has_trailing_ws xs = has_leading_ws (List.rev xs) in
     let rec eat_leading acc =
       let tkn, start, end_ = next () in
       match ST.to_parser_token tkn with
+      (* A semicolon immediately followed by a newline gets a special token for the REPL *)
       | Ok Parser.SEMICOLON when ST.is_line_feed (un_triple (peek ())) ->
           (List.rev acc, (Parser.SEMICOLON_EOL, start, end_))
-      (* USHROP used to be defined as space">>". For the REPL we need the underlying
-         lexer to be able to commit to a LINE token after seeing a '\n' though,
-         so we disambiguate here *)
+      (* >> can either close two nested type applications, or be a shift
+         operator depending on whether it's prefixed with whitespace *)
       | Ok Parser.GT
-        when (acc <> [] || !last_trailing <> []) && is_gt (un_triple (peek ())) ->
+        when has_whitespace (!last_trailing @ acc)
+             && is_gt (un_triple (peek ())) ->
           let _, _, end_ = next () in
           (acc, (Parser.USHROP, start, end_))
       | Ok t -> (List.rev acc, (t, start, end_))
@@ -82,20 +85,22 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       | None -> List.rev acc
     in
     let leading_trivia, (token, start, end_) = eat_leading [] in
-    let leading_ws = has_trailing_ws (!last_trailing @ leading_trivia) in
     let trailing_trivia = eat_trailing [] in
-    let trailing_ws =
+    let leading_ws () = has_whitespace (!last_trailing @ leading_trivia) in
+    let trailing_ws () =
+      (* TODO(Christoph): We'd need to have more than one token lookahead to spot trailing
+         whitespace after a comment (might need another ref, sigh) *)
       if trailing_trivia = [] then
         peek () |> un_triple |> ST.to_parser_token
         |> Result.fold ~ok:(Fun.const false) ~error:ST.is_whitespace
-      else has_leading_ws trailing_trivia
+      else has_whitespace trailing_trivia
     in
     last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
-    (* Disambiguate Lexer hacks *)
+    (* Disambiguating operators based on whitespace *)
     let token =
       match token with
-      | Parser.GT when leading_ws && trailing_ws -> Parser.GTOP
-      | Parser.LT when leading_ws && trailing_ws -> Parser.LTOP
+      | Parser.GT when leading_ws () && trailing_ws () -> Parser.GTOP
+      | Parser.LT when leading_ws () && trailing_ws () -> Parser.LTOP
       | _ -> token
     in
     trivia_table :=
@@ -104,4 +109,4 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         !trivia_table;
     (token, start, end_)
   in
-  (lookup_trivia, next_source_token)
+  (next_source_token, lookup_trivia)
