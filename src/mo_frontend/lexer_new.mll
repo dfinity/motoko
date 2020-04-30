@@ -196,6 +196,7 @@ rule token mode = parse
   | "debug" { DEBUG }
   | "else" { ELSE }
   | "false" { BOOL false }
+  | "flexible" { FLEXIBLE }
   | "for" { FOR }
   | "func" { FUNC }
   | "if" { IF }
@@ -218,7 +219,9 @@ rule token mode = parse
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
   | "query" { QUERY }
+  | "stable" { STABLE }
   | "switch" { SWITCH }
+  | "system" { SYSTEM }
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }

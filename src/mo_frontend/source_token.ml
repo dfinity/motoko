@@ -20,6 +20,7 @@ type token =
   | CONTINUE
   | LABEL
   | DEBUG
+  | FLEXIBLE
   | IF
   | IGNORE
   | IN
@@ -29,6 +30,8 @@ type token =
   | WHILE
   | FOR
   | RETURN
+  | SYSTEM
+  | STABLE
   | TRY
   | THROW
   | ARROW
@@ -130,6 +133,7 @@ let to_parser_token :
   | CONTINUE -> Ok Parser.CONTINUE
   | LABEL -> Ok Parser.LABEL
   | DEBUG -> Ok Parser.DEBUG
+  | FLEXIBLE -> Ok Parser.FLEXIBLE
   | IF -> Ok Parser.IF
   | IGNORE -> Ok Parser.IGNORE
   | IN -> Ok Parser.IN
@@ -151,6 +155,8 @@ let to_parser_token :
   | PUBLIC -> Ok Parser.PUBLIC
   | PRIVATE -> Ok Parser.PRIVATE
   | SHARED -> Ok Parser.SHARED
+  | STABLE -> Ok Parser.STABLE
+  | SYSTEM -> Ok Parser.SYSTEM
   | QUERY -> Ok Parser.QUERY
   | SEMICOLON -> Ok Parser.SEMICOLON
   | SEMICOLON_EOL -> Ok Parser.SEMICOLON_EOL
@@ -239,6 +245,7 @@ let string_of_parser_token = function
   | Parser.CONTINUE -> "CONTINUE"
   | Parser.LABEL -> "LABEL"
   | Parser.DEBUG -> "DEBUG"
+  | Parser.FLEXIBLE -> "FLEXIBLE"
   | Parser.IF -> "IF"
   | Parser.IGNORE -> "IGNORE"
   | Parser.IN -> "IN"
@@ -260,6 +267,8 @@ let string_of_parser_token = function
   | Parser.PUBLIC -> "PUBLIC"
   | Parser.PRIVATE -> "PRIVATE"
   | Parser.SHARED -> "SHARED"
+  | Parser.STABLE -> "STABLE"
+  | Parser.SYSTEM -> "SYSTEM"
   | Parser.QUERY -> "QUERY"
   | Parser.SEMICOLON -> "SEMICOLON"
   | Parser.SEMICOLON_EOL -> "SEMICOLON_EOL"
