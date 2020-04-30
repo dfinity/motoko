@@ -1,4 +1,4 @@
 ingress System
 debug.print: t2 ok
 debug.print: t3 ok
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000

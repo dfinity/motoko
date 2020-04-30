@@ -9,4 +9,4 @@ debug.print: 10
 debug.print: 10
 debug.print: 15
 debug.print: 15
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
