@@ -33,4 +33,4 @@ debug.print: 12
 debug.print: 13
 debug.print: 14
 debug.print: 15
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
