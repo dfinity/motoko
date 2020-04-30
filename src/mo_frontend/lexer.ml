@@ -88,14 +88,8 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
     let trailing_trivia = eat_trailing [] in
     let leading_ws () = has_whitespace (!last_trailing @ leading_trivia) in
     let trailing_ws () =
-      (* TODO(Christoph): We'd need to have more than one token lookahead to spot trailing
-         whitespace after a comment (might need another ref, sigh) *)
-      if trailing_trivia = [] then
-        peek () |> un_triple |> ST.to_parser_token
-        |> Result.fold ~ok:(Fun.const false) ~error:ST.is_whitespace
-      else has_whitespace trailing_trivia
+      has_whitespace trailing_trivia || ST.is_line_feed (un_triple (peek ()))
     in
-    last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
     (* Disambiguating operators based on whitespace *)
     let token =
       match token with
@@ -103,6 +97,7 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       | Parser.LT when leading_ws () && trailing_ws () -> Parser.LTOP
       | _ -> token
     in
+    last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
     trivia_table :=
       TrivTable.add (pos_of_lexpos start)
         { leading_trivia; trailing_trivia }
