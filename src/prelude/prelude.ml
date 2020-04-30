@@ -468,14 +468,14 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-// Error
+// Error codes
 type ErrorCode = {
-  #sys_fatal;
-  #sys_transient;
+  #system_fatal;
+  #system_transient;
   #destination_invalid;
   #canister_reject;
   #canister_error;
-  #future : Word32;
+  #future : Nat32;
 };
 
 // creation and inspection of abstract error

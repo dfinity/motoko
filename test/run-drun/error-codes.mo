@@ -54,7 +54,7 @@ actor a {
         case (#destination_invalid) {assert false};
         case (#canister_error) { assert false};
         case (#canister_reject) { assert false};
-        case (#future (w : Word32)) {assert false};
+        case (#future (n : Nat32)) {assert false};
       };
     }
 
