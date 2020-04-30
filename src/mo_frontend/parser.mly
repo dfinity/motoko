@@ -67,10 +67,8 @@ let is_sugared_func_or_module dec =
     match dec.it with
     | LetD({it = VarP _; _}, exp) ->
       (match exp.it with
-       | ObjE (sort, _) ->
-	 sort.it = Type.Module
-       | FuncE _ ->
-	 true
+       | ObjE (sort, _) -> sort.it = Type.Module
+       | FuncE _ -> true
        | _ -> false)
     | _ -> false
 
