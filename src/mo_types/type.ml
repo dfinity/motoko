@@ -620,7 +620,7 @@ let shared t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false
+         | Module -> false //TODO(1452) make modules sharable
          | Object -> List.for_all (fun f -> go f.typ) fs
          | Memory -> assert false)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
@@ -650,7 +650,7 @@ let find_unshared t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> None
-         | Module -> Some t
+         | Module -> Some t //TODO(1452) make modules sharable
          | Object ->
            Lib.List.first_opt (fun f -> go f.typ) fs
          | Memory -> assert false)
