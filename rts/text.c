@@ -103,36 +103,39 @@ typedef struct crumb {
 } crumb;
 
 
-// NB: Clang will tailcall-optimize this
-void text_to_buf_go(text_t s, char *buf, crumb *next_crumb) {
-  if (TAG(s) == TAG_BLOB) {
-    as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
-
-    if (next_crumb != NULL) {
-        text_to_buf_go(next_crumb->t, (char*)next_crumb, next_crumb->next);
-    }
-  } else {
-    as_ptr s1 = CONCAT_ARG1(s);
-    as_ptr s2 = CONCAT_ARG2(s);
-    // if the second too small to leave a crumb, just do it directly
-    if (CONCAT_LEN(s2) < sizeof(crumb)) {
-      text_to_buf_go(s2, buf + BLOB_LEN(s1), NULL);
-      text_to_buf_go(s1, buf, next_crumb);
-    } else {
-      // leave a crumb to do the second leg
-      crumb *new_crump = (crumb *)(buf + BLOB_LEN(s1));
-      new_crump->t = s2;
-      new_crump->next = next_crumb;
-
-      // and do the first one now
-      text_to_buf_go(s1, buf, new_crump);
-    }
-  }
-}
 
 // write all data into a buffer (must have the right size)
 export void text_to_buf(text_t s, char *buf) {
-  text_to_buf_go(s, buf, NULL);
+  crumb *next_crumb = NULL; // what do do after we are done with s
+  while (true) {
+    if (TAG(s) == TAG_BLOB) {
+      as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
+
+      // return if we are done
+      if (next_crumb == NULL) return;
+
+      // else load text from crumb
+      s = next_crumb->t;
+      buf = (char *)next_crumb;
+      next_crumb = next_crumb->next;
+    } else {
+      as_ptr s1 = CONCAT_ARG1(s);
+      as_ptr s2 = CONCAT_ARG2(s);
+      if (CONCAT_LEN(s2) < sizeof(crumb)) {
+        // if the second leg is too small to leave a crumb, just do it directly
+        text_to_buf(s2, buf + BLOB_LEN(s1));
+        s = s1;
+      } else {
+        // else we use the space where the second leg will be written to
+        // to remember a text to write there
+        crumb *new_crumb = (crumb *)(buf + BLOB_LEN(s1));
+        new_crumb->t = s2;
+        new_crumb->next = next_crumb;
+        next_crumb = new_crumb;
+        s = s1;
+      }
+    }
+  }
 }
 
 // straighten into contiguous memory, if needed (e.g. for system calls)
