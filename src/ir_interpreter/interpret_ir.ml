@@ -419,6 +419,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k v1
       | BlobOfIcUrl, [v1] ->
         trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
+      | IcUrlOfBlob, [v1] ->
+        trap exp.at "IcUrlOfBlob not implemented"
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.num_conv_prim t1 t2 (context env) arg k

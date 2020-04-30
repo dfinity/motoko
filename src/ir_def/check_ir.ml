@@ -531,6 +531,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t2 <: t
     | BlobOfIcUrl, [e] ->
       typ e <: T.text;
+      T.blob <: t
+    | IcUrlOfBlob, [e] ->
+      typ e <: T.blob;
+      T.text <: t
     | ActorOfIdBlob actor_typ, [e] ->
       typ e <: T.blob;
       check_typ env actor_typ;
