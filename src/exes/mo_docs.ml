@@ -69,7 +69,7 @@ let print_leading : Lexer_conv.trivia_info -> unit =
 
 let simplistic_docs : Lexing.lexbuf -> unit =
  fun lexbuf ->
-  let lookup_trivia, tknzr = Lexer_conv.tokenizer Lexer_new.Normal lexbuf in
+  let lookup_trivia, tknzr = Lexer_conv.tokenizer Lexer.Normal lexbuf in
   let find_trivia (parser_pos : Source.region) : Lexer_conv.trivia_info =
     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)
     |> Option.get
@@ -114,119 +114,4 @@ let simplistic_docs : Lexing.lexbuf -> unit =
 
 let run_docs () = simplistic_docs (Lexing.from_channel (open_in file))
 
-let string_of_lex_pos pos =
-  Lexing.(Printf.sprintf "%d:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol))
-
-let compare_tokens =
-  List.iter2 (fun (t1, s1, e1) (t2, s2, e2) ->
-      if t1 = t2 then ()
-      else
-        Printf.printf "MISMATCH\n%s %s-%s\n%s %s-%s\n"
-          (Source_token.string_of_parser_token t1)
-          (string_of_lex_pos s1) (string_of_lex_pos e1)
-          (Source_token.string_of_parser_token t2)
-          (string_of_lex_pos s2) (string_of_lex_pos e2))
-
-let compare_lexers_priv mk_input =
-  let lexbuf1 = mk_input () in
-  let tknzr1 () =
-    let t = Lexer.token Lexer.Privileged lexbuf1 in
-    let start = Lexing.lexeme_start_p lexbuf1 in
-    let end_ = Lexing.lexeme_end_p lexbuf1 in
-    (t, start, end_)
-  in
-  let lexbuf2 = mk_input () in
-  let _, tknzr2 = Lexer_conv.tokenizer Lexer_new.Privileged lexbuf2 in
-  let lex_all lexer =
-    let rec go acc =
-      match lexer () with
-      | (Parser.EOF, _, _) as t -> List.rev (t :: acc)
-      | t -> go (t :: acc)
-    in
-    go []
-  in
-  let tokens1 = lex_all tknzr1 in
-  let tokens2 = lex_all tknzr2 in
-
-  compare_tokens tokens1 tokens2
-
-let compare_lexers mk_input =
-  let lexbuf1 = mk_input () in
-  let tknzr1 () =
-    let t = Lexer.token Lexer.Normal lexbuf1 in
-    let start = Lexing.lexeme_start_p lexbuf1 in
-    let end_ = Lexing.lexeme_end_p lexbuf1 in
-    (t, start, end_)
-  in
-  let lexbuf2 = mk_input () in
-  let _, tknzr2 = Lexer_conv.tokenizer Lexer_new.Normal lexbuf2 in
-  let lex_all lexer =
-    let rec go acc =
-      match lexer () with
-      | (Parser.EOF, _, _) as t -> List.rev (t :: acc)
-      | t -> go (t :: acc)
-    in
-    go []
-  in
-  let tokens1 = lex_all tknzr1 in
-  let tokens2 = lex_all tknzr2 in
-
-  compare_tokens tokens1 tokens2
-
-let compare_lexers_file file =
-  compare_lexers (fun () -> Lexing.from_channel (open_in file))
-
-let compare_lexers_string s = compare_lexers (fun () -> Lexing.from_string s)
-
-let list_files_recursively dir =
-  let rec loop result = function
-    | f :: fs when Sys.is_directory f ->
-        Sys.readdir f |> Array.to_list
-        |> List.map (Filename.concat f)
-        |> List.append fs |> loop result
-    | f :: fs -> loop (f :: result) fs
-    | [] -> result
-  in
-  loop [] [ dir ]
-
-let run_lex_diff () =
-  let files =
-    list_files_recursively "../test/run"
-    |> List.filter (fun f -> Filename.extension f = ".mo")
-  in
-  let test_cases =
-    [
-      {|#bar;
-#foo(#bar);
-[#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday];
-|};
-      "+127\n  -127;\n";
-      "";
-    ]
-  in
-
-  List.iter
-    (fun file ->
-      Printf.printf "\nChecking %s\n" file;
-      compare_lexers_file file)
-    files;
-  (* let repl_files =
-   *   list_files_recursively "../test/repl"
-   *   |> List.filter (fun f -> Filename.extension f = ".sh") in
-   * List.iter
-   *   (fun file ->
-   *     Printf.printf "\nChecking %s\n" file;
-   *     compare_lexers_file file)
-   *   repl_files; *)
-  List.iter
-    (fun s ->
-      Printf.printf "\nTestcase %s\n" (String.trim s);
-      compare_lexers_string s)
-    test_cases;
-
-  compare_lexers_priv (fun () -> Lexing.from_string Prelude.prelude);
-  compare_lexers_priv (fun () -> Lexing.from_string Prelude.prim_module)
-
-(* let () = run_docs () *)
-
-let () = run_lex_diff ()
+let () = run_docs ()

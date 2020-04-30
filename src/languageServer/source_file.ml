@@ -13,7 +13,8 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
   let line = position.Lsp.position_line + 1 in
   let column = position.Lsp.position_character + 1 in
   let lexbuf = Lexing.from_string file_contents in
-  let next () = Lexer.token Lexer.Normal lexbuf in
+  let (_, tknzr) = Lexer_conv.tokenizer Lexer.Normal lexbuf in
+  let next () = let (t, _, _) = tknzr () in t in
   let pos_past_cursor pos =
     pos.Source.line > line
     || (pos.Source.line = line && pos.Source.column >= column)
@@ -74,7 +75,8 @@ let import_relative_to_project_root root module_path dependency =
    filepaths relative to the project root *)
 let parse_module_header project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
-  let next () = Lexer.token Lexer.Normal lexbuf in
+  let (_, tknzr) = Lexer_conv.tokenizer Lexer.Normal lexbuf in
+  let next () = let (t, _, _) = tknzr () in t in
   let res = ref [] in
   let rec loop = function
     | Parser.IMPORT -> (

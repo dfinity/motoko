@@ -1,5 +1,5 @@
 {
-open Parser
+open Source_token
 module Utf8 = Wasm.Utf8
 
 type mode = Normal | Privileged
@@ -21,7 +21,6 @@ let error lexbuf msg = raise (Error (region lexbuf, msg))
 let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
-
 
 let utf8 s i =
   let len = if s.[!i] < '\xe0' then 1 else if s.[!i] < '\xf0' then 2 else 3 in
@@ -74,7 +73,7 @@ let letter = ['a'-'z''A'-'Z']
 let symbol =
   ['+''-''*''/''\\''^''~''=''<''>''!''?''@''#''$''%''&''|'':''`''.''\'']
 
-let space = [' ''\t''\n''\r']
+let space = [' ''\t''\r''\n']
 let ascii = ['\x00'-'\x7f']
 let ascii_no_nl = ['\x00'-'\x09''\x0b'-'\x7f']
 let utf8cont = ['\x80'-'\xbf']
@@ -120,7 +119,6 @@ rule token mode = parse
   | "{" { LCURLY }
   | "}" { RCURLY }
   | ";" { SEMICOLON }
-  | ";\n" { Lexing.new_line lexbuf; SEMICOLON_EOL }
   | "," { COMMA }
   | ":" { COLON }
   | "<:" { SUB }
@@ -139,7 +137,6 @@ rule token mode = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "<<" { SHLOP }
-  | space">>" { USHROP } (*TBR*)
   | "+>>" { SSHROP }
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }
@@ -166,9 +163,6 @@ rule token mode = parse
   | "<<>=" { ROTLASSIGN }
   | "<>>=" { ROTRASSIGN }
   | "#=" { CATASSIGN }
-
-  | space">"space { GTOP } (*TBR*)
-  | space"<"space { LTOP } (*TBR*)
   | "->" { ARROW }
   | "_" { UNDERSCORE }
 
@@ -221,13 +215,13 @@ rule token mode = parse
   | "public" { PUBLIC }
   | "return" { RETURN }
   | "shared" { SHARED }
-  | "stable" { STABLE }
-  | "system" { SYSTEM }
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
   | "query" { QUERY }
+  | "stable" { STABLE }
   | "switch" { SWITCH }
+  | "system" { SYSTEM }
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }
@@ -237,21 +231,25 @@ rule token mode = parse
   | id as s { ID s }
   | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
 
-  | "//"utf8_no_nl*eof { EOF }
-  | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token mode lexbuf }
-  | "//"utf8_no_nl* { token mode lexbuf (* causes error on following position *) }
-  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token mode lexbuf }
-  | space#'\n' { token mode lexbuf }
-  | '\n' { Lexing.new_line lexbuf; token mode lexbuf }
+  | "//"utf8_no_nl* as s { COMMENT s }
+  | "/*" { COMMENT (comment "/*" (Lexing.lexeme_start_p lexbuf) lexbuf) }
+  | '\t'+ as t { TAB (String.length t) }
+  | ' '+ as s { SPACE (String.length s) }
+  | "\r\n" { Lexing.new_line lexbuf; LINEFEED CRLF }
+  | '\r' { Lexing.new_line lexbuf; LINEFEED CRLF }
+  | '\n' { Lexing.new_line lexbuf; LINEFEED LF }
   | eof { EOF }
 
   | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
-and comment start = parse
-  | "*/" { () }
-  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; comment start lexbuf }
-  | '\n' { Lexing.new_line lexbuf; comment start lexbuf }
+and comment acc start = parse
+  | "*/" as s { acc ^ s }
+  | "/*" as s {
+    let inner = comment (acc ^ s) (Lexing.lexeme_start_p lexbuf) lexbuf in
+    comment inner start lexbuf
+  }
+  | '\n' { Lexing.new_line lexbuf; comment (acc ^ "\n") start lexbuf }
   | eof { error_nest start lexbuf "unclosed comment" }
-  | utf8 { comment start lexbuf }
+  | utf8 as s { comment (acc ^ s) start lexbuf }
   | _ { error lexbuf "malformed UTF-8 encoding" }

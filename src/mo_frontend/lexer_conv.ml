@@ -1,4 +1,4 @@
-module L = Lexer_new
+module L = Lexer
 module ST = Source_token
 
 type pos = { line : int; column : int }
