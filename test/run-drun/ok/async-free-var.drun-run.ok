@@ -6,4 +6,4 @@ debug.print: Now in async
 debug.print: C
 debug.print: B
 debug.print: B
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
