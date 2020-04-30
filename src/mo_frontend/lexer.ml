@@ -1,5 +1,5 @@
-module L = Lexer
 module ST = Source_token
+include Lexer_lib
 
 type pos = { line : int; column : int }
 
@@ -9,7 +9,6 @@ let pos_of_lexpos : Lexing.position -> pos =
 
 module TrivTable = Map.Make (struct
   type t = pos
-
   let compare p1 p2 = compare p1 p2
 end)
 
@@ -20,34 +19,33 @@ type trivia_info = {
 
 type triv_table = trivia_info TrivTable.t
 
-type source_token_triple = ST.token * Lexing.position * Lexing.position
-
-type source_token = Parser.token * Lexing.position * Lexing.position
+type source_token = ST.token * Lexing.position * Lexing.position
+type parser_token = Parser.token * Lexing.position * Lexing.position
 
 let un_triple (t, _, _) = t
 
 let is_gt = function ST.GT -> true | _ -> false
 
-let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
-    (int * int -> trivia_info option) * (unit -> source_token) =
+let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
+    (int * int -> trivia_info option) * (unit -> parser_token) =
   let trivia_table : triv_table ref = ref TrivTable.empty in
   let lookup_trivia (line, column) =
     TrivTable.find_opt { line; column } !trivia_table
   in
-  let lookahead : source_token_triple option ref = ref None in
+  let lookahead : source_token option ref = ref None in
   let last_trailing : ST.line_feed ST.trivia list ref = ref [] in
-  let next () : source_token_triple =
+  let next () : source_token =
     match !lookahead with
     | Some t ->
         lookahead := None;
         t
     | None ->
-        let tkn = L.token mode lexbuf in
+        let tkn = Source_lexer.token mode lexbuf in
         let start = Lexing.lexeme_start_p lexbuf in
         let end_ = Lexing.lexeme_end_p lexbuf in
         (tkn, start, end_)
   in
-  let peek () : source_token_triple =
+  let peek () : source_token =
     match !lookahead with
     | None ->
         let tkn = next () in
@@ -55,7 +53,7 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
         tkn
     | Some t -> t
   in
-  let next_source_token () : source_token =
+  let next_source_token () : parser_token =
     let has_leading_ws = function
       | [] -> false
       | x :: _ -> ST.is_whitespace x

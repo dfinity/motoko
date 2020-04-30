@@ -1,7 +1,15 @@
-exception Error of Source.region * string
+module ST = Source_token
 
-type mode = Normal | Privileged
+include module type of Lexer_lib
 
-val token : mode -> Lexing.lexbuf -> Source_token.token  (* raise Error *)
-val convert_pos : Lexing.position -> Source.pos
-val region : Lexing.lexbuf -> Source.region
+type trivia_info = {
+  leading_trivia : ST.line_feed ST.trivia list;
+  trailing_trivia : ST.void ST.trivia list;
+}
+
+type parser_token = Parser.token * Lexing.position * Lexing.position
+
+val tokenizer : mode -> Lexing.lexbuf ->
+    (int * int -> trivia_info option) * (unit -> parser_token)
+
+

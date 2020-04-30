@@ -86,7 +86,7 @@ let parse_with mode lexer parser name =
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let _, tknzr = Lexer_conv.tokenizer mode lexer in
+    let _, tknzr = Lexer.tokenizer mode lexer in
     let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tknzr lexer name in
     dump_prog Flags.dump_parse prog;
     Ok prog
