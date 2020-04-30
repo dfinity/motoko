@@ -26,8 +26,27 @@ actor {
    stable var nxnnbkddcv = (); // reject due to collision
 
    public func pub(){}; // accept as flexible (no warning)
-   func priv(){}; // accept as flexible but warn
-   private func priv1(){}; // accept as flexible but warn
-   shared func priv2(){}; // accept as flexible but warn
+   func priv(){}; // accept as flexible (no warning)
+   private func priv1(){}; // accept as flexible (no warning)
+   shared func priv2(){}; // accept as flexible (no warning)
+
+   object o1 {}; // accept as flexible (but warn)
+   flexible object o2 {}; // accept
+   stable object o3 {}; // accept
+
+   object o4 { public func f(){};}; // accept as flexible (but warn)
+   flexible object o5 {public func f(){};}; // accept
+   stable object o6 {public func f(){};}; // reject
+
+   module m1 {}; // accept as flexible
+   flexible module m2 {}; // accept
+   stable module m3 {}; // reject
+
+   class C1() {}; // accept as flexible
+   flexible class C2(){}; // reject
+   stable class C3(){}; // reject
+
    public shared func pub2(){}; // accept as flexible (no warning)
+   stable let wrong = module {}; // reject
+
 }
