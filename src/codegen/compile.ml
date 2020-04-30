@@ -3344,8 +3344,8 @@ module Dfinity = struct
       G.if_ [I32Type]
         (Variant.inject env tag Tuple.compile_unit)
         code)
-      ["sys_fatal", 1l;
-       "sys_transient", 2l;
+      ["system_fatal", 1l;
+       "system_transient", 2l;
        "destination_invalid", 3l;
        "canister_reject", 4l;
        "canister_error", 5l]

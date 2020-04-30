@@ -1,6 +1,6 @@
 import P = "mo:prim";
 
-// TODO: test #sys_fatal, #sys_transient and #future somehow
+// TODO: test #system_fatal, #system_transient and #future somehow
 // (I don't know how to trigger the first two; and the third needs a future error code)
 
 actor a {
@@ -49,8 +49,8 @@ actor a {
       // nuthin
     catch e {
       switch (P.errorCode(e)) {
-        case (#sys_fatal) { assert false};
-        case (#sys_transient) { assert false};
+        case (#system_fatal) { assert false};
+        case (#system_transient) { assert false};
         case (#destination_invalid) {assert false};
         case (#canister_error) { assert false};
         case (#canister_reject) { assert false};
