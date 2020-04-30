@@ -137,7 +137,6 @@ rule token mode = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "<<" { SHLOP }
-  | space">>" { USHROP } (*TBR*)
   | "+>>" { SSHROP }
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }

@@ -121,7 +121,7 @@ let compare_tokens =
   List.iter2 (fun (t1, s1, e1) (t2, s2, e2) ->
       if t1 = t2 then ()
       else
-        Printf.printf "MISMATCH\n%s %s-%s\n%s %s-%s"
+        Printf.printf "MISMATCH\n%s %s-%s\n%s %s-%s\n"
           (Source_token.string_of_parser_token t1)
           (string_of_lex_pos s1) (string_of_lex_pos e1)
           (Source_token.string_of_parser_token t2)
@@ -201,6 +201,7 @@ let run_lex_diff () =
 [#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday];
 |};
       "+127\n  -127;\n";
+      "";
     ]
   in
 
@@ -226,6 +227,6 @@ let run_lex_diff () =
   compare_lexers_priv (fun () -> Lexing.from_string Prelude.prelude);
   compare_lexers_priv (fun () -> Lexing.from_string Prelude.prim_module)
 
-let () = run_docs ()
+(* let () = run_docs () *)
 
-(* let () = run_lex_diff () *)
+let () = run_lex_diff ()

@@ -27,6 +27,8 @@ type source_token = Parser.token * Lexing.position * Lexing.position
 
 let un_triple (t, _, _) = t
 
+let is_gt = function ST.GT -> true | _ -> false
+
 let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     (int * int -> trivia_info option) * (unit -> source_token) =
   let trivia_table : triv_table ref = ref TrivTable.empty in
@@ -55,34 +57,50 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
     | Some t -> t
   in
   let next_source_token () : source_token =
+    (* print_endline "GIMME"; *)
     let has_leading_ws = function
       | [] -> false
       | x :: _ -> ST.is_whitespace x
     in
     let has_trailing_ws xs = has_leading_ws (List.rev xs) in
     let rec eat_leading acc =
+      (* print_endline "GIMME_LEADING"; *)
       let tkn, start, end_ = next () in
       match ST.to_parser_token tkn with
       | Ok Parser.SEMICOLON when ST.is_line_feed (un_triple (peek ())) ->
-        (List.rev acc, (Parser.SEMICOLON_EOL, start, end_))
+          (List.rev acc, (Parser.SEMICOLON_EOL, start, end_))
+      (* GTOP used to be defined as space">>". For the REPL we need the underlying
+         lexer to be able to commit to a LINE token after seeing a '\n' though,
+         so we disambiguate here *)
+      | Ok Parser.GT
+        when (acc <> [] || !last_trailing <> []) && is_gt (un_triple (peek ()))
+        ->
+          let _, _, end_ = next () in
+          (acc, (Parser.USHROP, start, end_))
       | Ok t -> (List.rev acc, (t, start, end_))
       | Error t -> eat_leading (t :: acc)
     in
     let rec eat_trailing acc =
-      match ST.is_lineless_trivia (un_triple (peek ())) with
-      | Some t ->
-          ignore (next ());
-          eat_trailing (t :: acc)
-      | None -> List.rev acc
+      (* print_endline "GIMME_TRAILING"; *)
+      (* In REPL situations we can't peek further without blocking the repl*)
+      if Lexing.(lexbuf.lex_curr_pos = lexbuf.lex_buffer_len) then acc
+      else
+        match ST.is_lineless_trivia (un_triple (peek ())) with
+        | Some t ->
+            ignore (next ());
+            eat_trailing (t :: acc)
+        | None -> List.rev acc
     in
     let leading_trivia, (token, start, end_) = eat_leading [] in
     let leading_ws = has_trailing_ws (!last_trailing @ leading_trivia) in
     let trailing_trivia = eat_trailing [] in
     let trailing_ws =
-      if trailing_trivia = [] then
-        peek ()
-        |> un_triple
-        |> ST.to_parser_token
+      if
+        trailing_trivia = []
+        && (* In REPL situations we can't peek further without blocking the repl*)
+        not Lexing.(lexbuf.lex_curr_pos = lexbuf.lex_buffer_len)
+      then
+        peek () |> un_triple |> ST.to_parser_token
         |> Result.fold ~ok:(Fun.const false) ~error:ST.is_whitespace
       else has_leading_ws trailing_trivia
     in
@@ -98,6 +116,7 @@ let tokenizer (mode : L.mode) (lexbuf : Lexing.lexbuf) :
       TrivTable.add (pos_of_lexpos start)
         { leading_trivia; trailing_trivia }
         !trivia_table;
+    (* Printf.printf "Emitting: %s\n" (ST.string_of_parser_token token); *)
     (token, start, end_)
   in
   (lookup_trivia, next_source_token)
