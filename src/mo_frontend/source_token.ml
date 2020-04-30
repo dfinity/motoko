@@ -46,7 +46,6 @@ type token =
   | SHARED
   | QUERY
   | SEMICOLON
-  | SEMICOLON_EOL
   | COMMA
   | COLON
   | SUB
@@ -69,15 +68,12 @@ type token =
   | OROP
   | XOROP
   | SHLOP
-  | USHROP
   | SSHROP
   | ROTLOP
   | ROTROP
   | EQOP
   | NEQOP
   | LEOP
-  | LTOP
-  | GTOP
   | GEOP
   | HASH
   | EQ
@@ -159,7 +155,6 @@ let to_parser_token :
   | SYSTEM -> Ok Parser.SYSTEM
   | QUERY -> Ok Parser.QUERY
   | SEMICOLON -> Ok Parser.SEMICOLON
-  | SEMICOLON_EOL -> Ok Parser.SEMICOLON_EOL
   | COMMA -> Ok Parser.COMMA
   | COLON -> Ok Parser.COLON
   | SUB -> Ok Parser.SUB
@@ -182,15 +177,12 @@ let to_parser_token :
   | OROP -> Ok Parser.OROP
   | XOROP -> Ok Parser.XOROP
   | SHLOP -> Ok Parser.SHLOP
-  | USHROP -> Ok Parser.USHROP
   | SSHROP -> Ok Parser.SSHROP
   | ROTLOP -> Ok Parser.ROTLOP
   | ROTROP -> Ok Parser.ROTROP
   | EQOP -> Ok Parser.EQOP
   | NEQOP -> Ok Parser.NEQOP
   | LEOP -> Ok Parser.LEOP
-  | LTOP -> Ok Parser.LTOP
-  | GTOP -> Ok Parser.GTOP
   | GEOP -> Ok Parser.GEOP
   | HASH -> Ok Parser.HASH
   | EQ -> Ok Parser.EQ
