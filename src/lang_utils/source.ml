@@ -1,5 +1,5 @@
 type pos = {file : string; line : int; column : int}
-type region = {left : pos; right : pos}
+type region = {left : pos; right : pos; sugar : bool}
 type ('a, 'b) annotated_phrase = {at : region; it : 'a; mutable note: 'b}
 type 'a phrase = ('a, unit) annotated_phrase
 
@@ -8,9 +8,9 @@ let (@@) it at = {it; at; note = ()}
 (* Positions and regions *)
 
 let no_pos = {file = ""; line = 0; column = 0}
-let no_region = {left = no_pos; right = no_pos}
+let no_region = {left = no_pos; right = no_pos; sugar = false}
 
-let span r1 r2 = {left = r1.left; right = r2.right}
+let span r1 r2 = {left = r1.left; right = r2.right; sugar = r1.sugar || r2.sugar}
 
 let string_of_pos pos =
   if pos.line = -1 then

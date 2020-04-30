@@ -21,7 +21,8 @@ let position_to_pos position =
 
 let positions_to_region position1 position2 =
   { left = position_to_pos position1;
-    right = position_to_pos position2
+    right = position_to_pos position2;
+    sugar = false;
   }
 
 let at (startpos, endpos) = positions_to_region startpos endpos
@@ -58,21 +59,20 @@ let assign_op lhs rhs_f at =
 
 let let_or_exp named x e' at =
   if named
-  then LetD(VarP(x) @! at, e' @? at) @? at
-       (* If you change the above regions,
-          modify is_sugared_func_or_module to match *)
-  else ExpD(e' @? at) @? at
+  then LetD(VarP(x) @! at, e' @? at) @? {at with sugar = true }
+  else ExpD(e' @? at) @? {at with sugar = true}
 
-let is_sugared_func_or_module dec = match dec.it with
-  | LetD({it = VarP _; _} as pat, exp) ->
-    dec.at = pat.at && pat.at = exp.at &&
-    (match exp.it with
-     | ObjE (sort, _) ->
-       sort.it = Type.Module
-     | FuncE _ ->
-       true
-     | _ -> false)
-  | _ -> false
+let is_sugared_func_or_module dec =
+  dec.at.sugar &&
+    match dec.it with
+    | LetD({it = VarP _; _}, exp) ->
+      (match exp.it with
+       | ObjE (sort, _) ->
+	 sort.it = Type.Module
+       | FuncE _ ->
+	 true
+       | _ -> false)
+    | _ -> false
 
 let share_typ t =
   match t.it with

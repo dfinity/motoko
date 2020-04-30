@@ -13,7 +13,7 @@ let convert_pos pos =
 let region lexbuf =
   let left = convert_pos (Lexing.lexeme_start_p lexbuf) in
   let right = convert_pos (Lexing.lexeme_end_p lexbuf) in
-  {Source.left = left; Source.right = right}
+  {Source.left = left; Source.right = right; sugar = false}
 
 let error lexbuf msg = raise (Error (region lexbuf, msg))
 let error_nest start lexbuf msg =

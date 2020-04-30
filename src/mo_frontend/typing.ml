@@ -263,11 +263,11 @@ let region_of_scope env typ =
 
 let string_of_region r =
   let open Source in
-  let { left; right } = r in
+  let { left; right; sugar } = r in
   let basename = if left.file = "" then "" else Filename.basename left.file in
   Source.string_of_region
     { left =  { left with file = basename };
-      right = { right with file = basename } }
+      right = { right with file = basename }; sugar }
 
 let associated_region env typ at =
   match region_of_scope env typ with
@@ -281,9 +281,9 @@ let associated_region env typ at =
 let scope_info env typ at =
   match region_of_scope env typ with
   | Some r ->
-    let s = {left = r.left; right = r.left} in
+    let s = { left = r.left; right = r.left; sugar = r.sugar} in
     let l = { r.right with column = r.right.column - 1 } in
-    let e = {left = l; right = l} in
+    let e = {left = l; right = l; sugar = r.sugar } in
     info env s "start of scope %s mentioned in error at %s"
       (T.string_of_typ_expand typ) (string_of_region at);
     info env e "end of scope %s mentioned in error at %s"

@@ -17,7 +17,8 @@ let position_to_pos position =
 
 let positions_to_region position1 position2 =
   { left = position_to_pos position1;
-    right = position_to_pos position2
+    right = position_to_pos position2;
+    sugar = false;
   }
 
 let at (startpos, endpos) = positions_to_region startpos endpos
