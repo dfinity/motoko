@@ -58,43 +58,35 @@ let find_completion_prefix file line column : (string * string) option =
   (* The LSP sends 0 based line numbers *)
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
-  let _, tknzr = Lexer_conv.tokenizer Lexer.Normal lexbuf in
+  let _, tknzer = Lexer_conv.tokenizer Lexer.Normal lexbuf in
   let next () =
-    let t, _, _ = tknzr () in
-    t
+    let t, start, end_ = tknzer () in
+    (t, Lexer.convert_pos start, Lexer.convert_pos end_)
   in
   let pos_eq_cursor pos = pos.line = line && pos.column = column in
   let pos_past_cursor pos =
     pos.line > line || (pos.line = line && pos.column > column)
   in
-  let rec loop = function
-    | _ when pos_past_cursor (Lexer.region lexbuf).right -> None
+  let rec loop (tkn, start, end_) =
+    match tkn with
+    | _ when pos_past_cursor end_ -> None
     | Parser.ID ident -> (
-        let next_token_end = (Lexer.region lexbuf).right in
-        if pos_eq_cursor next_token_end then Some ("", ident)
+        if pos_eq_cursor end_ then Some ("", ident)
         else
           match next () with
-          | Parser.DOT -> (
-              let next_token = next () in
-              let next_token_start = (Lexer.region lexbuf).left in
-              if
-                pos_eq_cursor next_token_start
-                || pos_past_cursor next_token_start
-              then Some (ident, "")
+          | Parser.DOT, _, _ -> (
+              let ((tkn, start, end_) as next_token) = next () in
+              if pos_eq_cursor start || pos_past_cursor start then
+                Some (ident, "")
               else
-                match next_token with
+                match tkn with
                 | Parser.EOF -> Some (ident, "")
                 | Parser.ID prefix ->
-                    let next_token_start = (Lexer.region lexbuf).left in
-                    let next_token_end = (Lexer.region lexbuf).right in
-                    if
-                      pos_eq_cursor next_token_start
-                      || pos_past_cursor next_token_start
-                    then Some (ident, "")
-                    else if pos_eq_cursor next_token_end then
-                      Some (ident, prefix)
-                    else loop (Parser.ID prefix)
-                | tkn -> loop tkn )
+                    if pos_eq_cursor start || pos_past_cursor start then
+                      Some (ident, "")
+                    else if pos_eq_cursor end_ then Some (ident, prefix)
+                    else loop next_token
+                | _ -> loop next_token )
           | tkn -> loop tkn )
     | Parser.EOF -> None
     | _ -> loop (next ())
