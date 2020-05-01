@@ -1196,7 +1196,7 @@ and check_exp' env0 t exp : T.typ =
         "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
-    t
+    t'
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1792,7 +1792,12 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) ->
     infer_exp env exp
   | IgnoreD exp ->
-    if not env.pre then check_exp env T.Any exp;
+    if not env.pre then
+    begin
+      check_exp env T.Any exp;
+      if T.sub exp.note.note_typ T.unit then
+        info env dec.at "redundant ignore: argument has type () and can be used as an expression declaration without an explicit ignore"
+    end;
     T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
