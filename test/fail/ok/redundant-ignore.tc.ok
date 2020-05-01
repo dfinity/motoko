@@ -1,0 +1,3 @@
+redundant-ignore.mo:3.1-3.10: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
+redundant-ignore.mo:4.1-4.11: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
+redundant-ignore.mo:6.1-6.10: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
