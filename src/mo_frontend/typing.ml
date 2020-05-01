@@ -1796,7 +1796,7 @@ and infer_dec env dec : T.typ =
     begin
       check_exp env T.Any exp;
       if T.sub exp.note.note_typ T.unit then
-        info env dec.at "redundant ignore: argument has type () and can be used as an expression declaration without an explicit ignore"
+        info env dec.at "redundant ignore: argument has type () and can be used as a declaration without an explicit ignore"
     end;
     T.unit
   | VarD (_, exp) ->

@@ -1,6 +1,6 @@
-redundant-ignore.mo:4.1-4.10: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
-redundant-ignore.mo:5.1-5.11: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
-redundant-ignore.mo:6.1-6.9: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
-redundant-ignore.mo:11.3-11.12: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
-redundant-ignore.mo:12.3-12.13: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
-redundant-ignore.mo:13.3-13.11: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
+redundant-ignore.mo:4.1-4.10: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
+redundant-ignore.mo:5.1-5.11: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
+redundant-ignore.mo:6.1-6.9: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
+redundant-ignore.mo:11.3-11.12: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
+redundant-ignore.mo:12.3-12.13: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
+redundant-ignore.mo:13.3-13.11: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
