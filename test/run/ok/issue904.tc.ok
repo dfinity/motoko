@@ -1,0 +1,1 @@
+issue904.mo:2.6-2.15: info, redundant ignore: argument has type () and can be used as declaration with explicit ignore
