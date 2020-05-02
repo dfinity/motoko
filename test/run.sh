@@ -310,8 +310,8 @@ do
           run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        run_if wasm valid wasm-validate --enable-multi-value $out/$base.wasm
+        run_if ref.wasm valid-ref wasm-validate --enable-multi-value  $out/$base.ref.wasm
 
         if [ -e $out/$base.wasm ]
         then
