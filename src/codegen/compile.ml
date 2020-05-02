@@ -4912,10 +4912,9 @@ module StackRep = struct
     | UnboxedWord64 -> [I64Type]
     | UnboxedWord32 -> [I32Type]
     | UnboxedFloat64 -> [F64Type]
-    | UnboxedTuple 0 -> []
-    | UnboxedTuple 1 -> [I32Type]
     | UnboxedTuple n ->
-      assert false; (* not supported without muti_value *)
+      if n > 1 then assert !Flags.multi_value;
+      Lib.List.make n I32Type
     | Const _ -> []
     | Unreachable -> []
 
