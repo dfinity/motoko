@@ -186,7 +186,8 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
    custom types section was only exported for linking, and should not be
    exported in the final module *)
   let is_ic_export (exp : export) =
-    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None
+    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None ||
+    "_start" = Wasm.Utf8.encode exp.it.name
   in
 
   let keep_export exp =
