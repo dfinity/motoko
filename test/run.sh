@@ -29,7 +29,7 @@ MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
-WASMTIME_OPTIONS="--disable-cache --cranelift"
+WASMTIME_OPTIONS="--disable-cache --cranelift --enable-multi-value"
 DRUN=${DRUN:-drun}
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_REF_RUN_WRAPPER=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
