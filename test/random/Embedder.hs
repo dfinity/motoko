@@ -30,7 +30,7 @@ isHealthy e = do
   pure $ res == ExitSuccess
 
 addCompilerArgs Reference = ("-no-system-api" :)
-addCompilerArgs (WasmTime DontPrint) = ("-no-system-api" :)
+addCompilerArgs (WasmTime DontPrint) = ("-wasi-system-api" :)
 addCompilerArgs (WasmTime WASI) = ("-wasi-system-api" :)
 addCompilerArgs Drun = id
 
