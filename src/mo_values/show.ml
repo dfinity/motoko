@@ -5,7 +5,7 @@ module T = Mo_types.Type
 let rec can_show t =
   let open T in
   match normalize t with
-  | Prim (Bool|Nat|Int|Text|Char|Null) -> true
+  | Prim (Bool|Nat|Int|Text|Char|Null|Principal) -> true
   | Prim (Nat8|Int8|Word8)
   | Prim (Nat16|Int16|Word16)
   | Prim (Nat32|Int32|Word32)

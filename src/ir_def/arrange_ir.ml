@@ -72,6 +72,7 @@ and prim = function
   | CastPrim (t1, t2) -> "CastPrim"   $$ [typ t1; typ t2]
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
+  | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
