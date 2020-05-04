@@ -29,11 +29,8 @@ let first (t, _, _) = t
 let is_gt = function ST.GT -> true | _ -> false
 
 let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
-    (unit -> parser_token) * (int * int -> trivia_info option) =
+    (unit -> parser_token) * (unit -> triv_table) =
   let trivia_table : triv_table ref = ref TrivTable.empty in
-  let lookup_trivia (line, column) =
-    TrivTable.find_opt { line; column } !trivia_table
-  in
   let lookahead : source_token option ref = ref None in
   (* We keep the trailing whitespace of the previous token
      around so we can disambiguate operators *)
@@ -104,4 +101,4 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         !trivia_table;
     (token, start, end_)
   in
-  (next_source_token, lookup_trivia)
+  (next_source_token, fun () -> !trivia_table)
