@@ -124,6 +124,7 @@ and prim =
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
   | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
+  | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
