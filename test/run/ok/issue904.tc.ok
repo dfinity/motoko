@@ -1,1 +1,1 @@
-issue904.mo:2.6-2.15: info, redundant ignore: argument has type () and can be used as a declaration without an explicit ignore
+issue904.mo:2.6-2.15: warning, redundant ignore, operand already has type ()
