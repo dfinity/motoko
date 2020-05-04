@@ -66,7 +66,7 @@ actor a {
   public func go2() : async () {
     {
       let t = "0_0";
-      ignore await async {
+      await async {
         await g0_0();
         Prim.debugPrint t;
       };
