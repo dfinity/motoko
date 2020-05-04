@@ -8,7 +8,7 @@ actor a {
     Prim.debugPrint("Unreachable code reached");
   };
   public func foo2() {
-    ignore(ys[0]);
+    ys[0];
     Prim.debugPrint("Unreachable code reached");
   };
 };
