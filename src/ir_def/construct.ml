@@ -72,6 +72,7 @@ let primE prim es =
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
+    | IcUrlOfBlob -> T.text
     | CastPrim (t1, t2) -> t2
     | _ -> assert false (* implement more as needed *)
   in
