@@ -48,7 +48,6 @@ actor a {
       };
     };
 
-/* Skip this test while drun crashing
     try {
       await invalid.request();
     }
@@ -58,7 +57,7 @@ actor a {
         case _ { assert false; }
       }
     };
-*/
+
   }
 };
 

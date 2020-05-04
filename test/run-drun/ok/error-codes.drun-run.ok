@@ -1,4 +1,6 @@
 ingress System
 debug.print: canister_reject:ball
 debug.print: canister_error:IC0503: Canister ic:2A012B trapped explicitly: assertion failed at error-codes.mo:10.33-10.50
-ingress Completed: Canister: Reply: 0x4449444c0000
+thread 'Coordinator' panicked at 'internal error: entered unreachable code: We do not yet handle the case where the registry returns an error. DFN-959.', messaging/src/routing/stream_builder.rs:161:21
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+thread 'main' panicked at 'Failed to send batch 40: background worker is dead', messaging/src/message_routing.rs:175:51
