@@ -58,9 +58,9 @@ let find_completion_prefix file line column : (string * string) option =
   (* The LSP sends 0 based line numbers *)
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
-  let tknzer, _ = Lexer.tokenizer Lexer.Normal lexbuf in
+  let tokenizer, _ = Lexer.tokenizer Lexer.Normal lexbuf in
   let next () =
-    let t, start, end_ = tknzer () in
+    let t, start, end_ = tokenizer () in
     (t, Lexer.convert_pos start, Lexer.convert_pos end_)
   in
   let pos_eq_cursor pos = pos.line = line && pos.column = column in

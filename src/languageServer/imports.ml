@@ -8,8 +8,8 @@ module Lsp = Lsp.Lsp_t
 type import = string * string
 
 let parse_with mode lexbuf parser =
-  let tknzr, _ = Lexer.tokenizer mode lexbuf in
-  Ok (Parsing.parse 0 (parser lexbuf.Lexing.lex_curr_p) tknzr lexbuf)
+  let tokenizer, _ = Lexer.tokenizer mode lexbuf in
+  Ok (Parsing.parse 0 (parser lexbuf.Lexing.lex_curr_p) tokenizer lexbuf)
 
 let parse_string s =
   try
