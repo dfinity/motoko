@@ -9,7 +9,11 @@ stability.mo:16.4-16.10: type error, misplaced stability modifier: expected on v
 stability.mo:17.15-17.16: type error, variable f is declared stable but has non-stable type () -> ()
 stability.mo:21.4-21.19: warning, missing stability declaration on actor field
 stability.mo:22.4-22.19: warning, missing stability declaration on actor field
-stability.mo:29.4-29.17: warning, missing stability declaration on actor field
-stability.mo:30.12-30.26: warning, missing stability declaration on actor field
-stability.mo:31.4-31.25: warning, missing stability declaration on actor field
+stability.mo:33.4-33.16: warning, missing stability declaration on actor field
+stability.mo:37.4-37.35: warning, missing stability declaration on actor field
+stability.mo:39.11-39.41: type error, variable o6 is declared stable but has non-stable type {f : () -> ()}
+stability.mo:43.11-43.23: type error, variable m3 is declared stable but has non-stable type module {}
+stability.mo:46.4-46.12: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:47.4-47.10: type error, misplaced stability modifier: expected on var or simple let declarations only
+stability.mo:50.15-50.20: type error, variable wrong is declared stable but has non-stable type module {}
 stability.mo:26.15-26.25: type error, stable variable names foo and nxnnbkddcv in actor type have colliding hashes

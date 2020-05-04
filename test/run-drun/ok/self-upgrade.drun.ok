@@ -1,17 +1,17 @@
 debug.print: init'ed
 ingress System
 debug.print: a
-Ok: Payload: 0x4449444c0000
-ingress Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: aa
-Ok: Payload: 0x4449444c0000
-ingress Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: aaa
-Ok: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: init'ed
 ingress System
 debug.print: aaa
-Ok: Payload: 0x4449444c0000
-ingress Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: aaaa
-Ok: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000

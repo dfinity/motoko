@@ -108,13 +108,16 @@ let error = Prim Error
 let char = Prim Char
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "error"; typ = unit }
+  { lab = "canister_reject"; typ = unit }
 ]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system"; typ = unit}
-      (* TBC *)
+    { lab = "system_fatal"; typ = unit};
+    { lab = "system_transient"; typ = unit};
+    { lab = "destination_invalid"; typ = unit};
+    { lab = "canister_error"; typ = unit};
+    { lab = "future"; typ = Prim Nat32};
   ])
 
 let throw = Prim Error
@@ -618,8 +621,11 @@ let shared t =
       | Array t | Opt t -> go t
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) ->
-        s = Actor ||
-          (not (s = Actor) && List.for_all (fun f -> go f.typ) fs)
+        (match s with
+         | Actor -> true
+         | Module -> false (* TODO(1452) make modules sharable *)
+         | Object -> List.for_all (fun f -> go f.typ) fs
+         | Memory -> assert false)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
@@ -645,9 +651,12 @@ let find_unshared t =
       | Array t | Opt t -> go t
       | Tup ts -> Lib.List.first_opt go ts
       | Obj (s, fs) ->
-        if s = Actor
-        then None
-        else Lib.List.first_opt (fun f -> go f.typ) fs
+        (match s with
+         | Actor -> None
+         | Module -> Some t (* TODO(1452) make modules sharable *)
+         | Object ->
+           Lib.List.first_opt (fun f -> go f.typ) fs
+         | Memory -> assert false)
       | Variant fs -> Lib.List.first_opt (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         if is_shared_sort s

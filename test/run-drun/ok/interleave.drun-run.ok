@@ -18,4 +18,4 @@ debug.print:   e-exit
 
 debug.print: g-exit
 
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000

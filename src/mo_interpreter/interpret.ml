@@ -153,7 +153,7 @@ let reject async v =
   | V.Tup [ _code; message ] ->
     (* mask the error code before rejecting *)
     Scheduler.queue
-      (fun () -> reject_async async (V.Tup [V.Variant("error", V.unit); message]))
+      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]))
   | _ -> assert false
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =

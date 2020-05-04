@@ -93,8 +93,7 @@ actor Life {
   flexible var src = Grid(state);
   flexible var dst = Grid(state);
 
-  // TODO(1427)
-  flexible func update(c : Nat) {
+  func update(c : Nat) {
     var i = c;
     while (i > 0) {
       src.next(dst);
@@ -105,13 +104,11 @@ actor Life {
     };
   };
 
-  // TODO(1427)
-  system flexible func preupgrade() {
+  system func preupgrade() {
    state := src.toState();
   };
 
-  // TODO(1427)
-  system flexible func postupgrade() {
+  system func postupgrade() {
     P.debugPrint("upgraded!");
   };
 
