@@ -1217,7 +1217,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         "expected function type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1);
       if inst.it = None then
-        info env Source.{left = exp1.at.right; right = exp2.at.left}
+        info env (Source.between exp1.at exp2.at)
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
