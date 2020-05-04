@@ -1792,11 +1792,10 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) ->
     infer_exp env exp
   | IgnoreD exp ->
-    if not env.pre then
-    begin
+    if not env.pre then begin
       check_exp env T.Any exp;
       if T.sub exp.note.note_typ T.unit then
-        info env dec.at "redundant ignore: argument has type () and can be used as a declaration without an explicit ignore"
+        warn env dec.at "redundant ignore, operand already has type ()"
     end;
     T.unit
   | VarD (_, exp) ->
