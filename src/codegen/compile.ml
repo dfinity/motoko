@@ -1749,13 +1749,13 @@ module ReadBuf = struct
   let read_byte env get_buf =
     check_space env get_buf (compile_unboxed_const 1l) ^^
     get_ptr get_buf ^^
-    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
     advance get_buf (compile_unboxed_const 1l)
 
   let read_word16 env get_buf =
     check_space env get_buf (compile_unboxed_const 2l) ^^
     get_ptr get_buf ^^
-    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)}) ^^
     advance get_buf (compile_unboxed_const 2l)
 
   let read_word32 env get_buf =
@@ -2762,7 +2762,7 @@ module Blob = struct
           payload_ptr_unskewed ^^
           get_i ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
           set_a ^^
 
 
@@ -2770,7 +2770,7 @@ module Blob = struct
           payload_ptr_unskewed ^^
           get_i ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
           set_b ^^
 
           get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -3206,7 +3206,7 @@ module Dfinity = struct
 
           get_iovec_ptr ^^
           compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
-          G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Memory.Pack8}) ^^
+          G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Types.Pack8}) ^^
 
           (* Call fd_write twice to work around
              https://github.com/bytecodealliance/wasmtime/issues/629
@@ -3992,7 +3992,7 @@ module Serialization = struct
 
       let write_byte code =
         get_data_buf ^^ code ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       in
 
@@ -4040,17 +4040,17 @@ module Serialization = struct
       | Prim (Int16|Nat16|Word16) ->
         get_data_buf ^^
         get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack16}) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
         compile_unboxed_const 2l ^^ advance_data_buf
       | Prim (Int8|Nat8|Word8) ->
         get_data_buf ^^
         get_x ^^ UnboxedSmallWord.lsb_adjust Word8 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Prim Bool ->
         get_data_buf ^^
         get_x ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Tup [] -> (* e(()) = null *)
         G.nop

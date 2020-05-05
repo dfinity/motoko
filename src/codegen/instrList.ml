@@ -103,17 +103,22 @@ let with_region (pos : Source.region) (body : t) : t =
 
 (* Depths-managing combinators *)
 
+let as_block_type : stack_type -> block_type = function
+  | [] -> ValBlockType None
+  | [t] -> ValBlockType (Some t)
+  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
+
 let if_ (ty : stack_type) (thn : t) (els : t) : t =
   fun d pos rest ->
-    (If (ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
 
 let block_ (ty : stack_type) (body : t) : t =
   fun d pos rest ->
-    (Block (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 let loop_ (ty : stack_type) (body : t) : t =
   fun d pos rest ->
-    (Loop (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
