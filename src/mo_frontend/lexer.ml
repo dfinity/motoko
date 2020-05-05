@@ -26,7 +26,8 @@ type parser_token = Parser.token * Lexing.position * Lexing.position
 
 let first (t, _, _) = t
 
-let is_gt = function ST.GT -> true | _ -> false
+let opt_is_whitespace : 'a ST.trivia option -> bool =
+ fun x -> Option.fold ~none:false ~some:ST.is_whitespace x
 
 let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
     (unit -> parser_token) * (unit -> triv_table) =
@@ -54,9 +55,6 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         token
     | Some t -> t
   in
-    let has_whitespace triv =
-      List.find_opt ST.is_whitespace triv |> Option.is_some
-    in
   let next_parser_token () : parser_token =
     let rec eat_leading acc =
       let token, start, end_ = next () in
@@ -67,8 +65,8 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       (* >> can either close two nested type applications, or be a shift
          operator depending on whether it's prefixed with whitespace *)
       | Ok Parser.GT
-        when has_whitespace (!last_trailing @ acc)
-             && is_gt (first (peek ())) ->
+        when opt_is_whitespace (Lib.List.hd_opt (acc @ List.rev !last_trailing))
+             && first (peek ()) = ST.GT ->
           let _, _, end_ = next () in
           (acc, (Parser.USHROP, start, end_))
       | Ok t -> (List.rev acc, (t, start, end_))
@@ -83,9 +81,12 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
     in
     let leading_trivia, (token, start, end_) = eat_leading [] in
     let trailing_trivia = eat_trailing [] in
-    let leading_ws () = has_whitespace (!last_trailing @ leading_trivia) in
+    let leading_ws () =
+      opt_is_whitespace (Lib.List.last_opt (!last_trailing @ leading_trivia))
+    in
     let trailing_ws () =
-      has_whitespace trailing_trivia || ST.is_line_feed (first (peek ()))
+      opt_is_whitespace (Lib.List.hd_opt trailing_trivia)
+      || (trailing_trivia = [] && ST.is_line_feed (first (peek ())))
     in
     (* Disambiguating operators based on whitespace *)
     let token =
