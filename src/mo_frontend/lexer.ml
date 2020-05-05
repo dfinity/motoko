@@ -41,17 +41,17 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         lookahead := None;
         t
     | None ->
-        let tkn = Source_lexer.token mode lexbuf in
+        let token = Source_lexer.token mode lexbuf in
         let start = Lexing.lexeme_start_p lexbuf in
         let end_ = Lexing.lexeme_end_p lexbuf in
-        (tkn, start, end_)
+        (token, start, end_)
   in
   let peek () : source_token =
     match !lookahead with
     | None ->
-        let tkn = next () in
-        lookahead := Some tkn;
-        tkn
+        let token = next () in
+        lookahead := Some token;
+        token
     | Some t -> t
   in
   let next_source_token () : parser_token =
@@ -59,8 +59,8 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       List.find_opt ST.is_whitespace triv |> Option.is_some
     in
     let rec eat_leading acc =
-      let tkn, start, end_ = next () in
-      match ST.to_parser_token tkn with
+      let token, start, end_ = next () in
+      match ST.to_parser_token token with
       (* A semicolon immediately followed by a newline gets a special token for the REPL *)
       | Ok Parser.SEMICOLON when ST.is_line_feed (first (peek ())) ->
           (List.rev acc, (Parser.SEMICOLON_EOL, start, end_))
