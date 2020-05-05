@@ -4909,16 +4909,16 @@ module StackRep = struct
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
-    | Vanilla -> [I32Type]
-    | UnboxedWord64 -> [I64Type]
-    | UnboxedWord32 -> [I32Type]
-    | UnboxedFloat64 -> [F64Type]
-    | UnboxedTuple 0 -> []
-    | UnboxedTuple 1 -> [I32Type]
+    | Vanilla -> ValBlockType (Some I32Type)
+    | UnboxedWord64 -> ValBlockType (Some I64Type)
+    | UnboxedWord32 -> ValBlockType (Some I32Type)
+    | UnboxedFloat64 -> ValBlockType (Some F64Type)
+    | UnboxedTuple 0 -> ValBlockType None
+    | UnboxedTuple 1 -> ValBlockType (Some I32Type)
     | UnboxedTuple n ->
       assert false; (* not supported without muti_value *)
-    | Const _ -> []
-    | Unreachable -> []
+    | Const _ -> ValBlockType None
+    | Unreachable -> ValBlockType None
 
   let to_string = function
     | Vanilla -> "Vanilla"
@@ -6185,10 +6185,10 @@ let compile_binop env t op =
         get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
         UnboxedSmallWord.msb_adjust ty ^^ set_res ^^
         get_a ^^ compile_eq_const 0x80000000l ^^
-        G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
+        G.if_ (ValBlockType (Some I32Type))
           begin
             get_b ^^ UnboxedSmallWord.lsb_adjust ty ^^ compile_eq_const (-1l) ^^
-            G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
+            G.if_ (ValBlockType (Some I32Type))
               (G.i Unreachable)
               get_res
           end
@@ -7030,7 +7030,7 @@ and compile_exp (env : E.t) ae exp =
        stack representation here.
        So let’s go with Vanilla. *)
     SR.Vanilla,
-    G.block_ (StackRep.to_block_type env SR.Vanilla) (
+    G.block_ (ValBlockType (Some I32Type)) (
       G.with_current_depth (fun depth ->
         let ae1 = VarEnv.add_label ae name depth in
         compile_exp_vanilla env ae1 e
@@ -7039,7 +7039,7 @@ and compile_exp (env : E.t) ae exp =
   | LoopE e ->
     SR.Unreachable,
     let ae' = VarEnv.{ ae with lvl = NotTopLvl } in
-    G.loop_ [] (compile_exp_unit env ae' e ^^ G.i (Br (nr 0l))
+    G.loop_ (ValBlockType None) (compile_exp_unit env ae' e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
