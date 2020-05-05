@@ -326,9 +326,9 @@ let string_of_parser_token = function
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
 
-type void = { next : void }
+type void
 
-let rec absurd : void -> 'a = fun { next } -> absurd next
+let rec absurd : void -> 'a = fun v -> absurd v
 
 let map_trivia : ('a -> 'b) -> 'a trivia -> 'b trivia =
  fun f -> function
