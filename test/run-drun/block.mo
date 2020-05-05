@@ -36,11 +36,11 @@ actor a {
        Prim.debugPrintNat (f);
     };
 
-    ignore(await a);
-    ignore(await b);
-    ignore(await c);
-    ignore(await d);
-    ignore(await e);
+    await a;
+    await b;
+    await c;
+    await d;
+    await e;
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

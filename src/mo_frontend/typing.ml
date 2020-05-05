@@ -1196,7 +1196,7 @@ and check_exp' env0 t exp : T.typ =
         "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
-    t
+    t'
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1213,15 +1213,19 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
-      error env exp1.at
+      local_error env exp1.at
         "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1)
+        (T.string_of_typ_expand t1);
+      if inst.it = None then
+        info env (Source.between exp1.at exp2.at)
+          "this looks like an unintended function call, perhaps a missing ';'?";
+      T.as_func_sub T.Local n T.Non
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some [])  (* no inference required *)
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-     | _, Some _ ->
+    | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some typs -> typs in
       let ts = check_inst_bounds env tbs typs at in
@@ -1792,7 +1796,11 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) ->
     infer_exp env exp
   | IgnoreD exp ->
-    if not env.pre then check_exp env T.Any exp;
+    if not env.pre then begin
+      check_exp env T.Any exp;
+      if T.sub exp.note.note_typ T.unit then
+        warn env dec.at "redundant ignore, operand already has type ()"
+    end;
     T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);

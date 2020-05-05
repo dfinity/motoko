@@ -71,7 +71,7 @@ actor a {
     ignore(await b);
     ignore(await c);
     ignore(await d);
-    ignore(await e);
+    await e;
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
