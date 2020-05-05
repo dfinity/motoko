@@ -54,10 +54,10 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         token
     | Some t -> t
   in
-  let next_source_token () : parser_token =
     let has_whitespace triv =
       List.find_opt ST.is_whitespace triv |> Option.is_some
     in
+  let next_parser_token () : parser_token =
     let rec eat_leading acc =
       let token, start, end_ = next () in
       match ST.to_parser_token token with
@@ -101,4 +101,4 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         !trivia_table;
     (token, start, end_)
   in
-  (next_source_token, fun () -> !trivia_table)
+  (next_parser_token, fun () -> !trivia_table)
