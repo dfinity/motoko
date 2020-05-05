@@ -3289,6 +3289,20 @@ module Dfinity = struct
       });
     fi
 
+  let export_wasi_start env start_fi =
+    assert (E.mode env = Flags.WASIMode);
+    let empty_f = Func.of_body env [] [] (fun env1 ->
+      Lifecycle.trans env Lifecycle.InInit ^^
+      G.i (Call (nr start_fi)) ^^
+      Lifecycle.trans env Lifecycle.Idle
+    ) in
+    let fi = E.add_fun env "_start" empty_f in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "_start";
+      edesc = nr (FuncExport (nr fi))
+      });
+    fi
+
   let get_self_reference env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -7701,7 +7715,9 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
   let init_fi_o, start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       (Some (Dfinity.export_init env start_fi), None)
-    | Flags.WasmMode | Flags.WASIMode->
+    | Flags.WASIMode ->
+      (Some (Dfinity.export_wasi_start env start_fi), None)
+    | Flags.WasmMode ->
       (None, Some (nr start_fi))
   in
 

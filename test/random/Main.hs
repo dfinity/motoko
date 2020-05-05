@@ -100,7 +100,7 @@ runner embedder reqOutcome relevant name testCase =
                     else pure (False, res)
     in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 134) not)
     where runEmbedder = runner embedder
 (drunScriptNoFuzz, drunScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
     where runEmbedder = runner Drun
@@ -230,7 +230,7 @@ instance Arbitrary TestCase where
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   let script cases = do Turtle.output "tests.mo" $ msum (pure (withPrim mempty) : cases)
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                 ["-no-system-api", "-no-check-ir", "tests.mo"] empty
+                                 (addCompilerArgs embedder ["-no-check-ir", "tests.mo"]) empty
                         if ExitSuccess == exitCode
                         then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
                         else pure (False, res)
