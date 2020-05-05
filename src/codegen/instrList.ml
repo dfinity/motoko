@@ -10,6 +10,7 @@ features are
 open Wasm.Ast
 open Wasm.Source
 open Wasm.Values
+open Wasm.Types
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
@@ -102,17 +103,22 @@ let with_region (pos : Source.region) (body : t) : t =
 
 (* Depths-managing combinators *)
 
-let if_ (ty : block_type) (thn : t) (els : t) : t =
-  fun d pos rest ->
-    (If (ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+let as_block_type : stack_type -> block_type = function
+  | [] -> ValBlockType None
+  | [t] -> ValBlockType (Some t)
+  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
 
-let block_ (ty : block_type) (body : t) : t =
+let if_ (ty : stack_type) (thn : t) (els : t) : t =
   fun d pos rest ->
-    (Block (ty, to_nested_list d pos body) @@ pos) :: rest
+    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
 
-let loop_ (ty : block_type) (body : t) : t =
+let block_ (ty : stack_type) (body : t) : t =
   fun d pos rest ->
-    (Loop (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+
+let loop_ (ty : stack_type) (body : t) : t =
+  fun d pos rest ->
+    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
@@ -137,7 +143,7 @@ let branch_to_ (p : depth) : t =
 
 (* Convenience combinations *)
 
-let labeled_block_ (ty : block_type) depth (body : t) : t =
+let labeled_block_ (ty : stack_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
 
 (* Intended to be used within assert *)
