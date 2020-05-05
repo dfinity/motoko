@@ -173,7 +173,6 @@ let encode (em : extended_module) =
     open Wasm.Source
     open Wasm.Ast
     open Wasm.Values
-    open Wasm.Memory
 
     let op n = u8 n
     let end_ () = op 0x0b
