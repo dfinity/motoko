@@ -4908,17 +4908,19 @@ module StackRep = struct
     | Prim Float -> UnboxedFloat64
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
-  let to_block_type env = function
-    | Vanilla -> ValBlockType (Some I32Type)
-    | UnboxedWord64 -> ValBlockType (Some I64Type)
-    | UnboxedWord32 -> ValBlockType (Some I32Type)
-    | UnboxedFloat64 -> ValBlockType (Some F64Type)
-    | UnboxedTuple 0 -> ValBlockType None
-    | UnboxedTuple 1 -> ValBlockType (Some I32Type)
-    | UnboxedTuple n ->
-      assert false; (* not supported without muti_value *)
-    | Const _ -> ValBlockType None
-    | Unreachable -> ValBlockType None
+  let to_block_type env sr =
+    let ty = match sr with
+      | Vanilla -> Some I32Type
+      | UnboxedWord64 -> Some I64Type
+      | UnboxedWord32 -> Some I32Type
+      | UnboxedFloat64 -> Some F64Type
+      | UnboxedTuple 0 -> None
+      | UnboxedTuple 1 -> Some I32Type
+      | UnboxedTuple n ->
+        assert false; (* not supported without multi_value *)
+      | Const _ -> None
+      | Unreachable -> None in
+    ValBlockType ty
 
   let to_string = function
     | Vanilla -> "Vanilla"
