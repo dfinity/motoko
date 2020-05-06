@@ -320,12 +320,13 @@ func id<X>(x : X) : X { x };
 id<Nat>(5);
 ```
 
-* However, put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see [parenless style](#parentheses)).
+* However, put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see [parenless style](#parentheses)) or a record used as a named parameter list (see [Picking Type](#picking-types)).
 
 Example:
 ```
-f{x = 0; y = 0};
+sin 0.0;
 g [1, 2, 3];
+f{arg1 = 0; arg2 = 0};
 ```
 Rationale
 
