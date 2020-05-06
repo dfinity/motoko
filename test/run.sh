@@ -148,14 +148,17 @@ then
   fi
 fi
 
-HAVE_DRUN=no
-HAVE_IC_REF_RUN=no
+HAVE_drun=no
+HAVE_ic_ref_run=no
+
+FLAGS_drun=
+FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
   if $DRUN --version >& /dev/null
   then
-    HAVE_DRUN=yes
+    HAVE_drun=yes
   else
     if [ $ACCEPT = yes ]
     then
@@ -163,7 +166,7 @@ then
       exit 1
     else
       echo "WARNING: Could not run $DRUN, will skip some tests"
-      HAVE_DRUN=no
+      HAVE_drun=no
     fi
   fi
 fi
@@ -172,7 +175,7 @@ if [ $DTESTS = yes ]
 then
   if $IC_REF_RUN --help >& /dev/null
   then
-    HAVE_IC_REF_RUN=yes
+    HAVE_ic_ref_run=yes
   else
     if [ $ACCEPT = yes ]
     then
@@ -180,7 +183,7 @@ then
       exit 1
     else
       echo "WARNING: Could not run $IC_REF_RUN, will skip some tests"
-      HAVE_IC_REF_RUN=no
+      HAVE_ic_ref_run=no
     fi
   fi
 fi
@@ -301,8 +304,8 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $MOC $moc_extra_flags -ref-system-api --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $MOC $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $MOC $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -333,15 +336,15 @@ do
         then
           if [ $DTESTS = yes ]
           then
-            if [ $HAVE_DRUN = yes ]; then
+            if [ $HAVE_drun = yes ]; then
               run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
             fi
-            if [ $HAVE_IC_REF_RUN = yes ]; then
+            if [ $HAVE_ic_ref_run = yes ]; then
               run_if ref.wasm ic-ref-run $IC_REF_RUN_WRAPPER $out/$base.ref.wasm $mangled
             fi
           elif [ $PERF = yes ]
           then
-            if [ $HAVE_DRUN = yes ]; then
+            if [ $HAVE_drun = yes ]; then
               run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
@@ -375,36 +378,42 @@ do
       continue
     fi
 
-    if [ $HAVE_DRUN != yes ]
-    then
-      $ECHO "skipped (no drun)";
-      continue
-    fi
-
     # The file is a drun script, so a multi-canister project
     mkdir -p $out/$base
 
-    # collect all .mo files referenced from the file
-    mo_files="$(grep -o '[^[:space:]]\+\.mo' $file |sort -u)"
-
-    for mo_file in $mo_files
+    for runner in ic-ref-run drun
     do
-      mo_base=$(basename $mo_file .mo)
-      if [ "$(dirname $mo_file)" != "$base" ];
+
+      have_var_name="HAVE_${runner//-/_}"
+      if [ ${!have_var_name} != yes ]
       then
-        $ECHO ""
-        echo "$file references $mo_file which is not in directory $base"
-        exit 1
+        $ECHO "skipped (no drun)";
+        continue
       fi
 
-      run $mo_base.comp $MOC $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.wasm
+      # collect all .mo files referenced from the file
+      mo_files="$(grep -o '[^[:space:]]\+\.mo' $file |sort -u)"
+
+      for mo_file in $mo_files
+      do
+        mo_base=$(basename $mo_file .mo)
+        if [ "$(dirname $mo_file)" != "$base" ];
+        then
+          $ECHO ""
+          echo "$file references $mo_file which is not in directory $base"
+          exit 1
+        fi
+
+        flags_var_name="FLAGS_${runner//-/_}"
+        run $mo_base.$runner.comp $MOC ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+      done
+
+      # mangle drun script
+      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $file > $out/$base/$base.$runner.drun
+
+      # run drun
+      run $runner $DRUN_WRAPPER $out/$base/$base.$runner.drun
     done
-
-    # mangle drun script
-    LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.wasm," < $file > $out/$base/$base.drun
-
-    # run drun
-    run drun $DRUN_WRAPPER $out/$base/$base.drun
 
   ;;
   "sh")
