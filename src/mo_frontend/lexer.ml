@@ -90,7 +90,7 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       | _ -> token
     in
     last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
-    (* Hashtbl.add trivia_table (pos_of_lexpos start) { leading_trivia; trailing_trivia }; *)
+    Hashtbl.add trivia_table (pos_of_lexpos start) { leading_trivia; trailing_trivia };
     (token, start, end_)
   in
   (next_parser_token, fun () -> trivia_table)
