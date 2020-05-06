@@ -1,17 +1,17 @@
 # Candid Specification
 
-Version: 0.1
+Version: 0.1.0
 
-Date: May 5, 2020
+Date: May 4, 2020
 
 ## Motivation
 
-To document, discover, and interact with actors on the Internet Computer, we need an interface description language (IDL) for specifying the signature of a _canister_ (also known as a _service_ or _actor_).
+To document, discover, and interact with _canisters_ (also known as _services_ or _actors_) on the Internet Computer, we need an interface description language (IDL) for specifying the signature of a canister.
 
 #### Goals:
 
-* Language-independent description of actor interfaces and the data they
-exchange (names, parameter and result formats of actor methods)
+* Language-independent description of canister interfaces and the data they
+exchange (names, parameter and result formats of service methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
 * Well-formedness is checkable and guaranteed by the platform
@@ -22,7 +22,7 @@ exchange (names, parameter and result formats of actor methods)
 #### Non-Goals:
 
 * Specification of semantic constraints beyond representation concerns
-  (Rationale: (1) there is no natural boundary to what should be expressible, a scalable solution would quickly lead into the realm of program logics and/or dependent types; (2) cost and complexity for the platform, the hypervisor would have to check and guarantee these properties on every message send; (3) in general, interesting properties cannot be formulated or checked without contextual information such as an actor’s state.)
+  (Rationale: (1) there is no natural boundary to what should be expressible, a scalable solution would quickly lead into the realm of program logics and/or dependent types; (2) cost and complexity for the platform, the hypervisor would have to check and guarantee these properties on every message send; (3) in general, interesting properties cannot be formulated or checked without contextual information such as a canister’s state.)
 * Prescribing the wire format used internally by the network to transport data (though it will make sense to use an extension of the serialisation format decribed, which is fairly generic)
 
 #### Inspiration:
@@ -37,7 +37,7 @@ exchange (names, parameter and result formats of actor methods)
 
 #### Why not Protocol Buffers or others?
 
-Vanilla protocol buffers are not sufficient or well-suited for describing Dfinity actors:
+Vanilla protocol buffers are not sufficient or well-suited for describing Dfinity canisters:
 
 * They are primarily a *data description language*, not an IDL. There is syntax for defining "services", but it assumes RPCs not messaging and requires a developing a plugin (replacing the gRPC a.k.a. Stubby one) to provide a semantics.
 
@@ -467,7 +467,7 @@ type engine = service {
 
 #### Principal References
 
-A *principal reference* points to an identity, such as an actor or a user. Through this, we can authenticate or authorize other services or users.
+A *principal reference* points to an identity, such as a canister or a user. Through this, we can authenticate or authorize other services or users.
 
 ```
 <reftype> ::= ... | principal | ...
@@ -650,9 +650,9 @@ where `NI*` is the `<nat>` sequence `1`..`|<datatypeNI>*|`, respectively.
 Viewed as sets, the annotations on the functions must be equal.
 
 
-#### Actors
+#### Services
 
-For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
+For a service, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
 ```
 
 ----------------------------------------
@@ -749,7 +749,7 @@ func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* 
   ~> \x.\y.f2 (x (f1 y))
 ```
 
-#### Actors
+#### Services
 
 ```
 
@@ -822,7 +822,7 @@ The following notation is used:
 `T` maps an Candid type to a byte sequence representing that type.
 Each type constructor is encoded as a negative opcode;
 positive numbers index auxiliary *type definitions* that define more complex types.
-We assume that the fields in a record or function type are sorted by increasing id and the methods in an actor are sorted by name.
+We assume that the fields in a record or function type are sorted by increasing id and the methods in a service are sorted by name.
 
 ```
 T : <primtype> -> i8*
