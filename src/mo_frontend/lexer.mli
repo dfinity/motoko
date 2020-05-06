@@ -20,9 +20,7 @@ type trivia_info = {
   leading_trivia : ST.line_feed ST.trivia list;
   trailing_trivia : ST.void ST.trivia list;
 }
-module TrivTable : Map.S with type key = pos
-
-type triv_table = trivia_info TrivTable.t
+type triv_table = (pos, trivia_info) Hashtbl.t
 
 type parser_token = Parser.token * Lexing.position * Lexing.position
 

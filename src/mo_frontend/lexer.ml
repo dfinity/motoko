@@ -7,18 +7,12 @@ let pos_of_lexpos : Lexing.position -> pos =
  fun lexpos ->
   Lexing.{ line = lexpos.pos_lnum; column = lexpos.pos_cnum - lexpos.pos_bol }
 
-module TrivTable = Map.Make (struct
-  type t = pos
-
-  let compare p1 p2 = compare p1 p2
-end)
-
 type trivia_info = {
   leading_trivia : ST.line_feed ST.trivia list;
   trailing_trivia : ST.void ST.trivia list;
 }
 
-type triv_table = trivia_info TrivTable.t
+type triv_table = (pos, trivia_info) Hashtbl.t
 
 type source_token = ST.token * Lexing.position * Lexing.position
 
@@ -31,7 +25,7 @@ let opt_is_whitespace : 'a ST.trivia option -> bool =
 
 let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
     (unit -> parser_token) * (unit -> triv_table) =
-  let trivia_table : triv_table ref = ref TrivTable.empty in
+  let trivia_table : (pos, trivia_info) Hashtbl.t = Hashtbl.create 100 in
   let lookahead : source_token option ref = ref None in
   (* We keep the trailing whitespace of the previous token
      around so we can disambiguate operators *)
@@ -96,10 +90,7 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       | _ -> token
     in
     last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
-    trivia_table :=
-      TrivTable.add (pos_of_lexpos start)
-        { leading_trivia; trailing_trivia }
-        !trivia_table;
+    (* Hashtbl.add trivia_table (pos_of_lexpos start) { leading_trivia; trailing_trivia }; *)
     (token, start, end_)
   in
-  (next_parser_token, fun () -> !trivia_table)
+  (next_parser_token, fun () -> trivia_table)
