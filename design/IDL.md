@@ -1,6 +1,7 @@
 # Candid Specification
 
 Version: 0.5.0
+
 Date: May 5, 2020
 
 ## Motivation
@@ -57,8 +58,8 @@ Given all of the above, I expect there would be fairly little we would be able t
 
 ## Type Structure
 
-The purpose of an IDL is defining the signature, and thereby the *type* of an actor (service), that is, the set of messages and their parameter and result types. To that end, the grammar for the IDL consists mostly of a type grammar.
- 
+The purpose of an IDL is defining the signature, and thereby the *type* of an actor (service), that is, the set of messages and their parameter and result types. To that end, the grammar for Candid consists mostly of a type grammar.
+
 #### Core Grammar
 
 This is a summary of the grammar proposed:
@@ -138,7 +139,7 @@ Block comments nest properly (unlike in C).
 
 An *service* is a standalone actor on the platform that can communicate with other services via sending and receiving *messages*. Messages are sent to a service by invoking one of its *methods*, i.e., functions that the service provides.
 
-**Note:** The IDL is in fact agnostic to the exact nature of services. In particular, it could be applied to a setting where services are synchronous (objects with RPCs) instead of asynchronous (actors with bidirectional message sends).
+**Note:** Candid is in fact agnostic to the exact nature of services. In particular, it could be applied to a setting where services are synchronous (objects with RPCs) instead of asynchronous (actors with bidirectional message sends).
 
 
 #### Structure
@@ -160,7 +161,7 @@ A name is given either in the syntax of a typical programming language identifie
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
 <text> ::= "<char>*"
 ```
-Identifiers cannot be keywords of the IDL grammar. In case a name is needed that coincides with a keyword, it has to be quoted as a text string.
+Identifiers cannot be keywords of the Candid grammar. In case a name is needed that coincides with a keyword, it has to be quoted as a text string.
 
 
 #### Example
@@ -178,7 +179,7 @@ service {
 
 *Functions* are endpoints for communication.   A typical function invocation is a bidirectional communication, with *parameters* and *results*, a.k.a. request and response. A `oneway` function invocation is a uni-directional communication with zero or more parameters but no results, intended for fire-and-forget scenarios.
 
-**Note:** The IDL is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
+**Note:** Candid is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
 
 **Note:** In a synchronous interpretation of functions, invocation of a oneway function would return immediately, without waiting for completion of the service-side invocation of the function. In an asynchronous interpretation of functions, the invocation of a `oneway` function does not accept a callback (to invoke on completion).
 
@@ -348,7 +349,7 @@ An id can also be given as a *name*, which is a shorthand for a numeric id that 
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
 
-The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to an out record as long as their id has not been used before. See the discussion on upgrading below for more details.
+The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by a Candid function: a new version of a Candid function can safely *add* fields to an old record as long as their id has not been used before. See the discussion on upgrading below for more details.
 
 The hash function is specified as
 ```
@@ -773,7 +774,7 @@ service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>;
 
 ## Binary Format
 
-At runtime, every IDL value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
+At runtime, every Candid value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
 
 By making the type of the data explicit, (1) the serialised data becomes self-describing, which is useful for tooling, (2) error discovery and error handling is improved, (3) the binary format is decoupled from versioning concerns, so that the latter can be designed more flexible.
 
@@ -788,16 +789,16 @@ Note:
 
 ### Serialisation
 
-This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+This section describes how abstract *Candid values* of the types described by Candid are serialised into a binary representation for transfer between actors.
 
 Serialisation is defined by three functions `T`, `M`, and `R` given below.
 
-Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references and principal references:
+Most Candid values are self-explanatory, except for references. There are two forms of Candid values for actor references and principal references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
 
-Likewise, there are two forms of IDL values for function references:
+Likewise, there are two forms of Candid values for function references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
@@ -818,7 +819,7 @@ The following notation is used:
 
 #### Types
 
-`T` maps an IDL type to a byte sequence representing that type.
+`T` maps an Candid type to a byte sequence representing that type.
 Each type constructor is encoded as a negative opcode;
 positive numbers index auxiliary *type definitions* that define more complex types.
 We assume that the fields in a record or function type are sorted by increasing id and the methods in an actor are sorted by name.
@@ -894,7 +895,7 @@ Note:
 
 #### Memory
 
-`M` maps an IDL value to a byte sequence representing that value. The definition is indexed by type.
+`M` maps an Candid value to a byte sequence representing that value. The definition is indexed by type.
 We assume that the fields in a record value are sorted by increasing id.
 
 ```
@@ -934,7 +935,7 @@ M(id(v*) : principal) = i8(1) M(v* : vec nat8)
 
 #### References
 
-`R` maps an IDL value to the sequence of references contained in that value. The definition is indexed by type.
+`R` maps an Candid value to the sequence of references contained in that value. The definition is indexed by type.
 We assume that the fields in a record value are sorted by increasing id.
 
 ```
@@ -1001,7 +1002,7 @@ Note:
 
 ## Text Format
 
-To enable convenient debugging, we also specify a text format for IDL values.
+To enable convenient debugging, we also specify a text format for Candid values.
 The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
 
 ```
