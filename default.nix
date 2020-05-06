@@ -180,7 +180,6 @@ rec {
     # And test/run-drun is actually run twice (once with drun and once with ic-ref-run)
     let test_subdir = dir: deps:
       testDerivation {
-        name = "test-${dir}";
         # include from test/ only the common files, plus everything in test/${dir}/
         src =
           with nixpkgs.lib;
@@ -240,7 +239,6 @@ rec {
       }); in
 
     let qc = testDerivation {
-      name = "test-qc";
       buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
@@ -249,7 +247,6 @@ rec {
     }; in
 
     let lsp = testDerivation {
-      name = "test-lsp";
       src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
@@ -258,8 +255,7 @@ rec {
       '';
     }; in
 
-    let unit-tests = ocamlTestDerivation {
-      name = "unit-tests";
+    let unit = ocamlTestDerivation {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
@@ -270,7 +266,12 @@ rec {
       '';
     }; in
 
-    { run        = test_subdir "run"        [ moc ] ;
+    let fix_names = builtins.mapAttrs (name: deriv:
+      deriv.overrideAttrs (_old: { name = "test-${name}"; })
+    ); in
+
+    fix_names {
+      run        = test_subdir "run"        [ moc ] ;
       drun       = test_subdir "run-drun"   [ moc drun ];
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
       perf       = perf_subdir "perf"       [ moc drun ];
@@ -281,7 +282,7 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit-tests;
+      inherit qc lsp unit;
     };
 
   samples = stdenv.mkDerivation {
