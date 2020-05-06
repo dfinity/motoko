@@ -1,23 +1,20 @@
 ## Installation using Nix
 
-To install the `moc` binary into your nix environment, use
-
+If you want just to _use_ `moc`, you can install the `moc` binary into your nix
+environment with
 ```
 $ nix-env -i -f . -A moc
 ```
 
+
 ## Development using Nix
 
-The command that should always pass on master is the following; it builds everything:
-```
-$ nix-build --no-out-link
-```
-
-To enter a shell with the necessary dependencies, you can use
+To enter a shell with the necessary dependencies available, use
 ```
 $ nix-shell
 ```
-within this shell you can run
+
+Within this shell you can run
  * `make` in `src/` to build all binaries,
  * `make moc` in `src/` to build just the `moc` binary,
  * `make DUNE_OPTS=--watch moc` to keep rebuilding as source files are changing
@@ -25,12 +22,21 @@ within this shell you can run
  * `make` in `test/` to run the test suite.
 
 This invokes `dune` under the hood, which will, as a side effect, also create
-`.merlin` files for Merlin integration.
+`.merlin` files for integration with Merlin, the Ocaml Language Server
 
-## Development without Nix
 
-You can get a development environment that is independent of nix (although
-installing all required tools without nix is out of scope).
+## Replicating CI locally
+
+A good way to check that everything is fine, i.e. if this will pass CI, is to run
+```
+$ nix-build --no-out-link
+```
+
+
+## Development without nix-shell
+
+You can get a development environment without having to use `nix-shell`
+(although installing all required tools without nix is out of scope).
 
  * Use your system’s package manager to install `ocaml` (4.07) and
    [`opam`](https://opam.ocaml.org/doc/Install.html)
@@ -38,7 +44,8 @@ installing all required tools without nix is out of scope).
    ```
    opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
    ```
- * Install various command line tools used by, in particular, the test suite:
+ * Install into your `PATH` various command line tools used by, in particular,
+   the test suite:
    ```
    nix-env -i -f . -A wasmtime
    nix-env -i -f . -A filecheck
@@ -60,7 +67,7 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
 
 ## Profile the compiler
 
-1. Build with profiling (TODO: How to do with dune)
+1. Build with profiling within nix-shell (TODO: How to do with dune)
    ```
    make -C src clean
    make BUILD=p.native -C src moc
