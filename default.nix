@@ -177,6 +177,7 @@ rec {
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
+    # And test/run-drun is actually run twice (once with drun and once with ic-ref-run)
     let test_subdir = dir: deps:
       testDerivation {
         name = "test-${dir}";
@@ -269,16 +270,17 @@ rec {
       '';
     }; in
 
-    { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-ref ];
-      perf      = perf_subdir "perf"      [ moc drun ];
-      fail      = test_subdir "fail"      [ moc ];
-      repl      = test_subdir "repl"      [ moc ];
-      ld        = test_subdir "ld"        [ mo-ld ];
-      idl       = test_subdir "idl"       [ didc ];
-      mo-idl    = test_subdir "mo-idl"    [ moc didc ];
-      trap      = test_subdir "trap"      [ moc ];
-      run-deser = test_subdir "run-deser" [ deser ];
+    { run        = test_subdir "run"        [ moc ] ;
+      drun       = test_subdir "run-drun"   [ moc drun ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
+      perf       = perf_subdir "perf"       [ moc drun ];
+      fail       = test_subdir "fail"       [ moc ];
+      repl       = test_subdir "repl"       [ moc ];
+      ld         = test_subdir "ld"         [ mo-ld ];
+      idl        = test_subdir "idl"        [ didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      trap       = test_subdir "trap"       [ moc ];
+      run-deser  = test_subdir "run-deser"  [ deser ];
       inherit qc lsp unit-tests;
     };
 
