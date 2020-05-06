@@ -111,9 +111,10 @@ let x = someFunction(   // Or this.
 ```
 
 Rationale: There are many problems with vertical alignment, for example:
-(1) it creates wildly inconsistent indentation levels that obfuscate the structure of the code;
-(2) it can produce realignment churn when changing a line, which (even when automated by editors) inflates and obfuscates diffs for changes;
-(3) it completely breaks with non-proportional fonts.
+(1) it wastes a lot of horizontal space;
+(2) it creates wildly inconsistent indentation levels that obfuscate the structure of the code;
+(3) it can produce realignment churn when changing a line, which (even when automated by editors) inflates and obfuscates diffs for changes;
+(4) it completely breaks with non-proportional fonts.
 
 * Do not use tabs.
 
