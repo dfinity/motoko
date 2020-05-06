@@ -1,6 +1,11 @@
+# Candid Specification
+
+Version: 0.5.0
+Date: May 5, 2020
+
 ## Motivation
 
-To document, discover, and interact with actors on the platform, we need an interface description language (IDL) for specifying the signature of an actor.
+To document, discover, and interact with actors on the Internet Computer, we need an interface description language (IDL) for specifying the signature of an actor.
 
 #### Goals:
 
@@ -757,48 +762,6 @@ service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>;
   ~> \x.{f1 x; <name> = f2 x.<name>}
 ```
 
-
-## Example Development Flow
-
-We take the produce exchange app as an example to illustrate how a developer would use IDL in their development flow.
-
-IDL for produce exchange server:
-```
-type TruckTypeId = nat;
-type Weight = float32;
-
-type TruckTypeInfo = record {
-  id : TruckTypeId;
-  short_name : Text;
-  description : Text;
-  capacity : opt Weight;
-  isFridge : opt bool;
-  isFreezer : opt bool;
-};
-
-service Server : {
-  registrarAddTruckType : (TruckTypeInfo) -> (opt TruckTypeId);
-  registrarRemTruckType : (id : nat) -> (opt ());
-};
-```
-
-Note:
-* `TruckTypeId` and `nat` are used interchangeably.
-
-With this IDL file, the server code in Motoko could be:
-```
-actor Server {
-  registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
-    getModel().truckTypeTable.AddInfoGetId(
-      func (id_ : TruckTypeId) : TruckTypeInfo = shared {
-        id = id_ : TruckTypeId;
-        short_name = truck_info.short_name : Text;
-        description = truck_info.description : Text;
-      }
-    )
-  }
-}
-```
 
 ## Open Questions
 
