@@ -3750,8 +3750,8 @@ module Serialization = struct
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
-            List.iter (fun f -> go f.typ) fs
-          | Array t -> go t
+            List.iter (fun f -> go (Type.as_immut f.typ)) fs
+          | Array t -> go (Type.as_immut t)
           | Opt t -> go t
           | Variant vs -> List.iter (fun f -> go f.typ) vs
           | Func (s, c, tbs, ts1, ts2) ->
@@ -3821,10 +3821,10 @@ module Serialization = struct
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
           add_leb128_32 h;
-          add_idx f.typ
+          add_idx (Type.as_immut f.typ)
         ) (sort_by_hash fs)
       | Array t ->
-        add_sleb128 (-19); add_idx t
+        add_sleb128 (-19); add_idx (Type.as_immut t)
       | Opt t ->
         add_sleb128 (-18); add_idx t
       | Variant vs ->
@@ -3919,14 +3919,14 @@ module Serialization = struct
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
-          size env f.typ
+          size env (Type.as_immut f.typ)
           ) (sort_by_hash fs)
       | Array t ->
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
-          size env t
+          size env (Type.as_immut t)
         )
       | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
@@ -4062,14 +4062,14 @@ module Serialization = struct
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h,f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
-          write env f.typ
+          write env (Type.as_immut f.typ)
         ) (sort_by_hash fs)
       | Array t ->
         write_word (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
-          write env t
+          write env (Type.as_immut t)
         )
       | Prim Null -> G.nop
       | Any -> G.nop
@@ -4347,7 +4347,7 @@ module Serialization = struct
               E.call_import env "rts" "find_field" ^^
               G.if_ [I32Type]
                 begin
-                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env (Type.as_immut f.typ)
                 end
                 begin
                   match sort with
@@ -4374,7 +4374,7 @@ module Serialization = struct
           get_len ^^ Arr.alloc env ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
             get_x ^^ get_i ^^ Arr.idx env ^^
-            get_idltyp ^^ go env t ^^
+            get_idltyp ^^ go env (Type.as_immut t) ^^
             store_ptr
           ) ^^
           get_x
