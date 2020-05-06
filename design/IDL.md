@@ -1,12 +1,12 @@
 # Candid Specification
 
-Version: 0.5.0
+Version: 0.1
 
 Date: May 5, 2020
 
 ## Motivation
 
-To document, discover, and interact with actors on the Internet Computer, we need an interface description language (IDL) for specifying the signature of an actor.
+To document, discover, and interact with actors on the Internet Computer, we need an interface description language (IDL) for specifying the signature of a _canister_ (also known as a _service_ or _actor_).
 
 #### Goals:
 
@@ -349,7 +349,7 @@ An id can also be given as a *name*, which is a shorthand for a numeric id that 
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
 
-The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by a Candid function: a new version of a Candid function can safely *add* fields to an old record as long as their id has not been used before. See the discussion on upgrading below for more details.
+The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by a function: a new version of a function can safely *add* fields to an old record as long as their id has not been used before. See the discussion on upgrading below for more details.
 
 The hash function is specified as
 ```
@@ -789,11 +789,11 @@ Note:
 
 ### Serialisation
 
-This section describes how abstract *Candid values* of the types described by Candid are serialised into a binary representation for transfer between actors.
+This section describes how abstract *Candid values* of the types described by Candid are serialised into a binary representation for transfer between services.
 
 Serialisation is defined by three functions `T`, `M`, and `R` given below.
 
-Most Candid values are self-explanatory, except for references. There are two forms of Candid values for actor references and principal references:
+Most Candid values are self-explanatory, except for references. There are two forms of Candid values for service references and principal references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
