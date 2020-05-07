@@ -1,10 +1,10 @@
 actor {
 
   flexible let array = [var 1, 2, 3];
-  flexible let obj = { var field = "hello" };
+  flexible let obj = { var field = "hello"; extra = 1 };
 
   stable let a = (array, array);
-  stable let b = (obj, obj);
+  stable let b = (obj : { var field : Text} , obj);
 
   public query func check() : async () {
     // check that mutable values are properly aliased
@@ -18,6 +18,9 @@ actor {
     assert(b.0.field == b.1.field);
     b.0.field #= "!";
     assert(b.0.field == b.1.field);
+
+    // Check that the extra field is still there
+    assert(b.1.extra == 1);
 
   };
 }
