@@ -81,7 +81,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 
 #define IDL_REF_principal (-24)
 
-#define IDL_CON_ALIAS     (1)
+#define IDL_CON_alias     (1)
 
 static bool is_primitive_type(int32_t ty) {
   static const int32_t IDL_PRIM_lowest = -17;
@@ -128,7 +128,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
-    if (ty == IDL_CON_ALIAS) { // internal
+    if (ty == IDL_CON_alias) { // internal
       int32_t t = read_i32_of_sleb128(buf);
       check_typearg(t, n_types);
     } else if (ty >= 0) {
@@ -304,6 +304,16 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
 
       case IDL_CON_service:
         idl_trap_with("skip_any: service");
+
+      case IDL_CON_alias: {
+        int32_t it = read_i32_of_sleb128(&tb);
+        uint32_t tag = read_word(b);
+        if (tag == 0) {
+          // this is the occurrence (not a reference)
+          skip_any(b, typtbl, it, 0);
+        }
+        return;
+      }
 
       default: { // future type
         uint32_t n_data = read_u32_of_leb128(b);

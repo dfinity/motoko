@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor {
 
   flexible let array = [var 0, 0, 0];
@@ -13,6 +14,8 @@ actor {
   };
 
   public query func checkRecord2() : async () {
+    Prim.debugPrint(b.1.field);
+    assert(b.1.field != "bad");
     assert(b.1.field == "hello");
     assert(b.1.extra == 1);
   };
