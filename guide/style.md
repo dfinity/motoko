@@ -711,6 +711,14 @@ To increase readability and uniformity of Motoko source code, this guide provide
   let delta = switch mode { case (#up) +1; case (#dn) -1 };
   ```
 
+* Motoko requires that all expressions in a block have type `()`, in order to prevent accidentally dropped results.
+  Use `ignore` to explicitly drop results.
+  Do _not_ use `ignore` when it's not needed.
+
+  ```
+  ignore async f();  // fire of a computation
+  ```
+
 * Motoko allows to omit the `return` at the end of a function, because a block evaluates to its last expression.
   Use this when a function is short and in "functional" style, i.e., does not contain complex control flow or side effects.
   Use explicit `return` at the end when the function contains other `return` statements or imperative control flow.
