@@ -4613,7 +4613,7 @@ module Serialization = struct
             ]
         );
       | Obj (Actor, _) ->
-        with_composite_typ idl_record (fun _get_typ_buf -> read_actor_data ())
+        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
         read_alias env (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
