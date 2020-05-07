@@ -452,8 +452,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   In particular, do not omit parentheses and braces on statements at the same time.
 
   ```
-  // COUNTER EXAMPLES
-
+  // COUNTER EXAMPLES!
   let choice = if flag x + y else z;  // DO NOT DO THIS!
 
   switch val {
@@ -464,15 +463,25 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   Rationale: Omitting both at the same time makes the code harder to read, since there is less visual clue how it groups.
 
+* Similarly, do not omit parentheses around function parameters if the function also has type parameters.
+
+  ```
+  // COUNTER EXAMPLE!
+  foo<Nat> 0;   // DO NOT DO THIS!
+  ```
+
 * Omit parentheses around argument types of a function type with a single argument and no type parameters.
-  But use parentheses around the arguments when functions or classes have type parameters.
+  But do not omit them around when functions or classes also have type parameters.
 
   ```
   type Inv = Nat -> Nat;
   type Id = <T>(T) -> T;
   type Get = <X>(C<X>) -> X;
 
-  func add<T>({})
+  // COUNTER EXAMPLE!
+  type Get = <X>C<X> -> X;   // DO NOT DO THIS!
+
+
   ```
 
 
@@ -649,6 +658,12 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 ### Picking Types
 
+* Use `Nat` for any integral value that cannot be negative.
+
+* Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, or when matching types imposed by external requirements, such as other canisters.
+
+* Use `WordN` only when bit-fiddling requires the low-level interpretation of a number as a vector of bits.
+
 * Use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
 
   ```
@@ -674,12 +689,76 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 ## Features
 
-TODO...
+### Statements
 
-* Return
+* Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
 
-* Mutable State
+  ```
+  for (i in range(1, 10)) { ... };
+  for (x in array.vals()) { ... };
+  ```
 
-* Doc comments?
+  Rationale:
+  For loops are less error-prone and easier to read.
 
-* What else...
+* Use `if` or `switch` as expressions where appropriate.
+
+  ```
+  func abs(i : Int) : Int {
+    if (i < 0) -i else i;
+  };
+
+  let delta = switch mode { case (#up) +1; case (#dn) -1 };
+  ```
+
+* Motoko allows to omit the `return` at the end of a function, because a block evaluates to its last expression.
+  Use this when a function is short and in "functional" style, i.e., does not contain complex control flow or side effects.
+  Use explicit `return` at the end when the function contains other `return` statements or imperative control flow.
+
+  ```
+  func add(i : Nat, j : Nat) : Nat { i + j };
+
+  func foo(a : Float, b : Float) : Float {
+    let c = a*a + b*b;
+    c + 2*c*c;
+  };
+
+  func gcd(i : Nat, j : Nat) : Nat {
+    if (j == 0) i else gcd(j, i % j);
+  };
+
+  func gcd2(i : Nat, j : Nat) : Nat {
+    var a = i;
+    var b = j;
+    while (b > 0) {
+      let c = a;
+      a := b;
+      b := c % b;
+    };
+    return a;
+  };
+  ```
+
+
+### Mutable State
+
+* Identifiers and data are immutable unless explicitly stated otherwise.
+  Use mutability (`var`) with care and only where needed.
+
+  Rationale:
+  Mutable data cannot be communicated or share across actors.
+  It also is much more difficult to formally reason about code that uses state mutation, especially when concurrency is involved.
+
+
+### Objects, Classes, Modules
+
+* Use the short-hand object syntax `{x1 = e1; ... ; xN = eN}` when using objects as simple _records_, i.e., data structures with no private state and no methods.
+
+* Use `object` when creating singleton objects.
+
+* Use `class` to create multiple objects of the same shape.
+
+* Use `module` to group definitions (including types) and create a name spae for them.
+
+
+### To be extended...
