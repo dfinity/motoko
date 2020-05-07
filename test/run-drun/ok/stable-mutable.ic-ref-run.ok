@@ -2,9 +2,13 @@
 ← completed: canister-id = ic:2a012b
 → install
 ← completed
-→ query check(0x4449444c00017d01)
+→ query checkArray(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkRecord(0x4449444c00017d01)
 ← completed: 0x4449444c0000
 → upgrade
 ← completed
-→ query check(0x4449444c00017d03)
+→ query checkArray(0x4449444c00017d01)
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at stable-mutable.mo:15.7-15.31"
+→ query checkRecord(0x4449444c00017d01)
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at stable-mutable.mo:23.5-23.35"

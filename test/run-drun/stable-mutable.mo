@@ -6,7 +6,7 @@ actor {
   stable let a = (array, array);
   stable let b = (obj : { var field : Text} , obj);
 
-  public query func check() : async () {
+  public query func checkArray() : async () {
     // check that mutable values are properly aliased
 
     for (i in a.0.keys()) {
@@ -14,6 +14,9 @@ actor {
       a.0[i] += 1;
       assert(a.0[i] == a.1[i]);
     };
+  };
+
+  public query func checkRecord() : async () {
 
     assert(b.0.field == b.1.field);
     b.0.field #= "!";
@@ -24,9 +27,11 @@ actor {
 
   };
 }
-//CALL query check "DIDL\x00\x01\x7d\x01"
+//CALL query checkArray "DIDL\x00\x01\x7d\x01"
+//CALL query checkRecord "DIDL\x00\x01\x7d\x01"
 //CALL upgrade
-//CALL query check "DIDL\x00\x01\x7d\x03"
+//CALL query checkArray "DIDL\x00\x01\x7d\x01"
+//CALL query checkRecord "DIDL\x00\x01\x7d\x01"
 
 //SKIP run
 //SKIP run-ir
