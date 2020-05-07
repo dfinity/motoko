@@ -11,4 +11,4 @@
 → query checkArray(0x4449444c00017d01)
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at stable-mutable.mo:15.7-15.31"
 → query checkRecord(0x4449444c00017d01)
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at stable-mutable.mo:24.5-24.35"
+← completed: 0x4449444c0000
