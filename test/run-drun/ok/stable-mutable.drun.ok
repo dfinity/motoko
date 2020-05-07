@@ -1,8 +1,11 @@
 ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 ingress System
-Err: IC0503: Canister ic:2A012B trapped explicitly: assertion failed at stable-mutable/canister1.mo:15.7-15.31
+Err: IC0503: Canister ic:2A012B trapped explicitly: assertion failed at stable-mutable/canister1.mo:22.7-22.31
+Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 ingress System
 Ok: Reply: 0x4449444c0000

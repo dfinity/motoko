@@ -6,6 +6,13 @@ actor {
   stable let a = (array, array);
   stable let b = (obj : { var field : Text} , obj);
 
+  type Cyclic = { var self : [Cyclic]; var field : Text };
+  stable let c : Cyclic = { var self = ([] : [Cyclic]); var field = "hello"; };
+
+  public func tie() : async () {
+    c.self := [c];
+  };
+
   public query func checkArray() : async () {
     // check that mutable values are properly aliased
 
@@ -26,5 +33,13 @@ actor {
     // Check that the extra field is still there
     assert(b.1.extra == 1);
 
+  };
+
+  public query func checkCycle() : async () {
+    assert(c.self.len() == 1);
+    assert(c.field == "hello");
+    assert(c.self[0].field == "hello");
+    c.field #= "!";
+    assert(c.field == c.self[0].field);
   };
 }
