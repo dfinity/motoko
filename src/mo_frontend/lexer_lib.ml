@@ -3,7 +3,7 @@
   source_lexer.ml can use these definitions but stay internal to
   lexer.ml.
 *)
-type mode = Normal | Privileged
+type mode = Normal | Privileged | NormalWithTrivia
 
 exception Error of Source.region * string
 

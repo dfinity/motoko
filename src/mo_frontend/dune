@@ -8,3 +8,4 @@
   (infer false)
 )
 (ocamllex source_lexer)
+(ocamllex lexer_old)
