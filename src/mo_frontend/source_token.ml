@@ -106,6 +106,7 @@ type token =
   | UNDERSCORE
   (* Trivia *)
   | LINEFEED of line_feed
+  | SINGLESPACE
   | SPACE of int
   | TAB of int (* shudders *)
   | COMMENT of string
@@ -214,6 +215,7 @@ let to_parser_token :
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
   (*Trivia *)
+  | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
   | LINEFEED lf -> Error (Line lf)
   | TAB n -> Error (Tab n)
@@ -351,6 +353,7 @@ let string_of_trivia_lf : line_feed trivia -> string =
   string_of_trivia string_of_line_feed
 
 let is_lineless_trivia : token -> void trivia option = function
+  | SINGLESPACE -> Some (Space 1)
   | SPACE n -> Some (Space n)
   | TAB n -> Some (Tab n)
   | COMMENT c -> Some (Comment c)

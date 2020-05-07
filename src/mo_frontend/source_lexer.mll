@@ -225,7 +225,7 @@ rule token mode = parse
   | "//"utf8_no_nl* as s { COMMENT s }
   | "/*" { COMMENT (comment "/*" (Lexing.lexeme_start_p lexbuf) lexbuf) }
   | '\t'+ as t { TAB (String.length t) }
-  | ' '+ as s { SPACE (String.length s) }
+  | ' '+ as s { let len = String.length s in if len = 1 then SINGLESPACE else SPACE len }
   | "\r\n" { Lexing.new_line lexbuf; LINEFEED CRLF }
   | '\r' { Lexing.new_line lexbuf; LINEFEED CRLF }
   | '\n' { Lexing.new_line lexbuf; LINEFEED LF }
