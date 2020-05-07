@@ -223,7 +223,12 @@ rule token mode = parse
   | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl* as s { COMMENT s }
-  | "/*" { COMMENT (comment "/*" (Lexing.lexeme_start_p lexbuf) lexbuf) }
+  | "/*" as s {
+    let buf = Buffer.create 100 in
+    Buffer.add_string buf s;
+    (comment buf (Lexing.lexeme_start_p lexbuf) lexbuf);
+    COMMENT (Buffer.contents buf)
+  }
   | '\t'+ as t { TAB (String.length t) }
   | ' '+ as s { let len = String.length s in if len = 1 then SINGLESPACE else SPACE len }
   | "\r\n" { Lexing.new_line lexbuf; LINEFEED CRLF }
@@ -234,13 +239,21 @@ rule token mode = parse
   | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
-and comment acc start = parse
-  | "*/" as s { acc ^ s }
+and comment buf start = parse
+  | "*/" as s { Buffer.add_string buf s }
   | "/*" as s {
-    let inner = comment (acc ^ s) (Lexing.lexeme_start_p lexbuf) lexbuf in
-    comment inner start lexbuf
+    Buffer.add_string buf s;
+    comment buf (Lexing.lexeme_start_p lexbuf) lexbuf;
+    comment buf start lexbuf
   }
-  | '\n' { Lexing.new_line lexbuf; comment (acc ^ "\n") start lexbuf }
+  | '\n' as s {
+    Lexing.new_line lexbuf;
+    Buffer.add_char buf s;
+    comment buf start lexbuf
+  }
   | eof { error_nest start lexbuf "unclosed comment" }
-  | utf8 as s { comment (acc ^ s) start lexbuf }
+  | utf8 as s {
+    Buffer.add_string buf s;
+    comment buf start lexbuf
+  }
   | _ { error lexbuf "malformed UTF-8 encoding" }
