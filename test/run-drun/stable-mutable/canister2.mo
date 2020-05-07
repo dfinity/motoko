@@ -4,6 +4,8 @@ actor {
   flexible let array = [var 0, 0, 0];
   flexible let obj = { var field = "bad"; extra = 0 };
 
+  // checks that decoding still works if the first
+  // occurrence of the aliased object is ignored due to subtyping
   stable let a = (() : Any, array);
   stable let b = (() : Any, obj);
 
