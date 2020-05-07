@@ -704,13 +704,12 @@ let encode (em : extended_module) =
         if not (dwarf_like i.at) then
           modif instr_notes (Instrs.add (pos s, i.at.left));
         instr i in
-      let p' = pos s in
       list note_instr body;
       end_ ();
       sequence_number := 1 + !sequence_number;
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
-      modif sequence_bounds (Sequ.add (p', !instr_notes, sequence_end))
+      modif sequence_bounds (Sequ.add (p, !instr_notes, sequence_end))
 
     let code_section_start = ref 0
     let code_section fs =
