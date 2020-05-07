@@ -995,7 +995,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 vec_format Dwarf5.[dw_LNCT_path, dw_FORM_string];
 
                 (* directories_count, directories *)
-                vec_uleb128 zero_terminated ["/Users/ggreif/motoko/"];
+                vec_uleb128 zero_terminated ["."];
 
                 (* file_name_entry_format_count, file_name_entry_formats *)
                 vec_format Dwarf5.[dw_LNCT_path, dw_FORM_string];
@@ -1003,6 +1003,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
 
                 let record_file (_, {file; _}) = ignore (add_file_string file) in
+                add_file_string "fib-wasm.mo"; (* FIXME: remove *)
                 Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
                 vec_uleb128 zero_terminated (rev_map fst !file_strings);
             );
