@@ -4450,7 +4450,7 @@ module Serialization = struct
             ]
         );
       | Obj (Actor, _) ->
-        with_composite_typ idl_record (fun _get_typ_buf -> read_actor_data ())
+        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
