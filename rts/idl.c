@@ -81,7 +81,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 
 #define IDL_REF_principal (-24)
 
-#define IDL_CON_ALIAS     (-100)
+#define IDL_CON_ALIAS     (1)
 
 static bool is_primitive_type(int32_t ty) {
   static const int32_t IDL_PRIM_lowest = -17;
@@ -128,7 +128,10 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
-    if (ty >= 0) {
+    if (ty == IDL_CON_ALIAS) { // internal
+      int32_t t = read_i32_of_sleb128(buf);
+      check_typearg(t, n_types);
+    } else if (ty >= 0) {
       idl_trap_with("illegal type table"); // illegal
     } else if (is_primitive_type(ty)) {
       idl_trap_with("primitive type in type table"); // illegal
@@ -174,9 +177,6 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
         int32_t t = read_i32_of_sleb128(buf);
         check_typearg(t, n_types);
       }
-    } else if (ty == IDL_CON_ALIAS) {
-      int32_t t = read_i32_of_sleb128(buf);
-      check_typearg(t, n_types);
     } else { // future type
       uint32_t n = read_u32_of_leb128(buf);
       advance(buf, n);

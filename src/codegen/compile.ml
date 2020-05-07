@@ -3874,7 +3874,7 @@ module Serialization = struct
           add_idx f.typ
         ) fs
       | Mut t ->
-        add_sleb128 (-100); add_idx t (* internal marker for aliasable data *)
+        add_sleb128 1; add_idx t (* internal marker for aliasable data *)
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -4517,7 +4517,7 @@ module Serialization = struct
       | Obj (Actor, _) ->
         with_composite_typ (-23l) (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
-        with_composite_typ (-100l) (fun get_typ_buf ->
+        with_composite_typ 1l (fun get_typ_buf ->
           let (set_idltyp, get_idltyp) = new_local env "idltyp" in
           ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
 
