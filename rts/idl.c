@@ -307,7 +307,8 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
 
       case IDL_CON_alias: {
         int32_t it = read_i32_of_sleb128(&tb);
-        uint32_t tag = read_word(b);
+        uint32_t tag = read_byte(b);
+        advance(b, 4);
         if (tag == 0) {
           // this is the occurrence (not a reference)
           skip_any(b, typtbl, it, 0);

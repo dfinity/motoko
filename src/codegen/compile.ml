@@ -3989,8 +3989,8 @@ module Serialization = struct
         get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         E.else_trap_with env "object_size/Mut: Unexpected tag " ^^
-        (* In any case, a 32 bit maker will be written *)
-        inc_data_size (compile_unboxed_const 4l) ^^
+        (* In any case, a one byte and one 32 bit maker will be written *)
+        inc_data_size (compile_unboxed_const 5l) ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         (* If we did not see it… *)
@@ -4154,16 +4154,17 @@ module Serialization = struct
         E.trap_with env "serializing value of type None"
       | Mut t ->
         (* non-Candid: aliasable data *)
-        (* Check tag *)
+        (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if_ []
         begin
-          (* First time serializing this *)
+          (* This is the real data *)
+          write_byte (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
-          (* Leave space in the output buffer *)
+          (* Leave space in the output buffer for the decoders pointer *)
           get_data_buf ^^
           compile_unboxed_const 0l ^^
           G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
@@ -4172,6 +4173,9 @@ module Serialization = struct
           get_x ^^ Heap.load_field MutBox.field ^^ write env t
         end
         begin
+          (* This is a reference *)
+          write_byte (compile_unboxed_const 1l) ^^
+          (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
@@ -4518,36 +4522,31 @@ module Serialization = struct
         with_composite_typ (-23l) (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
         with_composite_typ 1l (fun get_typ_buf ->
-          let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+          let (set_result, get_result) = new_local env "result" in
 
-          let (set_offset, get_offset) = new_local env "offset" in
-          ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
-          get_offset ^^ compile_eq_const 0l ^^
-          G.if_ [I32Type]
-          begin
-            let (set_result, get_result) = new_local env "result" in
+          read_byte_tagged
+          [ (* This is the actual data *)
             (* First time we see this. Create mutbox *)
             Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
             (* Remember the position *)
-            ReadBuf.get_ptr get_data_buf ^^ compile_add_const (-4l) ^^
+            ReadBuf.get_ptr get_data_buf ^^
             get_result ^^
             store_unskewed_ptr ^^
+            ReadBuf.advance  get_data_buf (compile_unboxed_const 4l) ^^
             (* Now deserialize content *)
             get_result ^^
-            get_idltyp ^^ go env t ^^
+            ReadBuf.read_sleb128 env get_typ_buf ^^ go env t ^^
             Heap.store_field MutBox.field ^^
             (* And return box *)
             get_result
-          end
-          begin
-            (* Second time we see this. Just peek at offset *)
+          ; (* This is a reference *)
+            let (set_offset, get_offset) = new_local env "offset" in
+            ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
             ReadBuf.get_ptr get_data_buf ^^
             compile_add_const (-4l) ^^
-            get_offset ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+            get_offset ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
             load_unskewed_ptr
-          end
+          ]
         )
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
