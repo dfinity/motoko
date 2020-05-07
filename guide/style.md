@@ -428,7 +428,7 @@ type Op = Nat -> Nat;
 let a2 = Array.map(a, func x { x + 1 });
 
 let y = f x;
-let z = f {}
+let z = f {};
 let choice = if flag { f1() } else { f2() };
 
 switch opt {
@@ -452,7 +452,7 @@ switch opt {
 
 Rationale: Omitting both at the same time makes the code harder to read, since there is less visual clue.
 
-* Omit parentheses around argument types of a function types with a single argument and no type parameters.
+* Omit parentheses around argument types of a function type with a single argument and no type parameters.
   But use parentheses around the arguments when functions or classes have type parameters.
 
 Examples:
@@ -677,6 +677,9 @@ Rationale: This expresses named paremeters. This way, arguments can be freely re
 
 ## Features
 
+* Block comments (when to use)
+
+* Doc comments?
 TODO...
 
 * Return
@@ -684,4 +687,3 @@ TODO...
 * Mutable State
 
 * What else...
-
