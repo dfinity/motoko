@@ -3750,13 +3750,14 @@ module Serialization = struct
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
-            List.iter (fun f -> go (Type.as_immut f.typ)) fs
+            List.iter (fun f -> go f.typ) fs
           | Array t -> go (Type.as_immut t)
           | Opt t -> go t
           | Variant vs -> List.iter (fun f -> go f.typ) vs
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -3821,7 +3822,7 @@ module Serialization = struct
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
           add_leb128_32 h;
-          add_idx (Type.as_immut f.typ)
+          add_idx f.typ
         ) (sort_by_hash fs)
       | Array t ->
         add_sleb128 (-19); add_idx (Type.as_immut t)
@@ -3858,6 +3859,8 @@ module Serialization = struct
           Buffer.add_string buf f.lab;
           add_idx f.typ
         ) fs
+      | Mut t ->
+        add_sleb128 (-100); add_idx t (* internal marker for aliasable data *)
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -3919,7 +3922,7 @@ module Serialization = struct
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
-          size env (Type.as_immut f.typ)
+          size env f.typ
           ) (sort_by_hash fs)
       | Array t ->
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
@@ -3962,6 +3965,9 @@ module Serialization = struct
         get_x ^^ size env (Prim Blob)
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
+      | Mut t ->
+        inc_data_size (compile_unboxed_const 4l) ^^ (* 32 bit marker *)
+        get_x ^^ size env t
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_size ^^
@@ -4062,7 +4068,7 @@ module Serialization = struct
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h,f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
-          write env (Type.as_immut f.typ)
+          write env f.typ
         ) (sort_by_hash fs)
       | Array t ->
         write_word (get_x ^^ Heap.load_field Arr.len_field) ^^
@@ -4114,6 +4120,13 @@ module Serialization = struct
         get_x ^^ write env (Prim Blob)
       | Non ->
         E.trap_with env "serializing value of type None"
+      | Mut t ->
+        (* non-Candid: aliasable data *)
+        get_data_buf ^^
+        compile_unboxed_const 0l ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l ^^ advance_data_buf ^^
+        get_x ^^ write env t
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_buf ^^
@@ -4347,7 +4360,7 @@ module Serialization = struct
               E.call_import env "rts" "find_field" ^^
               G.if_ [I32Type]
                 begin
-                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env (Type.as_immut f.typ)
+                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
                 end
                 begin
                   match sort with
@@ -4440,6 +4453,14 @@ module Serialization = struct
         );
       | Obj (Actor, _) ->
         with_composite_typ (-23l) (fun _get_typ_buf -> read_actor_data ())
+      | Mut t ->
+        with_composite_typ (-100l) (fun get_typ_buf ->
+          let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+          ReadBuf.read_word32 env get_data_buf ^^
+          G.i Drop ^^
+          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+          get_idltyp ^^ go env t
+        )
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
