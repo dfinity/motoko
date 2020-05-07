@@ -4559,17 +4559,15 @@ module Serialization = struct
         check_prim_typ (Prim Null) ^^
         G.if_ [I32Type]
           begin
-                Opt.null_lit
+            Opt.null_lit
           end
           begin
             let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-            with_composite_typ idl_opt (fun get_typ_buf ->
-              ReadBuf.read_sleb128 env get_typ_buf ^^ set_arg_typ ^^
-              read_byte_tagged
-                [ Opt.null_lit
-                ; Opt.inject env (get_arg_typ ^^ go env t)
-                ]
-            )
+            with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+            read_byte_tagged
+              [ Opt.null_lit
+              ; Opt.inject env (get_arg_typ ^^ go env t)
+              ]
           end
       | Variant vs ->
         with_composite_typ idl_variant (fun get_typ_buf ->
