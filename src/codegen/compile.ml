@@ -4449,16 +4449,16 @@ module Serialization = struct
         let (set_x, get_x) = new_local env "x" in
         let (set_idltyp, get_idltyp) = new_local env "idltyp" in
         with_composite_typ (-19l) (fun get_typ_buf ->
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env ^^ set_x ^^
-          get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.idx env ^^
-            get_idltyp ^^ go env (Type.as_immut t) ^^
-            store_ptr
-          ) ^^
-          get_x
-        )
+          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp
+        ) ^^
+        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        get_len ^^ Arr.alloc env ^^ set_x ^^
+        get_len ^^ from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Arr.idx env ^^
+          get_idltyp ^^ go env (Type.as_immut t) ^^
+          store_ptr
+        ) ^^
+        get_x
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if_ [I32Type]
