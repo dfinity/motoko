@@ -113,8 +113,8 @@ let x = someFunction(   // Or this.
 Rationale: There are many problems with vertical alignment, for example:
 (1) it wastes a lot of horizontal space;
 (2) it creates wildly inconsistent indentation levels that obfuscate the structure of the code;
-(3) it can produce realignment churn when changing a line, which (even when automated by editors) inflates and obfuscates diffs for changes;
-(4) it completely breaks with non-proportional fonts.
+(3) it can produce realignment churn when changing a line, which (even when automated by editors) inflates and obfuscates diffs;
+(4) it completely breaks with variable-width fonts.
 
 * Do not use tabs.
 
@@ -314,6 +314,7 @@ Example:
 ```
 type Pair<X> = (X, X);
 type Id = <X>(X) -> X;
+type Get = <X>(C<X>) -> X;
 
 let ok = #ok(5);
 
@@ -493,7 +494,7 @@ module MoreMuff {
 };
 ```
 
-Rationale: The general convention is upper case for types and lower case for values. Modules and actors can export types, so are considered "bigger". Objects usually don't export types.
+Rationale: The general convention is upper case for "static" entities like types and lower case for "dynamic" values. Modules and actors are fairly static and can export types. Objects usually don't export types and tend to be used mostly as dynamic values.
 
 * Spell acronyms as regular words.
 
