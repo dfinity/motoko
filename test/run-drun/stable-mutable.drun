@@ -1,0 +1,6 @@
+install ic:2A012B stable-mutable/canister1.mo ""
+query ic:2A012B checkArray "DIDL\x00\x01\x7d\x01"
+query ic:2A012B checkRecord "DIDL\x00\x01\x7d\x01"
+upgrade ic:2A012B stable-mutable/canister1.mo ""
+query ic:2A012B checkArray "DIDL\x00\x01\x7d\x01"
+query ic:2A012B checkRecord "DIDL\x00\x01\x7d\x01"

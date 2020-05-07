@@ -28,12 +28,3 @@ actor {
 
   };
 }
-//CALL query checkArray "DIDL\x00\x01\x7d\x01"
-//CALL query checkRecord "DIDL\x00\x01\x7d\x01"
-//CALL upgrade
-//CALL query checkArray "DIDL\x00\x01\x7d\x01"
-//CALL query checkRecord "DIDL\x00\x01\x7d\x01"
-
-//SKIP run
-//SKIP run-ir
-//SKIP run-low
