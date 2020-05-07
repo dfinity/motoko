@@ -18,7 +18,8 @@ actor {
 
   public query func checkRecord() : async () {
 
-    assert(b.0.field == b.1.field);
+    assert(b.0.field == "hello");
+    assert(b.1.field == "hello");
     b.0.field #= "!";
     assert(b.0.field == b.1.field);
 

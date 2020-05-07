@@ -3,4 +3,4 @@ Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 ingress System
 Err: IC0503: Canister ic:2A012B trapped explicitly: assertion failed at stable-mutable.mo:15.7-15.31
-Err: IC0503: Canister ic:2A012B trapped explicitly: assertion failed at stable-mutable.mo:23.5-23.35
+Err: IC0503: Canister ic:2A012B trapped explicitly: assertion failed at stable-mutable.mo:24.5-24.35

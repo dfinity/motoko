@@ -1160,6 +1160,7 @@ module Tagged = struct
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
+    | StableSeen (* Maker that we have seen this thing before *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -1176,6 +1177,7 @@ module Tagged = struct
     | Bits32 -> 12l
     | BigInt -> 13l
     | Concat -> 14l
+    | StableSeen -> 0xffffffffl
 
   (* The tag *)
   let header_size = 1l
@@ -2654,10 +2656,22 @@ module Object = struct
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
-  let idx env obj_type name =
-    compile_unboxed_const (Mo_types.Hash.hash name) ^^
-    idx_hash env (is_mut_field env obj_type name)
+  (* Returns a pointer to the object field (without following the indirection) *)
+  let idx_raw env f =
+    compile_unboxed_const (Mo_types.Hash.hash f) ^^
+    idx_hash_raw env
 
+  (* Returns a pointer to the object field (possibly following the indirection) *)
+  let idx env obj_type f =
+    compile_unboxed_const (Mo_types.Hash.hash f) ^^
+    idx_hash env (is_mut_field env obj_type f)
+
+  (* load the value (or the mutbox) *)
+  let load_idx_raw env f =
+    idx_raw env f ^^
+    load_ptr
+
+  (* load the actually value (following the mutbox) *)
   let load_idx env obj_type f =
     idx env obj_type f ^^
     load_ptr
@@ -4067,7 +4081,7 @@ module Serialization = struct
         ) ts
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h,f) ->
-          get_x ^^ Object.load_idx env t f.Type.lab ^^
+          get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
         ) (sort_by_hash fs)
       | Array t ->
@@ -4122,11 +4136,13 @@ module Serialization = struct
         E.trap_with env "serializing value of type None"
       | Mut t ->
         (* non-Candid: aliasable data *)
+        (* TODO: Actual sharing *)
         get_data_buf ^^
         compile_unboxed_const 0l ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l ^^ advance_data_buf ^^
-        get_x ^^ write env t
+        (* Follow object mutbox indirection *)
+        get_x ^^ Heap.load_field MutBox.field ^^ write env t
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_buf ^^
@@ -4459,7 +4475,9 @@ module Serialization = struct
           ReadBuf.read_word32 env get_data_buf ^^
           G.i Drop ^^
           ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-          get_idltyp ^^ go env t
+          Tagged.obj env Tagged.MutBox [
+            get_idltyp ^^ go env t
+          ]
         )
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
