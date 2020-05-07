@@ -4523,16 +4523,20 @@ module Serialization = struct
       | Mut t ->
         with_composite_typ 1l (fun get_typ_buf ->
           let (set_result, get_result) = new_local env "result" in
+          let (set_src, get_src) = new_local env "src" in
 
           read_byte_tagged
           [ (* This is the actual data *)
+            (* Sanity check: Did we decode this already? *)
+            ReadBuf.read_word32 env get_data_buf ^^ compile_eq_const 0l ^^
+            E.else_trap_with env "already decoded. forward reference?" ^^
+
             (* First time we see this. Create mutbox *)
             Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
-            (* Remember the position *)
-            ReadBuf.get_ptr get_data_buf ^^
+            (* Put the pointer to the created object into the input buffer *)
+            ReadBuf.get_ptr get_data_buf ^^ compile_add_const (-4l) ^^
             get_result ^^
             store_unskewed_ptr ^^
-            ReadBuf.advance  get_data_buf (compile_unboxed_const 4l) ^^
             (* Now deserialize content *)
             get_result ^^
             ReadBuf.read_sleb128 env get_typ_buf ^^ go env t ^^
@@ -4542,10 +4546,37 @@ module Serialization = struct
           ; (* This is a reference *)
             let (set_offset, get_offset) = new_local env "offset" in
             ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
-            ReadBuf.get_ptr get_data_buf ^^
-            compile_add_const (-4l) ^^
+
+            let (set_cur, get_cur) = new_local env "cur" in
+            ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
+
+            get_cur ^^ compile_add_const (-4l) ^^
             get_offset ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            load_unskewed_ptr
+            set_src ^^
+
+            (* Set read pointer to that thing *)
+            ReadBuf.set_ptr get_data_buf get_src ^^
+
+            ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
+
+            get_result ^^ compile_eq_const 0l ^^
+            G.if_ [] begin
+              (* Darn, the value has not yet been decoded (skipped due to subtyping) *)
+              (* First time we see this. Create mutbox *)
+              Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
+              (* Put the pointer to the created object into the input buffer *)
+              ReadBuf.get_ptr get_data_buf ^^ compile_add_const (-4l) ^^
+              get_result ^^
+              store_unskewed_ptr ^^
+              (* Now deserialize content *)
+              get_result ^^
+              ReadBuf.read_sleb128 env get_typ_buf ^^ go env t ^^
+              Heap.store_field MutBox.field
+            end G.nop ^^
+
+            (* Reset read pointer *)
+            ReadBuf.set_ptr get_data_buf get_cur ^^
+            get_result
           ]
         )
       | Non ->
