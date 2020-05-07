@@ -4322,6 +4322,49 @@ module Serialization = struct
         )
       in
 
+      (* Reads an aliased value *)
+      let read_alias env read_thing =
+        let (set_is_ref, get_is_ref) = new_local env "is_ref" in
+        let (set_result, get_result) = new_local env "result" in
+        let (set_cur, get_cur) = new_local env "cur" in
+        let (set_memo, get_memo) = new_local env "memo" in
+
+        (* Find out if it is a reference or not *)
+        ReadBuf.read_byte env get_data_buf ^^ set_is_ref ^^
+
+        (* If it is a reference, temporarily set the read buffer to that place *)
+        get_is_ref ^^
+        G.if_ [] begin
+          let (set_offset, get_offset) = new_local env "offset" in
+          ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
+          ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
+          ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
+        end G.nop ^^
+
+        (* Remember location of ptr *)
+        ReadBuf.get_ptr get_data_buf ^^ set_memo ^^
+        (* Did we decode this already? *)
+        ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
+        get_result ^^ compile_eq_const 0l ^^
+        G.if_ [] begin
+          (* No, not yet decoded. Read the content *)
+          read_thing (fun get_thing ->
+            (* This is called after allocation, but before descending
+               We update the memo location here so that loops work
+            *)
+            get_thing ^^ set_result ^^
+            get_memo ^^ get_result ^^ store_unskewed_ptr
+          )
+        end G.nop ^^
+
+        (* If this was a reference, reset read buffer *)
+        get_is_ref ^^
+        G.if_ [] (ReadBuf.set_ptr get_data_buf get_cur) G.nop ^^
+
+        get_result
+      in
+
+
       (* Now the actual deserialization *)
       begin match t with
       (* Primitive types *)
@@ -4448,9 +4491,7 @@ module Serialization = struct
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
         let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-        with_composite_typ (-19l) (fun get_typ_buf ->
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp
-        ) ^^
+        with_composite_typ (-19l) (ReadBuf.read_sleb128 env) ^^ set_idltyp ^^
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
@@ -4521,44 +4562,16 @@ module Serialization = struct
       | Obj (Actor, _) ->
         with_composite_typ (-23l) (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
-        with_composite_typ 1l (fun get_typ_buf ->
-          let (set_is_ref, get_is_ref) = new_local env "is_ref" in
+        let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+        with_composite_typ 1l (ReadBuf.read_sleb128 env) ^^ set_idltyp ^^
+
+        read_alias env (fun on_alloc ->
           let (set_result, get_result) = new_local env "result" in
-          let (set_cur, get_cur) = new_local env "cur" in
-
-          (* Find out if it is a reference or not *)
-          ReadBuf.read_byte env get_data_buf ^^ set_is_ref ^^
-
-          (* If it is a reference, temporarily set the read buffer to that place *)
-          get_is_ref ^^
-          G.if_ [] begin
-            let (set_offset, get_offset) = new_local env "offset" in
-            ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
-            ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
-            ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
-          end G.nop ^^
-
-          (* Did we decode this already? *)
-          ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
-          get_result ^^ compile_eq_const 0l ^^
-          G.if_ [] begin
-            (* No, not yet decoded. Create the mutbox *)
-            Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
-            (* Put the pointer to the created object into the input buffer *)
-            ReadBuf.get_ptr get_data_buf ^^ compile_add_const (-4l) ^^
-            get_result ^^
-            store_unskewed_ptr ^^
-            (* Now deserialize content *)
-            get_result ^^
-            ReadBuf.read_sleb128 env get_typ_buf ^^ go env t ^^
-            Heap.store_field MutBox.field
-          end G.nop ^^
-
-          (* If this was a reference, reset read buffer *)
-          get_is_ref ^^
-          G.if_ [] (ReadBuf.set_ptr get_data_buf get_cur) G.nop ^^
-
-          get_result
+          Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
+          on_alloc get_result ^^
+          get_result ^^
+            get_idltyp ^^ go env t ^^
+          Heap.store_field MutBox.field
         )
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
