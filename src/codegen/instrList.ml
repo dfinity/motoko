@@ -346,13 +346,13 @@ and dw_prim_type_ref prim =
           (dw_attrs [name; Bit_size 1; Data_bit_offset 0])
       | Type.Char ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 21; Data_bit_offset 8])
+          (dw_attrs [name; Bit_size 29; Data_bit_offset 8])
       | Type.(Word8 | Nat8 | Int8) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 8; Data_bit_offset 24])
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 24])
       | Type.(Word16 | Nat16 | Int16) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 16; Data_bit_offset 16])
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 16])
       | Type.(Int | Nat) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
         let struct_dw, struct_ref = fakeReferenceableBlock dw_TAG_structure_type
