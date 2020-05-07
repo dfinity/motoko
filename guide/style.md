@@ -25,7 +25,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   Rationale: Among other reasons, this
   (1) avoids code being hidden to the right in a window;
   (2) avoids random line breaks in side-by-side diffs (e.g., as shown by GitHub or similar code review tools);
-  (3) allows prettier display on paper, web sites, or other material.
+  (3) allows prettier display on paper, web sites, or other media.
 
 * Break lines _after_ an operator.
 
@@ -47,7 +47,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
     anotherArg : Nat,
     yetAnother : [Type],
     func : Nat -> Nat,
-  ) {
+  ) : Nat {
     ...
   };
 
@@ -57,7 +57,8 @@ To increase readability and uniformity of Motoko source code, this guide provide
     3,
     aNestedFunctionCall(
       alsoWithLongArguments,
-      andMoreSuchArguments),
+      andMoreSuchArguments,
+    ),
     moreLongishArgument,
   );
   ```
@@ -120,7 +121,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 ### Comments
 
-* Use line comments (`//`). Use block comments only when commenting something in the middle of a line or for commenting out pieces of code during development.
+* Use line comments (`//...`). Use block comments (`/*...*/`) only when commenting in the middle of a line or for commenting out pieces of code during development.
 
   ```
   // The following function runs the current
@@ -400,6 +401,20 @@ To increase readability and uniformity of Motoko source code, this guide provide
   unless they appear nested as an expression and only contain a single expression.
 
   ```
+  func f(x) { f1(x); f2(x) };
+
+  let abs = if (v >= 0) v else -v;
+  let val = switch (f()) { case (#ok(x)) x; case (_) 0 };
+  func succ(x : Nat) : Nat = x + 1;
+  ```
+
+* Use "C-style" layout for braced sub-expressions stretching multiple lines.
+
+  ```
+  func f() {
+    return;
+  };
+
   if (cond) {
     foo();
   } else {
@@ -407,15 +422,11 @@ To increase readability and uniformity of Motoko source code, this guide provide
   };
 
   switch (opt) {
-    case (?x) { f(x) };
+    case (?x) {
+      f(x);
+    };
     case (null) {};
   };
-
-  func f(x) { f1(x); f2(x) };
-
-  let abs = if (v >= 0) v else -v;
-  let val = switch (f()) { case (#ok(x)) x; case (_) 0 };
-  func succ(x : Nat) : Nat = x + 1;
   ```
 
 
