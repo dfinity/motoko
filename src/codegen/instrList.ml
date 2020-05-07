@@ -293,7 +293,7 @@ let rec dw_tag : dw_TAG -> t =
     fakeBlock dw_TAG_compile_unit
       (dw_attrs
          [ Producer "DFINITY Motoko compiler, version 0.1";
-           Language dw_LANG_Swift; Name file; Stmt_list 0;
+           Language dw_LANG_C99; Name file; Stmt_list 0;
            Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 8; Ranges ]) ^^
       base_types ^^
       builtin_types
