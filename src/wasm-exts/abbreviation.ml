@@ -73,7 +73,8 @@ let abbreviations =
     ( dw_TAG_base_type, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_bit_size, dw_FORM_data1;
-        dw_AT_data_bit_offset, dw_FORM_data1
+        dw_AT_data_bit_offset, dw_FORM_data1;
+        dw_AT_encoding, dw_FORM_data1
       ] );
     ( dw_TAG_base_type_Anon, dw_CHILDREN_no,
       [ dw_AT_bit_size, dw_FORM_data1;

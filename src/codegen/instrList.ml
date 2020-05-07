@@ -343,16 +343,16 @@ and dw_prim_type_ref prim =
       match prim with
       | Type.Bool ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 1; Data_bit_offset 0])
+          (dw_attrs [name; Bit_size 1; Data_bit_offset 0; Encoding dw_ATE_boolean])
       | Type.Char ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 29; Data_bit_offset 8])
+          (dw_attrs [name; Bit_size 29; Data_bit_offset 8; Encoding dw_ATE_UTF])
       | Type.(Word8 | Nat8 | Int8) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 24])
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 24; Encoding dw_ATE_unsigned])
       | Type.(Word16 | Nat16 | Int16) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 16])
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 16; Encoding dw_ATE_unsigned])
       | Type.(Int | Nat) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
         let struct_dw, struct_ref = fakeReferenceableBlock dw_TAG_structure_type
