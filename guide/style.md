@@ -2,6 +2,8 @@
 
 To increase readability and uniformity of Motoko source code, this guide provides suggestions for formatting Motoko sources and other basic conventions.
 
+* Rule 0: Rules exist to be broken.
+
 
 ## Layout
 
@@ -664,6 +666,24 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 * Use `WordN` only when bit-fiddling requires the low-level interpretation of a number as a vector of bits.
 
+* Avoid proliferation of option types, and therefore `null`.
+  Limit their use to as small a scope as possible.
+  Rule out the `null` case and use non-option types wherever possible.
+
+* Consider using records (objects with just data) instead of tuples when there are more than 2 or 3 components.
+  Note that record types need not be declared but can be used in place.
+
+  ```
+  func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
+  ```
+
+* Consider using variants instead of `Bool` to represent binary choices.
+  Note that variant types need not be declared but can be used in place.
+
+  ```
+  func capitalization(word : Text) : {#upper; #lower} { ... }
+  ```
+
 * Where possible, use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
 
   ```
@@ -677,7 +697,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 * Use a record (an object with just data) as argument for long parameter lists that have no obvious ordering.
 
   ```
-  func process{seed : Float; delta : Float; data : [Record]; config : Config} : Thing {
+  func process({seed : Float; delta : Float; data : [Record]; config : Config}) : Thing {
     ...
   };
 
@@ -691,17 +711,6 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   ```
   func lookup(x : key) : ?Nat { ... }
-  ```
-
-* Avoid proliferation of option types, and therefore `null`.
-  Limit their use to as small a scope as possible.
-  Rule out the `null` case and use non-option types wherever possible.
-
-* Use variants instead of `Bool` to represent binary choices.
-  Note that variant types need not be declared but can be used in place.
-
-  ```
-  func capitalization(word : Text) : {#upper; #lower} { ... }
   ```
 
 * Data is immutable in Motoko unless explicitly stated otherwise.
