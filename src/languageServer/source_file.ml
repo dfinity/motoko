@@ -13,28 +13,29 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
   let line = position.Lsp.position_line + 1 in
   let column = position.Lsp.position_character + 1 in
   let lexbuf = Lexing.from_string file_contents in
-  let next () = Lexer.token Lexer.Normal lexbuf in
+  let tokenizer, _ = Lexer.tokenizer Lexer.Normal lexbuf in
+  let next () =
+    let t, start, end_ = tokenizer () in
+    (t, Lexer.convert_pos start, Lexer.convert_pos end_)
+  in
   let pos_past_cursor pos =
     pos.Source.line > line
     || (pos.Source.line = line && pos.Source.column >= column)
   in
-  let rec loop = function
-    | _ when pos_past_cursor (Lexer.region lexbuf).Source.left -> None
+  let rec loop (tkn, start, end_) =
+    match tkn with
+    | _ when pos_past_cursor start -> None
     | Parser.ID ident -> (
         match next () with
-        | Parser.DOT -> (
+        | Parser.DOT, start, end_ -> (
             match next () with
-            | Parser.ID prefix ->
-                let next_token_end = (Lexer.region lexbuf).Source.right in
-                if pos_past_cursor next_token_end then
-                  Some (CQualified (ident, prefix))
-                else loop (Parser.ID prefix)
-            | tkn ->
-                let next_token_start = (Lexer.region lexbuf).Source.left in
-                if pos_past_cursor next_token_start then Some (CIdent ident)
-                else loop tkn )
-        | _ when pos_past_cursor (Lexer.region lexbuf).Source.left ->
-            Some (CIdent ident)
+            | (Parser.ID prefix, start, end_) as next_token ->
+                if pos_past_cursor end_ then Some (CQualified (ident, prefix))
+                else loop next_token
+            | (_, start, _) as next_token ->
+                if pos_past_cursor start then Some (CIdent ident)
+                else loop next_token )
+        | _, start, _ when pos_past_cursor start -> Some (CIdent ident)
         | tkn -> loop tkn )
     | Parser.EOF -> None
     | _ -> loop (next ())
@@ -74,7 +75,11 @@ let import_relative_to_project_root root module_path dependency =
    filepaths relative to the project root *)
 let parse_module_header project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
-  let next () = Lexer.token Lexer.Normal lexbuf in
+  let tokenizer, _ = Lexer.tokenizer Lexer.Normal lexbuf in
+  let next () =
+    let t, _, _ = tokenizer () in
+    t
+  in
   let res = ref [] in
   let rec loop = function
     | Parser.IMPORT -> (

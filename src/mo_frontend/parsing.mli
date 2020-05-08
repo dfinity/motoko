@@ -6,10 +6,10 @@
 
 type error_detail = int
 
-exception Error of string
+exception Error of (string * Lexing.position * Lexing.position)
 
 val parse : error_detail ->
             'a Parser.MenhirInterpreter.checkpoint ->
-            (Lexing.lexbuf -> Parser.token) ->
+            Parser.MenhirInterpreter.supplier ->
             Lexing.lexbuf ->
             'a
