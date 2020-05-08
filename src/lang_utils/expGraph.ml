@@ -65,6 +65,7 @@ let combine graph =
     (* could be improved by maintianing a list of equivalence classes *)
     IM.iter (fun i (k1, args1) ->
       IM.iter (fun j (k2, args2) ->
+        (* TODO: Not really good. needs to split equivalence class properly *)
         if i < j then
         if lookup i = lookup j then
         if not (k1 = k2 && lookups args1 = lookups args2) then
