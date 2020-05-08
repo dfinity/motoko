@@ -4771,7 +4771,7 @@ module Serialization = struct
 Note [mutable stable values]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We currently use a Canpdid derivative to serialize stable values. In addition to
+We currently use a Candid derivative to serialize stable values. In addition to
 storing sharable data, we can also store mutable data (records with mutable
 fields and mutable arrays), and we need to preserve aliasing.
 
