@@ -7,6 +7,123 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 ## Layout
 
+### Spacing
+
+* Put spaces around arithmetic operators, except to visually group sub-expressions of more tightly binding operators.
+
+  ```
+  let z = - 2*x + 3*y + 4*(x*x + y*y);
+  ```
+
+* Put spaces around comparison operators, Boolean operators, and assignment operators.
+
+  ```
+  4 + 5 <= 5 + 4;
+  not (a or b and not c);
+  v := 0;
+  v += 1;
+  ```
+
+* Put spaces around '='.
+
+  ```
+  var v = 0;
+  let r = { a = 1; b = 2 };
+  ```
+
+* Analogously, put spaces around `:`.
+
+  ```
+  var v : Nat = 0;
+  func foo(x : Nat, y : Nat) : Nat { x + y }
+  func bar((x, y) : (Nat, Nat)) : Nat { x + y }
+  let w = -1 ^ 0xff : Word16;
+  ```
+
+  Rationale: ':' is to declarations what '=' is to definitions.
+  Moreover, the left-hand of a type annotation may generally be an arbitrary complex expression or pattern.
+
+* Put a space after a comma or semicolon (but not before).
+
+  ```
+  let tuple = (1, 2, 3);
+  let record = { a = 1; b = 2; c = 3 };
+  ```
+
+* Put spaces inside braces, unless they are a simple variant or record.
+
+  ```
+  func f() { 0 };
+  f({ a = 1; b = 2; c = 3 });
+  f({a = 1; b = 2});  // okay as well
+
+  type Vec3D = { x : Float; y : Float; y : Float };
+  type Order = { #less; #equal; #more };
+
+  type Order = {#less; #equal; #more};  // okay as well
+  type Proc = {h : Nat; w : Nat} -> {#ok; #fail};
+  ```
+
+* Put spaces inside brackets if they stretch multiple lines.
+
+  ```
+  foo(
+    firstArgument,
+    ( longTupleComponent, anotherLongExpression,
+      moreLongExpression
+    ),
+    [ 1, 2, 3,
+      4, 5, 6,
+    ],
+    { field1 = 4; field2 = 5;
+      field3 = 6;
+    }
+  );
+  ```
+
+* Put a space between statement keywords and their operands.
+
+  ```
+  if (f()) A else B;
+  for (x in xs.vals()) { ... };
+  switch (compare(x, y)) {
+    case (#less) { A };
+    case (_) { B };
+  }
+
+  assert (x < 100);
+  await (async (0));
+  ```
+
+* Do _not_ put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
+
+  ```
+  type Pair<X> = (X, X);
+  type Id = <X>(X) -> X;
+
+  let ok = #ok(5);
+
+  func id<X>(x : X) : X { x };
+  id<Nat>(5);
+  ```
+
+* However, put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see [parenless style](#parentheses)) or a record used as a named parameter list (see [Picking Type](#picking-types)).
+
+  ```
+  sin 0.0;
+  g [1, 2, 3];
+  f{arg1 = 0; arg2 = 0};
+  ```
+  Rationale: `g[1]` in particular will be misparsed as an indexing operation.
+
+* Do _not_ put a space around access operators like `.`, `?`, `!`, or index brackets.
+
+  ```
+  foo(bar).baz[5]().boo;
+  foom(?(bam()! + 1));
+  ```
+
+
 ### Line Breaks
 
 * Pick a fixed right margin for lines and break definitions or expessions that are longer than that
@@ -121,47 +238,6 @@ To increase readability and uniformity of Motoko source code, this guide provide
   Rationale: The interpretation of tabs varies wildly across tools and they get lost or are displayed incorrectly in many contexts, such as web pages, diffs, etc.
 
 
-### Comments
-
-* Use line comments (`//...`). Use block comments (`/*...*/`) only when commenting in the middle of a line or for commenting out pieces of code during development.
-
-  ```
-  // The following function runs the current
-  // pallaboom on a given snibble. It returns
-  // suitable plexus if it can.
-  func paBoom(s : Snibble) : Handle<Plexus> {
-    let puglet = initPugs(s.crick, 0 /* size */, #local);
-  /* Don't do the odd stuff yet...
-    ...
-    ...
-  */
-    return polyfillNexus(puglet);  // for now
-  }
-  ```
-
-  Rationale: Line comments make it easier to insert, remove or swap individual lines.
-
-* Put short comments explaining a single line at the end of the line, separated by at least 2 spaces.
-
-  ```
-  paBoom(getSnibble()));  // create new snibble
-  ```
-
-* Put multi-line comments before a line of code, with the same indentation as the code it is describing.
-
-  ```
-  func f() {
-    // Try to invoke the current pallaboom with
-    // the previous snibble. If that succeeds,
-    // we have the new plexus; if not, complain.
-    let plexusHandle = paBoom(getSnibble()));
-  }
-  ```
-
-* Capitalize comments that are on separate lines.
-  Use a proper full stop for sentences.
-
-
 ### Grouping
 
 * Separate complex multi-line definitions with empty lines.
@@ -231,121 +307,46 @@ To increase readability and uniformity of Motoko source code, this guide provide
   ```
 
 
-### Spacing
+### Comments
 
-* Put spaces around arithmetic operators, except to visually group sub-expressions of more tightly binding operators.
-
-  ```
-  let z = 2*x + 3*y + 4*(x*x + y*y);
-  ```
-
-* Put spaces around comparison operators, Boolean operators, and assignment operators.
+* Use line comments (`//...`).
+  Use block comments (`/*...*/`) only when commenting in the middle of a line or for commenting out pieces of code during development.
 
   ```
-  4 + 5 <= 5 + 4;
-  not (a or b and not c);
-  v := 0;
-  v += 1;
-  ```
-
-* Put spaces around '='.
-
-  ```
-  var v = 0;
-  let r = { a = 1; b = 2 };
-  ```
-
-* Analogously, put spaces around `:`.
-
-  ```
-  var v : Nat = 0;
-  func foo(x : Nat, y : Nat) : Nat { x + y }
-  func bar((x, y) : (Nat, Nat)) : Nat { x + y }
-  let w = -1 ^ 0xff : Word16;
-  ```
-
-  Rationale: ':' is to declarations what '=' is to definitions.
-  Moreover, the left-hand of a type annotation may generally be an arbitrary complex expression or pattern.
-
-* Put a space after a comma or semicolon (but not before).
-
-  ```
-  let tuple = (1, 2, 3);
-  let record = { a = 1; b = 2; c = 3 };
-  ```
-
-* Put spaces inside braces, unless they are a simple variant or record.
-
-  ```
-  func f() { 0 };
-  f({ a = 1; b = 2; c = 3 });
-  f({a = 1; b = 2});  // okay as well
-
-  type Vec3D = { x : Float; y : Float; y : Float };
-  type Order = { #less; #equal; #more };
-
-  type Order = {#less; #equal; #more};  // okay as well
-  type Proc = {h : Nat; w : Nat} -> {#ok; #fail};
-  ```
-
-* Put spaces inside brackets if they stretch multiple lines.
-
-  ```
-  foo(
-    firstArgument,
-    ( longTupleComponent, anotherLongExpression,
-      moreLongExpression
-    ),
-    [ 1, 2, 3,
-      4, 5, 6,
-    ],
-    { field1 = 4; field2 = 5;
-      field3 = 6;
-    }
-  );
-  ```
-
-* Put a space between statement keywords and their operands.
-
-  ```
-  if (f()) A else B;
-  for (x in xs.vals()) { ... };
-  switch (compare(x, y)) {
-    case (#less) { A };
-    case (_) { B };
+  // The following function runs the current
+  // pallaboom on a given snibble. It returns
+  // suitable plexus if it can.
+  func paBoom(s : Snibble) : Handle<Plexus> {
+    let puglet = initPugs(s.crick, 0 /* size */, #local);
+  /* Don't do the odd stuff yet...
+    ...
+    ...
+  */
+    return polyfillNexus(puglet);  // for now
   }
-
-  assert (x < 100);
-  await (async (0));
   ```
 
-* Do _not_ put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
+  Rationale: Line comments make it easier to insert, remove or swap individual lines.
+
+* Put short comments explaining a single line at the end of the line, separated by at least 2 spaces.
 
   ```
-  type Pair<X> = (X, X);
-  type Id = <X>(X) -> X;
-
-  let ok = #ok(5);
-
-  func id<X>(x : X) : X { x };
-  id<Nat>(5);
+  paBoom(getSnibble()));  // create new snibble
   ```
 
-* However, put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see [parenless style](#parentheses)) or a record used as a named parameter list (see [Picking Type](#picking-types)).
+* Put multi-line comments before a line of code, with the same indentation as the code it is describing.
 
   ```
-  sin 0.0;
-  g [1, 2, 3];
-  f{arg1 = 0; arg2 = 0};
+  func f() {
+    // Try to invoke the current pallaboom with
+    // the previous snibble. If that succeeds,
+    // we have the new plexus; if not, complain.
+    let plexusHandle = paBoom(getSnibble()));
+  }
   ```
-  Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
-* Do _not_ put a space around access operators like `.`, `?`, `!`, or index brackets.
-
-  ```
-  foo(bar).baz[5]().boo;
-  foom(?(bam()! + 1));
-  ```
+* Capitalize comments that are on separate lines.
+  Use a proper full stop for sentences.
 
 
 ## Punctuation
@@ -486,6 +487,17 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   ```
 
+### Miscellaneous
+
+* Use `_` to group digits in numbers.
+  Group by 3 digits in decimal numbers and by 4 in hexdecimal notation.
+
+  ```
+  let billion = 1_000_000_000;
+  let pi = 3.141_592_653_589_793_12;
+  let mask : Word32 = 0xff00_ff0f;
+  ```
+
 
 ## Naming
 
@@ -620,11 +632,47 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 ### Type Annotations
 
-* Put type annotations on mutable variables, unless the type is obvious.
+* Put type annotations on definitions that involve fixed-width numeric types, to disambiguate the type of overloaded arithmetic operators and constants.
+
+  ```
+  let mask : Word32 = 0xfc03_ff00;
+  let pivot : Nat32 = (size + 1)/2;
+  let vec : [Int16] = [1, 3, -4, 0];
+  ```
+
+  Note: Use floating point constants to enforce type `Float` without an extra annotation.
+  Similarly, use an explict `+` sign to produce a positive value of type `Int` instead of `Nat`, if desired.
+
+  ```
+  let zero = 1.0;    // type Float
+  let offset = +1;   // type Int
+  ```
+
+* Similarly, put inline type annotations on arithmetic expressions with types other than `Nat` or `Int`.
+
+  ```
+  if (x & mask == (1 : Word32)) { ... };
+  ```
+
+  Note: The need to annotate constants in cases like this is a short-coming of Motoko's type system that we hope to address soon.
+
+  Note: An annotation is not needed on function arguments, since their type is usually inferred from the function.
+  The only exception is when that argument has generic type and the type arguments have been omitted.
+
+  ```
+  func foo(len : Nat32, vec : [Nat16]) { ... };
+  func bar<X>(x : X) { ... };
+
+  foo(3, [0, 1, 2]);
+  bar<Nat16>(0);
+  bar(0 : Nat16);
+  ```
+
+* Put type annotations on mutable variables, unless their type is obvious.
 
   ```
   var name = "Motoko";
-  var count = 0;
+  var balance = 0;
 
   func f(i : Int) {
     var j = i;
@@ -655,6 +703,13 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   ```
   Array.map<Nat, Nat>(func n {n + 1}, a);
+  ```
+
+* Put type annotations on definitions that involve numeric types other than `Nat` or `Int`, to resolve the overloading between arithmetic operators and constants.
+
+  ```
+  let mask : Word32 = 0xfc03_ff00;
+  let offset : Nat32 = size + 1;
   ```
 
 
