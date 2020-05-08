@@ -436,7 +436,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   ```
   type Op = Nat -> Nat;
-  let a2 = Array.map(a, func x { x + 1 });
+  let a2 = Array.map<Nat, Nat>(func x { x + 1 }, a);
 
   let y = f x;
   let z = f {};
@@ -652,7 +652,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 * Omit type annotations on functions when they are passed as arguments.
 
   ```
-  Array.map<Nat>(a, func n {n + 1});
+  Array.map<Nat, Nat>(func n {n + 1}, a);
   ```
 
 
@@ -694,7 +694,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 * Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
 
   ```
-  for (i in range(1, 10)) { ... };
+  for (i in Iter.range(1, 10)) { ... };
   for (x in array.vals()) { ... };
   ```
 
