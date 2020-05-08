@@ -1,9 +1,6 @@
 type 'a t
 
-module Unfold(M : Map.S) : sig
-  type e = M.key
-  val unfold : (e -> ('a * e list)) -> e -> 'a t
-end
+val unfold : ('e -> ('a * 'e list)) -> 'e -> 'a t
 
 val canonicalize : 'a t -> 'a t
 

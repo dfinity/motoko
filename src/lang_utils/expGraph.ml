@@ -1,26 +1,25 @@
 module IM = Map.Make (struct type t = int let compare = compare end)
 module IS = Set.Make (struct type t = int let compare = compare end)
 
-(* The root is at node 0 *)
+(* A graph of nodes, nodes labeled by ints, root at node 0 *)
 type 'a t = ('a * int list) IM.t
 
-type counter = int ref
-let new_counter start : counter = ref start
-let get_next (r : counter) : int = let i = !r in r := !r + 1; i
+(* Simple counter data structure *)
+let start_counting start : (unit -> int) =
+  let r = ref start in
+  fun () -> let i = !r in r := !r + 1; i
 
-module Unfold(M : Map.S) = struct
+let unfold (type e) node (root : e) : 'a t =
+  let module M = Map.Make (struct type t = e let compare = compare end) in
 
-type e = M.key
-
-let unfold node (root : e) : 'a t =
   let seen = ref M.empty in
-  let counter = new_counter 0 in
+  let next = start_counting 0 in
   let graph = ref IM.empty in
   let rec go e : int =
     match M.find_opt e !seen with
     | Some i -> i
     | None ->
-      let i = get_next counter in
+      let i = next () in
       seen := M.add e i !seen;
       let (k, args) = node e in
       let args' = List.map go args in
@@ -31,7 +30,6 @@ let unfold node (root : e) : 'a t =
   assert (i == 0);
   !graph
 
-end (* Unfold *)
 
 (* Maps an index mapping over the graph. If not injective, will combine nodes *)
 let rename (lookup : int -> int) graph = graph
@@ -46,18 +44,18 @@ let rename (lookup : int -> int) graph = graph
 let equiv_classes (type b) (graph : (int * b) Seq.t) : (int IM.t * int) =
   let module BM = Map.Make (struct type t = b let compare = compare end) in
   let m = ref BM.empty in
-  let counter = new_counter 0 in
+  let next = start_counting 0 in
 
   let m =
     IM.of_seq (Seq.map (fun (i,y) ->
       match BM.find_opt y !m with
       | Some j -> (i, j)
       | None ->
-        let j = get_next counter in
+        let j = next () in
         m := BM.add y j !m;
         (i, j)
     ) graph) in
-  let size = get_next counter in
+  let size = next () in
   m, size
 
 
@@ -70,7 +68,6 @@ let combine graph =
   IM.iter (fun i _ -> m := IM.add i 0 !m) graph;
   let size = ref 1 in
   let finished = ref false in
-
 
   (* Fixed-point iteration *)
   while not !finished do
@@ -93,11 +90,11 @@ let combine graph =
 let renumber graph =
   let m = ref IM.empty in
   let lookup i = IM.find i !m in
-  let counter = new_counter 0 in
+  let next = start_counting 0 in
 
   let rec go i = match IM.find_opt i !m with
     | None -> (* not seen before *)
-      m := IM.add i (get_next counter) !m;
+      m := IM.add i (next ()) !m;
       let (k, args) = IM.find i graph in
       List.iter go args
     | Some _ -> ()
