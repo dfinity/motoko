@@ -603,7 +603,7 @@ let concrete t =
   in go t
 
 (* stable or shared *)
-let shtared allow_mut t =
+let serializable allow_mut t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -672,8 +672,8 @@ let is_shared_func t =
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
-let shared t = shtared false t
-let stable t = shtared true t
+let shared t = serializable false t
+let stable t = serializable true t
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
