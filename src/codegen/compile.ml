@@ -3754,7 +3754,7 @@ module Serialization = struct
   let idl_variant   = -21l
   let idl_func      = -22l
   let idl_service   = -23l
-  let idl_alias     = 1l
+  let idl_alias     = 1l (* see Note [mutable stable values] *)
 
 
   let type_desc env ts : string =
@@ -3931,6 +3931,7 @@ module Serialization = struct
       in
 
       let size_alias size_thing =
+        (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
         (* Sanity check *)
@@ -4065,7 +4066,7 @@ module Serialization = struct
       in
 
       let write_alias write_thing =
-        (* non-Candid: aliasable data *)
+        (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
@@ -4359,8 +4360,8 @@ module Serialization = struct
         )
       in
 
-      (* Reads an aliased value *)
       let read_alias env read_thing =
+        (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
         let (set_result, get_result) = new_local env "result" in
         let (set_cur, get_cur) = new_local env "cur" in
@@ -4765,6 +4766,45 @@ module Serialization = struct
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
       deserialize_core argument_data_size argument_data_copy env ts_name ts)
+
+(*
+Note [mutable stable values]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We currently use a Canpdid derivative to serialize stable values. In addition to
+storing sharable data, we can also store mutable data (records with mutable
+fields and mutable arrays), and we need to preserve aliasing.
+
+To that end we extend Candid with a type contsructor `alias t`.
+
+In the type table, alias t is prepresented by 1. All Candid type constructors
+are represented by negative numbers, so this cannot clash with anything and,
+conveniently, makes such values illegal candid.
+
+The values of `alias t` are either
+
+ * i8(0) 0x00000000 M(v)
+   for one (typically the first) occurrence of v or
+ * i8(1) i32(offset) M(v)
+   for all other occurrences of v, where offset is the relative position of the
+   above occurrences from this reference.
+
+We map Motoko type to this as follows:
+
+  e([var t]) = alias e([t]) = alias vec e(t)
+  e({var field : t}) = record { field : alias e(t) }
+
+Why different? Because we need to alias arrays as a whole (we can’t even alias
+their fields, as they are manifestly part of the array heap structure), but
+aliasing records does not work, as aliased record values may appear at
+different types (due to subtyping), and Candid serialization is type-driven.
+Luckily records put all mutable fields behind an indirection (ObjInd), so this
+works.
+
+The type-driven code in this module treats `Type.Mut` to always refer to an
+`ObjInd`; for arrays the mutable case is handled directly.
+
+*)
 
 end (* Serialization *)
 

@@ -129,6 +129,9 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
     if (ty == IDL_CON_alias) { // internal
+      // See Note [mutable stable values] in codegen/compile.ml
+      // It is fine to allow this here unconditionally; in normal Candid decoding
+      // not Motoko type will decode a value of this type (besides Any, I guess)
       int32_t t = read_i32_of_sleb128(buf);
       check_typearg(t, n_types);
     } else if (ty >= 0) {
@@ -306,6 +309,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         idl_trap_with("skip_any: service");
 
       case IDL_CON_alias: {
+        // See Note [mutable stable values] in codegen/compile.ml
         int32_t it = read_i32_of_sleb128(&tb);
         uint32_t tag = read_byte(b);
         advance(b, 4);
