@@ -1160,7 +1160,7 @@ module Tagged = struct
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
-    | StableSeen (* Maker that we have seen this thing before *)
+    | StableSeen (* Marker that we have seen this thing before *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -2671,7 +2671,7 @@ module Object = struct
     idx_raw env f ^^
     load_ptr
 
-  (* load the actually value (following the mutbox) *)
+  (* load the actual value (dereferencing the mutbox) *)
   let load_idx env obj_type f =
     idx env obj_type f ^^
     load_ptr

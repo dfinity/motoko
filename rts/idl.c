@@ -310,7 +310,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         uint32_t tag = read_byte(b);
         advance(b, 4);
         if (tag == 0) {
-          // this is the occurrence (not a reference)
+          // this is the contents (not a reference)
           skip_any(b, typtbl, it, 0);
         }
         return;
