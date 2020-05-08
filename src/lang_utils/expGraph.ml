@@ -4,20 +4,23 @@ module IS = Set.Make (struct type t = int let compare = compare end)
 (* The root is at node 0 *)
 type 'a t = ('a * int list) IM.t
 
+type counter = int ref
+let new_counter start : counter = ref start
+let get_next (r : counter) : int = let i = !r in r := !r + 1; i
+
 module Unfold(M : Map.S) = struct
 
 type e = M.key
 
 let unfold node (root : e) : 'a t =
   let seen = ref M.empty in
-  let counter = ref 0 in
+  let counter = new_counter 0 in
   let graph = ref IM.empty in
   let rec go e : int =
     match M.find_opt e !seen with
     | Some i -> i
     | None ->
-      let i = !counter in
-      counter := !counter + 1;
+      let i = get_next counter in
       seen := M.add e i !seen;
       let (k, args) = node e in
       let args' = List.map go args in
@@ -44,7 +47,7 @@ let combine graph =
   let m = ref IM.empty in
   (* map all types to the same initially *)
   IM.iter (fun i _ -> m := IM.add i 0 !m) graph;
-  let counter = ref 1 in (* first free index *)
+  let counter = new_counter 1 in (* first free index *)
 
   let any_change = ref true in
 
@@ -52,8 +55,7 @@ let combine graph =
   let lookups = List.map lookup in
   let change j =
     any_change := true;
-    m := IM.add j !counter !m;
-    counter := !counter + 1
+    m := IM.add j (get_next counter) !m;
   in
 
   (* Now iterate, separating the equivalence classes if we find evidence *)
@@ -78,12 +80,11 @@ let combine graph =
 (* Changes the number to be canonical (depth first) *)
 let renumber graph =
   let m = ref IM.empty in
-  let counter = ref 0 in
+  let counter = new_counter 0 in
 
   let rec go i = match IM.find_opt i !m with
     | None -> (* no seen before *)
-      m := IM.add i !counter !m;
-      counter := !counter + 1;
+      m := IM.add i (get_next counter) !m;
       let (k, args) = IM.find i graph in
       List.iter go args
     | Some _ -> ()
