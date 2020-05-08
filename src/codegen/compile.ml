@@ -4784,7 +4784,11 @@ conveniently, makes such values illegal candid.
 The values of `alias t` are either
 
  * i8(0) 0x00000000 M(v)
-   for one (typically the first) occurrence of v or
+   for one (typically the first) occurrence of v
+   (the 0x00000000 is the “memo field”, scratch space for the benefit of the decoder)
+
+or
+
  * i8(1) i32(offset) M(v)
    for all other occurrences of v, where offset is the relative position of the
    above occurrences from this reference.
@@ -4803,6 +4807,25 @@ works.
 
 The type-driven code in this module treats `Type.Mut` to always refer to an
 `ObjInd`; for arrays the mutable case is handled directly.
+
+To detect and preseve aliasing, these steps are taken:
+
+ * In `buffer_size`, when we see a mutable thing (`Array` or `ObjInd`), the
+   first time, we mark it by setting the heap tag to `StableSeen`.
+   This way, when we see it a second time, we can skip the value in the size
+   calculation.
+ * In `serialize`, when we see it a first time (tag still `StableSeen`),
+   we serialize it (first form above), and remember the absolute position
+   in the output buffer, abusing the heap tag here.
+   (Invariant: This absolute position is never `StableSeen`)
+   Upon a second visit (tag not `StableSeen`), we can thus fetch that absolute
+   position and calculate the offset.
+ * In `deserialize`, when we come across a `alias t`, we follow the offset (if
+   needed) to find the content.
+   If the memo field is still `0x00000000`, this is the first time we read
+   this, so we deserialize to the Motoko heap, and remember the heap position
+   (vanilla pointer) by overriding the memo field.
+   If it is not `0x00000000` then we can simply read the pointer from there.
 
 *)
 
