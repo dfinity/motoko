@@ -533,7 +533,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   func foo(x : Nat, _futureFlag : Bool) { ... };
   ```
 
-  Rationale: A type checker can warn about unused identifiers, which can be circumvented by explicitly prepending `_` to its name to document intention.
+  Rationale: A type checker can warn about unused identifiers, which can be suppressed by explicitly prepending `_` to its name to document intention.
   This aligns with the use of the keyword `_` for pattern wildcards.
 
 
@@ -664,7 +664,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 * Use `WordN` only when bit-fiddling requires the low-level interpretation of a number as a vector of bits.
 
-* Use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
+* Where possible, use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
 
   ```
   class Set<X>() {
@@ -686,6 +686,31 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   Rationale: This expresses named paremeters. This way, arguments can be freely reordered at the call site and callers are prevented from accidentally passing them in the wrong order.
 
+* Do not use sentinel values, such as `-1`, to represent invalid values.
+  Use the option type instead.
+
+  ```
+  func lookup(x : key) : ?Nat { ... }
+  ```
+
+* Avoid proliferation of option types, and therefore `null`.
+  Limit their use to as small a scope as possible.
+  Rule out the `null` case and use non-option types wherever possible.
+
+* Use variants instead of `Bool` to represent binary choices.
+  Note that variant types need not be declared but can be used in place.
+
+  ```
+  func capitalization(word : Text) : {#upper; #lower} { ... }
+  ```
+
+* Data is immutable in Motoko unless explicitly stated otherwise.
+  Use mutability types and definitions (`var`) with care and only where needed.
+
+  Rationale:
+  Mutable data cannot be communicated or share across actors.
+  It is more error-prone and much more difficult to formally reason about, especially when concurrency is involved.
+
 
 ## Features
 
@@ -704,9 +729,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 * Use `if` or `switch` as expressions where appropriate.
 
   ```
-  func abs(i : Int) : Int {
-    if (i < 0) -i else i;
-  };
+  func abs(i : Int) : Int { if (i < 0) -i else i };
 
   let delta = switch mode { case (#up) +1; case (#dn) -1 };
   ```
@@ -746,16 +769,6 @@ To increase readability and uniformity of Motoko source code, this guide provide
     return a;
   };
   ```
-
-
-### Mutable State
-
-* Identifiers and data are immutable unless explicitly stated otherwise.
-  Use mutability (`var`) with care and only where needed.
-
-  Rationale:
-  Mutable data cannot be communicated or share across actors.
-  It also is much more difficult to formally reason about code that uses state mutation, especially when concurrency is involved.
 
 
 ### Objects, Classes, Modules
