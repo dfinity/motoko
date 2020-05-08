@@ -34,57 +34,69 @@ let unfold node (root : e) : 'a t =
 end (* Unfold *)
 
 (* Maps an index mapping over the graph. If not injective, will combine nodes *)
-let rename graph (lookup : int -> int) =
-  let lookups = List.map lookup in
-  let r = ref IM.empty in
-  IM.iter (fun i (k, args) ->
-    r := IM.add (lookup i) (k, lookups args) !r
-  ) graph;
-  !r
+let rename (lookup : int -> int) graph = graph
+    |> IM.to_seq
+    |> Seq.map (fun (i, (k, args)) -> (lookup i, (k, List.map lookup args)))
+    |> IM.of_seq
+
+(* Given a function on int (given as sequences of points),
+   calculates the equivalence classes it represents,
+   in the form of a mapping from int to int (plus size)
+*)
+let equiv_classes (type b) (graph : (int * b) Seq.t) : (int IM.t * int) =
+  let module BM = Map.Make (struct type t = b let compare = compare end) in
+  let m = ref BM.empty in
+  let counter = new_counter 0 in
+
+  let m =
+    IM.of_seq (Seq.map (fun (i,y) ->
+      match BM.find_opt y !m with
+      | Some j -> (i, j)
+      | None ->
+        let j = get_next counter in
+        m := BM.add y j !m;
+        (i, j)
+    ) graph) in
+  let size = get_next counter in
+  m, size
+
 
 (* Finds a minimal graph by finding the smallest index mapping that is consistent *)
+(* Equivalently: The coarsest equivalence classes on the nodes *)
 let combine graph =
-  let m = ref IM.empty in
+  let m : int IM.t ref = ref IM.empty in
+  let lookup i = IM.find i !m in
   (* map all types to the same initially *)
   IM.iter (fun i _ -> m := IM.add i 0 !m) graph;
-  let counter = new_counter 1 in (* first free index *)
+  let size = ref 1 in
+  let finished = ref false in
 
-  let any_change = ref true in
 
-  let lookup i = IM.find i !m in
-  let lookups = List.map lookup in
-  let change j =
-    any_change := true;
-    m := IM.add j (get_next counter) !m;
-  in
-
-  (* Now iterate, separating the equivalence classes if we find evidence *)
-  while !any_change do
-    any_change := false;
-    (* stupid quadradric algorithm for now *)
-    (* could be improved by maintianing a list of equivalence classes *)
-    IM.iter (fun i (k1, args1) ->
-      IM.iter (fun j (k2, args2) ->
-        (* TODO: Not really good. needs to split equivalence class properly *)
-        if i < j then
-        if lookup i = lookup j then
-        if not (k1 = k2 && lookups args1 = lookups args2) then
-        (* i and j must not be mapped to each other, so change j*)
-        change j
-      ) graph
-    ) graph
+  (* Fixed-point iteration *)
+  while not !finished do
+    (* Update the equivalence classes. By including the previous class,
+       this is a refinement *)
+    let m', size' = graph
+      |> IM.to_seq
+      |> Seq.map (fun (i, (k, args)) -> (i, (lookup i, k, List.map lookup args)))
+      |> equiv_classes in
+    assert (size' >= !size); (* New equivalence class better be finer *)
+    finished := size' = !size;
+    size := size';
+    m := m';
   done;
 
   assert (lookup 0 = 0);
-  rename graph lookup
+  rename lookup graph
 
-(* Changes the number to be canonical (depth first) *)
+(* Changes the numbee to be canonical (depth first) *)
 let renumber graph =
   let m = ref IM.empty in
+  let lookup i = IM.find i !m in
   let counter = new_counter 0 in
 
   let rec go i = match IM.find_opt i !m with
-    | None -> (* no seen before *)
+    | None -> (* not seen before *)
       m := IM.add i (get_next counter) !m;
       let (k, args) = IM.find i graph in
       List.iter go args
@@ -92,8 +104,8 @@ let renumber graph =
   in
   go 0;
 
-  assert (IM.find 0 !m = 0);
-  rename graph (fun i -> IM.find i !m)
+  assert (lookup 0 = 0);
+  rename lookup graph
 
 (* Find a canonical graph *)
 let canonicalize graph = renumber (combine graph)
