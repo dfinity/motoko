@@ -14,10 +14,6 @@
  (libraries wasm_exts linking)
 )
 (executable
- (name lexbench)
- (modules lexbench)
- (libraries mo_frontend core core_kernel core_bench menhirLib))
-(executable
  (name didc)
  (modules didc)
  (libraries idllib)
