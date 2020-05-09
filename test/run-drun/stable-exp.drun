@@ -1,4 +1,0 @@
-install ic:2A012B stable-exp/canister1.mo ""
-upgrade ic:2A012B stable-exp/canister1.mo ""
-upgrade ic:2A012B stable-exp/canister1.mo ""
-
