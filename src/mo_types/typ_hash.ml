@@ -109,6 +109,9 @@ let of_def i =
 let typ_hash : typ -> string =
   fun t -> t |> unfold go |> canonicalize |> fold of_con of_ref of_def
 
+let typ_seq_hash : typ list -> string = fun ts ->
+  String.concat "" (List.map typ_hash ts)
+
 
 (* Some small unit tests *)
 

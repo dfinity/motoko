@@ -4447,7 +4447,7 @@ module Serialization = struct
     )
 
   let serialize env ts : G.t =
-    let ts_name = String.concat "," (List.map typ_hash ts) in
+    let ts_name = typ_seq_hash ts in
     let name = "@serialize<" ^ ts_name ^ ">" in
     (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
@@ -4578,7 +4578,7 @@ module Serialization = struct
     | _ -> assert false
 
   let deserialize env ts =
-    let ts_name = String.concat "," (List.map typ_hash ts) in
+    let ts_name = typ_seq_hash ts in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
       deserialize_core argument_data_size argument_data_copy env ts_name ts)
