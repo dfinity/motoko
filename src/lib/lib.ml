@@ -228,6 +228,10 @@ struct
     | _::xs -> last xs
     | [] -> failwith "last"
 
+  let last_opt = function
+    | [] -> None
+    | xs -> Some (last xs)
+
   let rec first_opt f = function
     | [] -> None
     | x::xs ->
