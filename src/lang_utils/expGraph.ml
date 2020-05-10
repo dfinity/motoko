@@ -121,8 +121,11 @@ let fold
     let bump i = tally := IM.update i succ !tally in
     bump 0;
     IM.iter (fun _ (_, args) -> List.iter bump args) graph;
+    (* Nice output if leaf nodes are not shared *)
+    IM.iter (fun i (_, args) -> if args = [] then tally := IM.add i 1 !tally) graph;
     !tally
   in
+
 
   (* Now fold the graph using the user-provided combinators *)
   let seen = ref IS.empty in
