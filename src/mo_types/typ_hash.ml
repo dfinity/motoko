@@ -43,7 +43,7 @@ let prim = function
   | Float -> "f"
   | Char -> "c"
   | Text -> "t"
-  | Blob -> "b"
+  | Blob -> "B"
   | Error -> "e"
   | Principal -> "p"
 
