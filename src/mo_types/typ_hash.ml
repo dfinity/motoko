@@ -12,6 +12,49 @@ with these properties
  - It does not support type parameters (for now)
  - Type.eq t1 t2 = (typ_hash t1 = typ_hash t2)
  - The output is readable, and still somewhat compact
+
+
+The output format does not matter hugely (equality is what counds), but here is
+a little reading advice:
+
+ * Nullary types are described a single letter, or few letters:
+
+     Nat: N
+     Word8: w8
+     (): u
+
+ * Unary type constructors just prefix their type argument
+
+     ?Nat: ?N
+     [Blob]: vB
+     [Mut Text]: Vt
+
+ * Tuples put parentheses around the component types, without separator:
+
+     (Int, ?Bool, Text) = (I?bt)
+
+ * Objects and variants have comma-separted lists of label-type-pairs:
+
+     {foo : Int; var bar : Text} = r(foo:I,bar!:t)
+     {#tag : Int} = v(tag:I)
+
+   Object variants are indicated after the r:
+
+     module {foo : Int; var bar : Text} = rm(foo:I,bar!:t)
+
+ * Functions:
+
+     shared (Int, Bool) -> Text = Fs(IB)(t)
+
+ * Types that occur more than once are prefixed with a number when seen first,
+   and later referenced by that number:
+
+     ([mut Int]) -> ([mut Int]) = F(1=VI)(!1)
+
+For this encoding to be injective, it must be prefix free, i.e.
+
+  ∀ t1 t2. typ_hash t1 `isPrefixOf` typ_hash t2 ⟹ eq t1 t2 = true
+
 *)
 
 (* A hint about how to print the node *)
@@ -91,14 +134,20 @@ let paren xs = "(" ^ String.concat "" xs ^ ")"
 
 let of_con (a, k) args =
   match a, args with
-  | Nullary, [] -> k
-  | Unary, [a] -> k ^ a
-  | Nary, _ -> k ^ paren args
-  | Labeled ls, _ -> k ^ "(" ^ String.concat "," (List.map2 (fun l a -> l ^ ":" ^ a) ls args) ^ ")"
+  | Nullary, _ ->
+    assert (args = []);
+    k
+  | Unary, [a] ->
+    k ^ a
+  | Unary, _ ->
+    assert false
+  | Nary, _ ->
+    k ^ paren args
+  | Labeled ls, _ ->
+    k ^ "(" ^ String.concat "," (List.map2 (fun l a -> l ^ ":" ^ a) ls args) ^ ")"
   | TwoSeq n, _->
     let (a1, a2) = Lib.List.split_at n args in
     k ^ paren a1 ^ paren a2
-  | _, _ -> assert false
 
 let of_ref i x =
   Int.to_string i ^ "=" ^ x
