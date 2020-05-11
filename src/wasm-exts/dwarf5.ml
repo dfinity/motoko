@@ -545,7 +545,8 @@ let opcode_base = dw_LNS_set_isa
 type state = int * (int * int * int) * int * (bool * bool * bool * bool)
 (*                file, line, col *)
 let default_loc = 1, 1, 0
-let default_flags = default_is_stmt, false, true, false
+let default_flags = default_is_stmt, false, false, false
+(* Table 6.4: Line number program initial state *)
 let start_state = 0, default_loc, 0, default_flags
 
 let interpret (out : state -> unit) : int list -> state -> state =
@@ -593,16 +594,16 @@ let rec infer from toward = match from, toward with
     dw_LNS_advance_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
   | (_, (file, line, col), disc, flags), (t, (file', line', col'), disc', flags') when file <> file' ->
     dw_LNS_set_file :: file' :: infer (t, (file', line, col), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, (_, line, col), disc, flags), (t, (file, line', col'), disc', flags') when line <> line' ->
-    dw_LNS_advance_line :: line' - line :: infer (t, (file, line', col), disc, flags) (t, (file, line', col'), disc', flags')
-  | (_, (_, _, col), disc, flags), (t, (file, line, col'), disc', flags') when col <> col' ->
-    dw_LNS_set_column :: col' :: infer (t, (file, line, col'), disc', flags') (t, (file, line, col'), disc', flags')
+  | (_, (_, line, col), disc, flags), (t, (file', line', col'), disc', flags') when line <> line' ->
+    dw_LNS_advance_line :: line' - line :: infer (t, (file', line', col), disc, flags) (t, (file', line', col'), disc', flags')
+  | (_, (_, _, col), disc, flags), (t, (file', line', col'), disc', flags') when col <> col' ->
+    dw_LNS_set_column :: col' :: infer (t, (file', line', col'), disc, flags) (t, (file', line', col'), disc', flags')
   | (_, _, disc, flags), (t, loc, disc', flags') when disc <> disc' -> failwith "cannot do disc yet"
   | (_, _, _, (s, bb, ep, be)), (t, loc, disc, (s', bb', ep', be')) when s <> s' ->
     dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, ep, be)) (t, loc, disc, (s', bb', ep', be'))
-  | (_, _, _, (_, bb, ep, be)), (t, loc, disc, (s, bb', ep', be')) when bb <> bb' -> failwith "cannot do bb yet"
-  | (_, _, _, (_, _, true, be)), (t, loc, disc, (s, bb, false, be')) ->
-    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s, bb, false, be)) (t, loc, disc, (s, bb, false, be'))
+  | (_, _, _, (_, bb, ep, be)), (t, loc, disc, (s', bb', ep', be')) when bb <> bb' -> failwith "cannot do bb yet"
+  | (_, _, _, (_, _, true, be)), (t, loc, disc, (s', bb', false, be')) ->
+    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s', bb', false, be)) (t, loc, disc, (s', bb', false, be'))
   | state, state' when state = state' -> [dw_LNS_copy]
   | _ -> failwith "not covered"
 
