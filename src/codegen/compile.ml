@@ -845,7 +845,7 @@ module Heap = struct
 
   let get_memory_size =
     G.i MemorySize ^^
-    compile_unboxed_const page_size
+    compile_mul_const page_size
 
   let note_live_size env =
     (* assumes size of live set on the stack *)
