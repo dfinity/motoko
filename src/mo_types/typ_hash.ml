@@ -75,7 +75,7 @@ is a bit ambigous
 let prim = function
   | Null -> "z"
   | Bool -> "b"
-  | Nat -> "n"
+  | Nat -> "N"
   | Nat8 -> "n8"
   | Nat16 -> "n16"
   | Nat32 -> "n32"
