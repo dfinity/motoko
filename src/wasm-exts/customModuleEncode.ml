@@ -966,7 +966,7 @@ let encode (em : extended_module) =
             unit(fun _ ->
                 u8 1; (* min_inst_length *)
                 u8 1; (* max_ops_per_inst *)
-                u8 1; (* default_is_stmt *)
+                u8 (if Dwarf5.Machine.default_is_stmt then 1 else 0); (* default_is_stmt *)
                 u8 0; (* line_base *)
                 u8 12; (* line_range *)
                 u8 13; (* opcode_base *)
@@ -1020,10 +1020,10 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
 
-            let mapping (addr, {file; line; column} as instr) : Dwarf5.Machine.state =
-              let f = add_file_string file in
-              let stmt = Instrs.mem instr statement_positions || is_statement_at instr in
-              rel addr, (f, line, column + 1), 0, (stmt, false, false, false) in
+            let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
+              let file' = add_file_string file in
+              let stmt = Instrs.mem loc statement_positions || is_statement_at loc in
+              rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
 
             let joining (prg, state) state' : int list * Dwarf5.Machine.state =
               (* FIXME: quadratic *)
@@ -1036,13 +1036,13 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
               Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
            
               let seq = Instrs.to_seq notes in
-              (* Decorate first instr, and prepend start address *)
-              let start_state = let _, l, d, f = Dwarf5.Machine.start_state in start, l, d, f in
+              (* Decorate first instr, and prepend start address, non-statement *)
+              let start_state = let _, loc, d, f = Dwarf5.Machine.start_state in start, loc, d, f in
               let states' () =
                 let open Seq in
                 match map mapping seq () with
                 | Cons ((a, l, d, (stm, bb, _, epi)), t) ->
-                  let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  let start_state' = let a, _, d, (_, bb, pe, eb)  = start_state in a, l, d, (false, bb, pe, eb) in
                   Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, false, epi)), t))
                 | Nil -> Cons (start_state, fun () -> Nil)
               in
