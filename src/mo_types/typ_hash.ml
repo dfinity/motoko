@@ -51,6 +51,9 @@ a little reading advice:
 
      ([mut Int]) -> ([mut Int]) = F(1=VI)(!1)
 
+     type List = ?(Nat,List)
+     (List, ?List) = (1=?(N!1)?!1)
+
 For this encoding to be injective, it must be prefix free, i.e.
 
   ∀ t1 t2. typ_hash t1 `isPrefixOf` typ_hash t2 ⟹ eq t1 t2 = true
