@@ -749,7 +749,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   };
   ```
 
-* Use a record (an object with just data) as argument for long parameter lists that have no obvious ordering.
+* Consider using a record (an object with just data) as argument for long parameter lists.
 
   ```
   func process({seed : Float; delta : Float; data : [Record]; config : Config}) : Thing {
