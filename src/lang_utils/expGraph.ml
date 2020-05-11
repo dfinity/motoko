@@ -40,6 +40,12 @@ let rename (lookup : int -> int) graph = graph
 (* Given a function on int (given as sequences of points),
    calculates the equivalence classes it represents,
    in the form of a mapping from int to int (plus size)
+
+   Example Input:   Example Output:
+     0 ↦ "Ho"         0 ↦ 0
+     1 ↦ "Hi"         1 ↦ 1
+     3 ↦ "Ho"         3 ↦ 0
+
 *)
 let equiv_classes (type b) (graph : (int * b) Seq.t) : (int IM.t * int) =
   let module BM = Map.Make (struct type t = b let compare = compare end) in
@@ -86,7 +92,7 @@ let combine graph =
   assert (lookup 0 = 0);
   rename lookup graph
 
-(* Changes the numbee to be canonical (depth first) *)
+(* Changes the numbering to be canonical (depth first) *)
 let renumber graph =
   let m = ref IM.empty in
   let lookup i = IM.find i !m in
@@ -121,11 +127,17 @@ let fold
     let bump i = tally := IM.update i succ !tally in
     bump 0;
     IM.iter (fun _ (_, args) -> List.iter bump args) graph;
-    (* Nice output if leaf nodes are not shared *)
-    IM.iter (fun i (_, args) -> if args = [] then tally := IM.add i 1 !tally) graph;
     !tally
   in
 
+  (* Nodes need an explicit definition if not nullary and referenced
+     more than once
+   *)
+  let needs_def : IS.t =
+    IS.of_seq (Seq.filter_map (fun (i, (k, args)) ->
+        if args != [] && IM.find i tally > 1 then Some i else None
+    ) (IM.to_seq graph))
+  in
 
   (* Now fold the graph using the user-provided combinators *)
   let seen = ref IS.empty in
@@ -135,10 +147,11 @@ let fold
     of_con k (List.map go args)
   and go i : 'b =
     (* This node is only printed once: *)
-    if IM.find i tally = 1 then go_con i else
-    (* We have seen this before: *)
-    if IS.mem i !seen then of_ref i
-    (* This is a shared node, first visit: *)
-    else (seen := IS.add i !seen; of_def i (go_con i))
+    if IS.mem i needs_def then
+      (* We have seen this before: *)
+      if IS.mem i !seen then of_ref i
+      (* This is a shared node, first visit: *)
+      else (seen := IS.add i !seen; of_def i (go_con i))
+    else go_con i
   in
   go 0
