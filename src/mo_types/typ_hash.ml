@@ -59,7 +59,7 @@ a little reading advice:
 
 For this encoding to be injective, it must be prefix free, i.e.
 
-  ∀ t1 t2. typ_hash t1 `isPrefixOf` typ_hash t2 ⟹ eq t1 t2 = true
+  ∀ t1 t2 s. typ_hash t1 = (typ_hash t2 ^ s) ⟹ eq t1 t2 = true
 
 *)
 
@@ -75,7 +75,7 @@ is a bit ambigous
 let prim = function
   | Null -> "z"
   | Bool -> "b"
-  | Nat -> "N"
+  | Nat -> "n"
   | Nat8 -> "n8"
   | Nat16 -> "n16"
   | Nat32 -> "n32"
@@ -93,13 +93,13 @@ let prim = function
   | Char -> "c"
   | Text -> "t"
   | Blob -> "B"
-  | Error -> "e"
-  | Principal -> "p"
+  | Error -> "E"
+  | Principal -> "P"
 
 let rec go = function
   | Prim p -> ((Nullary, prim p), [])
-  | Any -> ((Nullary, "any"), [])
-  | Non -> ((Nullary, "non"), [])
+  | Any -> ((Nullary, "a"), [])
+  | Non -> ((Nullary, "e"), []) (* e for empty *)
   | Opt t -> ((Unary, "?"), [t])
   | Tup [] -> ((Nullary, "u"), [])
   | Tup ts -> ((Nary, ""), ts)
