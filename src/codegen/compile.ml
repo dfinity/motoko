@@ -843,6 +843,10 @@ module Heap = struct
   let get_reclaimed env =
     G.i (GlobalGet (nr (E.get_global env "reclaimed")))
 
+  let get_memory_size =
+    G.i MemorySize ^^
+    compile_mul_const page_size
+
   let note_live_size env =
     (* assumes size of live set on the stack *)
     let (set_live_size, get_live_size) = new_local env "live_size" in
@@ -3713,25 +3717,34 @@ module Serialization = struct
 
   module TM = Map.Make (struct type t = Type.typ let compare = compare end)
   let to_idl_prim = let open Type in function
-    | Prim Null | Tup [] -> Some 1
-    | Prim Bool -> Some 2
-    | Prim Nat -> Some 3
-    | Prim Int -> Some 4
-    | Prim (Nat8|Word8) -> Some 5
-    | Prim (Nat16|Word16) -> Some 6
-    | Prim (Nat32|Word32|Char) -> Some 7
-    | Prim (Nat64|Word64) -> Some 8
-    | Prim Int8 -> Some 9
-    | Prim Int16 -> Some 10
-    | Prim Int32 -> Some 11
-    | Prim Int64 -> Some 12
-    | Prim Float -> Some 14
-    | Prim Text -> Some 15
+    | Prim Null | Tup [] -> Some 1l
+    | Prim Bool -> Some 2l
+    | Prim Nat -> Some 3l
+    | Prim Int -> Some 4l
+    | Prim (Nat8|Word8) -> Some 5l
+    | Prim (Nat16|Word16) -> Some 6l
+    | Prim (Nat32|Word32|Char) -> Some 7l
+    | Prim (Nat64|Word64) -> Some 8l
+    | Prim Int8 -> Some 9l
+    | Prim Int16 -> Some 10l
+    | Prim Int32 -> Some 11l
+    | Prim Int64 -> Some 12l
+    | Prim Float -> Some 14l
+    | Prim Text -> Some 15l
     (* NB: Prim Blob does not map to a primitive IDL type *)
-    | Any -> Some 16
-    | Non -> Some 17
-    | Prim Principal -> Some 24
+    | Any -> Some 16l
+    | Non -> Some 17l
+    | Prim Principal -> Some 24l
     | _ -> None
+
+  (* some constants, also see rts/idl.c *)
+  let idl_opt       = -18l
+  let idl_vec       = -19l
+  let idl_record    = -20l
+  let idl_variant   = -21l
+  let idl_func      = -22l
+  let idl_service   = -23l
+
 
   let type_desc env ts : string =
     let open Type in
@@ -3745,7 +3758,7 @@ module Serialization = struct
         let t = Type.normalize t in
         if to_idl_prim t <> None then () else
         if TM.mem t !idx then () else begin
-          idx := TM.add t (List.length !typs) !idx;
+          idx := TM.add t (Lib.List32.length !typs) !idx;
           typs := !typs @ [ t ];
           match t with
           | Tup ts -> List.iter go ts
@@ -3786,13 +3799,14 @@ module Serialization = struct
       assert (i >= 0);
       add_leb128_32 (Lib.Uint32.of_int i) in
 
-    let rec add_sleb128 i =
-      let b = i land 0x7f in
-      if -64 <= i && i < 64
-      then add_u8 b
+    let rec add_sleb128 (i : int32) =
+      let open Int32 in
+      let b = logand i 0x7fl in
+      if -64l <= i && i < 64l
+      then add_u8 (to_int b)
       else begin
-        add_u8 (b lor 0x80);
-        add_sleb128 (i asr 7)
+        add_u8 (to_int (logor b 0x80l));
+        add_sleb128 (shift_right i 7)
       end in
 
     (* Actual binary data *)
@@ -3800,7 +3814,7 @@ module Serialization = struct
     let add_idx t =
       let t = Type.normalize t in
       match to_idl_prim t with
-      | Some i -> add_sleb128 (-i)
+      | Some i -> add_sleb128 (Int32.neg i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
 
     let rec add_typ t =
@@ -3810,25 +3824,25 @@ module Serialization = struct
         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
-        add_sleb128 (-20);
+        add_sleb128 idl_record;
         add_leb128 (List.length ts);
         List.iteri (fun i t ->
           add_leb128 i;
           add_idx t;
         ) ts
       | Obj ((Object | Memory), fs) ->
-        add_sleb128 (-20);
+        add_sleb128 idl_record;
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
           add_leb128_32 h;
           add_idx f.typ
         ) (sort_by_hash fs)
       | Array t ->
-        add_sleb128 (-19); add_idx t
+        add_sleb128 idl_vec; add_idx t
       | Opt t ->
-        add_sleb128 (-18); add_idx t
+        add_sleb128 idl_opt; add_idx t
       | Variant vs ->
-        add_sleb128 (-21);
+        add_sleb128 idl_variant;
         add_leb128 (List.length vs);
         List.iter (fun (h, f) ->
           add_leb128_32 h;
@@ -3836,7 +3850,7 @@ module Serialization = struct
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
         assert (Type.is_shared_sort s);
-        add_sleb128 (-22);
+        add_sleb128 idl_func;
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
         add_leb128 (List.length ts2);
@@ -3851,7 +3865,7 @@ module Serialization = struct
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
-        add_sleb128 (-23);
+        add_sleb128 idl_service;
         add_leb128 (List.length fs);
         List.iter (fun f ->
           add_leb128 (String.length f.lab);
@@ -4144,7 +4158,7 @@ module Serialization = struct
 
       let check_prim_typ t =
         get_idltyp ^^
-        compile_eq_const (Int32.of_int (- (Option.get (to_idl_prim t))))
+        compile_eq_const (Int32.neg (Option.get (to_idl_prim t)))
       in
 
       let assert_prim_typ t =
@@ -4199,19 +4213,20 @@ module Serialization = struct
           ]
       in
 
-      (* checks that idltyp is positive, looks it up in the table, updates the typ_buf,
+      (* checks that idltyp is positive, looks it up in the table,
+         creates a fresh typ_buf pointing into the type description,
          reads the type constructor index and traps if it is the wrong one.
-         typ_buf left in place to read the type constructor arguments *)
-      let with_composite_typ idl_tycon_id f =
+         and passes the typ_buf to a subcomputation to read the type arguments *)
+      let with_composite_arg_typ get_arg_typ idl_tycon_id f =
         (* make sure index is not negative *)
-        get_idltyp ^^
+        get_arg_typ ^^
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env ("IDL error: expected composite type when parsing " ^ string_of_typ t) ^^
         ReadBuf.alloc env (fun get_typ_buf ->
           (* Update typ_buf *)
           ReadBuf.set_ptr get_typ_buf (
             get_typtbl ^^
-            get_idltyp ^^ compile_mul_const Heap.word_size ^^
+            get_arg_typ ^^ compile_mul_const Heap.word_size ^^
             G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
             load_unskewed_ptr
           ) ^^
@@ -4225,7 +4240,11 @@ module Serialization = struct
           f get_typ_buf
         ) in
 
-      let with_record_typ f = with_composite_typ (-20l) (fun get_typ_buf ->
+      let with_composite_typ idl_tycon_id f =
+        with_composite_arg_typ get_idltyp idl_tycon_id f
+      in
+
+      let with_record_typ f = with_composite_typ idl_record (fun get_typ_buf ->
         Stack.with_words env "get_n_ptr" 1l (fun get_n_ptr ->
           get_n_ptr ^^
           ReadBuf.read_leb128 env get_typ_buf ^^
@@ -4367,36 +4386,32 @@ module Serialization = struct
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
-        let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-        with_composite_typ (-19l) (fun get_typ_buf ->
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env ^^ set_x ^^
-          get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.idx env ^^
-            get_idltyp ^^ go env t ^^
-            store_ptr
-          ) ^^
-          get_x
-        )
+        let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
+        with_composite_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        get_len ^^ Arr.alloc env ^^ set_x ^^
+        get_len ^^ from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Arr.idx env ^^
+          get_arg_typ ^^ go env t ^^
+          store_ptr
+        ) ^^
+        get_x
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if_ [I32Type]
           begin
-                Opt.null_lit
+            Opt.null_lit
           end
           begin
-            let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-            with_composite_typ (-18l) (fun get_typ_buf ->
-              ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-              read_byte_tagged
-                [ Opt.null_lit
-                ; Opt.inject env (get_idltyp ^^ go env t)
-                ]
-            )
+            let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
+            with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+            read_byte_tagged
+              [ Opt.null_lit
+              ; Opt.inject env (get_arg_typ ^^ go env t)
+              ]
           end
       | Variant vs ->
-        with_composite_typ (-21l) (fun get_typ_buf ->
+        with_composite_typ idl_variant (fun get_typ_buf ->
           (* Find the tag *)
           let (set_n, get_n) = new_local env "len" in
           ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
@@ -4417,20 +4432,20 @@ module Serialization = struct
           (* Now read the tag *)
           let (set_tag, get_tag) = new_local env "tag" in
           ReadBuf.read_leb128 env get_typ_buf ^^ set_tag ^^
-          let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+          let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
+          ReadBuf.read_sleb128 env get_typ_buf ^^ set_arg_typ ^^
 
           List.fold_right (fun (h, {lab = l; typ = t}) continue ->
               get_tag ^^ compile_eq_const (Lib.Uint32.to_int32 h) ^^
               G.if_ [I32Type]
-                ( Variant.inject env l (get_idltyp ^^ go env t) )
+                ( Variant.inject env l (get_arg_typ ^^ go env t) )
                 continue
             )
             ( sort_by_hash vs )
             ( E.trap_with env "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        with_composite_typ (-22l) (fun _get_typ_buf ->
+        with_composite_typ idl_func (fun _get_typ_buf ->
           read_byte_tagged
             [ E.trap_with env "IDL error: unexpected function reference"
             ; read_actor_data () ^^
@@ -4439,7 +4454,7 @@ module Serialization = struct
             ]
         );
       | Obj (Actor, _) ->
-        with_composite_typ (-23l) (fun _get_typ_buf -> read_actor_data ())
+        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
@@ -6833,6 +6848,10 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "rts_heap_size", [] ->
       SR.Vanilla,
       GC.get_heap_size env ^^ Prim.prim_word32toNat env
+
+    | OtherPrim "rts_memory_size", [] ->
+      SR.Vanilla,
+      Heap.get_memory_size ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_total_allocation", [] ->
       SR.Vanilla,
