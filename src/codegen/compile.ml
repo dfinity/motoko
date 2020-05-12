@@ -843,6 +843,10 @@ module Heap = struct
   let get_reclaimed env =
     G.i (GlobalGet (nr (E.get_global env "reclaimed")))
 
+  let get_memory_size =
+    G.i MemorySize ^^
+    compile_mul_const page_size
+
   let note_live_size env =
     (* assumes size of live set on the stack *)
     let (set_live_size, get_live_size) = new_local env "live_size" in
@@ -6851,6 +6855,10 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "rts_heap_size", [] ->
       SR.Vanilla,
       GC.get_heap_size env ^^ Prim.prim_word32toNat env
+
+    | OtherPrim "rts_memory_size", [] ->
+      SR.Vanilla,
+      Heap.get_memory_size ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_total_allocation", [] ->
       SR.Vanilla,
