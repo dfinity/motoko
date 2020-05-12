@@ -70,7 +70,7 @@ let equiv_classes (type b) (graph : (int * b) Seq.t) : (int IM.t * int) =
 let combine graph =
   let m : int IM.t ref = ref IM.empty in
   let lookup i = IM.find i !m in
-  (* map all types to the same initially *)
+  (* map all nodes to the same initially *)
   IM.iter (fun i _ -> m := IM.add i 0 !m) graph;
   let size = ref 1 in
   let finished = ref false in
@@ -142,11 +142,11 @@ let fold
   (* Now fold the graph using the user-provided combinators *)
   let seen = ref IS.empty in
   let rec go_con i : 'b =
-    (* This node is only printed once *)
+    (* This node is only visited once *)
     let (k, args) = IM.find i graph in
     of_con k (List.map go args)
   and go i : 'b =
-    (* This node is only printed once: *)
+    (* This node is only visited once: *)
     if IS.mem i needs_def then
       (* We have seen this before: *)
       if IS.mem i !seen then of_ref i
