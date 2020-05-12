@@ -365,7 +365,7 @@ let encode (em : extended_module) =
     let rec instr' noting e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
       noting e;
-      let rec instr = instr' noting in
+      let instr = instr' noting in
 
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf ()
