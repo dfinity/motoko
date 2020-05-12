@@ -1004,8 +1004,22 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
                 (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
 
-                let record_file (_, {file; _}) = ignore (add_file_string file) in
-                add_file_string "fib-wasm.mo"; (* FIXME: remove *)
+                let dir_names = ref [ "<moc-asset>", 0 ] in
+                let source_names = ref [] in
+                let source_adder dir_index = function
+                  | [] -> 0, dir_index
+                  | (_, (p, _)) :: _ -> 1 + p, dir_index in
+                let add_source_name = function
+                  | "" -> ()
+                  | ("prelude" | "prim" | "rts.wasm") as asset -> ignore (add_string (source_adder 0) source_names asset)
+                  | path ->
+                    let base, dir = Filename.(basename path, dirname path) in
+                    let dir_index = add_string (function | [] -> assert false | (_, p) :: _ -> 1 + p) dir_names dir in
+                    ignore (add_string (source_adder dir_index) source_names base)
+                    in
+                let record_file (_, {file; _}) = Printf.printf "BASENAME: %s  DIRNAME: %s\n" (Filename.basename file) (Filename.dirname file); add_source_name file; ignore (add_file_string file) in
+
+                 (*add_file_string "fib-wasm.mo"; FIXME: remove *)
                 Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
                 vec_uleb128 zero_terminated (rev_map fst !file_strings);
             );
