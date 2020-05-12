@@ -6555,16 +6555,16 @@ and compile_exp (env : E.t) ae exp =
     let (set_i, get_i) = new_local env "switch_in" in
     let (set_j, get_j) = new_local env "switch_out" in
 
-    let rec go env cs = match cs with
+    let rec go env = function
       | [] -> CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
           let (ae1, code) = compile_pat_local env ae pat in
           orElse ( CannotFail get_i ^^^ code ^^^
-                   CannotFail (compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
+                   CannotFail (G.dw_statement e.at ^^ compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
                  (go env cs)
           in
       let code2 = go env cs in
-      code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
+      G.dw_statement e.at ^^ code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in

@@ -362,13 +362,15 @@ let encode (em : extended_module) =
         Code.error Wasm.Source.no_region
           "cannot encode stack type with arity > 1 (yet)"
 
-    let rec instr e =
+    let rec instr' noting e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
+      noting e;
+      let rec instr = instr' noting in
 
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf ()
       | Nop when is_dwarf_statement e.at ->
-        Printf.printf "Line %d\n" e.at.right.line;
+        Printf.printf "Line %d    OFFS: 0x%x     (%s:%d:%d)\n" e.at.right.line (pos s) e.at.left.file e.at.left.line e.at.left.column;
         modif statement_positions (Instrs.add (pos s, e.at.left))
       | Block (_, es) when dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
       (*  | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false; *)
@@ -596,7 +598,7 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
 
     let const c =
-      list instr c.it; end_ ()
+      list (instr' ignore) c.it; end_ ()
 
     (* Sections *)
 
@@ -700,11 +702,12 @@ let encode (em : extended_module) =
       let p = pos s in
       vec local (compress locals);
       let instr_notes = ref Instrs.empty in
-      let note_instr i =
+      let note i =
         if not (dwarf_like i.at) then
-          modif instr_notes (Instrs.add (pos s, i.at.left));
-        instr i in
-      list note_instr body;
+          (if i.at.left.file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then Printf.printf "NOTING origin: 0x%x pos: 0x%x  (%s:%d:%d)\n" p (pos s) i.at.left.file i.at.left.line i.at.left.column;
+          modif instr_notes (Instrs.add (pos s, i.at.left))
+          ) in
+      list (instr' note) body;
       end_ ();
       sequence_number := 1 + !sequence_number;
       let sequence_end = pos s in
