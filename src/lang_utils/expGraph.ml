@@ -1,5 +1,5 @@
-module IM = Map.Make (struct type t = int let compare = compare end)
-module IS = Set.Make (struct type t = int let compare = compare end)
+module IM = Map.Make(Int)
+module IS = Set.Make(Int)
 
 (* A graph of nodes, nodes labeled by ints, root at node 0 *)
 type 'a t = ('a * int list) IM.t
