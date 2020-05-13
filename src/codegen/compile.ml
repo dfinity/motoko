@@ -843,6 +843,10 @@ module Heap = struct
   let get_reclaimed env =
     G.i (GlobalGet (nr (E.get_global env "reclaimed")))
 
+  let get_memory_size =
+    G.i MemorySize ^^
+    compile_mul_const page_size
+
   let note_live_size env =
     (* assumes size of live set on the stack *)
     let (set_live_size, get_live_size) = new_local env "live_size" in
@@ -2504,29 +2508,36 @@ module Prim = struct
 end (* Prim *)
 
 module Object = struct
-  (* An object has the following heap layout:
+ (* An object with a mutable field1 and immutable field 2 has the following
+    heap layout:
 
-    ┌─────┬──────────┬──────────┬─────────────┬───┐
-    │ tag │ n_fields │ hash_ptr │ field_data1 │ … │
-    └─────┴──────────┴──────────┴─────────────┴───┘
-         ┌────────────╯
-         ↓
-          ┌─────────────┬──────────────┬───┐
-          │ field_hash1 │ field_hash21 │ … │
-          └─────────────┴──────────────┴───┘
+    ┌────────┬──────────┬──────────┬─────────┬─────────────┬───┐
+    │ Object │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
+    └────────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
+         ┌───────────────┘          │
+         │   ┌──────────────────────┘
+         │   ↓
+         │  ╶─┬────────┬─────────────┐
+         │    │ ObjInd │ field1_data │
+         ↓    └────────┴─────────────┘
+        ╶─┬─────────────┬─────────────┬───┐
+          │ field1_hash │ field2_hash │ … │
+          └─────────────┴─────────────┴───┘
+
 
     The field hash array lives in static memory (so no size header needed).
     The hash_ptr is skewed.
 
-    The field_data for immutable fields simply point to the value.
+    The field2_data for immutable fields is a vanilla word.
 
-    The field_data for mutable fields are pointers to either an ObjInd, or a
+    The field1_data for mutable fields are pointers to either an ObjInd, or a
     MutBox (they have the same layout). This indirection is a consequence of
     how we compile object literals with `await` instructions, as these mutable
     fields need to be able to alias local mutal variables.
 
     We could alternatively switch to an allocate-first approach in the
-    await-translation of objects, and get rid of this indirection.
+    await-translation of objects, and get rid of this indirection -- if it were
+    not for the implemenating of sharing of mutable stable values.
   *)
 
   let header_size = Int32.add Tagged.header_size 2l
@@ -6833,6 +6844,10 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "rts_heap_size", [] ->
       SR.Vanilla,
       GC.get_heap_size env ^^ Prim.prim_word32toNat env
+
+    | OtherPrim "rts_memory_size", [] ->
+      SR.Vanilla,
+      Heap.get_memory_size ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_total_allocation", [] ->
       SR.Vanilla,
