@@ -1,6 +1,74 @@
 module IM = Map.Make(Int)
 module IS = Set.Make(Int)
 
+(*
+Note [A running example]
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+How do we go from
+
+  type A = ?[A]
+  type B = [?B]
+  t = ([A], B, [B])
+
+to the canonical representation
+
+  t = (1=?[!1], !1, [!1])
+
+in this code? By these transformations:
+
+Step 1: `unfold` will turn this tree into the following graph (depth first,
+memoizing graph nodes based on structural equality on the tree)
+
+  0: ("tuple", [1,4,6])
+  1: ("vector",[2])
+  2: ("opt",   [3])
+  3: ("vector",[2])
+  4: ("vector",[5])
+  5: ("opt",   [4])
+  6: ("vector",[4])
+
+Note that this graph is not minimal.
+
+Step 2: `combine` will find the equivalence relations on the nodes of the graph.
+To find the coarsest we begin with
+
+   [0 1 2 3 4 5 6]
+
+and now iterate using `equiv_classes`. First distinguishing by constructor
+
+   [0] [1 3 4 6] [2 5]
+
+then by whether the argument list is different (with respect to the current equivalence relation!)
+
+   [0] [1 3 4] [6] [2 5]
+
+Now the iteration stops (could go further with deeper types). Renumbering based
+on these equivelence relation gives:
+
+  0: ("tuple", [1,1,2])
+  1: ("vector",[3])
+  2: ("vector",[1])
+  3: ("opt",   [1])
+
+Step 3: Renumber depth-first
+
+  0: ("tuple", [1,1,3])
+  1: ("vector",[2])
+  2: ("opt",   [1])
+  3: ("vector",[1])
+
+
+Step 4: `unfold`
+
+To unfold nicely, the nodes that are referenced more than once are 1, so only
+that gets a name. This way we end up with something like
+
+  t = (1=?[!1], !1, [!1])
+
+*)
+
+
 (* A graph of nodes, nodes labeled by ints, root at node 0 *)
 type 'a t = ('a * int list) IM.t
 
