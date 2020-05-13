@@ -708,8 +708,8 @@ let encode (em : extended_module) =
       let source_adder dir_index _ = Promise.make (), dir_index in
       let add_source_path_index (_, _) = function
         | "" -> assert false
-        | str -> ignore (add_string (function [] -> assert false | (_, i) :: _ -> i + 1) source_path_indices str);
-                 (* FIXME TODO: remove *)assert List.(length !source_path_indices = length !source_names) in
+        | str ->
+          ignore (add_string (function [] -> assert false | (_, i) :: _ -> i + 1) source_path_indices str) in
       function
       | "" -> ()
       | ("prelude" | "prim" | "rts.wasm") as asset ->
@@ -992,12 +992,6 @@ let encode (em : extended_module) =
     let debug_line_section fs =
       let debug_line_section_body () =
 
-        let file_strings : (string * int) list ref = ref [] in
-        let add_file_string = function
-          | "" -> 0 (* FIXME: None! assign 0 as a file number for unknown *)
-          | str -> add_string (function | [] -> 0 | (_, p) :: _ -> 1 + p) file_strings str
-        in
-
         unit(fun start ->
             write16 0x0005;
             u8 4;
@@ -1038,16 +1032,13 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 (* file_name_entry_format_count, file_name_entry_formats *)
                 vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp; dw_LNCT_directory_index, dw_FORM_udata];
 
-                (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
-
-                let record_file (_, {file; _}) =
-                  (* Printf.printf "BASENAME: %s  DIRNAME: %s\n" (Filename.basename file) (Filename.dirname file); *)
-                  (*add_source_name file;*)
-                  ignore (add_file_string file) in
-
-                (* add_file_string "fib-wasm.mo"; FIXME: remove *)
-                Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
-                vec_uleb128 (fun (pos, indx) -> write32 pos; uleb128 indx) (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
+                (* The first entry in the sequence is the primary source file whose file name exactly
+                   matches that given in the DW_AT_name attribute in the compilation unit debugging
+                   information entry. This is ensured by the heuristics, that the last noted source file
+                   will be placed at position 0 in the table *)
+                vec_uleb128
+                  (fun (pos, indx) -> write32 pos; uleb128 indx)
+                  (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
             );
 
             (* build the statement loc -> addr map *)
@@ -1062,10 +1053,10 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             (* generate the line section *)
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
-            let source_indices = (*List.mapi (fun i (s, _) -> (Printf.printf "INDEX: %d, PATH: %s\n" i s); s, i) *) !source_path_indices in
+            let source_indices = !source_path_indices in
 
             let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
-              if file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x fib-wasm.mo:%d:%d\n" code_start addr line column);
+              if file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x REL 0x%x fib-wasm.mo:%d:%d\n" code_start addr (rel addr) line column);
 
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
