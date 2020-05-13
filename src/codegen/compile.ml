@@ -6074,7 +6074,11 @@ let rec compile_lexp (env : E.t) ae lexp =
      store_ptr
 
 and compile_exp (env : E.t) ae exp =
-  (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
+  let opportunity = function
+  | VarE _ | LitE _ -> G.nop
+  | _ -> G.dw_statement exp.at in
+
+  (fun (sr,code) -> (sr, opportunity exp.it ^^ G.with_region exp.at code)) @@
   match exp.it with
   | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.note_typ) es ->
     (* Handle dead code separately, so that we can rely on useful type
