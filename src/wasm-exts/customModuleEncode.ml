@@ -953,6 +953,17 @@ let encode (em : extended_module) =
         in
       custom_section ".debug_rnglists" debug_rnglists_section_body () true
 
+    let dir_names = ref [ "<moc-asset>", 0 ]
+    let source_names = ref []
+
+    let debug_line_str_section () =
+      let rec string = function
+        | [] -> ()
+        | (h, _) :: t -> zero_terminated h; string t
+      in
+      let debug_line_strings_section_body (dirs, sources) = string dirs; string sources in
+      custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
+
     let debug_line_section fs =
       let debug_line_section_body () =
 
@@ -1004,8 +1015,6 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
                 (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
 
-                let dir_names = ref [ "<moc-asset>", 0 ] in
-                let source_names = ref [] in
                 let source_adder dir_index = function
                   | [] -> 0, dir_index
                   | (_, (p, _)) :: _ -> 1 + p, dir_index in
@@ -1127,6 +1136,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       debug_rnglists_section !sequence_bounds;
       (*debug_loclists_section (); NOT YET*)
       debug_line_section m.funcs;
+      debug_line_str_section ();
       debug_info_section ();
       debug_strings_section !dwarf_strings
   end
