@@ -728,7 +728,7 @@ let encode (em : extended_module) =
       let instr_notes = ref Instrs.empty in
       let note i =
         if not (dwarf_like i.at) then
-          (if i.at.left.file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then Printf.printf "NOTING origin: 0x%x pos: 0x%x  (%s:%d:%d)\n" p (pos s) i.at.left.file i.at.left.line i.at.left.column;
+          (if Filename.basename i.at.left.file = "fib-wasm.mo" then Printf.printf "NOTING origin: 0x%x pos: 0x%x  (%s:%d:%d)\n" p (pos s) i.at.left.file i.at.left.line i.at.left.column;
            modif instr_notes (Instrs.add (pos s, i.at.left));
            ignore (add_source_name i.at.left.file)
           ) in
@@ -1047,7 +1047,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let statements_at = StmtsAt.of_seq (Seq.map (fun (k, v) -> v, k) (Instrs.to_seq statement_positions)) in
             let is_statement_at (addr, loc) =
               match StmtsAt.find_opt loc statements_at with
-              | Some addr' when  addr =  addr' -> true
+              | Some addr' when addr = addr' -> true
               | _ -> false in
 
             (* generate the line section *)
@@ -1056,7 +1056,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let source_indices = !source_path_indices in
 
             let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
-              if file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x REL 0x%x fib-wasm.mo:%d:%d\n" code_start addr (rel addr) line column);
+              if Filename.basename file = "fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x REL 0x%x fib-wasm.mo:%d:%d\n" code_start addr (rel addr) line column);
 
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in

@@ -487,6 +487,7 @@ let dw_tag_no_children = dw_tag
 
 (* Marker for statement boundaries *)
 let dw_statement { Source.left; Source.right } =
+  if (Filename.basename left.Source.file = "fib-wasm.mo") then (Printf.printf "MARKED fib-wasm.mo:%d:%d\n" left.Source.line left.Source.column );
   let open Wasm.Source in
   let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
   (* right is only differing in the negated line *)
