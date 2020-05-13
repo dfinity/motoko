@@ -793,7 +793,7 @@ let encode (em : extended_module) =
       let tag (t, ch, kvs) =
         uleb128 (t land 0xFFFF); u8 ch;
         assert (kvs <> []); (* these run risk of dead-code elimination *)
-        List.iter (fun (k, v) -> uleb128 k; uleb128 (v land 0xFF)) kvs in
+        List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
       let abbrev i abs = uleb128 (i + 1); tag abs; close_section (); close_section () in
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
@@ -885,7 +885,7 @@ let encode (em : extended_module) =
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
           | RangeAttribute (a, r) -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
-          | StringAttribute (a, path) when a = Dwarf5.dw_AT_decl_file -> if attr = a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices)) ;assert (attr = a); writeForm (form land 0xff) (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
+          | StringAttribute (a, path) when a = Dwarf5.dw_AT_decl_file -> if attr = a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices)) ;assert (attr = a); writeForm form (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
           | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
           | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in

@@ -21,23 +21,6 @@ let dw_TAG_base_type_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 1
 let dw_TAG_base_type_Unsigned_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 2
 let dw_TAG_base_type_Unsigned_Bytes_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 3
 
-
-
-(* pseudo-forms
-
-It is just a dw_FORM_ with higher bits set, that convey encoder-specific hints.
-
-A regular form is just a pseudo-form with upper bits of 0.
-
- *)
-
-let pseudo_form base extra =
-  base lor (extra lsl 16)
-
-
-let dw_FORM_data1_from_name = pseudo_form Dwarf5.dw_FORM_data1 1
-
-
 let abbreviations =
   let open Dwarf5 in
   [ ( dw_TAG_compile_unit, dw_CHILDREN_yes,
@@ -56,7 +39,7 @@ let abbreviations =
         dw_AT_high_pc, dw_FORM_data4(*FIXME*);
          (* dw_AT_GNU_all_call_sites, dw_FORM_flag_present; *)
       dw_AT_name, dw_FORM_strp;
-      dw_AT_decl_file, dw_FORM_data1_from_name(*FIXME*);
+      dw_AT_decl_file, dw_FORM_data1(*FIXME*);
       dw_AT_decl_line, dw_FORM_data1(*FIXME*);
       dw_AT_decl_column, dw_FORM_data1(*FIXME*);
       dw_AT_prototyped, dw_FORM_flag_present;
