@@ -4088,7 +4088,7 @@ module Serialization = struct
           write_byte (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
-          (* Leave space in the output buffer for the decoders pointer *)
+          (* Leave space in the output buffer for the decoder's pointer *)
           get_data_buf ^^
           compile_unboxed_const 0l ^^
           G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
@@ -4788,7 +4788,7 @@ fields and mutable arrays), and we need to preserve aliasing.
 
 To that end we extend Candid with a type contsructor `alias t`.
 
-In the type table, alias t is prepresented by 1. All Candid type constructors
+In the type table, alias t is represented by type code 1. All Candid type constructors
 are represented by negative numbers, so this cannot clash with anything and,
 conveniently, makes such values illegal candid.
 
@@ -4804,7 +4804,7 @@ or
    for all other occurrences of v, where offset is the relative position of the
    above occurrences from this reference.
 
-We map Motoko type to this as follows:
+We map Motoko types to this as follows:
 
   e([var t]) = alias e([t]) = alias vec e(t)
   e({var field : t}) = record { field : alias e(t) }
