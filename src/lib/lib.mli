@@ -21,6 +21,7 @@ sig
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
+  val last_opt : 'a list -> 'a option
   val split_last : 'a list -> 'a list * 'a (* raises Failure *)
 
   val index_of : 'a -> 'a list -> int option
