@@ -696,6 +696,30 @@ let encode (em : extended_module) =
 
     let local (t, n) = len n; value_type t
 
+    let (here_dir, asset_dir) = (0, 1) (* reversed indices in dir_names, below *)
+    let source_names =
+      ref [ "prim", (Promise.make (), asset_dir)
+          ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
+    let dir_names = (* dito, but reversed: 6.2.4.1 Standard Content Descriptions *)
+      ref [ "<moc-asset>", (Promise.make (), asset_dir)
+          ; Filename.dirname "", (Promise.make (), here_dir) ]
+    let source_path_indices = ref (List.map (fun (p, (_, i)) -> p, i) !source_names)
+    let add_source_name =
+      let source_adder dir_index _ = Promise.make (), dir_index in
+      let add_source_path_index (_, _) = function
+        | "" -> assert false
+        | str -> ignore (add_string (function [] -> assert false | (_, i) :: _ -> i + 1) source_path_indices str);
+                 (* FIXME TODO: remove *)assert List.(length !source_path_indices = length !source_names) in
+      function
+      | "" -> ()
+      | ("prelude" | "prim" | "rts.wasm") as asset ->
+        add_source_path_index (add_string (source_adder asset_dir) source_names asset) asset
+      | path ->
+        let dir, basename = Filename.(dirname path, basename path) in
+        let _, dir_index = add_string (function [] -> assert false | (_, (_, i)) :: _ -> Promise.make (), i + 1) dir_names dir in
+        let promise = add_string (source_adder dir_index) source_names basename in
+        add_source_path_index promise path
+
     let code f =
       let {locals; body; _} = f.it in
       let g = gap32 () in
@@ -705,7 +729,8 @@ let encode (em : extended_module) =
       let note i =
         if not (dwarf_like i.at) then
           (if i.at.left.file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then Printf.printf "NOTING origin: 0x%x pos: 0x%x  (%s:%d:%d)\n" p (pos s) i.at.left.file i.at.left.line i.at.left.column;
-          modif instr_notes (Instrs.add (pos s, i.at.left))
+           modif instr_notes (Instrs.add (pos s, i.at.left));
+           ignore (add_source_name i.at.left.file)
           ) in
       list (instr' note) body;
       end_ ();
@@ -760,7 +785,7 @@ let encode (em : extended_module) =
     let write16 = Buffer.add_int16_le s.buf
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
     let zero_terminated str = put_string s str; u8 0
-    let vec_uleb128 = vec_by uleb128
+    let vec_uleb128 el = vec_by uleb128 el
     let writeBlock1 str = let len = String.length str in assert (len < 256); u8 len; put_string s str
     let writeBlockLEB str = let len = String.length str in assert (len < 256); uleb128 len; put_string s str
 
@@ -860,7 +885,7 @@ let encode (em : extended_module) =
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
           | RangeAttribute (a, r) -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
-          | StringAttribute (a, name) when form = Abbreviation.dw_FORM_data1_from_name -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm (form  land 0xff) (IntAttribute (a, 0))
+          | StringAttribute (a, path) when a = Dwarf5.dw_AT_decl_file -> if attr = a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices)) ;assert (attr = a); writeForm (form land 0xff) (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
           | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
           | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
@@ -953,21 +978,21 @@ let encode (em : extended_module) =
         in
       custom_section ".debug_rnglists" debug_rnglists_section_body () true
 
-    let dir_names = ref [ "<moc-asset>", 0 ]
-    let source_names = ref []
-
     let debug_line_str_section () =
-      let rec string = function
+      let rec string fulfill = function
         | [] -> ()
-        | (h, _) :: t -> zero_terminated h; string t
-      in
-      let debug_line_strings_section_body (dirs, sources) = string dirs; string sources in
+        | (h, p) :: t -> fulfill p; zero_terminated h; string fulfill t in
+      let debug_line_strings_section_body (dirs, sources) =
+        let start = pos s in
+        let promised_pos = string (fun (p, _) -> Promise.fulfill p (pos s - start)) in
+        promised_pos dirs;
+        promised_pos sources in
       custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
 
     let debug_line_section fs =
       let debug_line_section_body () =
 
-        let file_strings = ref [] in
+        let file_strings : (string * int) list ref = ref [] in
         let add_file_string = function
           | "" -> 0 (* FIXME: None! assign 0 as a file number for unknown *)
           | str -> add_string (function | [] -> 0 | (_, p) :: _ -> 1 + p) file_strings str
@@ -1005,32 +1030,24 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 let vec_format = vec_by u8 format in
 
                 (* directory_entry_format_count, directory_entry_formats *)
-                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_string];
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp];
 
                 (* directories_count, directories *)
-                vec_uleb128 zero_terminated ["."];
+                vec_uleb128 write32 (rev_map (fun (_, (p, _)) -> Promise.value p) !dir_names);
 
                 (* file_name_entry_format_count, file_name_entry_formats *)
-                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_string];
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp; dw_LNCT_directory_index, dw_FORM_udata];
 
                 (* TODO: The first entry in the sequence is the primary source file whose file name exactly matches that given in the DW_AT_name attribute in the compilation unit debugging information entry. *)
 
-                let source_adder dir_index = function
-                  | [] -> 0, dir_index
-                  | (_, (p, _)) :: _ -> 1 + p, dir_index in
-                let add_source_name = function
-                  | "" -> ()
-                  | ("prelude" | "prim" | "rts.wasm") as asset -> ignore (add_string (source_adder 0) source_names asset)
-                  | path ->
-                    let base, dir = Filename.(basename path, dirname path) in
-                    let dir_index = add_string (function | [] -> assert false | (_, p) :: _ -> 1 + p) dir_names dir in
-                    ignore (add_string (source_adder dir_index) source_names base)
-                    in
-                let record_file (_, {file; _}) = Printf.printf "BASENAME: %s  DIRNAME: %s\n" (Filename.basename file) (Filename.dirname file); add_source_name file; ignore (add_file_string file) in
+                let record_file (_, {file; _}) =
+                  (* Printf.printf "BASENAME: %s  DIRNAME: %s\n" (Filename.basename file) (Filename.dirname file); *)
+                  (*add_source_name file;*)
+                  ignore (add_file_string file) in
 
-                 (*add_file_string "fib-wasm.mo"; FIXME: remove *)
+                (* add_file_string "fib-wasm.mo"; FIXME: remove *)
                 Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
-                vec_uleb128 zero_terminated (rev_map fst !file_strings);
+                vec_uleb128 (fun (pos, indx) -> write32 pos; uleb128 indx) (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
             );
 
             (* build the statement loc -> addr map *)
@@ -1045,9 +1062,12 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             (* generate the line section *)
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
+            let source_indices = (*List.mapi (fun i (s, _) -> (Printf.printf "INDEX: %d, PATH: %s\n" i s); s, i) *) !source_path_indices in
 
             let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
-              let file' = add_file_string file in
+              if file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x fib-wasm.mo:%d:%d\n" code_start addr line column);
+
+              let file' = (Printf.printf "LOOKING FOR PATH: '%s'\n" file); List.assoc (if file = "" then "prim" else file) source_indices in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* TODO: why ||? *) in
               rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
 
@@ -1135,8 +1155,8 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       debug_addr_section !sequence_bounds;
       debug_rnglists_section !sequence_bounds;
       (*debug_loclists_section (); NOT YET*)
-      debug_line_section m.funcs;
       debug_line_str_section ();
+      debug_line_section m.funcs;
       debug_info_section ();
       debug_strings_section !dwarf_strings
   end
