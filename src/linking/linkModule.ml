@@ -186,7 +186,8 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
    custom types section was only exported for linking, and should not be
    exported in the final module *)
   let is_ic_export (exp : export) =
-    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None
+    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None ||
+    "_start" = Wasm.Utf8.encode exp.it.name
   in
 
   let keep_export exp =
@@ -393,11 +394,15 @@ let rename_types rn m =
   let ty_var' = rn in
   let ty_var = phrase ty_var' in
 
+  let block_type = function
+    | VarBlockType tv -> VarBlockType (ty_var tv)
+    | ValBlockType vto -> ValBlockType vto in
+
   let rec instr' = function
     | CallIndirect tv -> CallIndirect (ty_var tv)
-    | Block (bty, is) -> Block (bty, instrs is)
-    | Loop (bty, is) -> Loop (bty, instrs is)
-    | If (bty, is1, is2) -> If (bty, instrs is1, instrs is2)
+    | Block (bty, is) -> Block (block_type bty, instrs is)
+    | Loop (bty, is) -> Loop (block_type bty, instrs is)
+    | If (bty, is1, is2) -> If (block_type bty, instrs is1, instrs is2)
     | i -> i
   and instr i = phrase instr' i
   and instrs is = List.map instr is in

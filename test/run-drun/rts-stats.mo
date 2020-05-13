@@ -14,6 +14,8 @@ Prim.debugPrint("Size and allocation delta:  " # debug_show (s1-s0, a1-a0));
 assert (s1-s0 == 10008);
 assert (a1-a0 == 10008);
 
+assert(Prim.rts_memory_size() > Prim.rts_heap_size());
+
 // no point running these in the interpreter
 //SKIP run
 //SKIP run-low

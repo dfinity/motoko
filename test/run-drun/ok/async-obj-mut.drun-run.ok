@@ -7,4 +7,4 @@ debug.print: done creating
 debug.print: 3
 debug.print: 4
 debug.print: 5
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000

@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "fd65c40a6816c9a3493c48f41fcac8502704b0d1",
+        "rev": "80011f28c1bccfa2c46e76958f8c7f1aec4c8186",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "1bb028c22ce4efb669555cba46bec91f9e6cca0e",
+        "rev": "bc61257285871a32d2f15f4505d286b0a3343f14",
         "type": "git"
     },
     "esm": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.2",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "f298af99efd9b93cd49707d443ad835c0260dee3",
+        "rev": "0506a59ab9e55cdd537e90d0e06c576aec119295",
         "type": "git"
     },
     "libtommath": {
