@@ -11,10 +11,10 @@ with these properties
  - It does not support abstract types (for now)
  - It does not support type parameters (for now)
  - Type.eq t1 t2 = (typ_hash t1 = typ_hash t2)
- - The output is readable, and still somewhat compact
+ - The output is readable yet compact
 
 
-The output format does not matter hugely (equality is what counds), but here is
+The output format does not matter hugely (equality is what counts), but here is
 a little reading advice:
 
  * Nullary types are described a single letter, or few letters:
@@ -33,7 +33,7 @@ a little reading advice:
 
      (Int, ?Bool, Text) = (I?bt)
 
- * Objects and variants have comma-separted lists of label-type-pairs:
+ * Objects and variants have comma-separated lists of label-type-pairs:
 
      {foo : Int; var bar : Text} = r(foo:I,bar!:t)
      {#tag : Int} = v(tag:I)
