@@ -31,8 +31,8 @@ export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift --enable-multi-value"
 DRUN=${DRUN:-drun}
-DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
-IC_REF_RUN_WRAPPER=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
+WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
+WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 IC_REF_RUN=${IC_REF_RUN:-ic-ref-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
@@ -337,15 +337,15 @@ do
           if [ $DTESTS = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
             fi
             if [ $HAVE_ic_ref_run = yes ]; then
-              run_if ref.wasm ic-ref-run $IC_REF_RUN_WRAPPER $out/$base.ref.wasm $mangled
+              run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
             fi
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled 222> $out/$base.metrics
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
                 LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
@@ -383,6 +383,10 @@ do
 
     for runner in ic-ref-run drun
     do
+      if grep -q "# *SKIP $runner" $file
+      then
+        continue
+      fi
 
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
@@ -411,8 +415,9 @@ do
       # mangle drun script
       LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $file > $out/$base/$base.$runner.drun
 
-      # run drun
-      run $runner $DRUN_WRAPPER $out/$base/$base.$runner.drun
+      # run wrapper
+      wrap_var_name="WRAP_${runner//-/_}"
+      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
     done
 
   ;;

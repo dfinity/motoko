@@ -343,6 +343,7 @@ func debugPrintChar(x : Char) { debugPrint (charToText x) };
 // RTS stats
 
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
+func rts_memory_size() : Nat { (prim "rts_memory_size" : () -> Nat) () };
 func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
 func rts_reclaimed() : Nat { (prim "rts_reclaimed" : () -> Nat) () };
