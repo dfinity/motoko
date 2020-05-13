@@ -6559,7 +6559,7 @@ and compile_exp (env : E.t) ae exp =
       | [] -> CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
           let (ae1, code) = compile_pat_local env ae pat in
-          orElse ( CannotFail get_i ^^^ code ^^^
+          orElse ( CannotFail (get_i ^^ G.dw_statement pat.at) ^^^ code ^^^
                    CannotFail (G.dw_statement e.at ^^ compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
                  (go env cs)
           in
