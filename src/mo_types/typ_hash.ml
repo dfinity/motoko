@@ -38,13 +38,13 @@ a little reading advice:
      {foo : Int; var bar : Text} = r(foo:I,bar!:t)
      {#tag : Int} = v(tag:I)
 
-   Object variants are indicated after the r:
+   The various object forms are indicated after the r:
 
      module {foo : Int; var bar : Text} = rm(foo:I,bar!:t)
 
  * Functions:
 
-     shared (Int, Bool) -> Text = Fs(IB)(t)
+     shared (Int, Bool) -> Text = Fs(Ib)(t)
 
  * Types that occur more than once are prefixed with a number when seen first,
    and later referenced by that number:
