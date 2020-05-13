@@ -6129,7 +6129,6 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Operators *)
-
     | UnPrim (_, Operator.PosOp), [e1] -> compile_exp env ae e1
     | UnPrim (t, op), [e1] ->
       let sr_in, sr_out, code = compile_unop env t op in
@@ -6147,8 +6146,8 @@ and compile_exp (env : E.t) ae exp =
       SR.bool,
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
-
       code
+
     (* Tuples *)
     | TupPrim, es ->
       SR.UnboxedTuple (List.length es),
@@ -6336,7 +6335,7 @@ and compile_exp (env : E.t) ae exp =
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
 
-    (* Other prims, unary*)
+    (* Other prims, unary *)
 
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
