@@ -1,5 +1,4 @@
 arithmetic overflow
-
 Error: failed to run main module `_out/outrange-int64-negation.wasm`
 
 Caused by:

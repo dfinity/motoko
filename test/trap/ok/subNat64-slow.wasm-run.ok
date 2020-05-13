@@ -1,5 +1,4 @@
 Natural subtraction underflow
-
 Error: failed to run main module `_out/subNat64-slow.wasm`
 
 Caused by:

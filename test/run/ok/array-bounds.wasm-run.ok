@@ -1,5 +1,4 @@
 Array index out of bounds
-
 Error: failed to run main module `_out/array-bounds.wasm`
 
 Caused by:
