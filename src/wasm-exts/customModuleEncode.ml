@@ -1067,8 +1067,8 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
               if file = "wasmtime/tests/debug/testsuite/fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x fib-wasm.mo:%d:%d\n" code_start addr line column);
 
-              let file' = (Printf.printf "LOOKING FOR PATH: '%s'\n" file); List.assoc (if file = "" then "prim" else file) source_indices in
-              let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* TODO: why ||? *) in
+              let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
+              let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
 
             let joining (prg, state) state' : int list * Dwarf5.Machine.state =
@@ -1079,7 +1079,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
               Printf.printf "LINES::::  SEQUENCE start/END    ADDR: 0x%x - 0x%x\n" start ending;
-              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
+              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s(=%d):%d:%d)    %s\n" (rel addr) file List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
            
               let notes_seq = Instrs.to_seq notes in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* an instruction) *)
