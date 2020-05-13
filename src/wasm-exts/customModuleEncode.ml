@@ -362,10 +362,10 @@ let encode (em : extended_module) =
         Code.error Wasm.Source.no_region
           "cannot encode stack type with arity > 1 (yet)"
 
-    let rec instr' noting e =
+    let rec instr noting e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
       noting e;
-      let instr = instr' noting in
+      let instr = instr noting in
 
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf ()
@@ -598,7 +598,7 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
 
     let const c =
-      list (instr' ignore) c.it; end_ ()
+      list (instr ignore) c.it; end_ ()
 
     (* Sections *)
 
@@ -732,7 +732,7 @@ let encode (em : extended_module) =
            modif instr_notes (Instrs.add (pos s, i.at.left));
            ignore (add_source_name i.at.left.file)
           ) in
-      list (instr' note) body;
+      list (instr note) body;
       end_ ();
       sequence_number := 1 + !sequence_number;
       let sequence_end = pos s in
