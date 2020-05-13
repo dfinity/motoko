@@ -44,14 +44,14 @@ then by whether the argument list is different (with respect to the current equi
    [0] [1 3 4] [6] [2 5]
 
 Now the iteration stops (could go further with deeper types). Renumbering based
-on these equivelence relation gives:
+on this equivelence relation gives:
 
   0: ("tuple", [1,1,2])
   1: ("vector",[3])
   2: ("vector",[1])
   3: ("opt",   [1])
 
-Step 3: Renumber depth-first
+Step 3: `renumber` to get canonical numbers (depth-first traversal)
 
   0: ("tuple", [1,1,3])
   1: ("vector",[2])
