@@ -4808,7 +4808,7 @@ works.
 The type-driven code in this module treats `Type.Mut` to always refer to an
 `ObjInd`; for arrays the mutable case is handled directly.
 
-To detect and preseve aliasing, these steps are taken:
+To detect and preserve aliasing, these steps are taken:
 
  * In `buffer_size`, when we see a mutable thing (`Array` or `ObjInd`), the
    first time, we mark it by setting the heap tag to `StableSeen`.
