@@ -122,6 +122,13 @@ export uint32_t bigint_to_word32_trap(as_ptr a) {
   return mp_get_u32(n);
 }
 
+export uint32_t bigint_to_word32_trap_with(as_ptr a, char *err_msg, uint32_t err_len) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n)) rts_trap(err_msg, err_len);
+  if (mp_count_bits(n) > 32) rts_trap(err_msg, err_len);
+  return mp_get_u32(n);
+}
+
 export int32_t bigint_to_word32_signed_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_count_bits(n) > 32) bigint_trap();

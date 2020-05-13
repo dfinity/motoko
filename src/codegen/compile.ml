@@ -724,6 +724,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_signed_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64_signed" [I64Type] [I32Type];
@@ -1798,6 +1799,7 @@ sig
   (* word from SR.Vanilla, trapping, unsigned semantics *)
   val to_word32 : E.t -> G.t
   val to_word64 : E.t -> G.t
+  val to_word32_with : E.t -> G.t (* with error message on stack (ptr/len) *)
 
   (* word from SR.Vanilla, lossy, raw bits *)
   val truncate_to_word32 : E.t -> G.t
@@ -2363,12 +2365,22 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     BitTagged.if_unboxed env [I32Type]
       (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       (get_a ^^ Num.to_word32 env)
+  let to_word32_with env =
+    let set_a, get_a = new_local env "a" in
+    let set_err_ptr, get_err_ptr = new_local env "err_ptr" in
+    let set_err_len, get_err_len = new_local env "err_len" in
+    set_err_len ^^ set_err_ptr ^^ set_a ^^
+    get_a ^^
+    BitTagged.if_unboxed env [I32Type]
+      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ get_err_ptr ^^ get_err_len ^^ Num.to_word32_with env)
 end
 
 module BigNumLibtommath : BigNumType = struct
 
   let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
+  let to_word32_with env = E.call_import env "rts" "bigint_to_word32_trap_with"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
@@ -2701,6 +2713,10 @@ module Blob = struct
 
   let lit env s = compile_unboxed_const (vanilla_lit env s)
 
+  let lit_ptr_len env s =
+    compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
+    compile_unboxed_const (Int32.of_int (String.length s))
+
   let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
       let (set_x, get_x) = new_local env "x" in
       compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
@@ -2920,12 +2936,10 @@ module Arr = struct
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
     Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      get_idx ^^
-      BigNum.fits_unsigned_bits env 32 ^^
-      E.else_trap_with env "Array index out of bounds" ^^
-
       get_array ^^
-      get_idx ^^ BigNum.to_word32 env ^^
+      get_idx ^^
+      Blob.lit_ptr_len env "Array index out of bounds" ^^
+      BigNum.to_word32_with env ^^
       idx env
   )
 
@@ -3238,14 +3252,14 @@ module Dfinity = struct
 
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^
-          compile_unboxed_const 1l (* one string segments (2 doesnt work) *) ^^
+          compile_unboxed_const 1l (* one string segment (2 doesnt work) *) ^^
           get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop ^^
 
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^ compile_add_const 8l ^^
-          compile_unboxed_const 1l (* one string segments *) ^^
+          compile_unboxed_const 1l (* one string segment *) ^^
           get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop
@@ -3262,23 +3276,19 @@ module Dfinity = struct
     )
 
   (* For debugging *)
-  let compile_static_print env s =
-    Blob.lit env s ^^ print_text env
+  let _compile_static_print env s =
+    Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env = system_call env "ic0" "trap"
 
-  let ic_trap_str env =
-      Func.share_code1 env "ic_trap" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Blob.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field Blob.len_field ^^
-        ic_trap env
-      )
-
-  let trap_with env s =
+  let trap_ptr_len env =
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
-    | Flags.WASIMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
-    | Flags.ICMode | Flags.RefMode -> Blob.lit env s ^^ ic_trap_str env ^^ G.i Unreachable
+    | Flags.WASIMode -> print_ptr_len env ^^ G.i Unreachable
+    | Flags.ICMode | Flags.RefMode -> ic_trap env ^^ G.i Unreachable
+
+  let trap_with env s =
+    Blob.lit_ptr_len env s ^^ trap_ptr_len env
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -3521,8 +3531,7 @@ module RTS_Exports = struct
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
-        get_str ^^ get_len ^^ Dfinity.print_ptr_len env ^^
-        G.i Unreachable
+        get_str ^^ get_len ^^ Dfinity.trap_ptr_len env
       )
     ) in
     E.add_export env (nr {
