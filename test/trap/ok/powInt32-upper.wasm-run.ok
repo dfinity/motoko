@@ -1,5 +1,4 @@
 arithmetic overflow
-
 Error: failed to run main module `_out/powInt32-upper.wasm`
 
 Caused by:
