@@ -3695,18 +3695,7 @@ module Serialization = struct
       by the next GC.
   *)
 
-  (* A type identifier *)
-
-  (*
-    This needs to map types to some identifier with the following properties:
-     - Its domain are normalized types that do not mention any type parameters
-     - It needs to be injective wrt. type equality
-     - It needs to terminate, even for recursive types
-     - It may fail upon type parameters (i.e. no polymorphism)
-    We can use string_of_typ here for now, it seems, but eventually we
-    want something more efficient and compact and less fragile.
-  *)
-  let typ_id : Type.typ -> string = Type.string_of_typ
+  open Typ_hash
 
   let sort_by_hash fs =
     List.sort
@@ -3892,7 +3881,7 @@ module Serialization = struct
   let rec buffer_size env t =
     let open Type in
     let t = Type.normalize t in
-    let name = "@buffer_size<" ^ typ_id t ^ ">" in
+    let name = "@buffer_size<" ^ typ_hash t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
     (fun env get_x ->
 
@@ -3993,7 +3982,7 @@ module Serialization = struct
   let rec serialize_go env t =
     let open Type in
     let t = Type.normalize t in
-    let name = "@serialize_go<" ^ typ_id t ^ ">" in
+    let name = "@serialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
       let set_data_buf = G.i (LocalSet (nr 1l)) in
@@ -4144,7 +4133,7 @@ module Serialization = struct
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
-    let name = "@deserialize_go<" ^ typ_id t ^ ">" in
+    let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code4 env name
       (("data_buffer", I32Type),
        ("ref_buffer", I32Type),
@@ -4469,7 +4458,7 @@ module Serialization = struct
     )
 
   let serialize env ts : G.t =
-    let ts_name = String.concat "," (List.map typ_id ts) in
+    let ts_name = typ_seq_hash ts in
     let name = "@serialize<" ^ ts_name ^ ">" in
     (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
@@ -4600,7 +4589,7 @@ module Serialization = struct
     | _ -> assert false
 
   let deserialize env ts =
-    let ts_name = String.concat "," (List.map typ_id ts) in
+    let ts_name = typ_seq_hash ts in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
       deserialize_core argument_data_size argument_data_copy env ts_name ts)
@@ -4700,7 +4689,7 @@ module Stabilization = struct
 
   let destabilize env t =
     let t1 = as_memory t in
-    let t1_name = Serialization.typ_id t1 in
+    let t1_name = Typ_hash.typ_hash t1 in
     Serialization.deserialize_core stable_data_size stable_data_copy env t1_name [t1]
 
 end
@@ -5431,7 +5420,7 @@ module FuncDec = struct
   *)
 
   let closures_to_reply_reject_callbacks env ts =
-    let reply_name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
+    let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
