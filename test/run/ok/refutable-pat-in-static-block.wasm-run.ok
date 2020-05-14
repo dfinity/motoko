@@ -1,5 +1,4 @@
 pattern failed
-
 Error: failed to run main module `_out/refutable-pat-in-static-block.wasm`
 
 Caused by:
