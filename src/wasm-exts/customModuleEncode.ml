@@ -979,14 +979,16 @@ let encode (em : extended_module) =
       custom_section ".debug_rnglists" debug_rnglists_section_body () true
 
     let debug_line_str_section () =
-      let rec string fulfill = function
-        | [] -> ()
-        | (h, p) :: t -> fulfill p; zero_terminated h; string fulfill t in
       let debug_line_strings_section_body (dirs, sources) =
         let start = pos s in
-        let promised_pos = string (fun (p, _) -> Promise.fulfill p (pos s - start)) in
-        promised_pos dirs;
-        promised_pos sources in
+        let rec strings = function
+          | [] -> ()
+          | (h, (p, _)) :: t ->
+            Promise.fulfill p (pos s - start);
+            zero_terminated h;
+            strings t in
+        strings dirs;
+        strings sources in
       custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
 
     let debug_line_section fs =
