@@ -717,7 +717,7 @@ module RTS = struct
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "as_memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
     E.add_func_import env "rts" "read_i32_of_sleb128" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -4699,7 +4699,7 @@ module Serialization = struct
       | Flags.WasmMode | Flags.WASIMode -> assert false
     )
 
-  let deserialize_core source_size source_copy env ts_name ts =
+  let deserialize_core extended source_size source_copy env ts_name ts =
     let (set_data_size, get_data_size) = new_local env "data_size" in
     let (set_refs_size, get_refs_size) = new_local env "refs_size" in
     let (set_data_start, get_data_start) = new_local env "data_start" in
@@ -4727,7 +4727,7 @@ module Serialization = struct
     ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
     (* Go! *)
-    get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
+    Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
     E.call_import env "rts" "parse_idl_header" ^^
 
     (* set up a dedicated read buffer for the list of main types *)
@@ -4776,7 +4776,7 @@ module Serialization = struct
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
-      deserialize_core argument_data_size argument_data_copy env ts_name ts)
+      deserialize_core false argument_data_size argument_data_copy env ts_name ts)
 
 (*
 Note [mutable stable values]
@@ -4936,7 +4936,7 @@ module Stabilization = struct
   let destabilize env t =
     let t1 = as_memory t in
     let t1_name = Serialization.typ_id t1 in
-    Serialization.deserialize_core stable_data_size stable_data_copy env t1_name [t1]
+    Serialization.deserialize_core true stable_data_size stable_data_copy env t1_name [t1]
 
 end
 

@@ -106,7 +106,7 @@ static void check_typearg(int32_t ty, uint32_t n_types) {
  *  * returns a pointer to the beginning of the list of main types
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
-export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
+export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
   if (buf->p == buf->e) idl_trap_with("empty input");
 
   // Magic bytes (DIDL)
@@ -128,10 +128,8 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
-    if (ty == IDL_CON_alias) { // internal
+    if (extended && ty == IDL_CON_alias) { // internal
       // See Note [mutable stable values] in codegen/compile.ml
-      // It is fine to allow this here unconditionally; in normal Candid decoding
-      // no Motoko type will decode a value of this type (besides Any, I guess)
       int32_t t = read_i32_of_sleb128(buf);
       check_typearg(t, n_types);
     } else if (ty >= 0) {
