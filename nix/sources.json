@@ -6,8 +6,8 @@
         "type": "git"
     },
     "dfinity": {
-        "branch": "joachim/multi-value",
-        "ref": "joachim/multi-value",
+        "branch": "multi-value",
+        "ref": "multi-value",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
         "rev": "7cfe0afd10bc460d3e22228baba846656f6a1801",
         "type": "git"
