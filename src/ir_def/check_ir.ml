@@ -519,9 +519,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (T.string_of_typ_expand t1)
       end
     | ICStableRead t1, [] ->
+      check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
       t1 <: t
     | ICStableWrite t1, [exp1] ->
+      check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableWrite";
       typ exp1 <: t1;
       T.unit <: t
