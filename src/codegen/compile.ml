@@ -3229,7 +3229,7 @@ module Dfinity = struct
 
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^
-          compile_unboxed_const 1l (* one string segment (2 doesnt work) *) ^^
+          compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
           get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop ^^
