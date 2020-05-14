@@ -1101,6 +1101,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
 
     (* 7.29 Location List Table *)
+    (*
     let debug_loclists_section () =
       let rec write_loclist =
         let open Dwarf5 in
@@ -1121,6 +1122,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
       in
       custom_section ".debug_loclists" debug_loclists_section_body () true
+     *)
 
     (* Module *)
 

@@ -190,7 +190,7 @@ type dw_AT = Producer of string
            | Artificial of bool
            | TypeRef of int (* reference *)
            | Encoding of int
-           | Location of string (* for now *)
+           | Location of int list
 
 (* DWARF tags *)
 
@@ -249,7 +249,20 @@ let dw_attr : dw_AT -> t =
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
   | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
   | Const_value v -> fakeColumn v dw_AT_const_value Nop
-  | Location n -> fakeFile n dw_AT_location Nop
+  | Location ops ->
+    let string_of_ops ops =
+      let open Buffer in
+      let buf = create 16 in
+      let rec stash = function
+        | i when i >= 0 -> assert (i < 0x100); add_char buf (Char.chr i)
+        | i when -i < 128 -> stash (-i) (* ULEB128 byte *)
+        | i -> (* needs ULEB128 chopping *)
+          let i = -i in
+          stash (i land 0x7F lor 0x80);
+          stash (- (i lsr 7)) in
+      List.iter stash ops;
+      Buffer.contents buf in
+    fakeFile (string_of_ops ops) dw_AT_location Nop
 
 let dw_attrs = concat_map dw_attr
 
@@ -302,7 +315,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     fakeBlock dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location "\xED\x00\x01\x9F"(*FIXME*)])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false
