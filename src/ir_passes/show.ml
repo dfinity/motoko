@@ -6,24 +6,7 @@ open Source
 open Ir
 module T = Type
 open Construct
-
-(* A type identifier *)
-
-(* This needs to map types to some identifier with the following properties:
-
- - Its domain are normalized types that do not mention any type parameters
- - It needs to be injective wrt. type equality
- - It needs to terminate, even for recursive types
- - It may fail upon type parameters (i.e. no polymorphism)
-
-We can use string_of_typ here for now, it seems.
-
-Same things is needed Compile.Serialization, so a better solution should be
-used there as well!
-*)
-
-let typ_id : T.typ -> string =
-  T.string_of_typ
+open Typ_hash
 
 (* Environment *)
 
@@ -41,7 +24,7 @@ let empty_env () : env = {
   }
 
 let add_type env t : unit =
-  env.params := M.add (typ_id t) t !(env.params)
+  env.params := M.add (typ_hash t) t !(env.params)
 
 (* Function names *)
 
@@ -51,7 +34,7 @@ let add_type env t : unit =
 *)
 
 let show_name_for t =
-  "@show<" ^ typ_id t ^ ">"
+  "@show<" ^ typ_hash t ^ ">"
 
 let show_fun_typ_for t =
   T.Func (T.Local, T.Returns, [], [t], [T.text])
@@ -253,10 +236,10 @@ let show_decls : T.typ M.t -> Ir.dec list = fun roots ->
 
   let rec go = function
     | [] -> []
-    | t::todo when M.mem (typ_id t) !seen ->
+    | t::todo when M.mem (typ_hash t) !seen ->
       go todo
     | t::todo ->
-      seen := M.add (typ_id t) () !seen;
+      seen := M.add (typ_hash t) () !seen;
       let (decl, deps) = show_for t in
       decl :: go (deps @ todo)
   in go (List.map snd (M.bindings roots))
