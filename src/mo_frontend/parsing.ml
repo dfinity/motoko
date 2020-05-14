@@ -84,9 +84,9 @@ let slice_lexeme lexbuf i1 i2 =
   let open Lexing in
   let offset = i1.pos_cnum - lexbuf.lex_abs_pos in
   let len = i2.pos_cnum - i1.pos_cnum in
-  if offset >= 0 || len >= 0
-  then Bytes.sub_string lexbuf.lex_buffer offset len
-  else "<unknown>" (* Too rare to care *)
+  if offset < 0 || len < 0
+  then "<unknown>" (* Too rare to care *)
+  else Bytes.sub_string lexbuf.lex_buffer offset len
 
 let parse error_detail checkpoint lexer lexbuf =
   try E.entry checkpoint lexer with E.Error ((start, end_), explanations) ->
