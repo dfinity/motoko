@@ -1887,6 +1887,8 @@ and infer_val_path env exp : T.typ option =
          with Invalid_argument _ -> None)
        | _ -> None
     )
+  | AnnotE (_, typ) ->
+    Some (check_typ env typ)
   | _ -> None
 
 
