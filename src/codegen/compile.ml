@@ -6530,9 +6530,9 @@ and compile_exp (env : E.t) ae exp =
       (G.dw_statement e2.at ^^ code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
-    let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
+    let (ae', codeT1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
     let (sr, code2) = compile_exp env ae' exp in
-    (sr, code1 ^^ G.dw_statement exp.at ^^ code2)
+    (sr, codeT1 (G.dw_statement exp.at ^^ code2))
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -6632,9 +6632,9 @@ and compile_exp_as env ae sr_out e =
     (* Some optimizations for certain sr_out and expressions *)
     | _ , BlockE (decs, exp) ->
       let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
+      let (ae', codeT1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
       let code2 = compile_exp_as env ae' sr_out exp in
-      code1 ^^ code2
+      codeT1 code2
     (* Fallback to whatever stackrep compile_exp chooses *)
     | _ ->
       let sr_in, code = compile_exp env ae e in
@@ -6874,10 +6874,10 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code)
 
-and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
+and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G.t) =
   (fun (pre_ae, alloc_code, mk_code) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae ->
-         G.with_region dec.at (mk_code ae))) @@
+       (pre_ae, G.with_region dec.at alloc_code, fun ae wk ->
+         G.with_region dec.at (mk_code ae) ^^ wk)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -6912,42 +6912,42 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
         Var.set_val env ae name
       )
 
-and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
+and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
   let how = AllocHow.decs pre_ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
-    | []          -> (pre_ae, G.nop, fun _ -> G.nop)
+    | []          -> (pre_ae, G.nop, fun _ wk -> wk)
     | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
-        let (pre_ae1, alloc_code1, mk_code1) = compile_dec env pre_ae how v2en dec in
-        let (pre_ae2, alloc_code2, mk_code2) = go              pre_ae1 decs in
+        let (pre_ae1, alloc_code1, mk_codeT1) = compile_dec env pre_ae how v2en dec in
+        let (pre_ae2, alloc_code2, mk_codeT2) = go              pre_ae1 decs in
         ( pre_ae2,
           alloc_code1 ^^ alloc_code2,
-          fun ae -> let code1 = mk_code1 ae in
-                    let code2 = mk_code2 ae in
-                    code1 ^^ code2
+          fun ae -> let codeT1 = mk_codeT1 ae in
+                    let codeT2 = mk_codeT2 ae in
+                    fun wk -> codeT1 (codeT2 wk)
         ) in
-  let (ae1, alloc_code, mk_code) = go pre_ae decs in
-  let code = mk_code ae1 in
-  (ae1, alloc_code ^^ code)
+  let (ae1, alloc_code, mk_codeT) = go pre_ae decs in
+  let codeT = mk_codeT ae1 in
+  (ae1, fun wk -> alloc_code ^^ codeT wk)
 
-and compile_decs env ae lvl decs captured_in_body : VarEnv.t * G.t =
+and compile_decs env ae lvl decs captured_in_body : VarEnv.t * (G.t -> G.t) =
   compile_decs_public env ae lvl decs E.NameEnv.empty captured_in_body
 
 and compile_top_lvl_expr env ae e = match e.it with
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp e) in
-    let (ae', code1) = compile_decs env ae AllocHow.TopLvl decs captured in
+    let (ae', codeT1) = compile_decs env ae AllocHow.TopLvl decs captured in
     let code2 = compile_top_lvl_expr env ae' exp in
-    code1 ^^ code2
+    codeT1 code2
   | _ ->
     let (sr, code) = compile_exp env ae e in
     code ^^ StackRep.drop env sr
 
 and compile_prog env ae (ds, e) =
     let captured = Freevars.captured_vars (Freevars.exp e) in
-    let (ae', code1) = compile_decs env ae AllocHow.TopLvl ds captured in
+    let (ae', codeT1) = compile_decs env ae AllocHow.TopLvl ds captured in
     let code2 = compile_top_lvl_expr env ae' e in
-    (ae', code1 ^^ code2)
+    (ae', codeT1 code2)
 
 and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
@@ -7092,12 +7092,12 @@ and main_actor env ae1 ds fs =
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae2, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
+  let (ae2, decls_codeT) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
   (* Export the public functions *)
   List.iter (export_actor_field env ae2) fs;
 
-  decls_code
+  decls_codeT G.nop
 
 and conclude_module env start_fi_o =
 
