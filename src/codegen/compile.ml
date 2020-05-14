@@ -4790,7 +4790,7 @@ module Var = struct
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let (ae2, j) = VarEnv.add_direct_local new_env ae1 var in
+        let ae2, j = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
@@ -4818,13 +4818,14 @@ end (* Var *)
 
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
-  let bind_args env ae0 first_arg args =
-    let rec go i ae = function
-    | [] -> ae
-    | a::args ->
-      let ae' = VarEnv.add_local_local env ae a.it (Int32.of_int i) in
-      go (i+1) ae' args in
-    go first_arg ae0 args
+  let bind_args env ae0 first_arg =
+    let rec go ix ae dw = function
+    | [] -> ae, dw
+    | {it; at; note}::args ->
+      let ae' = VarEnv.add_local_local env ae it (Int32.of_int ix) in
+      let dw' = G.(dw_tag_no_children (Formal_parameter (it, at.left, note, ix))) in
+      go (ix + 1) ae' (dw ^^ dw') args in
+    go first_arg ae0 G.nop
 
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -4837,21 +4838,19 @@ module FuncDec = struct
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
 
-      let (ae1, closure_code) = restore_env env ae0 get_closure in
-
-      (* Add arguments to the environment (shifted by 1) *)
-      let ae2 = bind_args env ae1 1 args in
+      let (ae1 (* DW TODO *)), closure_code = restore_env env ae0 get_closure in
 
       (* Add nested DWARF *)
-      (* prereq has side effects that must happen before generating
+      (* prereq has side effects (i.e. creating DW types) that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
-      let var_location arg = match VarEnv.lookup_var ae2 arg with
-        | Some (VarEnv.Local i) -> Int32.to_int i
-        | _ -> failwith "var_location" in
       let prereq = G.(effects (concat_map (fun arg -> dw_tag (Type arg.note)) args)) in
+
+      (* Add arguments to the environment (shifted by 1) *)
+      let ae2, dw_args = bind_args env ae1 1 args in
+
       prereq ^^
       G.(dw_tag (Subprogram (name, at.left))) ^^
-      G.(concat_map (fun arg -> dw_tag_no_children (Formal_parameter (arg.it, arg.at.left, arg.note, var_location arg.it))) args) ^^
+      dw_args ^^
       closure_code ^^
       mk_body env ae2 ^^
       G.dw_tag_children_done
