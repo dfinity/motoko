@@ -315,7 +315,11 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     fakeBlock dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
+      (dw_attrs [ Name name
+                ; Decl_line pos.Source.line
+                ; Decl_column pos.Source.column
+                ; TypeRef (snd (dw_type_ref ty))
+                ; Location (Location.local slot [ dw_OP_stack_value ])])
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false

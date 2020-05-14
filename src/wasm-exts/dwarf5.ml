@@ -642,22 +642,19 @@ wasm-global := 0x01 i:uleb128
 wasm-operand-stack := 0x02
  *)
 
-let dw_OP_WASM_local slot = [ dw_OP_WASM_location; 0x00; -slot ]
-
-let dw_OP_WASM_global = dw_OP_WASM_location lor (0x01 lsl 8)
-let dw_OP_WASM_stack = dw_OP_WASM_location lor (0x02 lsl 8)
-
 (* Difference-lists-based builder *)
 
 type t = int list -> int list
+
+let local slot rest =
+  dw_OP_WASM_location :: 0x00 :: -slot :: rest
 (*
-let local n rest =
-  dw_OP_WASM_local :: n :: rest
+let global slot rest =
+  let dw_OP_WASM_global = dw_OP_WASM_location lor (0x01 lsl 8) in
+  dw_OP_WASM_global slot :: rest
 
-let global n rest =
-  dw_OP_WASM_global :: n :: rest
-
-let operand_stack n rest =
-  dw_OP_WASM_stack :: n :: rest
+let operand_stack slot rest =
+  let dw_OP_WASM_stack = dw_OP_WASM_location lor (0x02 lsl 8) in
+  dw_OP_WASM_stack slot :: rest
  *)
 end
