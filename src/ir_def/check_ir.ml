@@ -12,8 +12,6 @@ module E = Ir_effect
    consider making it explicit as part of desugaring.
 *)
 
-(* TODO: enforce second-class nature of T.Mut? in check_typ *)
-
 (* TODO: check escape of free mutables via actors *)
 
 (* Helpers *)
@@ -164,7 +162,7 @@ let rec check_typ env typ : unit =
   | T.Non -> ()
   | T.Prim _ -> ()
   | T.Array typ ->
-    check_typ env typ
+    check_mut_typ env typ
   | T.Tup typs ->
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
@@ -221,9 +219,13 @@ let rec check_typ env typ : unit =
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
-    check_typ env typ
+    error env no_region "unexpected T.Mut"
   | T.Typ c ->
     check_con env c
+
+and check_mut_typ env = function
+  | T.Mut t -> check_typ env t
+  | t -> check_typ env t
 
 and check_con env c =
   if T.ConSet.mem c !(env.seen) then ()
@@ -241,7 +243,9 @@ and check_con env c =
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
-  check_typ env typ;
+  if s = Some T.Object || s = Some T.Memory
+  then check_mut_typ env typ
+  else check_typ env typ;
   if not (T.is_typ typ) then begin
     check env no_region
       (s <> Some T.Actor || T.is_shared_func typ)
@@ -343,7 +347,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
-  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;
@@ -357,7 +360,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
-    typ <~ t
+    T.as_immut typ <: t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -423,7 +426,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
                | ActorDotPrim _ -> sort = T.Actor
                | DotPrim _ -> sort <> T.Actor
                | _ -> false) "sort mismatch";
-        try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
+        try T.as_immut (T.lookup_val_field n tfs) <: t with Invalid_argument _ ->
           error env exp1.at "field name %s does not exist in type\n  %s"
             n (T.string_of_typ_expand t1)
       end
@@ -439,7 +442,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
                                          (T.string_of_typ_expand t1)
       in
       typ exp2 <: T.nat;
-      t2 <~ t
+      T.as_immut t2 <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -611,11 +614,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1' <: T.Any; (* vacuous *)
     T.Async (t0, t1') <: t
   | DeclareE (id, t0, exp1) ->
-    check_typ env t0;
+    check_mut_typ env t0;
     let val_info = { typ = t0; loc_known = false; const = false } in
     let env' = adjoin_vals env (T.Env.singleton id val_info) in
     check_exp env' exp1;
-    (typ exp1) <: t
+    typ exp1 <: t
   | DefineE (id, mut, exp1) ->
     check_exp env exp1;
     begin
@@ -740,7 +743,9 @@ and check_lexp env (lexp:Ir.lexp) : unit =
   let (<:) t1 t2 = check_sub env lexp.at t1 t2 in
   (* check type annotation *)
   let t = lexp.note in
-  check_typ env t;
+  (match t with
+  | T.Mut t -> check_typ env t
+  | t -> error env lexp.at "lexp with non-mutable type");
   (* check typing *)
   match lexp.it with
   | VarLE id ->
@@ -752,6 +757,7 @@ and check_lexp env (lexp:Ir.lexp) : unit =
     t0 <: t
   | DotLE (exp1, n) ->
     begin
+      check_exp env exp1;
       let t1 = typ exp1 in
       let sort, tfs =
         try T.as_obj_sub [n] t1 with Invalid_argument _ ->
