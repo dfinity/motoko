@@ -724,6 +724,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_signed_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64_signed" [I64Type] [I32Type];
@@ -1798,6 +1799,7 @@ sig
   (* word from SR.Vanilla, trapping, unsigned semantics *)
   val to_word32 : E.t -> G.t
   val to_word64 : E.t -> G.t
+  val to_word32_with : E.t -> G.t (* with error message on stack (ptr/len) *)
 
   (* word from SR.Vanilla, lossy, raw bits *)
   val truncate_to_word32 : E.t -> G.t
@@ -2363,12 +2365,21 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     BitTagged.if_unboxed env [I32Type]
       (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       (get_a ^^ Num.to_word32 env)
+  let to_word32_with env =
+    let set_a, get_a = new_local env "a" in
+    let set_err_msg, get_err_msg = new_local env "err_msg" in
+    set_err_msg ^^ set_a ^^
+    get_a ^^
+    BitTagged.if_unboxed env [I32Type]
+      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
 end
 
 module BigNumLibtommath : BigNumType = struct
 
   let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
+  let to_word32_with env = E.call_import env "rts" "bigint_to_word32_trap_with"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
@@ -2907,7 +2918,7 @@ module Arr = struct
      Does bounds checking *)
   let idx env =
     Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      (* No need to check the lower bound, we interpret is as unsigned *)
+      (* No need to check the lower bound, we interpret idx as unsigned *)
       (* Check the upper bound *)
       get_idx ^^
       get_array ^^ Heap.load_field len_field ^^
@@ -2920,6 +2931,17 @@ module Arr = struct
       get_array ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
+
+  (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
+  let idx_bigint env =
+    Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_array ^^
+      get_idx ^^
+      Blob.lit env "Array index out of bounds" ^^
+      BigNum.to_word32_with env ^^
+      idx env
+  )
+
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
@@ -6442,8 +6464,7 @@ let rec compile_lexp (env : E.t) ae lexp =
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
-     BigNum.to_word32 env ^^
-     Arr.idx env,
+     Arr.idx_bigint env,
      store_ptr
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
@@ -6568,8 +6589,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* offset to array *)
       compile_exp_vanilla env ae e2 ^^ (* idx *)
-      BigNum.to_word32 env ^^
-      Arr.idx env ^^
+      Arr.idx_bigint env ^^
       load_ptr
 
     | BreakPrim name, [e] ->
