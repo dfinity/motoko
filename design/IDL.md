@@ -534,6 +534,18 @@ An *interface description* consists of a sequence of imports and type definition
 
 The optional name given to the service in an interface description is immaterial; it only serves as documentation.
 
+## Self-describing services
+
+A service providing a Candid-based interface should expose that interface by way of an implicit method
+
+```
+  candid_interface : () -> (Text) query
+```
+
+which returns the current interface of the service in textual form.
+
+The `candid_interface` method is typically _not_ explicitly listed in the interface.
+
 
 ## Upgrading and Subtyping
 
