@@ -124,8 +124,7 @@ export uint32_t bigint_to_word32_trap(as_ptr a) {
 
 export uint32_t bigint_to_word32_trap_with(as_ptr a, char *err_msg, uint32_t err_len) {
   mp_int *n = BIGINT_PAYLOAD(a);
-  if (mp_isneg(n)) rts_trap(err_msg, err_len);
-  if (mp_count_bits(n) > 32) rts_trap(err_msg, err_len);
+  if (mp_isneg(n) || mp_count_bits(n) > 32) rts_trap(err_msg, err_len);
   return mp_get_u32(n);
 }
 
@@ -393,4 +392,3 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
 
   return r;
 }
-
