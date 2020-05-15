@@ -319,7 +319,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
   | LexicalBlock pos ->
     fakeBlock dw_TAG_lexical_block
-      (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Decl_line pos.Source.line; Decl_column pos.Source.column])
+      (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
   | Variable (name, pos, ty, slot) ->
     fakeBlock dw_TAG_variable
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])

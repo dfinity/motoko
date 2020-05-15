@@ -133,19 +133,31 @@ let encode (em : extended_module) =
     not (has_children <> 0)
   in
 
+  let code_section_start = ref 0 in
+
   let add_dwarf_tag refi tag =
+    let position_attr =
+      if tag = Dwarf5.dw_TAG_lexical_block then
+        [IntAttribute (Dwarf5.dw_AT_low_pc, pos s - !code_section_start)]
+      else [] in
+
     (* invariant: at most one closed tag waiting for attributes *)
+
     dwarf_tags :=
       match !dwarf_tags with
       | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
         Printf.printf "CONTRACTING a 0x%x (sinking the closed 0x%x into 0x%x)\n" tag t' t;
-        Tag (refi, tag, []) :: Tag (r, t, closed :: arts) :: tail
-      | tail -> Tag (refi, tag, []) :: (Printf.printf "ADDING a 0x%x%s at depth %d\n" tag (if refi = None then "" else " has ref") (List.length tail); tail) in
-  let rec close_dwarf () =
+        Tag (refi, tag, position_attr) :: Tag (r, t, closed :: arts) :: tail
+      | tail -> Tag (refi, tag, position_attr) :: (Printf.printf "ADDING a 0x%x%s at depth %d\n" tag (if refi = None then "" else " has ref") (List.length tail); tail) in
+
+  let rec close_dwarf genuine =
     match !dwarf_tags with
+    | Tag (refi, t, viscera) :: tail when genuine && t = Dwarf5.dw_TAG_lexical_block ->
+      dwarf_tags := Tag (refi, t, IntAttribute (Dwarf5.dw_AT_high_pc, pos s - !code_section_start) :: viscera) :: tail;
+      close_dwarf false
     | [] -> failwith "no open DW_TAG"
     | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING"
-    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED 0x%x into 0x%x [on close]\n" t' t; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
+    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED 0x%x into 0x%x [on close]\n" t' t; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf false
     | Tag (None, s, attrs_tags) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s ->
       Printf.printf "TOPLEVEL: EATING [on close]\n";
       (* we have to be careful to only reference tags already written,
@@ -369,7 +381,7 @@ let encode (em : extended_module) =
       let instr = instr noting in
 
       match e.it with
-      | Nop when dwarf_like e.at -> close_dwarf ()
+      | Nop when dwarf_like e.at -> close_dwarf true
       | Nop when is_dwarf_statement e.at ->
         Printf.printf "Line %d    OFFS: 0x%x     (%s:%d:%d)\n" e.at.right.line (pos s) e.at.left.file e.at.left.line e.at.left.column;
         modif statement_positions (Instrs.add (pos s, e.at.left))
@@ -740,7 +752,6 @@ let encode (em : extended_module) =
       patch_gap32 g (sequence_end - p);
       modif sequence_bounds (Sequ.add (p, !instr_notes, sequence_end))
 
-    let code_section_start = ref 0
     let code_section fs =
       section 10 (fun fs -> code_section_start := pos s; vec code fs) fs (fs <> [])
 

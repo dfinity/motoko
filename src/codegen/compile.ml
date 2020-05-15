@@ -6899,7 +6899,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code, (fun ae ->
       G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^
-      fill_code), fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ wk (*^^ G.dw_attr (G.High_pc 0(*FIXME*))  *) ^^ G.dw_tag_children_done
+      fill_code), fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ wk ^^ G.dw_tag_children_done
     )
 
   | VarD (name, _, e) ->
