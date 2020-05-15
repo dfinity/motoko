@@ -1,5 +1,4 @@
 losing precision
-
 Error: failed to run main module `_out/outrange-nat8.wasm`
 
 Caused by:

@@ -1,5 +1,4 @@
 arithmetic overflow
-
 Error: failed to run main module `_out/mulNat64.wasm`
 
 Caused by:
