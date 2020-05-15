@@ -228,7 +228,7 @@ and build_actor at self_id es obj_typ =
   let ids = List.concat idss in
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
   let mk_ds = List.map snd pairs in
-  let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
+  let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
@@ -259,7 +259,7 @@ and build_actor at self_id es obj_typ =
            [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
               (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
           (primE (I.ICStableWrite ty)
-             [ newObjE T.Object
+             [ newObjE T.Memory
                  (List.map2 (fun f v ->
                       { it = {I.name = f.T.lab; I.var = id_of_var v};
                         at = no_region;
