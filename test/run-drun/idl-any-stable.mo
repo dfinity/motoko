@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-// This tests checks that the IDL decoder properly
+// This test checks that the IDL decoder properly
 // zooms past the any argument and finds the beginning of the string
 actor {
   public query func any(_ : Any, x : Text) : async () {

@@ -4774,11 +4774,11 @@ We currently use a Candid derivative to serialize stable values. In addition to
 storing sharable data, we can also store mutable data (records with mutable
 fields and mutable arrays), and we need to preserve aliasing.
 
-To that end we extend Candid with a type contsructor `alias t`.
+To that end we extend Candid with a type constructor `alias t`.
 
 In the type table, alias t is represented by type code 1. All Candid type constructors
 are represented by negative numbers, so this cannot clash with anything and,
-conveniently, makes such values illegal candid.
+conveniently, makes such values illegal Candid.
 
 The values of `alias t` are either
 
