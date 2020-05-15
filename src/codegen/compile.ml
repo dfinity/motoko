@@ -4623,25 +4623,10 @@ end (* Serialization *)
 
 module Stabilization = struct
 
-  (* The collection of stable variables is represented as a
-     a stable object of optional fields, but deserialized specially replacing
-     expected, but missing, fields by Null values.
-     To guide type-driven serialization accordingly,
-     we replace the expected Object sort by pseudo-sort Memory. *)
-
-  let as_memory t = Type.(
-     assert (stable t);
-     match t with
-     | Obj (Object, fs) ->
-       assert (List.for_all (fun f -> is_opt f.typ) fs);
-       Obj (Memory, fs)
-     | _ -> assert false)
-
   let stabilize env t =
-    let t1 = as_memory t in
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
-    Serialization.serialize env [t1] ^^
+    Serialization.serialize env [t] ^^
     set_len ^^
     set_dst ^^
 
@@ -4710,9 +4695,8 @@ module Stabilization = struct
     | _ -> assert false
 
   let destabilize env t =
-    let t1 = as_memory t in
-    let t1_name = Typ_hash.typ_hash t1 in
-    Serialization.deserialize_core stable_data_size stable_data_copy env t1_name [t1]
+    let t_name = Typ_hash.typ_hash t in
+    Serialization.deserialize_core stable_data_size stable_data_copy env t_name [t]
 
 end
 
@@ -7136,7 +7120,7 @@ and compile_exp (env : E.t) ae exp =
       get_r
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
-  | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
+  | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*
     We can enable this warning once we treat everything as static that
     mo_frontend/static.ml accepts, including _all_ literals.
@@ -7496,7 +7480,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/VarE: \"%s\" not found" v
     in
     (c, fun _ _ -> ())
-  | NewObjE (Type.(Object | Module), fs, _) ->
+  | NewObjE (Type.(Object | Module | Memory), fs, _) ->
     let static_fs = List.map (fun f ->
           let st =
             match VarEnv.lookup_var pre_ae f.it.var with
