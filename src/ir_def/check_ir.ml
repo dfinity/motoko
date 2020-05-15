@@ -221,7 +221,7 @@ let rec check_typ env typ : unit =
   | T.Mut typ ->
     error env no_region "unexpected T.Mut"
   | T.Typ c ->
-    check_con env c
+    error env no_region "unexpected T.Typ"
 
 and check_mut_typ env = function
   | T.Mut t -> check_typ env t
@@ -241,16 +241,13 @@ and check_con env c =
     check_typ env' (T.open_ ts typ)
   end
 
-and check_typ_field env s typ_field : unit =
-  let T.{lab; typ} = typ_field in
-  if s = Some T.Object || s = Some T.Memory
-  then check_mut_typ env typ
-  else check_typ env typ;
-  if not (T.is_typ typ) then begin
-    check env no_region
-      (s <> Some T.Actor || T.is_shared_func typ)
-      "actor field must have shared function type"
-  end
+and check_typ_field env s tf : unit =
+  match tf.T.typ, s with
+  | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
+  | T.Typ c, Some _ -> check_con env c
+  | t, Some T.Actor when not (T.is_shared_func t) ->
+    error env no_region "actor field %s must have shared function type" tf.T.lab
+  | t, _ -> check_typ env t
 
 and check_typ_binds_acyclic env cs ts  =
   let n = List.length cs in
