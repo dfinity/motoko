@@ -1,3 +1,2 @@
 ingress System
-debug.print: IDL error: illegal type table
-Err: IC0502: Canister ic:2A012B trapped: unreachable
+Err: IC0503: Canister ic:2A012B trapped explicitly: IDL error: illegal type table
