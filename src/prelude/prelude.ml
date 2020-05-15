@@ -1,10 +1,11 @@
-(*
+let prelude = {|
+
+/*
 The prelude. This stuff is always initially in scope. This should be only
  * type definitions for primitive types
  * code with privileged names (@…) that are used by the desugarer or ir-passes
-*)
-let prelude =
-{|
+*/
+
 type Any = prim "Any";
 type None = prim "None";
 type Null = prim "Null";
