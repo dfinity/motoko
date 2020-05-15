@@ -197,8 +197,9 @@ type dw_AT = Producer of string
 type dw_TAG =
   | Compile_unit of string * string (* compilation directory, file name *)
   | Subprogram of string * Source.pos
+  | LexicalBlock of Source.pos
   | Formal_parameter of (string * Source.pos * Type.typ * int)
-  | Variable
+  | Variable of (string * Source.pos * Type.typ * int)
   | Type of Type.typ
   | Typedef of string * Type.typ
   | Pointer_type of int (* needed? *)
@@ -316,7 +317,12 @@ let rec dw_tag : dw_TAG -> t =
   | Formal_parameter (name, pos, ty, slot) ->
     fakeBlock dw_TAG_formal_parameter
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
-  (*| Variable ->  *)
+  | LexicalBlock pos ->
+    fakeBlock dw_TAG_lexical_block
+      (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Decl_line pos.Source.line; Decl_column pos.Source.column])
+  | Variable (name, pos, ty, slot) ->
+    fakeBlock dw_TAG_variable
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
   | Type ty -> dw_type ty
   | _ -> assert false
 and lookup_pointer_key () : t * int =

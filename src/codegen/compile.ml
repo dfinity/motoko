@@ -6875,9 +6875,9 @@ and compile_n_ary_pat env ae how pat =
   in (ae1, alloc_code, arity, fill_code)
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G.t) =
-  (fun (pre_ae, alloc_code, mk_code) ->
+  (fun (pre_ae, alloc_code, mk_code, wrap) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae wk ->
-         G.with_region dec.at (mk_code ae) ^^ wk)) @@
+         G.with_region dec.at (mk_code ae) ^^ wrap wk)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -6888,28 +6888,29 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
       | _ -> assert false in
     let cv = Const.t_of_v (Const.PublicMethod (fi, (E.NameEnv.find v v2en))) in
     let pre_ae1 = VarEnv.add_local_const pre_ae v cv in
-    (pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+    (pre_ae1, G.nop, (fun ae -> fill env ae; G.nop), fun wk -> wk)
 
   (* A special case for constant expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
     let (extend, fill) = Printf.printf "compile_dec LetD constant  %s %d %d  (%s %d %d)\n" dec.at.left.file dec.at.left.line dec.at.left.column dec.at.right.file dec.at.right.line dec.at.right.column; compile_const_dec env pre_ae dec in
-    (extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
+    (extend pre_ae, G.nop, (fun ae -> fill env ae; G.nop), fun wk -> wk)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
-    ( pre_ae1, alloc_code, fun ae ->
+    ( pre_ae1, alloc_code, (fun ae ->
       G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^
-      fill_code
+      fill_code), fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ wk (*^^ G.dw_attr (G.High_pc 0(*FIXME*))  *) ^^ G.dw_tag_children_done
     )
+
   | VarD (name, _, e) ->
       assert (AllocHow.M.find_opt name how = Some AllocHow.LocalMut ||
               AllocHow.M.find_opt name how = Some AllocHow.StoreHeap ||
               AllocHow.M.find_opt name how = Some AllocHow.StoreStatic);
       let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
 
-      ( pre_ae1, alloc_code, fun ae ->
+      ( pre_ae1, alloc_code, (fun ae ->
         G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^
-        Var.set_val env ae name
+        Var.set_val env ae name), fun wk -> wk
       )
 
 and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =

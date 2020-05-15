@@ -138,15 +138,16 @@ let encode (em : extended_module) =
     dwarf_tags :=
       match !dwarf_tags with
       | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
-        (Printf.printf "CONTRACTING a 0x%x\n" tag; Tag (refi, tag, []) :: Tag (r, t, closed :: arts) :: tail)
-      | tail -> Tag (refi, tag, []) :: (Printf.printf "ADDING a 0x%x%s\n" tag (if refi = None then "" else " has ref"); tail) in
+        Printf.printf "CONTRACTING a 0x%x (sinking the closed 0x%x into 0x%x)\n" tag t' t;
+        Tag (refi, tag, []) :: Tag (r, t, closed :: arts) :: tail
+      | tail -> Tag (refi, tag, []) :: (Printf.printf "ADDING a 0x%x%s at depth %d\n" tag (if refi = None then "" else " has ref") (List.length tail); tail) in
   let rec close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
     | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING"
-    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
+    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED 0x%x into 0x%x [on close]\n" t' t; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
     | Tag (None, s, attrs_tags) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s ->
-      Printf.printf "TOPLEVEL: EATING\n";
+      Printf.printf "TOPLEVEL: EATING [on close]\n";
       (* we have to be careful to only reference tags already written,
          so maintain creation order; reversal happens in writeTag *)
       let ref_priority a b = match a, b with
@@ -156,7 +157,7 @@ let encode (em : extended_module) =
         | _ -> 0 in
       let refs_back = List.stable_sort ref_priority (attrs_tags @ tags) in
       dwarf_tags := Tag (None, s, refs_back) :: []
-    | Tag _ as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (r, tag, nested :: arts) :: t)
+    | Tag (_, t', _) as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING a 0x%x into 0x%x [on close]\n" t' tag; Tag (r, tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with

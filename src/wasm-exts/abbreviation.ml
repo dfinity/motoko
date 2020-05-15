@@ -47,7 +47,22 @@ let abbreviations =
       ] );
     ( dw_TAG_formal_parameter, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
-        (*dw_AT_decl_file, dw_FORM_data1;*)
+        (* Needed? dw_AT_decl_file, dw_FORM_data1;*)
+        dw_AT_decl_line, dw_FORM_data1;
+        dw_AT_decl_column, dw_FORM_data1;
+        dw_AT_type, dw_FORM_ref_udata;
+        dw_AT_location, dw_FORM_exprloc
+      ] );
+    ( dw_TAG_lexical_block, dw_CHILDREN_yes,
+      [ dw_AT_low_pc, dw_FORM_data4(*FIXME*);
+        dw_AT_high_pc, dw_FORM_data4(*FIXME*);
+        (* Needed? dw_AT_decl_file, dw_FORM_data1 FIXME; *)
+        dw_AT_decl_line, dw_FORM_data1(*FIXME*);
+        dw_AT_decl_column, dw_FORM_data1(*FIXME*);
+      ] );
+    ( dw_TAG_variable, dw_CHILDREN_no,
+      [ dw_AT_name, dw_FORM_strp;
+        (* Needed? dw_AT_decl_file, dw_FORM_data1;*)
         dw_AT_decl_line, dw_FORM_data1;
         dw_AT_decl_column, dw_FORM_data1;
         dw_AT_type, dw_FORM_ref_udata;
