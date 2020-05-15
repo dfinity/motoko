@@ -2715,6 +2715,10 @@ module Blob = struct
 
   let lit env s = compile_unboxed_const (vanilla_lit env s)
 
+  let lit_ptr_len env s =
+    compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
+    compile_unboxed_const (Int32.of_int (String.length s))
+
   let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
       let (set_x, get_x) = new_local env "x" in
       compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
@@ -3239,14 +3243,14 @@ module Dfinity = struct
 
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^
-          compile_unboxed_const 1l (* one string segments (2 doesnt work) *) ^^
+          compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
           get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop ^^
 
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^ compile_add_const 8l ^^
-          compile_unboxed_const 1l (* one string segments *) ^^
+          compile_unboxed_const 1l (* one string segment *) ^^
           get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop
@@ -3263,23 +3267,19 @@ module Dfinity = struct
     )
 
   (* For debugging *)
-  let compile_static_print env s =
-    Blob.lit env s ^^ print_text env
+  let _compile_static_print env s =
+    Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env = system_call env "ic0" "trap"
 
-  let ic_trap_str env =
-      Func.share_code1 env "ic_trap" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Blob.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field Blob.len_field ^^
-        ic_trap env
-      )
-
-  let trap_with env s =
+  let trap_ptr_len env =
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
-    | Flags.WASIMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
-    | Flags.ICMode | Flags.RefMode -> Blob.lit env s ^^ ic_trap_str env ^^ G.i Unreachable
+    | Flags.WASIMode -> print_ptr_len env ^^ G.i Unreachable
+    | Flags.ICMode | Flags.RefMode -> ic_trap env ^^ G.i Unreachable
+
+  let trap_with env s =
+    Blob.lit_ptr_len env s ^^ trap_ptr_len env
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -3522,8 +3522,7 @@ module RTS_Exports = struct
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
-        get_str ^^ get_len ^^ Dfinity.print_ptr_len env ^^
-        G.i Unreachable
+        get_str ^^ get_len ^^ Dfinity.trap_ptr_len env
       )
     ) in
     E.add_export env (nr {
@@ -4836,25 +4835,10 @@ end (* Serialization *)
 
 module Stabilization = struct
 
-  (* The collection of stable variables is represented as a
-     a stable object of optional fields, but deserialized specially replacing
-     expected, but missing, fields by Null values.
-     To guide type-driven serialization accordingly,
-     we replace the expected Object sort by pseudo-sort Memory. *)
-
-  let as_memory t = Type.(
-     assert (stable t);
-     match t with
-     | Obj (Object, fs) ->
-       assert (List.for_all (fun f -> is_opt f.typ) fs);
-       Obj (Memory, fs)
-     | _ -> assert false)
-
   let stabilize env t =
-    let t1 = as_memory t in
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
-    Serialization.serialize env [t1] ^^
+    Serialization.serialize env [t] ^^
     set_len ^^
     set_dst ^^
 
@@ -4923,9 +4907,8 @@ module Stabilization = struct
     | _ -> assert false
 
   let destabilize env t =
-    let t1 = as_memory t in
-    let t1_name = Typ_hash.typ_hash t1 in
-    Serialization.deserialize_core true stable_data_size stable_data_copy env t1_name [t1]
+    let t_name = Typ_hash.typ_hash t in
+    Serialization.deserialize_core true stable_data_size stable_data_copy env t_name [t]
 
 end
 
@@ -7351,7 +7334,7 @@ and compile_exp (env : E.t) ae exp =
       get_r
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
-  | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
+  | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*
     We can enable this warning once we treat everything as static that
     mo_frontend/static.ml accepts, including _all_ literals.
@@ -7711,7 +7694,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/VarE: \"%s\" not found" v
     in
     (c, fun _ _ -> ())
-  | NewObjE (Type.(Object | Module), fs, _) ->
+  | NewObjE (Type.(Object | Module | Memory), fs, _) ->
     let static_fs = List.map (fun f ->
           let st =
             match VarEnv.lookup_var pre_ae f.it.var with

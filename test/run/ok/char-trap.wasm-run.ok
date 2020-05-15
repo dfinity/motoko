@@ -1,5 +1,4 @@
 codepoint out of range
-
 Error: failed to run main module `_out/char-trap.wasm`
 
 Caused by:

@@ -1,5 +1,4 @@
 arithmetic overflow
-
 Error: failed to run main module `_out/subInt64-upper.wasm`
 
 Caused by:

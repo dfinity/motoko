@@ -626,8 +626,7 @@ let serializable allow_mut t =
         (match s with
          | Actor -> true
          | Module -> false (* TODO(1452) make modules sharable *)
-         | Object -> List.for_all (fun f -> go f.typ) fs
-         | Memory -> assert false)
+         | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end

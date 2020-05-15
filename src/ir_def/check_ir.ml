@@ -339,7 +339,7 @@ let isAsyncE exp =
 let store_typ t  =
   T.stable t &&
   match t with
-  | T.Obj(T.Object, fts) ->
+  | T.Obj(T.Memory, fts) ->
     List.for_all (fun f -> T.is_opt f.T.typ) fts
   | _ -> false
 
