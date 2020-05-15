@@ -2367,13 +2367,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ Num.to_word32 env)
   let to_word32_with env =
     let set_a, get_a = new_local env "a" in
-    let set_err_ptr, get_err_ptr = new_local env "err_ptr" in
-    let set_err_len, get_err_len = new_local env "err_len" in
-    set_err_len ^^ set_err_ptr ^^ set_a ^^
+    let set_err_msg, get_err_msg = new_local env "err_msg" in
+    set_err_msg ^^ set_a ^^
     get_a ^^
     BitTagged.if_unboxed env [I32Type]
       (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
-      (get_a ^^ get_err_ptr ^^ get_err_len ^^ Num.to_word32_with env)
+      (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
 end
 
 module BigNumLibtommath : BigNumType = struct
