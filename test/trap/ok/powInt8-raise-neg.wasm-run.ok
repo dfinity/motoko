@@ -1,5 +1,4 @@
 negative power
-
 Error: failed to run main module `_out/powInt8-raise-neg.wasm`
 
 Caused by:

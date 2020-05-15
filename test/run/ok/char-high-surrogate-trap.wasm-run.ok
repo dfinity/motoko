@@ -1,5 +1,4 @@
 codepoint out of range
-
 Error: failed to run main module `_out/char-high-surrogate-trap.wasm`
 
 Caused by:
