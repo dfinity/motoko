@@ -122,6 +122,14 @@ export uint32_t bigint_to_word32_trap(as_ptr a) {
   return mp_get_u32(n);
 }
 
+export uint32_t bigint_to_word32_trap_with(as_ptr a, blob_t err_msg) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n) || mp_count_bits(n) > 32) {
+    rts_trap(BLOB_PAYLOAD(err_msg), BLOB_LEN(err_msg));
+  }
+  return mp_get_u32(n);
+}
+
 export int32_t bigint_to_word32_signed_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_count_bits(n) > 32) bigint_trap();
@@ -386,4 +394,3 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
 
   return r;
 }
-

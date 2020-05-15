@@ -106,6 +106,10 @@ let rec go = function
   | Array (Mut t) -> ((Unary, "V"), [t])
   | Array t -> ((Unary, "v"), [t])
 
+  (* Here we pretend we support first-class mutable values;
+     this is useful for stable serialization *)
+  | Mut t -> ((Unary, "M"), [t])
+
   | Obj (s, fs) ->
     ( ( Labeled (List.map (fun f -> f.lab ^ if is_mut f.typ then "!" else "") fs),
         (match s with Object -> "r" | Module -> "rm" | Memory -> "rs" | Actor -> "ra")
@@ -131,7 +135,6 @@ let rec go = function
   | Async _ -> raise (Invalid_argument "typ_hash: Only supports serializable data")
 
   | Con _ as t -> go (normalize t)
-  | Mut _ -> assert false
   | Pre -> assert false
   | Var _ -> assert false
   | Typ _ -> assert false

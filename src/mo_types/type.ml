@@ -602,7 +602,8 @@ let concrete t =
     end
   in go t
 
-let shared t =
+(* stable or shared *)
+let serializable allow_mut t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -612,7 +613,8 @@ let shared t =
       | Var _ | Pre -> assert false
       | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
-      | Async _ | Mut _ -> false
+      | Async _ -> false
+      | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -669,8 +671,8 @@ let is_shared_func t =
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
-(* stable types : TODO extend to mutable *)
-let stable t = shared t
+let shared t = serializable false t
+let stable t = serializable true t
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
