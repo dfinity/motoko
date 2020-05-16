@@ -6857,7 +6857,7 @@ and compile_n_ary_pat env ae how pat =
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let arity, fill_code =
-    (fun (sr,code) -> (sr, G.with_region pat.at code)) @@
+    (fun (sr, code) -> (sr, G.with_region pat.at code)) @@
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
     | WildP -> None, G.nop
@@ -6896,25 +6896,24 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
     (extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
-    let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
+    let pre_ae1, alloc_code, pat_arity, fill_code = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code, fun ae ->
       G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^
       fill_code
     )
   | VarD (name, _, e) ->
-      assert (AllocHow.M.find_opt name how = Some AllocHow.LocalMut ||
-              AllocHow.M.find_opt name how = Some AllocHow.StoreHeap ||
-              AllocHow.M.find_opt name how = Some AllocHow.StoreStatic);
-      let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
+    assert AllocHow.(match M.find_opt name how with
+                     | Some (LocalMut | StoreHeap | StoreStatic) -> true
+                     | _ -> false);
+    let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
 
-      ( pre_ae1, alloc_code, fun ae ->
-        G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^
-        Var.set_val env ae name
-      )
+    ( pre_ae1, alloc_code,
+      fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name
+    )
 
 and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
   let how = AllocHow.decs pre_ae lvl decs captured_in_body in
-  let rec go pre_ae decs = match decs with
+  let rec go pre_ae = function
     | []          -> (pre_ae, G.nop, fun _ wk -> wk)
     | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
@@ -6999,7 +6998,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
-  let rec go pre_ae decs = match decs with
+  let rec go pre_ae = function
     | []          -> (fun ae -> ae), (fun _ _ -> ())
     | [dec]       -> compile_const_dec env pre_ae dec
     | (dec::decs) ->

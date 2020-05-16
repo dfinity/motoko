@@ -471,12 +471,19 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop /* nixpkgs.rustc nixpkgs.cargo */ nixpkgs.rustup ] ++
+        [ nixpkgs.ncurses nixpkgs.libedit nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop /* nixpkgs.rustc nixpkgs.cargo */ nixpkgs.rustup nixpkgs.ncurses.dev nixpkgs.libedit.dev nixpkgs.python3 nixpkgs.cmake nixpkgs.moreutils ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
     shellHook = llvmEnv;
     ESM=nixpkgs.sources.esm;
+    GUI_FLAGS = ''
+      "-DCURSES_INCLUDE_DIRS=${nixpkgs.ncurses.dev}/include"
+      "-DCURSES_LIBRARIES=${nixpkgs.ncurses}/lib"
+      "-DPANEL_LIBRARIES=${nixpkgs.ncurses}/lib"
+      "-DLibEdit_INCLUDE_DIRS=${nixpkgs.libedit.dev}/include"
+      "-DLibEdit_LIBRARIES=${nixpkgs.libedit}/lib"
+    '';
     TOMMATHSRC = nixpkgs.sources.libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
