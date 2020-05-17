@@ -56,7 +56,7 @@ let abbreviations =
       [ dw_AT_low_pc, dw_FORM_addr; (* filled-in by tag open *)
         dw_AT_decl_line, dw_FORM_data1(*FIXME*);
         dw_AT_decl_column, dw_FORM_data1(*FIXME*);
-        dw_AT_high_pc, dw_FORM_addr; (* filled-in by tag close *)
+        dw_AT_high_pc, dw_FORM_addr (* filled-in by tag close *)
       ] );
     ( dw_TAG_variable, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
