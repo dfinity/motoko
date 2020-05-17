@@ -150,9 +150,8 @@ func @digits_hex(x : Nat) : Text =
      )
    )
  );
-func @text_of_Word(x : Nat) : Text {
-  return "0x" # @text_of_num(x, 16, 4, @digits_hex);
-};
+
+func @text_of_Word(x : Nat) : Text = "0x" # @text_of_num(x, 16, 4, @digits_hex);
 
 // There is some duplication with the prim_module, but we need these here
 // before we can load the prim module
