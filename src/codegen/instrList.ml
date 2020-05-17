@@ -37,10 +37,7 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({i with it = LocalSet n } :: r')
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
-      let fishDwarf = List.find_opt (fun i -> Wasm_exts.CustomModuleEncode.dwarf_like i.at) in
-      List.rev (match fishDwarf t with
-                | Some dw -> dw::i::l
-                | None -> i::l)
+      List.(rev (i :: l) @ find_all (fun instr -> Wasm_exts.CustomModuleEncode.dwarf_like instr.at) t)
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -79,12 +76,19 @@ let to_nested_list d pos is =
   optimize (is Int32.(add d 1l) pos [])
 
 
-(* The concatenation operator *)
+(* Do nothing *)
 let nop : t = fun _ _ rest -> rest
+
+(* Tracing *)
+let trace m : t = fun _ _ rest -> print_endline (Printf.sprintf "G.trace: %s" m); rest
+let trace1 m : t = fun _ _ rest -> print_endline (Printf.sprintf "G.trace: %s  instr: %s" m (match rest with [] -> "(--)" | instr :: _ -> Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr.it @@ Wasm.Source.no_region)))); rest
+let trace_all m : t = fun _ _ rest -> List.iter (fun instr -> print_endline (Printf.sprintf "G.trace: %s  instr: %s  line: -0x%x   column: %d    file: %s" m (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr.it @@ instr.at))) (-instr.at.left.line) instr.at.left.column instr.at.left.file)) rest; rest
+
+(* The concatenation operator *)
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 
 (* Forcing side effects to happen,
-   only for nesting- and location-oblivious instructions *)
+   only for depth- and location-oblivious instructions *)
 let effects t =
   let instrs = t 0l Wasm.Source.no_region [] in
   fun _ _ rest -> instrs @ rest
@@ -322,7 +326,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
   | Variable (name, pos, ty, slot) ->
     fakeBlock dw_TAG_variable
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; (*TypeRef (snd (dw_type_ref ty)); *)Location [dw_OP_WASM_location; 0x00; -slot; dw_OP_stack_value]])
   | Type ty -> dw_type ty
   | _ -> assert false
 and lookup_pointer_key () : t * int =
