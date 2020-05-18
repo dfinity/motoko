@@ -123,6 +123,12 @@ let share_expfield (ef : exp_field) =
       }
     else ef
 
+let rec normalize_let p e =
+    match p.it with
+    | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
+    | ParP p' -> normalize_let p' e
+    | _ -> (p, e)
+
 %}
 
 %token EOF
@@ -710,11 +716,8 @@ dec_var :
 
 dec_nonvar :
   | LET p=pat EQ e=exp(ob)
-    { let p', e' =
-        match p.it with
-        | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
-        | _ -> p, e
-      in LetD (p', e') @? at $sloc }
+    { let p', e' = normalize_let p e in
+      LetD (p', e') @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
