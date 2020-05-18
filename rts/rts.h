@@ -25,6 +25,7 @@ typedef intptr_t as_ptr;
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
 
+typedef as_ptr blob_t;
 #define BLOB_HEADER_SIZE 2
 #define BLOB_LEN(p) (FIELD(p,1))
 #define BLOB_PAYLOAD(p) ((char *)(&FIELD(p,2)))
