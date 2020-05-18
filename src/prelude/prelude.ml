@@ -1,10 +1,11 @@
-(*
+let prelude = {|
+
+/*
 The prelude. This stuff is always initially in scope. This should be only
  * type definitions for primitive types
  * code with privileged names (@…) that are used by the desugarer or ir-passes
-*)
-let prelude =
-{|
+*/
+
 type Any = prim "Any";
 type None = prim "None";
 type Null = prim "Null";
@@ -120,7 +121,7 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
     n := n / base;
     i += 1;
   };
-  return text;
+  text
 };
 
 func @digits_dec(x : Nat) : Text =
@@ -241,8 +242,7 @@ func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
     };
     text #= f x;
   };
-  text #= "]";
-  return text;
+  text # "]"
 };
 
 func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
@@ -257,8 +257,7 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
     };
     text #= f x;
   };
-  text #= "]";
-  return text;
+  text # "]"
 };
 
 
