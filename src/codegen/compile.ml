@@ -6559,9 +6559,9 @@ and compile_exp (env : E.t) ae exp =
     let rec go env = function
       | [] -> CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
-          let ae1, code, _dw(*FIXME*) = compile_pat_local env ae pat in
+          let ae1, code, dw = compile_pat_local env ae pat in
           orElse ( CannotFail (get_i ^^ G.dw_statement pat.at) ^^^ code ^^^
-                   CannotFail (G.dw_statement e.at ^^ compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
+                   CannotFail G.(dw_statement e.at ^^ dw_tag (LexicalBlock e.at.left) ^^ dw ^^ compile_exp_vanilla env ae1 e ^^ dw_tag_children_done ^^ set_j))
                  (go env cs)
           in
       let code2 = go env cs in

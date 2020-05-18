@@ -852,7 +852,7 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; uleb128 (Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; uleb128 Promise.(let p = References.find i !dw_references in if is_fulfilled p then value p else (Printf.printf "#### RETURNING DUMMY for %d REF\n" i; value (References.find 9 !dw_references)))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->

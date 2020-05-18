@@ -31,6 +31,8 @@ type Blob = prim "Blob";
 type Error = prim "Error";
 type Principal = prim "Principal";
 
+func @REMOVEME(a : Any) {};
+
 type @Iter<T_> = {next : () -> ?T_};
 
 // The @ in the name ensures that this cannot be shadowed by user code, so

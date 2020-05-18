@@ -287,6 +287,7 @@ module EnumRefs = Map.Make (struct type t = string list let compare = compare en
 let dw_enums = ref EnumRefs.empty
 module ObjectRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_objects = ref ObjectRefs.empty
+let any_type = ref None
 
 let pointer_key = ref None
 
@@ -297,14 +298,22 @@ let rec dw_tag : dw_TAG -> t =
     let base_types =
       dw_prim_type Type.Bool ^^
       dw_prim_type Type.Char ^^
+        (*dw_prim_type Type.Text ^^*)
       dw_prim_type Type.Word8 ^^
       dw_prim_type Type.Nat8 ^^
       dw_prim_type Type.Int8 ^^
       dw_prim_type Type.Word16 ^^
       dw_prim_type Type.Nat16 ^^
-      dw_prim_type Type.Int16
+      dw_prim_type Type.Int16 ^^
+      dw_prim_type Type.Word32 ^^
+      dw_prim_type Type.Nat32 ^^
+      dw_prim_type Type.Int32 (* ^^
+      dw_prim_type Type.Word64 ^^
+      dw_prim_type Type.Nat64 ^^
+      dw_prim_type Type.Int64 *)
     in
     let builtin_types =
+      dw_type Type.Any ^^
       dw_prim_type Type.Nat ^^
       dw_prim_type Type.Int
     in
@@ -319,14 +328,18 @@ let rec dw_tag : dw_TAG -> t =
     fakeBlock dw_TAG_subprogram
       (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
+    let dw, reference = dw_type_ref ty in
+    dw ^^
     fakeBlock dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location (Location.local slot [ dw_OP_stack_value ])])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (Location.local slot [ dw_OP_stack_value ])])
   | LexicalBlock pos ->
     fakeBlock dw_TAG_lexical_block
       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
   | Variable (name, pos, ty, slot) ->
+    let dw, reference = dw_type_ref ty in
+    dw ^^
     fakeBlock dw_TAG_variable
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location (Location.local slot [ dw_OP_stack_value ])])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (Location.local slot [ dw_OP_stack_value ])])
   | Type ty -> dw_type ty
   | _ -> assert false
 and lookup_pointer_key () : t * int =
@@ -347,17 +360,27 @@ and fakeReferenceableBlock tag attrs : t * int =
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function
+  | Type.Any ->
+    begin match !any_type with
+    | Some reference -> nop, reference
+    | None ->
+      let dw, reference =
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attrs [Name "Any"; Bit_size 0; Data_bit_offset 0; Encoding dw_ATE_address]) in
+      any_type := Some reference;
+      dw, reference
+    end
   | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> dw_enum vs
   | Type.Obj (_, fs) -> dw_object fs
 
   (* | Type.Opt inner -> assert false templated type *)
-  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type_ref Bool (* FIXME assert false *)
+  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
 and (^^>) (dw1, r) dw2 = (dw1 ^^ dw2, r)
 and dw_prim_type prim = fst (dw_prim_type_ref prim)
-and dw_prim_type_ref prim =
+and dw_prim_type_ref (prim : Type.prim) =
   match PrimRefs.find_opt prim !dw_prims with
   | Some r -> nop, r
   | None ->
@@ -456,7 +479,7 @@ and dw_prim_type_ref prim =
           variant_part ^^
           dw_tag_children_done
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
-      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); dw_prim_type_ref Bool (* FIXME, this is "Bool" for now *)
+      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); dw_type_ref Type.Any (* FIXME, this is "Any" for now *)
 (* | _ -> assert false (* TODO *)*)
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;
