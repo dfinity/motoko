@@ -133,20 +133,33 @@ let encode (em : extended_module) =
     not (has_children <> 0)
   in
 
+  let code_section_start = ref 0 in
+
   let add_dwarf_tag refi tag =
+    let position_attr =
+      if tag = Dwarf5.dw_TAG_lexical_block then
+        [IntAttribute (Dwarf5.dw_AT_low_pc, pos s - !code_section_start)]
+      else [] in
+
     (* invariant: at most one closed tag waiting for attributes *)
+
     dwarf_tags :=
       match !dwarf_tags with
+      | [Tag (refi, t, viscera)] when tag = Dwarf5.dw_TAG_compile_unit && t = 0 ->
+        Printf.printf "HIJACKING present toplevel 0x0 to become 0x%x\n" tag;
+        [Tag (refi, tag, viscera)]
       | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
-        (Printf.printf "CONTRACTING a 0x%x\n" tag; Tag (refi, tag, []) :: Tag (r, t, closed :: arts) :: tail)
-      | tail -> Tag (refi, tag, []) :: (Printf.printf "ADDING a 0x%x%s\n" tag (if refi = None then "" else " has ref"); tail) in
-  let rec close_dwarf () =
+        Printf.printf "ADDING a 0x%x by CONTRACTING (sinking the closed 0x%x into 0x%x) at depth %d\n" tag t' t (List.length tail + 1);
+        Tag (refi, tag, position_attr) :: Tag (r, t, closed :: arts) :: tail
+      | tail -> Tag (refi, tag, position_attr) :: (Printf.printf "ADDING a 0x%x%s at depth %d\n" tag (if refi = None then "" else " has ref") (List.length tail); tail) in
+
+  let rec close_dwarf genuine =
     match !dwarf_tags with
+    | Tag (refi, t, viscera) :: tail when genuine && t = Dwarf5.dw_TAG_lexical_block ->
+      dwarf_tags := Tag (refi, t, IntAttribute (Dwarf5.dw_AT_high_pc, pos s - !code_section_start) :: viscera) :: tail;
+      close_dwarf false
     | [] -> failwith "no open DW_TAG"
-    | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING"
-    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
-    | Tag (None, s, attrs_tags) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s ->
-      Printf.printf "TOPLEVEL: EATING\n";
+    | [Tag (None, t, viscera)] when Dwarf5.dw_TAG_compile_unit = t -> Printf.printf "WE ARE DONE (GENUINE close: %s)\n" (if genuine then "yes" else "no");
       (* we have to be careful to only reference tags already written,
          so maintain creation order; reversal happens in writeTag *)
       let ref_priority a b = match a, b with
@@ -154,9 +167,13 @@ let encode (em : extended_module) =
         | _, Tag (Some _, _, _) -> -1
         | Tag (Some _, _, _), _ -> 1
         | _ -> 0 in
-      let refs_back = List.stable_sort ref_priority (attrs_tags @ tags) in
-      dwarf_tags := Tag (None, s, refs_back) :: []
-    | Tag _ as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (r, tag, nested :: arts) :: t)
+      let viscera' = List.stable_sort ref_priority viscera in
+
+      List.(iter (fun r -> Printf.printf "REFERENCE: %d\n" r) @@ filter_map (function Tag(r, _, _) -> r | _ -> None) viscera');
+      dwarf_tags := Tag (None, t, viscera') :: []
+    | [Tag _] -> Printf.printf "GENUINE close: %s " (if genuine then "yes" else "no"); failwith "TOPLEVEL: NOT NESTING"
+    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED 0x%x into 0x%x [on close]\n" t' t; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf genuine
+    | Tag (_, t', _) as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING a 0x%x into 0x%x [on close]\n" t' tag; Tag (r, tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with
@@ -236,7 +253,7 @@ let encode (em : extended_module) =
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
       | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
-    add_dwarf_tag (if refi = 0 then None else (Printf.printf "TAGGING REF %d for TAG 0x%x\n" refi tag; Some refi)) tag;
+    add_dwarf_tag (if refi = 0 then None else (Printf.printf "TAGGING REF %d for TAG 0x%x    depth: %d\n" refi tag (List.length !dwarf_tags); Some refi)) tag;
     let rec add_artifacts = function
     | [] -> ()
     | e :: es -> extract (e.it, e.at.left); add_artifacts es in
@@ -368,7 +385,7 @@ let encode (em : extended_module) =
       let instr = instr noting in
 
       match e.it with
-      | Nop when dwarf_like e.at -> close_dwarf ()
+      | Nop when dwarf_like e.at -> close_dwarf true
       | Nop when is_dwarf_statement e.at ->
         Printf.printf "Line %d    OFFS: 0x%x     (%s:%d:%d)\n" e.at.right.line (pos s) e.at.left.file e.at.left.line e.at.left.column;
         modif statement_positions (Instrs.add (pos s, e.at.left))
@@ -739,7 +756,6 @@ let encode (em : extended_module) =
       patch_gap32 g (sequence_end - p);
       modif sequence_bounds (Sequ.add (p, !instr_notes, sequence_end))
 
-    let code_section_start = ref 0
     let code_section fs =
       section 10 (fun fs -> code_section_start := pos s; vec code fs) fs (fs <> [])
 

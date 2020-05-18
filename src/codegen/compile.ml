@@ -4843,12 +4843,11 @@ module FuncDec = struct
       (* Add nested DWARF *)
       (* prereq has side effects (i.e. creating DW types) that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
-      let prereq = G.(effects (concat_map (fun arg -> dw_tag (Type arg.note)) args)) in
+      let prereq_types = G.(effects (concat_map (fun arg -> dw_tag (Type arg.note)) args)) in
 
       (* Add arguments to the environment (shifted by 1) *)
       let ae2, dw_args = bind_args env ae1 1 args in
-
-      prereq ^^
+      prereq_types ^^
       G.(dw_tag (Subprogram (name, at.left))) ^^
       dw_args ^^
       closure_code ^^
@@ -5378,25 +5377,25 @@ module AllocHow = struct
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
-  let add_local env ae how name : VarEnv.t * G.t =
+  let add_local env ae how name : VarEnv.t * G.t * G.t =
     match M.find name how with
-    | (Const : how) -> (ae, G.nop)
+    | (Const : how) -> (ae, G.nop, G.nop)
     | LocalImmut | LocalMut ->
-      let (ae1, i) = VarEnv.add_direct_local env ae name in
-      (ae1, G.nop)
+      let ae1, i = VarEnv.add_direct_local env ae name in
+      (ae1, G.nop, G.dw_tag (G.Variable (name, Source.no_pos, Type.bool, Int32.to_int i(*FIXME: Constant?*))))
     | StoreHeap ->
-      let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+      let ae1, i = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
-      (ae1, alloc_code)
+      (ae1, alloc_code, G.nop(*FIXME*))
     | StoreStatic ->
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
       E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
-      (ae1, G.nop)
+      (ae1, G.nop, G.nop(*FIXME:indirection?*))
 
 end (* AllocHow *)
 
@@ -6207,7 +6206,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Unreachable,
       compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
       FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
-      G.i Return
+      G.trace "DANGER... return" ^^ G.i Return
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
@@ -6822,13 +6821,13 @@ and alloc_pat_local env ae pat =
     in ae1
   ) d ae
 
-and alloc_pat env ae how pat : VarEnv.t * G.t  =
-  (fun (ae,code) -> (ae, G.with_region pat.at code)) @@
-  let (_,d) = Freevars.pat pat in
-  AllocHow.S.fold (fun v (ae,code0) ->
-    let (ae1, code1) = AllocHow.add_local env ae how v
-    in (ae1, code0 ^^ code1)
-  ) d (ae, G.nop)
+and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
+  (fun (ae, code, dw) -> (ae, G.with_region pat.at code, dw)) @@
+  let _, d = Freevars.pat pat in
+  AllocHow.S.fold (fun v (ae, code0, dw0) ->
+    let ae1, code1, dw1 = AllocHow.add_local env ae how v
+    in (ae1, code0 ^^ code1, dw0 ^^ dw1)
+  ) d (ae, G.nop, G.nop)
 
 and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
@@ -6850,12 +6849,13 @@ and compile_n_ary_pat env ae how pat =
      - the extended environment
      - the code to allocate memory
      - the arity
-     - the code to do the pattern matching.
-       This expects the  undestructed value is on top of the stack,
-       consumes it, and fills the heap
+     - the code to do the pattern matching:
+       his expects the  undestructed value is on top of the stack,
+       consumes it, and fills the heap.
        If the pattern does not match, it branches to the depth at fail_depth.
+     - the code declaring the DWARF variables.
   *)
-  let (ae1, alloc_code) = alloc_pat env ae how pat in
+  let ae1, alloc_code, dw = alloc_pat env ae how pat in
   let arity, fill_code =
     (fun (sr, code) -> (sr, G.with_region pat.at code)) @@
     match pat.it with
@@ -6872,12 +6872,12 @@ and compile_n_ary_pat env ae how pat =
     | _ ->
       Some SR.Vanilla,
       orTrap env (fill_pat env ae1 pat)
-  in (ae1, alloc_code, arity, fill_code)
+  in (ae1, alloc_code, arity, fill_code, dw)
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G.t) =
-  (fun (pre_ae, alloc_code, mk_code) ->
+  (fun (pre_ae, alloc_code, mk_code, wrap) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae wk ->
-         G.with_region dec.at (mk_code ae) ^^ wk)) @@
+         G.with_region dec.at (mk_code ae) ^^ wrap wk)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -6888,28 +6888,31 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
       | _ -> assert false in
     let cv = Const.t_of_v (Const.PublicMethod (fi, (E.NameEnv.find v v2en))) in
     let pre_ae1 = VarEnv.add_local_const pre_ae v cv in
-    (pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+    (pre_ae1, G.nop, (fun ae -> fill env ae; G.nop), fun wk -> wk)
 
   (* A special case for constant expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
     let (extend, fill) = Printf.printf "compile_dec LetD constant  %s %d %d  (%s %d %d)\n" dec.at.left.file dec.at.left.line dec.at.left.column dec.at.right.file dec.at.right.line dec.at.right.column; compile_const_dec env pre_ae dec in
-    (extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
+    (extend pre_ae, G.nop, (fun ae -> fill env ae; G.nop), fun wk -> wk)
 
   | LetD (p, e) ->
-    let pre_ae1, alloc_code, pat_arity, fill_code = compile_n_ary_pat env pre_ae how p in
-    ( pre_ae1, alloc_code, fun ae ->
+    let (pre_ae1, alloc_code, pat_arity, fill_code, dw) = compile_n_ary_pat env pre_ae how p in
+    ( pre_ae1, alloc_code, (fun ae ->
       G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^
-      fill_code
+      fill_code), fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ dw ^^ wk ^^ G.dw_tag_children_done
     )
+
   | VarD (name, _, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-    let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
+      let (pre_ae1, alloc_code, _dw) = AllocHow.add_local env pre_ae how name in
 
-    ( pre_ae1, alloc_code,
-      fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name
-    )
+      ( pre_ae1,
+        alloc_code,
+        (fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
+        fun wk -> wk
+      )
 
 and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
   let how = AllocHow.decs pre_ae lvl decs captured_in_body in
