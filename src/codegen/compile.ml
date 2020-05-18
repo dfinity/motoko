@@ -5377,12 +5377,12 @@ module AllocHow = struct
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
-  let add_local env ae how name : VarEnv.t * G.t * G.t =
+  let add_local env ae how name typ : VarEnv.t * G.t * G.t =
     match M.find name how with
     | (Const : how) -> (ae, G.nop, G.nop)
     | LocalImmut | LocalMut ->
       let ae1, i = VarEnv.add_direct_local env ae name in
-      (ae1, G.nop, G.dw_tag (G.Variable (name, Source.no_pos, Type.bool, Int32.to_int i(*FIXME: Constant?*))))
+      (ae1, G.nop, G.dw_tag (G.Variable (name, Source.no_pos, typ, Int32.to_int i(*FIXME: Constant?*))))
     | StoreHeap ->
       let ae1, i = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code =
@@ -6815,17 +6815,17 @@ and fill_pat env ae pat : patternCode =
              (CannotFail get_i ^^^ code2)
 
 and alloc_pat_local env ae pat =
-  let (_,d) = Freevars.pat pat in
-  AllocHow.S.fold (fun v ae ->
+  let d = Freevars.pat pat in
+  AllocHow.M.fold (fun v _ty(*FIXME*) ae ->
     let (ae1, _i) = VarEnv.add_direct_local env ae v
     in ae1
   ) d ae
 
 and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
   (fun (ae, code, dw) -> (ae, G.with_region pat.at code, dw)) @@
-  let _, d = Freevars.pat pat in
-  AllocHow.S.fold (fun v (ae, code0, dw0) ->
-    let ae1, code1, dw1 = AllocHow.add_local env ae how v
+  let d = Freevars.pat pat in
+  AllocHow.M.fold (fun v ty (ae, code0, dw0) ->
+    let ae1, code1, dw1 = AllocHow.add_local env ae how v ty
     in (ae1, code0 ^^ code1, dw0 ^^ dw1)
   ) d (ae, G.nop, G.nop)
 
@@ -6857,7 +6857,7 @@ and compile_n_ary_pat env ae how pat =
   *)
   let ae1, alloc_code, dw = alloc_pat env ae how pat in
   let arity, fill_code =
-    (fun (sr, code) -> (sr, G.with_region pat.at code)) @@
+    (fun (sr, code) -> sr, G.with_region pat.at code) @@
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
     | WildP -> None, G.nop
@@ -6882,7 +6882,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
-    let (const, fill) = Printf.printf "compile_dec LetD public\n"; compile_const_exp env pre_ae e in
+    let const, fill = Printf.printf "compile_dec LetD public\n"; compile_const_exp env pre_ae e in
     let fi = match const with
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
@@ -6897,16 +6897,16 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code, dw) = compile_n_ary_pat env pre_ae how p in
-    ( pre_ae1, alloc_code, (fun ae ->
-      G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^
-      fill_code), fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ dw ^^ wk ^^ G.dw_tag_children_done
+    ( pre_ae1, alloc_code,
+      (fun ae -> G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^ fill_code),
+      fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ dw ^^ wk ^^ G.dw_tag_children_done
     )
 
   | VarD (name, _, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let (pre_ae1, alloc_code, _dw) = AllocHow.add_local env pre_ae how name in
+      let (pre_ae1, alloc_code, _dw) = AllocHow.add_local env pre_ae how name Type.bool (*FIXME*) in
 
       ( pre_ae1,
         alloc_code,

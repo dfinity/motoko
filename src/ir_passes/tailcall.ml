@@ -155,8 +155,8 @@ and pat' env p = match p with
   | LitP l        -> env
   | OptP p
   | TagP (_, p)   -> pat env p
-  | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
-                     assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
+  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
+                     assert(Freevars.(M.is_empty (pat p2)));
                      env
 
 and pats env ps  =
