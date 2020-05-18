@@ -37,7 +37,7 @@ exchange (names, parameter and result formats of service methods)
 
 #### Why not Protocol Buffers or others?
 
-Vanilla protocol buffers are not sufficient or well-suited for describing Dfinity canisters:
+Vanilla protocol buffers are not sufficient or well-suited for describing canisters on the Internet Computer:
 
 * They are primarily a *data description language*, not an IDL. There is syntax for defining "services", but it assumes RPCs not messaging and requires a developing a plugin (replacing the gRPC a.k.a. Stubby one) to provide a semantics.
 
