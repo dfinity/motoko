@@ -326,7 +326,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
   | Variable (name, pos, ty, slot) ->
     fakeBlock dw_TAG_variable
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; (*TypeRef (snd (dw_type_ref ty)); *)Location (Location.local slot [ dw_OP_stack_value ])])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location (Location.local slot [ dw_OP_stack_value ])])
   | Type ty -> dw_type ty
   | _ -> assert false
 and lookup_pointer_key () : t * int =

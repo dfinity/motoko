@@ -62,7 +62,7 @@ let abbreviations =
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_decl_line, dw_FORM_data1;
         dw_AT_decl_column, dw_FORM_data1;
-        (*dw_AT_type, dw_FORM_ref_udata;FIXME*)
+        dw_AT_type, dw_FORM_ref_udata;
         dw_AT_location, dw_FORM_exprloc
       ] );
     ( dw_TAG_base_type, dw_CHILDREN_no,

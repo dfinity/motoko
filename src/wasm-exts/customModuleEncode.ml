@@ -1087,9 +1087,9 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
-              Printf.printf "LINES::::  SEQUENCE start/END    ADDR: 0x%x - 0x%x\n" start ending;
+              (* Printf.printf "LINES::::  SEQUENCE start/END    ADDR: 0x%x - 0x%x\n" start ending;
               Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s(=%d):%d:%d)    %s\n" (rel addr) file List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
-           
+               *)
               let notes_seq = Instrs.to_seq notes in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* an instruction) *)
               let start_state = let _, loc, d, (_, bb, pe, eb) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, pe, eb) in

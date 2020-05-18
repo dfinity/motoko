@@ -5379,10 +5379,10 @@ module AllocHow = struct
      based on how we want to store them. *)
   let add_local env ae how name typ : VarEnv.t * G.t * G.t =
     match M.find name how with
-    | (Const : how) -> (ae, G.nop, G.nop)
+    | (Const : how) -> G.(ae, nop, nop)
     | LocalImmut | LocalMut ->
-      let ae1, i = VarEnv.add_direct_local env ae name in
-      (ae1, G.nop, G.dw_tag (G.Variable (name, Source.no_pos, typ, Int32.to_int i(*FIXME: Constant?*))))
+      let ae1, ix = VarEnv.add_direct_local env ae name in
+      G.(ae1, nop, dw_tag_no_children (Variable (name, Source.no_pos(*FIXME*), typ, Int32.to_int ix(*FIXME: Constant?*))))
     | StoreHeap ->
       let ae1, i = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code =
@@ -5395,7 +5395,7 @@ module AllocHow = struct
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
       E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
-      (ae1, G.nop, G.nop(*FIXME:indirection?*))
+      G.(ae1, nop, nop(*FIXME:indirection?*))
 
 end (* AllocHow *)
 
@@ -6559,7 +6559,7 @@ and compile_exp (env : E.t) ae exp =
     let rec go env = function
       | [] -> CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
-          let (ae1, code) = compile_pat_local env ae pat in
+          let ae1, code, _dw(*FIXME*) = compile_pat_local env ae pat in
           orElse ( CannotFail (get_i ^^ G.dw_statement pat.at) ^^^ code ^^^
                    CannotFail (G.dw_statement e.at ^^ compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
                  (go env cs)
@@ -6816,10 +6816,10 @@ and fill_pat env ae pat : patternCode =
 
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
-  AllocHow.M.fold (fun v _ty(*FIXME*) ae ->
-    let (ae1, _i) = VarEnv.add_direct_local env ae v
-    in ae1
-  ) d ae
+  AllocHow.M.fold (fun v typ (ae, dw) ->
+    let ae1, ix = VarEnv.add_direct_local env ae v in
+    G.(ae1, dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
+  ) d (ae, G.nop)
 
 and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
   (fun (ae, code, dw) -> (ae, G.with_region pat.at code, dw)) @@
@@ -6829,17 +6829,18 @@ and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
     in (ae1, code0 ^^ code1, dw0 ^^ dw1)
   ) d (ae, G.nop, G.nop)
 
-and compile_pat_local env ae pat : VarEnv.t * patternCode =
+and compile_pat_local env ae pat : VarEnv.t * patternCode * G.t =
   (* It returns:
      - the extended environment
      - the code to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
+     - the DWARF code declaring the variable
   *)
-  let ae1 = alloc_pat_local env ae pat in
+  let ae1, dw = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
-  (ae1, fill_code)
+  ae1, fill_code, dw
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.
