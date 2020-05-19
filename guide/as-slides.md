@@ -224,7 +224,7 @@ func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
 applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 ```
 
-* `func() { … }` short for `func() = { }`
+* `func() { … }` short for `func() = { … }`
 * Type instantiations may sometimes be omitted
 * Anonymous functions possible
 
