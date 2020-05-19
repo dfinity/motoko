@@ -250,12 +250,14 @@ let rec extract_doc find_trivia = function
       None
 
 and extract_exp_field find_trivia exp_field =
-  extract_doc find_trivia exp_field.it.Syntax.dec
-  |> Option.map (fun decl_doc ->
-         {
-           doc_comment = Some (string_of_leading (find_trivia exp_field.at));
-           declaration = decl_doc;
-         })
+  if exp_field.it.Syntax.vis.it <> Syntax.Public then None
+  else
+    extract_doc find_trivia exp_field.it.Syntax.dec
+    |> Option.map (fun decl_doc ->
+           {
+             doc_comment = Some (string_of_leading (find_trivia exp_field.at));
+             declaration = decl_doc;
+           })
 
 (* Some (Unknown "Unknown") *)
 
@@ -271,12 +273,8 @@ let extract_docs : Syntax.prog -> Lexer.triv_table -> imports * doc list =
     |> Option.get
   in
   (* Skip the module header *)
-  let imports, module_ = un_prog prog in
-  let public_decls =
-    List.filter (fun x -> x.it.Syntax.vis.it = Syntax.Public) module_
-  in
-  let docs = List.filter_map (extract_exp_field find_trivia) public_decls in
-
+  let imports, decls = un_prog prog in
+  let docs = List.filter_map (extract_exp_field find_trivia) decls in
   (imports, docs)
 
 let simplistic_docs : string -> unit =
