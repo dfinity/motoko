@@ -12,7 +12,7 @@ for writing DFINITY actors.
 * Familiar syntax
 * Incorporating ~~actor~~ *canister* model
 * Good fit for Wasm / DFINITY execution
-* Forward looking (anticipating Wasm v.*X*)
+* Forward looking (anticipating future Wasm features)
 
 ### Key Design Points
 
@@ -21,11 +21,10 @@ for writing DFINITY actors.
 <!--
 * Classes can define actors (records of remote asynchronous functions)
 -->
-* Async construct for sequential programming of asynchronous messaging
+* `async` for sequential programming of asynchronous messaging
 * Structural typing
 * Simple generics and subtyping
-* Safe arithmetic (unbounded and checked),
-  explicit conversions
+* Safe arithmetic (unbounded and checked)
 * Non-nullable types by default
 * JavaScript like syntax but (really) typed & sane
 
@@ -53,6 +52,8 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * polymorphism by erasure
 * subtyping is always the identity (thus free)
 
+<!--
+
 ### Status
 
 * great team!
@@ -73,36 +74,162 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
   (blocked on proposal and hypervisor support)
 * Change the name?
 
+-->
+
 # The language
 
-### Types
+## Expressions
+
+* Identifiers:
+
+  `x`, `foo_bar`, `List`, `Map`
+
+* Parentheses to group things
+
+* Type annotations, e.g.
+
+  `(42 : Int)`
+
+## Blocks and declarations
+
+```
+  func print() {
+    Debug.print(Int.toText(counter));
+  };
+  let tmp = 42 : Int;
+  var counter = 1;
+  if (tmp < 100) {
+    counter := counter + 1;
+  };
+  print();
+```
+
+* Semicolon after each declaration!
+* Mutually recursive
 
 
-### Primitive types
+# Primitive types
 
-* `Int`, `Nat` (trap on overflow)
-* `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
-* `Char`, `Text` (unicode)
-* `Bool`, `Null`
-* (Future: deterministic `Float`, `Double`)
+## Unbounded integers
 
-### Function types
+`Int`
 
-* first-class
+Unbounded. Inferred by default for negative literals.
 
-* multiple arguments and returns
-
-* possibly generic
-
-* no overloading!
-
-  - `T -> U`
-  - `(T, U) -> (V, W)`
-  - `(x : T, y : U) -> V`
-  - `<A, B>(x : T, y : U) -> (V, W)`
+Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
 
-###  Object types
+## Unbounded naturals
+
+`Nat`
+
+Non-negative, not bounded from above.
+
+Inferred by default for non-negative literals
+
+Literals: `13`, `0xf4`, `-20`, `1_000_000`
+
+## Bounded naturals (trapping)
+
+`Nat8`, `Nat16`, `Nat32`, `Nat64`,  
+`Int8`, `Int16`, `Int32`, `Int64`
+
+Trap on overflow.
+
+Never inferred, need explicit type annotations.
+
+Literals: `13`, `0xf4`, `-20`, `1_000_000`
+
+## Bounded naturals (wrapping)
+
+`Word8`, `Word16`, `Word32`, `Word64`
+
+Wrap-around on overflow.
+
+Never inferred, need explicit type annotations.
+
+Literals: `13`, `0xf4`, `-20`, `1_000_000`
+
+## Floating point numbers
+
+`Float`
+
+IEEE 754 semantics, normalized NaN
+
+Inferred for fractional literals
+
+Literals: `3.14`, `-0.3e+15`
+
+## Numeric operations
+
+No surprises here
+
+`- x`, `not b`, `a + b`, `a & b`…
+
+## Characters and text
+
+`Char`, `Text`
+
+Unicode! No random access.
+
+ * `'x'`, `'\u{6a}'`, `'☃'`,
+ * `"boo"`, `"foo \u{62}ar ☃"`
+
+## Booleans
+
+`Bool`
+
+Literals: `true`, `false`
+
+Used in: `if b then e1 else e2`
+
+# Functions
+
+## Function types
+
+* Simple functions:
+  ```
+  Int.toText : Int -> Text
+  ```
+
+* multiple arguments and return values  
+  ```
+  sortTwo : (Int, Int) -> (Int, Int)
+  ```
+
+* can be generic/polymorphic  
+  ```
+  Option.unwrapOr : <T>(?T, default : T) -> T
+  ```
+
+* first-class (can be passed around, stored)  
+  ```
+  map : <A, B>(f : A -> B, xs : [A]) -> [B]
+  let funcs : [<T>(T) -> T] = …
+  ```
+
+
+## Function Declarations & Use
+
+```
+func add(x : Int, y : Int) : Int = (x + y);
+
+func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
+  if (n > 0) {
+    f T;
+    applyNTimes(n-1, x, f);
+  }
+}
+
+applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
+```
+
+* `func() { … }` short for `func() = { }`
+* Type instantiations may sometimes be omitted
+* Anonymous functions possible
+
+
+##  Object types
 
 structural record types, JS-like, fields can be mutable
 

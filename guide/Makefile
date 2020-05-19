@@ -50,6 +50,7 @@ as-slides.html : as-slides.md
 	pandoc \
 	  -t revealjs -s -o as-slides.html as-slides.md -V revealjs-url=https://revealjs.com \
 	  -V theme=moon \
+	  --strip-comments \
 	  # -V width="\"100%\"" \
 	  # -V height="\"100%\"" \
 	  # -V margin=0 \
