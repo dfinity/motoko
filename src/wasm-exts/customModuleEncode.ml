@@ -159,10 +159,10 @@ let encode (em : extended_module) =
   let rec close_dwarf genuine =
     (* hoist out referencable tags *)
     begin match !dwarf_tags with
-    | Tag (refi, t, viscera) :: tail
+    | Tag (refi, t, viscera) :: Tag (refi', t', viscera') :: tail
         when genuine && (Dwarf5.dw_TAG_subprogram = t || Dwarf5.dw_TAG_lexical_block = t) ->
       let hoist, stay = hoistables viscera in
-      dwarf_tags := Tag (refi, t, stay) :: hoist @ tail
+      dwarf_tags := Tag (refi, t, stay) :: Tag (refi', t', hoist @ viscera') :: tail
     | _ -> ()
     end;
 
