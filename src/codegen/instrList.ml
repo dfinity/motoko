@@ -276,7 +276,7 @@ let dw_attrs = concat_map dw_attr
    closed by dw_tag_children_done.
  *)
 
-let dw_tag_children_done : t =
+let dw_tag_close : t =
   let left = { Wasm.Source.no_pos with line = -1 } in
   let right = Wasm.Source.no_pos in
   fun _ _ x -> (Nop @@ { left; right }) :: x
@@ -292,7 +292,7 @@ let any_type = ref None
 let pointer_key = ref None
 
 
-let rec dw_tag : dw_TAG -> t =
+let rec dw_tag_open : dw_TAG -> t =
   function
   | Compile_unit (dir, file) ->
     let base_types =
@@ -410,8 +410,8 @@ and dw_prim_type_ref (prim : Type.prim) =
         mark_dw ^^
         fakeBlock dw_TAG_variant_part
           (dw_attr (Discr mark)) ^^
-        dw_tag_children_done ^^ (* closing dw_TAG_variant_part *)
-        dw_tag_children_done,  (* closing dw_TAG_structure_type *)
+        dw_tag_close ^^ (* closing dw_TAG_variant_part *)
+        dw_tag_close,  (* closing dw_TAG_structure_type *)
         struct_ref
       | Type.Word32 ->
         let internalU30 =
@@ -437,13 +437,13 @@ and dw_prim_type_ref (prim : Type.prim) =
             (dw_attr (Discr_value 0)) ^^
           fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
             (dw_attrs [Name "@non-pointer"; TypeRef (snd internalU30); Artificial true; Bit_size 30; Data_bit_offset 2]) ^^
-          dw_tag_children_done ^^ (* variant 0 *)
+          dw_tag_close ^^ (* variant 0 *)
           fakeBlock dw_TAG_variant
             (dw_attr (Discr_value 1)) ^^
           fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
             (dw_attrs [Name "@pointer"; TypeRef (snd pointedU32); Artificial true; Bit_size 32; Data_bit_offset 0]) ^^
-          dw_tag_children_done ^^ (* variant 1 *)
-          dw_tag_children_done (* variant part *)
+          dw_tag_close ^^ (* variant 1 *)
+          dw_tag_close (* variant part *)
         in
 
 (*
@@ -477,7 +477,7 @@ and dw_prim_type_ref (prim : Type.prim) =
         fakeReferenceableBlock dw_TAG_structure_type
           (dw_attrs [name; Byte_size 4]) ^^>
           variant_part ^^
-          dw_tag_children_done
+          dw_tag_close
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
       | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); dw_type_ref Type.Any (* FIXME, this is "Any" for now *)
 (* | _ -> assert false (* TODO *)*)
@@ -503,7 +503,7 @@ and dw_enum vnts =
         fakeBlock dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
       (fst internal_enum ^^
        concat_map enumerator selectors ^^
-       dw_tag_children_done (* enumeration_type *)) ^^<
+       dw_tag_close (* enumeration_type *)) ^^<
       fakeReferenceableBlock dw_TAG_reference_type
         (dw_attr (TypeRef (snd internal_enum))) in
     dw_enums := EnumRefs.add selectors (snd enum_ref) !dw_enums;
@@ -522,14 +522,14 @@ and dw_object fs =
         fakeBlock dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
       (fst internal_struct ^^
        concat_map field selectors ^^
-       dw_tag_children_done (* structure_type *)) ^^<
+       dw_tag_close (* structure_type *)) ^^<
       fakeReferenceableBlock dw_TAG_reference_type
         (dw_attr (TypeRef (snd internal_struct))) in
     dw_objects := ObjectRefs.add selectors (snd struct_ref) !dw_objects;
     struct_ref
 
-
-let dw_tag_no_children = dw_tag
+let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
+let dw_tag_no_children = dw_tag_open (* self-closing *)
 
 (* Marker for statement boundaries *)
 let dw_statement { Source.left; Source.right } =

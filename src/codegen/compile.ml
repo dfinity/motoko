@@ -4843,16 +4843,15 @@ module FuncDec = struct
       (* Add nested DWARF *)
       (* prereq has side effects (i.e. creating DW types) that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
-      let prereq_types = G.(effects (concat_map (fun arg -> dw_tag (Type arg.note)) args)) in
+      let prereq_types = G.(effects (concat_map (fun arg -> dw_tag_no_children (Type arg.note)) args)) in
 
       (* Add arguments to the environment (shifted by 1) *)
       let ae2, dw_args = bind_args env ae1 1 args in
       prereq_types ^^
-      G.(dw_tag (Subprogram (name, at.left))) ^^
-      dw_args ^^
-      closure_code ^^
-      mk_body env ae2 ^^
-      G.dw_tag_children_done
+      G.(dw_tag (Subprogram (name, at.left)))
+        (dw_args ^^
+         closure_code ^^
+         mk_body env ae2)
     ))
 
   let message_start env sort = match sort with
@@ -6560,8 +6559,13 @@ and compile_exp (env : E.t) ae exp =
       | [] -> CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
           let ae1, code, dw = compile_pat_local env ae pat in
-          orElse ( CannotFail (get_i ^^ G.dw_statement pat.at) ^^^ code ^^^
-                   CannotFail G.(dw_statement e.at ^^ dw_tag (LexicalBlock e.at.left) ^^ dw ^^ compile_exp_vanilla env ae1 e ^^ dw_tag_children_done ^^ set_j))
+          orElse ( CannotFail (get_i ^^ G.dw_statement pat.at) ^^^
+                   code ^^^
+                   CannotFail G.(dw_statement e.at ^^
+                                 dw_tag
+                                   (LexicalBlock e.at.left)
+                                   (dw ^^ compile_exp_vanilla env ae1 e) ^^
+                                 set_j))
                  (go env cs)
           in
       let code2 = go env cs in
@@ -6900,7 +6904,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
     let (pre_ae1, alloc_code, pat_arity, fill_code, dw) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
       (fun ae -> G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^ fill_code),
-      fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) ^^ dw ^^ wk ^^ G.dw_tag_children_done
+      fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ wk)
     )
 
   | VarD (name, _, e) ->
@@ -7060,9 +7064,8 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       | ((prog, _flavor) :: progs) ->
         let (ae1, code1) = compile_prog env ae prog in
         let code2 = go ae1 progs in
-        G.(dw_tag (Compile_unit ("./."(* FIXME *), (snd prog).at.left.file(* FIXME: empty? *)))) ^^
-        code1 ^^ code2 ^^
-        G.dw_tag_children_done in
+        G.(dw_tag (Compile_unit ("./."(* FIXME *), (snd prog).at.left.file(* FIXME: empty? *))))
+          (code1 ^^ code2) in
     go VarEnv.empty_ae progs
     )
 
