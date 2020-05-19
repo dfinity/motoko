@@ -1,4 +1,4 @@
-% "Motoko"
+% Motoko
 
 # Overview
 
