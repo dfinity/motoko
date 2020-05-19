@@ -782,7 +782,12 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' = if sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
+    let env' =
+      if sort.it = T.Actor then
+        let _c = check_AwaitCap env "actor" exp.at in
+        {env with async = C.NullCap; in_actor = true}
+      else env
+    in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -1826,6 +1831,7 @@ and infer_dec env dec : T.typ =
       match typ_opt with
       | None -> ()
       | Some typ ->
+        (* TODO check actor restrictions *)
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error env dec.at
@@ -2109,7 +2115,14 @@ and infer_dec_valdecs env dec : Scope.t =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
+    let t =
+      if sort.it = T.Actor then
+        (* add implicit scope parameter and async return *)
+        let c = Con.fresh Type.default_scope_var (T.Abs([], T.scope_bound)) in
+        let cs' = c::cs in
+        T.Func (T.Local, T.Returns, T.close_binds cs' (T.scope_bind::tbs), List.map (T.close cs') ts1, [T.close cs' (T.Async(T.Con(c,[]),t2))])
+      else
+        T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
     Scope.{ empty with
       val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;
