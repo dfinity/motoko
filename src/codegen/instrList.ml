@@ -378,7 +378,7 @@ and dw_type_ref =
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
-and (^^>) (dw1, r) dw2 = (dw1 ^^ dw2, r)
+and (^<^) (dw1, r) dw2 = (dw1 ^^ dw2, r)
 and dw_prim_type prim = fst (dw_prim_type_ref prim)
 and dw_prim_type_ref (prim : Type.prim) =
   match PrimRefs.find_opt prim !dw_prims with
@@ -475,7 +475,7 @@ and dw_prim_type_ref (prim : Type.prim) =
 
         (fst pointedU32 ^^ fst internalU30) ^^<
         fakeReferenceableBlock dw_TAG_structure_type
-          (dw_attrs [name; Byte_size 4]) ^^>
+          (dw_attrs [name; Byte_size 4]) ^<^
           variant_part ^^
           dw_tag_close
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)

@@ -6911,12 +6911,12 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let (pre_ae1, alloc_code, _dw) = AllocHow.add_local env pre_ae how name Type.bool (*FIXME*) in
+      let (pre_ae1, alloc_code, dw) = AllocHow.add_local env pre_ae how name e.note.note_typ in
 
       ( pre_ae1,
         alloc_code,
         (fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
-        fun wk -> wk
+        fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ wk)
       )
 
 and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
