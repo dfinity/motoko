@@ -174,7 +174,7 @@ Literals: `true`, `false`
 
 `a or b`  
 `a and b`  
-`if b then e1 else e2`
+`if b e1 else e2`
 
 # Functions
 
@@ -187,7 +187,7 @@ Literals: `true`, `false`
 
 * multiple arguments and return values  
   ```
-  sortTwo : (Int, Int) -> (Int, Int)
+  divRem : (Int, Int) -> (Int, Int)
   ```
 
 * can be generic/polymorphic  
@@ -215,7 +215,7 @@ func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
 applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 ```
 
-* `func() { … }` short for `func() = { … }`
+* `func() { … }` short for `func() : () = { … }`
 * Parametric functions
 * Type instantiations may sometimes be omitted
 * Anonymous functions possible
