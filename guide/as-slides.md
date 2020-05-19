@@ -1,32 +1,27 @@
 % Motoko
+% A comprehensive overview
 
 # Overview
 
 ### Motivation and Goals
 
-A simple but useful language
-for writing DFINITY actors.
+A simple, useful language for DFINITY
 
-* High-level language for DFINITY dapps
-* Simple design (K.I.S.S.)
 * Familiar syntax
+* Safe by default
 * Incorporating ~~actor~~ *canister* model
-* Good fit for Wasm / DFINITY execution
-* Forward looking (anticipating future Wasm features)
+* Seamless integration of DFINIY features
+* Making most of present and future WebAssembly
 
 ### Key Design Points
 
 * Object-oriented, functional & imperative
 * Objects as records of members
-<!--
-* Classes can define actors (records of remote asynchronous functions)
--->
-* `async` for sequential programming of asynchronous messaging
-* Structural typing
-* Simple generics and subtyping
+* `async`/`await` for sequential programming of asynchronous messaging
+* Structural typing with simple generics and subtyping
 * Safe arithmetic (unbounded and checked)
 * Non-nullable types by default
-* JavaScript like syntax but (really) typed & sane
+* JavaScript like syntax but statically typed & sane
 
 Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
@@ -38,7 +33,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * parametric, bounded polymorphism
 * subtyping as subsumption, not coercion.
 * no dynamic casts
-* no inheritance (may consider mixin composition in future)
+* no inheritance
 
 ### Implementation(s)
 
@@ -48,64 +43,56 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
   * multipass with typed IR in each pass.
   * uniform representation, unboxed arithmetic
   * two-space gc (for now), gc between messages
-  * relies on typing for performance
 * polymorphism by erasure
-* subtyping is always the identity (thus free)
-
-<!--
-
-### Status
-
-* great team!
-* interpreter/compiler up and running via `drun`.
-* compiles multiple files by concatenation
-  (good enough for the Produce Exchange)
-* documentation (see [draft](motoko-guide.pdf), 30 pages)
-
-### Backlog
-
-* (Full) Standard library (e.g. Unicode API)
-* IDL design/compiler (in ~~dispute~~ progress).
-* Upgrade story
-* Library mechanism/true separate compilation
-* Discriminated unions (e.g. for trees)
-* Better memory manager and garbage collector
-* Move to bidirectional messaging
-  (blocked on proposal and hypervisor support)
-* Change the name?
-
--->
 
 # The language
 
 ## Expressions
 
-* Identifiers:
+* Identifiers:  
+  `x`, `foo_bar`, `test'`, `List`, `Map`
 
-  `x`, `foo_bar`, `List`, `Map`
+* Parentheses for grouping
 
-* Parentheses to group things
-
-* Type annotations, e.g.
-
+* Type annotations (to help type inference):  
   `(42 : Int)`
 
 ## Blocks and declarations
 
 ```
+  let Delta = Nat;
   func print() {
     Debug.print(Int.toText(counter));
   };
-  let tmp = 42 : Int;
+  let d = 42 : Delta;
   var counter = 1;
-  if (tmp < 100) {
-    counter := counter + 1;
-  };
+  counter := counter + tmp;
   print();
 ```
 
 * Semicolon after each declaration!
 * Mutually recursive
+* Mutable variables marked explicit
+
+## Control structure
+
+- `if b …`
+- `if b … else …`
+- `switch x { case pat1 e1; …; case _ en}`
+- `while (p()) …`
+- `loop …`
+- `loop … while (p())`
+- `for (x in f()) …`
+
+<!--
+### Labels, break and continue
+
+  - `label l exp`
+  - `break l` (more generally, `break l exp`)
+  - `continue l`
+
+labels ensure control flow is structured (no gotos)
+-->
 
 
 # Primitive types
@@ -114,7 +101,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 `Int`
 
-Unbounded. Inferred by default for negative literals.
+Inferred by default for negative literals.
 
 Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
@@ -123,13 +110,13 @@ Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
 `Nat`
 
-Non-negative, not bounded from above.
+Non-negative, trap upon underflow.
 
 Inferred by default for non-negative literals
 
 Literals: `13`, `0xf4`, `1_000_000`
 
-## Bounded naturals (trapping)
+## Bounded numbers (trapping)
 
 `Nat8`, `Nat16`, `Nat32`, `Nat64`,  
 `Int8`, `Int16`, `Int32`, `Int64`
@@ -140,11 +127,11 @@ Never inferred, need explicit type annotations.
 
 Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
-## Bounded naturals (wrapping)
+## Bounded numbers (wrapping)
 
 `Word8`, `Word16`, `Word32`, `Word64`
 
-Wrap-around on overflow.
+Wrap-around on overflow. Use for bit-fidding.
 
 Never inferred, need explicit type annotations.
 
@@ -154,17 +141,20 @@ Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
 `Float`
 
-IEEE 754 semantics, normalized NaN
+IEEE 754 64 bit semantics, normalized NaN
 
 Inferred for fractional literals
 
-Literals: `3.14`, `-0.3e+15`
+Literals: …, `3.14`, `-0.3e+15`
 
 ## Numeric operations
 
 No surprises here
 
-`- x`, `a + b`, `a & b`…
+`- x`  
+`a + b`  
+`a & b`  
+…
 
 ## Characters and text
 
@@ -174,6 +164,7 @@ Unicode! No random access.
 
  * `'x'`, `'\u{6a}'`, `'☃'`,
  * `"boo"`, `"foo \u{62}ar ☃"`
+ * `"Concat" # "enation"`
 
 ## Booleans
 
@@ -181,7 +172,9 @@ Unicode! No random access.
 
 Literals: `true`, `false`
 
-Used in: `a or b`, `a and b`, `if b then e1 else e2`
+`a or b`  
+`a and b`  
+`if b then e1 else e2`
 
 # Functions
 
@@ -208,648 +201,282 @@ Used in: `a or b`, `a and b`, `if b then e1 else e2`
   let funcs : [<T>(T) -> T] = …
   ```
 
-
 ## Function Declarations & Use
 
 ```
 func add(x : Int, y : Int) : Int = x + y;
 
 func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
-  if (n > 0) {
-    f T;
-    applyNTimes(n-1, x, f);
-  }
+  if (n == 0) return;
+  f x;
+  applyNTimes(n-1, x, f);
 }
 
 applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 ```
 
 * `func() { … }` short for `func() = { … }`
+* Parametric functions
 * Type instantiations may sometimes be omitted
 * Anonymous functions possible
 
 
-##  Object types
+# Composite types
 
-structural record types, JS-like, fields can be mutable
+## Tuples
 
-* `{var x : Int; color : Color}`
+`(Bool, Float, Text)`
 
-* `{x : Int; color: Color}`
+immutable, heterogenous, fixed size
 
-objects with immutable fields of sharable types are sharable.
+```
+let tuple = (True, 1.2, "foo");
+let (_,_,t) = tuple;
+```
 
-### Actor types
+## Options
+
+`?Text`
+
+is either a value of that type, or `null`
+
+```
+func foo(x : ?Text) : Text {
+  switch x {
+    case (null) { "No value" };
+    case (?y) { "Value: " # y };
+  };
+};
+foo(null);
+foo(?"Test");
+```
+
+## Arrays (immutable)
+
+`[Text]`
+
+```
+let days = ["Monday", "Tuesday", … ];
+assert(days.len() == 7);
+asssert(days[1] == "Tuesday")
+// days[7] will trap (fixed size)
+```
+
+## Arrays (mutable)
+
+`[var Nat]`
+
+```
+let counters = [var 1, 2, 3];
+assert(counters.len() == 3);
+counters[1] := counters[1] + 1;
+// counters[3] will trap (fixed size)
+```
+
+## Records
+
+`{name : Text; points : var Int}`
+
+```
+let player = { name = "Joachim"; points = 0 };
+Debug.print(
+  player.name # " has " #
+  Int.toText(player.points) # " points."
+);
+player.points += 1;
+```
+
+## Objects
+
+`{get : () -> Int; add : Int -> () }`
+
+```
+object self {
+  var points = 0; // private by default
+  public func get() = points;
+  public func add(p : Int) { points += p };
+}
+```
+
+Different syntax, same type as records
+
+## Variants
+
+`{ #invincible; #alive : Int; #dead }`
+
+```
+type Health = { #invincible; #alive : Nat; #dead };
+func takeDamage(h : Health, p : Nat) : Health {
+  switch (h) {
+    case (#invincible) #invincible;
+    case (#alive hp) {
+      if (hp > p) (#alive (hp-p)) else #dead
+    };
+    case (#dead) #dead;
+  }
+}
+```
+
+# Packages and modules
+
+## Modules
+
+```
+module Int {
+  toText : Int -> Text
+  …
+}
+```
+
+like objects, but restricted to _static_ content
+
+## Module imports
+
+```
+import Debug "mo:base/Debug";
+import Int "mo:base/Int";
+```
+
+`base` package provides basic features.
+
+More libraries popping up!
+
+# Platform features
+
+## Actor types
 
 Like object types, but marked as `actor`:
 
 ```
-actor {
-  f : Text -> ();
-  g : Int -> async Int
+type Receiver = actor { recv : Text -> async Nat };
+type Broadcast = actor {
+  register : Receiver -> ();
+  send : Text -> async Nat;
 }
 ```
 
-The fields of an actor are functions with
+_sharable_ arguments and _no_ or _async_ result type.
 
-* return type `()` (think void) or
-* return type `async T` (a promise)
+“canister” ≈ “actor”
 
-###  Array types
+## sharable ≈ serializable
 
-* `[T]` (immutable, sharable)
-
-* `[var T]` (mutable, local)
-
-### Tuple types
-
-`(Bool, Float, Text)`
-
-* heterogeneous aggregates of fixed size
-* immutable fields
+  - all primitive types
+  - objects, tuples, arrays, variants, options  
+    with immutable sharable components
+  - `actor` types
+  - `shared` function type<br/><br/>**Not sharable:**
+  - mutable things
+  - local functions
 
 
-### Option types
+## A complete actor
 
-`?T`
+```
+import Array "mo:base/Array";
+actor {
+  var r : [Receiver] = [];
+  public func register(a : Receiver) {
+    r := Array.append(r,[a]);
+  };
+  public func send(t : Text) : async Nat {
+    var sum := 0;
+    for (a in r.values()) {
+      sum += await a.send(t);
+    };
+    return sum;
+  };
+}
+```
 
-* explicit nullable types
+a typical canister main file
 
-* values:
-  * `null`
-    or
-  * `? x`
-    for a `x : T`.
+## Async/await
 
-* (no other type contains `null`)
-
-
-### Async types
 
 `async T`
 
-* asychronous future (a.k.a. *promises*):
-  a handle to a future value of type `T`.
+asychronous future or promise
 
-* introduced by expression `async e`.
+introduced by `async { … }`  
+(implicit in async function declaration)
 
-* expression `await e` suspends computation pending `e`'s result.
+`await e`  
+suspends computation pending `e`'s result
 
-### Type System
-
-* Structural, equi-recursive subtyping
-  (definitions are equations).
-
-* A type parameter can range over any type (like C#)
-  (not just reference types as in Java)
-
-* Optional constraints on type parameters (as in Java/C#)
-
-* Bidirectional type checking (like C#/Scala, but simpler)
-
-### Sharability
-
-AS distinguishes sharable types:
-
-*sharable* \~ serializable
-
-  - all primitive types are sharable (scalars + text)
-  - any `shared` function type is sharable
-  - an object type is sharable if its fields are sharable and immutable
-  - any `actor` type is sharable
-  - `[T]` and `?T`  are sharable if `T` is sharable.
-  - `(T1,...,Tn)` is sharable if `T1`,..., `Tn` all sharable.
-  - all other types are non-sharable
-
-
-### ... Sharability
-
-* `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
-* actor fields must re `shared` functions
-
-(actors \& shared functions serialized by *reference*, other types serialzed by *value*)
-
- <!--
-  - any parameter `T <: Shared` is sharable.
-(subtyping respects `sharability`)
- -->
-
-
-### Expressions and Statements
-
-* Identifiers: `x`, `foo_bar`, `List`, `Map`
-
-* Literals for primitive types
-  - `13`, `0xf4`, `-20`, `1_000_000`
-  - `3.14`, `-0.3e+15`
-  - `'x'`, `'\u{6a}'`, `'☃'`,
-  - `"boo"`, `"foo \u{62}ar ☃"`
-  - `true`, `false`
-  - `null`
-
-* Unary & binary, arithmetic & logical operators
-  - `- x`, `not b`, `a + b`, `a & b` ...
-
-### (Sharable) Objects
-
-* sharable (think serializable) objects have immutable fields of sharable type:
-
-  ```
-  { x = 0; color = Colors.Red }
-  ```
-
-* full `object`s can be mutable, stateful
-  (but not sharable)
-  ``` swift
-  object {
-    private var c = 0;
-    public func inc() { c += 1 };
-    public func get() : Int { c }
-  }
-  ```
-
-### Actors
-
-Actors are restricted objects:
-
-* state must be isolated
-* public methods implicitly `shared`
-* interface asynchronous
+## Actor import
 
 ```
-actor {
-  private var c = 0;
-  public func inc() { c += 1 };
-  public func get() : async Int { c }
+import Broadcast "ic:ABCDEF23";
+actor Self {
+  public func go() {
+    Broadcast.register(Self);
+  };
 }
 ```
 
-
-### Field access and update
-
-* object access/update:
-
-  * `point.color`
-  * `point.x += 1`
-  * `point.move(dx,dy)`
-
-* actor access/communication:
-
-  *  `client.send(text)`
-  *  `await server.subscribe(client)`
-
-
-<!--
-### Actor typing
-
-* Actors are restricted objects, always sharable (by reference).
-
-* All actor state must be private and local (no access to enclosing state).
-
-* Every public actor field must be a 'shared' function, returning
-  * an awaitable promise of type `async T` (async request)
-  * or nothing `()` (fire & forget)
-
-(`shared` functions are asynchronous with serializable arguments/returns.)
--->
-
-### Tuples
-
-Tuples are fixed length, heterogenous aggregates (*products*)
-```
-  type Point3D = (Int, Int, Int, Color);
-  let origin = (0, 0, 0, Color.Red);
-  let (x, y, z, _) = origin;
-
-  func isOrigin(p : Point3D) : Bool {
-    switch p {
-      case (0, 0, 0, _) true; // pattern match
-      case _ false;
-    }
-  }
-```
-
-### Arrays
-
-
-
-* `[1,2,3,4]` ( immutable, type `[Nat]` )
-* `[var 1,2,3,4]` (mutable, type `[var Nat]`)
-* `a[i]`, `a[i] += 1`
-
-'nuff said
-
-### Function calls, short-cut return
-
-* Arguments as tuples:
-
-  ```
-  compare(x, y)
-  ```
-* Anonymous functions:
-
-  ```
-  let bs = fun_sort<Int>(as, func(a:Int, b:Int) { a - b });
-  ```
-
-* We can return early from a function with `return`:
-  ```
-  let prod(ints : [Int]) : Int {
-    let p = 1;
-    for (i in ints.vals) {
-      if (i == 0) return 0;
-      p *= i
-    };
-    p;
-  }
-  ```
-
-
-
-### Blocks with local scope
-
-`{ let tmp = x; x := y; y := tmp;  }`
-
-* mutually recursive type and value bindings.
-
-### Conditionals and switches
-
-- `if b ...`
-- `if b ... else ...`
-- `switch x { case 1 ...; case 2 ...; case _ ...}`
-
-  sequential pattern matching,
-  traps if no case matches
-
-###  While, loops and iteration
-
-  - `while (p()) ...`
-  - `loop ...`
-  - `loop ... while (p())`
-  - `for (x in f()) ...`
-
-### Labels, break and continue
-
-  - `label l exp`
-  - `break l` (more generally, `break l exp`)
-  - `continue l`
-
-labels ensure control flow is structured (no gotos)
-
-### Async
-
-`async e`
-
-* spawns an asynchronous computation of `e`
-  (by sending a message to the enclosing actor)
-
-* the async expression immediately returns control
-  (before `e` has finished)
-
-* its value is a *pending* promise (`async T`)
-
-* The promise is *fulfilled* when `e` completes (asynchronously)
-
-
-### Await
-
-* You cannot synchronously "block" on a promise.
-
-* Instead, `async` expressions have super-powers ...
-
-  ... they (and only they) can `await` promises!
-
-### Await (cont.)
-
-`await e`
-
-* evaluates `e` to a promise
-* then suspends the caller of `await` until/unless the promise has a value.
-
-   ```
-      async {
-         loop {
-            let post = await Server.subscribe(...);
-            post("hello");
-            s.unsubscribe();
-         };
-      };
-   ```
-
-### Type annotation
-
- `e : T`
-
-* not a run-time cast, just a compile-time constraint
-* verified and exploited by the type-checker
-* switches direction from (partial) type inference to (complete) type checking
-
-### ~~Instance check~~
-
-~~`x is T`~~
-
-(verboten)
-
-### Assertions
-
-`assert (x > 0)`
-
-* `()` on success, or
-* `trap` on failure
-
-### Declarations
-
-* Immutable and mutable variables
-  `let x = f()`  (immutable)
-  `let x : T = f()`
-  `var z  = 0` (mutable)
-  `var z : Int = 0`
-
-* ... with pattern matching:
-  `let (x, y, z) = origin` (can't fail)
-  `let 5 = fib(3)` (could trap, compiler warning)
-  `let ? v = dict.find(key)` (could trap, compiler warning)
-
-### Functions
-
-* non-shared, synchronous, generic, pure or impure
-* shared (asynchronous)
+## Principal and caller
 
 ```
-  // vanilla functions
-  func fib(n : Int) : Int {...}
-  func fun_sort<A>(as : [A], cmp : (A,A)->Int) : [A] { ... }
-  func imp_sort<A>(as : [var A], cmp : (A,A)->Int) { ... }
-
-  // shared functions (messaging)
-  shared func broadcast(t : Text) {}
-  shared func subscribe() : async Post { broadcast }
-```
-### Type Definitions
-
-* Abbreviations:
-  ```
-  type Post = shared Text -> ();
-  ```
-* Generic and/or recursive type definitions:
-
-  ```
-  type List<T> = ?{head : T; var tail : List<T>};
-  ```
-
-* Mutual recursion too:
-
-  ```
-  type Exp = ... Stmt ... ;
-  type Stmt = ... Exp ...;
-  ```
-
-
-### Classes
-
-Classes as functions returning objects:
-```
- class Counter(init : Int) {
-    private var state : Int = init;
-    public func inc() { state += 1; };
-    public func get() : Int { state; };
-  }
-```
-
-Class instantiation as function call (no `new`):
-```
-let c = Counter(666);
-c.inc();
-let 667 = c.get();
-```
-### Generic Classes
-
-```
-class Dict< K, V > (cmp : (K,K)-> Int ) {
-  add(k: K, v: V) { ... };
-  find(k: K) : ? V { ... };
-};
-```
-
-```
-let d = Dict<Int,Text> (func (i:Int, j:Int) : Int = i - j);
-d.add(1,"Alice");
-let ? name = d.find(1);
-```
-### Actor Declarations
-
-```
-actor Server {
- private shared func broadcast():(){...};
- public func subscribe(c : Client): async Post {
-   ...
-   return broadcast;
- };
-};
-```
-
-```
-let post = await Server.subscribe(this);
-post("hello");
-post("world");
-```
-
-### Actor Classes
-
-```
-actor class Client() = this {
-  start(n : Text, s : Server) {};
-  send(m : Text) { ... };
-};
-```
-
-```
-let alice = Client(); // construction as function call
-alice.start("Alice", Server); // async send as function call
-```
-
-### Language prelude
-
-* connects internal primitives with surface syntax (types, operations)
-* conversions like `intToWord32`
-* side-effecting operations `debugPrintInt`
-  (tie into execution environment)
-* utilities like `hashInt`, `clzWord32`
-
-
-# Sample App
-
-
-### Implementing *Chat*
-
-* type example
-* one server actor
-* multiple clients, each an instance of (actor) class Client.
-
-### Chat Server
-
-```
-actor Server {
-  private var clients : List<Client> = null;
-
-  private shared broadcast(message : Text) {
-    var next = clients;
-    loop {
-      switch next {
-        case null { return; }
-        case (?l) { l.head.send(message); next := l.tail; };
-      };
+actor Self {
+  let myself : Principal = Principal.fromActor Self;
+  public shared(context) func hello() : async Text {
+    if (context.caller == myself) {
+      "Talking to yourself is the first sign of madness";
+    } else {
+      "Hello, nice to see you";
     };
   };
-```
-```
-  public func subscribe(client : Client) : async Post {
-    let cs = {head = client; var tail = clients};
-    clients := ?cs;
-    return broadcast;
-  };
-};
+}
 ```
 
+`Principal`: id of an users or canisters/actors
 
-### Example: The client class
-<!--
- * should we remove the name and server fields? They aren't used, I believe, but somewhat illustrative.
-* The fields would be  needed for unsubscribing etc, unless we return an unsubscribe capability...
- * Also, subscribe could just take send, not a whole client.
+# Type system
 
--->
-```
-type Server = actor { subscribe : Client -> async Post; };
-
-actor class Client() = this {
-  private var name : Text = "";
-  public func start(n : Text , s : Server) {
-    name := n;
-    let _ = async {
-       let post = await s.subscribe(this);
-       post("hello from " # name);
-       post("goodbye from " # name);
-    }
-  };
-```
-```
-  public func send(msg : Text) {
-    debugPrint(name # " received " # msg # "\n");
-  };
-};
-```
-### Example: test
-
-test
+## Structural
 
 ```
-let bob = Client();
-let alice = Client();
-let charlie = Client();
+type Health1 = { #invincible; #alive : Nat; #dead };
+type Health2 = { #invincible; #alive : Nat; #dead };
 
-bob.start("Bob", Server);
-alice.start("Alice", Server);
-charlie.start("Charlie", Server);
-```
-output
-
-```
-[nix-shell:~/motoko/guide]$ ../src/moc -r chat.mo
-charlie received hello from bob
-alice received hello from bob
-bob received hello from bob
-charlie received goodbye from bob
-alice received goodbye from bob
-bob received goodbye from bob
-charlie received hello from alice
-alice received hello from alice
-bob received hello from alice
-charlie received goodbye from alice
-alice received goodbye from alice
-bob received goodbye from alice
-charlie received hello from charlie
-alice received hello from charlie
-bob received hello from charlie
-charlie received goodbye from charlie
-alice received goodbye from charlie
-bob received goodbye from charlie
+let takeDamage : (Health1, Nat) -> Health1 = …;
+let h : Health2 = #invincible;
+let h' = takeDamage(h, 100); // works
 ```
 
+Type definitions  
+do not create types,  
+but name existing types
 
-# Produce Exchange
+## Subtyping
 
-### Produce Exchange
+`Mortal <: Health`
 
-- Example DFINITY app: a marketplace application
-  - Participants include:
-    Producers, transporters and retailers
-  - Resources: Money, truck routes, produce
-  - Other entities: Produce and truck types, regions, reservations
+```
+type Health = { #invincible; #alive : Nat; #dead };
+type Mortal = { #alive : Nat; #dead };
 
-- As a communication tool:
-  Substance: Demonstrate example Motoko app
-  Process: Document internal development process
+let takeDamage : (Health, Nat) -> Health = …;
+let h : Mortal = #invincible;
+let h' = takeDamage(h, 100); // also works
+```
 
-- [WIP: Canister in Motoko](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange)
-
-### Produce Exchange: Define MVP
-
-[**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
-
-[**MVP on Motoko Canister**](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
-
-**Summary:**
-
-- defines **users**:
-  Developers, transporters, retailers and producers.
-- defines **features** and **use cases**:
-  - Resource data can be published and updated
-  - Queries require database logic, including joins
-- defines non-goals, and out-of-scope goals.
-
-### Produce Exchange: Exit criteria
-
-[**Full details**](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
-
-**Summary:**
-
- - People: SDK + Motoko teams.
- - Feature-based criteria: Same as MVP.
- - Test-based criteria: Automated tests.
- - Operational criteria: Run on DFINITY node.
- - Performance criteria: Run at certain scales / rates.
-
-### [Produce exchange server components](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
-
-- **Server types**: Types for client-server messages
-- **Server actor**: Interface for client-server messages
-- **Server model types**: Data types used internally
-- **Server model implementation**: Implements the actor
+`t1 <: t2`: `t1` can be used wherever `t2` is expected
 
 
-### [Standard library](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#motoko-standard-library)
+## Generic types
 
-Why?
+```
+type List<T> = ?{head : T; tail : List<T>};
 
-- Gather reusable components,
-  (e.g., collections for **server model types**)
-- Codify best Motoko practices
+…
+let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
+```
 
-How?
+# Fin
 
-- Motoko supports some namespace management, and multiple input files.
-- [Documentation](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#motoko-standard-library) generated from the source code
+## Not covered
 
-
-### [Standard library: Produce exchange](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#produce-exchange)
-
-We focus on abstractions for implementing the database for the produce exchange:
-
-- [Document Table](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/docTable.md): Mutable collection of immutable documents.
-
-- [Hash trie](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
-
-- [Association list](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
-
-# (not yet) The End
+ * Polymorphic functions with type bounds
+ * Classes
