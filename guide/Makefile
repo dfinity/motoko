@@ -51,6 +51,8 @@ as-slides.html : as-slides.md
 	  -t revealjs -s -o as-slides.html as-slides.md -V revealjs-url=https://revealjs.com \
 	  -V theme=moon \
 	  --strip-comments \
+	  -V revealjs-url=https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.8.0 \
+	  #--standalone \
 	  # -V width="\"100%\"" \
 	  # -V height="\"100%\"" \
 	  # -V margin=0 \
