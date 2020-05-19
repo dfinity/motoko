@@ -154,8 +154,18 @@ let encode (em : extended_module) =
       | tail -> Tag (refi, tag, position_attr) :: (Printf.printf "ADDING a 0x%x%s at depth %d\n" tag (if refi = None then "" else " has ref") (List.length tail); tail) in
 
   let no_tags = List.for_all (function Tag _ -> false | _ -> true) in
+  let hoistables = List.partition (function Tag (Some r, _, _) -> true | _ -> false) in
 
   let rec close_dwarf genuine =
+    (* hoist out referencable tags *)
+    begin match !dwarf_tags with
+    | Tag (refi, t, viscera) :: tail
+        when genuine && (Dwarf5.dw_TAG_subprogram = t || Dwarf5.dw_TAG_lexical_block = t) ->
+      let hoist, stay = hoistables viscera in
+      dwarf_tags := Tag (refi, t, stay) :: hoist @ tail
+    | _ -> ()
+    end;
+
     match !dwarf_tags with
     | Tag (_, t, viscera) :: tail when Dwarf5.dw_TAG_lexical_block = t && no_tags viscera ->
       Printf.printf "DISCARDING redundant\n";
