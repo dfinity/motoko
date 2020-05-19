@@ -116,7 +116,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 Unbounded. Inferred by default for negative literals.
 
-Literals: `13`, `0xf4`, `-20`, `1_000_000`
+Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
 
 ## Unbounded naturals
@@ -127,7 +127,7 @@ Non-negative, not bounded from above.
 
 Inferred by default for non-negative literals
 
-Literals: `13`, `0xf4`, `-20`, `1_000_000`
+Literals: `13`, `0xf4`, `1_000_000`
 
 ## Bounded naturals (trapping)
 
@@ -164,7 +164,7 @@ Literals: `3.14`, `-0.3e+15`
 
 No surprises here
 
-`- x`, `not b`, `a + b`, `a & b`…
+`- x`, `a + b`, `a & b`…
 
 ## Characters and text
 
@@ -181,7 +181,7 @@ Unicode! No random access.
 
 Literals: `true`, `false`
 
-Used in: `if b then e1 else e2`
+Used in: `a or b`, `a and b`, `if b then e1 else e2`
 
 # Functions
 
@@ -212,7 +212,7 @@ Used in: `if b then e1 else e2`
 ## Function Declarations & Use
 
 ```
-func add(x : Int, y : Int) : Int = (x + y);
+func add(x : Int, y : Int) : Int = x + y;
 
 func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
   if (n > 0) {
