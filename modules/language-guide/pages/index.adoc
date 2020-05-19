@@ -826,7 +826,7 @@ local module name to introduce, in this example `P` for
 the imported module:
 
 ....
-import P "mo:stdlib/prelude";
+import P "mo:base/Prelude";
 P.printLn("hello world");
 ....
 
@@ -855,7 +855,7 @@ still writing the program.
 Assuming that earlier, one has imported the prelude as follows:
 
 ....
-import P "mo:stdlib/prelude";
+import P "mo:base/Prelude";
 ....
 
 The developer can fill _any missing expression_ with the following one:

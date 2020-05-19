@@ -406,12 +406,12 @@ To import from the standard library, use the `import` keyword.
 Give a local module name to introduce, in this example `P` for "`**P**relude`", and a URL where the `import` declaration may locate the imported module:
 
 ....
-import P "mo:stdlib/prelude";
+import P "mo:base/Prelude";
 P.printLn("hello world");
 ....
 
 In this case, we import {proglang} code (not some other module form) with the `mo:` prefix.
-We specify the `stdlib/` path, followed by the module's file name `prelude.mo` minus its extension.
+We specify the `base/` path, followed by the module's file name `prelude.mo` minus its extension.
 
 === Accommodating incomplete code
 
@@ -428,7 +428,7 @@ Short-term holes are never committed to a source repository, and only ever exist
 Assuming that earlier, one has imported the prelude as follows:
 
 ....
-import P "mo:stdlib/prelude";
+import P "mo:base/Prelude";
 ....
 
 The developer can fill _any missing expression_ with the following one:
