@@ -64,7 +64,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
   func print() {
     Debug.print(Int.toText(counter));
   };
-  let d = 42 : Delta;
+  let d : Delta = 42;
   var counter = 1;
   counter := counter + tmp;
   print();
@@ -72,13 +72,13 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 * Semicolon after each declaration!
 * Mutually recursive
-* Mutable variables marked explicit
+* Mutable variables marked explicitly
 
 ## Control structure
 
-- `if b …`
-- `if b … else …`
-- `switch x { case pat1 e1; …; case _ en}`
+- `if (b) …`
+- `if (b) … else …`
+- `switch x { case (pat1) e1; …; case _ en}`
 - `while (b) …`
 - `loop …`
 - `loop … while (b)`
@@ -141,11 +141,11 @@ Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
 `Float`
 
-IEEE 754 64 bit semantics, normalized NaN
+IEEE 754 double precision (64 bit) semantics, normalized NaN
 
 Inferred for fractional literals
 
-Literals: …, `3.14`, `-0.3e+15`
+Literals: 0, -10, `2.71`, `-0.3e+15`, `3.141_592_653_589_793_12`
 
 ## Numeric operations
 
@@ -174,7 +174,8 @@ Literals: `true`, `false`
 
 `a or b`  
 `a and b`  
-`if b e1 else e2`
+`not b`
+`if (b) e1 else e2`
 
 # Functions
 
@@ -208,7 +209,7 @@ func add(x : Int, y : Int) : Int = x + y;
 
 func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
   if (n == 0) return;
-  f x;
+  f(x);
   applyNTimes(n-1, x, f);
 }
 
@@ -218,7 +219,7 @@ applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 * `func() { … }` short for `func() : () = { … }`
 * Parametric functions
 * Type instantiations may sometimes be omitted
-* Anonymous functions (aka lambdas)
+* Anonymous functions (a.k.a. lambdas)
 
 
 # Composite types
@@ -231,6 +232,7 @@ immutable, heterogenous, fixed size
 
 ```
 let tuple = (True, 1.2, "foo");
+tuple.1 > 0.0;
 let (_,_,t) = tuple;
 ```
 
@@ -367,7 +369,7 @@ _sharable_ arguments and _no_ or _async_ result type.
 ## sharable ≈ serializable
 
   - all primitive types
-  - objects, tuples, arrays, variants, options  
+  - records, tuples, arrays, variants, options  
     with immutable sharable components
   - `actor` types
   - `shared` function type<br/><br/>**Not sharable:**
