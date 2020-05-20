@@ -61,7 +61,6 @@ module References = Map.Make (struct type t = int let compare = compare end)
 let dw_references = ref References.empty
 let num_dw_references = ref 1 (* 0 would mean: "this tag doesn't fulfill a reference" *)
 let allocate_reference_slot () =
-  Printf.printf "ALLOCATED SLOT: %d\n" !num_dw_references;
   let have = !num_dw_references in
   dw_references := References.add have (Promise.make ()) !dw_references;
   num_dw_references := 1 + have;
@@ -146,12 +145,11 @@ let encode (em : extended_module) =
     dwarf_tags :=
       match !dwarf_tags with
       | [Tag (refi, t, viscera)] when tag = Dwarf5.dw_TAG_compile_unit && t = 0 ->
-        Printf.printf "HIJACKING present toplevel 0x0 to become 0x%x\n" tag;
         [Tag (refi, tag, viscera)]
       | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
-        Printf.printf "ADDING a 0x%x by CONTRACTING (sinking the closed 0x%x into 0x%x) at depth %d\n" tag t' t (List.length tail + 1);
         Tag (refi, tag, position_attr) :: Tag (r, t, closed :: arts) :: tail
-      | tail -> Tag (refi, tag, position_attr) :: (Printf.printf "ADDING a 0x%x%s at depth %d\n" tag (if refi = None then "" else " has ref") (List.length tail); tail) in
+      | tail ->
+        Tag (refi, tag, position_attr) :: tail in
 
   let no_tags = List.for_all (function Tag _ -> false | _ -> true) in
   let hoistables = List.partition (function Tag (Some r, _, _) -> true | _ -> false) in
@@ -168,13 +166,12 @@ let encode (em : extended_module) =
 
     match !dwarf_tags with
     | Tag (_, t, viscera) :: tail when Dwarf5.dw_TAG_lexical_block = t && no_tags viscera ->
-      Printf.printf "DISCARDING redundant\n";
       dwarf_tags := tail
     | Tag (refi, t, viscera) :: tail when genuine && Dwarf5.dw_TAG_lexical_block = t ->
       dwarf_tags := Tag (refi, t, IntAttribute (Dwarf5.dw_AT_high_pc, pos s - !code_section_start) :: viscera) :: tail;
       close_dwarf false
     | [] -> failwith "no open DW_TAG"
-    | [Tag (None, t, viscera)] when Dwarf5.dw_TAG_compile_unit = t -> Printf.printf "WE ARE DONE (GENUINE close: %s)\n" (if genuine then "yes" else "no");
+    | [Tag (None, t, viscera)] when Dwarf5.dw_TAG_compile_unit = t ->
       (* we have to be careful to only reference tags already written,
          so maintain creation order; reversal happens in writeTag *)
       let ref_priority a b = match a, b with
@@ -183,12 +180,12 @@ let encode (em : extended_module) =
         | Tag (Some _, _, _), _ -> 1
         | _ -> 0 in
       let viscera' = List.stable_sort ref_priority viscera in
-
-      List.(iter (fun r -> Printf.printf "REFERENCE: %d\n" r) @@ filter_map (function Tag(r, _, _) -> r | _ -> None) viscera');
       dwarf_tags := Tag (None, t, viscera') :: []
-    | [Tag _] -> Printf.printf "GENUINE close: %s " (if genuine then "yes" else "no"); failwith "TOPLEVEL: NOT NESTING"
-    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED 0x%x into 0x%x [on close]\n" t' t; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf genuine
-    | Tag (_, t', _) as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING a 0x%x into 0x%x [on close]\n" t' tag; Tag (r, tag, nested :: arts) :: t)
+    | [Tag _] -> failwith "TOPLEVEL: NOT NESTING"
+    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
+      dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf genuine
+    | Tag (_, t', _) as nested :: Tag (r, tag, arts) :: t ->
+      dwarf_tags := Tag (r, tag, nested :: arts) :: t
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with
@@ -232,7 +229,6 @@ let encode (em : extended_module) =
       | Nop, {line; column; _} when -line = dw_AT_high_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
 
-
       | Nop, {line; file; _} when -line = dw_AT_decl_file ->
         add_dwarf_attribute (StringAttribute (-line, file))
       | Nop, {line; column; _} when -line = dw_AT_decl_line ->
@@ -268,7 +264,7 @@ let encode (em : extended_module) =
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
       | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
-    add_dwarf_tag (if refi = 0 then None else (Printf.printf "TAGGING REF %d for TAG 0x%x    depth: %d\n" refi tag (List.length !dwarf_tags); Some refi)) tag;
+    add_dwarf_tag (if refi = 0 then None else Some refi) tag;
     let rec add_artifacts = function
     | [] -> ()
     | e :: es -> extract (e.it, e.at.left); add_artifacts es in
@@ -402,10 +398,8 @@ let encode (em : extended_module) =
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf true
       | Nop when is_dwarf_statement e.at ->
-        Printf.printf "Line %d    OFFS: 0x%x     (%s:%d:%d)\n" e.at.right.line (pos s) e.at.left.file e.at.left.line e.at.left.column;
         modif statement_positions (Instrs.add (pos s, e.at.left))
       | Block (_, es) when dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
-      (*  | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false; *)
 
       | Unreachable -> op 0x00
       | Nop -> op 0x01
@@ -760,8 +754,7 @@ let encode (em : extended_module) =
       let instr_notes = ref Instrs.empty in
       let note i =
         if not (dwarf_like i.at) then
-          (if Filename.basename i.at.left.file = "fib-wasm.mo" then Printf.printf "NOTING origin: 0x%x pos: 0x%x  (%s:%d:%d)\n" p (pos s) i.at.left.file i.at.left.line i.at.left.column;
-           modif instr_notes (Instrs.add (pos s, i.at.left));
+          (modif instr_notes (Instrs.add (pos s, i.at.left));
            ignore (add_source_name i.at.left.file)
           ) in
       list (instr note) body;
@@ -867,7 +860,8 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; uleb128 Promise.(let p = References.find i !dw_references in if is_fulfilled p then value p else (Printf.printf "#### RETURNING DUMMY for %d REF\n" i; value (References.find 9 !dw_references)))
+          | IntAttribute (attr, i) ->
+            uleb128 (Promise.value (References.find i !dw_references))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->
@@ -905,9 +899,9 @@ let encode (em : extended_module) =
 
     let rec writeTag = function
       | Tag (r, t, contentsRevd) ->
-        Printf.printf "WRITING TAG: 0x%x\n" t;
         begin match r with
-        | Some refi -> Printf.printf "FULFILLING: %d\n" refi; Promise.fulfill (References.find refi !dw_references) (pos s - !info_section_start)
+        | Some refi ->
+          Promise.fulfill (References.find refi !dw_references) (pos s - !info_section_start)
         | None -> assert (t <> Dwarf5.dw_TAG_base_type)
         end;
         let contents = List.rev contentsRevd in
@@ -915,8 +909,14 @@ let encode (em : extended_module) =
         let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
-          | RangeAttribute (a, r) -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
-          | StringAttribute (a, path) when a = Dwarf5.dw_AT_decl_file -> if attr = a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices)) ;assert (attr = a); writeForm form (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
+          | RangeAttribute (a, r) ->
+            if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;
+            assert (attr = a);
+            writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
+          | StringAttribute (a, path) when a = Dwarf5.dw_AT_decl_file ->
+            if attr <> a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices));
+            assert (attr = a);
+            writeForm form (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
           | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
           | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
@@ -1089,8 +1089,6 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let source_indices = !source_path_indices in
 
             let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
-              if Filename.basename file = "fib-wasm.mo" then (Printf.printf "BINGO CODE START: 0x%x  OFFS 0x%x REL 0x%x fib-wasm.mo:%d:%d\n" code_start addr (rel addr) line column);
-
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
