@@ -118,7 +118,6 @@ struct
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
       Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
-
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
 end
@@ -184,7 +183,8 @@ let await env at async k =
       k v
       )
     )
-    (let r = Option.get (env.throws) in
+    (assert (Option.is_some env.throws);
+     let r = Option.get (env.throws) in
      fun v ->
        Scheduler.queue (fun () ->
            if env.flags.trace then
@@ -856,12 +856,24 @@ and interpret_dec env dec (k : V.value V.cont) =
     k V.unit
   | ClassD (id, _typbinds, pat, _typ_opt, sort, id', fields) ->
     let f = interpret_func env id.it local_sort_pat pat (fun env' k' ->
-      let env'' = adjoin_vals env' (declare_id id') in
-      interpret_obj env'' sort fields (fun v' ->
-        define_id env'' id' v';
-        k' v'
-      )
-    ) in
+      if sort.it <> T.Actor then
+        let env'' = adjoin_vals env' (declare_id id') in
+        interpret_obj env'' sort fields (fun v' ->
+          define_id env'' id' v';
+          k' v')
+      else
+        async env' Source.no_region
+          (fun k'' r ->
+            let env'' = adjoin_vals env' (declare_id id') in
+            let env''' = {env'' with
+                           labs = V.Env.empty;
+                           rets = Some k'' (* None?*);
+                           throws = Some r; async = true} in
+            interpret_obj env''' sort fields (fun v' ->
+                define_id env''' id' v';
+                k'' v'))
+          k')
+    in
     let v = V.Func (CC.call_conv_of_typ dec.note.note_typ, f) in
     define_id env {id with note = ()} v;
     k v
@@ -901,7 +913,9 @@ and interpret_func env name sort_pat pat f c v (k : V.value V.cont) =
 
 let interpret_prog flags scope p : (V.value * scope) option =
   try
-    let env = env_of_scope flags scope in
+    let env =
+      { (env_of_scope flags scope) with
+          throws = Some (fun v -> trap !last_region "uncaught throw") } in
     trace_depth := 0;
     let vo = ref None in
     let ve = ref V.Env.empty in

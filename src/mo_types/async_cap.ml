@@ -12,4 +12,4 @@ type async_cap =
 
 let top_cap = Con.fresh "$top-level" (T.Def([],T.Any))
 
-let initial_cap () = if !Flags.compiled then NullCap else AsyncCap top_cap
+let initial_cap () = if !Flags.compiled then NullCap else AwaitCap top_cap
