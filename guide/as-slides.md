@@ -413,6 +413,9 @@ actor Self {
   public func go() {
     Broadcast.register(Self);
   };
+  public func recv(msg : Text) : async Nat {
+    …
+  }
 }
 ```
 
