@@ -231,7 +231,7 @@ applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 immutable, heterogenous, fixed size
 
 ```
-let tuple = (True, 1.2, "foo");
+let tuple = (true, 1.2, "foo");
 tuple.1 > 0.0;
 let (_,_,t) = tuple;
 ```
