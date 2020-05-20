@@ -10,7 +10,7 @@ A simple, useful language for DFINITY
 * Familiar syntax
 * Safe by default
 * Incorporating ~~actor~~ *canister* model
-* Seamless integration of DFINIY features
+* Seamless integration of DFINITY features
 * Making most of present and future WebAssembly
 
 ### Key Design Points
@@ -60,7 +60,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 ## Blocks and declarations
 
 ```
-  let Delta = Nat;
+  type Delta = Nat;
   func print() {
     Debug.print(Int.toText(counter));
   };
@@ -79,10 +79,10 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 - `if b …`
 - `if b … else …`
 - `switch x { case pat1 e1; …; case _ en}`
-- `while (p()) …`
+- `while (b) …`
 - `loop …`
-- `loop … while (p())`
-- `for (x in f()) …`
+- `loop … while (b)`
+- `for (pat in e) …`
 
 <!--
 ### Labels, break and continue
@@ -123,7 +123,7 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 Trap on overflow.
 
-Never inferred, need explicit type annotations.
+Needs type annotations (somewhere)
 
 Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
@@ -131,9 +131,9 @@ Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
 `Word8`, `Word16`, `Word32`, `Word64`
 
-Wrap-around on overflow. Use for bit-fidding.
+Wrap-around on over/under-flow. Use for bit-fiddling.
 
-Never inferred, need explicit type annotations.
+Needs type annotations (somewhere)
 
 Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
@@ -218,7 +218,7 @@ applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 * `func() { … }` short for `func() : () = { … }`
 * Parametric functions
 * Type instantiations may sometimes be omitted
-* Anonymous functions possible
+* Anonymous functions (aka lambdas)
 
 
 # Composite types
@@ -258,8 +258,9 @@ foo(?"Test");
 ```
 let days = ["Monday", "Tuesday", … ];
 assert(days.len() == 7);
-asssert(days[1] == "Tuesday")
+asssert(days[1] == "Tuesday");
 // days[7] will trap (fixed size)
+for (d in days.vals()) { Debug.print(d) };
 ```
 
 ## Arrays (mutable)
@@ -278,7 +279,7 @@ counters[1] := counters[1] + 1;
 `{name : Text; points : var Int}`
 
 ```
-let player = { name = "Joachim"; points = 0 };
+let player = { name = "Joachim";  var points = 0 };
 Debug.print(
   player.name # " has " #
   Int.toText(player.points) # " points."
@@ -377,7 +378,7 @@ import Array "mo:base/Array";
 actor {
   var r : [Receiver] = [];
   public func register(a : Receiver) {
-    r := Array.append(r,[a]);
+    r := Array.append(r, [a]);
   };
   public func send(t : Text) : async Nat {
     var sum := 0;
@@ -419,7 +420,7 @@ actor Self {
 
 ```
 actor Self {
-  let myself : Principal = Principal.fromActor Self;
+  let myself : Principal = Principal.fromActor(Self);
   public shared(context) func hello() : async Text {
     if (context.caller == myself) {
       "Talking to yourself is the first sign of madness";
@@ -430,7 +431,7 @@ actor Self {
 }
 ```
 
-`Principal`: id of an users or canisters/actors
+`Principal`: identity of a user or canister/actor
 
 # Type system
 
@@ -458,7 +459,7 @@ type Health = { #invincible; #alive : Nat; #dead };
 type Mortal = { #alive : Nat; #dead };
 
 let takeDamage : (Health, Nat) -> Health = …;
-let h : Mortal = #invincible;
+let h : Mortal = #alive 1000;
 let h' = takeDamage(h, 100); // also works
 ```
 
@@ -480,3 +481,4 @@ let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
 
  * Polymorphic functions with type bounds
  * Classes
+ * Error handling (`try … catch ...` & `throw ...`)
