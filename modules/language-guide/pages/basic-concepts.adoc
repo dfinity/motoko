@@ -33,10 +33,10 @@ The following topics are covered in the section:
 [[intro-progs]]
 == {proglang} programs
 
-Each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see <<syntax, the appendix>> for precise program syntax).
+Each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the xref:language-manual{outfilesuffix}[language quick reference] for precise program syntax).
 
 For programs that we deploy on the Internet Computer, a valid program consists of an __actor expression__, introduced with specific syntax (keyword `actor`) that we discuss in
-a <<chapter-actors,later chapter>>.
+a xref:actors-async{outfilesuffix}[Actors and async data].
 
 In preparing for that discussion, we discuss programs in this chapter and <<chapter-state,the next>> that are not meant to be Internet Computer services.
 Rather, these tiny programs illustrate snippets of {proglang} for writing those services, and each can (usually) be run on its own as a (non-service) {proglang} program, possibly with some printed terminal output.
