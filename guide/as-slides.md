@@ -390,7 +390,7 @@ actor {
   public func send(t : Text) : async Nat {
     var sum := 0;
     for (a in r.values()) {
-      sum += await a.send(t);
+      sum += await a.recv(t);
     };
     return sum;
   };
