@@ -21,7 +21,7 @@ A simple, useful language for DFINITY
 * Structural typing with simple generics and subtyping
 * Safe arithmetic (unbounded and checked)
 * Non-nullable types by default
-* JavaScript like syntax but statically typed & sane
+* JavaScript-like syntax but statically typed & sane
 
 Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
@@ -78,7 +78,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 - `if (b) …`
 - `if (b) … else …`
-- `switch x { case (pat1) e1; …; case _ en}`
+- `switch x { case (pat1) e1; …; case _ en }`
 - `while (b) …`
 - `loop …`
 - `loop … while (b)`
@@ -121,7 +121,7 @@ Literals: `13`, `0xf4`, `1_000_000`
 `Nat8`, `Nat16`, `Nat32`, `Nat64`,  
 `Int8`, `Int16`, `Int32`, `Int64`
 
-Trap on overflow.
+Trap on over- and underflow.
 
 Needs type annotations (somewhere)
 
@@ -174,7 +174,7 @@ Literals: `true`, `false`
 
 `a or b`  
 `a and b`  
-`not b`
+`not b`  
 `if (b) e1 else e2`
 
 # Functions
@@ -228,7 +228,7 @@ applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 
 `(Bool, Float, Text)`
 
-immutable, heterogenous, fixed size
+immutable, heterogeneous, fixed size
 
 ```
 let tuple = (true, 1.2, "foo");
@@ -260,7 +260,7 @@ foo(?"Test");
 ```
 let days = ["Monday", "Tuesday", … ];
 assert(days.len() == 7);
-asssert(days[1] == "Tuesday");
+assert(days[1] == "Tuesday");
 // days[7] will trap (fixed size)
 for (d in days.vals()) { Debug.print(d) };
 ```
@@ -291,7 +291,7 @@ player.points += 1;
 
 ## Objects
 
-`{get : () -> Int; add : Int -> () }`
+`{ get : () -> Int; add : Int -> () }`
 
 ```
 object self {
@@ -335,7 +335,7 @@ module {
 
 types and values like objects
 
-but restricted to _static_ content
+but restricted to _static_ content (pure, no state, …)
 
 ## Module imports
 
@@ -375,6 +375,7 @@ _sharable_ arguments and _no_ or _async_ result type.
   - `shared` function type<br/><br/>**Not sharable:**
   - mutable things
   - local functions
+  - objects (with methods)
 
 
 ## A complete actor
@@ -490,4 +491,4 @@ let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
 
  * Polymorphic functions with type bounds
  * Classes
- * Error handling (`try … catch ...` & `throw ...`)
+ * Error handling (`try … catch …` & `throw …`)
