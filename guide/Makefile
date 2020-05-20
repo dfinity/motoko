@@ -48,7 +48,7 @@ motoko-guide.pdf: guide.md
 
 as-slides.html : as-slides.md
 	pandoc \
-	  -t revealjs -s -o as-slides.html as-slides.md -V revealjs-url=https://revealjs.com \
+	  -t revealjs -s -o as-slides.html as-slides.md \
 	  -V theme=moon \
 	  --strip-comments \
 	  -V revealjs-url=https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.8.0 \
