@@ -323,13 +323,17 @@ func takeDamage(h : Health, p : Nat) : Health {
 ## Modules
 
 ```
-module Int {
-  toText : Int -> Text
+// the type of base/Int.mo
+module {
+  toText : Int -> Text;
+  abs : Int -> Nat;
   …
 }
 ```
 
-like objects, but restricted to _static_ content
+types and values like objects
+
+but restricted to _static_ content
 
 ## Module imports
 
