@@ -427,7 +427,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, fields) ->
-    interpret_obj env sort fields k
+    if sort.it = T.Actor then
+      async env exp.at
+        (fun k' r ->
+          let env' = {env with labs = V.Env.empty; rets = None; throws = Some r; async = true}
+          in interpret_obj env' sort fields k')
+        (fun v  ->
+          await env exp.at (V.as_async v) k)
+    else
+      interpret_obj env sort fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->

@@ -2,6 +2,7 @@ open Ir_def
 open Mo_def
 open Mo_types
 open Mo_values
+open Mo_frontend
 
 open Source
 open Operator
@@ -47,6 +48,21 @@ let typed_phrase' f x =
   let n' = typ_note x.note in
   { x with it = f x.at n' x.it; note = n' }
 
+let asyncE exp inst at =
+  { it = I.AsyncE (
+     { it = { I.con = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound));
+              I.sort = T.Scope;
+              I.bound = T.scope_bound};
+       at = at;
+       note = ()},
+    exp,
+    inst);
+    at = at;
+    note = Note.{ def with typ = T.Async(inst, exp.note.typ) } }
+
+
+
+
 let rec exps es = List.map exp es
 
 and exp e =
@@ -72,7 +88,25 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    obj at s None es note.Note.typ
+    let e = {
+      it = obj at {it = s.it; at = s.at; note = ()} None es note.Note.typ;
+      at = at;
+      note = Note.{
+        def with
+        typ = note.typ;
+        eff = Effect.infer_effect_field_exps es }
+      }
+    in
+    (* TODO: check_ir doesn't care about using the current scope,
+       but if we revise it match typing.ml, inst will need to be
+       the current scope parameter,
+       best communicated by annotation of source *)
+    let inst = T.Non in
+    if s.it = T.Actor then
+      (assert (note.Note.eff = T.Await);
+       I.PrimE (I.AwaitPrim, [asyncE e inst at]))
+    else
+      e.it
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -420,24 +454,16 @@ and dec' at n d = match d with
     let body = if s.it = T.Actor
       then
         let (_, obj_typ) = T.as_async rng_typ in
-        { it = I.AsyncE (
-          { it = { I.con = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound));
-                   I.sort = T.Scope;
-                   I.bound = T.scope_bound};
-            at = at;
-            note = ()},
+        asyncE
           { it = obj at s (Some self_id) es (T.promote obj_typ);
             at = at;
-            note = Note.{def with typ = obj_typ } },
-            List.hd inst
-          );
-          at = at;
-          note = Note.{ def with typ = rng_typ } }
+            note = Note.{def with typ = obj_typ } }
+          (List.hd inst)
+          at
       else
         { it = obj at s (Some self_id) es rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
-
     in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], wrap body);
