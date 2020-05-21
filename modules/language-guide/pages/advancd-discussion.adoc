@@ -1,5 +1,5 @@
 [[chapter-discussion]]
-== Chapter: Advanced discussion topics
+== Advanced discussion topics
 
 To do:
 
