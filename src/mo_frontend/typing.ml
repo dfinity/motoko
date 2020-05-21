@@ -1666,7 +1666,16 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s fields at : T.typ =
-  let env = {env with in_actor = s = T.Actor} in
+  let env =
+    if s <> T.Actor then
+      { env with in_actor = false }
+    else
+      { env with
+        in_actor = true;
+        labs = T.Env.empty;
+        rets = None;
+        async = C.NullCap; }
+  in
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
   let t = object_of_scope env s fields scope at in
