@@ -1818,7 +1818,8 @@ and infer_dec env dec : T.typ =
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive (if sort.it = T.Actor then error else warn) env' pat in
       let env'' = adjoin_vals env' ve in
-      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+      let cs' = if sort.it = T.Actor then List.tl cs else cs in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
       let env''' =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
@@ -1929,15 +1930,20 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
-  | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _, _) ->
+  | TypD (id, binds, _)
+  | ClassD (id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
+    let binds' = match dec.it with
+      | ClassD(_, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
+      | _ -> binds
+    in
     let pre_tbs = List.map (fun bind ->
                       {T.var = bind.it.var.it;
                        T.sort = T.Type;
                        T.bound = T.Pre}
-                    ) binds in
+                    ) binds' in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
@@ -2040,10 +2046,14 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
-    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+    let tbs', cs' =
+      if sort.it = T.Actor then
+        List.tl tbs, List.tl cs
+      else tbs, cs in
+    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' sort.it fields dec.at in
-    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
+    let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -2114,15 +2124,18 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
-    let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let t =
-      if sort.it = T.Actor then
-        (* add implicit scope parameter and async return *)
-        let c = Con.fresh Type.default_scope_var (T.Abs([], T.scope_bound)) in
-        let cs' = c::cs in
-        T.Func (T.Local, T.Returns, T.close_binds cs' (T.scope_bind::tbs), List.map (T.close cs') ts1, [T.close cs' (T.Async(T.Con(c,[]),t2))])
+    let t2 =
+      if sort.it = T.Actor
+      then
+        T.Async(T.Con(List.hd cs, []),
+                T.Con(c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
       else
-        T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
+        T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
+    in
+    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
+      List.map (T.close cs) ts1,
+      [T.close cs t2])
+    in
     Scope.{ empty with
       val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;

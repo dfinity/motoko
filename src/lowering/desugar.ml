@@ -408,20 +408,39 @@ and dec' at n d = match d with
                    | Some c -> T.Con (c, []))
                  tbs in
     let fun_typ = n.S.note_typ in
-    let obj_typ =
+    let rng_typ =
       match fun_typ with
-      | T.Func(s,c,bds,dom,[rng]) ->
+      | T.Func(_, _, bds, dom, [rng]) ->
         assert(List.length inst = List.length bds);
         T.promote (T.open_ inst rng)
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
     let args, wrap, control, _n_res = to_args n.S.note_typ None p in
+    let body = if s.it = T.Actor
+      then
+        let (_, obj_typ) = T.as_async rng_typ in
+        { it = I.AsyncE (
+          { it = { I.con = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound));
+                   I.sort = T.Scope;
+                   I.bound = T.scope_bound};
+            at = at;
+            note = ()},
+          { it = obj at s (Some self_id) es (T.promote obj_typ);
+            at = at;
+            note = Note.{def with typ = obj_typ } },
+            List.hd inst
+          );
+          at = at;
+          note = Note.{ def with typ = rng_typ } }
+      else
+        { it = obj at s (Some self_id) es rng_typ;
+          at = at;
+          note = Note.{ def with typ = rng_typ } }
+
+    in
     let fn = {
-      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s (Some self_id) es obj_typ;
-           at = at;
-           note = Note.{ def with typ = obj_typ } });
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], wrap body);
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in

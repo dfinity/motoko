@@ -72,7 +72,9 @@ let env_of_scope scope flavor : env =
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
-    async = None;
+    async = Async_cap.(match initial_cap() with
+                       | (NullCap | ErrorCap) -> None
+                       | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
   }
 

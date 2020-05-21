@@ -847,7 +847,10 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 (* Programs *)
 
 let interpret_prog flags state scope ((ds, exp), flavor) : scope =
-  let env = env_of_scope flags flavor state scope in
+  let env =
+    { (env_of_scope flags flavor state scope) with
+      throws = Some (fun v -> trap !last_region "uncaught throw") }
+  in
   trace_depth := 0;
   let ve = ref V.Env.empty in
   try

@@ -736,9 +736,12 @@ dec_nonvar :
   | s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
-      let efs' =
-        if s.it = Type.Actor then List.map share_expfield efs else efs
-      in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+      let efs',tps' =
+        if s.it = Type.Actor then
+	  (List.map share_expfield efs, ensure_scope_bind "" tps)
+        else (efs, tps)
+      in
+      ClassD(xf "class" $sloc, tps', p, t, s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 
