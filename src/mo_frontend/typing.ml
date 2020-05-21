@@ -940,10 +940,10 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | TryE (exp1, cases) ->
-    check_ErrorCap env "try" exp.at;
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
+      check_ErrorCap env "try" exp.at;
       match Coverage.check_cases cases T.catch with
       | [] -> ()
       | ss ->
@@ -1018,8 +1018,10 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | ThrowE exp1 ->
-    check_ErrorCap env "throw" exp.at;
-    if not env.pre then check_exp env T.throw exp1;
+    if not env.pre then begin
+      check_ErrorCap env "throw" exp.at;
+      check_exp env T.throw exp1
+    end;
     T.Non
   | AsyncE (typ_bind, exp1) ->
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
