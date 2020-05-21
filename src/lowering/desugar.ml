@@ -89,7 +89,7 @@ and exp' at note = function
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
     let e = {
-      it = obj at {it = s.it; at = s.at; note = ()} None es note.Note.typ;
+      it = obj at s None es note.Note.typ;
       at = at;
       note = Note.{
         def with
@@ -97,11 +97,7 @@ and exp' at note = function
         eff = Effect.infer_effect_field_exps es }
       }
     in
-    (* TODO: check_ir doesn't care about using the current scope,
-       but if we revise it match typing.ml, inst will need to be
-       the current scope parameter,
-       best communicated by annotation of source *)
-    let inst = T.Non in
+    let inst = s.note in
     if s.it = T.Actor then
       (assert (note.Note.eff = T.Await);
        I.PrimE (I.AwaitPrim, [asyncE e inst at]))

@@ -26,7 +26,7 @@ type typ_id = (string, Type.con option) Source.annotated_phrase
 
 (* Types *)
 
-type obj_sort = Type.obj_sort Source.phrase
+type obj_sort = (Type.obj_sort, Type.typ) Source.annotated_phrase
 type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase

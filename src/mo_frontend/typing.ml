@@ -784,8 +784,8 @@ and infer_exp'' env exp : T.typ =
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' =
       if sort.it = T.Actor then
-        let _c = check_AwaitCap env "actor" exp.at in
-        {env with async = C.NullCap; in_actor = true}
+        (sort.note <- check_AwaitCap env "actor" exp.at; (* note used in desugaring *)
+         {env with async = C.NullCap; in_actor = true})
       else env
     in
     infer_obj env' sort.it fields exp.at
