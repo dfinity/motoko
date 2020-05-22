@@ -1,6 +1,4 @@
-= Chapter: Imperative control flow
-
-CAUTION: Not complete
+= Imperative control flow
 
 to do:
 
@@ -14,11 +12,9 @@ to do:
 [[intro-range]]
 == Using `range` with a `for` loop
 
-The `range` function produces an iterator (of type `Iter`) with the
-given lower and upper bound, inclusive.
+The `range` function produces an iterator (of type `Iter`) with the given lower and upper bound, inclusive.
 
-The following loop example prints the numbers `0` through `10` over
-its _eleven_ iterations:
+The following loop example prints the numbers `0` through `10` over its _eleven_ iterations:
 
 ....
 var i = 0;
@@ -31,8 +27,7 @@ assert(i == 11);
 ....
 
 
-More generally, the function `range` is a `class` that constructs
-iterators over sequences of natural numbers.  Each such iterator has type `Iter<Nat>`.
+More generally, the function `range` is a `class` that constructs iterators over sequences of natural numbers.  Each such iterator has type `Iter<Nat>`.
 
 As a constructor function, `range` has a function type:
 
@@ -51,21 +46,16 @@ For each invocation, `next` returns an optional element (of type
 
 The value `null` indicates that the iteration sequence has terminated.
 
-Until reaching `null`, each non-`null` value,
-of the form ``?``__n__ for some number _n_,
-contains the next
-successive element in the iteration sequence.
+Until reaching `null`, each non-`null` value, of the form ``?``__n__ for some number _n_, contains the next successive element in the iteration sequence.
 
 [[intro-revrange]]
 == Using `revrange`
 
-Like `range`, the function `revrange` is a `class` that constructs
-iterators (each of type `Iter`).  As a constructor function, it has a
-function type:
+Like `range`, the function `revrange` is a `class` that constructs iterators (each of type `Iter`).
+As a constructor function, it has a function type:
 
 ....
 (upper:Nat, lower:Nat) -> Iter
 ....
 
-Unlike `range`, the `revrange` function _descends_ in its iteration
-sequence, from an initial _upper_ bound to a final _lower_ bound.
+Unlike `range`, the `revrange` function _descends_ in its iteration sequence, from an initial _upper_ bound to a final _lower_ bound.

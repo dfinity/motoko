@@ -25,12 +25,12 @@ Although this guide is intended to help readers from different backgrounds under
 
 == Using this guide
 
-To provide a framework for learning {proglang}, you might want to start by reviewing <<Engineering values and goals>>. The <<Engineering values and goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
+To provide a framework for learning {proglang}, you might want to start by reviewing <<Engineering values and goals>>. 
+The <<Engineering values and goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
 
 With those considerations in mind, you can start to explore fundamental concepts, including the role of types and type annotations, in simple code examples and small programs.
 
-Once you are familiar with the basic concepts and terminology, later sections introduce programs that compute in more interesting ways, including function abstractions, user-defined type definitions,
-user-defined actors, the standard library of collections, and asynchronous communication.
+Once you are familiar with the basic concepts and terminology, later sections introduce programs that compute in more interesting ways, including function abstractions, user-defined type definitions, user-defined actors, and asynchronous communication.
 
 As you begin using {proglang} to write your own programs, you can return to this guide for reference information and examples.
 
@@ -39,11 +39,11 @@ As you begin using {proglang} to write your own programs, you can return to this
 The following conventions are used in this guide:
 
 - `+Fixed-width+` font is used for sample code, program names, program output, file names, and commands that you type at the command line.
-- Bold text is used to emphasize commands, buttons, or user interface text, and to introduce new terms.
-- Italics are used for book titles and to emphasize specific words or terms.
+- **Bold** text is used to emphasize commands, buttons, or user interface text, and to introduce new terms.
+- _Italics_ are used for book titles and to emphasize specific words or terms.
 - The CAUTION style is used to indicate content that is missing or incomplete.
 - The WARNING style is used to indicate where content is outdated or potentially inaccurate.
-- The NOTE style is used to indicate content that describes a feature that is not yet supported but is planned for a future releae.
+- The NOTE style is used to indicate content that describes a feature that is not yet supported but is planned for a future release.
 
 == Engineering values and goals
 
@@ -56,7 +56,7 @@ For transparency into the principles that guide the engineering effort, the engi
 
 The following guiding principles represent the core values of the engineering organization in prioritized order:
 
-. Seamless integration with the <<internet-computer, {IC} platform>> to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
+. Seamless integration with the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC} platform] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
 . Ergonomics to ensure that {proglang} embraces familiarity, simplicity, clarity, explicitness, and other human factors.
 . Formal correctness to ensure that {proglang} maintains state isolation, a sound type system and type safety, precision, pattern matching, appropriate defaults, and coding best-practices.
 
@@ -65,7 +65,7 @@ The following guiding principles represent the core values of the engineering or
 The following principles represent the secondary values of the engineering organization that are deemed important but not primary driving factors:
 
 . Expressiveness, so that {proglang} provides first-class functions, polymorphism, pattern matching, and more as the language evolves.
-. Performance, so that {proglang} provides reasonablely fast operation initially and continues to improves as the language evolves. 
+. Performance, so that {proglang} provides reasonably fast operation initially and continues to improves as the language evolves. 
 . Readiness, so the {proglang} comes with "batteries included" in the form of libraries and examples and out-of-the-box integration wit the {sdk-short-name}. 
 
 === Non-goals
@@ -78,7 +78,7 @@ As a counterpoint to the core values and goals, the engineering organization als
 
 == Finding more information 
 
-For information about using {proglang} with the {sdk-short-name}, see the link:../developers-guide/dev-index{outfilesuffix}[Deverloper's Guide].
+For information about using {proglang} with the {sdk-short-name}, see the link:../developers-guide/sdk-guide{outfilesuffix}[SDK Developer Tools].
 
 For background information on various topics relevant to the design, use, or deployment of {proglang} services, or the language's design itself, consider the following resources as a starting point:
 
