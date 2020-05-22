@@ -5381,7 +5381,8 @@ module AllocHow = struct
     | (Const : how) -> G.(ae, nop, nop)
     | LocalImmut | LocalMut ->
       let ae1, ix = VarEnv.add_direct_local env ae name in
-      G.(ae1, nop, dw_tag_no_children (Variable (name, Source.no_pos(*FIXME*), typ, Int32.to_int ix(*FIXME: Constant?*))))
+      G.(ae1, nop,
+         dw_tag_no_children (Variable (name, Source.no_pos(*FIXME*), typ, Int32.to_int ix(*FIXME: Constant?*))))
     | StoreHeap ->
       let ae1, i = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code =
@@ -6897,7 +6898,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
 
   (* A special case for constant expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
-    let (extend, fill) = Printf.printf "compile_dec LetD constant  %s %d %d  (%s %d %d)\n" dec.at.left.file dec.at.left.line dec.at.left.column dec.at.right.file dec.at.right.line dec.at.right.column; compile_const_dec env pre_ae dec in
+    let extend, fill = compile_const_dec env pre_ae dec in
     (extend pre_ae, G.nop, (fun ae -> fill env ae; G.nop), fun wk -> wk)
 
   | LetD (p, e) ->
