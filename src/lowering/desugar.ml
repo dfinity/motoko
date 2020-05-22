@@ -98,9 +98,8 @@ and exp' at note = function
       }
     in
     let inst = s.note in
-    if s.it = T.Actor then
-      (assert (note.Note.eff = T.Await);
-       I.PrimE (I.AwaitPrim, [asyncE e inst at]))
+    if s.it = T.Actor && inst <> T.Pre then
+      I.PrimE (I.AwaitPrim, [asyncE e inst at])
     else
       e.it
   | S.TagE (c, e) -> (tagE c.it (exp e)).it

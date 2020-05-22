@@ -73,7 +73,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let es = List.map effect_dec decs in
     List.fold_left max_eff T.Triv es
   | ObjE (sort, efs) ->
-    if sort.it = T.Actor
+    if sort.it = T.Actor && sort.note <> T.Pre
     then T.Await
     else infer_effect_field_exps efs
   | IfE (exp1, exp2, exp3) ->
