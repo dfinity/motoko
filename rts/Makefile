@@ -97,7 +97,7 @@ WASM_FLAGS = \
    -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
-   -gdwarf-5
+   -gdwarf-4
 #
 # Build targets
 #
