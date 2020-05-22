@@ -30,7 +30,7 @@ coverage.mo:4.7-4.8: warning, this pattern consuming type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:5.7-5.15: warning, this pattern consuming type
+coverage.mo:5.8-5.14: warning, this pattern consuming type
   Nat
 does not cover value
   0 or 1 or _

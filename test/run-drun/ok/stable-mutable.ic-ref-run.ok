@@ -1,0 +1,27 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update tie(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkArray(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkRecord(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkCycle(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ upgrade
+← completed
+→ query checkArray(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkRecord(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkCycle(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ upgrade
+← completed
+→ query checkArray2(0x4449444c00017d01)
+← completed: 0x4449444c0000
+→ query checkRecord2(0x4449444c00017d01)
+debug.print: hello
+← completed: 0x4449444c0000

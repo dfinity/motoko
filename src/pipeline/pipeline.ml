@@ -86,14 +86,18 @@ let parse_with mode lexer parser name =
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer name in
+    let tokenizer, _ = Lexer.tokenizer mode lexer in
+    let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer name in
     dump_prog Flags.dump_parse prog;
     Ok prog
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
-    | Parsing.Error msg ->
-      error (Lexer.region lexer) "syntax" msg
+    | Parsing.Error (msg, start, end_) ->
+      error Source.{
+        left = Lexer.convert_pos start;
+        right = Lexer.convert_pos end_;
+      } "syntax" msg
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in

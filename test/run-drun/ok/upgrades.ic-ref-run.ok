@@ -1,0 +1,40 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+debug.print: init'ed
+← completed
+→ upgrade
+debug.print: init'ed 0
+← completed
+→ query check(0x4449444c00017d01)
+debug.print: a
+← completed: 0x4449444c0000
+→ update inc(0x4449444c0000)
+← completed: 0x4449444c0000
+→ query check(0x4449444c00017d02)
+debug.print: aa
+← completed: 0x4449444c0000
+→ update inc(0x4449444c0000)
+← completed: 0x4449444c0000
+→ upgrade
+debug.print: init'ed 1
+← completed
+→ query check(0x4449444c00017d03)
+debug.print: 3
+debug.print: aaa
+← completed: 0x4449444c0000
+→ update inc(0x4449444c0000)
+← completed: 0x4449444c0000
+→ query check(0x4449444c00017d04)
+debug.print: 4
+debug.print: aaa
+← completed: 0x4449444c0000
+→ upgrade
+debug.print: init'ed 2
+← completed
+→ query check(0x4449444c00017d04)
+← completed: 0x4449444c0000
+→ update inc(0x4449444c0000)
+← completed: 0x4449444c0000
+→ query check(0x4449444c00017d05)
+← completed: 0x4449444c0000

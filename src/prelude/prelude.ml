@@ -1,10 +1,11 @@
-(*
+let prelude = {|
+
+/*
 The prelude. This stuff is always initially in scope. This should be only
  * type definitions for primitive types
  * code with privileged names (@…) that are used by the desugarer or ir-passes
-*)
-let prelude =
-{|
+*/
+
 type Any = prim "Any";
 type None = prim "None";
 type Null = prim "Null";
@@ -39,44 +40,44 @@ type @Iter<T_> = {next : () -> ?T_};
 // Note that these return functions!
 // (Some optimizations in the backend might be feasible.)
 
-func @immut_array_get<A>(xs : [A]) : (Nat -> A) =
-  (func (n : Nat) : A = xs[n]);
-func @mut_array_get<A>(xs : [var A]) : (Nat -> A) =
-  (func (n : Nat) : A = xs[n]);
-func @immut_array_len<A>(xs : [A]) : (() -> Nat) =
-  (func () : Nat = (prim "array_len" : ([A]) -> Nat) xs);
-func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
-  (func () : Nat = (prim "array_len" : ([var A]) -> Nat) xs);
-func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
-  (func (n : Nat, x : A) = (xs[n] := x));
-func @immut_array_keys<A>(xs : [A]) : (() -> @Iter<Nat>) =
-  (func () : @Iter<Nat> = object {
+func @immut_array_get<A>(xs : [A]) : Nat -> A =
+  func (n : Nat) : A = xs[n];
+func @mut_array_get<A>(xs : [var A]) : Nat -> A =
+  func (n : Nat) : A = xs[n];
+func @immut_array_len<A>(xs : [A]) : () -> Nat =
+  func () : Nat = (prim "array_len" : [A] -> Nat) xs;
+func @mut_array_len<A>(xs : [var A]) : () -> Nat =
+  func () : Nat = (prim "array_len" : [var A] -> Nat) xs;
+func @mut_array_set<A>(xs : [var A]) : (Nat, A) -> () =
+  func (n : Nat, x : A) = (xs[n] := x);
+func @immut_array_keys<A>(xs : [A]) : () -> @Iter<Nat> =
+  func () : @Iter<Nat> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
-  });
-func @mut_array_keys<A>(xs : [var A]) : (() -> @Iter<Nat>) =
-  (func () : @Iter<Nat> = object {
+  };
+func @mut_array_keys<A>(xs : [var A]) : () -> @Iter<Nat> =
+  func () : @Iter<Nat> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
-  });
-func @immut_array_vals<A>(xs : [A]) : (() -> @Iter<A>) =
-  (func () : @Iter<A> = object {
+  };
+func @immut_array_vals<A>(xs : [A]) : () -> @Iter<A> =
+  func () : @Iter<A> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
-  });
-func @mut_array_vals<A>(xs : [var A]) : (() -> @Iter<A>) =
-  (func () : @Iter<A> = object {
+  };
+func @mut_array_vals<A>(xs : [var A]) : () -> @Iter<A> =
+  func () : @Iter<A> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
-  });
-func @blob_size(xs : Blob) : (() -> Nat) =
-  (func () : Nat = (prim "blob_size" : Blob -> Nat) xs);
-func @blob_bytes(xs : Blob) : (() -> @Iter<Word8>) =
-  (func () : @Iter<Word8> = object {
+  };
+func @blob_size(xs : Blob) : () -> Nat =
+  func () : Nat = (prim "blob_size" : Blob -> Nat) xs;
+func @blob_bytes(xs : Blob) : () -> @Iter<Word8> =
+  func () : @Iter<Word8> = object {
     type BlobIter = Any; // not exposed
     let i = (prim "blob_iter" : Blob -> BlobIter) xs;
     public func next() : ?Word8 {
@@ -85,11 +86,11 @@ func @blob_bytes(xs : Blob) : (() -> @Iter<Word8>) =
       else
         ?((prim "blob_iter_next" : BlobIter -> Word8) i)
     };
-  });
-func @text_len(xs : Text) : (() -> Nat) =
-  (func () : Nat = (prim "text_len" : Text -> Nat) xs);
-func @text_chars(xs : Text) : (() -> @Iter<Char>) =
-  (func () : @Iter<Char> = object {
+  };
+func @text_len(xs : Text) : () -> Nat =
+  func () : Nat = (prim "text_len" : Text -> Nat) xs;
+func @text_chars(xs : Text) : () -> @Iter<Char> =
+  func () : @Iter<Char> = object {
     type TextIter = Any; // not exposed
     let i = (prim "text_iter" : Text -> TextIter) xs;
     public func next() : ?Char {
@@ -98,7 +99,7 @@ func @text_chars(xs : Text) : (() -> @Iter<Char>) =
       else
         ?((prim "text_iter_next" : TextIter -> Char) i)
     };
-  });
+  };
 
 
 // Internal helper functions for the show translation
@@ -120,7 +121,7 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
     n := n / base;
     i += 1;
   };
-  return text;
+  text
 };
 
 func @digits_dec(x : Nat) : Text =
@@ -149,9 +150,8 @@ func @digits_hex(x : Nat) : Text =
      )
    )
  );
-func @text_of_Word(x : Nat) : Text {
-  return "0x" # @text_of_num(x, 16, 4, @digits_hex);
-};
+
+func @text_of_Word(x : Nat) : Text = "0x" # @text_of_num(x, 16, 4, @digits_hex);
 
 // There is some duplication with the prim_module, but we need these here
 // before we can load the prim module
@@ -241,8 +241,7 @@ func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
     };
     text #= f x;
   };
-  text #= "]";
-  return text;
+  text # "]"
 };
 
 func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
@@ -257,8 +256,7 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
     };
     text #= f x;
   };
-  text #= "]";
-  return text;
+  text # "]"
 };
 
 
@@ -304,9 +302,9 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     switch result {
       case null {
         let ks_ = ks;
-        ks := (func(t : T) { ks_(t); k(t) });
+        ks := func(t : T) { ks_(t); k(t) };
         let rs_ = rs;
-        rs := (func(e : Error) { rs_(e); r(e) });
+        rs := func(e : Error) { rs_(e); r(e) };
       };
       case (? (#ok t)) { k(t) };
       case (? (#error e)) { r(e) };
@@ -343,6 +341,7 @@ func debugPrintChar(x : Char) { debugPrint (charToText x) };
 // RTS stats
 
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
+func rts_memory_size() : Nat { (prim "rts_memory_size" : () -> Nat) () };
 func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
 func rts_reclaimed() : Nat { (prim "rts_reclaimed" : () -> Nat) () };

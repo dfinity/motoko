@@ -4,7 +4,7 @@
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
-{proglang} is a modern programming language you can use specifically for <<internet-computer, Internet Computer>> programs or as a general-purpose language for programs running on other platforms.
+{proglang} is a modern programming language you can use specifically for link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC} platform] programs or as a general-purpose language for programs running on other platforms.
 
 == Approachability
 
@@ -20,12 +20,12 @@ Specifically, {proglang} programs are _type sound_ since {proglang} includes a p
 The {proglang} type system statically checks that each {proglang} program will execute safely, without internal type errors, on all possible inputs. 
 Consequently, entire classes of common programming pitfalls that are common in other languages are ruled out, including null pointer errors, mis-matched argument and result types and many others.
 
-To execute, {proglang} statically compiles to <<wasm, WebAssembly>>, a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the <<internet-computer, Internet Computer>>.
+To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC}].
 
 [[pitch-actors]]
 == Each microservice as an _actor_
 
-{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the <<internet-computer, Internet Computer>>.
+{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC}].
 
 An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
 
@@ -86,14 +86,14 @@ In the meantime, the program is permitted to make internal progress within this 
 Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer to make external progress around it while it waits for this answer.
 
 We do not show an example of this "`notify`" pattern above, since it uses callbacks (and _higher-order_ functions and control flow) and is thus more complex.
-However, we discuss <<example-notify,a detailed example>> later in this text.
 
 [[pitch-async]]
 === Syntactic forms `async` and `await`
 
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
 
-The <<exp-async,syntax `async`>> introduces the _"`promise`" of asynchronous data in the future_ (not shown in the first example above).  We discuss the introduction of asynchronous promises when we <<chapter-actors,introduce actors>>.
+The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces the _"`promise`" of asynchronous data in the future_ (not shown in the first example above).  
+You'll learn more about asynchronous promises when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
 
 Here, we merely use the ones that arise from calling `service1.computeAnswer(params)` and
 `service2.computeAnswer(params)`.
@@ -103,16 +103,16 @@ We show two uses of the `await` form in the example above, which await the resul
 
 When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control- and data-flow that would be tedious to perform by hand.
 Meanwhile, the type system of {proglang} enforces certain correct usage patterns for these constructs, including that types flowing between consumers and producers always agree, and that the types of data sent among services are permitted to flow there, and do
-not (for example) contain <<chapter-state,private mutable state>>.
+not (for example) contain link:mutable-state{outfilesuffix}[private mutable state].
 
 [[pitch-types]]
 === Types are static
 
 Like other modern programming languages, {proglang} permits each variable to carry the value of a function, object, or a primitive datum (for example, a string, word, or integer).
-Other <<intro-values, types of values exist too>>, including records, tuples, and "`tagged data`" called _variants_.
+Other link:basic-concepts{outfilesuffix}#intro-values[types of values] exist too, including records, tuples, and "`tagged data`" called _variants_.
 
 {proglang} enjoys the formal property of type safety, also known as _type soundness_.
-We often summarize this idea with the phrase: <<intro-type-soundness,"`Well-typed {proglang} programs don't go wrong`">>, meaning here that they do not misuse program constructs by treating them as if they have the wrong type.
+We often summarize this idea with the phrase: link:basic-concepts{outfilesuffix}#intro-type-soundness[Well-typed {proglang} programs don't go wrong], meaning that they do not misuse program constructs by treating them as if they have the wrong type.
 
 For example, each variable in a {proglang} program carries an associated _type_, and this type is known _statically_, before the program executes.
 Each use of each variable is checked by the compiler to prevent runtime type errors, including null pointer errors.
@@ -121,4 +121,4 @@ In this sense, {proglang} types provide a form of _trusted **compiler-verified**
 
 As usual, dynamic testing can check properties that are beyond the reach of the {proglang} type system.
 While modern, the {proglang} type system is intentionally _not_ "`advanced`" or exotic in any new ways.
-Rather, the type system of {proglang} integrates lessons from modern, but well-understood, <<modern-types,practical type systems>> of today to provide an approachable, yet _mathematically precise_ language for general-purpose, distributed programming.
+Rather, the type system of {proglang} integrates lessons from modern, but well-understood, link:about-this-guide{outfilesuffix}#modern-types[practical type systems] of today to provide an approachable, yet _mathematically precise_ language for general-purpose, distributed programming.

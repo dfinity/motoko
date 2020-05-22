@@ -62,7 +62,10 @@ let seqP ps =
 (* Primitives *)
 
 let varE (id, typ) =
-  { it = VarE id; at = no_region; note = Note.{ def with typ } }
+  { it = VarE id; at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+
+let varLE (id, typ) =
+  { it = VarLE id; at = no_region; note = typ }
 
 let primE prim es =
   let typ = match prim with
@@ -307,20 +310,9 @@ let immuteE e =
     note = Note.{ def with typ = T.as_immut (typ e); eff = eff e };
   }
 
-
-(* just like we use exp also for vars, we use exp also for lvalues
-in the constructor DSL *)
-let lexp_of_exp' = function
-  | VarE i -> VarLE i
-  | PrimE (DotPrim n, [e1]) -> DotLE (e1, n)
-  | PrimE (IdxPrim, [e1; e2]) -> IdxLE (e1, e2)
-  | _ -> failwith "Impossible: lexp_of_exp"
-
-let lexp_of_exp (e:exp) = { e with it = lexp_of_exp' e.it; note = typ e }
-
 let assignE v exp2 =
   assert (T.is_mut (typ_of_var v));
-  { it = AssignE (lexp_of_exp (varE v), exp2);
+  { it = AssignE (varLE v, exp2);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }

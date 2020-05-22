@@ -1,7 +1,5 @@
 #include "rts.h"
 
-typedef as_ptr blob_t; // a skewed pointer to a Blob heap object
-
 // CRC32 for blobs
 
 // loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
