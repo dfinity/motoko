@@ -40,9 +40,9 @@
     "motoko-base": {
         "ref": "claudio-next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "8adfeefacb272faea396102d65b021679f65d2d3",
+        "rev": "f477def778377774e681c19dfc96fce194ae2636",
         "type": "git"
-    }, 
+    },
     "musl-wasi": {
         "branch": "master",
         "builtin": false,
