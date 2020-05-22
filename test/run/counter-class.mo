@@ -11,7 +11,7 @@ actor class Counter(i : Int) {
 
 func showCounter(c : Int) {};
 
-let c = Counter(10);
+let c = await Counter(10);
 
 actor Test {
   public func go() {
