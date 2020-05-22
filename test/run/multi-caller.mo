@@ -30,8 +30,8 @@ actor class C () {
 };
 
 let alias = a;
-let b = C();
-let c = C();
+let b = await C();
+let c = await C();
 
 ignore async {
   let id_a = await a.getSelf();
