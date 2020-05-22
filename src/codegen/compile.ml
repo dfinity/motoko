@@ -7671,7 +7671,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let (pre_ae1, alloc_code, dw) = AllocHow.add_local env pre_ae how name e.note.note_typ in
+      let (pre_ae1, alloc_code, dw) = AllocHow.add_local env pre_ae how name e.note.Note.typ in
 
       ( pre_ae1,
         alloc_code,
@@ -7682,7 +7682,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
-    | []          -> (pre_ae, G.nop, fun wk -> wk)
+    | []          -> (pre_ae, G.nop, fun _ wk -> wk)
     | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
         let (pre_ae1, alloc_code1, mk_codeT1) = compile_dec env pre_ae how v2en dec in
@@ -7694,8 +7694,7 @@ and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * (G.t 
                     fun wk -> codeT1 (codeT2 wk)
         ) in
   let (ae1, alloc_code, mk_codeT) = go pre_ae decs in
-  let codeT = mk_codeT ae1 in
-  (ae1, fun wk -> alloc_code ^^ codeT wk)
+  (ae1, fun wk -> alloc_code ^^ mk_codeT ae1 wk)
 
 and compile_decs env ae decs captured_in_body : VarEnv.t * (G.t -> G.t) =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body

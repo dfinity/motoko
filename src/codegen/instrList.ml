@@ -360,10 +360,10 @@ and lookup_pointer_key () : t * int =
     pointer_key := Some r;Printf.printf "pointer_key!  %d\n" r;
     dw, r
 and fakeBlock tag attrs =
-  fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region []))
+  fakeColumn 0 tag (Block (as_block_type [](*FIXME: constant*), attrs 0l Wasm.Source.no_region []))
 and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
+  fakeColumn refslot tag (Block (as_block_type [](*FIXME: constant*), attrs 0l Wasm.Source.no_region [])),
   refslot
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
