@@ -218,6 +218,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 === Characters
 
 A character is a single quote (`'`) delimited:
+
 * Unicode character in UTF-8,
 * `\`-escaped  newline, carriage return, tab, single or double quotation mark
 * `\`-prefixed ASCII character (TBR),
