@@ -108,8 +108,9 @@ let simplistic_docs : string -> unit =
   in
   let prog = parser tokenizer file in
   let trivia_table = get_trivia_table () in
-  let imports, docs = extract_docs prog trivia_table in
+  let module_docs, imports, docs = extract_docs prog trivia_table in
   (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
+  print_endline module_docs;
   List.iter (fun (v, p) -> Printf.printf "import %s \"%s\";\n" v p) imports;
   List.iter (fun doc -> print_endline (render_doc_string doc)) docs
 
@@ -124,17 +125,17 @@ let html_docs : string -> unit =
   in
   let prog = parser tokenizer file in
   let trivia_table = get_trivia_table () in
-  let imports, docs = extract_docs prog trivia_table in
-  let html = Html.render_docs docs in
+  let module_docs, imports, docs = extract_docs prog trivia_table in
+  let html = Html.render_docs module_docs docs in
   let oc = open_out "/home/creek/code/mo-doc/index.html" in
   Printf.fprintf oc "%s" html;
   flush oc;
   close_out oc
 
 (* let file = "/home/creek/code/motoko/src/mytest.mo" *)
-(* let file = "/home/creek/code/mo-libs/motoko-base/src/List.mo" *)
+let file = "/home/creek/code/mo-libs/motoko-base/src/List.mo"
 (* let file = "/home/creek/code/mo-libs/motoko-base/src/HashMap.mo" *)
-let file = "/home/creek/code/mo-libs/motoko-base/src/RBTree.mo"
+(* let file = "/home/creek/code/mo-libs/motoko-base/src/RBTree.mo" *)
 
 (* let start () = simplistic_docs file *)
 let start () = html_docs file

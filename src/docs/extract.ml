@@ -136,7 +136,7 @@ and extract_exp_field find_trivia exp_field =
 
 type imports = (string * string) list
 
-let extract_docs : Syntax.prog -> Lexer.triv_table -> imports * doc list =
+let extract_docs : Syntax.prog -> Lexer.triv_table -> string * imports * doc list =
  fun prog trivia_table ->
   let lookup_trivia (line, column) =
     Lexer.PosHashtbl.find_opt trivia_table Lexer.{ line; column }
@@ -145,7 +145,8 @@ let extract_docs : Syntax.prog -> Lexer.triv_table -> imports * doc list =
     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)
     |> Option.get
   in
+  let module_docs = find_trivia prog.at in
   (* Skip the module header *)
   let imports, decls = un_prog prog in
   let docs = List.filter_map (extract_exp_field find_trivia) decls in
-  (imports, docs)
+  (string_of_leading module_docs, imports, docs)

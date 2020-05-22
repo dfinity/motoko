@@ -19,6 +19,11 @@ let rec string_of_path path =
   | Syntax.IdH id -> id.Source.it
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
+let html_of_comment s =
+        join_with [ br () ]
+           ( Lib.String.split s '\n'
+           |> List.map (fun s -> [ txt s ]))
+
 let html_of_mut mut =
   match mut.Source.it with
   | Syntax.Var -> keyword "mut "
@@ -160,13 +165,11 @@ and html_of_doc { doc_comment; declaration } =
       html_of_declaration declaration;
       p
         ~a:[ a_class [ "doc-comment" ] ]
-        (join_with [ br () ]
-           ( Lib.String.split (doc_comment |> Option.value ~default:"") '\n'
-           |> List.map (fun s -> [ txt s ])));
+        (html_of_comment (doc_comment |> Option.value ~default:""))
     ]
 
-let html_of_docs : doc list -> Html.doc =
- fun docs ->
+let html_of_docs : string -> doc list -> Html.doc =
+ fun module_docs docs ->
   let header =
     head
       (title (txt "Doc"))
@@ -175,7 +178,7 @@ let html_of_docs : doc list -> Html.doc =
         link ~rel:[ `Stylesheet ] ~href:"styles.css" ();
       ]
   in
-  html header (body (List.map html_of_doc docs))
+  html header (body (div ~a:[a_class ["module-docs"]] (html_of_comment module_docs) :: List.map html_of_doc docs))
 
-let render_docs : doc list -> string =
- fun docs -> Format.asprintf "%a" (Html.pp ()) (html_of_docs docs)
+let render_docs : string -> doc list -> string =
+ fun module_docs docs -> Format.asprintf "%a" (Html.pp ()) (html_of_docs module_docs docs)
