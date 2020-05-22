@@ -133,7 +133,8 @@ let html_docs : string -> unit =
 
 (* let file = "/home/creek/code/motoko/src/mytest.mo" *)
 (* let file = "/home/creek/code/mo-libs/motoko-base/src/List.mo" *)
-let file = "/home/creek/code/mo-libs/motoko-base/src/HashMap.mo"
+(* let file = "/home/creek/code/mo-libs/motoko-base/src/HashMap.mo" *)
+let file = "/home/creek/code/mo-libs/motoko-base/src/RBTree.mo"
 
 (* let start () = simplistic_docs file *)
 let start () = html_docs file
