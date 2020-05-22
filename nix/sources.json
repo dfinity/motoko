@@ -38,7 +38,7 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "ref": "claudio/next-moc", 
+        "ref": "claudio\/next-moc", 
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
         "rev": "8adfeefacb272faea396102d65b021679f65d2d3",
         "type": "git"
