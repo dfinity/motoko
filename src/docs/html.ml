@@ -3,6 +3,13 @@ open Tyxml.Html
 open Extract
 open Mo_def
 
+let type_is_atom typ =
+  match typ.Source.it with
+  | Syntax.PathT _ | Syntax.PrimT _ | Syntax.ArrayT _ | Syntax.ParT _
+  | Syntax.TupT _ | Syntax.ObjT _ | Syntax.VariantT _ ->
+      true
+  | Syntax.OptT _ | Syntax.FuncT _ | Syntax.AsyncT _ -> false
+
 let rec join_with sep = function
   | [] -> []
   | [ x ] -> x
@@ -20,9 +27,7 @@ let rec string_of_path path =
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
 let html_of_comment s =
-        join_with [ br () ]
-           ( Lib.String.split s '\n'
-           |> List.map (fun s -> [ txt s ]))
+  join_with [ br () ] (Lib.String.split s '\n' |> List.map (fun s -> [ txt s ]))
 
 let html_of_mut mut =
   match mut.Source.it with
@@ -46,7 +51,8 @@ let rec html_of_type typ =
   | Syntax.ParT typ -> (txt "(" :: html_of_type typ) @ [ txt ")" ]
   | Syntax.OptT typ ->
       (* TODO only parenthesize non-trivial types *)
-      (txt "?(" :: html_of_type typ) @ [ txt ")" ]
+      if type_is_atom typ then txt "?" :: html_of_type typ
+      else (txt "?(" :: html_of_type typ) @ [ txt ")" ]
   | Syntax.TupT typ_list ->
       (txt "(" :: join_with [ txt ", " ] (List.map html_of_type typ_list))
       @ [ txt ")" ]
@@ -165,7 +171,7 @@ and html_of_doc { doc_comment; declaration } =
       html_of_declaration declaration;
       p
         ~a:[ a_class [ "doc-comment" ] ]
-        (html_of_comment (doc_comment |> Option.value ~default:""))
+        (html_of_comment (doc_comment |> Option.value ~default:""));
     ]
 
 let html_of_docs : string -> doc list -> Html.doc =
@@ -178,7 +184,11 @@ let html_of_docs : string -> doc list -> Html.doc =
         link ~rel:[ `Stylesheet ] ~href:"styles.css" ();
       ]
   in
-  html header (body (div ~a:[a_class ["module-docs"]] (html_of_comment module_docs) :: List.map html_of_doc docs))
+  html header
+    (body
+       ( div ~a:[ a_class [ "module-docs" ] ] (html_of_comment module_docs)
+       :: List.map html_of_doc docs ))
 
 let render_docs : string -> doc list -> string =
- fun module_docs docs -> Format.asprintf "%a" (Html.pp ()) (html_of_docs module_docs docs)
+ fun module_docs docs ->
+  Format.asprintf "%a" (Html.pp ()) (html_of_docs module_docs docs)
