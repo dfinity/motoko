@@ -125,7 +125,11 @@ let html_docs : string -> unit =
   let prog = parser tokenizer file in
   let trivia_table = get_trivia_table () in
   let imports, docs = extract_docs prog trivia_table in
-  print_endline (Html.render_docs docs)
+  let html = Html.render_docs docs in
+  let oc = open_out "/home/creek/code/mo-doc/index.html" in
+  Printf.fprintf oc "%s" html;
+  flush oc;
+  close_out oc
 
 (* let file = "/home/creek/code/motoko/src/mytest.mo" *)
 (* let file = "/home/creek/code/mo-libs/motoko-base/src/List.mo" *)

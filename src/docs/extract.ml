@@ -62,7 +62,7 @@ let un_prog prog =
 
 let string_of_leading : Lexer.trivia_info -> string =
  fun info ->
-  String.concat ""
+  String.concat "\n"
     (List.filter_map
        (function Source_token.Comment s -> Some s | _ -> None)
        info.Lexer.leading_trivia)
