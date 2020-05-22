@@ -113,7 +113,10 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private
+and vis' = Public | Private | System
+
+type stab = stab' Source.phrase
+and stab' = Stable | Flexible
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
@@ -178,7 +181,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {dec : dec; vis : vis}
+and exp_field' = {dec : dec; vis : vis; stab: stab option}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

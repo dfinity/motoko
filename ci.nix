@@ -8,11 +8,5 @@ let
 in
 linux // {
   darwin = darwin.all-systems-go;
-  all-systems-go = inject-rev (nixpkgs.releaseTools.aggregate {
-    name = "all-systems-go";
-    constituents = [
-      linux.all-systems-go
-      darwin.all-systems-go
-    ];
-  });
+  all-systems-go = inject-rev linux.all-systems-go;
 }

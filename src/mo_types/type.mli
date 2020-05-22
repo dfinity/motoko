@@ -4,7 +4,7 @@ type lab = string
 type var = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module
+type obj_sort = Object | Actor | Module | Memory
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -98,6 +98,7 @@ val prim : string -> prim
 val is_non : typ -> bool
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
+val is_immutable_obj : typ -> bool
 val is_variant : typ -> bool
 val is_array : typ -> bool
 val is_opt : typ -> bool
@@ -161,6 +162,9 @@ val set_kind : con -> kind -> unit
 module ConEnv : Env.S with type key = con
 module ConSet : Dom.S with type elt = con
 
+(* Sets *)
+
+module S : Set.S with type elt = typ
 
 (* Normalization and Classification *)
 
@@ -176,6 +180,9 @@ val concrete : typ -> bool
 val shared : typ -> bool
 val find_unshared : typ -> typ option
 val is_shared_func : typ -> bool
+
+val stable : typ -> bool
+
 val inhabited : typ -> bool
 val span : typ -> int option
 

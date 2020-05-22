@@ -1,4 +1,4 @@
-inference.mo:87.27-87.34: warning, this pattern is never matched
+inference.mo:87.20-87.27: warning, this pattern is never matched
 inference.mo:61.14-61.45: type error, expression of type
   None -> Any
 cannot produce expected type
@@ -7,20 +7,20 @@ inference.mo:62.13-62.44: type error, expression of type
   None -> Any
 cannot produce expected type
   Any -> Any
-inference.mo:66.8-66.47: type error, cannot implicitly instantiate function of type
+inference.mo:66.1-66.40: type error, cannot implicitly instantiate function of type
   <T>(T -> T) -> ()
 to argument of type
   Any -> None
 to produce result of type
-  Any
+  ()
 under-constrained implicit instantiation None <: T <: Any, with None =/= Any;
 explicit type instantiation required
-inference.mo:67.8-67.47: type error, cannot implicitly instantiate function of type
+inference.mo:67.1-67.40: type error, cannot implicitly instantiate function of type
   <T>(T -> T) -> ()
 to argument of type
   None -> Any
 to produce result of type
-  Any
+  ()
 over-constrained implicit instantiation requires Any <: T <: None, but Any </: None;
 no valid instantiation exists
 inference.mo:94.8-94.20: type error, cannot implicitly instantiate function of type

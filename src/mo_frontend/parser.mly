@@ -59,7 +59,20 @@ let assign_op lhs rhs_f at =
 let let_or_exp named x e' at =
   if named
   then LetD(VarP(x) @! at, e' @? at) @? at
+       (* If you change the above regions,
+          modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
+
+let is_sugared_func_or_module dec = match dec.it with
+  | LetD({it = VarP _; _} as pat, exp) ->
+    dec.at = pat.at && pat.at = exp.at &&
+    (match exp.it with
+     | ObjE (sort, _) ->
+       sort.it = Type.Module
+     | FuncE _ ->
+       true
+     | _ -> false)
+  | _ -> false
 
 let share_typ t =
   match t.it with
@@ -84,10 +97,37 @@ let share_dec d =
   | LetD (p, e) -> LetD (p, share_exp e) @? d.at
   | _ -> d
 
+let share_stab stab_opt dec =
+  match stab_opt with
+  | None ->
+    (match dec.it with
+     | VarD _
+     | LetD _ ->
+       Some (Flexible @@ dec.at)
+     | _ -> None)
+  | _ -> stab_opt
+
 let share_expfield (ef : exp_field) =
-  if ef.it.vis.it = Private
-  then ef
-  else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
+  if ef.it.vis.it = Public
+  then
+    {ef with it = {ef.it with
+      dec = share_dec ef.it.dec;
+      stab = share_stab ef.it.stab ef.it.dec}}
+  else
+    if is_sugared_func_or_module (ef.it.dec) then
+      {ef with it =
+        {ef.it with stab =
+          match ef.it.stab with
+          | None -> Some (Flexible @@ ef.it.dec.at)
+          | some -> some}
+      }
+    else ef
+
+let rec normalize_let p e =
+    match p.it with
+    | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
+    | ParP p' -> normalize_let p' e
+    | _ -> (p, e)
 
 %}
 
@@ -98,7 +138,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
@@ -112,6 +152,7 @@ let share_expfield (ef : exp_field) =
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
+%token FLEXIBLE STABLE
 %token<string> DOT_NUM
 %token<string> NAT
 %token<string> FLOAT
@@ -176,6 +217,7 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
+%type<Mo_def.Syntax.stab option> stab
 
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
@@ -406,7 +448,7 @@ lit :
 (* Default {} to block or object, respectively *)
 bl : { fun ds -> BlockE(ds) }
 ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun d -> {dec = d; vis = Public @@ d.at} @@ d.at) ds) }
+         List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
   | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
@@ -566,11 +608,11 @@ catch :
 exp_field_nonvar :
   | x=id EQ e=exp(ob)
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
-      {dec = d; vis = Public @@ x.at} @@ at $sloc }
+      {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
 
 exp_field :
   | ef=exp_field_nonvar { ef }
-  | d=dec_var { {dec = d; vis = Public @@ d.at} @@ at $sloc }
+  | d=dec_var { {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
 
 exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar
@@ -578,17 +620,22 @@ exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
     { ef::efs }
   | d=dec_var semicolon efs=exp_field_list_unamb
-    { ({dec = d; vis = Public @@ d.at} @@ at $sloc) :: efs }
+    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
 
 dec_field :
-  | v=vis d=dec
-    { {dec = d; vis = v} @@ at $sloc }
+  | v=vis s=stab d=dec
+    { {dec = d; vis = v; stab = s} @@ at $sloc }
 
 vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
   | PUBLIC { Public @@ at $sloc }
+  | SYSTEM { System @@ at $sloc }
 
+stab :
+  | (* empty *) { None }
+  | FLEXIBLE { Some (Flexible @@ at $sloc) }
+  | STABLE { Some (Stable @@ at $sloc) }
 
 (* Patterns *)
 
@@ -669,11 +716,8 @@ dec_var :
 
 dec_nonvar :
   | LET p=pat EQ e=exp(ob)
-    { let p', e' =
-        match p.it with
-        | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
-        | _ -> p, e
-      in LetD (p', e') @? at $sloc }
+    { let p', e' = normalize_let p e in
+      LetD (p', e') @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body

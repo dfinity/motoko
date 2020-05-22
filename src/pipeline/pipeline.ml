@@ -86,14 +86,18 @@ let parse_with mode lexer parser name =
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer name in
+    let tokenizer, _ = Lexer.tokenizer mode lexer in
+    let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer name in
     dump_prog Flags.dump_parse prog;
     Ok prog
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
-    | Parsing.Error msg ->
-      error (Lexer.region lexer) "syntax" msg
+    | Parsing.Error (msg, start, end_) ->
+      error Source.{
+        left = Lexer.convert_pos start;
+        right = Lexer.convert_pos end_;
+      } "syntax" msg
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
@@ -197,7 +201,7 @@ let rec lib_of_prog' imps at = function
   | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
   | ds ->
     let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d} @@ d.at) ds in
+    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
     let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
     imps, {it = ExpD obj; at; note = empty_typ_note}
 
@@ -544,6 +548,12 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
+let analyze analysis_name analysis env prog name =
+  phase analysis_name name;
+  analysis env prog;
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose env analysis_name prog
+
 
 (* Compilation *)
 
@@ -581,10 +591,12 @@ let lower_prog mode senv libs progs name =
   let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
+  analyze "constness analysis" Const.analyze initial_stat_env prog_ir name;
   prog_ir
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
+  analyze "constness analysis" Const.analyze initial_stat_env prelude_ir "prelude";
   let name = name_progs progs in
   let prog_ir = lower_prog mode initial_stat_env libs progs name in
   phase "Compiling" name;

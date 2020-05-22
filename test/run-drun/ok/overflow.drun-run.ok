@@ -1,7 +1,8 @@
 ingress System
-debug.print: This is reachable.
-debug.print: This is reachable.
-debug.print: This is reachable.
-debug.print: This is reachable.
-debug.print: This is reachable.
-ingress Completed: Canister: Payload: 0x4449444c0000
+debug.print: ok 1
+debug.print: ok 2
+debug.print: ok 3
+debug.print: ok 4
+debug.print: ok 5
+debug.print: ok 6
+ingress Completed: Canister: Reply: 0x4449444c0000

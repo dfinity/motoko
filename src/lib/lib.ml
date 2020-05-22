@@ -228,6 +228,10 @@ struct
     | _::xs -> last xs
     | [] -> failwith "last"
 
+  let last_opt = function
+    | [] -> None
+    | xs -> Some (last xs)
+
   let rec first_opt f = function
     | [] -> None
     | x::xs ->
@@ -405,6 +409,9 @@ struct
   let is_fulfilled p = !p <> None
   let value_opt p = !p
   let value p = match !p with Some x -> x | None -> raise Promise
+  let lazy_value p f =
+    (if not (is_fulfilled p) then fulfill p (f ()));
+    value p
 end
 
 module FilePath =

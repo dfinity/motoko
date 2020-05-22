@@ -153,7 +153,7 @@ let reject async v =
   | V.Tup [ _code; message ] ->
     (* mask the error code before rejecting *)
     Scheduler.queue
-      (fun () -> reject_async async (V.Tup [V.Variant("error", V.unit); message]))
+      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]))
   | _ -> assert false
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
@@ -796,7 +796,7 @@ and interpret_obj env sort fields (k : V.value V.cont) =
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
   match fields with
   | [] -> ve_ex, ve_in
-  | {it = {dec; vis}; _}::fields' ->
+  | {it = {dec; vis; _}; _}::fields' ->
     let ve' = declare_dec dec in
     let ve_ex' = if vis.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
     let ve_in' = V.Env.adjoin ve_in ve' in

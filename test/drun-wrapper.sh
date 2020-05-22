@@ -17,16 +17,27 @@ CONFIG=$(realpath $(dirname $0)/drun.toml)
 if [ -z "$1" ]
 then
   echo "Usage: $0 <name>.wasm [call-script]"
+  echo "or"
+  echo "Usage: $0 <name>.drun"
   exit 1
 fi
 
 export LANG=C.UTF-8
 
-# this number is determined empirically: how many extra batches are needed
-# until all call-trees have finished (even those that return early).
-# Usually darwin needs more! (Should go away with DFN-1269)
-EXTRA_BATCHES=100
+# this could be used to delay drun to make it more deterministic, but
+# it doesn't work reliably and slows down the test significantly.
+# so until DFN-1269 fixes this properly, let's just not run
+# affected tests on drun (only ic-ref-run).
+EXTRA_BATCHES=1
 
-(echo "install ic:2A012B $1 0x";
- if [ -n "$2" ]; then LANG=C perl -ne 'print "$1 ic:2A012B $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade ic:2A012B '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2; fi;
-) | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+if [ "${1: -5}" = ".drun" ]
+then
+  $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES $1
+else
+  ( echo "install ic:2A012B $1 0x"
+    if [ -n "$2" ]
+    then
+      LANG=C perl -ne 'print "$1 ic:2A012B $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade ic:2A012B '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
+    fi
+  ) | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+fi

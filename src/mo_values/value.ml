@@ -66,6 +66,7 @@ struct
   let of_int i = inj (Rep.of_int i)
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
+  let to_hex_string i = group_num (Rep.to_hex_string (proj i))
 end
 
 module type WordType =
@@ -106,7 +107,7 @@ struct
   let to_string = to_pretty_string
 end
 
-module Int32Rep = struct include Int32 let bitwidth = 32 end
+module Int32Rep = struct include Int32 let bitwidth = 32 let to_hex_string = Printf.sprintf "%lx" end
 module Int16Rep = SubRep (Int32Rep) (struct let bitwidth = 16 end)
 module Int8Rep = SubRep (Int32Rep) (struct let bitwidth = 8 end)
 

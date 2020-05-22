@@ -21,6 +21,7 @@ sig
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
+  val last_opt : 'a list -> 'a option
   val split_last : 'a list -> 'a list * 'a (* raises Failure *)
 
   val index_of : 'a -> 'a list -> int option
@@ -92,6 +93,7 @@ sig
   val is_fulfilled : 'a t -> bool
   val value : 'a t -> 'a
   val value_opt : 'a t -> 'a option
+  val lazy_value : 'a t -> (unit -> 'a) -> 'a
 end
 
 module Int :

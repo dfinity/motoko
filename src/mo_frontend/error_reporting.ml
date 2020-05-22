@@ -30,6 +30,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SHARED -> SHARED
       | T_SEMICOLON_EOL -> SEMICOLON_EOL
       | T_SEMICOLON -> SEMICOLON
+      | T_STABLE -> STABLE
+      | T_SYSTEM -> SYSTEM
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN
@@ -80,6 +82,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_GEOP -> GEOP
       | T_FUNC -> FUNC
       | T_FOR -> FOR
+      | T_FLEXIBLE -> FLEXIBLE
       | T_FLOAT -> FLOAT "<float>"
       | T_EQOP -> EQOP
       | T_EQ -> EQ

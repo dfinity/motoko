@@ -7,7 +7,12 @@ type control =
   | Promises       (* shared function producing a future value upon call *)
   | Replies        (* (IR only): responds asynchronously using `reply` *)
 
-type obj_sort = Object | Actor | Module
+type obj_sort =
+   Object
+ | Actor
+ | Module
+ | Memory          (* (codegen only): stable memory serialization format *)
+
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -103,13 +108,16 @@ let error = Prim Error
 let char = Prim Char
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "error"; typ = unit }
+  { lab = "canister_reject"; typ = unit }
 ]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system"; typ = unit}
-      (* TBC *)
+    { lab = "system_fatal"; typ = unit};
+    { lab = "system_transient"; typ = unit};
+    { lab = "destination_invalid"; typ = unit};
+    { lab = "canister_error"; typ = unit};
+    { lab = "future"; typ = Prim Nat32};
   ])
 
 let throw = Prim Error
@@ -429,6 +437,10 @@ let as_async_sub default_scope t = match promote t with
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
 
+let is_immutable_obj obj_type =
+  let _, fields = as_obj_sub [] obj_type in
+  List.for_all (fun f -> not (is_mut f.typ)) fields
+
 
 let lookup_val_field l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
@@ -590,7 +602,8 @@ let concrete t =
     end
   in go t
 
-let shared t =
+(* stable or shared *)
+let serializable allow_mut t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -600,7 +613,8 @@ let shared t =
       | Var _ | Pre -> assert false
       | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
-      | Async _ | Mut _ -> false
+      | Async _ -> false
+      | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -609,8 +623,10 @@ let shared t =
       | Array t | Opt t -> go t
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) ->
-        s = Actor ||
-          (not (s = Actor) && List.for_all (fun f -> go f.typ) fs)
+        (match s with
+         | Actor -> true
+         | Module -> false (* TODO(1452) make modules sharable *)
+         | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
@@ -636,9 +652,12 @@ let find_unshared t =
       | Array t | Opt t -> go t
       | Tup ts -> Lib.List.first_opt go ts
       | Obj (s, fs) ->
-        if s = Actor
-        then None
-        else Lib.List.first_opt (fun f -> go f.typ) fs
+        (match s with
+         | Actor -> None
+         | Module -> Some t (* TODO(1452) make modules sharable *)
+         | Object ->
+           Lib.List.first_opt (fun f -> go f.typ) fs
+         | Memory -> assert false)
       | Variant fs -> Lib.List.first_opt (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         if is_shared_sort s
@@ -651,6 +670,9 @@ let is_shared_func t =
   match normalize t with
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
+
+let shared t = serializable false t
+let stable t = serializable true t
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
@@ -1155,6 +1177,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Memory -> "memory "
 
 let string_of_func_sort = function
   | Local -> ""

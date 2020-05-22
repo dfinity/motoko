@@ -59,7 +59,6 @@ clean:
 
 test: $(NAME)
 	make -C ../test MOC=$(MOC) all
-	make -C ../stdlib MOC=$(MOC) all
 	make -C ../samples MOC=$(MOC) all
 
 test-quick: $(NAME)

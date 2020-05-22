@@ -122,6 +122,14 @@ export uint32_t bigint_to_word32_trap(as_ptr a) {
   return mp_get_u32(n);
 }
 
+export uint32_t bigint_to_word32_trap_with(as_ptr a, blob_t err_msg) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n) || mp_count_bits(n) > 32) {
+    rts_trap(BLOB_PAYLOAD(err_msg), BLOB_LEN(err_msg));
+  }
+  return mp_get_u32(n);
+}
+
 export int32_t bigint_to_word32_signed_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_count_bits(n) > 32) bigint_trap();
@@ -177,6 +185,9 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
 
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
+}
+export bool bigint_ne(as_ptr a, as_ptr b) {
+  return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) != 0;
 }
 export bool bigint_lt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) < 0;
@@ -383,4 +394,3 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
 
   return r;
 }
-

@@ -40,4 +40,8 @@ debug.print: +2_148_489_869
 debug.print: +2_148_489_911
 debug.print: +2_148_489_869
 debug.print: +4_295_973_516
-ingress Completed: Canister: Payload: 0x4449444c0000
+debug.print: 42.000000
+debug.print: +4_295_973_558
+debug.print: 4295973600.000000
+debug.print: 42.000000
+ingress Completed: Canister: Reply: 0x4449444c0000

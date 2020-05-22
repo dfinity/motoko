@@ -156,6 +156,13 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+(* System method types *)
+
+let system_funcs = [
+    ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
+  ]
+
 (* Imports *)
 
 let check_import env at f ri =
@@ -513,7 +520,7 @@ and infer_inst env tbs typs at =
     (match env.async with
      | C.ErrorCap
      | C.QueryCap _
-     | C.NullCap -> error env at "send capability required, but not available (need an enclosing async expression or function body"
+     | C.NullCap -> error env at "send capability required, but not available (need an enclosing async expression or function body)"
      | C.AwaitCap c
      | C.AsyncCap c ->
       (T.Con(c,[])::ts, at::ats)
@@ -1189,7 +1196,7 @@ and check_exp' env0 t exp : T.typ =
         "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
-    t
+    t'
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1206,15 +1213,19 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
-      error env exp1.at
+      local_error env exp1.at
         "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1)
+        (T.string_of_typ_expand t1);
+      if inst.it = None then
+        info env (Source.between exp1.at exp2.at)
+          "this looks like an unintended function call, perhaps a missing ';'?";
+      T.as_func_sub T.Local n T.Non
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some [])  (* no inference required *)
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-     | _, Some _ ->
+    | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some typs -> typs in
       let ts = check_inst_bounds env tbs typs at in
@@ -1554,7 +1565,7 @@ and pub_fields fields : region T.Env.t * region T.Env.t =
 
 and pub_field field xs : region T.Env.t * region T.Env.t =
   match field.it with
-  | {vis; dec} when vis.it = Public -> pub_dec dec xs
+  | {vis; dec; _} when vis.it = Public -> pub_dec dec xs
   | _ -> xs
 
 and pub_dec dec xs : region T.Env.t * region T.Env.t =
@@ -1675,9 +1686,83 @@ and infer_obj env s fields at : T.typ =
             "a shared function cannot be private"
       ) fields;
     end;
-    if s = T.Module then Static.fields env.msgs fields
+    if s = T.Module then Static.fields env.msgs fields;
+    check_system_fields env s scope fields;
+    check_stab env s scope fields;
   end;
   t
+
+and check_system_fields env sort scope fields =
+  List.iter (fun ef ->
+    match sort, ef.it.vis.it, ef.it.dec.it with
+    | T.Actor, vis,
+      LetD({ it = VarP id; _ },
+           { it = FuncE _; _ }) ->
+      begin
+        match List.assoc_opt id.it system_funcs with
+        | Some t ->
+          (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
+          if vis = System then
+            begin
+              let t1 = T.Env.find id.it scope.Scope.val_env in
+              if not (T.sub t1 t) then
+                local_error env ef.at "system function %s is declared with type %s, expecting type %s" id.it
+                  (T.string_of_typ t1) (T.string_of_typ t)
+            end
+          else warn env id.at "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
+        | None ->
+          if vis = System then
+            local_error env id.at "unexpected system method named %s: expected %s"
+              id.it (String.concat " or " (List.map fst system_funcs))
+          else ()
+      end
+    | _, System, _ ->
+      local_error env ef.it.vis.at "misplaced system visibility, did you mean private?"
+    | _ -> ())
+  fields
+
+and stable_pat pat =
+  match pat.it with
+  | VarP _ -> true
+  | ParP pat'
+  | AnnotP (pat', _) -> stable_pat pat'
+  | _ -> false
+
+and check_stab env sort scope fields =
+  let check_stable id at =
+    match T.Env.find_opt id scope.Scope.val_env with
+    | None -> assert false
+    | Some t ->
+      let t1 = T.as_immut t in
+      if not (T.stable t1) then
+        local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
+  in
+  let idss = List.map (fun ef ->
+    match sort, ef.it.stab, ef.it.dec.it with
+    | (T.Object | T.Module), None, _ -> []
+    | (T.Object | T.Module), Some stab, _ ->
+      local_error env stab.at
+        "misplaced stability declaration on field of non-actor";
+      []
+    | T.Actor, None, (VarD _ | LetD _) ->
+      warn env ef.it.dec.at
+        "missing stability declaration on actor field";
+      []
+    | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
+      check_stable id.it id.at;
+      [id]
+    | T.Actor, Some {it = Stable; _}, LetD (pat, _) when stable_pat pat ->
+      let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
+      List.iter (fun id -> check_stable id pat.at) ids;
+      List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
+    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
+    | T.Actor, Some stab, _ ->
+      local_error env stab.at "misplaced stability modifier: expected on var or simple let declarations only";
+      []
+    | _ -> []) fields
+  in
+  check_ids env "actor" "stable variable" (List.concat idss)
+
 
 (* Blocks and Declarations *)
 
@@ -1711,7 +1796,11 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) ->
     infer_exp env exp
   | IgnoreD exp ->
-    if not env.pre then check_exp env T.Any exp;
+    if not env.pre then begin
+      check_exp env T.Any exp;
+      if T.sub exp.note.note_typ T.unit then
+        warn env dec.at "redundant ignore, operand already has type ()"
+    end;
     T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
@@ -1798,6 +1887,8 @@ and infer_val_path env exp : T.typ option =
          with Invalid_argument _ -> None)
        | _ -> None
     )
+  | AnnotE (_, typ) ->
+    Some (check_typ {env with pre = true}  typ)
   | _ -> None
 
 
@@ -1890,7 +1981,7 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       {it = ObjE ({it = sort; _}, fields); at; _}
     ) ->
-    let decs = List.map (fun {it = {vis;dec}; _} -> dec) fields in
+    let decs = List.map (fun {it = { vis; dec; _ }; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
     let obj_scope_typs = infer_block_typdecs env' decs in

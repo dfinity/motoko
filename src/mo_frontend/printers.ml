@@ -31,6 +31,7 @@ let string_of_symbol symbol : string =
   | X (T T_SWITCH) -> "switch"
   | X (T T_SUBOP) -> unop "-"
   | X (T T_SUB) -> "<:"
+  | X (T T_STABLE) -> "stable"
   | X (T T_SSHROP) -> binop "+>>"
   | X (T T_SSHRASSIGN) -> binassign "+>>="
   | X (T T_SHLOP) -> binop "<<"
@@ -38,6 +39,7 @@ let string_of_symbol symbol : string =
   | X (T T_SHARED) -> "shared"
   | X (T T_SEMICOLON_EOL) -> ";" (* suppress the \n *)
   | X (T T_SEMICOLON) -> ";"
+  | X (T T_SYSTEM) -> "system"
   | X (T T_RPAR) -> ")"
   | X (T T_ROTROP) -> binop "<>>"
   | X (T T_ROTRASSIGN) -> binassign "<>>="
@@ -88,6 +90,7 @@ let string_of_symbol symbol : string =
   | X (T T_GEOP) -> relop ">="
   | X (T T_FUNC) -> "func"
   | X (T T_FOR) -> "for"
+  | X (T T_FLEXIBLE) -> "flexible"
   | X (T T_FLOAT) -> "<float>"
   | X (T T_EQOP) -> relop "=="
   | X (T T_EQ) -> "="
@@ -203,6 +206,7 @@ let string_of_symbol symbol : string =
   | X (N N_typ_un) -> "<typ_un>"
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
+  | X (N N_stab) -> "<stab>"
   | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
 
 (* In order to print a view of the stack that includes semantic values,

@@ -12,10 +12,10 @@ let
       overlays = [
         (self: super: { sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; }; })
         # Selecting the ocaml version
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
-        # Additional ocaml package
+        # (self: super: { ocamlPackages = super.ocamlPackages; })
         (
           self: super: {
+            # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               wasm = import ./ocaml-wasm.nix {
                 inherit (self) stdenv fetchFromGitHub ocaml;
@@ -26,6 +26,8 @@ let
                 inherit (self.ocamlPackages) findlib;
               };
             };
+            # wasmtime
+            wasmtime = self.callPackage ./wasmtime.nix {};
           }
         )
       ];

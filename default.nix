@@ -23,11 +23,8 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   llvmBuildInputs = [
-    nixpkgs.clang # for native building
-    nixpkgs.clang_10 # for wasm building
+    nixpkgs.clang_10 # for native/wasm building
     nixpkgs.lld_10 # for wasm building
-    nixpkgs.llvm_10 # for wasm and DWARF testing
-    nixpkgs.lldb_10 # for wasm and DWARF testing
   ];
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
@@ -35,7 +32,7 @@ let
   # But for some reason it does not handle building for Wasm well, so
   # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang"
+    export CLANG="${nixpkgs.clang_10}/bin/clang"
     export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
   '';
@@ -104,6 +101,15 @@ let ocaml_exe = name: bin:
     if nixpkgs.stdenv.isDarwin
     then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
+
+  musl-wasi-sysroot = stdenv.mkDerivation {
+    name = "musl-wasi-sysroot";
+    src = nixpkgs.sources.musl-wasi;
+    phases = [ "unpackPhase" "installPhase" ];
+    installPhase = ''
+      make SYSROOT="$out" include_dirs
+    '';
+  };
 in
 
 rec {
@@ -118,6 +124,8 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${nixpkgs.sources.libtommath}
+      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
     '';
 
     doCheck = true;
@@ -169,9 +177,9 @@ rec {
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
+    # And test/run-drun is actually run twice (once with drun and once with ic-ref-run)
     let test_subdir = dir: deps:
       testDerivation {
-        name = "test-${dir}";
         # include from test/ only the common files, plus everything in test/${dir}/
         src =
           with nixpkgs.lib;
@@ -208,23 +216,29 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
-
-	    if test -e ${dir}/_out/stats.csv
-	    then
-	      cp ${dir}/_out/stats.csv $out
-	    fi
           '';
       }; in
 
     let perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
-          export PERF_OUT=$out
-        '' + args.checkPhase;
+          mkdir -p $out
+          export PERF_OUT=$out/stats.csv
+        '' + args.checkPhase + ''
+          # export stats to hydra
+          mkdir -p $out/nix-support
+          tr '/;' '_\t' < $out/stats.csv > $out/nix-support/hydra-metrics
+
+          # sanity check
+          if ! grep -q ^gas/ $out/stats.csv
+          then
+            echo "perf stats do not include gas. change in drun output format?" >&2
+            exit 1
+          fi
+        '';
       }); in
 
     let qc = testDerivation {
-      name = "test-qc";
       buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
@@ -233,7 +247,6 @@ rec {
     }; in
 
     let lsp = testDerivation {
-      name = "test-lsp";
       src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
@@ -242,8 +255,7 @@ rec {
       '';
     }; in
 
-    let unit-tests = ocamlTestDerivation {
-      name = "unit-tests";
+    let unit = ocamlTestDerivation {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
@@ -254,17 +266,23 @@ rec {
       '';
     }; in
 
-    { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-ref ];
-      perf      = perf_subdir "perf"      [ moc drun ];
-      fail      = test_subdir "fail"      [ moc ];
-      repl      = test_subdir "repl"      [ moc ];
-      ld        = test_subdir "ld"        [ mo-ld ];
-      idl       = test_subdir "idl"       [ didc ];
-      mo-idl    = test_subdir "mo-idl"    [ moc didc ];
-      trap      = test_subdir "trap"      [ moc ];
-      run-deser = test_subdir "run-deser" [ deser ];
-      inherit qc lsp unit-tests;
+    let fix_names = builtins.mapAttrs (name: deriv:
+      deriv.overrideAttrs (_old: { name = "test-${name}"; })
+    ); in
+
+    fix_names {
+      run        = test_subdir "run"        [ moc ] ;
+      drun       = test_subdir "run-drun"   [ moc drun ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
+      perf       = perf_subdir "perf"       [ moc drun ];
+      fail       = test_subdir "fail"       [ moc ];
+      repl       = test_subdir "repl"       [ moc ];
+      ld         = test_subdir "ld"         [ mo-ld ];
+      idl        = test_subdir "idl"        [ didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      trap       = test_subdir "trap"       [ moc ];
+      run-deser  = test_subdir "run-deser"  [ deser ];
+      inherit qc lsp unit;
     };
 
   samples = stdenv.mkDerivation {
@@ -344,19 +362,31 @@ rec {
     '';
   };
 
-  stdlib = stdenv.mkDerivation {
-    name = "stdlib";
-    src = subpath ./stdlib/src;
-    phases = "unpackPhase installPhase";
-    installPhase = ''
-      mkdir -p $out
-      cp ./*.mo $out
+  check-formatting = stdenv.mkDerivation {
+    name = "check-formatting";
+    buildInputs = with nixpkgs; [ ocamlformat ];
+    src = subpath "./src";
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      ocamlformat --check languageServer/*.{ml,mli}
     '';
   };
 
-  stdlib-tests = stdenv.mkDerivation {
-    name = "stdlib-tests";
-    src = subpath ./stdlib/test;
+  base-src = stdenv.mkDerivation {
+    name = "base-src";
+    phases = "unpackPhase installPhase";
+    src = nixpkgs.sources.motoko-base + "/src";
+    installPhase = ''
+      mkdir -p $out
+      cp -rv * $out
+    '';
+  };
+
+  base-tests = stdenv.mkDerivation {
+    name = "base-tests";
+    src = nixpkgs.sources.motoko-base;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     installPhase = "touch $out";
@@ -365,65 +395,10 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc STDLIB=${stdlib}
+      make MOC=moc -C test
+      make MOC=moc -C examples
     '';
   };
-
-  examples =
-    let example_subdir = dir: stdenv.mkDerivation {
-      name = dir;
-      src = subpath "./stdlib/examples/${dir}";
-      phases = "unpackPhase checkPhase installPhase";
-      doCheck = true;
-      installPhase = "touch $out";
-      buildInputs = [
-        nixpkgs.bash
-        moc
-        nixpkgs.wasmtime
-      ];
-      checkPhase = ''
-        make MOC=moc STDLIB=${stdlib}
-      '';
-    }; in
-    {
-      actorspec        = example_subdir "actorspec";
-      rx               = example_subdir "rx";
-      produce-exchange = example_subdir "produce-exchange";
-    };
-
-
-  stdlib-doc = stdenv.mkDerivation {
-    name = "stdlib-doc";
-    src = subpath ./stdlib/doc;
-    outputs = [ "out" "adocs" ];
-    buildInputs = with nixpkgs;
-      [ bash perl asciidoctor html-proofer ];
-    buildPhase = ''
-      patchShebangs .
-      make STDLIB=${stdlib}
-    '';
-
-    doCheck = true;
-    # These ones are needed for htmlproofer
-    LOCALE_ARCHIVE = nixpkgs.lib.optionalString nixpkgs.stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
-    LANG = "en_US.UTF-8";
-    LC_TYPE = "en_US.UTF-8";
-    LANGUAGE = "en_US.UTF-8";
-    checkPhase = ''
-      htmlproofer --disable-external _out/
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv _out/* $out/
-      mkdir -p $out/nix-support
-      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
-
-      mkdir -p $adocs
-      mv _build/*.adoc $adocs/
-    '';
-  };
-  stdlib-adocs = stdlib-doc.adocs;
 
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
@@ -444,16 +419,14 @@ rec {
       deser
       samples
       rts
-      stdlib
-      stdlib-tests
-      stdlib-doc
-      stdlib-adocs
+      base-src
+      base-tests
       users-guide
       ic-ref
       shell
+      check-formatting
       check-generated
-    ] ++ builtins.attrValues tests
-      ++ builtins.attrValues examples;
+    ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
   };
 
   shell = nixpkgs.mkShell {
@@ -471,7 +444,7 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.libedit nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop /* nixpkgs.rustc nixpkgs.cargo */ nixpkgs.rustup nixpkgs.ncurses.dev nixpkgs.libedit.dev nixpkgs.python3 nixpkgs.cmake nixpkgs.moreutils ] ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
@@ -485,6 +458,8 @@ rec {
       "-DLibEdit_LIBRARIES=${nixpkgs.libedit}/lib"
     '';
     TOMMATHSRC = nixpkgs.sources.libtommath;
+    MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
+    MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 

@@ -43,6 +43,9 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({i with it = Block (res, else_)} :: r')
     | { it = Const {it = I32 _; _}; _} :: l', ({it = If (res,then_,_); _} as i) :: r' ->
       go l' ({i with it = Block (res, then_)} :: r')
+    (* `If` blocks after negation can swap legs *)
+    | { it = Test (I32 I32Op.Eqz); _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
+      go l' ({i with it = If (res,else_,then_)} :: r')
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)
@@ -120,17 +123,22 @@ let with_region (pos : Source.region) (body : t) : t =
 
 (* Depths-managing combinators *)
 
+let as_block_type : stack_type -> block_type = function
+  | [] -> ValBlockType None
+  | [t] -> ValBlockType (Some t)
+  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
+
 let if_ (ty : stack_type) (thn : t) (els : t) : t =
   fun d pos rest ->
-    (If (ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
 
 let block_ (ty : stack_type) (body : t) : t =
   fun d pos rest ->
-    (Block (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 let loop_ (ty : stack_type) (body : t) : t =
   fun d pos rest ->
-    (Loop (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t

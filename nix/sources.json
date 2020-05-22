@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "d696e4ebcee16f374c0cd8377364f5c5beb23c9f",
+        "rev": "027bda4a40176ef3eb676610d8673affe6cde81c",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "9f947598f82d7782a3da4e6c0cf8a7b3ac6d5947",
+        "rev": "bc61257285871a32d2f15f4505d286b0a3343f14",
         "type": "git"
     },
     "esm": {
@@ -20,9 +20,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "master",
+        "ref": "release-0.2",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "822a201c5e4e993567ac1066237c02dd9a6fcccb",
+        "rev": "0506a59ab9e55cdd537e90d0e06c576aec119295",
         "type": "git"
     },
     "libtommath": {
@@ -37,16 +37,36 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
         "version": "v1.2.0"
     },
-    "nixpkgs": {
-        "branch": "dfinity",
-        "description": "Nix Packages collection",
-        "homepage": "https://github.com/NixOS/nixpkgs",
-        "owner": "ggreif",
-        "repo": "nixpkgs",
-        "rev": "c79d508bf1bf3440d82ba1bd77f0b72766e74d80",
-        "sha256": "0mrmc9hk9kvi6ws1ss0ali8sp1w4g4hwybwb9ljlpsr8s79pkabb",
+    "motoko-base": {
+        "ref": "next-moc",
+        "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
+        "rev": "db9c494dc344f5de182061bbde3aa68c1a117802",
+        "type": "git"
+    },
+    "musl-wasi": {
+        "branch": "master",
+        "builtin": false,
+        "description": "WASI libc implementation for WebAssembly",
+        "homepage": "https://wasi.dev",
+        "owner": "WebAssembly",
+        "repo": "wasi-libc",
+        "rev": "86550c37ab14962233f73413ea0e0c0e57d056d7",
+        "sha256": "16qbfkvsz8ks73r1jmwy0q8dshzmbj6cc72zvb7krin0dhmb5krf",
         "type": "tarball",
-        "url": "https://github.com/ggreif/nixpkgs/archive/c79d508bf1bf3440d82ba1bd77f0b72766e74d80.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/86550c37ab14962233f73413ea0e0c0e57d056d7.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "release-20.03",
+        "builtin": true,
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "homepage": null,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "fb5517f5c9e3fa12f038e6f1c2b677b0b040dd47",
+        "sha256": "16cyh1v2nwrwldc7hh1bvjr6lg86ncbhfla0zgb6qk28yc64l7cp",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/fb5517f5c9e3fa12f038e6f1c2b677b0b040dd47.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

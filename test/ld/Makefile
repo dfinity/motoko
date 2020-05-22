@@ -9,8 +9,8 @@ accept:
 clean:
 	rm -rf _out
 
-WASM_CLANG?=clang-11
-WASM_LD?=wasm-ld
+WASM_CLANG?=clang-10
+WASM_LD?=wasm-ld-10
 MO_LD?=../../src/mo-ld
 
 _out/%.lib.o: %.c | _out

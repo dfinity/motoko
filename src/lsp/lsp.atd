@@ -80,11 +80,11 @@ type response_message = {
 <ocaml field_prefix="response_message_">
 
 type response_result = [
-    Initialize <json name="initialize"> of initialize_result
-  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result nullable
-  | TextDocumentDefinitionResponse <json name="textDocument/definition"> of location list
-  | CompletionResponse <json name="textDocument/completion"> of completion_item list
-  | ShutdownResponse <json name="shutdown"> of unit nullable
+    Initialize of initialize_result
+  | TextDocumentHoverResponse of hover_result nullable
+  | TextDocumentDefinitionResponse of location list
+  | CompletionResponse of completion_item list
+  | ShutdownResponse of unit nullable
 ]
 
 type response_error = {
