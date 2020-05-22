@@ -17,7 +17,7 @@ actor class Counter(i : Int) {
 func show(note : Text, c : Int) {};
 
 // Create an actor.
-let c = Counter(10);
+let c = await Counter(10);
 
 // Issue ten `dec` messages.
 func testDec() : async () {
