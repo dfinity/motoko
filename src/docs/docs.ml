@@ -114,28 +114,67 @@ let simplistic_docs : string -> unit =
   List.iter (fun (v, p) -> Printf.printf "import %s \"%s\";\n" v p) imports;
   List.iter (fun doc -> print_endline (render_doc_string doc)) docs
 
-let html_docs : string -> unit =
- fun file ->
-  Printf.printf "Figuring out docs for %s:\n" file;
+let html_docs : string -> string -> unit =
+ fun in_file out_file ->
+  Printf.printf "Figuring out docs for %s:\n" in_file;
   let tokenizer, get_trivia_table =
-    Lexer.tokenizer Lexer.NormalWithTrivia (Lexing.from_channel (open_in file))
+    Lexer.tokenizer Lexer.NormalWithTrivia
+      (Lexing.from_channel (open_in in_file))
   in
   let parser =
     MenhirLib.Convert.Simplified.traditional2revised Parser.parse_prog
   in
-  let prog = parser tokenizer file in
+  let prog = parser tokenizer in_file in
   let trivia_table = get_trivia_table () in
   let module_docs, imports, docs = extract_docs prog trivia_table in
   let html = Html.render_docs module_docs docs in
-  let oc = open_out "/home/creek/code/mo-doc/index.html" in
+  let oc = open_out out_file in
   Printf.fprintf oc "%s" html;
   flush oc;
   close_out oc
 
 (* let file = "/home/creek/code/motoko/src/mytest.mo" *)
-let file = "/home/creek/code/mo-libs/motoko-base/src/List.mo"
-(* let file = "/home/creek/code/mo-libs/motoko-base/src/HashMap.mo" *)
+(* let file = "/home/creek/code/mo-libs/motoko-base/src/List.mo" *)
+let file = "/home/creek/code/mo-libs/motoko-base/src/HashMap.mo"
+
 (* let file = "/home/creek/code/mo-libs/motoko-base/src/RBTree.mo" *)
 
+let list_files_recursively dir =
+  let rec loop result = function
+    | f :: fs when Sys.is_directory f ->
+        Sys.readdir f
+        |> Array.to_list
+        |> List.map (Filename.concat f)
+        |> List.append fs
+        |> loop result
+    | f :: fs -> loop (f :: result) fs
+    | [] -> result
+  in
+  loop [] [ dir ]
+
 (* let start () = simplistic_docs file *)
-let start () = html_docs file
+let start source output =
+  try Unix.mkdir output 0o777 with _ -> ();
+  Printf.printf "%s -> %s\n" source output;
+  let all_files =
+    (list_files_recursively source) in
+  List.iter print_endline all_files;
+  let all_files =
+    List.filter
+      (fun f -> Filename.extension f = ".mo") all_files
+  in
+  List.iter
+    (fun file ->
+      let rel_path =
+        file
+        |> Lib.FilePath.relative_to source
+        |> Option.get
+        |> Lib.String.chop_suffix "mo"
+        |> Option.get
+        |> (fun f -> f ^ "html")
+      in
+      let out_path = Filename.concat output rel_path in
+      Printf.printf "%s -> %s\n" file out_path;
+      html_docs file out_path
+    )
+    all_files

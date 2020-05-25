@@ -6,6 +6,7 @@ type doc = { doc_comment : string option; declaration : declaration_doc }
 
 and declaration_doc =
   | Function of function_doc
+  | Value of value_doc
   | Type of type_doc
   | Class of class_doc
   | Unknown of string
@@ -21,6 +22,10 @@ and function_arg_doc = {
   name : string;
   typ : Syntax.typ option;
   doc : string option;
+}
+and value_doc = {
+    name : string;
+    typ : Syntax.typ option;
 }
 
 and type_doc = { name : string; type_args : string list; typ : Syntax.typ }
@@ -82,6 +87,8 @@ let rec extract_args find_trivia = function
             doc = Some (string_of_leading (find_trivia at));
           })
         (extract_args find_trivia p)
+  | Source.{ it = Syntax.WildP; _ } ->
+      None
   | pat ->
       Wasm.Sexpr.print 80 (Arrange.pat pat);
       None
@@ -93,20 +100,20 @@ let extract_func_args find_trivia = function
   | _ -> []
 
 let rec extract_let_doc (find_trivia : Source.region -> Lexer.trivia_info) :
-    Syntax.exp -> string -> Syntax.typ option -> declaration_doc option =
+    Syntax.exp -> string -> Syntax.typ option -> declaration_doc =
   function
   | Source.{ it = Syntax.FuncE (_, _, type_args, args, typ, _, _); _ } ->
       fun name _ ->
         let args_doc = extract_func_args find_trivia args in
-        Some (Function { name; typ; type_args; args = args_doc })
+        Function { name; typ; type_args; args = args_doc }
   | Source.{ it = Syntax.AnnotE (e, ty); _ } ->
       fun name _ -> extract_let_doc find_trivia e name (Some ty)
-  | _ -> fun name ty -> None
+  | _ -> fun name typ -> Value { name; typ }
 
 let rec extract_doc find_trivia = function
   | Source.
       { it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs); _ } ->
-      extract_let_doc find_trivia rhs name None
+      Some (extract_let_doc find_trivia rhs name None)
   | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
       Some (Type { name = name.it; type_args = []; typ })
   | Source.

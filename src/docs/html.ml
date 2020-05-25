@@ -15,6 +15,10 @@ let rec join_with sep = function
   | [ x ] -> x
   | x :: xs -> x @ sep @ join_with sep xs
 
+let fn_name s = span ~a:[ a_class [ "fnname" ] ] [ txt s ]
+
+let class_name s = span ~a:[ a_class [ "classname" ] ] [ txt s ]
+
 let keyword s = span ~a:[ a_class [ "keyword" ] ] [ txt s ]
 
 let parameter s = span ~a:[ a_class [ "parameter" ] ] [ txt s ]
@@ -82,7 +86,7 @@ let rec html_of_type typ =
       [ txt "["; html_of_mut mut ] @ html_of_type ty @ [ txt "]" ]
   | Syntax.AsyncT (_scope, typ) -> keyword "async " :: html_of_type typ
   | Syntax.ObjT (obj_sort, fields) ->
-      [ txt "{" ]
+      [ txt "{ " ]
       @ join_with [ txt "; " ]
           (List.map
              (fun (field : Syntax.typ_field) ->
@@ -93,7 +97,7 @@ let rec html_of_type typ =
                ]
                @ html_of_type field.Source.it.Syntax.typ)
              fields)
-      @ [ txt "}" ]
+      @ [ txt " }" ]
 
 let html_of_arg (arg : Extract.function_arg_doc) =
   parameter arg.name
@@ -123,17 +127,21 @@ let rec html_of_declaration = function
       in
       let return_typ =
         Option.fold ~none:[]
-          ~some:(fun typ -> txt " -> " :: html_of_type typ)
+          ~some:(fun typ -> txt " : " :: html_of_type typ)
           function_doc.typ
       in
-      code
-        ( [ keyword "func "; txt function_doc.name ]
-        @ ty_args
-        @ (txt "(" :: br_indent)
-        @ args
-        @ br'
-        @ [ txt ")" ]
-        @ return_typ )
+      h4
+        ~a:[ a_class [ "function" ]; a_id ("value." ^ function_doc.name) ]
+        [
+          code
+            ( [ keyword "public func "; fn_name function_doc.name ]
+            @ ty_args
+            @ (txt "(" :: br_indent)
+            @ args
+            @ br'
+            @ [ txt ")" ]
+            @ return_typ );
+        ]
   | Class class_doc ->
       let ty_args =
         match class_doc.type_args with
@@ -145,8 +153,11 @@ let rec html_of_declaration = function
             @ [ txt ">" ]
       in
       div
-        ~a:[ a_class [ "class-declaration" ] ]
-        ( [ h3 ([ keyword "class "; html_type class_doc.name ] @ ty_args) ]
+        ( [
+            h4
+              ~a:[ a_class [ "class-declaration" ]; a_id ("class." ^ class_doc.name) ]
+              ([ keyword "class "; class_name class_doc.name ] @ ty_args);
+          ]
         @ List.map html_of_doc class_doc.fields )
   | Type type_doc ->
       let ty_args =
@@ -157,11 +168,20 @@ let rec html_of_declaration = function
             :: join_with [ txt ", " ] (List.map (fun t -> [ html_type t ]) xs)
             @ [ txt ">" ]
       in
-      code
+      h4
+        ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
         ( [ keyword "type "; html_type type_doc.name ]
         @ ty_args
         @ [ txt " = " ]
         @ html_of_type type_doc.typ )
+  | Value value_doc ->
+      h4
+     ~a:[ a_class [ "value-declaration" ]; a_id ("value." ^ value_doc.name) ]
+        [
+          code
+            ( [ keyword "public let "; fn_name value_doc.name; txt " : " ]
+            @ Option.fold ~none:[] ~some:html_of_type value_doc.typ );
+        ]
   | Unknown s -> code [ txt "Unknown: "; txt s ]
 
 and html_of_doc { doc_comment; declaration } =
