@@ -926,7 +926,8 @@ let encode (em : extended_module) =
             if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;
             assert (attr = a);
             writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
-          | StringAttribute (a, path) when a = Dwarf5.dw_AT_decl_file ->
+          | StringAttribute (a, path0) when a = Dwarf5.dw_AT_decl_file ->
+            let path = if path0 = "" then "prim" else path0 in
             if attr <> a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices));
             assert (attr = a);
             writeForm form (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
