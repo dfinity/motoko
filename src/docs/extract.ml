@@ -23,12 +23,10 @@ and function_arg_doc = {
   typ : Syntax.typ option;
   doc : string option;
 }
-and value_doc = {
-    name : string;
-    typ : Syntax.typ option;
-}
 
-and type_doc = { name : string; type_args : string list; typ : Syntax.typ }
+and value_doc = { name : string; typ : Syntax.typ option }
+
+and type_doc = { name : string; type_args : Syntax.typ_bind list; typ : Syntax.typ }
 
 and class_doc = {
   name : string;
@@ -87,8 +85,7 @@ let rec extract_args find_trivia = function
             doc = Some (string_of_leading (find_trivia at));
           })
         (extract_args find_trivia p)
-  | Source.{ it = Syntax.WildP; _ } ->
-      None
+  | Source.{ it = Syntax.WildP; _ } -> None
   | pat ->
       Wasm.Sexpr.print 80 (Arrange.pat pat);
       None
@@ -100,8 +97,7 @@ let extract_func_args find_trivia = function
   | _ -> []
 
 let rec extract_let_doc (find_trivia : Source.region -> Lexer.trivia_info) :
-    Syntax.exp -> string -> Syntax.typ option -> declaration_doc =
-  function
+    Syntax.exp -> string -> Syntax.typ option -> declaration_doc = function
   | Source.{ it = Syntax.FuncE (_, _, type_args, args, typ, _, _); _ } ->
       fun name _ ->
         let args_doc = extract_func_args find_trivia args in
@@ -115,7 +111,7 @@ let rec extract_doc find_trivia = function
       { it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs); _ } ->
       Some (extract_let_doc find_trivia rhs name None)
   | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
-      Some (Type { name = name.it; type_args = []; typ })
+      Some (Type { name = name.it; type_args = ty_args; typ })
   | Source.
       { it = Syntax.ClassD (name, type_args, _ctor_pat, _, _, _, fields); _ } ->
       Some
@@ -143,7 +139,8 @@ and extract_exp_field find_trivia exp_field =
 
 type imports = (string * string) list
 
-let extract_docs : Syntax.prog -> Lexer.triv_table -> string * imports * doc list =
+let extract_docs :
+    Syntax.prog -> Lexer.triv_table -> string * imports * doc list =
  fun prog trivia_table ->
   let lookup_trivia (line, column) =
     Lexer.PosHashtbl.find_opt trivia_table Lexer.{ line; column }

@@ -165,7 +165,8 @@ let rec html_of_declaration = function
         | [] -> []
         | xs ->
             txt "<"
-            :: join_with [ txt ", " ] (List.map (fun t -> [ html_type t ]) xs)
+            :: join_with [ txt ", " ]
+                 (List.map (fun t -> [ html_of_typ_bind t ]) xs)
             @ [ txt ">" ]
       in
       h4

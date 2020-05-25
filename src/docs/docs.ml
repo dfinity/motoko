@@ -72,11 +72,14 @@ let rec declaration_header : declaration_doc -> string = function
       let typ = opt_typ function_doc.typ in
       Printf.sprintf "Function %s\n========\nfunc %s%s(%s)%s" function_doc.name
         function_doc.name ty_args args typ
+  | Value value_doc ->
+      Printf.sprintf "Value %s\n========\nlet %s%s" value_doc.name
+        value_doc.name (opt_typ value_doc.typ)
   | Type type_doc ->
       Printf.sprintf "Type %s\n========\ntype %s%s = %s" type_doc.name
         type_doc.name
         ( if type_doc.type_args = [] then ""
-        else "<" ^ String.concat ", " type_doc.type_args ^ ">" )
+        else "<" ^ String.concat ", " (List.map string_of_typ_bind type_doc.type_args) ^ ">" )
         (string_of_typ type_doc.typ)
   | Class class_doc ->
       Printf.sprintf "Class %s\n========\nbegin class %s%s\n" class_doc.name
