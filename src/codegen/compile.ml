@@ -6852,7 +6852,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Unreachable,
       compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
       FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
-      G.trace "DANGER... return" ^^ G.i Return
+      G.i Return
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
@@ -7721,7 +7721,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
           then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
         ) (Freevars.M.keys (Freevars.exp e));
     let dump_ty i (t : Ir.arg) = Printf.printf "%d Type(compile_const_exp): %s\n" i (Wasm.Sexpr.to_string 80 (Arrange_type.typ t.note)) in
-    List.iteri dump_ty args;
+    (*List.iteri dump_ty args;*)
         G.dw_statement e.at ^^ compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | BlockE (decs, e) ->

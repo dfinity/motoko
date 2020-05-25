@@ -352,12 +352,12 @@ let rec dw_tag_open : dw_TAG -> t =
   | _ -> assert false
 and lookup_pointer_key () : t * int =
   match !pointer_key with
-  | Some r -> Printf.printf "pointer_key!!!  %d\n" r;nop, r
+  | Some r -> nop, r
   | None ->
     let dw, r =
       fakeReferenceableBlock (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
         (dw_attrs [Bit_size 1; Data_bit_offset 1]) in
-    pointer_key := Some r;Printf.printf "pointer_key!  %d\n" r;
+    pointer_key := Some r;
     dw, r
 and fakeBlock tag attrs =
   fakeColumn 0 tag (Block (as_block_type [](*FIXME: constant*), attrs 0l Wasm.Source.no_region []))
@@ -383,7 +383,7 @@ and dw_type_ref =
   | Type.Obj (_, fs) -> dw_object fs
 
   (* | Type.Opt inner -> assert false templated type *)
-  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
+  | typ -> (*Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ));*) dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
 and (^<^) (dw1, r) dw2 = (dw1 ^^ dw2, r)
@@ -487,7 +487,7 @@ and dw_prim_type_ref (prim : Type.prim) =
           variant_part ^^
           dw_tag_close
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
-      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); dw_type_ref Type.Any (* FIXME, this is "Any" for now *)
+      | ty -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim));*) dw_type_ref Type.Any (* FIXME, this is "Any" for now *)
 (* | _ -> assert false (* TODO *)*)
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;
