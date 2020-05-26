@@ -380,7 +380,7 @@ and dw_type_ref =
     end
   | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> dw_enum vs
-  | Type.Obj (_, fs) -> dw_object fs
+  | Type.Obj (Object, fs) -> dw_object fs
 
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> (*Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ));*) dw_type_ref Type.Any (* FIXME assert false *)
