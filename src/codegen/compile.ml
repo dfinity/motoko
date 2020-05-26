@@ -7583,7 +7583,7 @@ and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
   AllocHow.M.fold (fun v typ (ae, dw) ->
     let ae1, ix = VarEnv.add_direct_local env ae v in
-    G.(ae1, dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
+    G.(ae1, dw ^^ dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
   ) d (ae, G.nop)
 
 and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
