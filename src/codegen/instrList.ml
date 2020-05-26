@@ -522,7 +522,7 @@ and dw_object fs =
   | Some r -> nop, r
   | None ->
     let struct_ref =
-      (* reference to enumeration_type *)
+      (* reference to structure_type *)
       let internal_struct =
         fakeReferenceableBlock dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size 4]) in
       let field name =
