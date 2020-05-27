@@ -276,6 +276,7 @@ let dw_attr : dw_AT -> t =
       List.iter stash ops;
       Buffer.contents buf in
     fakeFile (string_of_ops ops) dw_AT_location Nop
+  | Discr_list -> assert false
 
 let dw_attrs = concat_map dw_attr
 
@@ -380,7 +381,7 @@ and dw_type_ref =
     end
   | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> dw_enum vs
-  | Type.Obj (Object, fs) -> dw_object fs
+  | Type.(Obj (Object, fs)) -> dw_object fs
 
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> (*Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ));*) dw_type_ref Type.Any (* FIXME assert false *)
@@ -526,7 +527,7 @@ and dw_object fs =
       let internal_struct =
         fakeReferenceableBlock dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size 4]) in
       let field name =
-        let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
+        let _hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
         fakeBlock dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
       (fst internal_struct ^^
        concat_map field selectors ^^
