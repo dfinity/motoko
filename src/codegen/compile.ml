@@ -7315,21 +7315,23 @@ and compile_exp (env : E.t) ae exp =
     let (set_i, get_i) = new_local env "switch_in" in
     let (set_j, get_j) = new_local env "switch_out" in
 
-    let rec go env = function
-      | [] -> CanFail (fun k -> k)
+    let rec go env dw_ty0 = function
+      | [] -> dw_ty0, CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
-          let ae1, code, dw = compile_pat_local env ae pat in
+          let ae1, dw_ty1, code1, dw = compile_pat_local env ae pat in
+          let dw_ty2, code2 = go env (dw_ty0 ^^ dw_ty1) cs in
+          dw_ty2,
           orElse ( CannotFail (get_i ^^ G.dw_statement pat.at) ^^^
-                   code ^^^
+                   code1 ^^^
                    CannotFail G.(dw_statement e.at ^^
                                  dw_tag
                                    (LexicalBlock e.at.left)
                                    (dw ^^ compile_exp_vanilla env ae1 e) ^^
                                  set_j))
-                 (go env cs)
+                 code2
           in
-      let code2 = go env cs in
-      G.dw_statement e.at ^^ code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
+      let dw_ty, code2 = go env G.nop cs in
+      dw_ty ^^ G.dw_statement e.at ^^ code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
@@ -7581,10 +7583,11 @@ and fill_pat env ae pat : patternCode =
 
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
-  AllocHow.M.fold (fun v typ (ae, dw) ->
+  AllocHow.M.fold (fun v typ (dw_ty, ae, dw) ->
     let ae1, ix = VarEnv.add_direct_local env ae v in
-    G.(ae1, dw ^^ dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
-  ) d (ae, G.nop)
+    let prereq_type = G.(effects (dw_tag_no_children (Type typ))) in
+    G.(dw_ty ^^ prereq_type, ae1, dw ^^ dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
+  ) d (G.nop, ae, G.nop)
 
 and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
   (fun (ae, code, dw) -> (ae, G.with_region pat.at code, dw)) @@
@@ -7594,18 +7597,19 @@ and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
     in (ae1, code0 ^^ code1, dw0 ^^ dw1)
   ) d (ae, G.nop, G.nop)
 
-and compile_pat_local env ae pat : VarEnv.t * patternCode * G.t =
+and compile_pat_local env ae pat : VarEnv.t * G.t * patternCode * G.t =
   (* It returns:
      - the extended environment
+     - the DWARF code declaring prerequisite types
      - the code to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
      - the DWARF code declaring the variable
   *)
-  let ae1, dw = alloc_pat_local env ae pat in
+  let dw_ty, ae1, dw = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
-  ae1, fill_code, dw
+  ae1, dw_ty, fill_code, dw
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.
