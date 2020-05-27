@@ -918,8 +918,8 @@ let encode (em : extended_module) =
         | None -> assert (t <> Dwarf5.dw_TAG_base_type)
         end;
         let contents = List.rev contentsRevd in
-        let isTag (t', _, _) = t = t' in
-        let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
+        let wanted_tag (t', _, _) = t = t' in
+        let (_, has_children, forms) = List.find wanted_tag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
           | RangeAttribute (a, r) ->
@@ -935,7 +935,7 @@ let encode (em : extended_module) =
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
           | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
         let rec indexOf cnt = function
-          | h :: t when isTag h -> cnt
+          | h :: t when wanted_tag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
           | _ -> failwith "not encountered" in
         uleb128 (indexOf 1 Abbreviation.abbreviations);
@@ -970,8 +970,11 @@ let encode (em : extended_module) =
             match !dwarf_tags with
             | [toplevel] -> writeTag toplevel
             | _ -> failwith "expected one toplevel tag"
-        ) in
-      custom_section ".debug_info" section_body dwarf_tags true
+          ) in
+      let relevant = function
+        | [Tag (None, 0, [])] -> false
+        | _ -> true in
+      custom_section ".debug_info" section_body dwarf_tags (relevant !dwarf_tags)
 
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
