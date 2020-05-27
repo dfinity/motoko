@@ -5850,9 +5850,7 @@ module PatCode = struct
           G.if_ [] G.nop is2
         )
 
-  let orTrap env : patternCode -> G.t = function
-    | CannotFail is -> is
-    | CanFail is -> is (E.trap_with env "pattern failed")
+  let orTrap env = with_fail (E.trap_with env "pattern failed")
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
