@@ -1,4 +1,4 @@
-// RUN: llvm-dwarfdump %.wasm -debug-info | tee /dev/tty | FileCheck %.mo -check-prefix=DWARF
+// RUN: llvm-dwarfdump %.wasm -debug-info | FileCheck %.mo -check-prefix=DWARF
 
 type Person = { name : Text; age : Nat };
 
