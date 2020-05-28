@@ -14,7 +14,7 @@ WASM_LD?=wasm-ld-10
 MO_LD?=../../src/mo-ld
 
 _out/%.lib.o: %.c | _out
-	$(WASM_CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
+	$(WASM_CLANG) --compile -fpic --std=c11 --target=wasm32 -fvisibility=hidden --optimize=3 \
 		-fno-builtin -Wall \
 		$< --output $@
 
