@@ -571,7 +571,7 @@ let encode (em : extended_module) =
         section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> []) in
 
       custom_section "name" name_section_body ns
-        (Flags.debug_info &&
+        (Mo_config.Flags.debug_info &&
            (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> []))
 
     (* Module *)
