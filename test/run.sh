@@ -25,6 +25,7 @@ DTESTS=no
 IDL=no
 PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
+MOCFLAGS=-g
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
@@ -237,14 +238,14 @@ do
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
 
     # Typecheck
-    run tc $MOC $moc_extra_flags --check $base.mo
+    run tc $MOC $MOCFLAGS $moc_extra_flags --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $moc_extra_flags --idl $base.mo -o $out/$base.did
+        run idl $MOC $MOCFLAGS $moc_extra_flags --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -258,10 +259,10 @@ do
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
+          run run $MOC $MOCFLAGS $moc_extra_flags --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $MOC $MOCFLAGS $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -271,7 +272,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $moc_extra_flags --hide-warnings -r -iR $base.mo
+          run run-low $MOC $MOCFLAGS $moc_extra_flags --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -304,13 +305,13 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp $MOC $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $MOC $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $MOC $MOCFLAGS $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $MOC $MOCFLAGS $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
-          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $MOC $MOCFLAGS $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $MOC $MOCFLAGS $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -409,7 +410,7 @@ do
         fi
 
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp $MOC ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp $MOC $MOCFLAGS ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
