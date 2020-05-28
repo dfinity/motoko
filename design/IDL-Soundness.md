@@ -17,13 +17,13 @@ An IDL language would instantiate these relations:
 
 Parameter meta-variables:
 
- * `t`: A argument or result type
+ * `t`: An argument or result type
  * `s ::= t1 -> t2`: A service type
 
 Parameter relations (to be instantated by a concrete solution):
 
  * `t1 <: t2`:
-   A value encoded at `t1` can understood at `t2`
+   A value encoded at `t1` can be understood at `t2`
  * `s1 in t1 <: s2 in t2`:
    A value encoded at `t1` contains a service reference at type `s1`, which,
    when decoded at `t2`, has type `s2`.
@@ -193,7 +193,6 @@ Assume `S` is sound, and consider the various state transitions `S -> S'`:
     So `s3 <: s2`, as required.
 
 Therefore, every `{} -->* S` is sound.
-
 
 
 
