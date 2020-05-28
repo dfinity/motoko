@@ -50,7 +50,7 @@ Judgments:
      ```
          A fresh in S
      ─────────────────────
-       S --> { A : s, S}
+       S --> (A : s) ∪ S
      ```
 
    * Services can evolve
@@ -64,24 +64,24 @@ Judgments:
      ```
               A : s ∈ S
      ────────────────────────────
-       S  --> { B has A : s, S'}
+       S  --> (B has A : s) ∪ S
      ```
 
    * Services can send references to each other (uses auxillary judgments)
      ```
        A has C at s1 ∈ S    [S] A =(t1)=(t2)=> B    s1 in t1 <: s2 in t2
      ────────────────────────────────────────────────────────────────────
-                            S --> { B has C : s2, S}
+                            S --> (B has C : s2) ∪ S
      ```
 
    * Host-language subtyping may apply
      ```
        A has B at s1 ∈ S   s1 <:h s2
      ──────────────────────────────────
-          S --> { A has B : s2, S}
+          S --> (A has B : s2) ∪ S
      ```
 
- * `[S] A =(t1)=(t2)=> B`: In state `S`, `A` can send a message to `B` at type `t1`, which is understood at type `t2` by `B`.
+ * `[S] A =(t1)=(t2)=> B`: In state `S`, `A` can send a message to `B` at type `t1`, and `B` expects the message to be of type `t2`.
 
    * Calls:
      ```
