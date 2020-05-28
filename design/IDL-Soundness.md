@@ -31,7 +31,7 @@ Parameter relations (to be instantated by a concrete solution):
    Host-language subtyping relation on service types
    (trivial reflexive relation in host languages without subtyping)
 
-Judgemnets
+Judgements
 ----------
 
 Further meta-variables:
@@ -42,7 +42,7 @@ Further meta-variables:
    * `A : s`: Service `A` has service state `s`
    * `A has B : s`: Service `A` has a reference to service `B` at type `s`
 
-Judgments:
+Judgements:
 
  * `S1 --> S2`: State transitions
 
