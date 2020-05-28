@@ -74,7 +74,7 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    ```
 2. Run `moc` as normal, e.g.
    ```
-   ./src/moc -c foo.mo -o foo.wasm
+   ./src/moc -g -c foo.mo -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using
