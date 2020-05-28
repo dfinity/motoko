@@ -55,6 +55,9 @@ let rec string_of_typ typ =
 let opt_typ : Syntax.typ option -> string =
   Option.fold ~none:"" ~some:(fun ty -> " : " ^ string_of_typ ty)
 
+let string_of_doc_typ : doc_type -> string = function
+  | DTPlain ty -> string_of_typ ty
+
 let function_arg : function_arg_doc -> string =
  fun arg -> Printf.sprintf "%s%s" arg.name (opt_typ arg.typ)
 
@@ -80,7 +83,7 @@ let rec declaration_header : declaration_doc -> string = function
         type_doc.name
         ( if type_doc.type_args = [] then ""
         else "<" ^ String.concat ", " (List.map string_of_typ_bind type_doc.type_args) ^ ">" )
-        (string_of_typ type_doc.typ)
+        (string_of_doc_typ type_doc.typ)
   | Class class_doc ->
       Printf.sprintf "Class %s\n========\nbegin class %s%s\n" class_doc.name
         class_doc.name

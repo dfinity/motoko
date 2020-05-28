@@ -26,7 +26,16 @@ and function_arg_doc = {
 
 and value_doc = { name : string; typ : Syntax.typ option }
 
-and type_doc = { name : string; type_args : Syntax.typ_bind list; typ : Syntax.typ }
+and type_doc = {
+  name : string;
+  type_args : Syntax.typ_bind list;
+  typ : doc_type;
+}
+
+and doc_type =
+  | DTPlain of Syntax.typ
+  (* One level unwrapping of an object type with documentation on its fields *)
+  | DTObj of (Syntax.typ_field * string) list
 
 and class_doc = {
   name : string;
@@ -106,12 +115,26 @@ let rec extract_let_doc (find_trivia : Source.region -> Lexer.trivia_info) :
       fun name _ -> extract_let_doc find_trivia e name (Some ty)
   | _ -> fun name typ -> Value { name; typ }
 
+let extract_obj_field_doc find_trivia :
+    Syntax.typ_field -> Syntax.typ_field * string =
+ fun ({ at; _ } as tf) -> (tf, string_of_leading (find_trivia at))
+
 let rec extract_doc find_trivia = function
   | Source.
       { it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs); _ } ->
       Some (extract_let_doc find_trivia rhs name None)
   | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
-      Some (Type { name = name.it; type_args = ty_args; typ })
+      let doc_typ =
+        match typ.it with
+        | Syntax.ObjT (_, fields) ->
+            let doc_fields =
+              List.map (extract_obj_field_doc find_trivia) fields
+            in
+            (* TODO Only unwrap the ObjT if at least one field is documented *)
+            DTObj doc_fields
+        | _ -> DTPlain typ
+      in
+      Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })
   | Source.
       { it = Syntax.ClassD (name, type_args, _ctor_pat, _, _, _, fields); _ } ->
       Some

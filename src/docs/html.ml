@@ -87,17 +87,58 @@ let rec html_of_type typ =
   | Syntax.AsyncT (_scope, typ) -> keyword "async " :: html_of_type typ
   | Syntax.ObjT (obj_sort, fields) ->
       [ txt "{ " ]
-      @ join_with [ txt "; " ]
-          (List.map
-             (fun (field : Syntax.typ_field) ->
-               (* TODO mut might be wrong here *)
-               [
-                 html_of_mut field.Source.it.Syntax.mut;
-                 txt (field.Source.it.Syntax.id.Source.it ^ " : ");
-               ]
-               @ html_of_type field.Source.it.Syntax.typ)
-             fields)
+      @ join_with [ txt "; " ] (List.map html_of_typ_field fields)
       @ [ txt " }" ]
+
+and html_of_typ_field (field : Syntax.typ_field) =
+  (* TODO mut might be wrong here *)
+  [
+    html_of_mut field.Source.it.Syntax.mut;
+    txt (field.Source.it.Syntax.id.Source.it ^ " : ");
+  ]
+  @ html_of_type field.Source.it.Syntax.typ
+
+let html_of_type_doc (type_doc : Extract.type_doc) =
+  let ty_args =
+    match type_doc.type_args with
+    | [] -> []
+    | xs ->
+        txt "<"
+        :: join_with [ txt ", " ]
+             (List.map (fun t -> [ html_of_typ_bind t ]) xs)
+        @ [ txt ">" ]
+  in
+  match type_doc.typ with
+  | DTPlain ty ->
+      let header =
+        h4
+          ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
+          ( [ keyword "type "; html_type type_doc.name ]
+          @ ty_args
+          @ [ txt " = " ]
+          @ html_of_type ty )
+      in
+      [ header ]
+  | DTObj fields ->
+      let header =
+        h4
+          ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
+          ( [ keyword "type "; html_type type_doc.name ]
+          @ ty_args
+          @ [ txt " = {" ] )
+      in
+      let html_field = code ~a:[ a_class [ "type-field" ] ] in
+      let indent = [ space (); space () ] in
+      let br_indent = br () :: indent in
+      header
+      :: Lib.List.concat_map
+           (fun (ty_field, doc) ->
+             let doc_string =
+               if doc <> "" then br_indent @ [ txt doc ] else []
+             in
+             html_field (indent @ html_of_typ_field ty_field @ [txt ";"]) :: doc_string)
+           fields
+      @ [ br (); txt "}" ]
 
 let html_of_arg (arg : Extract.function_arg_doc) =
   parameter arg.name
@@ -130,18 +171,20 @@ let rec html_of_declaration = function
           ~some:(fun typ -> txt " : " :: html_of_type typ)
           function_doc.typ
       in
-      h4
-        ~a:[ a_class [ "function" ]; a_id ("value." ^ function_doc.name) ]
-        [
-          code
-            ( [ keyword "public func "; fn_name function_doc.name ]
-            @ ty_args
-            @ (txt "(" :: br_indent)
-            @ args
-            @ br'
-            @ [ txt ")" ]
-            @ return_typ );
-        ]
+      [
+        h4
+          ~a:[ a_class [ "function" ]; a_id ("value." ^ function_doc.name) ]
+          [
+            code
+              ( [ keyword "public func "; fn_name function_doc.name ]
+              @ ty_args
+              @ (txt "(" :: br_indent)
+              @ args
+              @ br'
+              @ [ txt ")" ]
+              @ return_typ );
+          ];
+      ]
   | Class class_doc ->
       let ty_args =
         match class_doc.type_args with
@@ -152,48 +195,40 @@ let rec html_of_declaration = function
                  (List.map (fun t -> [ html_of_typ_bind t ]) xs)
             @ [ txt ">" ]
       in
-      div
-        ( [
-            h4
-              ~a:[ a_class [ "class-declaration" ]; a_id ("class." ^ class_doc.name) ]
-              ([ keyword "class "; class_name class_doc.name ] @ ty_args);
-          ]
-        @ List.map html_of_doc class_doc.fields )
-  | Type type_doc ->
-      let ty_args =
-        match type_doc.type_args with
-        | [] -> []
-        | xs ->
-            txt "<"
-            :: join_with [ txt ", " ]
-                 (List.map (fun t -> [ html_of_typ_bind t ]) xs)
-            @ [ txt ">" ]
-      in
-      h4
-        ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
-        ( [ keyword "type "; html_type type_doc.name ]
-        @ ty_args
-        @ [ txt " = " ]
-        @ html_of_type type_doc.typ )
+      [
+        h4
+          ~a:
+            [
+              a_class [ "class-declaration" ]; a_id ("class." ^ class_doc.name);
+            ]
+          ([ keyword "class "; class_name class_doc.name ] @ ty_args);
+      ]
+      @ List.map html_of_doc class_doc.fields
+  | Type type_doc -> html_of_type_doc type_doc
   | Value value_doc ->
-      h4
-     ~a:[ a_class [ "value-declaration" ]; a_id ("value." ^ value_doc.name) ]
-        [
-          code
-            ( [ keyword "public let "; fn_name value_doc.name; txt " : " ]
-            @ Option.fold ~none:[] ~some:html_of_type value_doc.typ );
-        ]
-  | Unknown s -> code [ txt "Unknown: "; txt s ]
+      [
+        h4
+          ~a:
+            [
+              a_class [ "value-declaration" ]; a_id ("value." ^ value_doc.name);
+            ]
+          [
+            code
+              ( [ keyword "public let "; fn_name value_doc.name; txt " : " ]
+              @ Option.fold ~none:[] ~some:html_of_type value_doc.typ );
+          ];
+      ]
+  | Unknown s -> [ code [ txt "Unknown: "; txt s ] ]
 
 and html_of_doc { doc_comment; declaration } =
   div
     ~a:[ a_class [ "declaration" ] ]
-    [
-      html_of_declaration declaration;
-      p
-        ~a:[ a_class [ "doc-comment" ] ]
-        (html_of_comment (doc_comment |> Option.value ~default:""));
-    ]
+    ( html_of_declaration declaration
+    @ [
+        p
+          ~a:[ a_class [ "doc-comment" ] ]
+          (html_of_comment (doc_comment |> Option.value ~default:""));
+      ] )
 
 let html_of_docs : string -> doc list -> Html.doc =
  fun module_docs docs ->
