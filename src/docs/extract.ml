@@ -72,11 +72,21 @@ let un_prog prog =
   in
   go [] prog.Source.it
 
+(* TODO remove comment tokens *)
 let string_of_leading : Lexer.trivia_info -> string =
  fun info ->
   String.concat "\n"
     (List.filter_map
-       (function Source_token.Comment s -> Some s | _ -> None)
+       (function
+         | Source_token.Comment s -> (
+             match Lib.String.chop_prefix "///" s with
+             | Some line_comment -> Some (String.trim line_comment)
+             | None ->
+                 Option.bind
+                   (Lib.String.chop_prefix "/**" s)
+                   (Lib.String.chop_suffix "*/")
+                 |> Option.map String.trim )
+         | _ -> None)
        info.Lexer.leading_trivia)
 
 let _print_leading : Lexer.trivia_info -> unit =
