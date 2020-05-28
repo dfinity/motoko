@@ -132,7 +132,7 @@ We prove that the following is an invariant of `-->`:
 
 > If `A : s1 ∈ S` and `B has A : s2 ∈ S`, then `s1 <: s2`
 
-Consistence follows from this by inversion on `[S] A =(t1)=(t2)=> B` (to figure
+Consistency follows from this by inversion on `[S] A =(t1)=(t2)=> B` (to figure
 out who called whom):
 
  * If `A has B : t1 -> _ ∈ S` and `B : t1' -> _ ∈ S`
@@ -194,6 +194,5 @@ Assume `S` satisfies the invariant, and consider the various state transitions
     So `s3 <: s2`, as required.
 
 Therefore, every `{} -->* S` is consistent, and thus the IDL system is sound.
-
 
 
