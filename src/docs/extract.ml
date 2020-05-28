@@ -35,7 +35,7 @@ and type_doc = {
 and doc_type =
   | DTPlain of Syntax.typ
   (* One level unwrapping of an object type with documentation on its fields *)
-  | DTObj of (Syntax.typ_field * string) list
+  | DTObj of Syntax.typ * (Syntax.typ_field * string) list
 
 and class_doc = {
   name : string;
@@ -80,7 +80,10 @@ let string_of_leading : Lexer.trivia_info -> string =
        (function
          | Source_token.Comment s -> (
              match Lib.String.chop_prefix "///" s with
-             | Some line_comment -> Some (String.trim line_comment)
+             | Some line_comment -> (
+                 match Lib.String.chop_prefix " " line_comment with
+                 | Some line_comment -> Some line_comment
+                 | None -> Some line_comment )
              | None ->
                  Option.bind
                    (Lib.String.chop_prefix "/**" s)
@@ -141,7 +144,7 @@ let rec extract_doc find_trivia = function
               List.map (extract_obj_field_doc find_trivia) fields
             in
             (* TODO Only unwrap the ObjT if at least one field is documented *)
-            DTObj doc_fields
+            DTObj(typ, doc_fields)
         | _ -> DTPlain typ
       in
       Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })

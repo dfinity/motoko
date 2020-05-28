@@ -47,9 +47,9 @@ let rec plain_of_typ buf typ =
       sep_by' buf "<" ", " ">" (plain_of_typ buf) typs
   | Syntax.PrimT typ -> Buffer.add_string buf typ
   | Syntax.ObjT (obj_sort, fields) ->
-      bprintf buf "{";
+      bprintf buf "{ ";
       sep_by buf "; " (plain_of_typ_field buf) fields;
-      bprintf buf "}"
+      bprintf buf " }"
   | Syntax.ArrayT (mut, ty) ->
       bprintf buf "[";
       plain_of_mut buf mut;
@@ -107,7 +107,7 @@ let opt_typ : Buffer.t -> Syntax.typ option -> unit =
 let plain_of_doc_typ : Buffer.t -> doc_type -> unit =
  fun buf -> function
   | DTPlain ty -> plain_of_typ buf ty
-  | DTObj doc_fields -> bprintf buf "TODO"
+  | DTObj(ty, doc_fields) -> plain_of_typ buf ty
 
 let function_arg : Buffer.t -> function_arg_doc -> unit =
  fun buf arg ->
@@ -151,8 +151,9 @@ and plain_of_doc : Buffer.t -> doc -> unit =
     (Option.value ~default:"No documentation comment" doc_comment);
   bprintf buf "\n"
 
-and render_doc_string : doc -> string =
- fun doc ->
+let render_docs : string -> doc list -> string =
+ fun module_docs docs ->
   let buf = Buffer.create 1024 in
-  plain_of_doc buf doc;
+  bprintf buf "%s\n\n" module_docs;
+  List.iter (plain_of_doc buf) docs;
   Buffer.contents buf

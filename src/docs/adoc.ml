@@ -20,6 +20,12 @@ let adoc_declaration_header : Buffer.t -> int -> (unit -> unit) -> unit =
   bprintf buf " ";
   surround buf "`" (fun _ -> surround buf "+" f)
 
+let adoc_of_doc_type : Buffer.t -> Extract.doc_type -> unit =
+ fun buf dt ->
+  match dt with
+  | DTPlain t -> Plain.plain_of_typ buf t
+  | DTObj (t, fields) -> Plain.plain_of_typ buf t
+
 let rec adoc_of_declaration : Buffer.t -> int -> declaration_doc -> unit =
  fun buf lvl doc ->
   let header = adoc_declaration_header buf lvl in
@@ -43,7 +49,7 @@ let rec adoc_of_declaration : Buffer.t -> int -> declaration_doc -> unit =
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
             type_doc.type_args;
           bprintf buf " = ";
-          Plain.plain_of_doc_typ buf type_doc.typ)
+          adoc_of_doc_type buf type_doc.typ)
   | Class class_doc ->
       header (fun _ ->
           bprintf buf "class %s" class_doc.name;

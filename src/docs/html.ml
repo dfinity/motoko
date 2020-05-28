@@ -116,7 +116,8 @@ let html_of_type_doc (type_doc : Extract.type_doc) =
           @ html_of_type ty )
       in
       [ header ]
-  | DTObj fields ->
+  (* TODO *)
+  | DTObj (ty, fields) ->
       let header =
         h4
           ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
