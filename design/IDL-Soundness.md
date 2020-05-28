@@ -100,7 +100,7 @@ Soundness
 ---------
 An IDL is sound if and only if:
 
- * When `{} -->* S` and `[S] A =(t1)=(t2)=> B` then `t1 <: t2`.
+> When `{} -->* S` and `[S] A =(t1)=(t2)=> B` then `t1 <: t2`.
 
 
 Proof (for canonical subtyping)
@@ -119,12 +119,12 @@ Assume that
 
 The following is obviously an invariant of `-->`:
 
- * Every serivce `A` has at most one type, i.e.
-   for a fixed `{} --> * S`, `A : s ∈ S` is a left-unique relation.
+> Every serivce `A` has at most one type, i.e.
+> for a fixed `{} --> * S`, `A : s ∈ S` is a left-unique relation.
 
 We prove that the following is an invariant of `-->`:
 
- * If `A : s1 ∈ S` and `B has A : s2 ∈ S`, then `s1 <: s2`
+> If `A : s1 ∈ S` and `B has A : s2 ∈ S`, then `s1 <: s2`
 
 Soundness follows from this by inversion on `[S] A =(t1)=(t2)=> B` (to figure
 out who called whom):
