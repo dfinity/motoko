@@ -13,6 +13,8 @@ each service had only one function).
 Framework parameters
 --------------------
 
+An IDL language would instantiate these relations:
+
 Parameter meta-variables:
 
  * `t`: A argument or result type
@@ -98,9 +100,13 @@ Judgements:
 
 Soundness
 ---------
-An IDL is sound if and only if:
+A state `S` is sound if
 
-> When `{} -->* S` and `[S] A =(t1)=(t2)=> B` then `t1 <: t2`.
+> Forall `[S] A =(t1)=(t2)=> B` we have `t1 <: t2`.
+
+An IDL language is sound if and only if:
+
+> Forall `{} -->* S`, `S` is sound.
 
 
 Proof (for canonical subtyping)
