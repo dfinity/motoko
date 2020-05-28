@@ -3,7 +3,6 @@ open Extract
 
 let adoc_docs : string -> string -> unit =
  fun in_file out_file ->
-  (* Printf.printf "Figuring out docs for %s:\n" in_file; *)
   let tokenizer, get_trivia_table =
     Lexer.tokenizer Lexer.NormalWithTrivia
       (Lexing.from_channel (open_in in_file))
@@ -70,56 +69,52 @@ let list_files_recursively dir =
   loop [] [ dir ]
 
 let start_html source output =
-  try Unix.mkdir output 0o777 with _ -> ();
-  Printf.printf "%s -> %s\n" source output;
-  let all_files =
-    (list_files_recursively source) in
-  List.iter print_endline all_files;
-  let all_files =
-    List.filter
-      (fun f -> Filename.extension f = ".mo") all_files
-  in
-  List.iter
-    (fun file ->
-      let rel_path =
-        file
-        |> Lib.FilePath.relative_to source
-        |> Option.get
-        |> Lib.String.chop_suffix "mo"
-        |> Option.get
-        |> (fun f -> f ^ "html")
-      in
-      let out_path = Filename.concat output rel_path in
-      (* Printf.printf "%s -> %s\n" file out_path; *)
-      html_docs file out_path
-    )
-    all_files
+  try Unix.mkdir output 0o777
+  with _ ->
+    ();
+    (* Printf.printf "%s -> %s\n" source output; *)
+    let all_files = list_files_recursively source in
+    let all_files =
+      List.filter (fun f -> Filename.extension f = ".mo") all_files
+    in
+    List.iter
+      (fun file ->
+        let rel_path =
+          file
+          |> Lib.FilePath.relative_to source
+          |> Option.get
+          |> Lib.String.chop_suffix "mo"
+          |> Option.get
+          |> fun f -> f ^ "html"
+        in
+        let out_path = Filename.concat output rel_path in
+        (* Printf.printf "%s -> %s\n" file out_path; *)
+        html_docs file out_path)
+      all_files
 
 let start_adoc source output =
-  try Unix.mkdir output 0o777 with _ -> ();
-  Printf.printf "%s -> %s\n" source output;
-  let all_files =
-    (list_files_recursively source) in
-  List.iter print_endline all_files;
-  let all_files =
-    List.filter
-      (fun f -> Filename.extension f = ".mo") all_files
-  in
-  List.iter
-    (fun file ->
-      let rel_path =
-        file
-        |> Lib.FilePath.relative_to source
-        |> Option.get
-        |> Lib.String.chop_suffix "mo"
-        |> Option.get
-        |> (fun f -> f ^ "adoc")
-      in
-      let out_path = Filename.concat output rel_path in
-      Printf.printf "%s -> %s\n" file out_path;
-      adoc_docs file out_path
-    )
-    all_files
+  try Unix.mkdir output 0o777
+  with _ ->
+    ();
+    (* Printf.printf "%s -> %s\n" source output; *)
+    let all_files = list_files_recursively source in
+    let all_files =
+      List.filter (fun f -> Filename.extension f = ".mo") all_files
+    in
+    List.iter
+      (fun file ->
+        let rel_path =
+          file
+          |> Lib.FilePath.relative_to source
+          |> Option.get
+          |> Lib.String.chop_suffix "mo"
+          |> Option.get
+          |> fun f -> f ^ "adoc"
+        in
+        let out_path = Filename.concat output rel_path in
+        (* Printf.printf "%s -> %s\n" file out_path; *)
+        adoc_docs file out_path)
+      all_files
 
 (* let start = start_html *)
 let start = start_adoc

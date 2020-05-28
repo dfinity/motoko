@@ -3,13 +3,6 @@ open Tyxml.Html
 open Extract
 open Mo_def
 
-let type_is_atom typ =
-  match typ.Source.it with
-  | Syntax.PathT _ | Syntax.PrimT _ | Syntax.ArrayT _ | Syntax.ParT _
-  | Syntax.TupT _ | Syntax.ObjT _ | Syntax.VariantT _ ->
-      true
-  | Syntax.OptT _ | Syntax.FuncT _ | Syntax.AsyncT _ -> false
-
 let rec join_with sep = function
   | [] -> []
   | [ x ] -> x
@@ -55,7 +48,7 @@ let rec html_of_type typ =
   | Syntax.ParT typ -> (txt "(" :: html_of_type typ) @ [ txt ")" ]
   | Syntax.OptT typ ->
       (* TODO only parenthesize non-trivial types *)
-      if type_is_atom typ then txt "?" :: html_of_type typ
+      if Common.type_is_atom typ then txt "?" :: html_of_type typ
       else (txt "?(" :: html_of_type typ) @ [ txt ")" ]
   | Syntax.TupT typ_list ->
       (txt "(" :: join_with [ txt ", " ] (List.map html_of_type typ_list))
@@ -81,7 +74,11 @@ let rec html_of_type typ =
                  (List.map (fun t -> [ html_of_typ_bind t ]) xs)
             @ [ txt ">" ]
       in
-      ty_args @ html_of_type arg @ (txt " -> " :: html_of_type res)
+      let ty_arg =
+        if Common.is_tuple_type arg then html_of_type arg
+        else (txt "(" :: html_of_type arg) @ [ txt ")" ]
+      in
+      ty_args @ ty_arg @ (txt " -> " :: html_of_type res)
   | Syntax.ArrayT (mut, ty) ->
       [ txt "["; html_of_mut mut ] @ html_of_type ty @ [ txt "]" ]
   | Syntax.AsyncT (_scope, typ) -> keyword "async " :: html_of_type typ
@@ -136,7 +133,8 @@ let html_of_type_doc (type_doc : Extract.type_doc) =
              let doc_string =
                if doc <> "" then br_indent @ [ txt doc ] else []
              in
-             html_field (indent @ html_of_typ_field ty_field @ [txt ";"]) :: doc_string)
+             html_field (indent @ html_of_typ_field ty_field @ [ txt ";" ])
+             :: doc_string)
            fields
       @ [ br (); txt "}" ]
 

@@ -116,14 +116,14 @@ let extract_func_args find_trivia = function
   | _ -> []
 
 let rec extract_let_doc (find_trivia : Source.region -> Lexer.trivia_info) :
-    Syntax.exp -> string -> Syntax.typ option -> declaration_doc = function
+    Syntax.exp -> string -> declaration_doc = function
   | Source.{ it = Syntax.FuncE (_, _, type_args, args, typ, _, _); _ } ->
-      fun name _ ->
+      fun name ->
         let args_doc = extract_func_args find_trivia args in
         Function { name; typ; type_args; args = args_doc }
   | Source.{ it = Syntax.AnnotE (e, ty); _ } ->
-      fun name _ -> extract_let_doc find_trivia e name (Some ty)
-  | _ -> fun name typ -> Value { name; typ }
+      fun name -> Value { name; typ = Some ty }
+  | _ -> fun name -> Value { name; typ = None }
 
 let extract_obj_field_doc find_trivia :
     Syntax.typ_field -> Syntax.typ_field * string =
@@ -132,7 +132,7 @@ let extract_obj_field_doc find_trivia :
 let rec extract_doc find_trivia = function
   | Source.
       { it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs); _ } ->
-      Some (extract_let_doc find_trivia rhs name None)
+      Some (extract_let_doc find_trivia rhs name)
   | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
       let doc_typ =
         match typ.it with

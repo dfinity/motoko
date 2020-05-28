@@ -56,10 +56,13 @@ let rec plain_of_typ buf typ =
       plain_of_typ buf ty;
       bprintf buf "]"
   | Syntax.OptT typ ->
-      (* TODO only parenthesize non-trivial types *)
-      bprintf buf "?(";
-      plain_of_typ buf typ;
-      bprintf buf ")"
+      if Common.type_is_atom typ then (
+        bprintf buf "?";
+        plain_of_typ buf typ )
+      else (
+        bprintf buf "?(";
+        plain_of_typ buf typ;
+        bprintf buf ")" )
   | Syntax.VariantT typ_tags ->
       bprintf buf "{";
       sep_by buf "; "
@@ -79,7 +82,15 @@ let rec plain_of_typ buf typ =
       bprintf buf "(";
       plain_of_typ buf typ;
       bprintf buf ")"
-  | Syntax.FuncT (func_sort, binders, arg, res) -> bprintf buf "TODO"
+  | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
+      sep_by' buf "<" ", " ">" (plain_of_typ_bind buf) typ_binders;
+      if Common.is_tuple_type arg then plain_of_typ buf arg
+      else (
+        bprintf buf "(";
+        plain_of_typ buf arg;
+        bprintf buf ")" );
+      bprintf buf " -> ";
+      plain_of_typ buf res
 
 and plain_of_typ_field : Buffer.t -> Syntax.typ_field -> unit =
  fun buf field ->
