@@ -1193,14 +1193,17 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
-      debug_abbrev_section ();
-      debug_addr_section !sequence_bounds;
-      debug_rnglists_section !sequence_bounds;
-      (*debug_loclists_section (); NOT YET*)
-      debug_line_str_section ();
-      debug_line_section m.funcs;
-      debug_info_section ();
-      debug_strings_section !dwarf_strings
+      if (!Mo_config.Flags.debug_info) then
+        begin
+          debug_abbrev_section ();
+          debug_addr_section !sequence_bounds;
+          debug_rnglists_section !sequence_bounds;
+          (*debug_loclists_section (); NOT YET*)
+          debug_line_str_section ();
+          debug_line_section m.funcs;
+          debug_info_section ();
+          debug_strings_section !dwarf_strings
+        end
   end
   in E.module_ em;
 
