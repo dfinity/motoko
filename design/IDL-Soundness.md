@@ -39,7 +39,7 @@ Further meta-variables:
  * `A`, `B`, …: A service identifier
  * `S : 𝒫(P)`: The global state, a set of assertions
  * `P ::=`: Assertions
-   * `A : s`: Service `A` has service state `s`
+   * `A : s`: Service `A` has service type `s`
    * `A has B : s`: Service `A` has a reference to service `B` at type `s`
 
 Judgements:
