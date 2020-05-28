@@ -100,13 +100,13 @@ Judgements:
 
 Soundness
 ---------
-A state `S` is sound if
+A state `S` is consistent if
 
 > Forall `[S] A =(t1)=(t2)=> B` we have `t1 <: t2`.
 
 An IDL language is sound if and only if:
 
-> Forall `{} -->* S`, `S` is sound.
+> Forall `{} -->* S`, `S` is consistent.
 
 
 Proof (for canonical subtyping)
@@ -132,7 +132,7 @@ We prove that the following is an invariant of `-->`:
 
 > If `A : s1 ∈ S` and `B has A : s2 ∈ S`, then `s1 <: s2`
 
-Soundness follows from this by inversion on `[S] A =(t1)=(t2)=> B` (to figure
+Consistence follows from this by inversion on `[S] A =(t1)=(t2)=> B` (to figure
 out who called whom):
 
  * If `A has B : t1 -> _ ∈ S` and `B : t1' -> _ ∈ S`
@@ -144,7 +144,8 @@ out who called whom):
 
 With `S = {}`, the invariant holds trivially.
 
-Assume `S` is sound, and consider the various state transitions `S -> S'`:
+Assume `S` satisfies the invariant, and consider the various state transitions
+`S -> S'`:
 
  * A service `C` gets added.
 
@@ -175,7 +176,7 @@ Assume `S` is sound, and consider the various state transitions `S -> S'`:
     ```
 
     Let `C : s3 ∈ S`. By the invariant on `S` we learn `s3 <: s1`.
-    By soundness of `S` we have `t1 <: t2`.
+    By consistency of `S` we have `t1 <: t2`.
     With `s1 in t1 <: s2 in t2` this yields `s1 <: s2`.
     So `s3 <: s2`, as required.
 
@@ -192,7 +193,7 @@ Assume `S` is sound, and consider the various state transitions `S -> S'`:
     The assumption on `<:h` yields `s1 <: s2`.
     So `s3 <: s2`, as required.
 
-Therefore, every `{} -->* S` is sound.
+Therefore, every `{} -->* S` is consistent, and thus the IDL system is sound.
 
 
 
