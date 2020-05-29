@@ -266,7 +266,7 @@ let encode (em : extended_module) =
       | Nop, {line; column; _} when -line = dw_AT_data_bit_offset ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} when -line = dw_AT_ranges ->
-        add_dwarf_attribute (FunctionsAttribute (-line))
+        add_dwarf_attribute (FunctionsAttribute (-line)) (* see Note [Low_pc, High_pc, Ranges are special] *)
       | Nop, {line; column; _} when -line = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_discr ->

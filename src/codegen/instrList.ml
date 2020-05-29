@@ -172,11 +172,22 @@ let labeled_block_ (ty : stack_type) depth (body : t) : t =
 let is_nop (is : t) =
   is 0l Wasm.Source.no_region [] = []
 
-(* DWARF attributes: see Note [funneling DIEs through Wasm.Ast] *)
+(* DWARF tags and attributes: see Note [funneling DIEs through Wasm.Ast] *)
 
 open Wasm_exts.Dwarf5
 open Wasm_exts.Abbreviation
 open Mo_types
+
+(* Note [Low_pc, High_pc, Ranges are special]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The DWARF attributes Low_pc, High_pc and Ranges carry information
+about the Wasm bytecode's layout in the emitted Code section for the
+compilation unit. The information is not available here, so these
+attributes have no payload at this side. Instead it is filled in
+in a tag-dependent manner by the emitting module. For LexicalBlock
+the Low_pc and High_pc attributed are managed entirely by the emitter.
+ *)
 
 type dw_AT = Producer of string
            | Language of int
@@ -184,10 +195,8 @@ type dw_AT = Producer of string
            | Stmt_list of int
            | Comp_dir of string
            | Use_UTF8 of bool
-           | Low_pc of int
-           | High_pc of int
+           | Low_pc | High_pc | Ranges (* see Note [Low_pc, High_pc, Ranges are special] *)
            | Addr_base of int
-           | Ranges
            | Decl_file of string
            | Decl_line of int
            | Decl_column of int
@@ -223,14 +232,14 @@ type dw_TAG =
 
 (* DWARF high-level structures *)
 
-(* fakeFile gives a fake instruction that encodes a string for a
+(* helper fakeFile gives a fake instruction that encodes a string for a
    DWARF attribute *)
 let fakeFile (file : string) attr instr' : t =
   let fakeLoc = Wasm.Source.{ file; line = -attr; column = 0 } in
   fun _ _ instrs ->
   (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
 
-(* fakeColumn gives a fake instruction that encodes a single integer for a
+(* helper fakeColumn gives a fake instruction that encodes a single integer for a
    DWARF attribute (or tag reference index) *)
 let fakeColumn (column : int) attr instr' : t =
   let fakeLoc = Wasm.Source.{ file = ""; line = -attr; column } in
@@ -245,8 +254,8 @@ let dw_attr : dw_AT -> t =
   | Stmt_list l -> fakeColumn l dw_AT_stmt_list Nop
   | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
   | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 Nop
-  | Low_pc l -> fakeColumn l dw_AT_low_pc Nop
-  | High_pc h -> fakeColumn h dw_AT_high_pc Nop
+  | Low_pc -> fakeColumn 0 dw_AT_low_pc Nop
+  | High_pc -> fakeColumn 0 dw_AT_high_pc Nop
   | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
   | Ranges -> fakeColumn 0(* FIXME *) dw_AT_ranges Nop
   | Decl_file f -> fakeFile f dw_AT_decl_file Nop
@@ -281,9 +290,20 @@ let dw_attr : dw_AT -> t =
 
 let dw_attrs = concat_map dw_attr
 
-(* emit a DW_TAG
+(* Note [emit a DW_TAG]
+   ~~~~~~~~~~~~~~~~~~~~
    When it admits children, these follow sequentially,
-   closed by dw_tag_children_done.
+   closed by dw_tag_close. The abbreviation table must
+   be considered when deciding between
+   - dw_tag_no_children, or
+   - dw_tag.
+   The former is self-closing (no nested tags), and the
+   latter is high-level, straddling a region of code.
+   The low-level alternative to the latter is using the
+   dw_tag_open/dw_tag_close pair explicitly to demarcate
+   the enclosed instructions. This moves the burden of
+   balancing to the user.
+   See also: Note [funneling DIEs through Wasm.Ast]
  *)
 
 let dw_tag_close : t =
@@ -300,8 +320,9 @@ let dw_objects = ref ObjectRefs.empty
 let any_type = ref None
 
 let pointer_key = ref None
+let void_block_type = as_block_type []
 
-
+(* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
   function
   | Compile_unit (dir, file) ->
@@ -331,12 +352,12 @@ let rec dw_tag_open : dw_TAG -> t =
       (dw_attrs
          [ Producer "DFINITY Motoko compiler, version 0.1";
            Language dw_LANG_C99; Name file; Stmt_list 0;
-           Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 8; Ranges ]) ^^
+           Comp_dir dir; Use_UTF8 true; Low_pc; Addr_base 8; Ranges ]) ^^
       base_types ^^
       builtin_types
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
-      (dw_attrs [Low_pc 0(*FIXME*); High_pc 0(*FIXME*); Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
+      (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     let dw, reference = dw_type_ref ty in
     dw ^^
@@ -362,10 +383,10 @@ and lookup_pointer_key () : t * int =
     pointer_key := Some r;
     dw, r
 and fakeBlock tag attrs =
-  fakeColumn 0 tag (Block (as_block_type [](*FIXME: constant*), attrs 0l Wasm.Source.no_region []))
+  fakeColumn 0 tag (Block (void_block_type, attrs 0l Wasm.Source.no_region []))
 and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  fakeColumn refslot tag (Block (as_block_type [](*FIXME: constant*), attrs 0l Wasm.Source.no_region [])),
+  fakeColumn refslot tag (Block (void_block_type, attrs 0l Wasm.Source.no_region [])),
   refslot
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
