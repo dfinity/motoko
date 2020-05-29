@@ -5,6 +5,7 @@ features are
  * O(1) concatenation (using difference list internally)
  * Managing of label depths.
  * Some simple peephole optimizations.
+ * Helpers for DWARF elements (tags and attributes).
 *)
 
 open Wasm.Ast
@@ -84,9 +85,32 @@ let to_nested_list d pos is =
 let nop : t = fun _ _ rest -> rest
 
 (* Tracing *)
-let trace m : t = fun _ _ rest -> print_endline (Printf.sprintf "G.trace: %s" m); rest
-let trace1 m : t = fun _ _ rest -> print_endline (Printf.sprintf "G.trace: %s  instr: %s" m (match rest with [] -> "(--)" | instr :: _ -> Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr.it @@ Wasm.Source.no_region)))); rest
-let trace_all m : t = fun _ _ rest -> List.iter (fun instr -> print_endline (Printf.sprintf "G.trace: %s  instr: %s  line: -0x%x   column: %d    file: %s" m (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr.it @@ instr.at))) (-instr.at.left.line) instr.at.left.column instr.at.left.file)) rest; rest
+let trace m : t =
+  fun _ _ rest -> print_endline (Printf.sprintf "G.trace: %s" m); rest
+let trace1 m : t =
+  fun _ _ rest ->
+  print_endline
+    (Printf.sprintf "G.trace: %s  instr: %s"
+       m
+       (match rest with
+        | [] -> "(--)"
+        | instr :: _ -> Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr.it @@ Wasm.Source.no_region))));
+  rest
+let trace_all m : t =
+  fun _ _ rest ->
+  List.iter
+    (fun instr ->
+      print_endline
+        (Printf.sprintf "G.trace: %s  instr: %s  line: -0x%x   column: %d    file: %s"
+           m
+           (Wasm.Sexpr.to_string 80
+              (Wasm.Arrange.instr
+                 (instr.it @@ instr.at)))
+           (-instr.at.left.line)
+           instr.at.left.column
+           instr.at.left.file))
+    rest;
+  rest
 
 (* The concatenation operator *)
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
