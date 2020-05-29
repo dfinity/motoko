@@ -8,11 +8,29 @@ The changes are:
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
-*)
+ *)
+
+(* Note [funneling DIEs through Wasm.Ast]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The DWARF debugging information entry (DIE) is a simple data carrier meant
+to be transmitted in a sequential fashion. Here, DIEs are attached to
+specially crafted instructions (usually Block and Nop) in the instruction stream
+that is the Wasm.Ast. Since these instructions are inserted artificially
+and not intended for execution, their source ranges don't possess the usual
+meaning, but carry the DIEs. They can be recognised via the `is_dwarf_like`
+predicate and filtered out, preserving the DIE to rebuild the larger-scale
+hierarchical structure. The mechanism is described in the blog post
+http://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf
+
+Another predicate `is_dwarf_statement` is employed to mark certain instructions
+as preferential stop-points in the debugger. Similarly, other predicates may
+supply other flags for the DWARF line machine.
+
+ *)
 
 (* Utility predicates *)
 
-let dwarf_like Wasm.Source.{ left; right } =
+let is_dwarf_like Wasm.Source.{ left; right } =
   Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos)
 
 let is_dwarf_statement Wasm.Source.{ left; right } =
@@ -395,10 +413,10 @@ let encode (em : extended_module) =
       let instr = instr noting in
 
       match e.it with
-      | Nop when dwarf_like e.at -> close_dwarf true
+      | Nop when is_dwarf_like e.at -> close_dwarf true
       | Nop when is_dwarf_statement e.at ->
         modif statement_positions (Instrs.add (pos s, e.at.left))
-      | Block (_, es) when dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
+      | Block (_, es) when is_dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
 
       | Unreachable -> op 0x00
       | Nop -> op 0x01
@@ -766,7 +784,7 @@ let encode (em : extended_module) =
       vec local (compress locals);
       let instr_notes = ref Instrs.empty in
       let note i =
-        if not (dwarf_like i.at) then
+        if not (is_dwarf_like i.at) then
           (modif instr_notes (Instrs.add (pos s, i.at.left));
            ignore (add_source_name i.at.left.file)
           ) in

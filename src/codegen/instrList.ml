@@ -23,6 +23,7 @@ let combine_shifts const op = function
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
 let optimize : instr list -> instr list = fun is ->
+  let open Wasm_exts.CustomModuleEncode in
   let rec go l r = match l, r with
     (* Loading and dropping is pointless *)
     | { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
@@ -37,7 +38,8 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({i with it = LocalSet n } :: r')
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
-      List.(rev (i :: l) @ find_all (fun instr -> Wasm_exts.CustomModuleEncode.dwarf_like instr.at) t)
+      (* see Note [funneling DIEs through Wasm.Ast] *)
+      List.(rev (i :: l) @ find_all (fun instr -> is_dwarf_like instr.at) t)
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -56,10 +58,9 @@ let optimize : instr list -> instr list = fun is ->
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
-
+    (* Duplicate statement markers can be zapped *)
     | l', ({it = Nop; _} as n1) :: (({it = Nop; _} as n2) :: _ as r') when
-          Wasm_exts.CustomModuleEncode.is_dwarf_statement n1.at
-          && Wasm_exts.CustomModuleEncode.is_dwarf_statement n2.at ->
+          is_dwarf_statement n1.at && is_dwarf_statement n2.at ->
       go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'
@@ -171,7 +172,7 @@ let labeled_block_ (ty : stack_type) depth (body : t) : t =
 let is_nop (is : t) =
   is 0l Wasm.Source.no_region [] = []
 
-(* DWARF attributes *)
+(* DWARF attributes: see Note [funneling DIEs through Wasm.Ast] *)
 
 open Wasm_exts.Dwarf5
 open Wasm_exts.Abbreviation
