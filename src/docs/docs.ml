@@ -6,6 +6,7 @@ type render = string -> doc list -> string
 
 let process_source : render -> string -> string -> unit =
  fun render in_file out_file ->
+  Printf.printf "Processing: %s\n" in_file;
   let tokenizer, get_trivia_table =
     Lexer.tokenizer Lexer.NormalWithTrivia
       (Lexing.from_channel (open_in in_file))

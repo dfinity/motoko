@@ -118,7 +118,7 @@ let extract_func_args find_trivia = function
       List.filter_map (extract_args find_trivia) args
   | _ -> []
 
-let rec extract_let_doc (find_trivia : Source.region -> Lexer.trivia_info) :
+let extract_let_doc (find_trivia : Source.region -> Lexer.trivia_info) :
     Syntax.exp -> string -> declaration_doc = function
   | Source.{ it = Syntax.FuncE (_, _, type_args, args, typ, _, _); _ } ->
       fun name ->
@@ -144,7 +144,7 @@ let rec extract_doc find_trivia = function
               List.map (extract_obj_field_doc find_trivia) fields
             in
             (* TODO Only unwrap the ObjT if at least one field is documented *)
-            DTObj(typ, doc_fields)
+            DTObj (typ, doc_fields)
         | _ -> DTPlain typ
       in
       Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })

@@ -1,5 +1,3 @@
-open Mo_config
-
 let source : string option ref = ref None
 let output : string ref = ref "docs"
 

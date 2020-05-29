@@ -1,5 +1,4 @@
 open Extract
-open Mo_def
 open Printf
 
 let surround buf s inner =

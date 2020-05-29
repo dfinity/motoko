@@ -1,35 +1,35 @@
-open Tyxml
-open Tyxml.Html
 open Extract
 open Mo_def
+open Cow.Html
 
 let rec join_with sep = function
-  | [] -> []
+  | [] -> empty
   | [ x ] -> x
-  | x :: xs -> x @ sep @ join_with sep xs
+  | x :: xs -> x ++ sep ++ join_with sep xs
 
-let fn_name s = span ~a:[ a_class [ "fnname" ] ] [ txt s ]
+let space = string "\u{00A0}"
 
-let class_name s = span ~a:[ a_class [ "classname" ] ] [ txt s ]
+let fn_name s = span ~cls:"fnname" (string s)
 
-let keyword s = span ~a:[ a_class [ "keyword" ] ] [ txt s ]
+let class_name s = span ~cls:"classname" (string s)
 
-let parameter s = span ~a:[ a_class [ "parameter" ] ] [ txt s ]
+let keyword s = span ~cls:"keyword" (string s)
 
-let html_type s = span ~a:[ a_class [ "type" ] ] [ txt s ]
+let parameter s = span ~cls:"parameter" (string s)
+
+let html_type s = span ~cls:"type" (string s)
 
 let rec string_of_path path =
   match path.Source.it with
   | Syntax.IdH id -> id.Source.it
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
-let html_of_comment s =
-  join_with [ br () ] (Lib.String.split s '\n' |> List.map (fun s -> [ txt s ]))
+let html_of_comment = Cow.Markdown.of_string
 
 let html_of_mut mut =
   match mut.Source.it with
   | Syntax.Var -> keyword "mut "
-  | Syntax.Const -> txt ""
+  | Syntax.Const -> string ""
 
 let html_of_typ_bind typ_bind =
   html_type typ_bind.Source.it.Syntax.var.Source.it
@@ -37,213 +37,191 @@ let html_of_typ_bind typ_bind =
 let rec html_of_type typ =
   match typ.Source.it with
   | Syntax.PathT (path, typs) -> (
-      [ html_type (string_of_path path) ]
-      @
+      html_type (string_of_path path)
+      ++
       match typs with
-      | [] -> []
+      | [] -> empty
       | xs ->
-          (txt "<" :: join_with [ txt ", " ] (List.map html_of_type xs))
-          @ [ txt ">" ] )
-  | Syntax.PrimT typ -> [ html_type typ ]
-  | Syntax.ParT typ -> (txt "(" :: html_of_type typ) @ [ txt ")" ]
+          string "<"
+          ++ join_with (string ", ") (List.map html_of_type xs)
+          ++ string ">" )
+  | Syntax.PrimT typ -> html_type typ
+  | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
   | Syntax.OptT typ ->
       (* TODO only parenthesize non-trivial types *)
-      if Common.type_is_atom typ then txt "?" :: html_of_type typ
-      else (txt "?(" :: html_of_type typ) @ [ txt ")" ]
+      if Common.type_is_atom typ then string "?" ++ html_of_type typ
+      else string "?(" ++ html_of_type typ ++ string ")"
   | Syntax.TupT typ_list ->
-      (txt "(" :: join_with [ txt ", " ] (List.map html_of_type typ_list))
-      @ [ txt ")" ]
+      string "("
+      ++ join_with (string ", ") (List.map html_of_type typ_list)
+      ++ string ")"
   | Syntax.VariantT typ_tags ->
-      txt "{"
-      :: join_with [ txt "; " ]
+      string "{"
+      ++ join_with (string "; ")
            (List.map
               (fun typ_tag ->
-                txt
+                string
                   (Printf.sprintf "#%s : "
                      typ_tag.Source.it.Syntax.tag.Source.it)
-                :: html_of_type typ_tag.Source.it.Syntax.typ)
+                ++ html_of_type typ_tag.Source.it.Syntax.typ)
               typ_tags)
-      @ [ txt "}" ]
+      ++ string "}"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       let ty_args =
         match typ_binders with
         | [] -> []
         | xs ->
-            txt "<"
-            :: join_with [ txt ", " ]
-                 (List.map (fun t -> [ html_of_typ_bind t ]) xs)
-            @ [ txt ">" ]
+            string "<"
+            ++ join_with (string ", ") (List.map html_of_typ_bind xs)
+            ++ string ">"
       in
       let ty_arg =
         if Common.is_tuple_type arg then html_of_type arg
-        else (txt "(" :: html_of_type arg) @ [ txt ")" ]
+        else string "(" ++ html_of_type arg ++ string ")"
       in
-      ty_args @ ty_arg @ (txt " -> " :: html_of_type res)
+      ty_args ++ ty_arg ++ string " -> " ++ html_of_type res
   | Syntax.ArrayT (mut, ty) ->
-      [ txt "["; html_of_mut mut ] @ html_of_type ty @ [ txt "]" ]
-  | Syntax.AsyncT (_scope, typ) -> keyword "async " :: html_of_type typ
+      string "[" ++ html_of_mut mut ++ html_of_type ty ++ string "]"
+  | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type typ
   | Syntax.ObjT (obj_sort, fields) ->
-      [ txt "{ " ]
-      @ join_with [ txt "; " ] (List.map html_of_typ_field fields)
-      @ [ txt " }" ]
+      string "{ "
+      ++ join_with (string "; ") (List.map html_of_typ_field fields)
+      ++ string " }"
 
 and html_of_typ_field (field : Syntax.typ_field) =
   (* TODO mut might be wrong here *)
-  [
-    html_of_mut field.Source.it.Syntax.mut;
-    txt (field.Source.it.Syntax.id.Source.it ^ " : ");
-  ]
-  @ html_of_type field.Source.it.Syntax.typ
+  html_of_mut field.Source.it.Syntax.mut
+  ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
+  ++ html_of_type field.Source.it.Syntax.typ
 
 let html_of_type_doc (type_doc : Extract.type_doc) =
   let ty_args =
     match type_doc.type_args with
     | [] -> []
     | xs ->
-        txt "<"
-        :: join_with [ txt ", " ]
-             (List.map (fun t -> [ html_of_typ_bind t ]) xs)
-        @ [ txt ">" ]
+        string "<"
+        ++ join_with (string ", ") (List.map html_of_typ_bind xs)
+        ++ string ">"
   in
   match type_doc.typ with
   | DTPlain ty ->
-      let header =
-        h4
-          ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
-          ( [ keyword "type "; html_type type_doc.name ]
-          @ ty_args
-          @ [ txt " = " ]
-          @ html_of_type ty )
-      in
-      [ header ]
+      h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
+        ( keyword "type "
+        ++ html_type type_doc.name
+        ++ ty_args
+        ++ string " = "
+        ++ html_of_type ty )
   (* TODO *)
   | DTObj (ty, fields) ->
       let header =
-        h4
-          ~a:[ a_class [ "type-declaration" ]; a_id ("type." ^ type_doc.name) ]
-          ( [ keyword "type "; html_type type_doc.name ]
-          @ ty_args
-          @ [ txt " = {" ] )
+        h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
+          ( keyword "type "
+          ++ html_type type_doc.name
+          ++ ty_args
+          ++ string " = {" )
       in
-      let html_field = code ~a:[ a_class [ "type-field" ] ] in
-      let indent = [ space (); space () ] in
-      let br_indent = br () :: indent in
+      let html_field = code ~cls:"type-field" in
+      let indent = space ++ space in
+      let br_indent = br empty ++ indent in
       header
-      :: Lib.List.concat_map
-           (fun (ty_field, doc) ->
-             let doc_string =
-               if doc <> "" then br_indent @ [ txt doc ] else []
-             in
-             html_field (indent @ html_of_typ_field ty_field @ [ txt ";" ])
-             :: doc_string)
-           fields
-      @ [ br (); txt "}" ]
+      ++ list
+           (List.map
+              (fun (ty_field, doc) ->
+                let doc_string =
+                  if doc <> "" then br_indent ++ string doc else []
+                in
+                html_field (indent ++ html_of_typ_field ty_field ++ string ";")
+                ++ doc_string)
+              fields)
+      ++ br empty
+      ++ string "}"
 
 let html_of_arg (arg : Extract.function_arg_doc) =
   parameter arg.name
-  :: Option.fold ~none:[]
-       ~some:(fun arg -> txt " : " :: html_of_type arg)
+  ++ Option.fold ~none:empty
+       ~some:(fun arg -> string " : " ++ html_of_type arg)
        arg.typ
 
 let rec html_of_declaration = function
   | Function function_doc ->
       let is_multiline = List.length function_doc.args > 2 in
-      let br' = if is_multiline then [ br () ] else [] in
+      let br' = if is_multiline then br empty else empty in
       let br_indent =
-        if is_multiline then [ br (); space (); space () ] else []
+        if is_multiline then br empty ++ space ++ space else empty
       in
       let ty_args =
         match function_doc.type_args with
         | [] -> []
         | xs ->
-            txt "<"
-            :: join_with [ txt ", " ]
-                 (List.map (fun t -> [ html_of_typ_bind t ]) xs)
-            @ [ txt ">" ]
+            string "<"
+            ++ join_with (string ", ") (List.map html_of_typ_bind xs)
+            ++ string ">"
       in
       let args =
-        join_with (txt ", " :: br_indent)
+        join_with
+          (string ", " ++ br_indent)
           (List.map html_of_arg function_doc.args)
       in
       let return_typ =
         Option.fold ~none:[]
-          ~some:(fun typ -> txt " : " :: html_of_type typ)
+          ~some:(fun typ -> string " : " ++ html_of_type typ)
           function_doc.typ
       in
-      [
-        h4
-          ~a:[ a_class [ "function" ]; a_id ("value." ^ function_doc.name) ]
-          [
-            code
-              ( [ keyword "public func "; fn_name function_doc.name ]
-              @ ty_args
-              @ (txt "(" :: br_indent)
-              @ args
-              @ br'
-              @ [ txt ")" ]
-              @ return_typ );
-          ];
-      ]
+      h4 ~cls:"function"
+        ~id:("value." ^ function_doc.name)
+        (code
+           ( keyword "public func "
+           ++ fn_name function_doc.name
+           ++ ty_args
+           ++ string "("
+           ++ br_indent
+           ++ args
+           ++ br'
+           ++ string ")"
+           ++ return_typ ))
   | Class class_doc ->
       let ty_args =
         match class_doc.type_args with
-        | [] -> []
+        | [] -> empty
         | xs ->
-            txt "<"
-            :: join_with [ txt ", " ]
-                 (List.map (fun t -> [ html_of_typ_bind t ]) xs)
-            @ [ txt ">" ]
+            string "<"
+            ++ join_with (string ", ") (List.map html_of_typ_bind xs)
+            ++ string ">"
       in
-      [
-        h4
-          ~a:
-            [
-              a_class [ "class-declaration" ]; a_id ("class." ^ class_doc.name);
-            ]
-          ([ keyword "class "; class_name class_doc.name ] @ ty_args);
-      ]
-      @ List.map html_of_doc class_doc.fields
+      h4 ~cls:"class-declaration"
+        ~id:("class." ^ class_doc.name)
+        (keyword "class " ++ class_name class_doc.name ++ ty_args)
+      ++ list (List.map html_of_doc class_doc.fields)
   | Type type_doc -> html_of_type_doc type_doc
   | Value value_doc ->
-      [
-        h4
-          ~a:
-            [
-              a_class [ "value-declaration" ]; a_id ("value." ^ value_doc.name);
-            ]
-          [
-            code
-              ( [ keyword "public let "; fn_name value_doc.name; txt " : " ]
-              @ Option.fold ~none:[] ~some:html_of_type value_doc.typ );
-          ];
-      ]
-  | Unknown s -> [ code [ txt "Unknown: "; txt s ] ]
+      h4 ~cls:"value-declaration"
+        ~id:("value." ^ value_doc.name)
+        (code
+           ( keyword "public let "
+           ++ fn_name value_doc.name
+           ++ string " : "
+           ++ Option.fold ~none:empty ~some:html_of_type value_doc.typ ))
+  | Unknown s -> code (string "Unknown: " ++ string s)
 
 and html_of_doc { doc_comment; declaration } =
-  div
-    ~a:[ a_class [ "declaration" ] ]
+  div ~cls:"declaration"
     ( html_of_declaration declaration
-    @ [
-        p
-          ~a:[ a_class [ "doc-comment" ] ]
-          (html_of_comment (doc_comment |> Option.value ~default:""));
-      ] )
+    ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
 
-let html_of_docs : string -> doc list -> Html.doc =
+let html_of_docs : string -> doc list -> Cow.Html.t =
  fun module_docs docs ->
   let header =
-    head
-      (title (txt "Doc"))
-      [
-        meta ~a:[ a_charset "UTF-8" ] ();
-        link ~rel:[ `Stylesheet ] ~href:"styles.css" ();
-      ]
+    head ~attrs:[ ("title", "Doc") ]
+      ( meta ~charset:"UTF-8" []
+      ++ link ~rel:"stylesheet" ~href:(Uri.of_string "styles.css") empty )
   in
-  html header
-    (body
-       ( div ~a:[ a_class [ "module-docs" ] ] (html_of_comment module_docs)
-       :: List.map html_of_doc docs ))
+  let bdy =
+    body
+      ( div ~cls:"module-docs" (html_of_comment module_docs)
+      ++ list (List.map html_of_doc docs) )
+  in
+  html (header ++ bdy)
 
 let render_docs : string -> doc list -> string =
  fun module_docs docs ->
-  Format.asprintf "%a" (Html.pp ()) (html_of_docs module_docs docs)
+  Format.asprintf "%s" (Cow.Html.to_string (html_of_docs module_docs docs))
