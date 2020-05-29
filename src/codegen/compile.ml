@@ -7850,7 +7850,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       | ((prog, _flavor) :: progs) ->
         let (ae1, code1) = compile_prog env ae prog in
         let code2 = go ae1 progs in
-        G.(dw_tag (Compile_unit ("./."(* FIXME *), (snd prog).at.left.file(* FIXME: empty? *))))
+        G.(dw_tag Flags.(Compile_unit (!compilation_dir, !compilation_unit)))
           (code1 ^^ code2) in
     go VarEnv.empty_ae progs
     )

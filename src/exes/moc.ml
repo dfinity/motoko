@@ -100,9 +100,15 @@ let set_out_file files ext =
   if !out_file = "" then begin
     match files with
     | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
-    | ns -> eprintf "moc: no output file specified"; exit 1
+    | _ -> eprintf "moc: no output file specified"; exit 1
   end
-  
+
+let set_compilation_unit = function
+  | [n] ->
+    if Compile = !mode
+    then Flags.(compilation_unit := n; compilation_dir := ".")
+  | _ -> assert false
+
 (* Main *)
 
 let exit_on_none = function
@@ -130,6 +136,7 @@ let process_files files : unit =
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
+    set_compilation_unit files;
     let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
