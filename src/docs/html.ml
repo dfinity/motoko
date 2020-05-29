@@ -54,7 +54,6 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.PrimT typ -> html_type typ
   | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
   | Syntax.OptT typ ->
-      (* TODO only parenthesize non-trivial types *)
       if Common.type_is_atom typ then string "?" ++ html_of_type typ
       else string "?(" ++ html_of_type typ ++ string ")"
   | Syntax.TupT typ_list ->
@@ -119,7 +118,8 @@ let html_of_type_doc : Extract.type_doc -> t =
         ++ ty_args
         ++ string " = "
         ++ html_of_type ty )
-  (* TODO *)
+  (* TODO Figure out a layout for showing the documentation on individual
+   *  fields *)
   | DTObj (ty, fields) ->
       let header =
         h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
@@ -166,6 +166,8 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
             ++ join_with (string ", ") (List.map html_of_typ_bind xs)
             ++ string ">"
       in
+      (* TODO: Figure out a layout to show documentation for individual
+       *  arguments *)
       let args =
         join_with
           (string ", " ++ br_indent)
