@@ -1,6 +1,8 @@
 open Mo_frontend
 open Extract
 
+type output_format = Plain | Adoc | Html
+
 (* Renders a given module, and its module comment *)
 type render = string -> doc list -> string
 
@@ -60,9 +62,11 @@ let process_directory processor extension source output =
       processor file out_path)
     all_files
 
-let start src out =
+let start output_format src out =
   (try Unix.mkdir out 0o777 with _ -> ());
-  write_file (Filename.concat out "styles.css") Styles.styles;
-  process_directory (process_source Plain.render_docs) "txt" src out;
-  process_directory (process_source Adoc.render_docs) "adoc" src out;
-  process_directory (process_source Html.render_docs) "html" src out
+  match output_format with
+  | Plain -> process_directory (process_source Plain.render_docs) "txt" src out
+  | Adoc -> process_directory (process_source Adoc.render_docs) "adoc" src out
+  | Html ->
+      write_file (Filename.concat out "styles.css") Styles.styles;
+      process_directory (process_source Html.render_docs) "html" src out
