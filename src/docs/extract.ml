@@ -36,24 +36,13 @@ and doc_type =
   | DTPlain of Syntax.typ
   (* One level unwrapping of an object type with documentation on its fields *)
   | DTObj of Syntax.typ * (Syntax.typ_field * string) list
+  (* TODO We'll also want to unwrap variants here *)
 
 and class_doc = {
   name : string;
   type_args : Syntax.typ_bind list;
   fields : doc list;
 }
-
-and link = { location : link_location; title : string; namespace : namespace }
-
-and namespace = Value | Type
-
-and package_name = string
-
-and module_name = string
-
-and link_location =
-  | Local of module_name
-  | Dependency of (package_name * module_name)
 
 let un_prog prog =
   let rec go acc = function
