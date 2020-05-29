@@ -4,6 +4,13 @@ open Extract
 (* Renders a given module, and its module comment *)
 type render = string -> doc list -> string
 
+let write_file : string -> string -> unit =
+ fun file output ->
+  let oc = open_out file in
+  Printf.fprintf oc "%s" output;
+  flush oc;
+  close_out oc
+
 let process_source : render -> string -> string -> unit =
  fun render in_file out_file ->
   Printf.printf "Processing: %s\n" in_file;
@@ -18,10 +25,7 @@ let process_source : render -> string -> string -> unit =
   let trivia_table = get_trivia_table () in
   let module_docs, imports, docs = extract_docs prog trivia_table in
   let output = render module_docs docs in
-  let oc = open_out out_file in
-  Printf.fprintf oc "%s" output;
-  flush oc;
-  close_out oc
+  write_file out_file output
 
 let list_files_recursively dir =
   let rec loop result = function
@@ -37,7 +41,6 @@ let list_files_recursively dir =
   loop [] [ dir ]
 
 let process_directory processor extension source output =
-  (try Unix.mkdir output 0o777 with _ -> ());
   (* Printf.printf "%s -> %s\n" source output; *)
   let all_files = list_files_recursively source in
   let all_files =
@@ -58,6 +61,8 @@ let process_directory processor extension source output =
     all_files
 
 let start src out =
+  (try Unix.mkdir out 0o777 with _ -> ());
+  write_file (Filename.concat out "styles.css") Styles.styles;
   process_directory (process_source Plain.render_docs) "txt" src out;
   process_directory (process_source Adoc.render_docs) "adoc" src out;
   process_directory (process_source Html.render_docs) "html" src out
