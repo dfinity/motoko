@@ -30,6 +30,7 @@ let gen_source_map = ref false
 
 let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
+  "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
