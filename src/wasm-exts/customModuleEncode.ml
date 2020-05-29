@@ -122,7 +122,7 @@ let encode (em : extended_module) =
   sources := !sources @ [ "prelude" ];
   sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
-  let add_string gen strings str = (* FIXME: perform suffix compression *)
+  let add_string gen strings str = (* FIXME: perform suffix compression? *)
     let strs = !strings in
     match List.assoc_opt str strs with
     | Some v -> v
@@ -279,8 +279,10 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_type ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
-      | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
+      | Nop, {line; _} ->
+        failwith (Printf.sprintf "extract TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
+      | instr, {line; file; _} ->
+        failwith (Printf.sprintf "extract UNKNOWN TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))))
     in
     add_dwarf_tag (if refi = 0 then None else Some refi) tag;
     let rec add_artifacts = function
@@ -950,9 +952,15 @@ let encode (em : extended_module) =
             if attr <> a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices));
             assert (attr = a);
             writeForm form (IntAttribute (a, List.(snd (hd !source_path_indices) - assoc path !source_path_indices)))
-          | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;assert (attr = a); writeForm form art
+          | IntAttribute (a, _) as art ->
+            if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;
+            assert (attr = a);
+            writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
+          | FunctionsAttribute a as art ->
+            (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)
+            assert (attr = a);
+            writeForm form art in
         let rec indexOf cnt = function
           | h :: t when wanted_tag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
@@ -990,9 +998,7 @@ let encode (em : extended_module) =
             | [toplevel] -> writeTag toplevel
             | _ -> failwith "expected one toplevel tag"
           ) in
-      let relevant = function
-        | [Tag (None, 0, [])] -> false
-        | _ -> true in
+      let relevant ts = ts <> [Tag (None, 0, [])] in
       custom_section ".debug_info" section_body dwarf_tags (relevant !dwarf_tags)
 
     let debug_strings_section dss =
