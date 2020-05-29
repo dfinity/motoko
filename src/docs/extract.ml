@@ -36,8 +36,8 @@ and doc_type =
   | DTPlain of Syntax.typ
   (* One level unwrapping of an object type with documentation on its fields *)
   | DTObj of Syntax.typ * (Syntax.typ_field * string) list
-  (* TODO We'll also want to unwrap variants here *)
 
+(* TODO We'll also want to unwrap variants here *)
 and class_doc = {
   name : string;
   type_args : Syntax.typ_bind list;
@@ -61,18 +61,14 @@ let un_prog prog =
   in
   go [] prog.Source.it
 
-(* TODO remove comment tokens *)
 let string_of_leading : Lexer.trivia_info -> string =
  fun info ->
   String.concat "\n"
     (List.filter_map
        (function
          | Source_token.Comment s -> (
-             match Lib.String.chop_prefix "///" s with
-             | Some line_comment -> (
-                 match Lib.String.chop_prefix " " line_comment with
-                 | Some line_comment -> Some line_comment
-                 | None -> Some line_comment )
+             match Lib.String.chop_prefix "/// " s with
+             | Some line_comment -> Some line_comment
              | None ->
                  Option.bind
                    (Lib.String.chop_prefix "/**" s)
