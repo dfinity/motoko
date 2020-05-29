@@ -181,7 +181,7 @@ open Mo_types
 (* Note [Low_pc, High_pc, Ranges are special]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The DWARF attributes Low_pc, High_pc and Ranges carry information
+The DWARF attributes `Low_pc`, `High_pc` and `Ranges` carry information
 about the Wasm bytecode's layout in the emitted Code section for the
 compilation unit. The information is not available here, so these
 attributes have no payload at this side. Instead it is filled in
@@ -254,10 +254,10 @@ let dw_attr : dw_AT -> t =
   | Stmt_list l -> fakeColumn l dw_AT_stmt_list Nop
   | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
   | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 Nop
+  | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
   | Low_pc -> fakeColumn 0 dw_AT_low_pc Nop
   | High_pc -> fakeColumn 0 dw_AT_high_pc Nop
-  | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
-  | Ranges -> fakeColumn 0(* FIXME *) dw_AT_ranges Nop
+  | Ranges -> fakeColumn 0 dw_AT_ranges Nop  (* see Note [Low_pc, High_pc, Ranges are special] *)
   | Decl_file f -> fakeFile f dw_AT_decl_file Nop
   | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
@@ -564,10 +564,8 @@ let dw_tag_no_children = dw_tag_open (* self-closing *)
 
 (* Marker for statement boundaries *)
 let dw_statement { Source.left; Source.right } =
-  if (Filename.basename left.Source.file = "fib-wasm.mo") then (Printf.printf "MARKED fib-wasm.mo:%d:%d\n" left.Source.line left.Source.column );
   let open Wasm.Source in
   let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
   (* right is only differing in the negated line *)
   let right = { left with line = - left.line } in
-  (* FIXME *)assert (left.file = "" || Wasm_exts.CustomModuleEncode.is_dwarf_statement { left; right });
   fun _ _ x -> (Nop @@ { left; right }) :: x
