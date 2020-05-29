@@ -29,7 +29,8 @@ let process_source : render -> string -> string -> unit =
   let output = render module_docs docs in
   write_file out_file output
 
-let list_files_recursively dir =
+let list_files_recursively : string -> string list =
+ fun dir ->
   let rec loop result = function
     | f :: fs when Sys.is_directory f ->
         Sys.readdir f
@@ -42,7 +43,9 @@ let list_files_recursively dir =
   in
   loop [] [ dir ]
 
-let process_directory processor extension source output =
+let process_directory :
+    (string -> string -> unit) -> string -> string -> string -> unit =
+ fun processor extension source output ->
   (* Printf.printf "%s -> %s\n" source output; *)
   let all_files = list_files_recursively source in
   let all_files =
@@ -62,7 +65,8 @@ let process_directory processor extension source output =
       processor file out_path)
     all_files
 
-let start output_format src out =
+let start : output_format -> string -> string -> unit =
+ fun output_format src out ->
   (try Unix.mkdir out 0o777 with _ -> ());
   match output_format with
   | Plain -> process_directory (process_source Plain.render_docs) "txt" src out

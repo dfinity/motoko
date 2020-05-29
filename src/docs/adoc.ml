@@ -1,12 +1,14 @@
 open Extract
 open Printf
 
-let surround buf s inner =
+let surround : Buffer.t -> string -> (unit -> unit) -> unit =
+ fun buf s inner ->
   Buffer.add_string buf s;
   inner ();
   Buffer.add_string buf s
 
-let adoc_of_typ_bind = Plain.plain_of_typ_bind
+let adoc_of_typ_bind : Buffer.t -> Mo_def.Syntax.typ_bind -> unit =
+  Plain.plain_of_typ_bind
 
 let adoc_of_function_arg : Buffer.t -> function_arg_doc -> unit =
  fun buf arg ->

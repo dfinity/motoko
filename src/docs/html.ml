@@ -2,39 +2,45 @@ open Extract
 open Mo_def
 open Cow.Html
 
-let rec join_with sep = function
+let rec join_with : t -> t list -> t =
+ fun sep -> function
   | [] -> empty
   | [ x ] -> x
   | x :: xs -> x ++ sep ++ join_with sep xs
 
-let space = string "\u{00A0}"
+let space : t = string "\u{00A0}"
 
-let fn_name s = span ~cls:"fnname" (string s)
+let cls_span : string -> string -> t = fun cls s -> span ~cls (string s)
 
-let class_name s = span ~cls:"classname" (string s)
+let fn_name : string -> t = cls_span "fnname"
 
-let keyword s = span ~cls:"keyword" (string s)
+let class_name : string -> t = cls_span "classname"
 
-let parameter s = span ~cls:"parameter" (string s)
+let keyword : string -> t = cls_span "keyword"
 
-let html_type s = span ~cls:"type" (string s)
+let parameter : string -> t = cls_span "parameter"
 
-let rec string_of_path path =
+let html_type : string -> t = cls_span "type"
+
+let rec string_of_path : Syntax.path -> string =
+ fun path ->
   match path.Source.it with
   | Syntax.IdH id -> id.Source.it
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
-let html_of_comment = Cow.Markdown.of_string
+let html_of_comment : string -> t = Cow.Markdown.of_string
 
-let html_of_mut mut =
+let html_of_mut : Syntax.mut -> t =
+ fun mut ->
   match mut.Source.it with
   | Syntax.Var -> keyword "mut "
   | Syntax.Const -> string ""
 
-let html_of_typ_bind typ_bind =
-  html_type typ_bind.Source.it.Syntax.var.Source.it
+let html_of_typ_bind : Syntax.typ_bind -> t =
+ fun typ_bind -> html_type typ_bind.Source.it.Syntax.var.Source.it
 
-let rec html_of_type typ =
+let rec html_of_type : Syntax.typ -> t =
+ fun typ ->
   match typ.Source.it with
   | Syntax.PathT (path, typs) -> (
       html_type (string_of_path path)
@@ -88,13 +94,15 @@ let rec html_of_type typ =
       ++ join_with (string "; ") (List.map html_of_typ_field fields)
       ++ string " }"
 
-and html_of_typ_field (field : Syntax.typ_field) =
+and html_of_typ_field : Syntax.typ_field -> t =
+ fun field ->
   (* TODO mut might be wrong here *)
   html_of_mut field.Source.it.Syntax.mut
   ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
   ++ html_of_type field.Source.it.Syntax.typ
 
-let html_of_type_doc (type_doc : Extract.type_doc) =
+let html_of_type_doc : Extract.type_doc -> t =
+ fun type_doc ->
   let ty_args =
     match type_doc.type_args with
     | [] -> []
@@ -136,13 +144,14 @@ let html_of_type_doc (type_doc : Extract.type_doc) =
       ++ br empty
       ++ string "}"
 
-let html_of_arg (arg : Extract.function_arg_doc) =
+let html_of_arg : Extract.function_arg_doc -> t =
+ fun arg ->
   parameter arg.name
   ++ Option.fold ~none:empty
        ~some:(fun arg -> string " : " ++ html_of_type arg)
        arg.typ
 
-let rec html_of_declaration = function
+let rec html_of_declaration : Extract.declaration_doc -> t = function
   | Function function_doc ->
       let is_multiline = List.length function_doc.args > 2 in
       let br' = if is_multiline then br empty else empty in
@@ -203,7 +212,8 @@ let rec html_of_declaration = function
            ++ Option.fold ~none:empty ~some:html_of_type value_doc.typ ))
   | Unknown s -> code (string "Unknown: " ++ string s)
 
-and html_of_doc { doc_comment; declaration } =
+and html_of_doc : Extract.doc -> t =
+ fun { doc_comment; declaration } ->
   div ~cls:"declaration"
     ( html_of_declaration declaration
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
