@@ -365,7 +365,7 @@ let expD exp =
 let let_no_shadow (id, typ) exp decs =
   (* could be replaced by a more simple “defined by this decs” function *)
   let (_,f) = Freevars.decs decs in
-  if Freevars.S.mem id f
+  if Freevars.M.mem id f
   then decs
   else [ letD (id, typ) exp ] @ decs
 
