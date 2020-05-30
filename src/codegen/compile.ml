@@ -7673,7 +7673,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let (pre_ae1, alloc_code, dw) = AllocHow.add_local env pre_ae how name e.note.Note.typ in
+      let pre_ae1, alloc_code, dw = AllocHow.add_local env pre_ae how name e.note.Note.typ in
 
       ( pre_ae1,
         alloc_code,
