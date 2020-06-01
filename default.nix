@@ -336,7 +336,7 @@ rec {
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
-    src = subpath ./guide;
+    src = subpath ./doc;
     buildInputs =
       with nixpkgs;
       let tex = texlive.combine {
