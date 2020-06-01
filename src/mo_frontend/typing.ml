@@ -1826,9 +1826,20 @@ and infer_dec env dec : T.typ =
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
-      let cs, _ts, te, ce = check_typ_binds env typ_binds in
+      let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
-      let _, ve = infer_pat_exhaustive (if sort.it = T.Actor then error else warn) env' pat in
+      let t1, ve = infer_pat_exhaustive (if sort.it = T.Actor then error else warn) env' pat in
+      if sort.it = T.Actor then begin
+        (match typ_binds with
+         | { it = { sort =  { it = T.Scope; _ }; _}; _ } :: typ_binds' ->
+           if typ_binds' <> [] then
+             error env
+               { left = (List.hd typ_binds').at.left; right = (Lib.List.last typ_binds').at.right}
+                 "actor class has unexpected type parameter(s)";
+         | _ -> assert false (* actor class must have a scope parameter *));
+        if (not (T.shared t1)) then
+          error_shared env t1 pat.at "actor class has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
+      end;
       let env'' = adjoin_vals env' ve in
       let cs' = if sort.it = T.Actor then List.tl cs else cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
@@ -1841,16 +1852,19 @@ and infer_dec env dec : T.typ =
         }
       in
       let t' = infer_obj env''' sort.it fields dec.at in
-      match typ_opt with
-      | None -> ()
-      | Some typ ->
-        (* TODO check actor restrictions *)
+      match typ_opt, sort.it with
+      | None, _ -> ()
+      | Some { it = AsyncT (_, typ); _}, T.Actor
+      | Some typ, (T.Module | T.Object) ->
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error env dec.at
             "class body of type\n  %s\ndoes not match expected type\n  %s"
             (T.string_of_typ_expand t')
             (T.string_of_typ_expand t'')
+      | Some typ, T.Actor ->
+        local_error env dec.at "actor class has non-async return type"
+      | _, T.Memory -> assert false
     end;
     t
   | TypD _ ->
