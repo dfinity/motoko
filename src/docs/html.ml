@@ -36,9 +36,6 @@ let html_of_mut : Syntax.mut -> t =
   | Syntax.Var -> keyword "mut "
   | Syntax.Const -> string ""
 
-let html_of_typ_bind : Syntax.typ_bind -> t =
- fun typ_bind -> html_type typ_bind.Source.it.Syntax.var.Source.it
-
 let rec html_of_type : Syntax.typ -> t =
  fun typ ->
   match typ.Source.it with
@@ -54,7 +51,7 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.PrimT typ -> html_type typ
   | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
   | Syntax.OptT typ ->
-      if Common.type_is_atom typ then string "?" ++ html_of_type typ
+      if Common.is_type_atom typ then string "?" ++ html_of_type typ
       else string "?(" ++ html_of_type typ ++ string ")"
   | Syntax.TupT typ_list ->
       string "("
@@ -92,6 +89,14 @@ let rec html_of_type : Syntax.typ -> t =
       string "{ "
       ++ join_with (string "; ") (List.map html_of_typ_field fields)
       ++ string " }"
+
+and html_of_typ_bind : Syntax.typ_bind -> t =
+ fun typ_bind ->
+  let bound = typ_bind.Source.it.Syntax.bound in
+  let bound_html =
+    if Syntax.is_any bound then nil else string " <: " ++ html_of_type bound
+  in
+  html_type typ_bind.Source.it.Syntax.var.Source.it ++ bound_html
 
 and html_of_typ_field : Syntax.typ_field -> t =
  fun field ->

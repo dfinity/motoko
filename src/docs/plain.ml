@@ -42,9 +42,6 @@ let plain_of_mut : Buffer.t -> Syntax.mut -> unit =
   | Syntax.Var -> Buffer.add_string buf "mut "
   | Syntax.Const -> ()
 
-let plain_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
- fun buf typ_bind -> Buffer.add_string buf typ_bind.it.Syntax.var.it
-
 let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
  fun buf typ ->
   match typ.Source.it with
@@ -62,7 +59,7 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       plain_of_typ buf ty;
       bprintf buf "]"
   | Syntax.OptT typ ->
-      if Common.type_is_atom typ then (
+      if Common.is_type_atom typ then (
         bprintf buf "?";
         plain_of_typ buf typ )
       else (
@@ -97,6 +94,14 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
         bprintf buf ")" );
       bprintf buf " -> ";
       plain_of_typ buf res
+
+and plain_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
+ fun buf typ_bind ->
+  let bound = typ_bind.it.Syntax.bound in
+  Buffer.add_string buf typ_bind.it.Syntax.var.it;
+  if not (Syntax.is_any bound) then (
+    bprintf buf " <: ";
+    plain_of_typ buf typ_bind.it.Syntax.bound )
 
 and plain_of_typ_field : Buffer.t -> Syntax.typ_field -> unit =
  fun buf field ->
