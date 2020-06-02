@@ -7558,17 +7558,17 @@ and fill_pat env ae pat : patternCode =
              (CannotFail get_i ^^^ code2)
 
 and alloc_pat_local env ae pat =
-  let (_,d) = Freevars.pat pat in
-  AllocHow.S.fold (fun v ae ->
+  let d = Freevars.pat pat in
+  AllocHow.M.fold (fun v _ty ae ->
     let (ae1, _i) = VarEnv.add_direct_local env ae v
     in ae1
   ) d ae
 
 and alloc_pat env ae how pat : VarEnv.t * G.t  =
-  (fun (ae,code) -> (ae, G.with_region pat.at code)) @@
-  let (_,d) = Freevars.pat pat in
-  AllocHow.S.fold (fun v (ae,code0) ->
-    let (ae1, code1) = AllocHow.add_local env ae how v
+  (fun (ae, code) -> (ae, G.with_region pat.at code)) @@
+  let d = Freevars.pat pat in
+  AllocHow.M.fold (fun v _ty (ae, code0) ->
+    let ae1, code1 = AllocHow.add_local env ae how v
     in (ae1, code0 ^^ code1)
   ) d (ae, G.nop)
 
@@ -7599,7 +7599,7 @@ and compile_n_ary_pat env ae how pat =
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let arity, fill_code =
-    (fun (sr,code) -> (sr, G.with_region pat.at code)) @@
+    (fun (sr, code) -> sr, G.with_region pat.at code) @@
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
     | WildP -> None, G.nop
@@ -7643,10 +7643,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
       fill_code
     )
   | VarD (name, _, e) ->
-      assert (AllocHow.M.find_opt name how = Some AllocHow.LocalMut ||
-              AllocHow.M.find_opt name how = Some AllocHow.StoreHeap ||
-              AllocHow.M.find_opt name how = Some AllocHow.StoreStatic);
-      let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
+    assert AllocHow.(match M.find_opt name how with
+                     | Some (LocalMut | StoreHeap | StoreStatic) -> true
+                     | _ -> false);
+      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
       ( pre_ae1, alloc_code, fun ae ->
         compile_exp_vanilla env ae e ^^
