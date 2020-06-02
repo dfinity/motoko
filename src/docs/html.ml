@@ -36,6 +36,23 @@ let html_of_mut : Syntax.mut -> t =
   | Syntax.Var -> keyword "var "
   | Syntax.Const -> string ""
 
+let html_of_func_sort : Syntax.func_sort -> t =
+ fun sort ->
+  Mo_types.Type.(
+    match sort.Source.it with
+    | Local -> nil
+    | Shared Query -> keyword "shared query "
+    | Shared Write -> keyword "shared ")
+
+let html_of_obj_sort : Syntax.obj_sort -> t =
+ fun sort ->
+  Mo_types.Type.(
+    match sort.Source.it with
+    | Object -> nil
+    | Actor -> keyword "actor "
+    | Module -> keyword "module "
+    | Memory -> assert false)
+
 let rec html_of_type : Syntax.typ -> t =
  fun typ ->
   match typ.Source.it with
@@ -74,12 +91,17 @@ let rec html_of_type : Syntax.typ -> t =
         if Common.is_tuple_type arg then html_of_type arg
         else string "(" ++ html_of_type arg ++ string ")"
       in
-      ty_args ++ ty_arg ++ string " -> " ++ html_of_type res
+      html_of_func_sort func_sort
+      ++ ty_args
+      ++ ty_arg
+      ++ string " -> "
+      ++ html_of_type res
   | Syntax.ArrayT (mut, ty) ->
       string "[" ++ html_of_mut mut ++ html_of_type ty ++ string "]"
   | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type typ
   | Syntax.ObjT (obj_sort, fields) ->
-      string "{ "
+      html_of_obj_sort obj_sort
+      ++ string "{ "
       ++ join_with (string "; ") (List.map html_of_typ_field fields)
       ++ string " }"
 

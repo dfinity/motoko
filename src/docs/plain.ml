@@ -42,6 +42,24 @@ let plain_of_mut : Buffer.t -> Syntax.mut -> unit =
   | Syntax.Var -> Buffer.add_string buf "var "
   | Syntax.Const -> ()
 
+let plain_of_func_sort : Buffer.t -> Syntax.func_sort -> unit =
+ fun buf sort ->
+  Mo_types.Type.(
+    match sort.it with
+    | Local -> ()
+    | Shared Query -> bprintf buf "shared query "
+    | Shared Write -> bprintf buf "shared ")
+
+let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
+ fun buf sort ->
+  Buffer.add_string buf
+    Mo_types.Type.(
+      match sort.it with
+      | Object -> ""
+      | Actor -> "actor "
+      | Module -> "module "
+      | Memory -> assert false)
+
 let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
  fun buf typ ->
   match typ.Source.it with
@@ -50,6 +68,7 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       sep_by' buf "<" ", " ">" (plain_of_typ buf) typs
   | Syntax.PrimT typ -> Buffer.add_string buf typ
   | Syntax.ObjT (obj_sort, fields) ->
+      plain_of_obj_sort buf obj_sort;
       bprintf buf "{ ";
       sep_by buf "; " (plain_of_typ_field buf) fields;
       bprintf buf " }"
@@ -86,6 +105,7 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       plain_of_typ buf typ;
       bprintf buf ")"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
+      plain_of_func_sort buf func_sort;
       plain_of_typ_binders buf typ_binders;
       if Common.is_tuple_type arg then plain_of_typ buf arg
       else (
