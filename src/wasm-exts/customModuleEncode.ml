@@ -1217,7 +1217,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
-      if (!Mo_config.Flags.debug_info) then
+      if !Mo_config.Flags.debug_info then
         begin
           debug_abbrev_section ();
           debug_addr_section !sequence_bounds;
