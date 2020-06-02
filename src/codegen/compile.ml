@@ -7618,7 +7618,7 @@ and compile_n_ary_pat env ae how pat =
      - the code to allocate memory
      - the arity
      - the code to do the pattern matching:
-       his expects the  undestructed value is on top of the stack,
+       This expects the  undestructed value is on top of the stack,
        consumes it, and fills the heap.
        If the pattern does not match, it branches to the depth at fail_depth.
      - the code declaring the DWARF variables.
