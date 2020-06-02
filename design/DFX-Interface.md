@@ -52,8 +52,9 @@ In order to compile a motoko file, `dfx` invokes `moc` with
     moc some/path/input.mo            \
         -o another/path/output.wasm   \
         { --package pkgname pkgpath } \
-        { --actor-alias alias url }
+        { --actor-alias alias url }   \
         [ --actor-idl actorpath ]
+        [ --class-dir classpath ]
 
 in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
 
@@ -79,6 +80,20 @@ As the previous point, but passing `--idl` to `moc`.
 
 The IDL generation does not issue any warnings.
 
+Compiling Motoko Files to Candid Parameter Description Files
+------------------------------------------------------------
+
+Parametrized canisters can use Candid to describe the arguments for
+installation. This is represented as a file in Candid syntax with a top-level
+production of
+```
+<prog>  ::= <def>;* ( <argtype>,* )
+```
+
+As the previous point, but passing `--param-idl` to `moc`.
+
+Theis does not issue any warnings.
+
 
 Resolving Canister aliases
 --------------------------
@@ -90,6 +105,14 @@ The first argument to `--actor-alias` is the alias without the URL scheme. The s
 The given aliases must be unique (i.e. no `--actor-alias a ic:00 --actor-alias a ic:ABCDE01A7`).
 
 [textual representation]: https://docs.dfinity.systems/spec/public/#textual-ids
+
+Resolving Canister code imports
+-------------------------------
+
+For every actor class imported using `import "class:alias"`, the Motoko expects
+files `alias.wasm`, `alias.did` (as produced by `--idl`) and `alias.params` (as
+produced by `--params-idl`) in the path given by `--class-dir`.
+
 
 Resolving Canister types
 ------------------------
@@ -128,6 +151,7 @@ In order to start the language server, `dfx` invokes
         { --package pkgname pkgpath }        \
         { --actor-alias alias url }
         [ --actor-idl actorpath ]
+        [ --class-dir classpath ]
 
 with `stdin` and `stdout` connected to the LSP client.
 
@@ -149,6 +173,7 @@ For example,
     mo:other_package/Some/Module
     ic:ABCDE01A7
     canister:alias
+    class:alias
     ./local_import some/path/local_import.mo
     ./runtime some/path/runtime.wasm
 
