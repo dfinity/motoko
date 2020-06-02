@@ -1,4 +1,5 @@
-let styles = {|
+let styles =
+  {|
 * {
   box-sizing: border-box;
 }

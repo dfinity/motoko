@@ -135,14 +135,15 @@ let rec extract_doc find_trivia = function
       in
       Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })
   | Source.
-      { it = Syntax.ClassD (name, type_args, _ctor_pat, _, sort, _, fields); _ } ->
+      { it = Syntax.ClassD (name, type_args, _ctor_pat, _, sort, _, fields); _ }
+    ->
       Some
         (Class
            {
              name = name.it;
              type_args;
              fields = List.filter_map (extract_exp_field find_trivia) fields;
-sort;
+             sort;
            })
   | unknown ->
       Wasm.Sexpr.print 80 (Arrange.dec unknown);
