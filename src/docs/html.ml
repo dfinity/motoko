@@ -140,31 +140,37 @@ let html_of_type_doc : Extract.type_doc -> t =
         ++ ty_args
         ++ string " = "
         ++ html_of_type ty )
-  (* TODO Figure out a layout for showing the documentation on individual
-   *  fields *)
   | DTObj (ty, fields) ->
-      let header =
-        h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
-          ( keyword "type "
-          ++ html_type type_doc.name
-          ++ ty_args
-          ++ string " = {" )
-      in
-      let html_field = code ~cls:"type-field" in
-      let indent = space ++ space in
-      let br_indent = br empty ++ indent in
-      header
-      ++ list
-           (List.map
-              (fun (ty_field, doc) ->
-                let doc_string =
-                  if doc <> "" then br_indent ++ string doc else []
-                in
-                html_field (indent ++ html_of_typ_field ty_field ++ string ";")
-                ++ doc_string)
-              fields)
-      ++ br empty
-      ++ string "}"
+      (* TODO Figure out a layout for showing the documentation on individual
+       *  fields *)
+      (* let header =
+       *   h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
+       *     ( keyword "type "
+       *     ++ html_type type_doc.name
+       *     ++ ty_args
+       *     ++ string " = {" )
+       * in
+       * let html_field = code ~cls:"type-field" in
+       * let indent = space ++ space in
+       * let br_indent = br empty ++ indent in
+       * header
+       * ++ list
+       *      (List.map
+       *         (fun (ty_field, doc) ->
+       *           let doc_string =
+       *             if doc <> "" then br_indent ++ string doc else []
+       *           in
+       *           html_field (indent ++ html_of_typ_field ty_field ++ string ";")
+       *           ++ doc_string)
+       *         fields)
+       * ++ br empty
+       * ++ string "}" *)
+      h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
+        ( keyword "type "
+        ++ html_type type_doc.name
+        ++ ty_args
+        ++ string " = "
+        ++ html_of_type ty )
 
 let html_of_arg : Extract.function_arg_doc -> t =
  fun arg ->
