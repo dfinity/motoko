@@ -58,7 +58,7 @@ let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
       | Object -> ""
       | Actor -> "actor "
       | Module -> "module "
-      | Memory -> assert false)
+      | Memory -> "memory ")
 
 let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
  fun buf typ ->
@@ -171,8 +171,9 @@ let rec declaration_header : Buffer.t -> declaration_doc -> unit =
       bprintf buf " = ";
       plain_of_doc_typ buf type_doc.typ
   | Class class_doc ->
-      bprintf buf "Class %s\n========\nbegin class %s" class_doc.name
-        class_doc.name;
+      bprintf buf "Class %s\n========\nbegin" class_doc.name;
+      plain_of_obj_sort buf class_doc.sort;
+      bprintf buf "class %s" class_doc.name;
       plain_of_typ_binders buf class_doc.type_args;
       sep_by buf "\n" (plain_of_doc buf) class_doc.fields;
       bprintf buf "\nend class %s" class_doc.name

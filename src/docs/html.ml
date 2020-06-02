@@ -51,7 +51,7 @@ let html_of_obj_sort : Syntax.obj_sort -> t =
     | Object -> nil
     | Actor -> keyword "actor "
     | Module -> keyword "module "
-    | Memory -> assert false)
+    | Memory -> keyword "memory ")
 
 let rec html_of_type : Syntax.typ -> t =
  fun typ ->
@@ -215,7 +215,7 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
       let ty_args = html_of_typ_binders class_doc.type_args in
       h4 ~cls:"class-declaration"
         ~id:("class." ^ class_doc.name)
-        (keyword "class " ++ class_name class_doc.name ++ ty_args)
+        (html_of_obj_sort class_doc.sort ++ keyword "class " ++ class_name class_doc.name ++ ty_args)
       ++ list (List.map html_of_doc class_doc.fields)
   | Type type_doc -> html_of_type_doc type_doc
   | Value value_doc ->
