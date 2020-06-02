@@ -16,7 +16,7 @@ let adoc_of_function_arg : Buffer.t -> function_arg_doc -> unit =
   Plain.opt_typ buf arg.typ
 
 let adoc_header : Buffer.t -> int -> string -> unit =
- fun buf lvl s -> bprintf buf "%s %s\n" (String.make (lvl + 3) '=') s
+ fun buf lvl s -> bprintf buf "%s %s\n" (String.make (lvl + 2) '=') s
 
 let adoc_signature : Buffer.t -> int -> (unit -> unit) -> unit =
  fun buf lvl f ->
