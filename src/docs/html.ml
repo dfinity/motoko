@@ -241,10 +241,27 @@ let html_of_docs : string -> doc list -> Cow.Html.t =
       ( meta ~charset:"UTF-8" []
       ++ link ~rel:"stylesheet" ~href:(Uri.of_string "styles.css") empty )
   in
+  let nav_of_doc doc =
+    match doc.Extract.declaration with
+    | Extract.Function func ->
+        li (a ~href:(Uri.of_string ("#value." ^ func.name)) (string func.name))
+    | Extract.Type typ ->
+        li (a ~href:(Uri.of_string ("#type." ^ typ.name)) (string typ.name))
+    | Extract.Class cls ->
+        li (a ~href:(Uri.of_string ("#class." ^ cls.name)) (string cls.name))
+    | Extract.Value val' ->
+        li (a ~href:(Uri.of_string ("#value." ^ val'.name)) (string val'.name))
+    | Extract.Unknown typ -> nil
+  in
+  let navigation =
+    nav ~cls:"sidebar"
+      (h3 (string "Declarations") ++ ul (List.map nav_of_doc docs))
+  in
   let bdy =
     body
-      ( div ~cls:"module-docs" (html_of_comment module_docs)
-      ++ list (List.map html_of_doc docs) )
+      ( navigation
+      ++ div ~cls:"documentation"
+           (html_of_comment module_docs ++ list (List.map html_of_doc docs)) )
   in
   html (header ++ bdy)
 
