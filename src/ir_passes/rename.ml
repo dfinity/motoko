@@ -102,8 +102,8 @@ and pat' rho p = match p with
                      (OptP p', rho')
   | TagP (i, p)   -> let (p', rho') = pat rho p in
                      (TagP (i, p'), rho')
-  | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
-                     assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
+  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
+                     assert(Freevars.(M.is_empty (pat p2)));
                      let (p1', _) = pat rho p1 in
                      let (p2' ,_) = pat rho p2 in
                      (AltP (p1', p2'), rho)
