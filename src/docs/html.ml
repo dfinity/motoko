@@ -69,14 +69,7 @@ let rec html_of_type : Syntax.typ -> t =
               typ_tags)
       ++ string "}"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
-      let ty_args =
-        match typ_binders with
-        | [] -> []
-        | xs ->
-            string "<"
-            ++ join_with (string ", ") (List.map html_of_typ_bind xs)
-            ++ string ">"
-      in
+      let ty_args = html_of_typ_binders typ_binders in
       let ty_arg =
         if Common.is_tuple_type arg then html_of_type arg
         else string "(" ++ html_of_type arg ++ string ")"
@@ -98,6 +91,15 @@ and html_of_typ_bind : Syntax.typ_bind -> t =
   in
   html_type typ_bind.Source.it.Syntax.var.Source.it ++ bound_html
 
+and html_of_typ_binders : Syntax.typ_bind list -> t =
+ fun typ_binders ->
+  match List.filter (fun b -> not (Common.is_scope_bind b)) typ_binders with
+  | [] -> []
+  | xs ->
+      string "<"
+      ++ join_with (string ", ") (List.map html_of_typ_bind xs)
+      ++ string ">"
+
 and html_of_typ_field : Syntax.typ_field -> t =
  fun field ->
   (* TODO mut might be wrong here *)
@@ -107,14 +109,7 @@ and html_of_typ_field : Syntax.typ_field -> t =
 
 let html_of_type_doc : Extract.type_doc -> t =
  fun type_doc ->
-  let ty_args =
-    match type_doc.type_args with
-    | [] -> []
-    | xs ->
-        string "<"
-        ++ join_with (string ", ") (List.map html_of_typ_bind xs)
-        ++ string ">"
-  in
+  let ty_args = html_of_typ_binders type_doc.type_args in
   match type_doc.typ with
   | DTPlain ty ->
       h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
@@ -163,14 +158,7 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
       let br_indent =
         if is_multiline then br empty ++ space ++ space else empty
       in
-      let ty_args =
-        match function_doc.type_args with
-        | [] -> []
-        | xs ->
-            string "<"
-            ++ join_with (string ", ") (List.map html_of_typ_bind xs)
-            ++ string ">"
-      in
+      let ty_args = html_of_typ_binders function_doc.type_args in
       (* TODO: Figure out a layout to show documentation for individual
        *  arguments *)
       let args =
@@ -196,14 +184,7 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
            ++ string ")"
            ++ return_typ ))
   | Class class_doc ->
-      let ty_args =
-        match class_doc.type_args with
-        | [] -> empty
-        | xs ->
-            string "<"
-            ++ join_with (string ", ") (List.map html_of_typ_bind xs)
-            ++ string ">"
-      in
+      let ty_args = html_of_typ_binders class_doc.type_args in
       h4 ~cls:"class-declaration"
         ~id:("class." ^ class_doc.name)
         (keyword "class " ++ class_name class_doc.name ++ ty_args)

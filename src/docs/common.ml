@@ -11,3 +11,9 @@ let is_type_atom typ =
   | Syntax.TupT _ | Syntax.ObjT _ | Syntax.VariantT _ ->
       true
   | Syntax.OptT _ | Syntax.FuncT _ | Syntax.AsyncT _ -> false
+
+let is_scope_bind : Syntax.typ_bind -> bool =
+ fun typ_bind ->
+  match typ_bind.Source.it.Syntax.sort.Source.it with
+  | Mo_types.Type.Scope -> true
+  | _ -> false

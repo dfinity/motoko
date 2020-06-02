@@ -86,7 +86,7 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       plain_of_typ buf typ;
       bprintf buf ")"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
-      sep_by' buf "<" ", " ">" (plain_of_typ_bind buf) typ_binders;
+      plain_of_typ_binders buf typ_binders;
       if Common.is_tuple_type arg then plain_of_typ buf arg
       else (
         bprintf buf "(";
@@ -102,6 +102,13 @@ and plain_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
   if not (Syntax.is_any bound) then (
     bprintf buf " <: ";
     plain_of_typ buf typ_bind.it.Syntax.bound )
+
+and plain_of_typ_binders : Buffer.t -> Syntax.typ_bind list -> unit =
+ fun buf typ_binders ->
+  let typ_binders =
+    List.filter (fun b -> not (Common.is_scope_bind b)) typ_binders
+  in
+  sep_by' buf "<" ", " ">" (plain_of_typ_bind buf) typ_binders
 
 and plain_of_typ_field : Buffer.t -> Syntax.typ_field -> unit =
  fun buf field ->
@@ -130,7 +137,7 @@ let rec declaration_header : Buffer.t -> declaration_doc -> unit =
   | Function function_doc ->
       bprintf buf "Function %s\n========\nfunc %s" function_doc.name
         function_doc.name;
-      sep_by' buf "<" ", " ">" (plain_of_typ_bind buf) function_doc.type_args;
+      plain_of_typ_binders buf function_doc.type_args;
       bprintf buf "(";
       sep_by buf ", " (function_arg buf) function_doc.args;
       bprintf buf ")";
@@ -140,13 +147,13 @@ let rec declaration_header : Buffer.t -> declaration_doc -> unit =
       opt_typ buf value_doc.typ
   | Type type_doc ->
       bprintf buf "Type %s\n========\ntype %s" type_doc.name type_doc.name;
-      sep_by' buf "<" ", " ">" (plain_of_typ_bind buf) type_doc.type_args;
+      plain_of_typ_binders buf type_doc.type_args;
       bprintf buf " = ";
       plain_of_doc_typ buf type_doc.typ
   | Class class_doc ->
       bprintf buf "Class %s\n========\nbegin class %s" class_doc.name
         class_doc.name;
-      sep_by' buf "<" ", " ">" (plain_of_typ_bind buf) class_doc.type_args;
+      plain_of_typ_binders buf class_doc.type_args;
       sep_by buf "\n" (plain_of_doc buf) class_doc.fields;
       bprintf buf "\nend class %s" class_doc.name
   | Unknown _ -> bprintf buf "Unknown\n========\n"
