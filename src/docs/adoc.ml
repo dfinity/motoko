@@ -15,7 +15,11 @@ let adoc_of_function_arg : Buffer.t -> function_arg_doc -> unit =
   Buffer.add_string buf arg.name;
   Plain.opt_typ buf arg.typ
 
-let adoc_declaration_header : Buffer.t -> int -> (unit -> unit) -> unit =
+let adoc_header : Buffer.t -> int -> string -> unit =
+ fun buf lvl s ->
+  bprintf buf "%s %s\n" (String.make (lvl + 3) '=') s
+
+let adoc_signature : Buffer.t -> int -> (unit -> unit) -> unit =
  fun buf lvl f ->
   Buffer.add_string buf (String.make (lvl + 3) '=');
   bprintf buf " ";
@@ -29,10 +33,12 @@ let adoc_of_doc_type : Buffer.t -> Extract.doc_type -> unit =
 
 let rec adoc_of_declaration : Buffer.t -> int -> declaration_doc -> unit =
  fun buf lvl doc ->
-  let header = adoc_declaration_header buf lvl in
+  let header = adoc_header buf lvl in
+  let signature = adoc_signature buf lvl in
   match doc with
   | Function function_doc ->
-      header (fun _ ->
+      header function_doc.name;
+      signature (fun _ ->
           bprintf buf "func %s" function_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
             function_doc.type_args;
@@ -41,24 +47,27 @@ let rec adoc_of_declaration : Buffer.t -> int -> declaration_doc -> unit =
           bprintf buf ")";
           Plain.opt_typ buf function_doc.typ)
   | Value value_doc ->
-      header (fun _ ->
+      header value_doc.name;
+      signature (fun _ ->
           bprintf buf "let %s" value_doc.name;
           Plain.opt_typ buf value_doc.typ)
   | Type type_doc ->
-      header (fun _ ->
+      header type_doc.name;
+      signature (fun _ ->
           bprintf buf "type %s" type_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
             type_doc.type_args;
           bprintf buf " = ";
           adoc_of_doc_type buf type_doc.typ)
   | Class class_doc ->
-      header (fun _ ->
+      header class_doc.name;
+      signature (fun _ ->
           bprintf buf "class %s" class_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
             class_doc.type_args);
       bprintf buf "\n\n";
       List.iter (adoc_of_doc buf (lvl + 1)) class_doc.fields
-  | Unknown unknown -> header (fun _ -> bprintf buf "Unknown %s" unknown)
+  | Unknown unknown -> signature (fun _ -> bprintf buf "Unknown %s" unknown)
 
 and adoc_of_doc : Buffer.t -> int -> doc -> unit =
  fun buf lvl { doc_comment; declaration } ->

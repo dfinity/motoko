@@ -34,7 +34,7 @@ let rec plain_of_path : Buffer.t -> Syntax.path -> unit =
   | Syntax.IdH id -> Buffer.add_string buf id.it
   | Syntax.DotH (path, id) ->
       plain_of_path buf path;
-      Buffer.add_string buf id.it
+      bprintf buf ".%s" id.it
 
 let plain_of_mut : Buffer.t -> Syntax.mut -> unit =
  fun buf mut ->
