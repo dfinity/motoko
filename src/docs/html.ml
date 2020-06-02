@@ -33,7 +33,7 @@ let html_of_comment : string -> t = Cow.Markdown.of_string
 let html_of_mut : Syntax.mut -> t =
  fun mut ->
   match mut.Source.it with
-  | Syntax.Var -> keyword "mut "
+  | Syntax.Var -> keyword "var "
   | Syntax.Const -> string ""
 
 let rec html_of_type : Syntax.typ -> t =

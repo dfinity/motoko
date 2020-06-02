@@ -39,7 +39,7 @@ let rec plain_of_path : Buffer.t -> Syntax.path -> unit =
 let plain_of_mut : Buffer.t -> Syntax.mut -> unit =
  fun buf mut ->
   match mut.it with
-  | Syntax.Var -> Buffer.add_string buf "mut "
+  | Syntax.Var -> Buffer.add_string buf "var "
   | Syntax.Const -> ()
 
 let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
