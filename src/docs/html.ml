@@ -248,7 +248,9 @@ let html_of_docs : Common.render_input -> Cow.Html.t =
   let header =
     head ~attrs:[ ("title", "Doc") ]
       ( meta ~charset:"UTF-8" []
-      ++ link ~rel:"stylesheet" ~href:(Uri.of_string (path_to_root ^ "styles.css")) empty )
+      ++ link ~rel:"stylesheet"
+           ~href:(Uri.of_string (path_to_root ^ "styles.css"))
+           empty )
   in
   let nav_of_doc doc =
     match doc.Extract.declaration with
@@ -268,7 +270,10 @@ let html_of_docs : Common.render_input -> Cow.Html.t =
       ++ ul
            (List.map
               (fun path ->
-                li (a ~href:(Uri.of_string (path_to_root ^ path ^ ".html")) (string path)))
+                li
+                  (a
+                     ~href:(Uri.of_string (path_to_root ^ path ^ ".html"))
+                     (string path)))
               all_modules)
       ++ h3 (string "Declarations")
       ++ ul (List.map nav_of_doc declarations) )
