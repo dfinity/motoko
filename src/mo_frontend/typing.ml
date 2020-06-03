@@ -11,6 +11,16 @@ module A = Effect
 module C = Async_cap
 
 
+let inaccessible_typ = T.Con(Con.fresh "InAccessible" (T.Abs ([], T.Any)),[])
+
+let accessible t =
+  match T.normalize t with
+  | T.Obj(T.Module, _) -> true
+  | t' -> T.shared t'
+
+let restrict ve =
+  T.Env.map (fun t -> if accessible t then t else inaccessible_typ) ve;
+
 (* Contexts  *)
 
 type lab_env = T.typ T.Env.t
@@ -700,7 +710,11 @@ and infer_exp'' env exp : T.typ =
     (match T.Env.find_opt id.it env.vals with
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
-    | Some t -> t
+    | Some t ->
+      if T.eq t inaccessible_typ then
+       (local_error env id.at "cannot access variable %s" id.it;
+        T.Non)
+      else t
     | None ->
       error env id.at "unbound variable %s" id.it
     )
@@ -786,7 +800,10 @@ and infer_exp'' env exp : T.typ =
       if sort.it = T.Actor then
         (if not (in_prog (* && env.async = C.NullCap*) ) then
            sort.note <- check_AwaitCap env "actor" exp.at; (* note used in desugaring *)
-         {env with async = C.NullCap; in_actor = true})
+         {env with
+           vals = restrict env.vals;
+           async = C.NullCap;
+           in_actor = true})
       else env
     in
     infer_obj env' sort.it fields exp.at
