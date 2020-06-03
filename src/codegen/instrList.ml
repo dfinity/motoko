@@ -8,7 +8,7 @@ features are
  * Helpers for DWARF elements (tags and attributes).
 *)
 
-open Wasm.Ast
+open Wasm_exts.Ast
 open Wasm.Source
 open Wasm.Values
 open Wasm.Types
@@ -158,7 +158,7 @@ let branch_to_ (p : depth) : t =
   fun d pos rest ->
     (Br (Int32.(sub d (Lib.Promise.value p)) @@ pos) @@ pos) :: rest
 
-(* Convenience combinations *)
+(* Convenience combinators *)
 
 let labeled_block_ (ty : stack_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
