@@ -65,6 +65,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
+    pkgs.ocamlPackages.obelisk
   ]; in
 
 let darwin_standalone =
@@ -365,7 +366,7 @@ rec {
   grammar = stdenv.mkDerivation {
     name = "grammar";
     src = subpath "./src/mo_frontend";
-    buildInputs = with nixpkgs; [ obelisk ];
+    buildInputs = with nixpkgs.ocamlPackages; [ obelisk ];
 
     buildPhase = ''
       obelisk -i parser.mly > grammar.txt
