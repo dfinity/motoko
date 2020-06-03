@@ -1,0 +1,289 @@
+<seplist(X, SEP)> ::= epsilon
+                    | X
+                    | X SEP <seplist(X, SEP)>
+
+<seplist1(X, SEP)> ::= X
+                     | X SEP <seplist(X, SEP)>
+
+<semicolon> ::= SEMICOLON
+              | SEMICOLON_EOL
+
+<id> ::= ID
+
+<tag> ::= HASH ID
+
+<typ_id> ::= ID
+
+<obj_sort> ::= OBJECT
+             | ACTOR
+             | MODULE
+
+<func_sort_opt> ::= epsilon
+                  | SHARED [QUERY]
+                  | QUERY
+
+<sort_pat> ::= epsilon
+             | SHARED [QUERY] [<pat_nullary>]
+             | QUERY [<pat_nullary>]
+
+<typ_obj> ::= LCURLY <seplist(<typ_field>, <semicolon>)> RCURLY
+
+<typ_variant> ::= LCURLY HASH RCURLY
+                | LCURLY <seplist1(<typ_tag>, <semicolon>)> RCURLY
+
+<typ_nullary> ::= LPAR <seplist(<typ_item>, COMMA)> RPAR
+                | <id> (DOT <id>)* [<typ_args>]
+                | LBRACKET [VAR] <typ> RBRACKET
+                | <typ_obj>
+                | <typ_variant>
+
+<typ_un> ::= <typ_nullary>
+           | QUEST <typ_un>
+
+<typ_pre> ::= <typ_un>
+            | PRIM TEXT
+            | ASYNC <typ_pre>
+            | <obj_sort> <typ_obj>
+
+<typ> ::= <typ_pre>
+        | <func_sort_opt> [LT <seplist(<typ_bind>, COMMA)> GT] <typ_un> ARROW
+          <typ>
+
+<typ_item> ::= <id> COLON <typ>
+             | <typ>
+
+<typ_args> ::= LT <seplist(<typ>, COMMA)> GT
+
+<typ_field> ::= [VAR] <id> COLON <typ>
+              | <id> [LT <seplist(<typ_bind>, COMMA)> GT] <typ_nullary>
+                <return_typ>
+
+<typ_tag> ::= <tag> [<return_typ_nullary>]
+
+<typ_bind> ::= <id> SUB <typ>
+             | <id>
+
+<lit> ::= NULL
+        | BOOL
+        | NAT
+        | FLOAT
+        | CHAR
+        | TEXT
+
+<unop> ::= ADDOP
+         | SUBOP
+         | XOROP
+
+<binop> ::= ADDOP
+          | SUBOP
+          | MULOP
+          | DIVOP
+          | MODOP
+          | POWOP
+          | ANDOP
+          | OROP
+          | XOROP
+          | SHLOP
+          | USHROP
+          | SSHROP
+          | ROTLOP
+          | ROTROP
+          | HASH
+
+<relop> ::= EQOP
+          | NEQOP
+          | LTOP
+          | LEOP
+          | GTOP
+          | GEOP
+
+<unassign> ::= PLUSASSIGN
+             | MINUSASSIGN
+             | XORASSIGN
+
+<binassign> ::= PLUSASSIGN
+              | MINUSASSIGN
+              | MULASSIGN
+              | DIVASSIGN
+              | MODASSIGN
+              | POWASSIGN
+              | ANDASSIGN
+              | ORASSIGN
+              | XORASSIGN
+              | SHLASSIGN
+              | USHRASSIGN
+              | SSHRASSIGN
+              | ROTLASSIGN
+              | ROTRASSIGN
+              | CATASSIGN
+
+<bl> ::= epsilon
+
+<ob> ::= epsilon
+
+<text_like> ::= TEXT
+              | LPAR <exp(<bl>)> RPAR
+
+<exp_block> ::= LCURLY <seplist(<dec>, <semicolon>)> RCURLY
+
+<exp_nullary(B)> ::= LCURLY <seplist(<dec_var>, <semicolon>)> RCURLY B
+                   | LCURLY <exp_field_list_unamb> RCURLY
+                   | LCURLY <dec_list_unamb> RCURLY
+                   | <id>
+                   | <lit>
+                   | LPAR <seplist(<exp(<ob>)>, COMMA)> RPAR
+                   | PRIM TEXT
+
+<exp_post(B)> ::= <exp_nullary(B)>
+                | LBRACKET [VAR] <seplist(<exp_nonvar(<ob>)>, COMMA)>
+                  RBRACKET
+                | <exp_post(<ob>)> LBRACKET <exp(<ob>)> RBRACKET
+                | <exp_post(<ob>)> DOT_NUM
+                | <exp_post(<ob>)> DOT <id>
+                | <exp_post(<ob>)> [LT <seplist(<typ>, COMMA)> GT]
+                  <exp_nullary(<ob>)>
+
+<exp_un(B)> ::= <exp_post(B)>
+              | <tag>
+              | <tag> <exp_nullary(<ob>)>
+              | QUEST <exp_un(<ob>)>
+              | <unop> <exp_un(<ob>)>
+              | <unassign> <exp_un(<ob>)>
+              | ACTOR <text_like>
+              | NOT <exp_un(<ob>)>
+              | DEBUG_SHOW <exp_un(<ob>)>
+
+<exp_bin(B)> ::= <exp_un(B)>
+               | <exp_bin(<ob>)> <binop> <exp_bin(<ob>)>
+               | <exp_bin(<ob>)> <relop> <exp_bin(<ob>)>
+               | <exp_bin(<ob>)> AND <exp_bin(<ob>)>
+               | <exp_bin(<ob>)> OR <exp_bin(<ob>)>
+               | <exp_bin(<ob>)> COLON <typ>
+
+<exp_nondec(B)> ::= <exp_bin(B)>
+                  | <exp_bin(<ob>)> ASSIGN <exp(<ob>)>
+                  | <exp_bin(<ob>)> <binassign> <exp(<ob>)>
+                  | RETURN
+                  | RETURN <exp(<ob>)>
+                  | ASYNC <exp(<bl>)>
+                  | AWAIT <exp(<bl>)>
+                  | ASSERT <exp(<bl>)>
+                  | LABEL <id> [<return_typ_nullary>] <exp(<bl>)>
+                  | BREAK <id> [<exp_nullary(<ob>)>]
+                  | CONTINUE <id>
+                  | DEBUG <exp(<bl>)>
+                  | IF <exp_nullary(<ob>)> <exp(<bl>)>
+                  | IF <exp_nullary(<ob>)> <exp(<bl>)> ELSE <exp(<bl>)>
+                  | TRY <exp_nullary(<ob>)> CATCH <catch>
+                  | THROW <exp(<bl>)>
+                  | SWITCH <exp_nullary(<ob>)> LCURLY <seplist(<case>,
+                    <semicolon>)> RCURLY
+                  | WHILE <exp_nullary(<ob>)> <exp(<bl>)>
+                  | LOOP <exp(<bl>)>
+                  | LOOP <exp(<bl>)> WHILE <exp(<bl>)>
+                  | FOR LPAR <pat> IN <exp(<ob>)> RPAR <exp(<bl>)>
+
+<exp_nonvar(B)> ::= <exp_nondec(B)>
+                  | <dec_nonvar>
+
+<exp(B)> ::= <exp_nonvar(B)>
+           | <dec_var>
+
+<case> ::= CASE <pat_nullary> <exp(<bl>)>
+
+<catch> ::= <pat_nullary> <exp(<bl>)>
+
+<exp_field_nonvar> ::= <id> EQ <exp(<ob>)>
+
+<exp_field> ::= <exp_field_nonvar>
+              | <dec_var>
+
+<exp_field_list_unamb> ::= <exp_field_nonvar>
+                         | <exp_field_nonvar> <semicolon>
+                           <seplist(<exp_field>, <semicolon>)>
+                         | <dec_var> <semicolon> <exp_field_list_unamb>
+
+<dec_field> ::= <vis> <stab> <dec>
+
+<vis> ::= epsilon
+        | PRIVATE
+        | PUBLIC
+        | SYSTEM
+
+<stab> ::= epsilon
+         | FLEXIBLE
+         | STABLE
+
+<pat_param> ::= UNDERSCORE
+              | <id>
+              | <lit>
+              | LPAR <seplist(<pat_bin>, COMMA)> RPAR
+
+<pat_nullary> ::= <pat_param>
+                | LCURLY <seplist(<pat_field>, <semicolon>)> RCURLY
+
+<pat_un> ::= <pat_nullary>
+           | <tag>
+           | <tag> <pat_nullary>
+           | QUEST <pat_un>
+           | <unop> <lit>
+
+<pat_bin> ::= <pat_un>
+            | <pat_bin> OR <pat_bin>
+            | <pat_bin> COLON <typ>
+
+<pat> ::= <pat_bin>
+
+<return_typ> ::= COLON <typ>
+
+<return_typ_nullary> ::= COLON <typ_nullary>
+
+<pat_field> ::= <id>
+              | <id> EQ <pat>
+              | <id> COLON <typ>
+
+<dec_var> ::= VAR <id> [<return_typ>] EQ <exp(<ob>)>
+
+<dec_nonvar> ::= LET <pat> EQ <exp(<ob>)>
+               | TYPE <typ_id> [LT <seplist(<typ_bind>, COMMA)> GT] EQ <typ>
+               | <obj_sort> [<id>] [EQ] <obj_body>
+               | <sort_pat> FUNC [<id>] [LT <seplist(<typ_bind>, COMMA)> GT]
+                 <pat_param> [<return_typ>] <func_body>
+               | [<obj_sort>] CLASS [<typ_id>] [LT <seplist(<typ_bind>,
+                 COMMA)> GT] <pat_param> [<return_typ>] <class_body>
+               | IGNORE <exp(<ob>)>
+
+<dec> ::= <dec_var>
+        | <dec_nonvar>
+        | <exp_nondec(<ob>)>
+
+<dec_list_unamb> ::= <exp_nondec(<ob>)>
+                   | <dec_nonvar>
+                   | <exp_nondec(<ob>)> <semicolon> <seplist(<dec>,
+                     <semicolon>)>
+                   | <dec_nonvar> <semicolon> <seplist(<dec>, <semicolon>)>
+                   | <dec_var> <semicolon> <dec_list_unamb>
+
+<func_body> ::= EQ <exp(<bl>)>
+              | <exp_block>
+
+<obj_body> ::= LCURLY <seplist(<dec_field>, <semicolon>)> RCURLY
+
+<class_body> ::= EQ [<id>] <obj_body>
+               | <obj_body>
+
+<imp> ::= IMPORT [<id>] [EQ] TEXT
+
+<start> ::= epsilon
+
+<parse_prog> ::= <start> <seplist(<imp>, <semicolon>)> <seplist(<dec>,
+                 <semicolon>)> EOF
+
+<parse_prog_interactive> ::= <start> <seplist(<imp>, SEMICOLON)>
+                             <seplist(<dec>, SEMICOLON)> SEMICOLON_EOL
+
+<import_list> ::= <seplist(<imp>, <semicolon>)>
+
+<parse_module_header> ::= <start> <import_list> EOF
+
+

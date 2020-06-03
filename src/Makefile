@@ -17,7 +17,7 @@ ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(
 
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
-all:
+all: grammar
 	dune build $(DUNE_OPTS) $(ALL_TARGETS)
 	@ln -fs $(MOC_TARGET) moc
 	@ln -fs $(MO_IDE_TARGET) mo-ide
@@ -63,3 +63,6 @@ test: $(NAME)
 
 test-quick: $(NAME)
 	make -C ../test MOC=$(MOC) quick
+
+grammar:
+	obelisk -i mo_frontend/parser.mly > ../doc/modules/language-guide/pages/grammar.txt
