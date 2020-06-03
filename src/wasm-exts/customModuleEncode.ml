@@ -215,7 +215,7 @@ let encode (em : extended_module) =
   let sequence_number = ref 0 in
 
   let extract_dwarf refi tag =
-    let open Wasm.Ast in
+    let open Ast in
     let open Wasm.Source in
     let open Dwarf5 in
 
@@ -282,7 +282,7 @@ let encode (em : extended_module) =
       | Nop, {line; _} ->
         failwith (Printf.sprintf "extract TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
       | instr, {line; file; _} ->
-        failwith (Printf.sprintf "extract UNKNOWN TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))))
+        failwith (Printf.sprintf "extract UNKNOWN TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<some instruction>"(*Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))*))
     in
     add_dwarf_tag (if refi = 0 then None else Some refi) tag;
     let rec add_artifacts = function

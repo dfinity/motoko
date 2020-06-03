@@ -658,3 +658,15 @@ let operand_stack slot rest =
   dw_OP_WASM_stack slot :: rest
  *)
 end
+
+
+module Meta =
+struct
+
+type die
+  = StatementDelimiter
+  | Tag of die list
+  | TagClose
+  | Attribute
+
+end
