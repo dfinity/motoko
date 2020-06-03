@@ -3,19 +3,17 @@ open Extract
 
 type output_format = Plain | Adoc | Html
 
-(* Renders a given module, and its module comment *)
-type render = string -> doc list -> string
-
 let write_file : string -> string -> unit =
  fun file output ->
+  let dirname = Filename.dirname file in
+  (try Unix.mkdir dirname 0o777 with _ -> ());
   let oc = open_out file in
   Printf.fprintf oc "%s" output;
   flush oc;
   close_out oc
 
-let process_source : render -> string -> string -> unit =
- fun render in_file out_file ->
-  Printf.printf "Processing: %s\n" in_file;
+let extract : string -> string * doc list =
+ fun in_file ->
   let tokenizer, get_trivia_table =
     Lexer.tokenizer Lexer.NormalWithTrivia
       (Lexing.from_channel (open_in in_file))
@@ -26,8 +24,7 @@ let process_source : render -> string -> string -> unit =
   let prog = parser tokenizer in_file in
   let trivia_table = get_trivia_table () in
   let module_docs, imports, docs = extract_docs prog trivia_table in
-  let output = render module_docs docs in
-  write_file out_file output
+  (module_docs, docs)
 
 let list_files_recursively : string -> string list =
  fun dir ->
@@ -43,34 +40,55 @@ let list_files_recursively : string -> string list =
   in
   loop [] [ dir ]
 
-let process_directory :
-    (string -> string -> unit) -> string -> string -> string -> unit =
- fun processor extension source output ->
+let list_files : string -> string -> (string * string * string) list =
+ fun source output ->
   (* Printf.printf "%s -> %s\n" source output; *)
   let all_files = list_files_recursively source in
   let all_files =
     List.filter (fun f -> Filename.extension f = ".mo") all_files
   in
-  List.iter
+  List.map
     (fun file ->
-      let rel_path =
-        file
-        |> Lib.FilePath.relative_to source
-        |> Option.get
-        |> Lib.String.chop_suffix "mo"
-        |> Option.get
-        |> fun f -> f ^ extension
-      in
-      let out_path = Filename.concat output rel_path in
-      processor file out_path)
+      file
+      |> Lib.FilePath.relative_to source
+      |> Option.get
+      |> Lib.String.chop_suffix ".mo"
+      |> Option.get
+      |> fun f -> (file, Filename.concat output f, f))
+    all_files
+
+let make_render_inputs : string -> string -> (string * Common.render_input) list
+    =
+ fun source output ->
+  let all_files = list_files source output in
+  let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
+  List.map
+    (fun (input, output, current_path) ->
+      let module_comment, declarations = extract input in
+      ( output,
+        Common.{ all_modules; current_path; module_comment; declarations } ))
     all_files
 
 let start : output_format -> string -> string -> unit =
  fun output_format src out ->
   (try Unix.mkdir out 0o777 with _ -> ());
   match output_format with
-  | Plain -> process_directory (process_source Plain.render_docs) "txt" src out
-  | Adoc -> process_directory (process_source Adoc.render_docs) "adoc" src out
+  | Plain ->
+      let inputs = make_render_inputs src out in
+      List.iter
+        (fun (out, input) ->
+          write_file (out ^ ".txt") (Plain.render_docs input))
+        inputs
+  | Adoc ->
+      let inputs = make_render_inputs src out in
+      List.iter
+        (fun (out, input) ->
+          write_file (out ^ ".adoc") (Adoc.render_docs input))
+        inputs
   | Html ->
       write_file (Filename.concat out "styles.css") Styles.styles;
-      process_directory (process_source Html.render_docs) "html" src out
+      let inputs = make_render_inputs src out in
+      List.iter
+        (fun (out, input) ->
+          write_file (out ^ ".html") (Html.render_docs input))
+        inputs

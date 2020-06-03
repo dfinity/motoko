@@ -20,7 +20,7 @@ let adoc_header : Buffer.t -> int -> string -> unit =
 
 let adoc_signature : Buffer.t -> int -> (unit -> unit) -> unit =
  fun buf lvl f ->
-  Buffer.add_string buf (String.make (lvl + 2) '=');
+  Buffer.add_string buf (String.make (lvl + 3) '=');
   bprintf buf " ";
   surround buf "`" (fun _ -> surround buf "+" f);
   bprintf buf "\n\n"
@@ -84,9 +84,10 @@ and adoc_of_doc : Buffer.t -> int -> doc -> unit =
   in
   adoc_of_declaration buf lvl doc_comment declaration
 
-let render_docs : string -> doc list -> string =
- fun module_docs docs ->
+let render_docs : Common.render_input -> string =
+ fun Common.{ module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "%s\n\n" module_docs;
-  List.iter (adoc_of_doc buf 1) docs;
+  bprintf buf "= %s\n" current_path;
+  bprintf buf "%s\n\n" module_comment;
+  List.iter (adoc_of_doc buf 1) declarations;
   Buffer.contents buf

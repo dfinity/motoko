@@ -1,5 +1,16 @@
 open Mo_def
 
+type render_input = {
+  (** Needed so we can generate a navigation *)
+  all_modules : string list;
+  (** The path for the current module *)
+  current_path : string;
+  (** The top-level module comment for the current module *)
+  module_comment : string;
+  (** The list of declarations to process *)
+  declarations : Extract.doc list;
+}
+
 let is_tuple_type typ =
   match typ.Source.it with
   | Syntax.TupT _ | Syntax.ParT _ -> true

@@ -79,6 +79,9 @@ body {
 .declaration {
   border-bottom: 1px solid #f0f0f0;
 }
+.declaration:last-of-type {
+  border-bottom: none;
+}
 
 .declaration :last-child {
   border: none;
@@ -102,5 +105,9 @@ h4.type-declaration {
 h4.class-declaration {
   font-weight: 600;
   margin-top: 16px;
+}
+
+.class-declaration ~ div {
+  margin-left: 20px;
 }
 |}

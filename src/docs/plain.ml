@@ -187,9 +187,10 @@ and plain_of_doc : Buffer.t -> doc -> unit =
     (Option.value ~default:"No documentation comment" doc_comment);
   bprintf buf "\n"
 
-let render_docs : string -> doc list -> string =
- fun module_docs docs ->
+let render_docs : Common.render_input -> string =
+ fun Common.{ module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "%s\n\n" module_docs;
-  List.iter (plain_of_doc buf) docs;
+  bprintf buf "%s\n" current_path;
+  bprintf buf "%s\n\n" module_comment;
+  List.iter (plain_of_doc buf) declarations;
   Buffer.contents buf

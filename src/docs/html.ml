@@ -237,12 +237,18 @@ and html_of_doc : Extract.doc -> t =
     ( html_of_declaration declaration
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
 
-let html_of_docs : string -> doc list -> Cow.Html.t =
- fun module_docs docs ->
+let html_of_docs : Common.render_input -> Cow.Html.t =
+ fun Common.{ all_modules; module_comment; declarations; current_path } ->
+  let path_to_root =
+    String.split_on_char '/' current_path
+    |> List.tl
+    |> List.map (fun _ -> "../")
+    |> String.concat ""
+  in
   let header =
     head ~attrs:[ ("title", "Doc") ]
       ( meta ~charset:"UTF-8" []
-      ++ link ~rel:"stylesheet" ~href:(Uri.of_string "styles.css") empty )
+      ++ link ~rel:"stylesheet" ~href:(Uri.of_string (path_to_root ^ "styles.css")) empty )
   in
   let nav_of_doc doc =
     match doc.Extract.declaration with
@@ -258,16 +264,23 @@ let html_of_docs : string -> doc list -> Cow.Html.t =
   in
   let navigation =
     nav ~cls:"sidebar"
-      (h3 (string "Declarations") ++ ul (List.map nav_of_doc docs))
+      ( h3 (string "Modules")
+      ++ ul
+           (List.map
+              (fun path ->
+                li (a ~href:(Uri.of_string (path_to_root ^ path ^ ".html")) (string path)))
+              all_modules)
+      ++ h3 (string "Declarations")
+      ++ ul (List.map nav_of_doc declarations) )
   in
   let bdy =
     body
       ( navigation
       ++ div ~cls:"documentation"
-           (html_of_comment module_docs ++ list (List.map html_of_doc docs)) )
+           ( html_of_comment module_comment
+           ++ list (List.map html_of_doc declarations) ) )
   in
   html (header ++ bdy)
 
-let render_docs : string -> doc list -> string =
- fun module_docs docs ->
-  Format.asprintf "%s" (Cow.Html.to_string (html_of_docs module_docs docs))
+let render_docs : Common.render_input -> string =
+ fun input -> Format.asprintf "%s" (Cow.Html.to_string (html_of_docs input))
