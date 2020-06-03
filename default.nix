@@ -372,7 +372,7 @@ rec {
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
     checkPhase = ''
-      ocamlformat --check languageServer/*.{ml,mli}
+      ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
     '';
   };
 

@@ -1,20 +1,15 @@
 open Mo_def
 
 type render_input = {
-  (** Needed so we can generate a navigation *)
-  all_modules : string list;
-  (** The path for the current module *)
-  current_path : string;
-  (** The top-level module comment for the current module *)
+  all_modules : string list;  (** Needed so we can generate a navigation *)
+  current_path : string;  (** The path for the current module *)
   module_comment : string;
-  (** The list of declarations to process *)
-  declarations : Extract.doc list;
+      (** The top-level module comment for the current module *)
+  declarations : Extract.doc list;  (** The list of declarations to process *)
 }
 
 let is_tuple_type typ =
-  match typ.Source.it with
-  | Syntax.TupT _ | Syntax.ParT _ -> true
-  | _ -> false
+  match typ.Source.it with Syntax.TupT _ | Syntax.ParT _ -> true | _ -> false
 
 let is_type_atom typ =
   match typ.Source.it with
