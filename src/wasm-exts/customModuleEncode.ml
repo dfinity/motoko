@@ -277,8 +277,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_encoding ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_type ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, i)), {line; column; _} when at = dw_AT_type ->
+        add_dwarf_attribute (IntAttribute (at, i))
       | Nop, {line; _} ->
         failwith (Printf.sprintf "extract TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
       | instr, {line; file; _} ->

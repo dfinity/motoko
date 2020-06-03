@@ -667,6 +667,6 @@ type die
   = StatementDelimiter
   | Tag of die list
   | TagClose
-  | Attribute
+  | IntAttribute of int * int
 
 end

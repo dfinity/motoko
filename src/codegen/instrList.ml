@@ -264,7 +264,7 @@ let dw_attr : dw_AT -> t =
   | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
   | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
   | Discr r -> fakeColumn r dw_AT_discr Nop
-  | TypeRef i -> fakeColumn i dw_AT_type Nop
+  | TypeRef i -> fakeColumn i dw_AT_type (Meta (Meta.IntAttribute (dw_AT_type, i)))
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
   | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
   | Const_value v -> fakeColumn v dw_AT_const_value Nop
