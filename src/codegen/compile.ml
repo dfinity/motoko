@@ -4829,9 +4829,10 @@ conveniently, makes such values illegal Candid.
 
 The values of `alias t` are either
 
- * i8(0) 0x00000000 M(v)
+ * i8(0) 0x00000000 0x00000000 M(v)
    for one (typically the first) occurrence of v
-   (the 0x00000000 is the “memo field”, scratch space for the benefit of the decoder)
+   The first 0x00000000 is the “memo field”, the second is the “type hash field”.
+   Both are scratch spaces for the benefit of the decoder.
 
 or
 
@@ -4868,10 +4869,16 @@ To detect and preserve aliasing, these steps are taken:
    position and calculate the offset.
  * In `deserialize`, when we come across a `alias t`, we follow the offset (if
    needed) to find the content.
+
    If the memo field is still `0x00000000`, this is the first time we read
    this, so we deserialize to the Motoko heap, and remember the heap position
    (vanilla pointer) by overriding the memo field.
-   If it is not `0x00000000` then we can simply read the pointer from there.
+   We also store the type hash of the type we are serializing at in the type
+   hash field.
+
+   If it is not `0x00000000` then we can simply read the pointer from there,
+   after checking the type hash field to make sure we are aliasing at the same
+   type.
 
 *)
 
