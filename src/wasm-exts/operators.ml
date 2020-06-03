@@ -1,3 +1,16 @@
+(*
+This module originated as a copy of interpreter/syntax/operators.ml in the
+reference implementation. It is pulled in by the strong cohesion between
+the operators and the AST. Not having this source file locally would mean
+that it got basically replicated into the customModuleDecode.ml file.
+
+The changes are:
+ * None for now
+
+The code is otherwise as untouched as possible, so that we can relatively
+easily apply diffs from the original code (possibly manually).
+*)
+
 open Wasm.Source
 open Wasm.Types
 open Wasm.Values
