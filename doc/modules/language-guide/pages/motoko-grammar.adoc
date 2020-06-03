@@ -5,5 +5,5 @@ The specification is auto-generated with a tool.
 
 [source,bnf]
 ----
-include::parser.txt[]
+include::grammar.txt[]
 ----
