@@ -220,21 +220,21 @@ let encode (em : extended_module) =
     let open Dwarf5 in
 
     let extract = function
-      | Nop, {line; file; _} when -line = dw_AT_producer ->
-        let _offs = add_dwarf_string file in
-        add_dwarf_attribute (StringAttribute (-line, file))
-      | Nop, {line; file; _} when -line = dw_AT_name ->
-        let _offs = add_dwarf_string file in
-        add_dwarf_attribute (StringAttribute (-line, file))
-      | Nop, {line; file; _} when -line = dw_AT_comp_dir ->
-        let _offs = add_dwarf_string file in
-        add_dwarf_attribute (StringAttribute (-line, file))
-      | Nop, {line; file; _} when -line = dw_AT_location ->
-        add_dwarf_attribute (StringAttribute (-line, file))
+      | Meta (Meta.StringAttribute (at, p)), _ when at = dw_AT_producer ->
+        let _offs = add_dwarf_string p in
+        add_dwarf_attribute (StringAttribute (at, p))
+      | Meta (Meta.StringAttribute (at, n)), _ when at = dw_AT_name ->
+        let _offs = add_dwarf_string n in
+        add_dwarf_attribute (StringAttribute (at, n))
+      | Meta (Meta.StringAttribute (at, d)), _ when at = dw_AT_comp_dir ->
+        let _offs = add_dwarf_string d in
+        add_dwarf_attribute (StringAttribute (at, d))
+      | Meta (Meta.StringAttribute (at, l)), _ when at = dw_AT_location ->
+        add_dwarf_attribute (StringAttribute (at, l))
       | Nop, {line; column; _} when -line = dw_AT_use_UTF8 ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_language ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_language ->
+        add_dwarf_attribute (IntAttribute (at, l))
       | Nop, {line; column; _} when -line = dw_AT_stmt_list ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
@@ -251,16 +251,16 @@ let encode (em : extended_module) =
 
       | Meta (Meta.StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
         add_dwarf_attribute (StringAttribute (at, file))
-      | Nop, {line; column; _} when -line = dw_AT_decl_line ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_decl_column ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_decl_line ->
+        add_dwarf_attribute (IntAttribute (at, l))
+      | Meta (Meta.IntAttribute (at, c)), _ when at = dw_AT_decl_column ->
+        add_dwarf_attribute (IntAttribute (at, c))
       | Nop, {line; column; _} when -line = dw_AT_prototyped ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_external ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_addr_base ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, b)), _ when at = dw_AT_addr_base ->
+        add_dwarf_attribute (IntAttribute (at, b))
       | Nop, {line; column; _} when -line = dw_AT_byte_size ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_bit_size ->

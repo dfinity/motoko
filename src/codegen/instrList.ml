@@ -244,19 +244,19 @@ let fakeColumn (column : int) attr instr' : t =
 
 let dw_attr : dw_AT -> t =
   function
-  | Producer p -> fakeFile p dw_AT_producer Nop
-  | Language l -> fakeColumn l dw_AT_language Nop
-  | Name n -> fakeFile n dw_AT_name Nop
+  | Producer p -> fakeFile p dw_AT_producer (Meta (Meta.StringAttribute (dw_AT_producer, p)))
+  | Language l -> fakeColumn l dw_AT_language (Meta (Meta.IntAttribute (dw_AT_language, l)))
+  | Name n -> fakeFile n dw_AT_name (Meta (Meta.StringAttribute (dw_AT_name, n)))
   | Stmt_list l -> fakeColumn l dw_AT_stmt_list Nop
-  | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
+  | Comp_dir d -> fakeFile d dw_AT_comp_dir (Meta (Meta.StringAttribute (dw_AT_comp_dir, d)))
   | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 Nop
-  | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
+  | Addr_base b -> fakeColumn b dw_AT_addr_base (Meta (Meta.IntAttribute (dw_AT_addr_base, b)))
   | Low_pc -> fakeColumn 0 dw_AT_low_pc (Meta (Meta.OffsetAttribute dw_AT_low_pc))
   | High_pc -> fakeColumn 0 dw_AT_high_pc (Meta (Meta.OffsetAttribute dw_AT_high_pc))
   | Ranges -> fakeColumn 0 dw_AT_ranges (Meta (Meta.OffsetAttribute dw_AT_ranges))  (* see Note [Low_pc, High_pc, Ranges are special] *)
   | Decl_file f -> fakeFile f dw_AT_decl_file (Meta (Meta.StringAttribute (dw_AT_decl_file, f)))
-  | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
-  | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
+  | Decl_line l -> fakeColumn l dw_AT_decl_line (Meta (Meta.IntAttribute (dw_AT_decl_line, l)))
+  | Decl_column c -> fakeColumn c dw_AT_decl_column (Meta (Meta.IntAttribute (dw_AT_decl_column, c)))
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
   | External b -> fakeColumn (if b then 1 else 0) dw_AT_external Nop
   | Byte_size s -> fakeColumn s dw_AT_byte_size Nop
@@ -281,7 +281,7 @@ let dw_attr : dw_AT -> t =
           stash (- (i lsr 7)) in
       List.iter stash ops;
       Buffer.contents buf in
-    fakeFile (string_of_ops ops) dw_AT_location Nop
+    fakeFile (string_of_ops ops) dw_AT_location (Meta (Meta.StringAttribute (dw_AT_location, (string_of_ops ops))))
   | Discr_list -> assert false
 
 let dw_attrs = concat_map dw_attr
