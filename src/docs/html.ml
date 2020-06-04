@@ -1,6 +1,7 @@
 open Extract
 open Mo_def
 open Cow.Html
+open Common
 
 let rec join_with : t -> t list -> t =
  fun sep -> function
@@ -40,7 +41,7 @@ let html_of_func_sort : Syntax.func_sort -> t =
  fun sort ->
   Mo_types.Type.(
     match sort.Source.it with
-    | Local -> nil
+    | Local -> empty
     | Shared Query -> keyword "shared query "
     | Shared Write -> keyword "shared ")
 
@@ -48,7 +49,7 @@ let html_of_obj_sort : Syntax.obj_sort -> t =
  fun sort ->
   Mo_types.Type.(
     match sort.Source.it with
-    | Object -> nil
+    | Object -> empty
     | Actor -> keyword "actor "
     | Module -> keyword "module "
     | Memory -> keyword "memory ")
@@ -68,7 +69,7 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.PrimT typ -> html_type typ
   | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
   | Syntax.OptT typ ->
-      if Common.is_type_atom typ then string "?" ++ html_of_type typ
+      if is_type_atom typ then string "?" ++ html_of_type typ
       else string "?(" ++ html_of_type typ ++ string ")"
   | Syntax.TupT typ_list ->
       string "("
@@ -88,7 +89,7 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       let ty_args = html_of_typ_binders typ_binders in
       let ty_arg =
-        if Common.is_tuple_type arg then html_of_type arg
+        if is_tuple_type arg then html_of_type arg
         else string "(" ++ html_of_type arg ++ string ")"
       in
       html_of_func_sort func_sort
@@ -109,13 +110,13 @@ and html_of_typ_bind : Syntax.typ_bind -> t =
  fun typ_bind ->
   let bound = typ_bind.Source.it.Syntax.bound in
   let bound_html =
-    if Syntax.is_any bound then nil else string " <: " ++ html_of_type bound
+    if Syntax.is_any bound then empty else string " <: " ++ html_of_type bound
   in
   html_type typ_bind.Source.it.Syntax.var.Source.it ++ bound_html
 
 and html_of_typ_binders : Syntax.typ_bind list -> t =
  fun typ_binders ->
-  match List.filter (fun b -> not (Common.is_scope_bind b)) typ_binders with
+  match List.filter (fun b -> not (is_scope_bind b)) typ_binders with
   | [] -> []
   | xs ->
       string "<"
@@ -237,8 +238,8 @@ and html_of_doc : Extract.doc -> t =
     ( html_of_declaration declaration
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
 
-let html_of_docs : Common.render_input -> Cow.Html.t =
- fun Common.{ all_modules; module_comment; declarations; current_path } ->
+let html_of_docs : render_input -> Cow.Html.t =
+ fun { all_modules; module_comment; declarations; current_path } ->
   let path_to_root =
     String.split_on_char '/' current_path
     |> List.tl
@@ -262,7 +263,7 @@ let html_of_docs : Common.render_input -> Cow.Html.t =
         li (a ~href:(Uri.of_string ("#class." ^ cls.name)) (string cls.name))
     | Extract.Value val' ->
         li (a ~href:(Uri.of_string ("#value." ^ val'.name)) (string val'.name))
-    | Extract.Unknown typ -> nil
+    | Extract.Unknown typ -> empty
   in
   let navigation =
     nav ~cls:"sidebar"
@@ -287,5 +288,28 @@ let html_of_docs : Common.render_input -> Cow.Html.t =
   in
   html (header ++ bdy)
 
-let render_docs : Common.render_input -> string =
+let render_docs : render_input -> string =
  fun input -> Format.asprintf "%s" (Cow.Html.to_string (html_of_docs input))
+
+let make_index : render_input list -> string =
+ fun inputs ->
+  let header =
+    head
+      ~attrs:[ ("title", "Motoko docs") ]
+      ( meta ~charset:"UTF-8" []
+      ++ link ~rel:"stylesheet" ~href:(Uri.of_string "styles.css") empty )
+  in
+  let make_link input =
+    a ~cls:"index-item-link"
+      ~href:(Uri.of_string (input.current_path ^ ".html"))
+      (string input.current_path)
+    ++ div ~cls:"index-item-comment" (html_of_comment input.module_comment)
+  in
+  let bdy =
+    div ~cls:"index-container"
+      ( h1 ~cls:"index-header" (string "Index of modules")
+      ++ ul ~cls:"index-listing" ~licls:"index-item" (List.map make_link inputs)
+      )
+  in
+  let index = html (header ++ bdy) in
+  Format.asprintf "%s" (Cow.Html.to_string index)
