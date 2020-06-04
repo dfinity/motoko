@@ -66,4 +66,4 @@ test-quick: $(NAME)
 
 grammar:
 	obelisk -i mo_frontend/parser.mly > ../doc/modules/language-guide/pages/grammar.txt
-	sed -f mo_frontend/grammar.sed ../doc/modules/language-guide/pages/grammar.txt
+	sed -i -f mo_frontend/grammar.sed ../doc/modules/language-guide/pages/grammar.txt
