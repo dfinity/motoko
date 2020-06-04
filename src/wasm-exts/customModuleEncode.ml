@@ -231,23 +231,19 @@ let encode (em : extended_module) =
         add_dwarf_attribute (StringAttribute (at, d))
       | Meta (Meta.StringAttribute (at, l)), _ when at = dw_AT_location ->
         add_dwarf_attribute (StringAttribute (at, l))
-      | Nop, {line; column; _} when -line = dw_AT_use_UTF8 ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, u)), _ when at = dw_AT_use_UTF8 ->
+        add_dwarf_attribute (IntAttribute (at, u))
       | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_language ->
         add_dwarf_attribute (IntAttribute (at, l))
-      | Nop, {line; column; _} when -line = dw_AT_stmt_list ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_stmt_list ->
+        add_dwarf_attribute (IntAttribute (at, l))
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (IntAttribute (at, !sequence_number))
-      | Meta (Meta.IntAttribute (at, addr)), _ when at = dw_AT_low_pc -> assert false
-    (*    add_dwarf_attribute (IntAttribute (at, addr))       THIS SHOULD BE DEAD CODE *)
 
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (RangeAttribute (at, !sequence_number))
-      | Nop, {line; column; _} when -line = dw_AT_high_pc -> assert false
-    (*    add_dwarf_attribute (IntAttribute (-line, column))       THIS SHOULD BE DEAD CODE *)
 
       | Meta (Meta.StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
         add_dwarf_attribute (StringAttribute (at, file))
@@ -255,34 +251,34 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (at, l))
       | Meta (Meta.IntAttribute (at, c)), _ when at = dw_AT_decl_column ->
         add_dwarf_attribute (IntAttribute (at, c))
-      | Nop, {line; column; _} when -line = dw_AT_prototyped ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_external ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, p)), _ when at = dw_AT_prototyped ->
+        add_dwarf_attribute (IntAttribute (at, p))
+      | Meta (Meta.IntAttribute (at, e)), _ when at = dw_AT_external ->
+        add_dwarf_attribute (IntAttribute (at, e))
       | Meta (Meta.IntAttribute (at, b)), _ when at = dw_AT_addr_base ->
         add_dwarf_attribute (IntAttribute (at, b))
-      | Nop, {line; column; _} when -line = dw_AT_byte_size ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_bit_size ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_data_bit_offset ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, s)), _ when at = dw_AT_byte_size ->
+        add_dwarf_attribute (IntAttribute (at, s))
+      | Meta (Meta.IntAttribute (at, s)), _ when at = dw_AT_bit_size ->
+        add_dwarf_attribute (IntAttribute (at, s))
+      | Meta (Meta.IntAttribute (at, o)), _ when at = dw_AT_data_bit_offset ->
+        add_dwarf_attribute (IntAttribute (at, o))
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute at) (* see Note [Low_pc, High_pc, Ranges are special] *)
-      | Nop, {line; column; _} when -line = dw_AT_artificial ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_discr ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_const_value ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_discr_value ->
-        add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_encoding ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.IntAttribute (at, a)), _ when at = dw_AT_artificial ->
+        add_dwarf_attribute (IntAttribute (at, a))
+      | Meta (Meta.IntAttribute (at, d)), _ when at = dw_AT_discr ->
+        add_dwarf_attribute (IntAttribute (at, d))
+      | Meta (Meta.IntAttribute (at, c)), _ when at = dw_AT_const_value ->
+        add_dwarf_attribute (IntAttribute (at, c))
+      | Meta (Meta.IntAttribute (at, d)), _ when at = dw_AT_discr_value ->
+        add_dwarf_attribute (IntAttribute (at, d))
+      | Meta (Meta.IntAttribute (at, e)), _ when at = dw_AT_encoding ->
+        add_dwarf_attribute (IntAttribute (at, e))
       | Meta (Meta.IntAttribute (at, i)), _ when at = dw_AT_type ->
         add_dwarf_attribute (IntAttribute (at, i))
       | Nop, {line; _} ->
-        failwith (Printf.sprintf "extract TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
+        failwith (Printf.sprintf "extract NOP? TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
       | Meta (IntAttribute (at, v)), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <IntAttribute>%d" tag tag file (-line) v)
       | Meta (StringAttribute (at, s)), {line; file; _} ->

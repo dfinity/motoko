@@ -247,9 +247,9 @@ let dw_attr : dw_AT -> t =
   | Producer p -> fakeFile p dw_AT_producer (Meta (Meta.StringAttribute (dw_AT_producer, p)))
   | Language l -> fakeColumn l dw_AT_language (Meta (Meta.IntAttribute (dw_AT_language, l)))
   | Name n -> fakeFile n dw_AT_name (Meta (Meta.StringAttribute (dw_AT_name, n)))
-  | Stmt_list l -> fakeColumn l dw_AT_stmt_list Nop
+  | Stmt_list l -> fakeColumn l dw_AT_stmt_list (Meta (Meta.IntAttribute (dw_AT_stmt_list, l)))
   | Comp_dir d -> fakeFile d dw_AT_comp_dir (Meta (Meta.StringAttribute (dw_AT_comp_dir, d)))
-  | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 Nop
+  | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 (Meta (Meta.IntAttribute (dw_AT_use_UTF8, (if b then 1 else 0))))
   | Addr_base b -> fakeColumn b dw_AT_addr_base (Meta (Meta.IntAttribute (dw_AT_addr_base, b)))
   | Low_pc -> fakeColumn 0 dw_AT_low_pc (Meta (Meta.OffsetAttribute dw_AT_low_pc))
   | High_pc -> fakeColumn 0 dw_AT_high_pc (Meta (Meta.OffsetAttribute dw_AT_high_pc))
@@ -257,17 +257,17 @@ let dw_attr : dw_AT -> t =
   | Decl_file f -> fakeFile f dw_AT_decl_file (Meta (Meta.StringAttribute (dw_AT_decl_file, f)))
   | Decl_line l -> fakeColumn l dw_AT_decl_line (Meta (Meta.IntAttribute (dw_AT_decl_line, l)))
   | Decl_column c -> fakeColumn c dw_AT_decl_column (Meta (Meta.IntAttribute (dw_AT_decl_column, c)))
-  | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
-  | External b -> fakeColumn (if b then 1 else 0) dw_AT_external Nop
-  | Byte_size s -> fakeColumn s dw_AT_byte_size Nop
-  | Bit_size s -> fakeColumn s dw_AT_bit_size Nop
-  | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
-  | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
-  | Discr r -> fakeColumn r dw_AT_discr Nop
+  | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped (Meta (Meta.IntAttribute (dw_AT_prototyped, (if b then 1 else 0))))
+  | External b -> fakeColumn (if b then 1 else 0) dw_AT_external (Meta (Meta.IntAttribute (dw_AT_external, (if b then 1 else 0))))
+  | Byte_size s -> fakeColumn s dw_AT_byte_size (Meta (Meta.IntAttribute (dw_AT_byte_size, s)))
+  | Bit_size s -> fakeColumn s dw_AT_bit_size (Meta (Meta.IntAttribute (dw_AT_bit_size, s)))
+  | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset (Meta (Meta.IntAttribute (dw_AT_data_bit_offset, o)))
+  | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial (Meta (Meta.IntAttribute (dw_AT_artificial, (if b then 1 else 0))))
+  | Discr r -> fakeColumn r dw_AT_discr (Meta (Meta.IntAttribute (dw_AT_discr, r)))
   | TypeRef i -> fakeColumn i dw_AT_type (Meta (Meta.IntAttribute (dw_AT_type, i)))
-  | Encoding e -> fakeColumn e dw_AT_encoding Nop
-  | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
-  | Const_value v -> fakeColumn v dw_AT_const_value Nop
+  | Encoding e -> fakeColumn e dw_AT_encoding (Meta (Meta.IntAttribute (dw_AT_encoding, e)))
+  | Discr_value v -> fakeColumn v dw_AT_discr_value (Meta (Meta.IntAttribute (dw_AT_discr_value, v)))
+  | Const_value v -> fakeColumn v dw_AT_const_value (Meta (Meta.IntAttribute (dw_AT_const_value, v)))
   | Location ops ->
     let string_of_ops ops =
       let open Buffer in
