@@ -144,6 +144,7 @@ rec {
   moc-bin = ocaml_exe "moc-bin" "moc";
   mo-ld = ocaml_exe "mo-ld" "mo-ld";
   mo-ide = ocaml_exe "mo-ide" "mo-ide";
+  mo-doc = ocaml_exe "mo-doc" "mo-doc";
   didc = ocaml_exe "didc" "didc";
   deser = ocaml_exe "deser" "deser";
 
@@ -371,7 +372,7 @@ rec {
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
     checkPhase = ''
-      ocamlformat --check languageServer/*.{ml,mli}
+      ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
     '';
   };
 
@@ -415,6 +416,7 @@ rec {
     constituents = [
       moc
       mo-ide
+      mo-doc
       js
       didc
       deser

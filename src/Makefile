@@ -59,6 +59,9 @@ deser:
 unit-tests:
 	dune runtest $(DUNE_OPTS)
 
+format:
+	ocamlformat --inplace docs/*.mli docs/*.ml languageServer/*.ml languageServer/*.mli
+
 clean:
 	rm -f moc mo-ide mo-ld moc.js didc deser
 	dune clean
