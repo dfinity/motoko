@@ -54,6 +54,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
     pkgs.ocamlPackages.wasm
@@ -144,6 +145,7 @@ rec {
   moc-bin = ocaml_exe "moc-bin" "moc";
   mo-ld = ocaml_exe "mo-ld" "mo-ld";
   mo-ide = ocaml_exe "mo-ide" "mo-ide";
+  mo-doc = ocaml_exe "mo-doc" "mo-doc";
   didc = ocaml_exe "didc" "didc";
   deser = ocaml_exe "deser" "deser";
 
@@ -371,7 +373,7 @@ rec {
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
     checkPhase = ''
-      ocamlformat --check languageServer/*.{ml,mli}
+      ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
     '';
   };
 
@@ -401,6 +403,24 @@ rec {
     '';
   };
 
+  base-doc = stdenv.mkDerivation {
+    name = "base-doc";
+    src = nixpkgs.sources.motoko-base;
+    phases = "unpackPhase buildPhase installPhase";
+    doCheck = true;
+    buildInputs = [ mo-doc nixpkgs.asciidoctor nixpkgs.perl ];
+    buildPhase = ''
+      make -C doc
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp -rv doc/_out/* $out/
+
+      mkdir -p $out/nix-support
+      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
       expected = import ./nix/generate.nix { pkgs = nixpkgs; };
@@ -415,6 +435,7 @@ rec {
     constituents = [
       moc
       mo-ide
+      mo-doc
       js
       didc
       deser
@@ -422,6 +443,7 @@ rec {
       rts
       base-src
       base-tests
+      base-doc
       users-guide
       ic-ref
       shell

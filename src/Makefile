@@ -4,6 +4,7 @@
 
 MO_IDE_TARGET = _build/default/exes/mo_ide.exe
 MO_LD_TARGET = _build/default/exes/mo_ld.exe
+MO_DOC_TARGET = _build/default/exes/mo_doc.exe
 MOC_TARGET = _build/default/exes/moc.exe
 DIDC_TARGET = _build/default/exes/didc.exe
 MOC_JS_TARGET = _build/default/js/mo_js.bc.js
@@ -11,9 +12,9 @@ DESER_TARGET = _build/default/exes/deser.exe
 
 DUNE_OPTS ?=
 
-ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET)
+ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET)
 
-.PHONY: all clean moc mo-ide mo-ld moc.js didc deser unit-tests
+.PHONY: all clean moc mo-doc mo-ide mo-ld moc.js didc deser unit-tests
 
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
@@ -21,6 +22,7 @@ all: grammar
 	dune build $(DUNE_OPTS) $(ALL_TARGETS)
 	@ln -fs $(MOC_TARGET) moc
 	@ln -fs $(MO_IDE_TARGET) mo-ide
+	@ln -fs $(MO_DOC_TARGET) mo-doc
 	@ln -fs $(MO_LD_TARGET) mo-ld
 	@ln -fs $(MOC_JS_TARGET) moc.js
 	@ln -fs $(DIDC_TARGET) didc
@@ -38,6 +40,10 @@ mo-ld:
 	dune build $(DUNE_OPTS) $(MO_LD_TARGET)
 	@ln -fs $(MO_LD_TARGET) mo-ld
 
+mo-doc:
+	dune build $(DUNE_OPTS) $(MO_DOC_TARGET)
+	@ln -fs $(MO_DOC_TARGET) mo-doc
+
 moc.js:
 	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
 	@ln -fs $(MOC_JS_TARGET) moc.js
@@ -52,6 +58,9 @@ deser:
 
 unit-tests:
 	dune runtest $(DUNE_OPTS)
+
+format:
+	ocamlformat --inplace docs/*.mli docs/*.ml languageServer/*.ml languageServer/*.mli
 
 clean:
 	rm -f moc mo-ide mo-ld moc.js didc deser
