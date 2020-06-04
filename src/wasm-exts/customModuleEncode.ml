@@ -30,8 +30,9 @@ supply other flags for the DWARF line machine.
 
 (* Utility predicates *)
 
-let is_dwarf_like Wasm.Source.{ left; right } =
-  Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos)
+let is_dwarf_like = function
+  | { Wasm.Source.it = Ast.Meta (IntAttribute _ | StringAttribute _ | OffsetAttribute _); _ } -> true
+  | { at; _ } -> Wasm.Source.(at.left.line < 0 && at.left.file = no_pos.file && at.right = no_pos)
 
 let is_dwarf_statement = function
   | Ast.Meta (Dwarf5.Meta.StatementDelimiter _) -> true
@@ -417,10 +418,10 @@ let encode (em : extended_module) =
       let instr = instr noting in
 
       match e.it with
-      | Nop when is_dwarf_like e.at -> close_dwarf true
+      | Nop when is_dwarf_like e -> close_dwarf true
       | Meta (StatementDelimiter left) when is_dwarf_statement e.it ->
         modif statement_positions (Instrs.add (pos s, left))
-      | Block (_, es) when is_dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
+      | Block (_, es) when is_dwarf_like e -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
 
       | Unreachable -> op 0x00
       | Nop -> op 0x01
@@ -788,7 +789,7 @@ let encode (em : extended_module) =
       vec local (compress locals);
       let instr_notes = ref Instrs.empty in
       let note i =
-        if not (is_dwarf_like i.at) then
+        if not (is_dwarf_like i) then
           (modif instr_notes (Instrs.add (pos s, i.at.left));
            ignore (add_source_name i.at.left.file)
           ) in

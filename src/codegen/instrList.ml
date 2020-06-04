@@ -40,7 +40,7 @@ let optimize : instr list -> instr list = fun is ->
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
       (* see Note [funneling DIEs through Wasm.Ast] *)
-      List.(rev (i :: l) @ find_all (fun instr -> is_dwarf_like instr.at) t)
+      List.(rev (i :: l) @ find_all (fun instr -> is_dwarf_like instr) t)
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -228,13 +228,6 @@ type dw_TAG =
 
 (* DWARF high-level structures *)
 
-(* helper fakeFile gives a fake instruction that encodes a string for a
-   DWARF attribute *)
-let fakeFile (file : string) attr instr' : t =
-  let fakeLoc = Wasm.Source.{ file; line = -attr; column = 0 } in
-  fun _ _ instrs ->
-  (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
-
 (* helper fakeColumn gives a fake instruction that encodes a single integer for a
    DWARF attribute (or tag reference index) *)
 let fakeColumn (column : int) attr instr' : t =
@@ -244,30 +237,30 @@ let fakeColumn (column : int) attr instr' : t =
 
 let dw_attr : dw_AT -> t =
   function
-  | Producer p -> fakeFile p dw_AT_producer (Meta (Meta.StringAttribute (dw_AT_producer, p)))
-  | Language l -> fakeColumn l dw_AT_language (Meta (Meta.IntAttribute (dw_AT_language, l)))
-  | Name n -> fakeFile n dw_AT_name (Meta (Meta.StringAttribute (dw_AT_name, n)))
-  | Stmt_list l -> fakeColumn l dw_AT_stmt_list (Meta (Meta.IntAttribute (dw_AT_stmt_list, l)))
-  | Comp_dir d -> fakeFile d dw_AT_comp_dir (Meta (Meta.StringAttribute (dw_AT_comp_dir, d)))
-  | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 (Meta (Meta.IntAttribute (dw_AT_use_UTF8, (if b then 1 else 0))))
-  | Addr_base b -> fakeColumn b dw_AT_addr_base (Meta (Meta.IntAttribute (dw_AT_addr_base, b)))
-  | Low_pc -> fakeColumn 0 dw_AT_low_pc (Meta (Meta.OffsetAttribute dw_AT_low_pc))
-  | High_pc -> fakeColumn 0 dw_AT_high_pc (Meta (Meta.OffsetAttribute dw_AT_high_pc))
-  | Ranges -> fakeColumn 0 dw_AT_ranges (Meta (Meta.OffsetAttribute dw_AT_ranges))  (* see Note [Low_pc, High_pc, Ranges are special] *)
-  | Decl_file f -> fakeFile f dw_AT_decl_file (Meta (Meta.StringAttribute (dw_AT_decl_file, f)))
-  | Decl_line l -> fakeColumn l dw_AT_decl_line (Meta (Meta.IntAttribute (dw_AT_decl_line, l)))
-  | Decl_column c -> fakeColumn c dw_AT_decl_column (Meta (Meta.IntAttribute (dw_AT_decl_column, c)))
-  | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped (Meta (Meta.IntAttribute (dw_AT_prototyped, (if b then 1 else 0))))
-  | External b -> fakeColumn (if b then 1 else 0) dw_AT_external (Meta (Meta.IntAttribute (dw_AT_external, (if b then 1 else 0))))
-  | Byte_size s -> fakeColumn s dw_AT_byte_size (Meta (Meta.IntAttribute (dw_AT_byte_size, s)))
-  | Bit_size s -> fakeColumn s dw_AT_bit_size (Meta (Meta.IntAttribute (dw_AT_bit_size, s)))
-  | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset (Meta (Meta.IntAttribute (dw_AT_data_bit_offset, o)))
-  | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial (Meta (Meta.IntAttribute (dw_AT_artificial, (if b then 1 else 0))))
-  | Discr r -> fakeColumn r dw_AT_discr (Meta (Meta.IntAttribute (dw_AT_discr, r)))
-  | TypeRef i -> fakeColumn i dw_AT_type (Meta (Meta.IntAttribute (dw_AT_type, i)))
-  | Encoding e -> fakeColumn e dw_AT_encoding (Meta (Meta.IntAttribute (dw_AT_encoding, e)))
-  | Discr_value v -> fakeColumn v dw_AT_discr_value (Meta (Meta.IntAttribute (dw_AT_discr_value, v)))
-  | Const_value v -> fakeColumn v dw_AT_const_value (Meta (Meta.IntAttribute (dw_AT_const_value, v)))
+  | Producer p -> i (Meta (Meta.StringAttribute (dw_AT_producer, p)))
+  | Language l -> i (Meta (Meta.IntAttribute (dw_AT_language, l)))
+  | Name n -> i (Meta (Meta.StringAttribute (dw_AT_name, n)))
+  | Stmt_list l -> i (Meta (Meta.IntAttribute (dw_AT_stmt_list, l)))
+  | Comp_dir d -> i (Meta (Meta.StringAttribute (dw_AT_comp_dir, d)))
+  | Use_UTF8 b -> i (Meta (Meta.IntAttribute (dw_AT_use_UTF8, (if b then 1 else 0))))
+  | Addr_base b -> i (Meta (Meta.IntAttribute (dw_AT_addr_base, b)))
+  | Low_pc -> i (Meta (Meta.OffsetAttribute dw_AT_low_pc))
+  | High_pc -> i (Meta (Meta.OffsetAttribute dw_AT_high_pc))
+  | Ranges -> i (Meta (Meta.OffsetAttribute dw_AT_ranges))  (* see Note [Low_pc, High_pc, Ranges are special] *)
+  | Decl_file f -> i (Meta (Meta.StringAttribute (dw_AT_decl_file, f)))
+  | Decl_line l -> i (Meta (Meta.IntAttribute (dw_AT_decl_line, l)))
+  | Decl_column c -> i (Meta (Meta.IntAttribute (dw_AT_decl_column, c)))
+  | Prototyped b -> i (Meta (Meta.IntAttribute (dw_AT_prototyped, (if b then 1 else 0))))
+  | External b -> i (Meta (Meta.IntAttribute (dw_AT_external, (if b then 1 else 0))))
+  | Byte_size s -> i (Meta (Meta.IntAttribute (dw_AT_byte_size, s)))
+  | Bit_size s -> i (Meta (Meta.IntAttribute (dw_AT_bit_size, s)))
+  | Data_bit_offset o -> i (Meta (Meta.IntAttribute (dw_AT_data_bit_offset, o)))
+  | Artificial b -> i (Meta (Meta.IntAttribute (dw_AT_artificial, (if b then 1 else 0))))
+  | Discr r -> i (Meta (Meta.IntAttribute (dw_AT_discr, r)))
+  | TypeRef r -> i (Meta (Meta.IntAttribute (dw_AT_type, r)))
+  | Encoding e -> i (Meta (Meta.IntAttribute (dw_AT_encoding, e)))
+  | Discr_value v -> i (Meta (Meta.IntAttribute (dw_AT_discr_value, v)))
+  | Const_value v -> i (Meta (Meta.IntAttribute (dw_AT_const_value, v)))
   | Location ops ->
     let string_of_ops ops =
       let open Buffer in
@@ -281,8 +274,8 @@ let dw_attr : dw_AT -> t =
           stash (- (i lsr 7)) in
       List.iter stash ops;
       Buffer.contents buf in
-    fakeFile (string_of_ops ops) dw_AT_location (Meta (Meta.StringAttribute (dw_AT_location, (string_of_ops ops))))
-  | Discr_list -> assert false
+    i (Meta (Meta.StringAttribute (dw_AT_location, (string_of_ops ops))))
+  | Discr_list -> assert false (* not yet *)
 
 let dw_attrs = concat_map dw_attr
 
@@ -290,7 +283,7 @@ let dw_attrs = concat_map dw_attr
    ~~~~~~~~~~~~~~~~~~~~
    When it admits children, these follow sequentially,
    closed by dw_tag_close. The abbreviation table must
-   be considered when deciding between
+   be consulted when deciding between
    - dw_tag_no_children, or
    - dw_tag.
    The former is self-closing (no nested tags), and the
