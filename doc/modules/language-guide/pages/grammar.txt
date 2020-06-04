@@ -205,7 +205,7 @@
   | 'assert' <exp(<bl>)>
   | 'label' <id> [<return_typ_nullary>] <exp(<bl>)>
   | 'break' <id> [<exp_nullary(<ob>)>]
-  | CONT'in'UE <id>
+  | 'continue' <id>
   | 'debug' <exp(<bl>)>
   | 'if' <exp_nullary(<ob>)> <exp(<bl>)>
   | 'if' <exp_nullary(<ob>)> <exp(<bl>)> 'else' <exp(<bl>)>

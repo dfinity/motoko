@@ -65,6 +65,7 @@ s/LEOP/\'<=\'/g
 s/LCURLY/\'{\'/g
 s/LBRACKET/\'[\'/g
 s/LABEL/\'label\'/g
+s/CONTINUE/\'continue\'/g
 s/IN/\'in\'/g
 s/IF/\'if\'/g
 s/ID/<id>/g
@@ -86,7 +87,6 @@ s/DIVOP/\'\/\'/g
 s/DIVASSIGN/\'\/=\'/g
 s/DEBUG_SHOW/\'debug_show\'/g
 s/DEBUG/\'debug\'/g
-s/CONTINUE/\'continue\'/g
 s/COMMA/\',\'/g
 s/COLON/\':\'/g
 s/CLASS/\'class\'/g
