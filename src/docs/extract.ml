@@ -139,8 +139,7 @@ let rec extract_doc find_trivia = function
         | _ -> DTPlain typ
       in
       Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })
-  | Source.
-      { it = Syntax.ClassD (name, type_args, ctor, _, sort, _, fields); _ }
+  | Source.{ it = Syntax.ClassD (name, type_args, ctor, _, sort, _, fields); _ }
     ->
       Some
         (Class

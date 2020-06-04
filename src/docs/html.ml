@@ -29,7 +29,9 @@ let rec string_of_path : Syntax.path -> string =
   | Syntax.IdH id -> id.Source.it
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
-let html_of_comment : string -> t = function | "" -> empty | s -> Cow.Markdown.of_string s
+let html_of_comment : string -> t = function
+  | "" -> empty
+  | s -> Cow.Markdown.of_string s
 
 let html_of_mut : Syntax.mut -> t =
  fun mut ->
