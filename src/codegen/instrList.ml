@@ -296,9 +296,7 @@ let dw_attrs = concat_map dw_attr
  *)
 
 let dw_tag_close : t =
-  let left = { Wasm.Source.no_pos with line = -1 } in
-  let right = Wasm.Source.no_pos in
-  fun _ _ x -> (Nop @@ { left; right }) :: x
+  i (Meta TagClose)
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
