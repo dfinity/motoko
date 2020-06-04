@@ -1,5 +1,5 @@
 s/::= /::=\n    /g
-s/^ *| /  | /g
+s/^ *| /    /g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
