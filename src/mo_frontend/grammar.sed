@@ -100,7 +100,7 @@ s/AWAIT/\'await\'/g
 s/ASYNC/\'async\'/g
 s/ASSERT/\'assert\'/g
 s/ARROW/\'->\'/g
-s/ANDOP/\'&\'/g
+s/ANDOP/\'\&\'/g
 s/ADDOP/\'+\'/g
 s/ASSIGN/\':=\'/g
 s/OR/\'or\'/g
