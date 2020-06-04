@@ -61,7 +61,7 @@ let optimize : instr list -> instr list = fun is ->
       go l' r'
     (* Duplicate statement markers can be zapped *)
     | l', ({it = Nop; _} as n1) :: (({it = Nop; _} as n2) :: _ as r') when
-          is_dwarf_statement n1.at && is_dwarf_statement n2.at ->
+          is_dwarf_statement n1.it && is_dwarf_statement n2.it ->
       go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'
@@ -562,6 +562,4 @@ let dw_tag_no_children = dw_tag_open (* self-closing *)
 let dw_statement { Source.left; Source.right } =
   let open Wasm.Source in
   let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
-  (* right is only differing in the negated line *)
-  let right = { left with line = - left.line } in
-  fun _ _ x -> (Nop @@ { left; right }) :: x
+  i (Meta (StatementDelimiter left))

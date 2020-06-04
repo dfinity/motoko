@@ -33,13 +33,9 @@ supply other flags for the DWARF line machine.
 let is_dwarf_like Wasm.Source.{ left; right } =
   Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos)
 
-let is_dwarf_statement Wasm.Source.{ left; right } =
-  let open Wasm.Source in
-  (* we require physical equality for the filename *)
-  left.file == right.file
-  && right.line < 0 (* special marker *)
-  && left.line = - right.line
-  && left.column = right.column
+let is_dwarf_statement = function
+  | Ast.Meta (Dwarf5.Meta.StatementDelimiter _) -> true
+  | _ -> false
 
 module Promise = Lib.Promise
 
@@ -422,8 +418,8 @@ let encode (em : extended_module) =
 
       match e.it with
       | Nop when is_dwarf_like e.at -> close_dwarf true
-      | Nop when is_dwarf_statement e.at ->
-        modif statement_positions (Instrs.add (pos s, e.at.left))
+      | Meta (StatementDelimiter left) when is_dwarf_statement e.it ->
+        modif statement_positions (Instrs.add (pos s, left))
       | Block (_, es) when is_dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
 
       | Unreachable -> op 0x00
