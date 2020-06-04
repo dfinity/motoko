@@ -363,24 +363,6 @@ rec {
     '';
   };
 
-  grammar = stdenv.mkDerivation {
-    name = "grammar";
-    src = subpath "./src/mo_frontend";
-    buildInputs = with nixpkgs.ocamlPackages; [ obelisk ];
-
-    buildPhase = ''
-      obelisk -i parser.mly > grammar.txt
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv grammar.txt $out
-      mkdir -p $out/nix-support
-      echo "report grammar $out grammar.txt" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
-
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
@@ -441,7 +423,6 @@ rec {
       base-src
       base-tests
       users-guide
-      grammar
       ic-ref
       shell
       check-formatting

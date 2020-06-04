@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
 	installPhase = ''
           mkdir -p $out
           mkdir -p $out/bin
-	  mv _build/default/src/main.exe $out/bin/obelisk
+	    mv _build/default/src/main.exe $out/bin/obelisk
 	'';
 
 	meta = {
@@ -28,4 +28,3 @@ stdenv.mkDerivation rec {
 		inherit (ocamlPackages.ocaml.meta) platforms;
 	};
 }
-
