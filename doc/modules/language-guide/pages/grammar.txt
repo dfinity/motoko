@@ -133,7 +133,7 @@
   | '/='
   | '%='
   | '**-'
-  | ''and''assign'='
+  | '&='
   | '|='
   | '^='
   | '<<='
@@ -196,7 +196,7 @@
 
 <exp_nondec(B)> ::=
     <exp_bin(B)>
-  | <exp_bin(<ob>)> 'assign' <exp(<ob>)>
+  | <exp_bin(<ob>)> ':=' <exp(<ob>)>
   | <exp_bin(<ob>)> <binassign> <exp(<ob>)>
   | 'return'
   | 'return' <exp(<ob>)>

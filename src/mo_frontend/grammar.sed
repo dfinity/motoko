@@ -1,5 +1,6 @@
 s/::= /::=\n    /g
 s/^ *| /  | /g
+s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
 s/IMPORT/\'import\'/g
@@ -100,9 +101,8 @@ s/ASYNC/\'async\'/g
 s/ASSERT/\'assert\'/g
 s/ARROW/\'->\'/g
 s/ANDOP/\'&\'/g
-s/ANDASSIGN/\'&=\'/g
 s/ADDOP/\'+\'/g
-s/ASSIGN/\'assign\'/g
+s/ASSIGN/\':=\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
 

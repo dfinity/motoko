@@ -65,5 +65,5 @@ test-quick: $(NAME)
 	make -C ../test MOC=$(MOC) quick
 
 grammar:
-	obelisk -i mo_frontend/parser.mly > ../doc/modules/language-guide/pages/grammar.txt
-	sed -i -f mo_frontend/grammar.sed ../doc/modules/language-guide/pages/grammar.txt
+	obelisk -i mo_frontend/parser.mly > ../doc/modules/language-guide/pages/grammar.tmp
+	sed -f mo_frontend/grammar.sed ../doc/modules/language-guide/pages/grammar.tmp > ../doc/modules/language-guide/pages/grammar.txt
