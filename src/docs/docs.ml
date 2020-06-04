@@ -92,4 +92,6 @@ let start : output_format -> string -> string -> unit =
         (fun (out, input) ->
           write_file (out ^ ".html") (Html.render_docs input))
         inputs;
-      write_file (Filename.concat out "index.html") (Html.make_index (List.map snd inputs))
+      write_file
+        (Filename.concat out "index.html")
+        (Html.make_index (List.map snd inputs))
