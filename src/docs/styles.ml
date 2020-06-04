@@ -47,6 +47,7 @@ body {
 
 .documentation {
   margin-left: 230px;
+  max-width: 960px;
 }
 
 .sidebar > ul {
@@ -85,6 +86,12 @@ body {
 
 .declaration :last-child {
   border: none;
+}
+
+h1 {
+  font-weight: 500;
+  padding-bottom: 6px;
+  border-bottom: 1px #D5D5D5 dashed;
 }
 
 h4.function-declaration {

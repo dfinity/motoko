@@ -283,7 +283,8 @@ let html_of_docs : render_input -> Cow.Html.t =
     body
       ( navigation
       ++ div ~cls:"documentation"
-           ( html_of_comment module_comment
+           ( h1 (string current_path)
+           ++ html_of_comment module_comment
            ++ list (List.map html_of_doc declarations) ) )
   in
   html (header ++ bdy)
