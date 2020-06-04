@@ -37,6 +37,7 @@ let rec adoc_of_declaration :
   let signature = adoc_signature buf in
   match doc with
   | Function function_doc ->
+      bprintf buf "[[value.%s]]\n" function_doc.name;
       header function_doc.name;
       doc_comment ();
       signature (fun _ ->
@@ -48,12 +49,14 @@ let rec adoc_of_declaration :
           bprintf buf ")";
           Plain.opt_typ buf function_doc.typ)
   | Value value_doc ->
+      bprintf buf "[[value.%s]]\n" value_doc.name;
       header value_doc.name;
       doc_comment ();
       signature (fun _ ->
           bprintf buf "let %s" value_doc.name;
           Plain.opt_typ buf value_doc.typ)
   | Type type_doc ->
+      bprintf buf "[[type.%s]]\n" type_doc.name;
       header type_doc.name;
       doc_comment ();
       signature (fun _ ->
@@ -63,6 +66,7 @@ let rec adoc_of_declaration :
           bprintf buf " = ";
           adoc_of_doc_type buf type_doc.typ)
   | Class class_doc ->
+      bprintf buf "[[class.%s]]\n" class_doc.name;
       header class_doc.name;
       doc_comment ();
       signature (fun _ ->
@@ -86,7 +90,7 @@ and adoc_of_doc : Buffer.t -> int -> doc -> unit =
 let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "= %s\n\n" current_path;
+  bprintf buf "[[module.%s]]\n= %s\n\n" current_path current_path;
   bprintf buf "%s\n\n" module_comment;
   List.iter (adoc_of_doc buf 1) declarations;
   Buffer.contents buf
