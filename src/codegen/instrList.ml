@@ -235,32 +235,32 @@ let fakeColumn (column : int) attr instr' : t =
   fun _ _ instrs ->
   (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
 
-let dw_attr : dw_AT -> t =
+let dw_attr' : dw_AT -> Meta.die =
   function
-  | Producer p -> i (Meta (Meta.StringAttribute (dw_AT_producer, p)))
-  | Language l -> i (Meta (Meta.IntAttribute (dw_AT_language, l)))
-  | Name n -> i (Meta (Meta.StringAttribute (dw_AT_name, n)))
-  | Stmt_list l -> i (Meta (Meta.IntAttribute (dw_AT_stmt_list, l)))
-  | Comp_dir d -> i (Meta (Meta.StringAttribute (dw_AT_comp_dir, d)))
-  | Use_UTF8 b -> i (Meta (Meta.IntAttribute (dw_AT_use_UTF8, (if b then 1 else 0))))
-  | Addr_base b -> i (Meta (Meta.IntAttribute (dw_AT_addr_base, b)))
-  | Low_pc -> i (Meta (Meta.OffsetAttribute dw_AT_low_pc))
-  | High_pc -> i (Meta (Meta.OffsetAttribute dw_AT_high_pc))
-  | Ranges -> i (Meta (Meta.OffsetAttribute dw_AT_ranges))  (* see Note [Low_pc, High_pc, Ranges are special] *)
-  | Decl_file f -> i (Meta (Meta.StringAttribute (dw_AT_decl_file, f)))
-  | Decl_line l -> i (Meta (Meta.IntAttribute (dw_AT_decl_line, l)))
-  | Decl_column c -> i (Meta (Meta.IntAttribute (dw_AT_decl_column, c)))
-  | Prototyped b -> i (Meta (Meta.IntAttribute (dw_AT_prototyped, (if b then 1 else 0))))
-  | External b -> i (Meta (Meta.IntAttribute (dw_AT_external, (if b then 1 else 0))))
-  | Byte_size s -> i (Meta (Meta.IntAttribute (dw_AT_byte_size, s)))
-  | Bit_size s -> i (Meta (Meta.IntAttribute (dw_AT_bit_size, s)))
-  | Data_bit_offset o -> i (Meta (Meta.IntAttribute (dw_AT_data_bit_offset, o)))
-  | Artificial b -> i (Meta (Meta.IntAttribute (dw_AT_artificial, (if b then 1 else 0))))
-  | Discr r -> i (Meta (Meta.IntAttribute (dw_AT_discr, r)))
-  | TypeRef r -> i (Meta (Meta.IntAttribute (dw_AT_type, r)))
-  | Encoding e -> i (Meta (Meta.IntAttribute (dw_AT_encoding, e)))
-  | Discr_value v -> i (Meta (Meta.IntAttribute (dw_AT_discr_value, v)))
-  | Const_value v -> i (Meta (Meta.IntAttribute (dw_AT_const_value, v)))
+  | Producer p -> Meta.StringAttribute (dw_AT_producer, p)
+  | Language l -> Meta.IntAttribute (dw_AT_language, l)
+  | Name n -> Meta.StringAttribute (dw_AT_name, n)
+  | Stmt_list l -> Meta.IntAttribute (dw_AT_stmt_list, l)
+  | Comp_dir d -> Meta.StringAttribute (dw_AT_comp_dir, d)
+  | Use_UTF8 b -> Meta.IntAttribute (dw_AT_use_UTF8, (if b then 1 else 0))
+  | Addr_base b -> Meta.IntAttribute (dw_AT_addr_base, b)
+  | Low_pc -> Meta.OffsetAttribute dw_AT_low_pc
+  | High_pc -> Meta.OffsetAttribute dw_AT_high_pc
+  | Ranges -> Meta.OffsetAttribute dw_AT_ranges  (* see Note [Low_pc, High_pc, Ranges are special] *)
+  | Decl_file f -> Meta.StringAttribute (dw_AT_decl_file, f)
+  | Decl_line l -> Meta.IntAttribute (dw_AT_decl_line, l)
+  | Decl_column c -> Meta.IntAttribute (dw_AT_decl_column, c)
+  | Prototyped b -> Meta.IntAttribute (dw_AT_prototyped, (if b then 1 else 0))
+  | External b -> Meta.IntAttribute (dw_AT_external, (if b then 1 else 0))
+  | Byte_size s -> Meta.IntAttribute (dw_AT_byte_size, s)
+  | Bit_size s -> Meta.IntAttribute (dw_AT_bit_size, s)
+  | Data_bit_offset o -> Meta.IntAttribute (dw_AT_data_bit_offset, o)
+  | Artificial b -> Meta.IntAttribute (dw_AT_artificial, (if b then 1 else 0))
+  | Discr r -> Meta.IntAttribute (dw_AT_discr, r)
+  | TypeRef r -> Meta.IntAttribute (dw_AT_type, r)
+  | Encoding e -> Meta.IntAttribute (dw_AT_encoding, e)
+  | Discr_value v -> Meta.IntAttribute (dw_AT_discr_value, v)
+  | Const_value v -> Meta.IntAttribute (dw_AT_const_value, v)
   | Location ops ->
     let string_of_ops ops =
       let open Buffer in
@@ -274,10 +274,12 @@ let dw_attr : dw_AT -> t =
           stash (- (i lsr 7)) in
       List.iter stash ops;
       Buffer.contents buf in
-    i (Meta (Meta.StringAttribute (dw_AT_location, (string_of_ops ops))))
+    Meta.StringAttribute (dw_AT_location, (string_of_ops ops))
   | Discr_list -> assert false (* not yet *)
 
-let dw_attrs = concat_map dw_attr
+let dw_attr at : Meta.die list = [dw_attr' at]
+
+let dw_attrs = List.map dw_attr'
 
 (* Note [emit a DW_TAG]
    ~~~~~~~~~~~~~~~~~~~~
@@ -307,7 +309,6 @@ let dw_objects = ref ObjectRefs.empty
 let any_type = ref None
 
 let pointer_key = ref None
-let void_block_type = as_block_type []
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
@@ -370,10 +371,10 @@ and lookup_pointer_key () : t * int =
     pointer_key := Some r;
     dw, r
 and fakeBlock tag attrs =
-  fakeColumn 0 tag (Block (void_block_type, attrs 0l Wasm.Source.no_region []))
+  fakeColumn 0 tag (Meta (Tag (None, tag, attrs)))
 and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  fakeColumn refslot tag (Block (void_block_type, attrs 0l Wasm.Source.no_region [])),
+  fakeColumn refslot tag (Meta (Tag (Some refslot, tag, attrs))),
   refslot
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =

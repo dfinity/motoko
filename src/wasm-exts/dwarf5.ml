@@ -665,7 +665,7 @@ struct
 
 type die
   = StatementDelimiter of Wasm.Source.pos
-  | Tag of die list
+  | Tag of int option * int * die list
   | TagClose
   | OffsetAttribute of int
   | IntAttribute of int * int

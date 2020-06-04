@@ -287,10 +287,10 @@ let encode (em : extended_module) =
       | instr, {line; file; _} ->
         failwith (Printf.sprintf "extract UNKNOWN TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<some instruction>"(*Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))*))
     in
-    add_dwarf_tag (if refi = 0 then None else Some refi) tag;
+    add_dwarf_tag refi tag;
     let rec add_artifacts = function
     | [] -> ()
-    | e :: es -> extract (e.it, e.at.left); add_artifacts es in
+    | e :: es -> extract (Meta e, Wasm.Source.no_pos); add_artifacts es in
     add_artifacts
   in
 
@@ -421,7 +421,8 @@ let encode (em : extended_module) =
       | Meta TagClose -> close_dwarf true
       | Meta (StatementDelimiter left) when is_dwarf_statement e.it ->
         modif statement_positions (Instrs.add (pos s, left))
-      | Block (_, es) when is_dwarf_like e -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
+      | Meta (Tag (r, t, attrs)) -> extract_dwarf r t attrs
+      (*   | Block (_, es) when is_dwarf_like e -> extract_dwarf (e.at.left.column) (-e.at.left.line) es *)
 
       | Unreachable -> op 0x00
       | Nop -> op 0x01
