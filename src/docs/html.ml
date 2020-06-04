@@ -213,13 +213,28 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
            ++ string ")"
            ++ return_typ ))
   | Class class_doc ->
+      let is_multiline = List.length class_doc.constructor > 2 in
+      let br' = if is_multiline then br empty else empty in
+      let br_indent =
+        if is_multiline then br empty ++ space ++ space else empty
+      in
       let ty_args = html_of_typ_binders class_doc.type_args in
+      let args =
+        join_with
+          (string ", " ++ br_indent)
+          (List.map html_of_arg class_doc.constructor)
+      in
       h4 ~cls:"class-declaration"
         ~id:("class." ^ class_doc.name)
         ( html_of_obj_sort class_doc.sort
         ++ keyword "class "
         ++ class_name class_doc.name
-        ++ ty_args )
+        ++ ty_args
+        ++ string "("
+        ++ br_indent
+        ++ args
+        ++ br'
+        ++ string ")" )
       ++ list (List.map html_of_doc class_doc.fields)
   | Type type_doc -> html_of_type_doc type_doc
   | Value value_doc ->
