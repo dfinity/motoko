@@ -236,31 +236,33 @@ let fakeColumn (column : int) attr instr' : t =
   (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
 
 let dw_attr' : dw_AT -> Meta.die =
+  let bool b = if b then 1 else 0 in
+  let open Meta in
   function
-  | Producer p -> Meta.StringAttribute (dw_AT_producer, p)
-  | Language l -> Meta.IntAttribute (dw_AT_language, l)
-  | Name n -> Meta.StringAttribute (dw_AT_name, n)
-  | Stmt_list l -> Meta.IntAttribute (dw_AT_stmt_list, l)
-  | Comp_dir d -> Meta.StringAttribute (dw_AT_comp_dir, d)
-  | Use_UTF8 b -> Meta.IntAttribute (dw_AT_use_UTF8, (if b then 1 else 0))
-  | Addr_base b -> Meta.IntAttribute (dw_AT_addr_base, b)
-  | Low_pc -> Meta.OffsetAttribute dw_AT_low_pc
-  | High_pc -> Meta.OffsetAttribute dw_AT_high_pc
-  | Ranges -> Meta.OffsetAttribute dw_AT_ranges  (* see Note [Low_pc, High_pc, Ranges are special] *)
-  | Decl_file f -> Meta.StringAttribute (dw_AT_decl_file, f)
-  | Decl_line l -> Meta.IntAttribute (dw_AT_decl_line, l)
-  | Decl_column c -> Meta.IntAttribute (dw_AT_decl_column, c)
-  | Prototyped b -> Meta.IntAttribute (dw_AT_prototyped, (if b then 1 else 0))
-  | External b -> Meta.IntAttribute (dw_AT_external, (if b then 1 else 0))
-  | Byte_size s -> Meta.IntAttribute (dw_AT_byte_size, s)
-  | Bit_size s -> Meta.IntAttribute (dw_AT_bit_size, s)
-  | Data_bit_offset o -> Meta.IntAttribute (dw_AT_data_bit_offset, o)
-  | Artificial b -> Meta.IntAttribute (dw_AT_artificial, (if b then 1 else 0))
-  | Discr r -> Meta.IntAttribute (dw_AT_discr, r)
-  | TypeRef r -> Meta.IntAttribute (dw_AT_type, r)
-  | Encoding e -> Meta.IntAttribute (dw_AT_encoding, e)
-  | Discr_value v -> Meta.IntAttribute (dw_AT_discr_value, v)
-  | Const_value v -> Meta.IntAttribute (dw_AT_const_value, v)
+  | Producer p -> StringAttribute (dw_AT_producer, p)
+  | Language l -> IntAttribute (dw_AT_language, l)
+  | Name n -> StringAttribute (dw_AT_name, n)
+  | Stmt_list l -> IntAttribute (dw_AT_stmt_list, l)
+  | Comp_dir d -> StringAttribute (dw_AT_comp_dir, d)
+  | Use_UTF8 b -> IntAttribute (dw_AT_use_UTF8, bool b)
+  | Addr_base b -> IntAttribute (dw_AT_addr_base, b)
+  | Low_pc -> OffsetAttribute dw_AT_low_pc
+  | High_pc -> OffsetAttribute dw_AT_high_pc
+  | Ranges -> OffsetAttribute dw_AT_ranges  (* see Note [Low_pc, High_pc, Ranges are special] *)
+  | Decl_file f -> StringAttribute (dw_AT_decl_file, f)
+  | Decl_line l -> IntAttribute (dw_AT_decl_line, l)
+  | Decl_column c -> IntAttribute (dw_AT_decl_column, c)
+  | Prototyped b -> IntAttribute (dw_AT_prototyped, bool b)
+  | External b -> IntAttribute (dw_AT_external, bool b)
+  | Byte_size s -> IntAttribute (dw_AT_byte_size, s)
+  | Bit_size s -> IntAttribute (dw_AT_bit_size, s)
+  | Data_bit_offset o -> IntAttribute (dw_AT_data_bit_offset, o)
+  | Artificial b -> IntAttribute (dw_AT_artificial, bool b)
+  | Discr r -> IntAttribute (dw_AT_discr, r)
+  | TypeRef r -> IntAttribute (dw_AT_type, r)
+  | Encoding e -> IntAttribute (dw_AT_encoding, e)
+  | Discr_value v -> IntAttribute (dw_AT_discr_value, v)
+  | Const_value v -> IntAttribute (dw_AT_const_value, v)
   | Location ops ->
     let string_of_ops ops =
       let open Buffer in
@@ -274,7 +276,7 @@ let dw_attr' : dw_AT -> Meta.die =
           stash (- (i lsr 7)) in
       List.iter stash ops;
       Buffer.contents buf in
-    Meta.StringAttribute (dw_AT_location, (string_of_ops ops))
+    StringAttribute (dw_AT_location, (string_of_ops ops))
   | Discr_list -> assert false (* not yet *)
 
 let dw_attr at : Meta.die list = [dw_attr' at]
