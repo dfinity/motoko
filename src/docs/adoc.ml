@@ -16,7 +16,7 @@ let adoc_of_function_arg : Buffer.t -> function_arg_doc -> unit =
   Plain.opt_typ buf arg.typ
 
 let adoc_header : Buffer.t -> int -> string -> unit =
- fun buf lvl s -> bprintf buf "%s %s\n" (String.make (lvl + 1) '=') s
+ fun buf lvl s -> bprintf buf "%s %s\n\n" (String.make (lvl + 1) '=') s
 
 let adoc_signature : Buffer.t -> (unit -> unit) -> unit =
  fun buf f ->
@@ -78,15 +78,15 @@ let rec adoc_of_declaration :
 and adoc_of_doc : Buffer.t -> int -> doc -> unit =
  fun buf lvl { doc_comment; declaration } ->
   let doc_comment () =
-    surround buf "\n\n" (fun _ ->
-        Option.iter (Buffer.add_string buf) doc_comment)
+    Option.iter (Buffer.add_string buf) doc_comment;
+    bprintf buf "\n\n"
   in
   adoc_of_declaration buf lvl doc_comment declaration
 
 let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "= %s\n" current_path;
+  bprintf buf "= %s\n\n" current_path;
   bprintf buf "%s\n\n" module_comment;
   List.iter (adoc_of_doc buf 1) declarations;
   Buffer.contents buf
