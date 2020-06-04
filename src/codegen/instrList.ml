@@ -251,10 +251,10 @@ let dw_attr : dw_AT -> t =
   | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
   | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 Nop
   | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
-  | Low_pc -> fakeColumn 0 dw_AT_low_pc Nop
-  | High_pc -> fakeColumn 0 dw_AT_high_pc Nop
-  | Ranges -> fakeColumn 0 dw_AT_ranges Nop  (* see Note [Low_pc, High_pc, Ranges are special] *)
-  | Decl_file f -> fakeFile f dw_AT_decl_file Nop
+  | Low_pc -> fakeColumn 0 dw_AT_low_pc (Meta (Meta.OffsetAttribute dw_AT_low_pc))
+  | High_pc -> fakeColumn 0 dw_AT_high_pc (Meta (Meta.OffsetAttribute dw_AT_high_pc))
+  | Ranges -> fakeColumn 0 dw_AT_ranges (Meta (Meta.OffsetAttribute dw_AT_ranges))  (* see Note [Low_pc, High_pc, Ranges are special] *)
+  | Decl_file f -> fakeFile f dw_AT_decl_file (Meta (Meta.StringAttribute (dw_AT_decl_file, f)))
   | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop

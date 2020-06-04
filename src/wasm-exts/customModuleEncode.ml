@@ -237,18 +237,20 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_stmt_list ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; column; _} when -line = dw_AT_low_pc && tag = dw_TAG_subprogram ->
-        add_dwarf_attribute (IntAttribute (-line, !sequence_number))
-      | Nop, {line; column; _} when -line = dw_AT_low_pc ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
+        add_dwarf_attribute (IntAttribute (at, 0))
+      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
+        add_dwarf_attribute (IntAttribute (at, !sequence_number))
+      | Meta (Meta.IntAttribute (at, addr)), _ when at = dw_AT_low_pc -> assert false
+    (*    add_dwarf_attribute (IntAttribute (at, addr))       THIS SHOULD BE DEAD CODE *)
 
-      | Nop, {line; column; _} when -line = dw_AT_high_pc && tag = dw_TAG_subprogram ->
-        add_dwarf_attribute (RangeAttribute (-line, !sequence_number))
-      | Nop, {line; column; _} when -line = dw_AT_high_pc ->
-        add_dwarf_attribute (IntAttribute (-line, column))
+      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
+        add_dwarf_attribute (RangeAttribute (at, !sequence_number))
+      | Nop, {line; column; _} when -line = dw_AT_high_pc -> assert false
+    (*    add_dwarf_attribute (IntAttribute (-line, column))       THIS SHOULD BE DEAD CODE *)
 
-      | Nop, {line; file; _} when -line = dw_AT_decl_file ->
-        add_dwarf_attribute (StringAttribute (-line, file))
+      | Meta (Meta.StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
+        add_dwarf_attribute (StringAttribute (at, file))
       | Nop, {line; column; _} when -line = dw_AT_decl_line ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_decl_column ->
@@ -265,8 +267,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_data_bit_offset ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Nop, {line; _} when -line = dw_AT_ranges ->
-        add_dwarf_attribute (FunctionsAttribute (-line)) (* see Note [Low_pc, High_pc, Ranges are special] *)
+      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_ranges ->
+        add_dwarf_attribute (FunctionsAttribute at) (* see Note [Low_pc, High_pc, Ranges are special] *)
       | Nop, {line; column; _} when -line = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_discr ->
@@ -277,10 +279,18 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_encoding ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | Meta (Meta.IntAttribute (at, i)), {line; column; _} when at = dw_AT_type ->
+      | Meta (Meta.IntAttribute (at, i)), _ when at = dw_AT_type ->
         add_dwarf_attribute (IntAttribute (at, i))
       | Nop, {line; _} ->
         failwith (Printf.sprintf "extract TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
+      | Meta (IntAttribute (at, v)), {line; file; _} ->
+        failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <IntAttribute>%d" tag tag file (-line) v)
+      | Meta (StringAttribute (at, s)), {line; file; _} ->
+        failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <StringAttribute>%s" tag tag file (-line) s)
+      | Meta (OffsetAttribute at), {line; file; _} ->
+        failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <OffsetAttribute>" tag tag file (-line))
+      | Meta _, {line; file; _} ->
+        failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<Unknowm>")
       | instr, {line; file; _} ->
         failwith (Printf.sprintf "extract UNKNOWN TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<some instruction>"(*Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))*))
     in
