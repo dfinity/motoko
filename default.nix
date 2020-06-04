@@ -402,6 +402,24 @@ rec {
     '';
   };
 
+  base-doc = stdenv.mkDerivation {
+    name = "base-doc";
+    src = nixpkgs.sources.motoko-base;
+    phases = "unpackPhase buildPhase installPhase";
+    doCheck = true;
+    buildInputs = [ mo-doc nixpkgs.asciidoctor nixpkgs.perl ];
+    buildPhase = ''
+      make -C doc
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp -rv doc/_out/* $out/
+
+      mkdir -p $out/nix-support
+      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
       expected = import ./nix/generate.nix { pkgs = nixpkgs; };
@@ -424,6 +442,7 @@ rec {
       rts
       base-src
       base-tests
+      base-doc
       users-guide
       ic-ref
       shell
