@@ -68,8 +68,12 @@ let string_of_leading : Lexer.trivia_info -> string =
     (List.filter_map
        (function
          | Source_token.Comment s -> (
-             match Lib.String.chop_prefix "/// " s with
-             | Some line_comment -> Some line_comment
+             match Lib.String.chop_prefix "///" s with
+             | Some "" -> Some ""
+             | Some line_comment ->
+                 (* We expect a documentation line comment to start with a space
+                  *  (which we remove here) *)
+                 Lib.String.chop_prefix " " line_comment
              | None ->
                  Option.bind
                    (Lib.String.chop_prefix "/**" s)
