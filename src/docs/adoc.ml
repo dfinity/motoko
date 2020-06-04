@@ -18,12 +18,11 @@ let adoc_of_function_arg : Buffer.t -> function_arg_doc -> unit =
 let adoc_header : Buffer.t -> int -> string -> unit =
  fun buf lvl s -> bprintf buf "%s %s\n" (String.make (lvl + 1) '=') s
 
-let adoc_signature : Buffer.t -> int -> (unit -> unit) -> unit =
- fun buf lvl f ->
-  Buffer.add_string buf (String.make (lvl + 3) '=');
-  bprintf buf " ";
-  surround buf "`" (fun _ -> surround buf "+" f);
-  bprintf buf "\n\n"
+let adoc_signature : Buffer.t -> (unit -> unit) -> unit =
+ fun buf f ->
+  bprintf buf "[source,motoko]\n----\n";
+  f ();
+  bprintf buf "\n----\n\n"
 
 let adoc_of_doc_type : Buffer.t -> Extract.doc_type -> unit =
  fun buf dt ->
@@ -35,7 +34,7 @@ let rec adoc_of_declaration :
     Buffer.t -> int -> (unit -> unit) -> declaration_doc -> unit =
  fun buf lvl doc_comment doc ->
   let header = adoc_header buf lvl in
-  let signature = adoc_signature buf lvl in
+  let signature = adoc_signature buf in
   match doc with
   | Function function_doc ->
       header function_doc.name;
