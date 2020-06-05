@@ -152,11 +152,11 @@ h4.class-declaration {
   display: inline;
 }
 
-.index-item-comment > p {
+.index-item-comment > * {
   display: none;
 }
 
-.index-item-comment > p:first-child {
+.index-item-comment > *:first-child {
   display: inline;
   white-space: nowrap;
 }
