@@ -226,12 +226,14 @@ let encode (em : extended_module) =
         add_dwarf_attribute (StringAttribute (at, d))
       | Meta (StringAttribute (at, l)), _ when at = dw_AT_location ->
         add_dwarf_attribute (StringAttribute (at, l))
+(*
       | Meta (IntAttribute (at, u)), _ when at = dw_AT_use_UTF8 ->
         add_dwarf_attribute (IntAttribute (at, u))
       | Meta (IntAttribute (at, l)), _ when at = dw_AT_language ->
         add_dwarf_attribute (IntAttribute (at, l))
       | Meta (IntAttribute (at, l)), _ when at = dw_AT_stmt_list ->
         add_dwarf_attribute (IntAttribute (at, l))
+ *)
       | Meta (OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
       | Meta (OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
@@ -243,6 +245,7 @@ let encode (em : extended_module) =
         add_dwarf_attribute (FutureAttribute resolve)
       | Meta (StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
         add_dwarf_attribute (StringAttribute (at, file))
+(*
       | Meta (IntAttribute (at, l)), _ when at = dw_AT_decl_line ->
         add_dwarf_attribute (IntAttribute (at, l))
       | Meta (IntAttribute (at, c)), _ when at = dw_AT_decl_column ->
@@ -259,9 +262,11 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (at, s))
       | Meta (IntAttribute (at, o)), _ when at = dw_AT_data_bit_offset ->
         add_dwarf_attribute (IntAttribute (at, o))
+ *)
       | Meta (OffsetAttribute at), _ when at = dw_AT_ranges ->
         let resolve () = IntAttribute (at, Promise.value rangelists) in
         add_dwarf_attribute (FutureAttribute resolve) (* see Note [Low_pc, High_pc, Ranges are special] *)
+(*
       | Meta (IntAttribute (at, a)), _ when at = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (at, a))
       | Meta (IntAttribute (at, d)), _ when at = dw_AT_discr ->
@@ -274,8 +279,12 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (at, e))
       | Meta (IntAttribute (at, i)), _ when at = dw_AT_type ->
         add_dwarf_attribute (IntAttribute (at, i))
-      | Nop, {line; _} ->
-        failwith (Printf.sprintf "extract NOP? TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
+ *)
+
+
+      | Meta (IntAttribute _ as attr), _ ->
+        add_dwarf_attribute attr
+
       | Meta (IntAttribute (at, v)), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <IntAttribute>%d" tag tag file (-line) v)
       | Meta (StringAttribute (at, s)), {line; file; _} ->
@@ -284,8 +293,6 @@ let encode (em : extended_module) =
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <OffsetAttribute>" tag tag file (-line))
       | Meta _, {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<Unknowm>")
-      | instr, {line; file; _} ->
-        failwith (Printf.sprintf "extract UNKNOWN TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<some instruction>"(*Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))*))
     in
     add_dwarf_tag refi tag;
     let rec add_artifacts = function
