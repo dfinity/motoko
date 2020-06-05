@@ -28,15 +28,19 @@ let (++) : f -> f -> f = M.union (fun _ u1 u2 -> Some (join u1 u2))
 let unions f xs = List.fold_left (++) M.empty (List.map f xs)
 let (//) x y = M.remove y x
 
+(* Operations: left-biased Map union *)
+let (+-) = M.union (fun _ u1 _ -> Some u1)
+
 (* A combined set of free variables and defined variables,
    e.g. in patterns and declaration *)
 type defs = S.t
 type fd = f * defs
+type td = Mo_types.Type.typ M.t
 
 (* Operations: *)
 
 (* This adds a set of free variables to a combined set *)
-let (+++) ((f,d) : fd)  x = ((++) f x, d)
+let (+++) ((f,d) : fd) x = ((++) f x, d)
 (* This takes the union of two combined sets *)
 let (++++) (f1, d1) (f2,d2) = ((++) f1 f2, S.union d1 d2)
 let union_binders f xs = List.fold_left (++++) (M.empty, S.empty) (List.map f xs)
@@ -48,6 +52,7 @@ let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
 
 (* The bound variables from the second argument scope over the first *)
 let (///) (x : f) ((f,d) : fd) = f ++ diff x d
+let (//*) (x : f) (d : td) = diff x (set_of_map d)
 
 (* Usage tracking:
 
@@ -102,26 +107,25 @@ and lexp le : f = match le.it with
   | DotLE (e1, _)        -> exp e1
   | IdxLE (e1, e2)       -> exps [e1; e2]
 
-and pat p : fd = match p.it with
-  | WildP           -> (M.empty, S.empty)
-  | VarP i          -> (M.empty, S.singleton i)
+and pat p : td = match p.it with
+  | WildP | LitP _  -> M.empty
+  | VarP i          -> M.singleton i p.note
   | TupP ps         -> pats ps
   | ObjP pfs        -> pats (pats_of_obj_pat pfs)
-  | LitP l          -> (M.empty, S.empty)
   | OptP p          -> pat p
   | TagP (i, p)     -> pat p
-  | AltP (p1, p2)   -> pat p1 ++++ pat p2
+  | AltP (p1, p2)   -> pat p1 +- pat p2
 
-and pats ps : fd = union_binders pat ps
+and pats ps : td = List.(fold_left (+-) M.empty (map pat ps))
 
-and case (c : case) = exp c.it.exp /// pat c.it.pat
+and case (c : case) = exp c.it.exp //* pat c.it.pat
 
 and cases cs : f = unions case cs
 
 and id i = M.singleton i {captured = false; eager = true}
 
 and dec d = match d.it with
-  | LetD (p, e) -> pat p +++ exp e
+  | LetD (p, e) -> (M.empty, set_of_map (pat p)) +++ exp e
   | VarD (i, _, e) -> (M.empty, S.singleton i) +++ exp e
 
 (* The variables captured by a function. May include the function itself! *)
