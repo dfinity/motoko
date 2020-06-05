@@ -87,7 +87,7 @@ type dwarf_artifact = Tag of int option * int * dwarf_artifact list
                     | IntAttribute of int * int
                     | RangeAttribute of int * int
                     | StringAttribute of int * string
-                    | FunctionsAttribute of int
+                    | OffsetAttribute of int
 
 (* Encoding *)
 
@@ -261,7 +261,7 @@ let encode (em : extended_module) =
       | Meta (Meta.IntAttribute (at, o)), _ when at = dw_AT_data_bit_offset ->
         add_dwarf_attribute (IntAttribute (at, o))
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_ranges ->
-        add_dwarf_attribute (FunctionsAttribute at) (* see Note [Low_pc, High_pc, Ranges are special] *)
+        add_dwarf_attribute (OffsetAttribute at) (* see Note [Low_pc, High_pc, Ranges are special] *)
       | Meta (Meta.IntAttribute (at, a)), _ when at = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (at, a))
       | Meta (Meta.IntAttribute (at, d)), _ when at = dw_AT_discr ->
@@ -276,11 +276,11 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (at, i))
       | Nop, {line; _} ->
         failwith (Printf.sprintf "extract NOP? TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
-      | Meta (IntAttribute (at, v)), {line; file; _} ->
+      | Meta (Meta.IntAttribute (at, v)), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <IntAttribute>%d" tag tag file (-line) v)
-      | Meta (StringAttribute (at, s)), {line; file; _} ->
+      | Meta (Meta.StringAttribute (at, s)), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <StringAttribute>%s" tag tag file (-line) s)
-      | Meta (OffsetAttribute at), {line; file; _} ->
+      | Meta (Meta.OffsetAttribute at), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <OffsetAttribute>" tag tag file (-line))
       | Meta _, {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<Unknowm>")
@@ -905,7 +905,7 @@ let encode (em : extended_module) =
       | f when dw_FORM_sec_offset = f ->
         begin function
           | IntAttribute (attr, i) -> write32 i
-          | FunctionsAttribute attr ->
+          | OffsetAttribute attr ->
             write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
         end
@@ -961,7 +961,7 @@ let encode (em : extended_module) =
             assert (attr = a);
             writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | FunctionsAttribute a as art ->
+          | OffsetAttribute a as art ->
             (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)
             assert (attr = a);
             writeForm form art in
