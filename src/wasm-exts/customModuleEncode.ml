@@ -215,49 +215,34 @@ let encode (em : extended_module) =
     let open Dwarf5 in
 
     let extract = function
-      | Meta (StringAttribute (at, p)), _ when at = dw_AT_producer ->
+      | StringAttribute (at, p) when at = dw_AT_producer ->
         let _offs = add_dwarf_string p in
         add_dwarf_attribute (StringAttribute (at, p))
-      | Meta (StringAttribute (at, n)), _ when at = dw_AT_name ->
+      | StringAttribute (at, n) when at = dw_AT_name ->
         let _offs = add_dwarf_string n in
         add_dwarf_attribute (StringAttribute (at, n))
-      | Meta (StringAttribute (at, d)), _ when at = dw_AT_comp_dir ->
+      | StringAttribute (at, d) when at = dw_AT_comp_dir ->
         let _offs = add_dwarf_string d in
         add_dwarf_attribute (StringAttribute (at, d))
-(*
-      | Meta (StringAttribute (at, l)), _ when at = dw_AT_location ->
-        add_dwarf_attribute (StringAttribute (at, l))
- *)
-      | Meta (OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
+      | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
-      | Meta (OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
+      | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (IntAttribute (at, !sequence_number))
 
-      | Meta (OffsetAttribute at), _ when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
+      | OffsetAttribute at when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
         let s = !sequence_number in
         let resolve () = IntAttribute (at, Array.get (Promise.value subprogram_sizes) s) in
         add_dwarf_attribute (FutureAttribute resolve)
-(*
-      | Meta (StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
-        add_dwarf_attribute (StringAttribute (at, file))
- *)
-      | Meta (OffsetAttribute at), _ when at = dw_AT_ranges ->
+      | OffsetAttribute at when at = dw_AT_ranges ->
         let resolve () = IntAttribute (at, Promise.value rangelists) in
         add_dwarf_attribute (FutureAttribute resolve) (* see Note [Low_pc, High_pc, Ranges are special] *)
-      | Meta (IntAttribute _ as attr), _ ->
+      | (IntAttribute _ | StringAttribute _) as attr ->
         add_dwarf_attribute attr
-      | Meta (StringAttribute _ as attr), _ ->
-        add_dwarf_attribute attr
-
-      | Meta (OffsetAttribute at), {line; file; _} ->
-        failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <OffsetAttribute>" tag tag file (-line))
-      | Meta _, {line; file; _} ->
-        failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<Unknowm>")
     in
     add_dwarf_tag refi tag;
     let rec add_artifacts = function
     | [] -> ()
-    | e :: es -> extract (Meta e, Wasm.Source.no_pos); add_artifacts es in
+    | e :: es -> extract e; add_artifacts es in
     add_artifacts
   in
 
