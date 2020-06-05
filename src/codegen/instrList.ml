@@ -59,7 +59,7 @@ let optimize : instr list -> instr list = fun is ->
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
-    (* Duplicate statement markers can be zapped *)
+    (* Duplicate statement markers: first one can be zapped *)
     | l', ({it = Nop; _} as n1) :: (({it = Nop; _} as n2) :: _ as r') when
           is_dwarf_statement n1.it && is_dwarf_statement n2.it ->
       go l' r'
