@@ -40,7 +40,7 @@ let optimize : instr list -> instr list = fun is ->
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
       (* see Note [funneling DIEs through Wasm.Ast] *)
-      List.(rev (i :: l) @ find_all (fun instr -> is_dwarf_like instr) t)
+      List.(rev (i :: l) @ find_all (fun instr -> is_dwarf_like instr.it) t)
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')

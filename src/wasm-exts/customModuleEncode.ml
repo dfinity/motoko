@@ -31,7 +31,7 @@ supply other hints for the DWARF line machine.
 (* Utility predicates *)
 
 let is_dwarf_like = function
-  | { Wasm.Source.it = Ast.Meta (Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _); _ } -> true
+  | Ast.Meta (Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _) -> true
   | _ -> false
 
 let is_dwarf_statement = function
@@ -419,7 +419,7 @@ let encode (em : extended_module) =
 
       match e.it with
       | Meta TagClose -> close_dwarf true
-      | Meta (StatementDelimiter left) when is_dwarf_statement e.it ->
+      | Meta (StatementDelimiter left) ->
         modif statement_positions (Instrs.add (pos s, left))
       | Meta (Tag (r, t, attrs)) -> extract_dwarf r t attrs
       (*   | Block (_, es) when is_dwarf_like e -> extract_dwarf (e.at.left.column) (-e.at.left.line) es *)
@@ -790,7 +790,7 @@ let encode (em : extended_module) =
       vec local (compress locals);
       let instr_notes = ref Instrs.empty in
       let note i =
-        if not (is_dwarf_like i) then
+        if not (is_dwarf_like i.it) then
           (modif instr_notes (Instrs.add (pos s, i.at.left));
            ignore (add_source_name i.at.left.file)
           ) in
