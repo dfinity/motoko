@@ -8,6 +8,9 @@ A simple language for writing Dfinity actors.
 * [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/users-guide/latest/download/1/as-slides.html) ([sources](guide/as-slides.md)).
 * [base library](https://github.com/dfinity-lab/motoko-base).
 * [Small samples](samples).
+* [Language manual](doc/modules/language-guide/pages/language-manual.adoc)
+* [Concrete syntax](doc/modules/language-guide/pages/grammar.txt)
+* [Doc](doc/modules/language-guide/pages)
 
 ## Introduction
 
