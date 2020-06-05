@@ -337,6 +337,24 @@ rec {
   wasmtime = nixpkgs.wasmtime;
   wasm = nixpkgs.wasm;
 
+  overview-slides = stdenv.mkDerivation {
+    name = "overview-slides";
+    src = subpath ./doc;
+    buildInputs = [ nixpkgs.pandoc nixpkgs.bash ];
+
+    buildPhase = ''
+      patchShebangs .
+      make
+    '';
+
+    installPhase = ''
+      mkdir -p $out
+      mv overview-slides.html $out/
+      mkdir -p $out/nix-support
+      echo "report guide $out overview-slides.html" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
@@ -416,6 +434,7 @@ rec {
       base-src
       base-tests
       base-doc
+      overview-slides
       ic-ref
       shell
       check-formatting
@@ -437,6 +456,7 @@ rec {
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.buildInputs ++
+        overview-slides.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
