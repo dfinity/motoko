@@ -85,9 +85,10 @@ let allocate_reference_slot () =
 
 type dwarf_artifact = Tag of int option * int * dwarf_artifact list
                     | IntAttribute of int * int
-                    | RangeAttribute of int * int
+                    (*  | RangeAttribute of int * int *)
                     | StringAttribute of int * string
                     | OffsetAttribute of int
+                    | FutureAttribute of (unit -> dwarf_artifact)
 
 (* Encoding *)
 
@@ -210,6 +211,10 @@ let encode (em : extended_module) =
 
   (* keeping count of the DWARF code sequence we are in *)
   let sequence_number = ref 0 in
+  (* array of the sizes of the emitted subprograms *)
+  let subprogram_sizes = Promise.make () in
+  (* offset of the range lists section *)
+  let rangelists = Promise.make () in
 
   let extract_dwarf refi tag =
     let open Ast in
@@ -240,8 +245,9 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (at, !sequence_number))
 
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
-        add_dwarf_attribute (RangeAttribute (at, !sequence_number))
-
+        let s = !sequence_number in
+        let resolve () = IntAttribute (at, Array.get (Promise.value subprogram_sizes) s) in
+        add_dwarf_attribute (FutureAttribute resolve)
       | Meta (Meta.StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
         add_dwarf_attribute (StringAttribute (at, file))
       | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_decl_line ->
@@ -261,7 +267,8 @@ let encode (em : extended_module) =
       | Meta (Meta.IntAttribute (at, o)), _ when at = dw_AT_data_bit_offset ->
         add_dwarf_attribute (IntAttribute (at, o))
       | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_ranges ->
-        add_dwarf_attribute (OffsetAttribute at) (* see Note [Low_pc, High_pc, Ranges are special] *)
+        let resolve () = IntAttribute (at, Promise.value rangelists) in
+        add_dwarf_attribute (FutureAttribute resolve) (* see Note [Low_pc, High_pc, Ranges are special] *)
       | Meta (Meta.IntAttribute (at, a)), _ when at = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (at, a))
       | Meta (Meta.IntAttribute (at, d)), _ when at = dw_AT_discr ->
@@ -860,8 +867,6 @@ let encode (em : extended_module) =
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
 
-    let rangelists = Promise.make ()
-
     (* dw_FORM writers *)
     let writeForm : int -> dwarf_artifact -> unit =
       let open Dwarf5 in
@@ -905,8 +910,6 @@ let encode (em : extended_module) =
       | f when dw_FORM_sec_offset = f ->
         begin function
           | IntAttribute (attr, i) -> write32 i
-          | OffsetAttribute attr ->
-            write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
         end
       | f when dw_FORM_block1 = f ->
@@ -933,7 +936,6 @@ let encode (em : extended_module) =
       | _ -> failwith("cannot write form")
 
     let info_section_start = ref 0
-    let subprogram_sizes = Promise.make ()
 
     let rec writeTag = function
       | Tag (r, t, contentsRevd) ->
@@ -945,12 +947,15 @@ let encode (em : extended_module) =
         let contents = List.rev contentsRevd in
         let wanted_tag (t', _, _) = t = t' in
         let (_, has_children, forms) = List.find wanted_tag Abbreviation.abbreviations in
-        let pairing (attr, form) = function
+        let rec pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
+          | FutureAttribute f ->
+            pairing (attr, form) (f ())
+    (*
           | RangeAttribute (a, r) ->
             if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;
             assert (attr = a);
-            writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r))
+            writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r)) *)
           | StringAttribute (a, path0) when a = Dwarf5.dw_AT_decl_file ->
             let path = if path0 = "" then "prim" else path0 in
             if attr <> a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices));
@@ -961,10 +966,10 @@ let encode (em : extended_module) =
             assert (attr = a);
             writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | OffsetAttribute a as art ->
-            (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)
+          | OffsetAttribute a as art -> failwith "too late to resolve OffsetAttribute"
+            (* Printf.printf "attr: %x = a: %x \n" attr a;
             assert (attr = a);
-            writeForm form art in
+            writeForm form art *) in
         let rec indexOf cnt = function
           | h :: t when wanted_tag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
