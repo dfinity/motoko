@@ -31,7 +31,7 @@ let optimize : instr list -> instr list = fun is ->
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
     | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
-    (* Introduce TeeLocal *)
+    (* Introduce LocalTee *)
     | { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
       go l' ({i with it = LocalTee n2 } :: r')
     (* Eliminate LocalTee followed by Drop (good for confluence) *)
@@ -171,6 +171,8 @@ let is_nop (is : t) =
 (* DWARF tags and attributes: see Note [funneling DIEs through Wasm.Ast] *)
 
 open Wasm_exts.Dwarf5
+open Meta
+
 open Wasm_exts.Abbreviation
 open Mo_types
 
@@ -228,9 +230,8 @@ type dw_TAG =
 
 (* DWARF high-level structures *)
 
-let dw_attr' : dw_AT -> Meta.die =
+let dw_attr' : dw_AT -> die =
   let bool b = if b then 1 else 0 in
-  let open Meta in
   function
   | Producer p -> StringAttribute (dw_AT_producer, p)
   | Language l -> IntAttribute (dw_AT_language, l)
@@ -272,7 +273,7 @@ let dw_attr' : dw_AT -> Meta.die =
     StringAttribute (dw_AT_location, (string_of_ops ops))
   | Discr_list -> assert false (* not yet *)
 
-let dw_attr at : Meta.die list = [dw_attr' at]
+let dw_attr at : die list = [dw_attr' at]
 
 let dw_attrs = List.map dw_attr'
 

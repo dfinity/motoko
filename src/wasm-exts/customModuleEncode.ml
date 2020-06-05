@@ -14,19 +14,32 @@ easily apply diffs from the original code (possibly manually).
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The DWARF debugging information entry (DIE) is a simple data carrier meant
 to be transmitted in a sequential fashion. Here, DIEs are attached to
-specially crafted instructions (usually Block and Nop) in the instruction stream
-that is the Wasm.Ast. Since these instructions are inserted artificially
-and not intended for execution, their source ranges don't possess the usual
-meaning, but carry the DIEs. They can be recognised via the `is_dwarf_like`
-predicate and filtered out, preserving the DIE to rebuild the larger-scale
-hierarchical structure. The mechanism is described in the blog post
-http://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf
+specially crafted instructions (Meta) in the instruction stream
+that is derived from the Wasm.Ast. Since these instructions are inserted artificially
+and are not intended for execution, they will not be emitted as instructions, but
+aggregated, correlated and finally output into DWARF sections of the binary.
+DIEs are defined in Dwarf5.Meta and can be recognised via the `is_dwarf_like` predicate.
+When extracted from the instruction stream using the predicate, we can check whether
+they are a tag (pre-filled) with attributes/subtags or free-standing attributes that will
+end up in the last tag. Similarly later tags nest into open tags. The larger-scale hierarchical
+structure is finally restored when all instructions are emitted. The mechanism is described in
+the blog post http://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf
 
 Another predicate `is_dwarf_statement` is employed to mark certain instructions
 as preferential stop-points in the debugger. Similarly, other predicates may
 supply other hints for the DWARF line machine.
 
  *)
+
+
+(* Note [bubbling up types in the tag hierarchy]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TBW
+
+ *)
+
+
+
 
 open Dwarf5.Meta
 
@@ -164,7 +177,8 @@ let encode (em : extended_module) =
   let hoistables = List.partition (function Tag (Some r, _, _) -> true | _ -> false) in
 
   let rec close_dwarf genuine =
-    (* hoist out referencable tags *)
+    (* hoist out referencable tags,
+       see Note [bubbling up types in the tag hierarchy] *)
     begin match !dwarf_tags with
     | Tag (refi, t, viscera) :: Tag (refi', t', viscera') :: tail
         when genuine && (Dwarf5.dw_TAG_subprogram = t || Dwarf5.dw_TAG_lexical_block = t) ->
@@ -216,7 +230,6 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (at, 0))
       | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (IntAttribute (at, !sequence_number))
-
       | OffsetAttribute at when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
         let s = !sequence_number in
         let resolve () = IntAttribute (at, Array.get (Promise.value subprogram_sizes) s) in
