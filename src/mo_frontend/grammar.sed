@@ -17,10 +17,7 @@ s/(B)//g
 s/^\<semicolon\> ::=/~~~~/g
 s/\<semicolon\>/\';\'/g
 s/    SEMICOLON.*//g
-s/\<//g
-s/\>//g
 s/epsilon/<empty>/g
-s/ID/<id>/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
@@ -100,7 +97,7 @@ s/EQOP/\'==\'/g
 s/EQ/\'=\'/g
 s/EOF//g
 s/ELSE/\'else\'/g
-s/DOT_NUM/\'.<nat>\'/g
+s/DOT_NUM/\'.\'<nat>/g
 s/DOT/\'.\'/g
 s/DIVOP/\'\/\'/g
 s/DIVASSIGN/\'\/=\'/g
