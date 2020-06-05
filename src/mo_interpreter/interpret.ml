@@ -392,6 +392,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     (match !ri with
     | Unresolved -> assert false
     | LibPath fp -> k (find fp env.libs)
+    | ClassPath _ -> trap exp.at "class imports not yet supported in interpreter"
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )

@@ -313,6 +313,11 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 
   (enqueue, fulfill, fail)
 };
+
+
+let @ic00 = actor "ic:00" : {
+  create_canister : shared () -> async Principal;
+};
 |}
 
 (*

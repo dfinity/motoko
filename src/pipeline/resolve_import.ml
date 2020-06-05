@@ -151,6 +151,15 @@ let resolve_lib_import at full_path : (string, Diag.message) result =
 let add_lib_import msgs imported ri_ref at full_path =
   match resolve_lib_import at full_path with
   | Ok full_path -> begin
+      ri_ref := ClassPath full_path;
+      imported := RIM.add (ClassPath full_path) at !imported
+    end
+  | Error err ->
+     Diag.add_msg msgs err
+
+let add_class_import msgs imported ri_ref at full_path =
+  match resolve_lib_import at full_path with
+  | Ok full_path -> begin
       ri_ref := LibPath full_path;
       imported := RIM.add (LibPath full_path) at !imported
     end
@@ -199,6 +208,9 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
      end
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
+  | Ok (Url.Class path) ->
+     (* TODO support importing local .did file *)
+     add_class_import msgs imported ri_ref at (in_base base path)
   | Error msg ->
      err_unrecognized_url msgs at f msg
 

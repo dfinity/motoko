@@ -134,7 +134,6 @@ let ic_callE f e k r =
     note = Note.{ def with typ = T.unit; eff = eff }
   }
 
-
 (* tuples *)
 
 let projE e n =
@@ -571,3 +570,33 @@ let unreachableE =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE unitE
 
+(* Actor classes *)
+
+(*
+func(x,y,z) : async actor { doFoo: shared () -> () } = async {
+  let id  = await ic00.create_canister();
+  await ic00.install_code(id, "content_of_foo.wasm", (x,y,z));
+  return id;
+}
+*)
+
+let ic_canister_factory wasm_module typ =
+  let sort, control, ts, arg_tys, ret_tys = T.as_func typ in
+  assert (sort = T.Shared);
+  assert (control = T.Promises);
+  assert (ts = []);
+  let ret_ty = match ret_tys with [t] -> t | _ -> assert false in
+  let objs_sort, tfs = T.as_obj ret_ty in
+  assert (objs_sort = Actor);
+
+  let xs = fresh_vars "x" ts in
+  let id = fresh_var "canister_id" ret_ty;
+
+  nary_funcE "$factory" typ xs (
+    asyncE ? ? ( blockE
+      [ letD id (awaitE (callE (primE (ActorDotPrim "create_canister") ic00) unitE))
+      ; expD (awaitE (callE (primE (ActorDotPrim "install_code") ic00) (unitE)))
+        (* actually to pass: a record with canister_id, wasm_module, arg, compute_allocation *)
+      ] (varE id)
+    )
+  )

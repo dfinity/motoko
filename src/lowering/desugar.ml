@@ -153,6 +153,9 @@ and exp' at note = function
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.ClassPath fp ->
+        (* Should somehow have the actual wasm bytes here, and the type *)
+        ic_canister_factory "\x00asm\x01\x00\x00\x00" (T.Obj (T.Actor, []))
     | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
     | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
