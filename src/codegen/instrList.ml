@@ -228,13 +228,6 @@ type dw_TAG =
 
 (* DWARF high-level structures *)
 
-(* helper fakeColumn gives a fake instruction that encodes a single integer for a
-   DWARF attribute (or tag reference index) *)
-let fakeColumn (column : int) attr instr' : t =
-  let fakeLoc = Wasm.Source.{ file = ""; line = -attr; column } in
-  fun _ _ instrs ->
-  (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
-
 let dw_attr' : dw_AT -> Meta.die =
   let bool b = if b then 1 else 0 in
   let open Meta in
@@ -373,10 +366,10 @@ and lookup_pointer_key () : t * int =
     pointer_key := Some r;
     dw, r
 and meta_tag tag attrs =
-  fakeColumn 0 tag (Meta (Tag (None, tag, attrs)))
+  i (Meta (Tag (None, tag, attrs)))
 and referencable_meta_tag tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  fakeColumn refslot tag (Meta (Tag (Some refslot, tag, attrs))),
+  i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
