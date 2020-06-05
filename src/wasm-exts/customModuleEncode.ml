@@ -212,15 +212,6 @@ let encode (em : extended_module) =
   let extract_dwarf refi tag =
     let open Dwarf5 in
     let extract = function
-      | StringAttribute (at, p) when at = dw_AT_producer ->
-        let _offs = add_dwarf_string p (* TODO: we do this in writeForm? *) in
-        add_dwarf_attribute (StringAttribute (at, p))
-      | StringAttribute (at, n) when at = dw_AT_name ->
-        let _offs = add_dwarf_string n (* TODO: we do this in writeForm? *) in
-        add_dwarf_attribute (StringAttribute (at, n))
-      | StringAttribute (at, d) when at = dw_AT_comp_dir ->
-        let _offs = add_dwarf_string d (* TODO: we do this in writeForm? *) in
-        add_dwarf_attribute (StringAttribute (at, d))
       | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
       | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
