@@ -74,7 +74,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * Mutually recursive
 * Mutable variables marked explicitly
 
-## Control structure
+## Control flow
 
 - `if (b) …`
 - `if (b) … else …`
@@ -401,7 +401,6 @@ a typical canister main file
 
 ## Async/await
 
-
 `async T`
 
 asychronous future or promise
@@ -492,3 +491,224 @@ let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
  * Polymorphic functions with type bounds
  * Classes
  * Error handling (`try … catch …` & `throw …`)
+
+# Old slides
+
+### Classes
+
+Classes as functions returning objects:
+```
+ class Counter(init : Int) {
+    private var state : Int = init;
+    public func inc() { state += 1; };
+    public func get() : Int { state; };
+  }
+```
+
+Class instantiation as function call (no `new`):
+```
+let c = Counter(666);
+c.inc();
+let 667 = c.get();
+```
+
+
+### Generic Classes
+
+```
+class Dict< K, V > (cmp : (K,K)-> Int ) {
+  add(k: K, v: V) { ... };
+  find(k: K) : ? V { ... };
+};
+```
+
+```
+let d = Dict<Int,Text> (func (i:Int, j:Int) : Int = i - j);
+d.add(1,"Alice");
+let ? name = d.find(1);
+```
+
+### Language prelude
+
+* connects internal primitives with surface syntax (types, operations)
+* conversions like `intToWord32`
+* side-effecting operations `debugPrintInt`
+  (tie into execution environment)
+* utilities like `hashInt`, `clzWord32`
+
+
+# Sample App
+
+
+### Implementing *Chat*
+
+* type example
+* one server actor
+* multiple clients, each an instance of (actor) class Client.
+
+### Chat Server
+
+```
+actor Server {
+  private var clients : List<Client> = null;
+
+  private shared broadcast(message : Text) {
+    var next = clients;
+    loop {
+      switch next {
+        case null { return; }
+        case (?l) { l.head.send(message); next := l.tail; };
+      };
+    };
+  };
+```
+```
+  public func subscribe(client : Client) : async Post {
+    let cs = {head = client; var tail = clients};
+    clients := ?cs;
+    return broadcast;
+  };
+};
+```
+
+
+### Example: The client class
+<!--
+ * should we remove the name and server fields? They aren't used, I believe, but somewhat illustrative.
+* The fields would be  needed for unsubscribing etc, unless we return an unsubscribe capability...
+ * Also, subscribe could just take send, not a whole client.
+
+-->
+```
+type Server = actor { subscribe : Client -> async Post; };
+
+actor class Client() = this {
+  private var name : Text = "";
+  public func start(n : Text , s : Server) {
+    name := n;
+    let _ = async {
+       let post = await s.subscribe(this);
+       post("hello from " # name);
+       post("goodbye from " # name);
+    }
+  };
+```
+```
+  public func send(msg : Text) {
+    debugPrint(name # " received " # msg # "\n");
+  };
+};
+```
+### Example: test
+
+test
+
+```
+let bob = Client();
+let alice = Client();
+let charlie = Client();
+
+bob.start("Bob", Server);
+alice.start("Alice", Server);
+charlie.start("Charlie", Server);
+```
+output
+
+```
+[nix-shell:~/motoko/guide]$ ../src/moc -r chat.mo
+charlie received hello from bob
+alice received hello from bob
+bob received hello from bob
+charlie received goodbye from bob
+alice received goodbye from bob
+bob received goodbye from bob
+charlie received hello from alice
+alice received hello from alice
+bob received hello from alice
+charlie received goodbye from alice
+alice received goodbye from alice
+bob received goodbye from alice
+charlie received hello from charlie
+alice received hello from charlie
+bob received hello from charlie
+charlie received goodbye from charlie
+alice received goodbye from charlie
+bob received goodbye from charlie
+```
+
+
+# Produce Exchange
+
+### Produce Exchange
+
+- Example DFINITY app: a marketplace application
+  - Participants include:
+    Producers, transporters and retailers
+  - Resources: Money, truck routes, produce
+  - Other entities: Produce and truck types, regions, reservations
+
+- As a communication tool:
+  Substance: Demonstrate example Motoko app
+  Process: Document internal development process
+
+- [WIP: Canister in Motoko](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange)
+
+### Produce Exchange: Define MVP
+
+[**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+
+[**MVP on Motoko Canister**](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
+
+**Summary:**
+
+- defines **users**:
+  Developers, transporters, retailers and producers.
+- defines **features** and **use cases**:
+  - Resource data can be published and updated
+  - Queries require database logic, including joins
+- defines non-goals, and out-of-scope goals.
+
+### Produce Exchange: Exit criteria
+
+[**Full details**](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+
+**Summary:**
+
+ - People: SDK + Motoko teams.
+ - Feature-based criteria: Same as MVP.
+ - Test-based criteria: Automated tests.
+ - Operational criteria: Run on DFINITY node.
+ - Performance criteria: Run at certain scales / rates.
+
+### [Produce exchange server components](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
+
+- **Server types**: Types for client-server messages
+- **Server actor**: Interface for client-server messages
+- **Server model types**: Data types used internally
+- **Server model implementation**: Implements the actor
+
+
+### [Standard library](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#motoko-standard-library)
+
+Why?
+
+- Gather reusable components,
+  (e.g., collections for **server model types**)
+- Codify best Motoko practices
+
+How?
+
+- Motoko supports some namespace management, and multiple input files.
+- [Documentation](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#motoko-standard-library) generated from the source code
+
+
+### [Standard library: Produce exchange](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib#produce-exchange)
+
+We focus on abstractions for implementing the database for the produce exchange:
+
+- [Document Table](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/docTable.md): Mutable collection of immutable documents.
+
+- [Hash trie](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
+
+- [Association list](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
+
