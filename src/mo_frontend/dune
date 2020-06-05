@@ -7,4 +7,5 @@
   (flags --table --inspection -v --strict)
   (infer false)
 )
+
 (ocamllex source_lexer)
