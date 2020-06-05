@@ -1,4 +1,4 @@
-all: index.html motoko-guide.pdf as-slides.html
+all: index.html motoko-guide.pdf overview-slides.html
 
 SHELL=bash
 
@@ -46,9 +46,9 @@ motoko-guide.pdf: OLD-guide.md
 	  $(TEX_OPTIONS) \
 	  $< -f gfm -o $@
 
-as-slides.html : as-slides.md
+overview-slides.html : overview-slides.md
 	pandoc \
-	  -t revealjs -s -o as-slides.html as-slides.md \
+	  -t revealjs -s -o overview-slides.html overview-slides.md \
 	  -V theme=moon \
 	  --strip-comments \
 	  -V revealjs-url=https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.8.0 \
