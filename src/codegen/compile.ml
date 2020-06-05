@@ -3303,6 +3303,9 @@ module Dfinity = struct
   let trap_with env s =
     Blob.lit_ptr_len env s ^^ trap_ptr_len env
 
+  let _trap_text env  =
+    Text.to_blob env ^^ Blob.as_ptr_len env ^^ trap_ptr_len env
+
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
@@ -3964,12 +3967,16 @@ module Serialization = struct
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         E.else_trap_with env "object_size/Mut: Unexpected tag " ^^
-        (* In any case, a one byte and one 32 bit maker will be written *)
-        inc_data_size (compile_unboxed_const 5l) ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
-        (* If we did not see it… *)
-        G.if_ [] G.nop begin
+        G.if_ [] begin
+          (* Seen before *)
+          (* One byte marker, one word offset *)
+          inc_data_size (compile_unboxed_const 5l)
+        end begin
+          (* Not yet seen *)
+          (* One byte marker, two words scratch space *)
+          inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
           get_x ^^ Tagged.(store StableSeen) ^^
           (* and descend *)
@@ -4072,6 +4079,12 @@ module Serialization = struct
         advance_data_buf
       in
 
+      let write_word32 code =
+        get_data_buf ^^ code ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const Heap.word_size ^^ advance_data_buf
+      in
+
       let write_byte code =
         get_data_buf ^^ code ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
@@ -4098,11 +4111,9 @@ module Serialization = struct
           write_byte (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
-          (* Leave space in the output buffer for the decoder's pointer *)
-          get_data_buf ^^
-          compile_unboxed_const 0l ^^
-          G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-          compile_unboxed_const 4l ^^ advance_data_buf ^^
+          (* Leave space in the output buffer for the decoder's bookkeeping *)
+          write_word32 (compile_unboxed_const 0l) ^^
+          write_word32 (compile_unboxed_const 0l) ^^
           (* Now the data, following the object field mutbox indirection *)
           write_thing ()
         end
@@ -4125,10 +4136,8 @@ module Serialization = struct
           get_offset ^^ compile_unboxed_const 0l ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
-          (* Write that to the output buffer *)
-          get_data_buf ^^ get_offset ^^
-          G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-          compile_unboxed_const 4l ^^ advance_data_buf
+          (* Write the office to the output buffer *)
+          write_word32 get_offset
         end
       in
 
@@ -4381,7 +4390,7 @@ module Serialization = struct
         )
       in
 
-      let read_alias env read_thing =
+      let read_alias env t read_thing =
         (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
         let (set_result, get_result) = new_local env "result" in
@@ -4399,6 +4408,11 @@ module Serialization = struct
         G.if_ [] begin
           let (set_offset, get_offset) = new_local env "offset" in
           ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
+          (* A sanity check *)
+          get_offset ^^ compile_unboxed_const 0l ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.else_trap_with env "Odd offset" ^^
+
           ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
           ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
         end G.nop ^^
@@ -4409,15 +4423,26 @@ module Serialization = struct
         ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
         get_result ^^ compile_eq_const 0l ^^
         G.if_ [] begin
-          (* No, not yet decoded. Read the content *)
+          (* No, not yet decoded *)
+          (* Skip over type hash field *)
+          ReadBuf.read_word32 env get_data_buf ^^ compile_eq_const 0l ^^
+          E.else_trap_with env "Odd: Type hash scratch space not empty" ^^
+
+          (* Read the content *)
           read_thing get_arg_typ (fun get_thing ->
             (* This is called after allocation, but before descending
                We update the memo location here so that loops work
             *)
             get_thing ^^ set_result ^^
-            get_memo ^^ get_result ^^ store_unskewed_ptr
+            get_memo ^^ get_result ^^ store_unskewed_ptr ^^
+            get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ store_unskewed_ptr
           )
-        end G.nop ^^
+        end begin
+          (* Decoded before. Check type hash *)
+          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
+        end ^^
 
         (* If this was a reference, reset read buffer *)
         get_is_ref ^^
@@ -4550,7 +4575,7 @@ module Serialization = struct
           E.call_import env "rts" "skip_fields"
           )
       | Array (Mut t) ->
-        read_alias env (fun get_array_typ on_alloc ->
+        read_alias env (Array (Mut t)) (fun get_array_typ on_alloc ->
           let (set_len, get_len) = new_local env "len" in
           let (set_x, get_x) = new_local env "x" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
@@ -4637,7 +4662,7 @@ module Serialization = struct
       | Obj (Actor, _) ->
         with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
-        read_alias env (fun get_arg_typ on_alloc ->
+        read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
           Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
           on_alloc get_result ^^
@@ -4804,9 +4829,10 @@ conveniently, makes such values illegal Candid.
 
 The values of `alias t` are either
 
- * i8(0) 0x00000000 M(v)
+ * i8(0) 0x00000000 0x00000000 M(v)
    for one (typically the first) occurrence of v
-   (the 0x00000000 is the “memo field”, scratch space for the benefit of the decoder)
+   The first 0x00000000 is the “memo field”, the second is the “type hash field”.
+   Both are scratch spaces for the benefit of the decoder.
 
 or
 
@@ -4843,10 +4869,16 @@ To detect and preserve aliasing, these steps are taken:
    position and calculate the offset.
  * In `deserialize`, when we come across a `alias t`, we follow the offset (if
    needed) to find the content.
+
    If the memo field is still `0x00000000`, this is the first time we read
    this, so we deserialize to the Motoko heap, and remember the heap position
    (vanilla pointer) by overriding the memo field.
-   If it is not `0x00000000` then we can simply read the pointer from there.
+   We also store the type hash of the type we are serializing at in the type
+   hash field.
+
+   If it is not `0x00000000` then we can simply read the pointer from there,
+   after checking the type hash field to make sure we are aliasing at the same
+   type.
 
 *)
 
@@ -5842,9 +5874,7 @@ module PatCode = struct
           G.if_ [] G.nop is2
         )
 
-  let orTrap env : patternCode -> G.t = function
-    | CannotFail is -> is
-    | CanFail is -> is (E.trap_with env "pattern failed")
+  let orTrap env = with_fail (E.trap_with env "pattern failed")
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -7560,17 +7590,17 @@ and fill_pat env ae pat : patternCode =
              (CannotFail get_i ^^^ code2)
 
 and alloc_pat_local env ae pat =
-  let (_,d) = Freevars.pat pat in
-  AllocHow.S.fold (fun v ae ->
+  let d = Freevars.pat pat in
+  AllocHow.M.fold (fun v _ty ae ->
     let (ae1, _i) = VarEnv.add_direct_local env ae v
     in ae1
   ) d ae
 
 and alloc_pat env ae how pat : VarEnv.t * G.t  =
-  (fun (ae,code) -> (ae, G.with_region pat.at code)) @@
-  let (_,d) = Freevars.pat pat in
-  AllocHow.S.fold (fun v (ae,code0) ->
-    let (ae1, code1) = AllocHow.add_local env ae how v
+  (fun (ae, code) -> (ae, G.with_region pat.at code)) @@
+  let d = Freevars.pat pat in
+  AllocHow.M.fold (fun v _ty (ae, code0) ->
+    let ae1, code1 = AllocHow.add_local env ae how v
     in (ae1, code0 ^^ code1)
   ) d (ae, G.nop)
 
@@ -7601,7 +7631,7 @@ and compile_n_ary_pat env ae how pat =
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let arity, fill_code =
-    (fun (sr,code) -> (sr, G.with_region pat.at code)) @@
+    (fun (sr, code) -> sr, G.with_region pat.at code) @@
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
     | WildP -> None, G.nop
@@ -7645,10 +7675,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
       fill_code
     )
   | VarD (name, _, e) ->
-      assert (AllocHow.M.find_opt name how = Some AllocHow.LocalMut ||
-              AllocHow.M.find_opt name how = Some AllocHow.StoreHeap ||
-              AllocHow.M.find_opt name how = Some AllocHow.StoreStatic);
-      let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
+    assert AllocHow.(match M.find_opt name how with
+                     | Some (LocalMut | StoreHeap | StoreStatic) -> true
+                     | _ -> false);
+      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
       ( pre_ae1, alloc_code, fun ae ->
         compile_exp_vanilla env ae e ^^

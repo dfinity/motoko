@@ -1,4 +1,4 @@
-= Language manual
+= Language quick reference
 ////
 * targetting release 0.5.4
 * [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
@@ -7,7 +7,7 @@
 * [X] Variants
 * [X] Object patterns
 * [ ] Import expressions
-* [ ] Complete draft of Try/Throw expressions and primitive Error/ErrorCode type
+* [X] Complete draft of Try/Throw expressions and primitive Error/ErrorCode type
 * [ ] Prelude
 * [ ] Modules and static restriction
 * [X] Type components and paths
@@ -21,6 +21,8 @@
 * [X] Explain dot keys, dot vals and iterators
 * [X] Debug expressions
 * [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
+* [ ] Update ErrorCode section
+* [ ] Re-section so headings appear in content outline
 ////
 
 This section serves as a technical reference for the previous chapters and has specific technical information for readers with specific interests.
@@ -30,20 +32,20 @@ For example, this section provides technical details of interest to the followin
   - Compiler experts interested in the details of {proglang} and its compiler.
   - Advanced programmers who want to learn more about the lower-level details of {proglang}.
 
-This part strives to be complete as a reference manual, but _not_
-instructive or overly-accessible for newcomers.
+The language quick reference is intended to provide complete reference information about {proglang}, but this section does _not_ provide explanatory text or usage information.
+Therefore, this section is typically not suitable for readers who are new to programming languages or who are looking for a general introduction to using {proglang}.
 
-[[syntax]]
-== Program syntax
+== Basic language syntax
+
+This section describes the basic language conventions you need to know for programming in {proglang}.
 
 [[syntax-whitespace]]
 === Whitespace
 
-Space, newline, horizontal tab, carriage return, line feed and form feed
-are considered as whitespace. Whitespace is ignored
-but used to separate adjacent keywords, identifiers and operators.
+Space, newline, horizontal tab, carriage return, line feed and form feed are considered as whitespace. 
+Whitespace is ignored but used to separate adjacent keywords, identifiers and operators.
 
-In the definition of some lexemes, we use the symbol `␣` to denote a single whitespace character.
+In the definition of some lexemes, the quick reference uses the symbol `␣` to denote a single whitespace character.
 
 [[syntax-comments]]
 === Comments
@@ -68,9 +70,11 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and assert assert await break case catch class continue debug
-debug_show else false for func if ignore in import not null object or
-label let loop private public query return shared switch true try
+actor and assert assert await break case 
+catch class continue debug debug_show else 
+false for func if ignore in import not null 
+object or label let loop private public 
+query return shared switch true try
 type var while
 ```
 
@@ -80,7 +84,6 @@ type var while
 ```bnf
 <prog> ::=  programs
   <dec>;*
-
 ```
 
 [[syntax-decls]]
@@ -100,19 +103,19 @@ The syntax of a _declaration_ is as follows:
   <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
 ```
 
+The syntax of a shared function qualifier with call-context pattern is as follows:
+
 ```bnf
-<shared-pat> ::=                  shared function qualifer with call-context pattern
+<shared-pat> ::=                  
   shared query? <pat>?
 ```
 
 For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`.
 
-
 ```bnf
 <dec-field> ::=                                object declaration fields
   (public|private)? <dec>                        field
 ```
-
 
 [[syntax-ids]]
 === Identifiers
@@ -215,6 +218,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 === Characters
 
 A character is a single quote (`'`) delimited:
+
 * Unicode character in UTF-8,
 * `\`-escaped  newline, carriage return, tab, single or double quotation mark
 * `\`-prefixed ASCII character (TBR),
@@ -270,14 +274,10 @@ text ::= '"' character* '"'
 
 Literals are constant values. The syntactic validity of a literal depends on the precision of the type at which it is used.
 
-
-
 [[syntax-ops]]
 == Operators and types
 
 [[syntax-ops-cats]]
-=== Categories
-
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 |===
@@ -290,10 +290,11 @@ To simplify the presentation of available operators, operators and primitive typ
 | T            | Text       | concatenation
 |===
 
-Some types have several categories, e.g. type `Int` is both arithmetic (A) and relational \(R) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
+Some types have several categories.
+For example, type `Int` is both arithmetic (A) and relational \(R) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
 
 [[syntax-ops-unary]]
-=== Unary Operators
+=== Unary operators
 
 |===
 | `<unop>`| Category   |
@@ -305,7 +306,7 @@ Some types have several categories, e.g. type `Int` is both arithmetic (A) and r
 
 
 [[syntax-ops-rel]]
-=== Relational Operators
+=== Relational operators
 
 |===
 | `<relop>` | Category    |
@@ -322,7 +323,7 @@ Some types have several categories, e.g. type `Int` is both arithmetic (A) and r
 Equality is structural.
 
 [[syntax-ops-num]]
-=== Numeric Binary Operators
+=== Numeric binary operators
 
 |===
 | `<binop>`| Category    |
@@ -336,7 +337,7 @@ Equality is structural.
 |===
 
 [[syntax-ops-bitwise]]
-=== Bitwise Binary Operators
+=== Bitwise binary operators
 
 |===
 | `<binop>` | Category |
@@ -352,7 +353,7 @@ Equality is structural.
 |===
 
 [[syntax-ops-string]]
-=== String Operators
+=== Text operators
 
 |===
 |  `<binop>` | Category |
@@ -361,7 +362,7 @@ Equality is structural.
 |===
 
 [[syntax-ops-assignment]]
-=== Assignment Operators
+=== Assignment operators
 
 |===
 |`:=`, `<unop>=`, `<binop>=`| Category|
@@ -387,7 +388,7 @@ Equality is structural.
 The  category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
 
 [[syntax-precedence]]
-=== Operator and Keyword Precedence
+=== Operator and keyword precedence
 
 The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence.
 Tokens on the same line have equal precedence with the indicated associativity.
@@ -473,8 +474,8 @@ The category of a type determines the operators (unary, binary, relational and i
 | `Word16` | A, B, R | unsigned 16-bit integers with bitwise operations
 | `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations
 | `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations
-| `Blob` | R | Binary blobs with iteration
-| `Principal` | R | Principals
+| `Blob` | R | binary blobs with iterators
+| `Principal` | R | principals
 | `Error` | | (opaque) error values
 |===
 
@@ -505,7 +506,7 @@ Operations on text values include concatenation (`_ # _`) and sequential iterati
 
 
 [[types-int-and-nat]]
-=== Type `Int` and `Nat`
+=== Types `Int` and `Nat`
 
 The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and R (Relational).
 
@@ -516,7 +517,7 @@ The subtype relation `Nat <: Int` holds, so every expression of type `Nat` is al
 In particular, every value of type `Nat` is also a value of type `Int`, without change of representation.
 
 [[bounded-integers]]
-=== Bounded Integers `Int8`, `Int16`, `Int32` and `Int64`
+=== Bounded integers `Int8`, `Int16`, `Int32` and `Int64`
 
 The types `Int8`, `Int16`, `Int32` and `Int64` represent
 signed integers with respectively 8, 16, 32 and 64 bit precision.
@@ -525,7 +526,7 @@ All have categories A (Arithmetic) and R (Relational).
 Operations that may under- or overflow the representation are checked and trap on error.
 
 [[bounded-naturals]]
-=== Bounded Naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
+=== Bounded naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
 
 The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
 unsigned integers with respectively 8, 16, 32 and 64 bit precision.
@@ -573,11 +574,9 @@ Operations on blob values include sequential iteration over bytes via function `
 
 The type `Principal` of category R (Relational) represents opaque
 principals such as canisters and users that can, for example, be used to identify callers of
-shared functions and used for simple authentication. Although opaque, principals may be converted to binary `Blob`s for more efficient hashing and other applications (see module `PrincipalId` from the standard library).
+shared functions and used for simple authentication. Although opaque, principals may be converted to binary `Blob` values for more efficient hashing and other applications (see module `Principal` from the base library).
 
-// TODO: update PrincipalId to Principal for >= 0.5.5
-
-[[error-type]]
+[[type-Error]]
 === Error type
 
 Errors are opaque values constructed using operation
@@ -598,8 +597,7 @@ type ErrorCode = {#error; #system ; /*...*/ };
 A constructed error `e = error(m)` has `errorCode(e) = #error` and `errorMessage(e)=m`.
 Errors with non-`#error` (system) error codes may be caught and thrown, but not constructed.
 
-Note: Exiting an async block or shared function with a system error
-exits with a copy of the error with revised code `#error` and the original error message.
+Note: Exiting an async block or shared function with a system error exits with a copy of the error with revised code `#error` and the original error message.
 This prevents programmatic forgery of system errors.
 
 // TBR
@@ -664,7 +662,7 @@ If `<typ1>` or `<typ2>` (or both) is a tuple type, then the length of that tuple
 
 The optional `<shared>` qualifier specifies whether the function value is shared, which further constrains the form of `<typ-params>`, `<typ1>` and `<typ2>` (see <<sharability>> below).
 
-(Note that a `<shared>` function may be itself be `shared` or `shared query`, determining the persistence of its state changes.)
+(Note that a `<shared>` function may itself be `shared` or `shared query`, determining the persistence of its state changes.)
 
 [[async-types]]
 === Async types
@@ -880,10 +878,7 @@ A type `T` is _shared_ if it is
 Below, we give a detailed account of the semantics of {proglang}
 programs.
 
-For each <<syntax-expressions, expression form>>
-and each <<syntax-decls, declaration form>>, we summarize its
-semantics, both in static terms (based on typing) and dynamic terms
-(based on program evaluation).
+For each <<syntax-expressions, expression form>> and each <<syntax-decls, declaration form>>, we summarize its semantics, both in static terms (based on typing) and dynamic terms (based on program evaluation).
 
 [[prog]]
 === Programs
@@ -893,7 +888,7 @@ A program `<prog>` is a sequence of declarations `<dec>;*` that ends with an opt
 All type and value declarations within `<prog>` are mutually-recursive.
 
 [[decl-field]]
-=== Declaration Fields
+=== Declaration fields
 
 Declaration fields declare the fields of actors and objects.
 They are just declarations, prefixed by an optional visibility qualifier `public` or  `private`; if omitted, visibility defaults to `private`.
@@ -902,9 +897,8 @@ Any identifier bound by a `public` declaration appears in the type of enclosing 
 
 An identifier bound by a `private` declaration is excluded form the type of the enclosing object and inaccessible via the dot notation.
 
-
 [[decl-seq]]
-=== Sequence of Declarations
+=== Sequence of declarations
 
 A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T`
 provided:
@@ -1017,10 +1011,8 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 
 (Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier (`<id>`) patterns so a successful match always binds zero identifiers.)
 
-
-
 [[decl-exp]]
-=== Expression Declaration
+=== Expression declaration
 
 The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.
 
@@ -1028,12 +1020,10 @@ The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically
 
 Note that if `<exp>` appears within a sequence of declarations, but not as the last declaration of that sequence, then `T` must be `()`.
 
-
-
 // TBR
 
 [[decl-ignore]]
-=== Ignore Declaration
+=== Ignore declaration
 
 The declaration `ignore <exp>` has type `()` provided the expression `<exp>` has type `Any` . It declares no bindings.
 
@@ -1045,7 +1035,7 @@ The semantics is equivalent to `let _ = <exp> : Any`.
 when that expression has non-`unit` type (and the simpler `<exp>` declaration would be ill-typed).
 
 [[decl-let]]
-=== Let Declaration
+=== Let declaration
 
 The let declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
 
@@ -1058,7 +1048,7 @@ matching the value `v` against `<pat>`. If matching fails, then the result is `t
 All bindings declared by a `let` (if any) are *immutable*.
 
 [[decl-var]]
-=== Var Declaration
+=== Var declaration
 
 The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
 
@@ -1075,7 +1065,7 @@ The result of the declaration is `()` and
 `<id>` is bound to a fresh location that contains `v`.
 
 [[decl-type]]
-=== Type Declaration
+=== Type declaration
 
 The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
 
@@ -1090,7 +1080,7 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 `U [ U0/X0, ..., Un/Xn ]`.  Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
 
 [[decl-obj]]
-=== Object Declaration
+=== Object declaration
 
 Declaration `<sort> <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
@@ -1124,7 +1114,7 @@ If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produc
 // TBR do we actually propagate trapping of actor creation?
 
 [[decl-func]]
-=== Function Declaration
+=== Function declaration
 
 The function declaration  `<shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>` is syntactic sugar for
 a named `let` or anonymous declaration of a function expression. That is:
@@ -1140,7 +1130,7 @@ a named `let` or anonymous declaration of a function expression. That is:
 Named function definitions are recursive.
 
 [[decl-class]]
-=== Class declarations
+=== Class declaration
 
 The declaration `<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
 
@@ -1162,7 +1152,7 @@ where:
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
 [[eval-literals]]
-=== Literals' evaluation
+=== Literals
 
 A literal has type `T` only when its value is within the prescribed range of values of type `T`.
 
@@ -1257,7 +1247,7 @@ Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list
 Such an object literal is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
 
 [[exp-proj]]
-=== Object projection (Member access)
+=== Object projection (member access)
 
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
@@ -1273,10 +1263,10 @@ If `var` is absent from `var? T` then the value `v` is the constant value of imm
   `v` (of type `T`) is the value currently stored in mutable field `<id>`.
 
 [[exp-dot]]
-=== Special Member access
 
-The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type
-`U`, and `U`,`<id>` and `T` are related by a row of the following table:
+=== Special member access
+
+The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, and `U`,`<id>` and `T` are related by a row of the following table:
 
 |===
 | U | <id> | T  | Description
@@ -1316,7 +1306,7 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value stored in `v1` with the new value `v2` and returns the empty tuple `()`.
 
 [[exp-uassn]]
-=== Unary Compound Assignment
+=== Unary compound assignment
 
 The unary compound assignment `<unop>= <exp>` has type `()` provided:
 
@@ -1328,7 +1318,7 @@ The unary compound assignment
 contain the value `<unop> v`.
 
 [[exp-bassn]]
-=== Binary Compound Assignment
+=== Binary compound assignment
 
 The binary compound assignment `<exp1> <binop>= <exp2>` has type `()` provided:
 
@@ -1370,7 +1360,7 @@ Otherwise,
   `v` is `vi`, the value currently stored in the `i`th location of the array.
 
 [[exp-call]]
-=== Function Calls
+=== Function calls
 
 The function call expression `<exp1> <T0,...,Tn>? <exp2>` has type `T` provided:
 
@@ -1419,7 +1409,6 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
 Note: the context type is a record to allow extension with further fields in future releases.
-
 
 [[exp-block]]
 === Blocks
@@ -1521,7 +1510,7 @@ If `r1` is `trap`, the result is `trap`.
 Otherwise, the result is the result of (re-)evaluating `loop <exp1>`.
 
 [[exp-loop-while]]
-=== Loop While
+=== Loop-while
 
 The expression `loop <exp1> while <exp2>` has type `()` provided:
 
@@ -1540,9 +1529,9 @@ Otherwise, `r2` is false and the result is `()`.
 
 The iterator expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 
-* `<exp1>` has type `{ next : () -> ?T }`;
-* pattern `<pat>` has type `T`; and,
-* expression `<exp2>` has type `()` (in the environment extended with `<pat>`'s bindings).
+* `<exp1>` has type `{ next : () -> ?T }`,
+* pattern `<pat>` has type `T`, and
+* expression `<exp2>` has type `()` (in the environment extended with the bindings of `<pat>`).
 
 The `for`-expression is syntactic sugar for
 
@@ -1561,9 +1550,10 @@ for ( <pat> in <exp1> ) <exp2> :=
 
 where `x` is a fresh identifier.
 
-In particular, the `for` loops will trap if evaluation of `<exp1>` traps; as soon as some value of `x.next()` traps or the value of `x.next()` does not match pattern `<pat>`.
 
-Note: although general purpose, for expressions may, in particular, be used to iterate over iterator objects produced by special member access (see <<exp-dot>>).
+In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon as `x.next()` traps, or the value of `x.next()` does not match pattern `<pat>`, or when `<exp2>` traps.
+
+Note: although general purpose, `for` loops are commonly used to consume iterators produced by <<exp-dot>> to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
 
 [[exp-label]]
 === Label
@@ -1669,14 +1659,16 @@ Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, ev
 
 The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
 
-* `<exp1>` has type `T`.
-* `<pat>` has type `Error` and `<exp2>` has type `T` in the context extended with `<pat>`
+* `<exp1>` has type `T`,
+* `<pat>` has type `Error` and `<exp2>` has type `T` in the context extended with `<pat>`, and
 * the `try` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
 Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
 If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
 
 Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
+
+See <<type-Error>>.
 
 [[exp-assert]]
 === Assert
@@ -1689,7 +1681,7 @@ Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` ev
 * `trap`, when `v` is `false`.
 
 [[exp-anno]]
-=== Type Annotation
+=== Type annotation
 
 The type annotation expression `<exp> : <typ>` has type `T` provided:
 
@@ -1708,7 +1700,6 @@ Note: type annotations have no-runtime cost and cannot be used to perform the (c
 The declaration expression `<dec>` has type `T` provided the declaration `<dec>` has type `T`.
 
 Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
-
 
 [[exp-debug]]
 === Debug
@@ -1730,10 +1721,6 @@ The result of evaluating `( <exp> )` is the result of evaluating `<exp>`.
 [[exp-subsumption]]
 === Subsumption
 
-Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by
-virture of _implicit subsumption_, `<exp>` also has type `U`
-(without extra syntax).
+Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by virtue of _implicit subsumption_, `<exp>` also has type `U` (without extra syntax).
 
-In general, this means that an expression of a more specific type may
-appear wherever an expression of a more general type is expected,
-provided the specific and general types are related by subtyping.
+In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping.
