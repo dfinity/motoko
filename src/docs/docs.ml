@@ -60,7 +60,7 @@ let list_files : string -> string -> (string * string * string) list =
 let make_render_inputs : string -> string -> (string * Common.render_input) list
     =
  fun source output ->
-  let all_files = list_files source output in
+  let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
   List.map
     (fun (input, output, current_path) ->
@@ -91,4 +91,7 @@ let start : output_format -> string -> string -> unit =
       List.iter
         (fun (out, input) ->
           write_file (out ^ ".html") (Html.render_docs input))
-        inputs
+        inputs;
+      write_file
+        (Filename.concat out "index.html")
+        (Html.make_index (List.map snd inputs))
