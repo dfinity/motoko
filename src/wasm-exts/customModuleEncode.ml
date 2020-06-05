@@ -24,15 +24,15 @@ http://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algori
 
 Another predicate `is_dwarf_statement` is employed to mark certain instructions
 as preferential stop-points in the debugger. Similarly, other predicates may
-supply other flags for the DWARF line machine.
+supply other hints for the DWARF line machine.
 
  *)
 
 (* Utility predicates *)
 
 let is_dwarf_like = function
-  | { Wasm.Source.it = Ast.Meta (TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _); _ } -> true
-  | { at; _ } -> Wasm.Source.(at.left.line < 0 && at.left.file = no_pos.file && at.right = no_pos)
+  | { Wasm.Source.it = Ast.Meta (Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _); _ } -> true
+  | _ -> false
 
 let is_dwarf_statement = function
   | Ast.Meta (Dwarf5.Meta.StatementDelimiter _) -> true
