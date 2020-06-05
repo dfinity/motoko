@@ -28,6 +28,8 @@ supply other hints for the DWARF line machine.
 
  *)
 
+open Dwarf5.Meta
+
 (* Utility predicates *)
 
 let is_dwarf_like = function
@@ -35,7 +37,7 @@ let is_dwarf_like = function
   | _ -> false
 
 let is_dwarf_statement = function
-  | Ast.Meta (Dwarf5.Meta.StatementDelimiter _) -> true
+  | Ast.Meta (StatementDelimiter _) -> true
   | _ -> false
 
 module Promise = Lib.Promise
@@ -80,15 +82,6 @@ let allocate_reference_slot () =
   dw_references := References.add have (Promise.make ()) !dw_references;
   num_dw_references := 1 + have;
   have
-
-(* DWARF factlets, a.k.a. DIEs *)
-
-type dwarf_artifact = Tag of int option * int * dwarf_artifact list
-                    | IntAttribute of int * int
-                    (*  | RangeAttribute of int * int *)
-                    | StringAttribute of int * string
-                    | OffsetAttribute of int
-                    | FutureAttribute of (unit -> dwarf_artifact)
 
 (* Encoding *)
 
@@ -222,72 +215,72 @@ let encode (em : extended_module) =
     let open Dwarf5 in
 
     let extract = function
-      | Meta (Meta.StringAttribute (at, p)), _ when at = dw_AT_producer ->
+      | Meta (StringAttribute (at, p)), _ when at = dw_AT_producer ->
         let _offs = add_dwarf_string p in
         add_dwarf_attribute (StringAttribute (at, p))
-      | Meta (Meta.StringAttribute (at, n)), _ when at = dw_AT_name ->
+      | Meta (StringAttribute (at, n)), _ when at = dw_AT_name ->
         let _offs = add_dwarf_string n in
         add_dwarf_attribute (StringAttribute (at, n))
-      | Meta (Meta.StringAttribute (at, d)), _ when at = dw_AT_comp_dir ->
+      | Meta (StringAttribute (at, d)), _ when at = dw_AT_comp_dir ->
         let _offs = add_dwarf_string d in
         add_dwarf_attribute (StringAttribute (at, d))
-      | Meta (Meta.StringAttribute (at, l)), _ when at = dw_AT_location ->
+      | Meta (StringAttribute (at, l)), _ when at = dw_AT_location ->
         add_dwarf_attribute (StringAttribute (at, l))
-      | Meta (Meta.IntAttribute (at, u)), _ when at = dw_AT_use_UTF8 ->
+      | Meta (IntAttribute (at, u)), _ when at = dw_AT_use_UTF8 ->
         add_dwarf_attribute (IntAttribute (at, u))
-      | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_language ->
+      | Meta (IntAttribute (at, l)), _ when at = dw_AT_language ->
         add_dwarf_attribute (IntAttribute (at, l))
-      | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_stmt_list ->
+      | Meta (IntAttribute (at, l)), _ when at = dw_AT_stmt_list ->
         add_dwarf_attribute (IntAttribute (at, l))
-      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
+      | Meta (OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
-      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
+      | Meta (OffsetAttribute at), _ when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (IntAttribute (at, !sequence_number))
 
-      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
+      | Meta (OffsetAttribute at), _ when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
         let s = !sequence_number in
         let resolve () = IntAttribute (at, Array.get (Promise.value subprogram_sizes) s) in
         add_dwarf_attribute (FutureAttribute resolve)
-      | Meta (Meta.StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
+      | Meta (StringAttribute (at, file)), _ when at = dw_AT_decl_file ->
         add_dwarf_attribute (StringAttribute (at, file))
-      | Meta (Meta.IntAttribute (at, l)), _ when at = dw_AT_decl_line ->
+      | Meta (IntAttribute (at, l)), _ when at = dw_AT_decl_line ->
         add_dwarf_attribute (IntAttribute (at, l))
-      | Meta (Meta.IntAttribute (at, c)), _ when at = dw_AT_decl_column ->
+      | Meta (IntAttribute (at, c)), _ when at = dw_AT_decl_column ->
         add_dwarf_attribute (IntAttribute (at, c))
-      | Meta (Meta.IntAttribute (at, p)), _ when at = dw_AT_prototyped ->
+      | Meta (IntAttribute (at, p)), _ when at = dw_AT_prototyped ->
         add_dwarf_attribute (IntAttribute (at, p))
-      | Meta (Meta.IntAttribute (at, e)), _ when at = dw_AT_external ->
+      | Meta (IntAttribute (at, e)), _ when at = dw_AT_external ->
         add_dwarf_attribute (IntAttribute (at, e))
-      | Meta (Meta.IntAttribute (at, b)), _ when at = dw_AT_addr_base ->
+      | Meta (IntAttribute (at, b)), _ when at = dw_AT_addr_base ->
         add_dwarf_attribute (IntAttribute (at, b))
-      | Meta (Meta.IntAttribute (at, s)), _ when at = dw_AT_byte_size ->
+      | Meta (IntAttribute (at, s)), _ when at = dw_AT_byte_size ->
         add_dwarf_attribute (IntAttribute (at, s))
-      | Meta (Meta.IntAttribute (at, s)), _ when at = dw_AT_bit_size ->
+      | Meta (IntAttribute (at, s)), _ when at = dw_AT_bit_size ->
         add_dwarf_attribute (IntAttribute (at, s))
-      | Meta (Meta.IntAttribute (at, o)), _ when at = dw_AT_data_bit_offset ->
+      | Meta (IntAttribute (at, o)), _ when at = dw_AT_data_bit_offset ->
         add_dwarf_attribute (IntAttribute (at, o))
-      | Meta (Meta.OffsetAttribute at), _ when at = dw_AT_ranges ->
+      | Meta (OffsetAttribute at), _ when at = dw_AT_ranges ->
         let resolve () = IntAttribute (at, Promise.value rangelists) in
         add_dwarf_attribute (FutureAttribute resolve) (* see Note [Low_pc, High_pc, Ranges are special] *)
-      | Meta (Meta.IntAttribute (at, a)), _ when at = dw_AT_artificial ->
+      | Meta (IntAttribute (at, a)), _ when at = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (at, a))
-      | Meta (Meta.IntAttribute (at, d)), _ when at = dw_AT_discr ->
+      | Meta (IntAttribute (at, d)), _ when at = dw_AT_discr ->
         add_dwarf_attribute (IntAttribute (at, d))
-      | Meta (Meta.IntAttribute (at, c)), _ when at = dw_AT_const_value ->
+      | Meta (IntAttribute (at, c)), _ when at = dw_AT_const_value ->
         add_dwarf_attribute (IntAttribute (at, c))
-      | Meta (Meta.IntAttribute (at, d)), _ when at = dw_AT_discr_value ->
+      | Meta (IntAttribute (at, d)), _ when at = dw_AT_discr_value ->
         add_dwarf_attribute (IntAttribute (at, d))
-      | Meta (Meta.IntAttribute (at, e)), _ when at = dw_AT_encoding ->
+      | Meta (IntAttribute (at, e)), _ when at = dw_AT_encoding ->
         add_dwarf_attribute (IntAttribute (at, e))
-      | Meta (Meta.IntAttribute (at, i)), _ when at = dw_AT_type ->
+      | Meta (IntAttribute (at, i)), _ when at = dw_AT_type ->
         add_dwarf_attribute (IntAttribute (at, i))
       | Nop, {line; _} ->
         failwith (Printf.sprintf "extract NOP? TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line))
-      | Meta (Meta.IntAttribute (at, v)), {line; file; _} ->
+      | Meta (IntAttribute (at, v)), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <IntAttribute>%d" tag tag file (-line) v)
-      | Meta (Meta.StringAttribute (at, s)), {line; file; _} ->
+      | Meta (StringAttribute (at, s)), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <StringAttribute>%s" tag tag file (-line) s)
-      | Meta (Meta.OffsetAttribute at), {line; file; _} ->
+      | Meta (OffsetAttribute at), {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n <OffsetAttribute>" tag tag file (-line))
       | Meta _, {line; file; _} ->
         failwith (Printf.sprintf "extract Meta TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) "<Unknowm>")
@@ -868,7 +861,7 @@ let encode (em : extended_module) =
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
 
     (* dw_FORM writers *)
-    let writeForm : int -> dwarf_artifact -> unit =
+    let writeForm : int -> die -> unit =
       let open Dwarf5 in
       function
       | f when dw_FORM_strp = f ->
@@ -948,14 +941,9 @@ let encode (em : extended_module) =
         let wanted_tag (t', _, _) = t = t' in
         let (_, has_children, forms) = List.find wanted_tag Abbreviation.abbreviations in
         let rec pairing (attr, form) = function
-          | Tag _ -> failwith "Attribute expected"
+          | Tag _ | TagClose | StatementDelimiter _ -> failwith "Attribute expected"
           | FutureAttribute f ->
             pairing (attr, form) (f ())
-    (*
-          | RangeAttribute (a, r) ->
-            if attr <> a then Printf.printf "attr: 0x%x = a: 0x%x (in TAG 0x%x)\n" attr a t;
-            assert (attr = a);
-            writeForm form (IntAttribute (a, Array.get (Promise.value subprogram_sizes) r)) *)
           | StringAttribute (a, path0) when a = Dwarf5.dw_AT_decl_file ->
             let path = if path0 = "" then "prim" else path0 in
             if attr <> a then Printf.printf "DATA1 attr: 0x%x = a: 0x%x (in TAG 0x%x) PATH: %s  ULT: (%s, %d)\n" attr a t path    (fst (List.hd !source_path_indices)) (snd (List.hd !source_path_indices));
@@ -966,10 +954,7 @@ let encode (em : extended_module) =
             assert (attr = a);
             writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | OffsetAttribute a as art -> failwith "too late to resolve OffsetAttribute"
-            (* Printf.printf "attr: %x = a: %x \n" attr a;
-            assert (attr = a);
-            writeForm form art *) in
+          | OffsetAttribute a as art -> failwith "too late to resolve OffsetAttribute" in
         let rec indexOf cnt = function
           | h :: t when wanted_tag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t

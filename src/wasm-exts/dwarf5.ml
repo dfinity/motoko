@@ -670,5 +670,7 @@ type die
   | OffsetAttribute of int
   | IntAttribute of int * int
   | StringAttribute of int * string
+  (* below is encoding-time only *)
+  | FutureAttribute of (unit -> die)
 
 end
