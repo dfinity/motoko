@@ -22,9 +22,9 @@ assert (1 == 1);
 // DWARF:          : DW_TAG_compile_unit [1] *
 // DWARF-NEXT:         DW_AT_producer [DW_FORM_strp] {{.*}} "DFINITY Motoko compiler, version 0.1"
 // DWARF-NEXT:         DW_AT_language [DW_FORM_data2] (DW_LANG_C99)
-// DWARF-NEXT:         DW_AT_name     [DW_FORM_strp] {{.*}} ""
+// DWARF-NEXT:         DW_AT_name     [DW_FORM_strp] {{.*}} "dwarf.mo.mangled"
 // DWARF-NEXT:         DW_AT_stmt_list [DW_FORM_sec_offset] (0x00000000)
-// DWARF-NEXT:         DW_AT_comp_dir [DW_FORM_strp] {{.*}} "./."
+// DWARF-NEXT:         DW_AT_comp_dir [DW_FORM_strp] {{.*}} "."
 // DWARF-NEXT:         DW_AT_use_UTF8 [DW_FORM_flag_present] (true)
 // DWARF-NEXT:         DW_AT_low_pc   [DW_FORM_addr] (0x0000000000000000)
 // DWARF-NEXT:         DW_AT_addr_base  [DW_FORM_sec_offset] (0x00000008)
