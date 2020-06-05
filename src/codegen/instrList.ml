@@ -31,6 +31,11 @@ let optimize : instr list -> instr list = fun is ->
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
     | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
+
+    (* Introduce LocalTee with previously intervening Meta *)
+    | { it = Meta _; _} as m :: { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
+      go l' (m :: {i with it = LocalTee n2 } :: r')
+
     (* Introduce LocalTee *)
     | { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
       go l' ({i with it = LocalTee n2 } :: r')
