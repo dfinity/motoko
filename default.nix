@@ -337,34 +337,6 @@ rec {
   wasmtime = nixpkgs.wasmtime;
   wasm = nixpkgs.wasm;
 
-  users-guide = stdenv.mkDerivation {
-    name = "users-guide";
-    src = subpath ./doc;
-    buildInputs =
-      with nixpkgs;
-      let tex = texlive.combine {
-        inherit (texlive) scheme-small xetex newunicodechar;
-      }; in
-      [ pandoc tex bash ];
-
-    NIX_FONTCONFIG_FILE =
-      with nixpkgs;
-      nixpkgs.makeFontsConf { fontDirectories = [ gyre-fonts inconsolata unifont lmodern lmmath ]; };
-
-    buildPhase = ''
-      patchShebangs .
-      make
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv * $out/
-      rm $out/Makefile
-      mkdir -p $out/nix-support
-      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
@@ -444,7 +416,6 @@ rec {
       base-src
       base-tests
       base-doc
-      users-guide
       ic-ref
       shell
       check-formatting
@@ -466,7 +437,6 @@ rec {
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.buildInputs ++
-        users-guide.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
@@ -476,7 +446,6 @@ rec {
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
-    NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
     # allow building this as a derivation, so that hydra builds and caches
