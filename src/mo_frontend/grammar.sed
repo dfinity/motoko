@@ -1,5 +1,26 @@
-s/::= /::=\n    /g
 s/^ *| /    /g
+s/seplist/list/g
+s/\<typ_id\>/<id>/g
+s/^\<id\> ::=/~~~~/g
+s/\<id\>/ID/g
+s/^\<start\> ::=/~~~~/g
+s/\<start\> //g
+s/\<parse_prog\>/<prog>/g
+s/^\<parse_prog_interactive\> ::=/~~~~/g
+s/^\<import_list\> ::=/~~~~/g
+s/^\<parse_module_header> ::=/~~~~/g
+s/^\<bl\> ::=/~~~~/g
+s/^\<ob\> ::=/~~~~/g
+s/(\<bl\>)//g
+s/(\<ob\>)//g
+s/(B)//g
+s/^\<semicolon\> ::=/~~~~/g
+s/\<semicolon\>/\';\'/g
+s/    SEMICOLON.*//g
+s/\<//g
+s/\>//g
+s/epsilon/<empty>/g
+s/ID/<id>/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
@@ -24,8 +45,6 @@ s/SSHRASSIGN/\'+>>=\'/g
 s/SHLOP/\'<<\'/g
 s/SHLASSIGN/\'<<=\'/g
 s/SHARED/\'shared\'/g
-s/SEMICOLON_EOL/\';<eol>\'/g
-s/SEMICOLON/\';\'/g
 s/SYSTEM/\'system\'/g
 s/RPAR/\')\'/g
 s/ROTROP/\'<>>\'/g
@@ -39,7 +58,7 @@ s/QUEST/\'?\'/g
 s/QUERY/\'query\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
-s/PRIM/\'prim\'/g
+s/.*PRIM.*/~~/g
 s/POWOP/\'**\'/g
 s/POWASSIGN/\'**-\'/g
 s/PLUSASSIGN/\'+=\'/g
@@ -79,7 +98,7 @@ s/FLEXIBLE/\'flexible\'/g
 s/FLOAT/<float>/g
 s/EQOP/\'==\'/g
 s/EQ/\'=\'/g
-s/EOF/<eof>/g
+s/EOF//g
 s/ELSE/\'else\'/g
 s/DOT_NUM/\'.<nat>\'/g
 s/DOT/\'.\'/g
@@ -105,4 +124,3 @@ s/ADDOP/\'+\'/g
 s/ASSIGN/\':=\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
-
