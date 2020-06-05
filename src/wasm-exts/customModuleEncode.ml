@@ -210,19 +210,16 @@ let encode (em : extended_module) =
   let rangelists = Promise.make () in
 
   let extract_dwarf refi tag =
-    let open Ast in
-    let open Wasm.Source in
     let open Dwarf5 in
-
     let extract = function
       | StringAttribute (at, p) when at = dw_AT_producer ->
-        let _offs = add_dwarf_string p in
+        let _offs = add_dwarf_string p (* TODO: we do this in writeForm? *) in
         add_dwarf_attribute (StringAttribute (at, p))
       | StringAttribute (at, n) when at = dw_AT_name ->
-        let _offs = add_dwarf_string n in
+        let _offs = add_dwarf_string n (* TODO: we do this in writeForm? *) in
         add_dwarf_attribute (StringAttribute (at, n))
       | StringAttribute (at, d) when at = dw_AT_comp_dir ->
-        let _offs = add_dwarf_string d in
+        let _offs = add_dwarf_string d (* TODO: we do this in writeForm? *) in
         add_dwarf_attribute (StringAttribute (at, d))
       | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
@@ -238,12 +235,10 @@ let encode (em : extended_module) =
         add_dwarf_attribute (FutureAttribute resolve) (* see Note [Low_pc, High_pc, Ranges are special] *)
       | (IntAttribute _ | StringAttribute _) as attr ->
         add_dwarf_attribute attr
+      | _ -> assert false
     in
     add_dwarf_tag refi tag;
-    let rec add_artifacts = function
-    | [] -> ()
-    | e :: es -> extract e; add_artifacts es in
-    add_artifacts
+    List.iter extract
   in
 
   let add_to_map file il ic ol oc =
@@ -374,7 +369,7 @@ let encode (em : extended_module) =
       | Meta (StatementDelimiter left) ->
         modif statement_positions (Instrs.add (pos s, left))
       | Meta (Tag (r, t, attrs)) -> extract_dwarf r t attrs
-      (*   | Block (_, es) when is_dwarf_like e -> extract_dwarf (e.at.left.column) (-e.at.left.line) es *)
+      | Meta _ -> assert false
 
       | Unreachable -> op 0x00
       | Nop -> op 0x01
@@ -801,7 +796,7 @@ let encode (em : extended_module) =
     let zero_terminated str = put_string s str; u8 0
     let vec_uleb128 el = vec_by uleb128 el
     let writeBlock1 str = let len = String.length str in assert (len < 256); u8 len; put_string s str
-    let writeBlockLEB str = let len = String.length str in assert (len < 256); uleb128 len; put_string s str
+    let writeBlockLEB str = uleb128 (String.length str); put_string s str
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
@@ -906,7 +901,7 @@ let encode (em : extended_module) =
             assert (attr = a);
             writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | OffsetAttribute a as art -> failwith "too late to resolve OffsetAttribute" in
+          | OffsetAttribute _ -> failwith "too late to resolve OffsetAttribute" in
         let rec indexOf cnt = function
           | h :: t when wanted_tag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
