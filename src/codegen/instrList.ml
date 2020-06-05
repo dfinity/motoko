@@ -338,7 +338,7 @@ let rec dw_tag_open : dw_TAG -> t =
       dw_prim_type Type.Nat ^^
       dw_prim_type Type.Int
     in
-    fakeBlock dw_TAG_compile_unit
+    meta_tag dw_TAG_compile_unit
       (dw_attrs
          [ Producer "DFINITY Motoko compiler, version 0.1";
            Language dw_LANG_C99; Name file; Stmt_list 0;
@@ -346,20 +346,20 @@ let rec dw_tag_open : dw_TAG -> t =
       base_types ^^
       builtin_types
   | Subprogram (name, pos) ->
-    fakeBlock dw_TAG_subprogram
+    meta_tag dw_TAG_subprogram
       (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     let dw, reference = dw_type_ref ty in
     dw ^^
-    fakeBlock dw_TAG_formal_parameter
+    meta_tag dw_TAG_formal_parameter
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (Location.local slot [ dw_OP_stack_value ])])
   | LexicalBlock pos ->
-    fakeBlock dw_TAG_lexical_block
+    meta_tag dw_TAG_lexical_block
       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
   | Variable (name, pos, ty, slot) ->
     let dw, reference = dw_type_ref ty in
     dw ^^
-    fakeBlock dw_TAG_variable
+    meta_tag dw_TAG_variable
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (Location.local slot [ dw_OP_stack_value ])])
   | Type ty -> dw_type ty
   | _ -> assert false
@@ -368,13 +368,13 @@ and lookup_pointer_key () : t * int =
   | Some r -> nop, r
   | None ->
     let dw, r =
-      fakeReferenceableBlock (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
+      referencable_meta_tag (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
         (dw_attrs [Bit_size 1; Data_bit_offset 1]) in
     pointer_key := Some r;
     dw, r
-and fakeBlock tag attrs =
+and meta_tag tag attrs =
   fakeColumn 0 tag (Meta (Tag (None, tag, attrs)))
-and fakeReferenceableBlock tag attrs : t * int =
+and referencable_meta_tag tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
   fakeColumn refslot tag (Meta (Tag (Some refslot, tag, attrs))),
   refslot
@@ -386,7 +386,7 @@ and dw_type_ref =
     | Some reference -> nop, reference
     | None ->
       let dw, reference =
-        fakeReferenceableBlock dw_TAG_base_type
+        referencable_meta_tag dw_TAG_base_type
           (dw_attrs [Name "Any"; Bit_size 0; Data_bit_offset 0; Encoding dw_ATE_address]) in
       any_type := Some reference;
       dw, reference
@@ -409,59 +409,59 @@ and dw_prim_type_ref (prim : Type.prim) =
     let dw, refindx =
       match prim with
       | Type.Bool ->
-        fakeReferenceableBlock dw_TAG_base_type
+        referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 1; Data_bit_offset 0; Encoding dw_ATE_boolean])
       | Type.Char ->
-        fakeReferenceableBlock dw_TAG_base_type
+        referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 29; Data_bit_offset 8; Encoding dw_ATE_UTF])
       | Type.(Word8 | Nat8 | Int8) ->
-        fakeReferenceableBlock dw_TAG_base_type
+        referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 24; Encoding dw_ATE_unsigned])
       | Type.(Word16 | Nat16 | Int16) ->
-        fakeReferenceableBlock dw_TAG_base_type
+        referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 16; Encoding dw_ATE_unsigned])
       | Type.(Int | Nat) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
-        let struct_dw, struct_ref = fakeReferenceableBlock dw_TAG_structure_type
+        let struct_dw, struct_ref = referencable_meta_tag dw_TAG_structure_type
           (dw_attrs [name; Byte_size 4]) in
-        let mark_dw, mark = fakeReferenceableBlock dw_TAG_member_Pointer_mark
+        let mark_dw, mark = referencable_meta_tag dw_TAG_member_Pointer_mark
           (dw_attrs [Name "@pointer_mark"; TypeRef pointer_key; Artificial true; Bit_size 1; Data_bit_offset 1]) in
         pointer_key_dw ^^
         struct_dw ^^
         mark_dw ^^
-        fakeBlock dw_TAG_variant_part
+        meta_tag dw_TAG_variant_part
           (dw_attr (Discr mark)) ^^
         dw_tag_close ^^ (* closing dw_TAG_variant_part *)
         dw_tag_close,  (* closing dw_TAG_structure_type *)
         struct_ref
       | Type.Word32 ->
         let internalU30 =
-          fakeReferenceableBlock dw_TAG_base_type_Unsigned_Anon
+          referencable_meta_tag dw_TAG_base_type_Unsigned_Anon
             (dw_attrs [Bit_size 30; Data_bit_offset 2; Encoding dw_ATE_unsigned]) in
         let internalU32_dw, internalU32 =
-          fakeReferenceableBlock dw_TAG_base_type_Unsigned_Bytes_Anon
+          referencable_meta_tag dw_TAG_base_type_Unsigned_Bytes_Anon
             (dw_attrs [Byte_size 4; Encoding dw_ATE_unsigned]) in
         let pointedU32 =
           internalU32_dw ^^<
-          fakeReferenceableBlock dw_TAG_pointer_type
+          referencable_meta_tag dw_TAG_pointer_type
             (dw_attr (TypeRef internalU32)) in
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
         let flag_member_dw, flag_member =
           pointer_key_dw ^^<
-          fakeReferenceableBlock dw_TAG_member_Pointer_mark
+          referencable_meta_tag dw_TAG_member_Pointer_mark
             (dw_attrs [Name "@pointer_mark"; TypeRef pointer_key; Artificial true; Bit_size 1; Data_bit_offset 1]) in
         let variant_part =
           flag_member_dw ^^
-          fakeBlock dw_TAG_variant_part
+          meta_tag dw_TAG_variant_part
             (dw_attr (Discr flag_member)) ^^
-          fakeBlock dw_TAG_variant
+          meta_tag dw_TAG_variant
             (dw_attr (Discr_value 0)) ^^
-          fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
+          meta_tag dw_TAG_member_Pointer_mark (* FIXME *)
             (dw_attrs [Name "@non-pointer"; TypeRef (snd internalU30); Artificial true; Bit_size 30; Data_bit_offset 2]) ^^
           dw_tag_close ^^ (* variant 0 *)
-          fakeBlock dw_TAG_variant
+          meta_tag dw_TAG_variant
             (dw_attr (Discr_value 1)) ^^
-          fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
+          meta_tag dw_TAG_member_Pointer_mark (* FIXME *)
             (dw_attrs [Name "@pointer"; TypeRef (snd pointedU32); Artificial true; Bit_size 32; Data_bit_offset 0]) ^^
           dw_tag_close ^^ (* variant 1 *)
           dw_tag_close (* variant part *)
@@ -495,7 +495,7 @@ and dw_prim_type_ref (prim : Type.prim) =
  *)
 
         (fst pointedU32 ^^ fst internalU30) ^^<
-        fakeReferenceableBlock dw_TAG_structure_type
+        referencable_meta_tag dw_TAG_structure_type
           (dw_attrs [name; Byte_size 4]) ^<^
           variant_part ^^
           dw_tag_close
@@ -518,14 +518,14 @@ and dw_enum vnts =
     let enum_ref =
       (* reference to enumeration_type *)
       let internal_enum =
-        fakeReferenceableBlock dw_TAG_enumeration_type (dw_attr (Artificial true)) in
+        referencable_meta_tag dw_TAG_enumeration_type (dw_attr (Artificial true)) in
       let enumerator name =
         let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
-        fakeBlock dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
+        meta_tag dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
       (fst internal_enum ^^
        concat_map enumerator selectors ^^
        dw_tag_close (* enumeration_type *)) ^^<
-      fakeReferenceableBlock dw_TAG_reference_type
+      referencable_meta_tag dw_TAG_reference_type
         (dw_attr (TypeRef (snd internal_enum))) in
     dw_enums := EnumRefs.add selectors (snd enum_ref) !dw_enums;
     enum_ref
@@ -537,14 +537,14 @@ and dw_object fs =
     let struct_ref =
       (* reference to structure_type *)
       let internal_struct =
-        fakeReferenceableBlock dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size 4]) in
+        referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size 4]) in
       let field name =
         let _hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
-        fakeBlock dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
+        meta_tag dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
       (fst internal_struct ^^
        concat_map field selectors ^^
        dw_tag_close (* structure_type *)) ^^<
-      fakeReferenceableBlock dw_TAG_reference_type
+      referencable_meta_tag dw_TAG_reference_type
         (dw_attr (TypeRef (snd internal_struct))) in
     dw_objects := ObjectRefs.add selectors (snd struct_ref) !dw_objects;
     struct_ref
