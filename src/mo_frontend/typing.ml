@@ -170,6 +170,7 @@ let check_import env at f ri =
     match !ri with
     | Unresolved -> error env at "unresolved import %s" f
     | LibPath fp -> fp
+    | ClassPath fp -> fp
     | IDLPath (fp, _) -> fp
     | PrimPath -> "@prim"
   in
@@ -2093,9 +2094,11 @@ and infer_dec_valdecs env dec : Scope.t =
       con_env = T.ConSet.singleton c ;
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
+    (*
     if sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
+    *)
      let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
@@ -2162,3 +2165,17 @@ let check_actors scope progs : unit Diag.result =
         go prog
       ) progs
     )
+
+let check_class scope lib : Scope.t Diag.result =
+  (* TODO: Check that this ends with a actor *)
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun lib ->
+          let env = env_of_scope msgs scope in
+          let typ = infer_exp env lib.it in
+          Scope.lib lib.note typ
+        ) lib
+    )
+
+

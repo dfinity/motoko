@@ -153,6 +153,12 @@ and exp' at note = function
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.ClassPath fp ->
+      let _, c, _, _, ts = T.as_func note.Note.typ in
+      let t = T.codom c (fun () -> assert false) ts in
+      ([] -->* primE (I.ActorOfIdBlob t) [
+        varE (var (id_of_full_path fp).it T.blob)
+      ]).it
     | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
     | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
@@ -368,6 +374,10 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (decs prefix, exp e)
+  | false, S.ClassD (id, tbs, p, _t_opt, s, self_id, es)
+    when Lib.String.chop_prefix "anon" id.it != None ->
+    let e = match (dec last).it with I.LetD (_, e) -> e | _ -> assert false in
+    (decs prefix, e)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
     (decs ds, varE (var x.it e.note.S.note_typ))
   | false, S.LetD (p', e') ->
@@ -581,14 +591,23 @@ and prog (p : Syntax.prog) : Ir.prog =
     ; I.serialized = false
     }
 
+type lib_or_class =
+  | Lib of Syntax.lib
+  | Compiled_class of (string (* file path *) * Mo_types.Type.typ * string (* module *))
 
-let declare_import lib =
-  let open Source in
-  let f = lib.note in
-  let t = lib.it.note.Syntax.note_typ in
-  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
-  { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
+let declare_import = function
+  | Lib lib ->
+    let open Source in
+    let f = lib.note in
+    let t = lib.it.note.Syntax.note_typ in
+    let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
+    let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
+    { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
+  | Compiled_class (f, t, wasm) ->
+    let p = { it = Syntax.VarP (id_of_full_path f); at = no_region; note = T.blob } in
+    let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = T.blob } in
+    let exp = { it = Syntax.LitE (ref (Syntax.TextLit wasm)); at = no_region; note = typ_note} in
+    { it = Syntax.LetD (p, exp); at = no_region; note = typ_note }
 
 let combine_files prelude libs progs : Syntax.prog =
   (* We do IR-level composition until we have incremental compilation *)

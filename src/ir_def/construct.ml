@@ -76,6 +76,7 @@ let primE prim es =
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
     | IcUrlOfBlob -> T.text
+    | ActorOfIdBlob t -> t
     | CastPrim (t1, t2) -> t2
     | _ -> assert false (* implement more as needed *)
   in

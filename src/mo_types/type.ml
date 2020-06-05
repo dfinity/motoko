@@ -347,6 +347,7 @@ let rec promote = function
 let is_non = function Non -> true | _ -> false
 let is_prim p = function Prim p' -> p = p' | _ -> false
 let is_obj = function Obj _ -> true | _ -> false
+let is_module = function Obj (Module, _) -> true | _ -> false
 let is_variant = function Variant _ -> true | _ -> false
 let is_array = function Array _ -> true | _ -> false
 let is_opt = function Opt _ -> true | _ -> false
@@ -730,7 +731,8 @@ let rec rel_typ rel eq t1 t2 =
   | Prim p1, Prim p2 when p1 = p2 ->
     true
   | Prim p1, Prim p2 when rel != eq ->
-    p1 = Nat && p2 = Int
+    p1 = Nat && p2 = Int ||
+    p1 = Text && p2 = Blob (* A hack until we have blob literals *)
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields rel eq tfs1 tfs2

@@ -180,6 +180,13 @@ let check_lib senv lib : Scope.scope Diag.result =
     Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
   )
 
+let check_class senv lib : Scope.scope Diag.result =
+  phase "Checking" (Filename.basename lib.Source.note);
+  Diag.bind (Typing.check_class senv lib) (fun sscope ->
+    phase "Definedness" (Filename.basename lib.Source.note);
+    Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
+  )
+
 (* Parsing libraries *)
 
 let is_import dec =
@@ -204,9 +211,33 @@ let rec lib_of_prog' imps at = function
     let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
     imps, {it = ExpD obj; at; note = empty_typ_note}
 
-let lib_of_prog f prog =
+let lib_of_prog f prog : Syntax.lib  =
   let open Source in let open Syntax in
   let imps, dec = lib_of_prog' [] prog.at prog.it in
+  let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
+  {it = exp; at = prog.at; note = f}
+
+let is_actor dec =
+  let open Source in let open Syntax in
+  match dec.it with
+  | ClassD (_, _, _, _, s, _, _) -> s.it = Type.Actor
+  | ExpD e | LetD (_, e) ->
+    (match e.it with ObjE (s, _) -> s.it = Type.Actor | _ -> false)
+  | _ -> false
+
+let rec class_of_prog' imps at = function
+  | [d] when is_actor d -> imps, d
+  | d::ds when is_import d -> class_of_prog' (d::imps) at ds
+  | ds ->
+    (* TODO: We probably just want to fail here, intead of implicitly wrapping in actor {…} *)
+    let open Source in let open Syntax in
+    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
+    let obj = {it = ObjE (Type.Actor @@ at, fs); at; note = empty_typ_note} in
+    imps, {it = ExpD obj; at; note = empty_typ_note}
+
+let class_of_prog f prog : Syntax.lib =
+  let open Source in let open Syntax in
+  let imps, dec = class_of_prog' [] prog.at prog.it in
   let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
   {it = exp; at = prog.at; note = f}
 
@@ -322,6 +353,29 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.bind (go_set more_imports) (fun () ->
         let lib = lib_of_prog f prog in
         Diag.bind (check_lib !senv lib) (fun sscope ->
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        pending := remove ri.Source.it !pending;
+        Diag.return ()
+        )))))
+      end
+    | Syntax.ClassPath f ->
+      (* TODO: fix duplication with above *)
+      if Type.Env.mem f !senv.Scope.lib_env then
+        Diag.return ()
+      else if mem ri.Source.it !pending then
+        Error [{
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s must not depend on itself" f
+        }]
+      else begin
+        pending := add ri.Source.it !pending;
+        Diag.bind (parsefn f) (fun (prog, base) ->
+        Diag.bind (Static.prog prog) (fun () ->
+        Diag.bind (ResolveImport.resolve (resolve_flags ()) prog base) (fun more_imports ->
+        Diag.bind (go_set more_imports) (fun () ->
+        let lib = class_of_prog f prog in
+        Diag.bind (check_class !senv lib) (fun sscope ->
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -593,9 +647,43 @@ let lower_prog mode senv libs progs name =
   analyze "constness analysis" Const.analyze initial_stat_env prog_ir name;
   prog_ir
 
+(* This turns the flat list of libs (some of which are classes)
+   into a list of classes and libs *)
+
+let prog_of_class (cls : Syntax.lib) : Syntax.prog =
+  Source.{
+    it = [ { it = Syntax.ExpD cls.it; at = cls.at; note = cls.it.note } ];
+    at = cls.at;
+    note = cls.note
+  }
+
+let rec compile_classes mode libs : Lowering.Desugar.lib_or_class list=
+  let rec go libs_and_classes = function
+    | [] -> libs_and_classes
+    | l ::libs ->
+      let t = l.Source.it.Source.note.Syntax.note_typ in
+      if Type.is_module t
+      then
+        go (libs_and_classes @ [Lowering.Desugar.Lib l]) libs
+      else
+        (* This better be an actor class now *)
+        let wasm = compile_class mode libs_and_classes l in
+        go (libs_and_classes @ [Lowering.Desugar.Compiled_class (l.Source.note, t, wasm)]) libs
+  in go [] libs
+
+and compile_class mode libs_and_classes (cls : Syntax.lib) : string =
+  let name = cls.Source.note in
+  let prog = prog_of_class cls in
+  let prog_ir = lower_prog mode initial_stat_env libs_and_classes [prog] name in
+  phase "Compiling" name;
+  let wasm_mod = Codegen.Compile.compile mode name (Some (load_as_rts ())) [prog_ir] in
+  let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
+  wasm
+
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let name = name_progs progs in
-  let prog_ir = lower_prog mode initial_stat_env libs progs name in
+  let libs_and_classes = compile_classes mode libs in
+  let prog_ir = lower_prog mode initial_stat_env libs_and_classes progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts [prog_ir]
@@ -613,9 +701,13 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
+let dont_compile_classes libs : Lowering.Desugar.lib_or_class list =
+  List.map (fun l -> Lowering.Desugar.Lib l) libs
+
 let interpret_ir_prog libs progs =
   let name = name_progs progs in
-  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env libs progs name in
+  let libs' = dont_compile_classes libs in
+  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env libs' progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in

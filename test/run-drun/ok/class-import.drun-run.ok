@@ -1,0 +1,6 @@
+ingress System
+debug.print: ?0x0
+debug.print: ?0x61
+debug.print: ?0x73
+debug.print: ?0x6D
+ingress Completed: Canister: Reply: 0x4449444c0000

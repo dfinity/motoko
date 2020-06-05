@@ -7833,6 +7833,8 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       ds1', e'.it
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), VarE i2 when i1 = i2 ->
       ds1', e'.it
+    | _, BlockE ([], e') ->
+      ds, e'.it
     | _ -> ds, e.it in
 
   let find_last_actor (ds,e) = match find_last_expr ds e with
