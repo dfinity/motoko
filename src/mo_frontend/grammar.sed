@@ -14,6 +14,11 @@ s/^\<ob\> ::=/~~~~/g
 s/(\<bl\>)//g
 s/(\<ob\>)//g
 s/(B)//g
+s/ B$//g
+s/\[/(/g
+s/\]/)?/g
+s/(\([a-zA-Z_0-9]*\))/\1/g
+s/(\(\<[a-z_0-9]*\>\))/\1/g
 s/^\<semicolon\> ::=/~~~~/g
 s/\<semicolon\>/\';\'/g
 s/    SEMICOLON.*//g
