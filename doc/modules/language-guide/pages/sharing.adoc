@@ -137,7 +137,7 @@ This type differs from the original, in that it describes _a message_ record typ
 [source,motoko]
 ----
 type Subscriber = actor { notify : () -> () };
------
+----
 
 Notably, the `actor` keyword means that this latter type is not an ordinary record with fields, but rather, an actor with at least one
 method, which _must_ be called `notify`.
