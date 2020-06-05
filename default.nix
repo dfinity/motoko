@@ -408,7 +408,7 @@ rec {
     src = nixpkgs.sources.motoko-base;
     phases = "unpackPhase buildPhase installPhase";
     doCheck = true;
-    buildInputs = [ mo-doc nixpkgs.asciidoctor nixpkgs.perl ];
+    buildInputs = [ mo-doc ];
     buildPhase = ''
       mo-doc
     '';
