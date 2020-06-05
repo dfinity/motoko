@@ -187,7 +187,7 @@ exp_nondec ::=
     'debug' exp
     'if' exp_nullary exp
     'if' exp_nullary exp 'else' exp
-    'try' exp_nullary 'catch' catch
+    'try' exp_nullary catch
     'throw' exp
     'switch' exp_nullary '{' list(case, ';') '}'
     'while' exp_nullary exp
@@ -207,7 +207,7 @@ case ::=
     'case' pat_nullary exp
 
 catch ::=
-    pat_nullary exp
+    'catch' pat_nullary exp
 
 exp_field_nonvar ::=
     <id> '=' exp
