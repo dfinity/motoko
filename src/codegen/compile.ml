@@ -5982,21 +5982,21 @@ module AllocHow = struct
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
-      map_of_set LocalMut d
+      M.map (fun _t -> LocalMut) d
 
       (* Constant expressions (trusting static_vals.ml) *)
-      | LetD (_, e) when e.note.Note.const
-      -> map_of_set (Const : how) d
+      | LetD (_, e) when e.note.Note.const ->
+      M.map (fun _t -> (Const : how)) d
 
       (* Everything else needs at least a local *)
       | _ ->
-      map_of_set LocalImmut d in
+      M.map (fun _t -> LocalImmut) d in
 
     (* Which allocation does this require for its captured things? *)
     let how2 = how_captured lvl how_all seen captured in
 
     let how = joins [how0; how1; how2] in
-    let seen' = S.union seen d
+    let seen' = S.union seen (set_of_map d)
     in (seen', how)
 
   (* find the allocHow for the variables currently in scope *)
@@ -6015,11 +6015,11 @@ module AllocHow = struct
     let how_outer = how_of_ae ae in
     let defined_here = snd (Freevars.decs decs) in (* TODO: implement gather_decs more directly *)
     let how_outer = Freevars.diff how_outer defined_here in (* shadowing *)
-    let how0 = map_of_set (Const : how) defined_here in
-    let captured = S.inter defined_here captured_in_body in
+    let how0 = M.map (fun _t -> (Const : how)) defined_here in
+    let captured = S.inter (set_of_map defined_here) captured_in_body in
     let rec go how =
       let seen, how1 = List.fold_left (dec lvl how_outer) (S.empty, how) decs in
-      assert (S.equal seen defined_here);
+      assert (S.equal seen (set_of_map defined_here));
       let how2 = how_captured lvl how1 seen captured in
       let how' = join how1 how2 in
       if M.equal (=) how how' then how' else go how' in
