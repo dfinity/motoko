@@ -181,7 +181,7 @@ let encode (em : extended_module) =
        see Note [bubbling up types in the tag hierarchy] *)
     begin match !dwarf_tags with
     | Tag (refi, t, viscera) :: Tag (refi', t', viscera') :: tail
-        when genuine && (Dwarf5.dw_TAG_subprogram = t || Dwarf5.dw_TAG_lexical_block = t) ->
+        when genuine && Dwarf5.(dw_TAG_subprogram = t || dw_TAG_lexical_block = t) ->
       let hoist, stay = hoistables viscera in
       dwarf_tags := Tag (refi, t, stay) :: Tag (refi', t', hoist @ viscera') :: tail
     | _ -> ()
@@ -877,7 +877,7 @@ let encode (em : extended_module) =
           | IntAttribute (attr, _) -> ()
           | _ -> failwith "dw_FORM_flag_present"
         end
-      | _ -> failwith("cannot write form")
+      | _ -> failwith "cannot write form"
 
     let info_section_start = ref 0
 
