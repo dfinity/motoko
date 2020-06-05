@@ -107,8 +107,6 @@ let all (xs : lazy_bool list) : lazy_bool =
 
 type lvl = TopLvl | NotTopLvl
 
-module S = Freevars.S
-
 module M = Env.Make(String)
 
 type info = {
@@ -229,7 +227,7 @@ and gather_dec lvl scope dec : env =
   | LetD (p, _) -> Ir_utils.is_irrefutable p
   | VarD _ -> false
   in
-  S.fold (fun v scope ->
+  M.fold (fun v _ scope ->
     if ok
     then M.add v (mk_info (maybe_false ())) scope
     else M.add v (mk_info surely_false) scope
@@ -242,7 +240,7 @@ and check_dec lvl env dec : lazy_bool = match dec.it with
   | LetD (p, e) when Ir_utils.is_irrefutable p ->
     let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
     let lb = exp lvl env e in
-    S.iter (fun v -> required_for lb (M.find v env).const) vs;
+    M.iter (fun v _ -> required_for lb (M.find v env).const) vs;
     lb
   | VarD (_, _, e) | LetD (_, e) ->
     exp_ lvl env e;
