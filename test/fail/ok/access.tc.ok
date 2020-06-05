@@ -1,0 +1,9 @@
+access.mo:10.29-10.30: type error, cannot access variable j
+access.mo:10.31-10.32: type error, cannot access variable a
+access.mo:10.33-10.34: type error, cannot access variable o
+access.mo:15.10-15.11: type error, cannot access variable l
+access.mo:21.31-21.32: type error, cannot access variable j
+access.mo:21.34-21.35: type error, cannot access variable a
+access.mo:21.37-21.38: type error, cannot access variable o
+access.mo:26.18-26.19: type error, cannot access variable j
+access.mo:26.18-26.19: type error, cannot access variable j

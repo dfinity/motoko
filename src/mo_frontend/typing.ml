@@ -11,15 +11,6 @@ module A = Effect
 module C = Async_cap
 
 
-let inaccessible_typ = T.Con(Con.fresh "InAccessible" (T.Abs ([], T.Any)),[])
-
-let accessible t =
-  match T.normalize t with
-  | T.Obj(T.Module, _) -> true
-  | t' -> T.shared t'
-
-let restrict ve =
-  T.Env.map (fun t -> if accessible t then t else inaccessible_typ) ve;
 
 (* Contexts  *)
 
@@ -34,6 +25,7 @@ let initial_scope =
 
 type env =
   { vals : Scope.val_env;
+    accs : bool T.Env.t;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -51,6 +43,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.Scope.val_env;
+    accs = T.Env.map (fun t -> true) scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -66,6 +59,15 @@ let env_of_scope msgs scope =
     scopes = T.ConEnv.empty;
   }
 
+
+let accessible env t =
+  env.pre ||
+  match T.normalize t with
+  | T.Obj(T.Module, _) -> true
+  | t' -> T.shared t'
+
+let restrict env ve =
+  T.Env.map (fun t -> accessible env t) ve
 
 (* Error bookkeeping *)
 
@@ -123,7 +125,12 @@ let error_in modes env at fmt =
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t = {env with vals = T.Env.add x t env.vals}
+let add_val env x t =
+  {
+    env with
+      vals = T.Env.add x t env.vals;
+      accs = T.Env.add x true env.accs;
+  }
 
 let add_typs env xs cs =
   { env with
@@ -134,13 +141,19 @@ let add_typs env xs cs =
 let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.Scope.val_env;
+    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> true) scope.Scope.val_env);
     libs = T.Env.adjoin env.libs scope.Scope.lib_env;
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
   }
 
-let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
+let adjoin_vals env ve = {
+    env with
+    vals = T.Env.adjoin env.vals ve;
+    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> true) ve);
+}
+
 let adjoin_typs env te ce =
   { env with
     typs = T.Env.adjoin env.typs te;
@@ -711,10 +724,11 @@ and infer_exp'' env exp : T.typ =
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
     | Some t ->
-      if T.eq t inaccessible_typ then
-       (local_error env id.at "cannot access variable %s" id.it;
-        T.Non)
-      else t
+      if T.Env.find id.it env.accs then
+        t
+      else
+        (local_error env id.at "cannot access variable %s" id.it;
+         t)
     | None ->
       error env id.at "unbound variable %s" id.it
     )
@@ -801,7 +815,10 @@ and infer_exp'' env exp : T.typ =
         (if not (in_prog (* && env.async = C.NullCap*) ) then
            sort.note <- check_AwaitCap env "actor" exp.at; (* note used in desugaring *)
          {env with
-           vals = restrict env.vals;
+           vals = env.vals;
+           accs = if in_prog
+                  then env.accs (* main actor can access enclosing state *)
+                  else restrict env env.vals; (* other actors cannot *)
            async = C.NullCap;
            in_actor = true})
       else env
@@ -1842,6 +1859,10 @@ and infer_dec env dec : T.typ =
   | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
+      let env =
+        if sort.it = T.Actor then
+          {  env with accs = restrict env env.vals }
+        else env in
       let c = T.Env.find id.it env.typs in
       let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
