@@ -420,6 +420,17 @@ rec {
       touch $out
     '';
 
+  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  check-grammar = nixpkgs.runCommandNoCC "check-grammar" {
+      nativeBuildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+    } ''
+      ${subpath ./src/gen-grammar}/gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
+      echo "If the following fails, please run:"
+      echo "nix-shell --command 'make -C src grammar'"
+      diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+      touch $out
+    '';
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -439,6 +450,7 @@ rec {
       shell
       check-formatting
       check-generated
+      check-grammar
     ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
   };
 

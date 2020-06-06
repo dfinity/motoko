@@ -73,17 +73,9 @@ test: $(NAME)
 test-quick: $(NAME)
 	make -C ../test MOC=$(MOC) quick
 
-grammar:
-	obelisk -i mo_frontend/parser.mly >../doc/modules/language-guide/pages/grammar.txt
-	# MacOS sed can't handle \n in a regular way
-	sed -i '' -e $$'s/::= /::=\\\n    /g' ../doc/modules/language-guide/pages/grammar.txt
-	# Transform
-	sed -i '' -f mo_frontend/grammar.sed ../doc/modules/language-guide/pages/grammar.txt
-	# Remove line breaks
-	sed -i '' -e ':a' -e 'N' -e '$$!ba' -e 's/\n\ \ \ \ \ \ */ /g' ../doc/modules/language-guide/pages/grammar.txt
-	# Transform uses ~~ to indicate erasure of this line, ~~ this and the following
-	sed -i '' -e ':a' -e 'N' -e '$$!ba' -e 's/~~~~\n[ -z]*\n//g' ../doc/modules/language-guide/pages/grammar.txt
-	sed -i '' -e ':a' -e 'N' -e '$$!ba' -e 's/~~\n//g' ../doc/modules/language-guide/pages/grammar.txt
-	# Compress superfluous newlines
-	sed -i '' -e ':a' -e 'N' -e '$$!ba' -e 's/\n\n\n\n*/###/g' ../doc/modules/language-guide/pages/grammar.txt
-	sed -i '' -e $$'s/###/\\\n\\\n/g' ../doc/modules/language-guide/pages/grammar.txt
+
+grammar: ../doc/modules/language-guide/examples/grammar.txt
+
+../doc/modules/language-guide/examples/grammar.txt: mo_frontend/parser.mly gen-grammar/gen-grammar.sh gen-grammar/grammar.sed
+	./gen-grammar/gen-grammar.sh $< > $@.tmp
+	mv $@.tmp $@
