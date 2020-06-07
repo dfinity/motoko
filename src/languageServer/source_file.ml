@@ -43,11 +43,11 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
   try loop (next ()) with _ -> None
 
 let is_package_path (path : string) =
-  let open Pipeline.URL in
+  let open Ic.Url in
   match parse path with Ok (Package _) -> true | Ok Prim -> true | _ -> false
 
 let uri_for_package (path : string) =
-  let open Pipeline.URL in
+  let open Ic.Url in
   match parse path with
   | Ok (Package (pkg, path)) -> (
       match Flags.M.find_opt pkg !Flags.package_urls with
