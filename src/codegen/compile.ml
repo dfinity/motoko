@@ -7653,6 +7653,8 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code)
 
+and unmodified body_code : G.t = body_code
+
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
@@ -7666,18 +7668,18 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
     let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) in
-    G.( pre_ae1, nop, (fun ae -> fill env ae; nop), fun wk -> wk)
+    G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
   | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
     let extend, fill = compile_const_dec env pre_ae dec in
-    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), fun wk -> wk)
+    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
       (fun ae -> compile_exp_as_opt env ae pat_arity e ^^ fill_code),
-      fun wk -> wk
+      unmodified
     )
 
   | VarD (name, _, e) ->
@@ -7689,13 +7691,13 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       ( pre_ae1,
         alloc_code,
         (fun ae -> compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
-        fun wk -> wk
+        unmodified
       )
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
-    | []          -> (pre_ae, G.nop, fun _ wk -> wk)
+    | []          -> (pre_ae, G.nop, fun _ -> unmodified)
     | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
         let (pre_ae1, alloc_code1, mk_codeT1) = compile_dec env pre_ae how v2en dec in
