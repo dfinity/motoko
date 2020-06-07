@@ -13,8 +13,8 @@ s/<id>/ID/g
 /^<ob> ::=/,+2d
 s/<start> //g
 s/<parse_prog>/<prog>/g
-s/\(<bl>\)//g
-s/\(<ob>\)//g
+s/(<bl>)//g
+s/(<ob>)//g
 s/(B)//g
 s/<semicolon>/\';\'/g
 s/epsilon/<empty>/g
