@@ -7655,8 +7655,8 @@ and compile_n_ary_pat env ae how pat =
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae wk ->
-         G.with_region dec.at (mk_code ae) ^^ wrap wk)) @@
+       (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
+         G.with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -7704,10 +7704,10 @@ and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope
           alloc_code1 ^^ alloc_code2,
           fun ae -> let codeT1 = mk_codeT1 ae in
                     let codeT2 = mk_codeT2 ae in
-                    fun wk -> codeT1 (codeT2 wk)
+                    fun body_code -> codeT1 (codeT2 body_code)
         ) in
   let (ae1, alloc_code, mk_codeT) = go pre_ae decs in
-  (ae1, fun wk -> alloc_code ^^ mk_codeT ae1 wk)
+  (ae1, fun body_code -> alloc_code ^^ mk_codeT ae1 body_code)
 
 and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body
