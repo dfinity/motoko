@@ -1,0 +1,6 @@
+ingress System
+debug.print: Installing actor...
+ingress Completed: Canister: Reply: 0x4449444c0000
+thread 'Coordinator' panicked at 'internal error: entered unreachable code: We do not yet handle the case where the registry returns an error. DFN-959.', messaging/src/routing/stream_builder.rs:161:21
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+thread 'main' panicked at 'Failed to join some scoped threads: Any', src/libcore/result.rs:1188:5

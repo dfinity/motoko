@@ -524,4 +524,18 @@ func blobOfPrincipal(id : Principal) : Blob = {
 func principalOfActor(act : actor {}) : Principal = {
   ((prim "cast" : (actor {}) -> Principal) act)
 };
+
+
+// Just for testing
+
+// That’s the only way to have blob literals at the moment
+func blobLit(url : Text) : Blob = blobOfPrincipal(principalOfActor(actor (url)));
+
+func installEmptyActor() : async actor {} = async {
+  let wasm_mod = blobLit "ic:0061736D0100009C";
+  let empty_arg = blobLit "ic:00";
+  let principal = await @create_actor_helper(wasm_mod, empty_arg);
+  ((prim "cast" : Principal -> actor {}) principal);
+}
+
 |}

@@ -1,0 +1,8 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go(0x4449444c0000)
+debug.print: Installing actor...
+debug.print: Exception: "canister does not exist: ic:00"
+← completed: 0x4449444c0000
