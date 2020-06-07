@@ -3371,7 +3371,7 @@ module Dfinity = struct
         get_blob
       )
     | _ ->
-      assert false
+      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
 
   let caller env =
     SR.Vanilla,
@@ -3398,7 +3398,7 @@ module Dfinity = struct
       Blob.as_ptr_len env ^^
       system_call env "ic0" "msg_reject"
     | _ ->
-      assert false
+      E.trap_with env (Printf.sprintf "cannot reject when running locally")
 
   let error_code env =
      Func.share_code0 env "error_code" [I32Type] (fun env ->
@@ -3454,7 +3454,10 @@ module Dfinity = struct
       (* simply tuple canister name and function name *)
       Blob.lit env name ^^
       Tuple.from_stack env 2
-    | Flags.WasmMode | Flags.WASIMode -> assert false
+    | Flags.WasmMode ->
+      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
+    | Flags.WASIMode ->
+      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
@@ -5771,7 +5774,8 @@ module FuncDec = struct
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
-    | _ -> assert false
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
@@ -7229,7 +7233,8 @@ and compile_exp (env : E.t) ae exp =
           serialize individually *)
         Serialization.serialize env ts ^^
         Dfinity.reply_with_data env
-      | _ -> assert false
+      | _ ->
+        E.trap_with env (Printf.sprintf "cannot reply when running locally")
       end
 
     | ICRejectPrim, [e] ->

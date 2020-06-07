@@ -1,4 +1,4 @@
 (library
   (name ir_interpreter)
-  (libraries lib mo_types mo_values ir_def profiler)
+  (libraries lib mo_types mo_values ir_def profiler ic)
 )
