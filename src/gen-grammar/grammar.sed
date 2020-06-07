@@ -1,22 +1,22 @@
 s/^ *| /    /g
 s/seplist/list/g
-s/\<typ_id\>/<id>/g
-s/^\<id\> ::=/~~~~/g
-s/\<id\>/ID/g
-s/^\<start\> ::=/~~~~/g
-s/\<start\> //g
-s/\<parse_prog\>/<prog>/g
-s/^\<parse_prog_interactive\> ::=/~~~~/g
-s/^\<import_list\> ::=/~~~~/g
-s/^\<parse_module_header> ::=/~~~~/g
-s/^\<bl\> ::=/~~~~/g
-s/^\<ob\> ::=/~~~~/g
-s/(\<bl\>)//g
-s/(\<ob\>)//g
+s/<typ_id>/<id>/g
+/^<id> ::=/,+2d
+s/<id>/ID/g
+/^<semicolon> ::=/,+3d
+/^<start> ::=/,+2d
+/^<parse_prog_interactive> ::=/,+3d
+/^<import_list> ::=/,+2d
+/^<parse_module_header> ::=/,+2d
+/.*PRIM.*/d
+/^<bl> ::=/,+2d
+/^<ob> ::=/,+2d
+s/<start> //g
+s/<parse_prog>/<prog>/g
+s/\(<bl>\)//g
+s/\(<ob>\)//g
 s/(B)//g
-s/^\<semicolon\> ::=/~~~~/g
-s/\<semicolon\>/\';\'/g
-s/    SEMICOLON.*//g
+s/<semicolon>/\';\'/g
 s/epsilon/<empty>/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
@@ -55,7 +55,6 @@ s/QUEST/\'?\'/g
 s/QUERY/\'query\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
-s/.*PRIM.*/~~/g
 s/POWOP/\'**\'/g
 s/POWASSIGN/\'**-\'/g
 s/PLUSASSIGN/\'+=\'/g
