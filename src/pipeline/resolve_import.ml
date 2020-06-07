@@ -1,4 +1,5 @@
 open Mo_def
+open Ic
 module Traversals = Mo_frontend.Traversals
 
 (*

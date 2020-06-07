@@ -3,7 +3,6 @@ open Mo_config
 open Mo_types
 
 module ResolveImport = Resolve_import
-module URL = Url
 
 type parse_fn = string -> (Syntax.prog * string) Diag.result
 val parse_file: parse_fn
