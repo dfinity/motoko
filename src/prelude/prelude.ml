@@ -313,6 +313,32 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 
   (enqueue, fulfill, fail)
 };
+
+let @ic00 = actor "ic:00" : actor {
+  create_canister : () -> async { canister_id : Principal };
+  install_code : {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : Blob;
+    arg : Blob;
+    compute_allocation : ?Nat;
+  } -> async ()
+};
+
+// It would be desireable if create_actor_helper can be defined
+// without paying the extra self-remote-call-cost
+func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let { canister_id = canister_id_ } = await @ic00.create_canister();
+  await @ic00.install_code({
+    mode = #install;
+    canister_id = canister_id_;
+    wasm_module = wasm_module_;
+    arg = arg_;
+    compute_allocation = null
+  });
+  return canister_id_;
+};
+
 |}
 
 (*
@@ -498,5 +524,4 @@ func blobOfPrincipal(id : Principal) : Blob = {
 func principalOfActor(act : actor {}) : Principal = {
   ((prim "cast" : (actor {}) -> Principal) act)
 };
-
 |}
