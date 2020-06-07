@@ -128,8 +128,7 @@ let shorten_import_path :
     Flags.M.bindings ic_aliases
     |> Lib.List.first_opt (fun (alias, id) ->
            Debug.log "basename" (Ic.Url.idl_basename_of_blob id);
-           if Ic.Url.idl_basename_of_blob id = idl_basename then
-             Some alias
+           if Ic.Url.idl_basename_of_blob id = idl_basename then Some alias
            else None)
     |> function
     | None -> Printf.sprintf "ic:%s" (Filename.remove_extension idl_basename)
