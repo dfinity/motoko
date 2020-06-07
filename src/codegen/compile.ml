@@ -6718,6 +6718,12 @@ let compile_relop env t op =
 let compile_load_field env typ name =
   Object.load_idx env typ name
 
+
+(* type for wrapping code with context, context is establishment
+   of (pattern) binding, argument is the code using the binding,
+   result is e.g. the code for `case p e`. *)
+type scope_wrap = G.t -> G.t
+
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) ae lexp =
@@ -7647,7 +7653,7 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code)
 
-and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G.t) =
+and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae wk ->
          G.with_region dec.at (mk_code ae) ^^ wrap wk)) @@
@@ -7686,7 +7692,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
         fun wk -> wk
       )
 
-and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
+and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
     | []          -> (pre_ae, G.nop, fun _ wk -> wk)
@@ -7703,7 +7709,7 @@ and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * (G.t 
   let (ae1, alloc_code, mk_codeT) = go pre_ae decs in
   (ae1, fun wk -> alloc_code ^^ mk_codeT ae1 wk)
 
-and compile_decs env ae decs captured_in_body : VarEnv.t * (G.t -> G.t) =
+and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body
 
 and compile_prog env ae (ds, e) =
