@@ -9,7 +9,7 @@
 
 
 (* helper (only to be used on "ic:…" urls) *)
-let decode_actor_url url : (string, string) result =
+let decode_ic_url url : (string, string) result =
   let open Stdlib.String in
   let hex = Option.get (Lib.String.chop_prefix "ic:" url) in
 
@@ -23,6 +23,9 @@ let decode_actor_url url : (string, string) result =
   let checksum = Lib.CRC.crc8 bs in
   if checksum <> Lib.Hex.int_of_hex_byte crc then Error "invalid checksum in principal ID, please check for typos" else
   Ok bs
+
+let encode_ic_url bytes : string =
+  "ic:" ^ Lib.Hex.hex_of_bytes bytes ^ Lib.Hex.hex_of_byte (Lib.CRC.crc8 bytes)
 
 type parsed =
   | Package of (string * string)
@@ -56,7 +59,7 @@ let parse (f: string) : (parsed, string) result =
     end
   | None ->
     match Lib.String.chop_prefix "ic:" f with
-    | Some _suffix -> begin match decode_actor_url f with
+    | Some _suffix -> begin match decode_ic_url f with
       | Ok bytes -> Ok (Ic bytes)
       | Error err -> Error err
       end

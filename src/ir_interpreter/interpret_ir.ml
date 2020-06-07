@@ -418,9 +418,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ActorOfIdBlob t, [v1] ->
         k v1
       | BlobOfIcUrl, [v1] ->
-        trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
+        let open Ic.Url in
+        begin match parse (V.as_text v1) with
+          | Ok (Ic bytes) -> k (V.Text bytes)
+          | _ -> trap exp.at "could not parse %s as an actor reference"  (V.as_text v1)
+        end
       | IcUrlOfBlob, [v1] ->
-        trap exp.at "IcUrlOfBlob not implemented"
+        k (V.Text (Ic.Url.encode_ic_url (V.as_text v1)))
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.num_conv_prim t1 t2 (context env) arg k
