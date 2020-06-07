@@ -17,13 +17,13 @@
 
 <func_sort_opt> ::= 
     <empty>
-    'shared' ['query']
+    'shared' 'query'?
     'query'
 
 <sort_pat> ::= 
     <empty>
-    'shared' ['query'] [<pat_nullary>]
-    'query' [<pat_nullary>]
+    'shared' 'query'? (<pat_nullary>)?
+    'query' (<pat_nullary>)?
 
 <typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
@@ -34,8 +34,8 @@
 
 <typ_nullary> ::= 
     '(' <list(<typ_item>, ',')> ')'
-    <id> ('.' <id>)* [<typ_args>]
-    '[' ['var'] <typ> ']'
+    <id> ('.' <id>)* (<typ_args>)?
+    '[' 'var'? <typ> ']'
     <typ_obj>
     <typ_variant>
 
@@ -50,7 +50,7 @@
 
 <typ> ::= 
     <typ_pre>
-    <func_sort_opt> ['<' <list(<typ_bind>, ',')> '>'] <typ_un> '->' <typ>
+    <func_sort_opt> ('<' <list(<typ_bind>, ',')> '>')? <typ_un> '->' <typ>
 
 <typ_item> ::= 
     <id> ':' <typ>
@@ -60,11 +60,11 @@
     '<' <list(<typ>, ',')> '>'
 
 <typ_field> ::= 
-    ['var'] <id> ':' <typ>
-    <id> ['<' <list(<typ_bind>, ',')> '>'] <typ_nullary> <return_typ>
+    'var'? <id> ':' <typ>
+    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> <return_typ>
 
 <typ_tag> ::= 
-    <tag> [<return_typ_nullary>]
+    <tag> (<return_typ_nullary>)?
 
 <typ_bind> ::= 
     <id> '<:' <typ>
@@ -138,7 +138,7 @@
     '{' <list(<dec>, ';')> '}'
 
 <exp_nullary> ::= 
-    '{' <list(<dec_var>, ';')> '}' B
+    '{' <list(<dec_var>, ';')> '}'
     '{' <exp_field_list_unamb> '}'
     '{' <dec_list_unamb> '}'
     <id>
@@ -147,11 +147,11 @@
 
 <exp_post> ::= 
     <exp_nullary>
-    '[' ['var'] <list(<exp_nonvar>, ',')> ']'
+    '[' 'var'? <list(<exp_nonvar>, ',')> ']'
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> ['<' <list(<typ>, ',')> '>'] <exp_nullary>
+    <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
 
 <exp_un> ::= 
     <exp_post>
@@ -181,8 +181,8 @@
     'async' <exp>
     'await' <exp>
     'assert' <exp>
-    'label' <id> [<return_typ_nullary>] <exp>
-    'break' <id> [<exp_nullary>]
+    'label' <id> (<return_typ_nullary>)? <exp>
+    'break' <id> (<exp_nullary>)?
     'continue' <id>
     'debug' <exp>
     'if' <exp_nullary> <exp>
@@ -272,14 +272,14 @@
     <id> ':' <typ>
 
 <dec_var> ::= 
-    'var' <id> [<return_typ>] '=' <exp>
+    'var' <id> (<return_typ>)? '=' <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
-    'type' <id> ['<' <list(<typ_bind>, ',')> '>'] '=' <typ>
-    <obj_sort> [<id>] ['='] <obj_body>
-    <sort_pat> 'func' [<id>] ['<' <list(<typ_bind>, ',')> '>'] <pat_param> [<return_typ>] <func_body>
-    [<obj_sort>] 'class' [<id>] ['<' <list(<typ_bind>, ',')> '>'] <pat_param> [<return_typ>] <class_body>
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
+    <obj_sort> <id>? '='? <obj_body>
+    <sort_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
+    (<obj_sort>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
     'ignore' <exp>
 
 <dec> ::= 
@@ -302,11 +302,11 @@
     '{' <list(<dec_field>, ';')> '}'
 
 <class_body> ::= 
-    '=' [<id>] <obj_body>
+    '=' <id>? <obj_body>
     <obj_body>
 
 <imp> ::= 
-    'import' [<id>] ['='] <text>
+    'import' <id>? '='? <text>
 
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
