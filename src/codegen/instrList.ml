@@ -26,6 +26,30 @@ let combine_shifts const op = function
 let optimize : instr list -> instr list = fun is ->
   let open Wasm_exts.CustomModuleEncode in
   let rec go l r = match l, r with
+    (* Duplicate statement markers: first one can be zapped *)
+    | l', ({it = Meta _; _} as n1) :: (({it = Meta _; _} as n2) :: _ as r') when
+          is_dwarf_statement n1.it && is_dwarf_statement n2.it ->
+      go l' r'
+
+
+
+
+
+    (* Combine adjacent Metas *)
+    | l', ({it = Meta m1; _} as n1) :: {it = Meta m2; _} :: r' ->
+      let combine = let open Wasm_exts.Dwarf5.Meta in function
+        | Grouped g1, Grouped g2 -> Grouped (g2 @ g1)
+        | Grouped g1, _ -> Grouped (m2 :: g1)
+        | _, Grouped g2 -> Grouped (g2 @ [m1])
+        | _, _ -> Grouped [m2; m1] in
+      go l' ({ n1 with it = Meta (combine (m1, m2)) } :: r')
+
+
+
+    | { it = Meta _; _} as m2 :: ({ it = Meta _; _} as m1) :: { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
+      (* FIXME: REMOVE *) assert (1 = 3); go l' (m1 :: m2 :: {i with it = LocalTee n2 } :: r')
+
+
     (* Loading and dropping is pointless *)
     | { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
@@ -63,10 +87,6 @@ let optimize : instr list -> instr list = fun is ->
       go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
-      go l' r'
-    (* Duplicate statement markers: first one can be zapped *)
-    | l', ({it = Meta _; _} as n1) :: (({it = Meta _; _} as n2) :: _ as r') when
-          is_dwarf_statement n1.it && is_dwarf_statement n2.it ->
       go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'

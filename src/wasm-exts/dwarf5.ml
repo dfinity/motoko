@@ -670,6 +670,8 @@ type die
   | OffsetAttribute of int
   | IntAttribute of int * int
   | StringAttribute of int * string
+  (* below is after peephole optimisation only, snoc-like *)
+  | Grouped of die list
   (* below is encoding-time only *)
   | FutureAttribute of (unit -> die)
 

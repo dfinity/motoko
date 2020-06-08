@@ -373,6 +373,10 @@ let encode (em : extended_module) =
       | Meta (StatementDelimiter left) ->
         modif statement_positions (Instrs.add (pos s, left))
       | Meta (Tag (r, t, attrs)) -> extract_dwarf r t attrs
+      | Meta (Grouped []) -> ()
+      | Meta (Grouped (late :: former)) ->
+        instr { e with it = Meta (Grouped former) };
+        instr { e with it = Meta late }
       | Meta _ -> assert false
 
       | Unreachable -> op 0x00
@@ -892,7 +896,7 @@ let encode (em : extended_module) =
         let wanted_tag (t', _, _) = t = t' in
         let (_, has_children, forms) = List.find wanted_tag Abbreviation.abbreviations in
         let rec pairing (attr, form) = function
-          | Tag _ | TagClose | StatementDelimiter _ -> failwith "Attribute expected"
+          | Tag _ | TagClose | StatementDelimiter _ | Grouped _ -> failwith "Attribute expected"
           | FutureAttribute f ->
             pairing (attr, form) (f ())
           | StringAttribute (a, path0) when a = Dwarf5.dw_AT_decl_file ->
