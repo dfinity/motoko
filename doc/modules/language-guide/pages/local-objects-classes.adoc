@@ -4,10 +4,10 @@
 
 In addition to (remote) actor objects, {proglang} provides local objects that are similar in their syntax, typing and evaluation to ordinary (local) objects from object-oriented programming.
 
-The <<chapter-state, prior chapter>> introduced declarations of private mutable state, in the form of `var`-bound variables and (mutable) array allocation.
+The link:mutable-state{outfilesuffix}[Mutable state] introduced declarations of private mutable state, in the form of `var`-bound variables and (mutable) array allocation.
 In this chapter, we use mutable state to implement simple objects, a la object-oriented programming.
 
-We illustrate this support via a running example, which continues in the <<chapter-actors,following chapter>>.
+We illustrate this support via a running example, which continues in the next chapter.
 The following example illustrates a general evolution path for {proglang} programs. 
 Each _object_, if important enough, has the potential to be refactored into an Internet _service_, by refactoring this _(local) object_ into an _actor object_.
 
@@ -30,7 +30,7 @@ object counter = {
 This declaration introduces a single object instance named `counter`, whose entire implementation is given above.
 
 In this example, the developer exposes three _public_ functions `inc`, `read` and `bump` using keyword `public` to declare each in the object body.
-The body of the object, like a <<intro-exp-block,block expression >>, consists of a list of declarations.
+The body of the object, like a block expression, consists of a list of declarations.
 
 In addition to these three functions, the object has one (private) mutable variable `count`, which holds the current count, initially zero.
 
@@ -165,13 +165,10 @@ TIP: As aside for language theorists and advanced readers:
 Object subtyping in {proglang} uses _structural subtyping_, not _nominal subtyping_.  Recall that in nominal typing, the question of two types equality depends on choosing consistent, globally-unique type names (across projects and time).
 In {proglang}, the question of two types' equality is based on their _structure_, not their names.
 
-**Subtyping in general.** Formally, <<subtyping, subtyping relationships in {proglang}>> extend
-  to all types, not just object types.  Most cases are standard, and
-  follow <<modern-types, conventional programming language theory>> (for _structural_ subtyping, specifically).
-  Other notable cases in {proglang} for new programmers include
-  <<intro-array-subtyping, arrays>>,
-  <<exp-error, options>>, <<chapter-patterns, variants>> and
-  <<subtyping, number type inter-relationships>>.
+**Subtyping in general.** Formally, subtyping relationships in {proglang} extend to all types, not just object types.
+Most cases are standard, and follow conventional programming language theory (for _structural_ subtyping, specifically).
+Other notable cases in {proglang} for new programmers include
+array, options, variants and number type inter-relationships.
 
 == Object classes
 
