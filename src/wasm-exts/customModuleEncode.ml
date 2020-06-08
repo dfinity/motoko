@@ -25,10 +25,6 @@ end up in the last tag. Similarly later tags nest into open tags. The larger-sca
 structure is finally restored when all instructions are emitted. The mechanism is described in
 the blog post http://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf
 
-Another predicate `is_dwarf_statement` is employed to mark certain instructions
-as preferential stop-points in the debugger. Similarly, other predicates may
-supply other hints for the DWARF line machine.
-
  *)
 
 
@@ -39,18 +35,16 @@ TBW
  *)
 
 
-
-
 open Dwarf5.Meta
 
 (* Utility predicates *)
 
-let is_dwarf_like = function
-  | Ast.Meta (Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _) -> true
+let rec is_dwarf_like' = function
+  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
+  | Grouped parts -> List.exists is_dwarf_like' parts
   | _ -> false
-
-let is_dwarf_statement = function
-  | Ast.Meta (StatementDelimiter _) -> true
+let is_dwarf_like = function
+  | Ast.Meta m -> is_dwarf_like' m
   | _ -> false
 
 module Promise = Lib.Promise
