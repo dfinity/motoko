@@ -2,6 +2,8 @@
 This module originated as a copy of interpreter/syntax/ast.ml in the
 reference implementation.
 
+Base revision: WebAssembly/spec@a7a1856.
+
 The changes are:
  * None for now
 
