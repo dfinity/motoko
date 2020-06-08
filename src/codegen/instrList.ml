@@ -31,45 +31,28 @@ let optimize : instr list -> instr list = fun is ->
           is_dwarf_statement n1.it && is_dwarf_statement n2.it ->
       go l' r'
 
-
-
-
-
     (* Combine adjacent Metas *)
-    | l', ({it = Meta m1; _} as n1) :: {it = Meta m2; _} :: r' ->
+    | {it = Meta m2; _} as n2 :: {it = Meta m1; _} :: l', r' ->
       let combine = let open Wasm_exts.Dwarf5.Meta in function
         | Grouped g1, Grouped g2 -> Grouped (g2 @ g1)
         | Grouped g1, _ -> Grouped (m2 :: g1)
         | _, Grouped g2 -> Grouped (g2 @ [m1])
         | _, _ -> Grouped [m2; m1] in
-      go l' ({ n1 with it = Meta (combine (m1, m2)) } :: r')
-
-
-
-    | { it = Meta _; _} as m2 :: ({ it = Meta _; _} as m1) :: { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
-      (* FIXME: REMOVE *) assert (1 = 3); go l' (m1 :: m2 :: {i with it = LocalTee n2 } :: r')
-
+      go ({ n2 with it = Meta (combine (m1, m2)) } :: l') r'
 
     (* Loading and dropping is pointless *)
     | { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
-
-
-
     (* Loading and dropping is pointless, even with intervening Meta *)
     | { it = Meta _; _} as m :: { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' (m :: r')
-
-
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
     | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
-
-    (* Introduce LocalTee with previously intervening Meta *)
-    | { it = Meta _; _} as m :: { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
-      go l' (m :: {i with it = LocalTee n2 } :: r')
-
     (* Introduce LocalTee *)
     | { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
       go l' ({i with it = LocalTee n2 } :: r')
+    (* Introduce LocalTee with previously intervening Meta *)
+    | { it = Meta _; _} as m :: { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
+      go l' (m :: {i with it = LocalTee n2 } :: r')
     (* Eliminate LocalTee followed by Drop (good for confluence) *)
     | ({ it = LocalTee n; _} as i) :: l', { it = Drop; _ } :: r' ->
       go l' ({i with it = LocalSet n } :: r')
