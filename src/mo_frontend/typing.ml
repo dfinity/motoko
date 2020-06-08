@@ -59,12 +59,11 @@ let env_of_scope msgs scope =
     scopes = T.ConEnv.empty;
   }
 
-
 let accessible env t =
   env.pre ||
   match T.normalize t with
-  | T.Obj(T.Module, _) -> true
-  | t' -> T.shared t'
+  | T.Obj(T.Module, _) -> env.in_prog
+  | t' -> (env.in_prog || T.shared t')
 
 let restrict env ve =
   T.Env.map (fun t -> accessible env t) ve
@@ -712,10 +711,10 @@ and infer_exp' f env exp : T.typ =
   end;
   t'
 
-and infer_exp'' env exp : T.typ =
-  let in_prog = env.in_prog in
-  let in_actor = env.in_actor in
-  let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
+and infer_exp'' env0 exp : T.typ =
+  let in_prog = env0.in_prog in
+  let in_actor = env0.in_actor in
+  let env = {env0 with in_actor = false; in_prog = false; context = exp.it::env0.context} in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -810,20 +809,10 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' =
-      if sort.it = T.Actor then
-        (if not (in_prog (* && env.async = C.NullCap*) ) then
-           sort.note <- check_AwaitCap env "actor" exp.at; (* note used in desugaring *)
-         {env with
-           vals = env.vals;
-           accs = if in_prog
-                  then env.accs (* main actor can access enclosing state *)
-                  else restrict env env.vals; (* other actors cannot *)
-           async = C.NullCap;
-           in_actor = true})
-      else env
-    in
-    infer_obj env' sort.it fields exp.at
+    if not in_prog && sort.it = T.Actor then
+      (* note used in detecting and desugaring non-main actors *)
+      sort.note <- check_AwaitCap env "actor" exp.at;
+    infer_obj env0 sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
@@ -927,7 +916,7 @@ and infer_exp'' env exp : T.typ =
   | CallE (exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
-    let t, scope = infer_block env decs exp.at in
+    let t, scope = infer_block env0 decs exp.at in (* use env? *)
     (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
       error env exp.at
         "local class type %s is contained in inferred block type\n  %s"
@@ -1703,15 +1692,30 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s fields at : T.typ =
-  let env =
-    if s <> T.Actor then
-      { env with in_actor = false }
-    else
+  let env = match s with
+    | T.Actor ->
       { env with
-        in_actor = true;
+        vals = env.vals;
+        accs = if env.in_prog
+               then env.accs (* main actor can access enclosing state *)
+               else restrict env env.vals; (* other actors cannot *)
         labs = T.Env.empty;
-        rets = None;
-        async = C.NullCap; }
+        async = C.NullCap;
+        in_actor = true
+      }
+    | T.Module ->
+      { env with
+        vals = env.vals;
+        accs = if env.in_prog
+               then env.accs (* top-level modules can access top-level functions *)
+               else restrict env env.vals; (* other modules cannot *)
+        labs = T.Env.empty;
+        async = C.NullCap;
+        in_actor = false;
+      }
+    | T.Object ->
+      { env with in_actor = false }
+    | T.Memory -> assert false
   in
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
@@ -2176,7 +2180,7 @@ and infer_dec_valdecs env dec : Scope.t =
     if sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
-     let rec is_unit_pat p = match p.it with
+    let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
       | _ -> false in
