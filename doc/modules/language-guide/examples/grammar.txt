@@ -1,76 +1,76 @@
-<list(X, SEP)> ::=
+<list(X, SEP)> ::= 
     <empty>
     X
     X SEP <list(X, SEP)>
 
-<list1(X, SEP)> ::=
+<list1(X, SEP)> ::= 
     X
     X SEP <list(X, SEP)>
 
-<tag> ::=
+<tag> ::= 
     '#' <id>
 
-<obj_sort> ::=
+<obj_sort> ::= 
     'object'
     'actor'
     'module'
 
-<func_sort_opt> ::=
+<func_sort_opt> ::= 
     <empty>
-    'shared' ['query']
+    'shared' 'query'?
     'query'
 
-<sort_pat> ::=
+<sort_pat> ::= 
     <empty>
-    'shared' ['query'] [<pat_nullary>]
-    'query' [<pat_nullary>]
+    'shared' 'query'? (<pat_nullary>)?
+    'query' (<pat_nullary>)?
 
-<typ_obj> ::=
+<typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
 
-<typ_variant> ::=
+<typ_variant> ::= 
     '{' '#' '}'
     '{' <list1(<typ_tag>, ';')> '}'
 
-<typ_nullary> ::=
+<typ_nullary> ::= 
     '(' <list(<typ_item>, ',')> ')'
-    <id> ('.' <id>)* [<typ_args>]
-    '[' ['var'] <typ> ']'
+    <id> ('.' <id>)* (<typ_args>)?
+    '[' 'var'? <typ> ']'
     <typ_obj>
     <typ_variant>
 
-<typ_un> ::=
+<typ_un> ::= 
     <typ_nullary>
     '?' <typ_un>
 
-<typ_pre> ::=
+<typ_pre> ::= 
     <typ_un>
     'async' <typ_pre>
     <obj_sort> <typ_obj>
 
-<typ> ::=
+<typ> ::= 
     <typ_pre>
-    <func_sort_opt> ['<' <list(<typ_bind>, ',')> '>'] <typ_un> '->' <typ>
+    <func_sort_opt> ('<' <list(<typ_bind>, ',')> '>')? <typ_un> '->' <typ>
 
-<typ_item> ::=
+<typ_item> ::= 
     <id> ':' <typ>
     <typ>
 
-<typ_args> ::=
+<typ_args> ::= 
     '<' <list(<typ>, ',')> '>'
 
-<typ_field> ::=
-    ['var'] <id> ':' <typ>
-    <id> ['<' <list(<typ_bind>, ',')> '>'] <typ_nullary> <return_typ>
+<typ_field> ::= 
+    'var'? <id> ':' <typ>
+    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> <return_typ>
 
-<typ_tag> ::=
-    <tag> [<return_typ_nullary>]
+<typ_tag> ::= 
+    <tag> (<return_typ_nullary>)?
 
-<typ_bind> ::=
+<typ_bind> ::= 
     <id> '<:' <typ>
     <id>
 
-<lit> ::=
+<lit> ::= 
     'null'
     <bool>
     <nat>
@@ -78,12 +78,12 @@
     <char>
     <text>
 
-<unop> ::=
+<unop> ::= 
     '+'
     '-'
     '^'
 
-<binop> ::=
+<binop> ::= 
     '+'
     '-'
     '*'
@@ -100,7 +100,7 @@
     '<>>'
     '#'
 
-<relop> ::=
+<relop> ::= 
     '=='
     '!='
     ' < '
@@ -108,12 +108,12 @@
     ' > '
     '>='
 
-<unassign> ::=
+<unassign> ::= 
     '+='
     '-='
     '^='
 
-<binassign> ::=
+<binassign> ::= 
     '+='
     '-='
     '*='
@@ -130,30 +130,30 @@
     '<>>='
     '@='
 
-<text_like> ::=
+<text_like> ::= 
     <text>
     '(' <exp> ')'
 
-<exp_block> ::=
+<exp_block> ::= 
     '{' <list(<dec>, ';')> '}'
 
-<exp_nullary> ::=
-    '{' <list(<dec_var>, ';')> '}' B
+<exp_nullary> ::= 
+    '{' <list(<dec_var>, ';')> '}'
     '{' <exp_field_list_unamb> '}'
     '{' <dec_list_unamb> '}'
     <id>
     <lit>
     '(' <list(<exp>, ',')> ')'
 
-<exp_post> ::=
+<exp_post> ::= 
     <exp_nullary>
-    '[' ['var'] <list(<exp_nonvar>, ',')> ']'
+    '[' 'var'? <list(<exp_nonvar>, ',')> ']'
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> ['<' <list(<typ>, ',')> '>'] <exp_nullary>
+    <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
 
-<exp_un> ::=
+<exp_un> ::= 
     <exp_post>
     <tag>
     <tag> <exp_nullary>
@@ -164,7 +164,7 @@
     'not' <exp_un>
     'debug_show' <exp_un>
 
-<exp_bin> ::=
+<exp_bin> ::= 
     <exp_un>
     <exp_bin> <binop> <exp_bin>
     <exp_bin> <relop> <exp_bin>
@@ -172,7 +172,7 @@
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ>
 
-<exp_nondec> ::=
+<exp_nondec> ::= 
     <exp_bin>
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
@@ -181,8 +181,8 @@
     'async' <exp>
     'await' <exp>
     'assert' <exp>
-    'label' <id> [<return_typ_nullary>] <exp>
-    'break' <id> [<exp_nullary>]
+    'label' <id> (<return_typ_nullary>)? <exp>
+    'break' <id> (<exp_nullary>)?
     'continue' <id>
     'debug' <exp>
     'if' <exp_nullary> <exp>
@@ -195,120 +195,120 @@
     'loop' <exp> 'while' <exp>
     'for' '(' <pat> 'in' <exp> ')' <exp>
 
-<exp_nonvar> ::=
+<exp_nonvar> ::= 
     <exp_nondec>
     <dec_nonvar>
 
-<exp> ::=
+<exp> ::= 
     <exp_nonvar>
     <dec_var>
 
-<case> ::=
+<case> ::= 
     'case' <pat_nullary> <exp>
 
-<catch> ::=
+<catch> ::= 
     'catch' <pat_nullary> <exp>
 
-<exp_field_nonvar> ::=
+<exp_field_nonvar> ::= 
     <id> '=' <exp>
 
-<exp_field> ::=
+<exp_field> ::= 
     <exp_field_nonvar>
     <dec_var>
 
-<exp_field_list_unamb> ::=
+<exp_field_list_unamb> ::= 
     <exp_field_nonvar>
     <exp_field_nonvar> ';' <list(<exp_field>, ';')>
     <dec_var> ';' <exp_field_list_unamb>
 
-<dec_field> ::=
+<dec_field> ::= 
     <vis> <stab> <dec>
 
-<vis> ::=
+<vis> ::= 
     <empty>
     'private'
     'public'
     'system'
 
-<stab> ::=
+<stab> ::= 
     <empty>
     'flexible'
     'stable'
 
-<pat_param> ::=
+<pat_param> ::= 
     '_'
     <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
 
-<pat_nullary> ::=
+<pat_nullary> ::= 
     <pat_param>
     '{' <list(<pat_field>, ';')> '}'
 
-<pat_un> ::=
+<pat_un> ::= 
     <pat_nullary>
     <tag>
     <tag> <pat_nullary>
     '?' <pat_un>
     <unop> <lit>
 
-<pat_bin> ::=
+<pat_bin> ::= 
     <pat_un>
     <pat_bin> 'or' <pat_bin>
     <pat_bin> ':' <typ>
 
-<pat> ::=
+<pat> ::= 
     <pat_bin>
 
-<return_typ> ::=
+<return_typ> ::= 
     ':' <typ>
 
-<return_typ_nullary> ::=
+<return_typ_nullary> ::= 
     ':' <typ_nullary>
 
-<pat_field> ::=
+<pat_field> ::= 
     <id>
     <id> '=' <pat>
     <id> ':' <typ>
 
-<dec_var> ::=
-    'var' <id> [<return_typ>] '=' <exp>
+<dec_var> ::= 
+    'var' <id> (<return_typ>)? '=' <exp>
 
-<dec_nonvar> ::=
+<dec_nonvar> ::= 
     'let' <pat> '=' <exp>
-    'type' <id> ['<' <list(<typ_bind>, ',')> '>'] '=' <typ>
-    <obj_sort> [<id>] ['='] <obj_body>
-    <sort_pat> 'func' [<id>] ['<' <list(<typ_bind>, ',')> '>'] <pat_param> [<return_typ>] <func_body>
-    [<obj_sort>] 'class' [<id>] ['<' <list(<typ_bind>, ',')> '>'] <pat_param> [<return_typ>] <class_body>
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
+    <obj_sort> <id>? '='? <obj_body>
+    <sort_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
+    (<obj_sort>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
     'ignore' <exp>
 
-<dec> ::=
+<dec> ::= 
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
 
-<dec_list_unamb> ::=
+<dec_list_unamb> ::= 
     <exp_nondec>
     <dec_nonvar>
     <exp_nondec> ';' <list(<dec>, ';')>
     <dec_nonvar> ';' <list(<dec>, ';')>
     <dec_var> ';' <dec_list_unamb>
 
-<func_body> ::=
+<func_body> ::= 
     '=' <exp>
     <exp_block>
 
-<obj_body> ::=
+<obj_body> ::= 
     '{' <list(<dec_field>, ';')> '}'
 
-<class_body> ::=
-    '=' [<id>] <obj_body>
+<class_body> ::= 
+    '=' <id>? <obj_body>
     <obj_body>
 
-<imp> ::=
-    'import' [<id>] ['='] <text>
+<imp> ::= 
+    'import' <id>? '='? <text>
 
-<prog> ::=
+<prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
 
 
