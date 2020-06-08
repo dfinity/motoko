@@ -2,7 +2,7 @@
    with custom sections that we are interested in
 *)
 
-open Wasm.Ast
+open Ast
 
 type name_section = {
   module_ : string option;

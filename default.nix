@@ -420,6 +420,25 @@ rec {
       touch $out
     '';
 
+  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  check-grammar = stdenv.mkDerivation {
+      name = "check-grammar";
+      src = subpath ./src/gen-grammar;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+      buildPhase = ''
+        patchShebangs .
+        ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
+        echo "If the following fails, please run:"
+        echo "nix-shell --command 'make -C src grammar'"
+        diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+        echo "ok, all good"
+      '';
+      installPhase = ''
+        touch $out
+      '';
+    };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -439,6 +458,7 @@ rec {
       shell
       check-formatting
       check-generated
+      check-grammar
     ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
   };
 
