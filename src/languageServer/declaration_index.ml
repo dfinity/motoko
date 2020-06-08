@@ -72,7 +72,7 @@ let ic_id_to_lookup : string option -> string -> string -> string =
 
 let lookup_module (project_root : string) (path : string) (index : t) :
     (string * ide_decl list) option =
-  let open Pipeline.URL in
+  let open Ic.Url in
   let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
@@ -127,9 +127,8 @@ let shorten_import_path :
     let idl_basename = Filename.basename path in
     Flags.M.bindings ic_aliases
     |> Lib.List.first_opt (fun (alias, id) ->
-           Debug.log "basename" (Pipeline.URL.idl_basename_of_blob id);
-           if Pipeline.URL.idl_basename_of_blob id = idl_basename then
-             Some alias
+           Debug.log "basename" (Ic.Url.idl_basename_of_blob id);
+           if Ic.Url.idl_basename_of_blob id = idl_basename then Some alias
            else None)
     |> function
     | None -> Printf.sprintf "ic:%s" (Filename.remove_extension idl_basename)
