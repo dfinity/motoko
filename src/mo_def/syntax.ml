@@ -172,7 +172,6 @@ and exp' =
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
-  | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
 (*
@@ -199,17 +198,30 @@ and dec' =
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
+(* Imports *)
+
+type import = (import', typ) Source.annotated_phrase
+and import' = id * string * resolved_import
 
 (* Program *)
 
 type prog = (prog', string) Source.annotated_phrase
-and prog' = dec list
+and prog' = (import list * comp_unit)
 
+type comp_unit =
+ | ExpE of exp                      (* non-IC expression (actor free) *)
+ | ActorClassU of typ_id * pat * typ option * id * exp_field list (* IC actor class *)
+ | ActorU of id * exp_field list       (* IC actor *)
 
 (* Libraries *)
 
-type lib = (exp, string) Source.annotated_phrase
+type lib = (lib', string) Source.annotated_phrase
+and lib' = (import list * dec list) (* module body *)
 
+(* Fragments (repl) *)
+
+type frag = (frag', string) Source.annotated_phrase
+and frag' = (import list * dec list) (* top-level decs *)
 
 (* n-ary arguments/result sequences *)
 
