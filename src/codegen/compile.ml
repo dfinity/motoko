@@ -5516,7 +5516,8 @@ end (* Var *)
 
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
-  let bind_args env ae0 first_arg =
+  let bind_args env ae0 first_arg :
+        (VarEnv.NameEnv.key, Type.typ) annotated_phrase list -> VarEnv.t * G.t =
     let rec go ix ae dw = function
     | [] -> ae, dw
     | {it; at; note}::args ->
