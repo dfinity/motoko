@@ -7829,11 +7829,12 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
 
 and compile_start_func mod_env ((cu, _flavor) : Ir.prog) : E.func_with_names =
   Func.of_body mod_env [] [] (fun env ->
+    let ae = VarEnv.empty_ae in
     match cu with
-    | ProgU exp ->
-      let (sr, code) = compile_exp env ae' e in
+    | ProgU e ->
+      let (sr, code) = compile_exp env ae e in
       code ^^ StackRep.drop env sr
-    | ActorU (ds, fs, up, _t) -> main_actor env ds fs up
+    | ActorU (ds, fs, up, _t) -> main_actor env ae ds fs up
   )
 
 and export_actor_field env  ae (f : Ir.field) =

@@ -570,10 +570,33 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   args, wrap_under_async, control, res_tys
 
+and comp_unit ds : Ir.comp_unit =
+  let open Ir in
+  let find_last_expr ds (e : exp) =
+    if ds = [] then [], e else
+    match Lib.List.split_last ds, e with
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
+      ds1', e'
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
+      ds1', e'
+    | _ -> ds, e in
+
+  let find_last_actor (ds,e) = match find_last_expr ds e with
+    | ds1, {it = ActorE (ds2, fs, up, t); _} ->
+      (* NB: capture! *)
+      ActorU (ds1 @ ds2, fs, up, t)
+    | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
+      ActorU (ds1 @ ds2, fs, up, t)
+    | ds, e -> ProgU (blockE ds e) in
+
+  (* find the last actor. This hack can hopefully go away
+     after Claudios improvements to the source *)
+  find_last_actor (block false ds)
+
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
-    | [] -> ([], tupE [])
-    | _ -> block false p.it
+    | [] -> Ir.ProgU (tupE [])
+    | _ -> comp_unit p.it
   end
   , { I.has_await = true
     ; I.has_async_typ = true
