@@ -65,10 +65,10 @@ type env =
     seen : con_env ref;
   }
 
-let env_of_scope scope flavor : env =
+let initiail_env flavor : env =
   { flavor;
     lvl = TopLvl;
-    vals = T.Env.map (fun typ -> { typ; loc_known = true; const = true }) scope.Scope.val_env;
+    vals = T.Env.empty;
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
@@ -972,8 +972,8 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
-  let env = env_of_scope scope flavor in
+let check_prog verbose phase (((ds, exp), flavor) as prog) : unit =
+  let env = initiail_env flavor in
   try
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in

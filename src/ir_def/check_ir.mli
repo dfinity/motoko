@@ -1,1 +1,1 @@
-val check_prog : bool -> Mo_types.Scope.scope -> string -> Ir.prog -> unit
+val check_prog : bool -> string -> Ir.prog -> unit

@@ -346,5 +346,5 @@ and t_comp_unit = function
 
 (* Entry point for the program transformation *)
 
-let transform scope (cu, flavor) =
+let transform (cu, flavor) =
   (t_comp_unit cu, {flavor with has_show = false})

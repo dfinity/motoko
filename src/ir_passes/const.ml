@@ -260,11 +260,6 @@ and block lvl env (ds, body) =
   let exp_const = exp lvl env' body in
   all [decs_const; exp_const]
 
-let analyze scope ((b, _flavor) : prog) =
-  (*
-  We assume everything in scope is static.
-  Right now, the scope is always empty (should remove this).
-  *)
-  let static_info = { loc_known = true; const = surely_true } in
-  let env = M.of_seq (Seq.map (fun (v, _typ) -> (v, static_info)) (Type.Env.to_seq scope.Scope.val_env)) in
+let analyze ((b, _flavor) : prog) =
+  let env = M.empty in
   ignore (block TopLvl env b)
