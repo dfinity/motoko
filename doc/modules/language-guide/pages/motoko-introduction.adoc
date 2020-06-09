@@ -14,9 +14,9 @@
 
 {proglang} permits modern programming idioms, including special programming abstractions for distributed applications.
 Each application consists of an _actor_ that communicates with other actors _without_ using shared state, but instead by using (asynchronous) message passing.
-The <<pitch-actors,actor-based>> <<pitch-async-actors,programming abstractions>> of {proglang} permit human-readable message-passing patterns, and they enforce that each network interaction obeys certain rules and avoids certain common mistakes.
+The actor-based programming abstractions of {proglang} permit human-readable message-passing patterns, and they enforce that each network interaction obeys certain rules and avoids certain common mistakes.
 
-Specifically, {proglang} programs are _type sound_ since {proglang} includes a practical, <<pitch-types,modern type system>> that checks each one before it executes. 
+Specifically, {proglang} programs are _type sound_ since {proglang} includes a practical, modern type system that checks each one before it executes. 
 The {proglang} type system statically checks that each {proglang} program will execute safely, without internal type errors, on all possible inputs. 
 Consequently, entire classes of common programming pitfalls that are common in other languages are ruled out, including null pointer errors, mis-matched argument and result types and many others.
 
