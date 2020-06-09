@@ -23,9 +23,15 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+
+type access =
+  | Pervasive
+  | Local
+  | Restricted
+
 type env =
   { vals : Scope.val_env;
-    accs : bool T.Env.t;
+    accs : access T.Env.t;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -43,7 +49,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.Scope.val_env;
-    accs = T.Env.map (fun t -> true) scope.Scope.val_env;
+    accs = T.Env.map (fun t -> Pervasive) scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -59,14 +65,22 @@ let env_of_scope msgs scope =
     scopes = T.ConEnv.empty;
   }
 
+
+
 let accessible env t =
   env.pre ||
   match T.normalize t with
-  | T.Obj(T.Module, _) -> env.in_prog
-  | t' -> (env.in_prog || T.shared t')
+  (*  | T.Obj(T.Module, _) -> true *)
+  | t' -> T.shared t'
 
 let restrict env ve =
-  T.Env.map (fun t -> accessible env t) ve
+  T.Env.mapi
+    (fun id t ->
+      match T.Env.find id env.accs with
+      | Pervasive -> Pervasive
+      | Local -> if accessible env t then Local else Restricted
+      | Restricted -> Restricted
+    ) ve
 
 (* Error bookkeeping *)
 
@@ -128,7 +142,7 @@ let add_val env x t =
   {
     env with
       vals = T.Env.add x t env.vals;
-      accs = T.Env.add x true env.accs;
+      accs = T.Env.add x Local env.accs;
   }
 
 let add_typs env xs cs =
@@ -140,7 +154,7 @@ let add_typs env xs cs =
 let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.Scope.val_env;
-    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> true) scope.Scope.val_env);
+    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> Local) scope.Scope.val_env);
     libs = T.Env.adjoin env.libs scope.Scope.lib_env;
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
@@ -150,7 +164,7 @@ let adjoin env scope =
 let adjoin_vals env ve = {
     env with
     vals = T.Env.adjoin env.vals ve;
-    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> true) ve);
+    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> Local) ve);
 }
 
 let adjoin_typs env te ce =
@@ -723,11 +737,12 @@ and infer_exp'' env0 exp : T.typ =
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
     | Some t ->
-      if T.Env.find id.it env.accs then
+      (match T.Env.find id.it env.accs with
+      | Pervasive | Local ->
         t
-      else
+      | Restricted ->
         (local_error env id.at "cannot access variable %s" id.it;
-         t)
+         t))
     | None ->
       error env id.at "unbound variable %s" id.it
     )
@@ -916,7 +931,7 @@ and infer_exp'' env0 exp : T.typ =
   | CallE (exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
-    let t, scope = infer_block env0 decs exp.at in (* use env? *)
+    let t, scope = infer_block env decs exp.at in (* use env? *)
     (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
       error env exp.at
         "local class type %s is contained in inferred block type\n  %s"
@@ -1703,16 +1718,17 @@ and infer_obj env s fields at : T.typ =
         async = C.NullCap;
         in_actor = true
       }
-    | T.Module ->
+    | T.Module (* ->
       { env with
         vals = env.vals;
-        accs = if env.in_prog
+        accs = env.accs; (*if env.in_prog
                then env.accs (* top-level modules can access top-level functions *)
-               else restrict env env.vals; (* other modules cannot *)
+               else restrict env env.vals; (* other modules cannot *) *)
         labs = T.Env.empty;
         async = C.NullCap;
         in_actor = false;
-      }
+      } 
+                *)
     | T.Object ->
       { env with in_actor = false }
     | T.Memory -> assert false
@@ -2139,8 +2155,10 @@ and infer_id_typdecs id c k : Scope.con_env =
 and infer_block_valdecs env decs scope : Scope.t =
   let _, scope' =
     List.fold_left (fun (env, scope) dec ->
-      let scope' = infer_dec_valdecs env dec in
-      adjoin env scope', Scope.adjoin scope scope'
+        let scope' = infer_dec_valdecs env dec in
+        (* TODO: make imports pervasive *)
+      adjoin env scope',
+      Scope.adjoin scope scope'
     ) (env, scope) decs
   in scope'
 
@@ -2231,6 +2249,13 @@ let check_lib scope lib : Scope.t Diag.result =
         (fun lib ->
           let env = env_of_scope msgs scope in
           let typ = infer_exp env lib.it in
+          (*
+            let decs =
+            match lib.it with
+            | {it = BlockE decs; _} -> decs
+            | _ -> assert false in
+
+            let (typ, _) = infer_block env decs lib.at in *)
           Scope.lib lib.note typ
         ) lib
     )
