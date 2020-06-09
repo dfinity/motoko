@@ -3371,7 +3371,7 @@ module Dfinity = struct
         get_blob
       )
     | _ ->
-      assert false
+      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
 
   let caller env =
     SR.Vanilla,
@@ -3398,7 +3398,7 @@ module Dfinity = struct
       Blob.as_ptr_len env ^^
       system_call env "ic0" "msg_reject"
     | _ ->
-      assert false
+      E.trap_with env (Printf.sprintf "cannot reject when running locally")
 
   let error_code env =
      Func.share_code0 env "error_code" [I32Type] (fun env ->
@@ -3454,7 +3454,10 @@ module Dfinity = struct
       (* simply tuple canister name and function name *)
       Blob.lit env name ^^
       Tuple.from_stack env 2
-    | Flags.WasmMode | Flags.WASIMode -> assert false
+    | Flags.WasmMode ->
+      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
+    | Flags.WASIMode ->
+      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
@@ -5779,7 +5782,8 @@ module FuncDec = struct
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
-    | _ -> assert false
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
@@ -6727,6 +6731,14 @@ let compile_relop env t op =
 let compile_load_field env typ name =
   Object.load_idx env typ name
 
+
+(* type for wrapping code with context, context is establishment
+   of (pattern) binding, argument is the code using the binding,
+   result is e.g. the code for `case p e`. *)
+type scope_wrap = G.t -> G.t
+
+let unmodified : scope_wrap = fun code -> code
+
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) ae lexp =
@@ -7241,7 +7253,8 @@ and compile_exp (env : E.t) ae exp =
           serialize individually *)
         Serialization.serialize env ts ^^
         Dfinity.reply_with_data env
-      | _ -> assert false
+      | _ ->
+        E.trap_with env (Printf.sprintf "cannot reply when running locally")
       end
 
     | ICRejectPrim, [e] ->
@@ -7317,9 +7330,9 @@ and compile_exp (env : E.t) ae exp =
       (G.dw_statement e2.at ^^ code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
-    let ae', codeT1 = compile_decs env ae decs captured in
+    let ae', codeW1 = compile_decs env ae decs captured in
     let (sr, code2) = compile_exp env ae' exp in
-    (sr, codeT1 (G.dw_statement exp.at ^^ code2))
+    (sr, codeW1 (G.dw_statement exp.at ^^ code2))
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -7427,9 +7440,9 @@ and compile_exp_as env ae sr_out e =
     (* Some optimizations for certain sr_out and expressions *)
     | _ , BlockE (decs, exp) ->
       let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let ae', codeT1 = compile_decs env ae decs captured in
+      let ae', codeW1 = compile_decs env ae decs captured in
       let code2 = compile_exp_as env ae' sr_out exp in
-      codeT1 code2
+      codeW1 code2
     (* Fallback to whatever stackrep compile_exp chooses *)
     | _ ->
       let sr_in, code = compile_exp env ae e in
@@ -7674,10 +7687,10 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code, dw)
 
-and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G.t) =
+and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae wk ->
-         G.with_region dec.at (mk_code ae) ^^ wrap wk)) @@
+       (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
+         G.with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -7687,18 +7700,18 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
     let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) in
-    G.( pre_ae1, nop, (fun ae -> fill env ae; nop), fun wk -> wk)
+    G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
   | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
     let extend, fill = compile_const_dec env pre_ae dec in
-    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), fun wk -> wk)
+    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code, dw) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
       (fun ae -> G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^ fill_code),
-      fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ wk)
+      fun body -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ body)
     )
 
   | VarD (name, _, e) ->
@@ -7710,34 +7723,34 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t -> G
       ( pre_ae1,
         alloc_code,
         (fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
-        fun wk -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ wk)
+        fun body_code -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ body_code)
       )
 
-and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * (G.t -> G.t) =
+and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
-    | []          -> (pre_ae, G.nop, fun _ wk -> wk)
+    | []          -> (pre_ae, G.nop, fun _ -> unmodified)
     | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
-        let (pre_ae1, alloc_code1, mk_codeT1) = compile_dec env pre_ae how v2en dec in
-        let (pre_ae2, alloc_code2, mk_codeT2) = go              pre_ae1 decs in
+        let (pre_ae1, alloc_code1, mk_codeW1) = compile_dec env pre_ae how v2en dec in
+        let (pre_ae2, alloc_code2, mk_codeW2) = go              pre_ae1 decs in
         ( pre_ae2,
           alloc_code1 ^^ alloc_code2,
-          fun ae -> let codeT1 = mk_codeT1 ae in
-                    let codeT2 = mk_codeT2 ae in
-                    fun wk -> codeT1 (codeT2 wk)
+          fun ae -> let codeW1 = mk_codeW1 ae in
+                    let codeW2 = mk_codeW2 ae in
+                    fun body_code -> codeW1 (codeW2 body_code)
         ) in
-  let (ae1, alloc_code, mk_codeT) = go pre_ae decs in
-  (ae1, fun wk -> alloc_code ^^ mk_codeT ae1 wk)
+  let (ae1, alloc_code, mk_codeW) = go pre_ae decs in
+  (ae1, fun body_code -> alloc_code ^^ mk_codeW ae1 body_code)
 
-and compile_decs env ae decs captured_in_body : VarEnv.t * (G.t -> G.t) =
+and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body
 
 and compile_prog env ae (ds, e) =
   let captured = Freevars.captured_vars (Freevars.exp e) in
-  let (ae', codeT1) = compile_decs env ae ds captured in
+  let (ae', codeW1) = compile_decs env ae ds captured in
   let (sr, code2) = compile_exp env ae' e in
-  (ae', codeT1 code2 ^^ StackRep.drop env sr)
+  (ae', codeW1 code2 ^^ StackRep.drop env sr)
 
 (* This compiles expressions determined to be const as per the analysis in
    ir_passes/const.ml. See there for more details.
@@ -7914,7 +7927,7 @@ and main_actor env ae1 ds fs up =
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let ae2, decls_codeT = compile_decs_public env ae1 ds v2en
+  let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
     (Freevars.captured_vars (Freevars.upgrade up))
   in
 
@@ -7927,7 +7940,7 @@ and main_actor env ae1 ds fs up =
   Func.define_built_in env "post_exp" [] [] (fun env ->
     compile_exp_as env ae2 SR.unit up.post);
 
-  decls_codeT G.nop
+  decls_codeW G.nop
 
 and conclude_module env init_fi_o start_fi_o =
 
