@@ -590,11 +590,10 @@ let declare_import lib =
   let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
   { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
 
-let combine_files prelude libs progs : Syntax.prog =
-  (* We do IR-level composition until we have incremental compilation *)
+let combine_files libs progs : Syntax.prog =
+  (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = prelude.it
-         @ List.map declare_import libs
+  { it = List.map declare_import libs
          @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
@@ -602,5 +601,7 @@ let combine_files prelude libs progs : Syntax.prog =
            | _ -> "all"
   }
 
-let transform_graph prelude libraries progs =
-  prog (combine_files prelude libraries progs)
+let transform p = prog p
+
+let transform_graph libraries progs =
+  prog (combine_files libraries progs)
