@@ -3450,14 +3450,14 @@ module Dfinity = struct
   (* Actor reference on the stack *)
   let actor_public_field env name =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       (* simply tuple canister name and function name *)
       Blob.lit env name ^^
       Tuple.from_stack env 2
     | Flags.WasmMode ->
-      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
+      E.trap_with env (Printf.sprintf "cannot access actor with -no-system-api")
     | Flags.WASIMode ->
-      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
+      E.trap_with env (Printf.sprintf "cannot access actor with -wasi-system-api")
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
