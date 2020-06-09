@@ -260,6 +260,12 @@ and block lvl env (ds, body) =
   let exp_const = exp lvl env' body in
   all [decs_const; exp_const]
 
-let analyze ((b, _flavor) : prog) =
-  let env = M.empty in
-  ignore (block TopLvl env b)
+and comp_unit = function
+  | ProgU exp -> exp_ TopLvl M.empty exp
+  | ActorU (ds, fs, {pre; post}, typ) ->
+    let (env', _) = decs TopLvl M.empty ds in
+    exp_ TopLvl env' pre;
+    exp_ TopLvl env' post
+
+let analyze ((cu, _flavor) : prog) =
+  ignore (comp_unit cu)

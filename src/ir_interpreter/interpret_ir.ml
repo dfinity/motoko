@@ -19,11 +19,7 @@ type reply_env = V.value V.cont option
 type reject_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
-type state = actor_env
-
 let initial_state () = ref V.Env.empty
-
-type scope = val_env
 
 type flags = {
   trace : bool;
@@ -44,8 +40,6 @@ type env =
     self : V.actor_id;
     actor_env : actor_env;
   }
-
-let adjoin_scope s ve = V.Env.adjoin s ve
 
 let adjoin_vals c ve = {c with vals = V.Env.adjoin c.vals ve}
 
@@ -850,15 +844,19 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog flags state scope ((ds, exp), flavor) : scope =
+and interpret_comp_unit env cu k = match cu with
+  | ProgU exp -> interpret_exp env exp k
+  | ActorU _ -> assert false (* TODO *)
+
+let interpret_prog flags (cu, flavor) =
+  let state = initial_state () in
+  let scope = empty_scope in
   let env = env_of_scope flags flavor state scope in
   trace_depth := 0;
-  let ve = ref V.Env.empty in
   try
     Scheduler.queue (fun () ->
-      try interpret_block env (Some ve) ds exp  (fun v -> ())
+      try interpret_comp_unit env cu  (fun v -> ())
       with Invalid_argument s -> trap !last_region "%s" s
     );
-    Scheduler.run ();
-    !ve
-  with exn -> print_exn flags exn; !ve
+    Scheduler.run ()
+  with exn -> print_exn flags exn

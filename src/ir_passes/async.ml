@@ -434,10 +434,10 @@ let transform mode prog =
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
   and t_comp_unit = function
-    | ProgU exp -> ProgU t_exp
+    | ProgU exp -> ProgU (t_exp exp)
     | ActorU (ds, fs, {pre; post}, t) ->
-      ActorU (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ typ)
+      ActorU (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ t)
 
-  and t_prog (cu, flavor) = (t_block prog, { flavor with has_async_typ = false } )
+  and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in
   t_prog prog

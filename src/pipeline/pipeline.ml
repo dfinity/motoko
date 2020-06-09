@@ -619,9 +619,7 @@ let interpret_ir_prog libs progs =
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  let interpreter_state = initial_state () in
-  let _ = interpret_prog flags interpreter_state empty_scope prog_ir in
-  ()
+  interpret_prog flags prog_ir
 
 let interpret_ir_files files =
   Option.map
