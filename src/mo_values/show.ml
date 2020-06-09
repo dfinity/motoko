@@ -55,6 +55,7 @@ let rec show_val t v =
   | T.(Prim Float), Value.Float i -> Value.Float.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
   | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"
+  | T.(Prim Principal), Value.Text s -> Ic.Url.encode_ic_url s
   | T.(Prim Null), Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
   | T.Opt t', Value.Opt v -> "?" ^ parens (show_val t' v)

@@ -187,8 +187,9 @@ struct
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
 
+  (* TODO: remove and use List.concat_map from OCaml 4.10 *)
   let concat_map f xs =
-    List.concat (List.map f xs)
+    List.(concat (map f xs))
 
   let rec table n f = table' n f []
   and table' n f xs =

@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "abdf4a17760e481fcc95ae62b20a38672fb9c4b5",
+        "rev": "f2c7184973a5bd3d4dacfb0c1245d07ef8e39139",
         "type": "git"
     },
     "dfinity": {
