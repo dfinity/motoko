@@ -217,7 +217,7 @@ module E = struct
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
-    | Declared of (int32 * (func_with_names -> unit))
+    | Declared of int32 * (func_with_names -> unit)
     | Defined of int32
     | Pending of (unit -> func_with_names)
   type t = {
@@ -5326,7 +5326,7 @@ module VarEnv = struct
     (* A Wasm Local of the current function, that points to memory location,
        with an offset (in words) to value.
        Used for mutable captured data *)
-    | HeapInd of (int32 * int32)
+    | HeapInd of int32 * int32
     (* A static mutable memory location (static address of a MutBox field) *)
     (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
@@ -5488,7 +5488,7 @@ module Var = struct
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let (ae2, j) = VarEnv.add_direct_local new_env ae1 var in
+        let ae2, j = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
@@ -5687,7 +5687,7 @@ module FuncDec = struct
      add them to the closure table, and returns the two callbacks expected by
      call_simple.
 
-     The tupling is necesary because we want to free _both_ closures when
+     The tupling is necessary because we want to free _both_ closures when
      one is called.
 
      The reply callback function exists once per type (it has to do
@@ -6722,6 +6722,14 @@ let compile_relop env t op =
 let compile_load_field env typ name =
   Object.load_idx env typ name
 
+
+(* type for wrapping code with context, context is establishment
+   of (pattern) binding, argument is the code using the binding,
+   result is e.g. the code for `case p e`. *)
+type scope_wrap = G.t -> G.t
+
+let unmodified : scope_wrap = fun code -> code
+
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) ae lexp =
@@ -6799,7 +6807,6 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Operators *)
-
     | UnPrim (_, Operator.PosOp), [e1] -> compile_exp env ae e1
     | UnPrim (t, op), [e1] ->
       let sr_in, sr_out, code = compile_unop env t op in
@@ -6817,8 +6824,8 @@ and compile_exp (env : E.t) ae exp =
       SR.bool,
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
-
       code
+
     (* Tuples *)
     | TupPrim, es ->
       SR.UnboxedTuple (List.length es),
@@ -7015,7 +7022,7 @@ and compile_exp (env : E.t) ae exp =
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
 
-    (* Other prims, unary*)
+    (* Other prims, unary *)
 
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
@@ -7309,9 +7316,9 @@ and compile_exp (env : E.t) ae exp =
       (code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
-    let (ae', code1) = compile_decs env ae decs captured in
+    let ae', codeW1 = compile_decs env ae decs captured in
     let (sr, code2) = compile_exp env ae' exp in
-    (sr, code1 ^^ code2)
+    (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -7410,9 +7417,9 @@ and compile_exp_as env ae sr_out e =
     (* Some optimizations for certain sr_out and expressions *)
     | _ , BlockE (decs, exp) ->
       let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let (ae', code1) = compile_decs env ae decs captured in
+      let ae', codeW1 = compile_decs env ae decs captured in
       let code2 = compile_exp_as env ae' sr_out exp in
-      code1 ^^ code2
+      codeW1 code2
     (* Fallback to whatever stackrep compile_exp chooses *)
     | _ ->
       let sr_in, code = compile_exp env ae e in
@@ -7653,10 +7660,10 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code)
 
-and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
-  (fun (pre_ae,alloc_code,mk_code) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae ->
-         G.with_region dec.at (mk_code ae))) @@
+and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
+  (fun (pre_ae, alloc_code, mk_code, wrap) ->
+       (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
+         G.with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -7666,56 +7673,57 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
     let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) in
-    ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+    G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
   | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
-    let (extend, fill) = compile_const_dec env pre_ae dec in
-    ( extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
+    let extend, fill = compile_const_dec env pre_ae dec in
+    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
-    ( pre_ae1, alloc_code, fun ae ->
-      compile_exp_as_opt env ae pat_arity e ^^
-      fill_code
+    ( pre_ae1, alloc_code,
+      (fun ae -> compile_exp_as_opt env ae pat_arity e ^^ fill_code),
+      unmodified
     )
+
   | VarD (name, _, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut | StoreHeap | StoreStatic) -> true
                      | _ -> false);
       let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
-      ( pre_ae1, alloc_code, fun ae ->
-        compile_exp_vanilla env ae e ^^
-        Var.set_val env ae name
+      ( pre_ae1,
+        alloc_code,
+        (fun ae -> compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
+        unmodified
       )
 
-and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * G.t =
+and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
-  let rec go pre_ae decs = match decs with
-    | []          -> (pre_ae, G.nop, fun _ -> G.nop)
+  let rec go pre_ae = function
+    | []          -> (pre_ae, G.nop, fun _ -> unmodified)
     | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
-        let (pre_ae1, alloc_code1, mk_code1) = compile_dec env pre_ae how v2en dec in
-        let (pre_ae2, alloc_code2, mk_code2) = go              pre_ae1 decs in
+        let (pre_ae1, alloc_code1, mk_codeW1) = compile_dec env pre_ae how v2en dec in
+        let (pre_ae2, alloc_code2, mk_codeW2) = go              pre_ae1 decs in
         ( pre_ae2,
           alloc_code1 ^^ alloc_code2,
-          fun ae -> let code1 = mk_code1 ae in
-                    let code2 = mk_code2 ae in
-                    code1 ^^ code2
+          fun ae -> let codeW1 = mk_codeW1 ae in
+                    let codeW2 = mk_codeW2 ae in
+                    fun body_code -> codeW1 (codeW2 body_code)
         ) in
-  let (ae1, alloc_code, mk_code) = go pre_ae decs in
-  let code = mk_code ae1 in
-  (ae1, alloc_code ^^ code)
+  let (ae1, alloc_code, mk_codeW) = go pre_ae decs in
+  (ae1, fun body_code -> alloc_code ^^ mk_codeW ae1 body_code)
 
-and compile_decs env ae decs captured_in_body : VarEnv.t * G.t =
+and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body
 
 and compile_prog env ae (ds, e) =
   let captured = Freevars.captured_vars (Freevars.exp e) in
-  let (ae', code1) = compile_decs env ae ds captured in
+  let (ae', codeW1) = compile_decs env ae ds captured in
   let (sr, code2) = compile_exp env ae' e in
-  (ae', code1 ^^ code2 ^^ StackRep.drop env sr)
+  (ae', codeW1 code2 ^^ StackRep.drop env sr)
 
 (* This compiles expressions determined to be const as per the analysis in
    ir_passes/const.ml. See there for more details.
@@ -7782,7 +7790,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
-  let rec go pre_ae decs = match decs with
+  let rec go pre_ae = function
     | []          -> (fun ae -> ae), (fun _ _ -> ())
     | [dec]       -> compile_const_dec env pre_ae dec
     | (dec::decs) ->
@@ -7889,7 +7897,7 @@ and main_actor env ae1 ds fs up =
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae2, decls_code) = compile_decs_public env ae1 ds v2en
+  let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
     (Freevars.captured_vars (Freevars.upgrade up))
   in
 
@@ -7902,7 +7910,7 @@ and main_actor env ae1 ds fs up =
   Func.define_built_in env "post_exp" [] [] (fun env ->
     compile_exp_as env ae2 SR.unit up.post);
 
-  decls_code
+  decls_codeW G.nop
 
 and conclude_module env init_fi_o start_fi_o =
 
