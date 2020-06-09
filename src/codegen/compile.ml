@@ -6761,8 +6761,8 @@ let rec compile_lexp (env : E.t) ae lexp =
 
 and compile_exp (env : E.t) ae exp =
   let opportunity = function
-  | VarE _ | LitE _ -> G.nop
-  | _ -> G.dw_statement exp.at in
+    | VarE _ | LitE _ -> G.nop (* trivially evaluated things don't warrant a debugger stop *)
+    | _ -> G.dw_statement exp.at in
 
   (fun (sr,code) -> (sr, opportunity exp.it ^^ G.with_region exp.at code)) @@
   if exp.note.Note.const
