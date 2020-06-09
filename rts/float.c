@@ -45,4 +45,9 @@ export double float_arctan(double a) {
   return atan(a);
 }
 
+export double float_arctan2(double y, double x) {
+  extern double atan2(double, double);
+  return atan2(y, x);
+}
+
 #endif
