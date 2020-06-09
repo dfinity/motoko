@@ -4,6 +4,18 @@
 
 Pattern matching is a way to deal with data that is inverse of the well known _construction from smaller parts_: it takes apart structured data and brings into scope its parts by binding them to the given names. Syntactically the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` (as well as `var`) declarations.
 
+Let's observe the following function call:
+```
+let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
+```
+We see that an object with three fields is being built, then passed to the function `fullName`, and the returned result is being captured and brought into scope by the binding as `name`. The latter step is refered to as pattern matching, and `name : Text` is a pattern. When we consider the callee, we'll encounter something like
+```
+func fullName({ first : Text; mid : Text; last : Text }) : Text {
+  ...
+};
+```
+The input is an (anonymous) object, which is deconstructed and its three `Text` fields are bound to the identifiers `first`, `mid` and `last` which all have type `Text`. They can be freely used in the block that forms the body of the function.
+
 Errors and optional results that are discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results] represent two specific types of pattern matching.
 However, there are many other ways you can use pattern matching in {proglang} programs.
 This section highlights other examples of pattern matching.
@@ -12,6 +24,9 @@ This section highlights other examples of pattern matching.
  - point: null-pointer errors are a special case of non-exhaustive pattern match
  - the {proglang} type checker statically enforces exhaustive pattern matches for all optional types (and variants); hence, null-pointer errors are ruled out statically, and are impossible dynamically.
  
+ 
+ 
+ ------------------------
  * trivial patterns
  * type-annotated patterns
  * literal patterns
