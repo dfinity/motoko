@@ -52,10 +52,10 @@ assert (Prim.sin(fortyFiveDegrees) / Prim.cos(fortyFiveDegrees) == Prim.tan(fort
 
 let someRandomAngle = 0.42;
 assert Prim.arcsin(Prim.sin(someRandomAngle)) == someRandomAngle;
-//assert Prim.arccos(Prim.cos(someRandomAngle)) == someRandomAngle;
+assert Prim.floatAbs(Prim.arccos(Prim.cos(someRandomAngle)) - someRandomAngle) < 0.00000000000000006;
 assert Prim.arctan(Prim.tan(someRandomAngle)) == someRandomAngle;
 
-//assert Prim.arcsin(Prim.floatSqrt(2) / 2) == fortyFiveDegrees;
+assert Prim.floatAbs(Prim.arcsin(Prim.floatSqrt(2) / 2) - fortyFiveDegrees) < 0.0000000000000002;
 assert Prim.arcsin(1.0) == ninetyDegrees;
 
 assert Prim.arccos(Prim.floatSqrt(2) / 2) == fortyFiveDegrees;
