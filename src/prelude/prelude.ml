@@ -456,6 +456,10 @@ let floatToText = @text_of_Float;
 
 func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
 func cos(f : Float) : Float = (prim "fcos" : Float -> Float) f;
+func tan(f : Float) : Float = (prim "ftan" : Float -> Float) f;
+func arcsin(f : Float) : Float = (prim "fasin" : Float -> Float) f;
+func arccos(f : Float) : Float = (prim "facos" : Float -> Float) f;
+func arctan(f : Float) : Float = (prim "fatan" : Float -> Float) f;
 
 // Array utilities
 

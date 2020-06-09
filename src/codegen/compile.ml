@@ -787,6 +787,10 @@ module RTS = struct
     E.add_func_import env "rts" "float_pow" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_sin" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_cos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_tan" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_arcsin" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_arccos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_arctan" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type] [I32Type];
     ()
 
@@ -7115,6 +7119,26 @@ and compile_exp (env : E.t) ae exp =
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_cos"
+
+    | OtherPrim "ftan", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_tan"
+
+    | OtherPrim "fasin", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_arcsin"
+
+    | OtherPrim "facos", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_arccos"
+
+    | OtherPrim "fatan", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_arctan"
 
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
