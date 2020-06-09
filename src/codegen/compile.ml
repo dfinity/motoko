@@ -7708,8 +7708,8 @@ and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope
                     let codeW2 = mk_codeW2 ae in
                     fun body_code -> codeW1 (codeW2 body_code)
         ) in
-  let (ae1, alloc_code, mk_codeT) = go pre_ae decs in
-  (ae1, fun body_code -> alloc_code ^^ mk_codeT ae1 body_code)
+  let (ae1, alloc_code, mk_codeW) = go pre_ae decs in
+  (ae1, fun body_code -> alloc_code ^^ mk_codeW ae1 body_code)
 
 and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body
@@ -7892,7 +7892,7 @@ and main_actor env ae1 ds fs up =
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let ae2, decls_codeT = compile_decs_public env ae1 ds v2en
+  let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
     (Freevars.captured_vars (Freevars.upgrade up))
   in
 
@@ -7905,7 +7905,7 @@ and main_actor env ae1 ds fs up =
   Func.define_built_in env "post_exp" [] [] (fun env ->
     compile_exp_as env ae2 SR.unit up.post);
 
-  decls_codeT G.nop
+  decls_codeW G.nop
 
 and conclude_module env init_fi_o start_fi_o =
 
