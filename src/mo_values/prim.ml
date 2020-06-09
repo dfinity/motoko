@@ -222,6 +222,10 @@ let prim =
   | "Float->Text" -> fun _ v k -> k (Text (Float.to_string (as_float v)))
   | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
   | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)
+  | "ftan" -> fun _ v k -> k (via_float Stdlib.tan v)
+  | "fasin" -> fun _ v k -> k (via_float Stdlib.asin v)
+  | "facos" -> fun _ v k -> k (via_float Stdlib.acos v)
+  | "fatan" -> fun _ v k -> k (via_float Stdlib.atan v)
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->

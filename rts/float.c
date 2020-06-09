@@ -25,4 +25,24 @@ export double float_cos(double a) {
   return cos(a);
 }
 
+export double float_tan(double a) {
+  extern double tan(double);
+  return tan(a);
+}
+
+export double float_arcsin(double a) {
+  extern double asin(double);
+  return asin(a);
+}
+
+export double float_arccos(double a) {
+  extern double acos(double);
+  return acos(a);
+}
+
+export double float_arctan(double a) {
+  extern double atan(double);
+  return atan(a);
+}
+
 #endif

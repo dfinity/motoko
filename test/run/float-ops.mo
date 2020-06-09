@@ -46,6 +46,10 @@ assert (Prim.sin(pi / 2.0) == 1.0);
 assert (Prim.cos(0.0) == 1.0);
 assert (Prim.cos(pi) == -1.0);
 
+let fortyFiveDegrees = (pi / 4.0);
+assert (Prim.sin(fortyFiveDegrees) / Prim.cos(fortyFiveDegrees) == Prim.tan(fortyFiveDegrees));
+
+
 // Conversions
 assert (Prim.floatToInt64(pi) == (3 : Int64));
 assert (Prim.floatToInt64(-pi) == (-3 : Int64));
