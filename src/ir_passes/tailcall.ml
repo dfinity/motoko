@@ -248,7 +248,13 @@ and block env ds exp =
       mk_ds
   , tailexp env1 exp)
 
-and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)
+and comp_unit env = function
+  | ProgU e -> ProgU (exp env e)
+  | ActorU (ds, fs, u, t)  -> ActorU (ds, fs, u, t) (* TODO(1358): descent into ds  *)
+
+and prog (cu, flavor) =
+  let env = { tail_pos = false; info = None } in
+  (comp_unit env cu, flavor)
 
 (* validation *)
 

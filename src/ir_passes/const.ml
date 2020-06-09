@@ -262,8 +262,8 @@ and block lvl env (ds, body) =
 
 let analyze scope ((b, _flavor) : prog) =
   (*
-  We assume everything in scope is static. Right now, this is only the prelude,
-  which is static. It will blow up in compile if we get this wrong.
+  We assume everything in scope is static.
+  Right now, the scope is always empty (should remove this).
   *)
   let static_info = { loc_known = true; const = surely_true } in
   let env = M.of_seq (Seq.map (fun (v, _typ) -> (v, static_info)) (Type.Env.to_seq scope.Scope.val_env)) in
