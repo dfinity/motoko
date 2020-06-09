@@ -15,7 +15,7 @@ open Mo_values
 open Mo_types
 open Mo_config
 
-open Wasm.Ast
+open Wasm_exts.Ast
 open Wasm.Types
 open Source
 (* Re-shadow Source.(@@), to get Stdlib.(@@) *)
@@ -326,13 +326,13 @@ module E = struct
   let add_global32 (env : t) name mut init =
     add_global env name (
       nr { gtype = GlobalType (I32Type, mut);
-        value = nr (G.to_instr_list (G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 init)))))
+        value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I32 init)))))
       })
 
   let add_global64 (env : t) name mut init =
     add_global env name (
       nr { gtype = GlobalType (I64Type, mut);
-        value = nr (G.to_instr_list (G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 init)))))
+        value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
       })
 
   let get_global (env : t) name : int32 =
@@ -494,8 +494,8 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
-let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
-let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
+let compile_unboxed_const i = G.i (Const (nr (Wasm.Values.I32 i)))
+let compile_const_64 i = G.i (Const (nr (Wasm.Values.I64 i)))
 let compile_unboxed_zero = compile_unboxed_const 0l
 let compile_unboxed_one = compile_unboxed_const 1l
 
@@ -1676,7 +1676,7 @@ module Float = struct
 
   let payload_field = Tagged.header_size
 
-  let compile_unboxed_const f = G.i Wasm.(Ast.Const (nr (Values.F64 f)))
+  let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
   let lit f = compile_unboxed_const (Wasm.F64.of_float f)
   let compile_unboxed_zero = lit 0.0
 
@@ -3371,7 +3371,7 @@ module Dfinity = struct
         get_blob
       )
     | _ ->
-      assert false
+      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
 
   let caller env =
     SR.Vanilla,
@@ -3398,7 +3398,7 @@ module Dfinity = struct
       Blob.as_ptr_len env ^^
       system_call env "ic0" "msg_reject"
     | _ ->
-      assert false
+      E.trap_with env (Printf.sprintf "cannot reject when running locally")
 
   let error_code env =
      Func.share_code0 env "error_code" [I32Type] (fun env ->
@@ -3454,7 +3454,10 @@ module Dfinity = struct
       (* simply tuple canister name and function name *)
       Blob.lit env name ^^
       Tuple.from_stack env 2
-    | Flags.WasmMode | Flags.WASIMode -> assert false
+    | Flags.WasmMode ->
+      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
+    | Flags.WASIMode ->
+      E.trap_with env (Printf.sprintf "cannot access actor with --no-system-api")
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
@@ -5771,7 +5774,8 @@ module FuncDec = struct
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
-    | _ -> assert false
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
@@ -7236,7 +7240,8 @@ and compile_exp (env : E.t) ae exp =
           serialize individually *)
         Serialization.serialize env ts ^^
         Dfinity.reply_with_data env
-      | _ -> assert false
+      | _ ->
+        E.trap_with env (Printf.sprintf "cannot reply when running locally")
       end
 
     | ICRejectPrim, [e] ->

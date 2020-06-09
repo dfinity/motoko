@@ -171,7 +171,7 @@ let encode (em : extended_module) =
     (* Expressions *)
 
     open Wasm.Source
-    open Wasm.Ast
+    open Ast
     open Wasm.Values
 
     let op n = u8 n
