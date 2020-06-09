@@ -192,14 +192,17 @@ let transform mode prog =
       T.Def(t_binds typ_binds, t_typ typ)
 
   and t_con c =
-    match  ConRenaming.find_opt c (!con_renaming) with
-    | Some c' -> c'
-    | None ->
-      let clone = Con.clone c (Abs ([], Pre)) in
-      con_renaming := ConRenaming.add c clone (!con_renaming);
-      (* Need to extend con_renaming before traversing the kind *)
-      Type.set_kind clone (t_kind (Con.kind c));
-      clone
+    match Con.kind c with
+    | T.Def([], T.Prim _) -> c
+    | _ ->
+      match  ConRenaming.find_opt c (!con_renaming) with
+      | Some c' -> c'
+      | None ->
+        let clone = Con.clone c (Abs ([], Pre)) in
+        con_renaming := ConRenaming.add c clone (!con_renaming);
+        (* Need to extend con_renaming before traversing the kind *)
+        Type.set_kind clone (t_kind (Con.kind c));
+        clone
 
   and prim = function
     | CallPrim typs -> CallPrim (List.map t_typ typs)
