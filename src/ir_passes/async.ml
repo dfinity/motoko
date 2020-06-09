@@ -140,12 +140,11 @@ let letSeq ts e d_of_vs =
 
 (* The actual transformation *)
 
-let transform mode env prog =
+let transform mode prog =
 
   (* the state *)
-  let con_renaming = ref
-     (Type.ConSet.fold (fun c env -> ConRenaming.add c c env)
-       env.Scope.con_env ConRenaming.empty)
+  let con_renaming = ref ConRenaming.empty
+
   (* maps constructors to new constructors (name name, new stamp, new kind)
      it is initialized with the type constructors defined outside here, which are
      not rewritten.

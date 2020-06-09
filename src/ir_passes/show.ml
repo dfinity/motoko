@@ -334,7 +334,7 @@ and t_prog env (prog, flavor) = (t_block env prog, flavor)
 
 (* Entry point for the program transformation *)
 
-let transform scope prog =
+let transform prog =
   let env = empty_env () in
   (* Find all parameters to show in the program *)
   let prog = t_prog env prog in
