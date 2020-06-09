@@ -506,7 +506,7 @@ and define_pat patenv pat : dec list =
     []
 
 and define_pats patenv (pats : pat list) : dec list =
-  List.concat (List.map (define_pat patenv) pats)
+  Lib.List.concat_map (define_pat patenv) pats
 
 and t_prog (prog, flavor) =
   (t_block LabelEnv.empty prog, { flavor with has_await = false })

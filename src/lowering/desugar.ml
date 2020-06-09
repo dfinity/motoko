@@ -595,7 +595,7 @@ let combine_files prelude libs progs : Syntax.prog =
   let open Source in
   { it = prelude.it
          @ List.map declare_import libs
-         @ List.concat (List.map (fun p -> p.it) progs)
+         @ Lib.List.concat_map (fun p -> p.it) progs
   ; at = no_region
   ; note = match progs with
            | [prog] -> prog.Source.note
