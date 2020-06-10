@@ -527,12 +527,12 @@ let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
 
-let desugar imports progs name =
+let desugar imports prog name =
   phase "Desugaring" name;
   let open Lowering.Desugar in
   let prog_ir' : Ir.prog = link_declarations
     (transform_prelude prelude @ imports)
-    (transform_prog progs) in
+    (transform_prog prog) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
