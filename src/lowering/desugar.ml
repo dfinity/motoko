@@ -574,7 +574,6 @@ and comp_unit ds : Ir.comp_unit =
   let open Ir in
 
   let find_last_expr (ds,e) =
-
     let find_last_actor = function
       | ds1, {it = ActorE (ds2, fs, up, t); _} ->
         (* NB: capture! *)
@@ -584,7 +583,6 @@ and comp_unit ds : Ir.comp_unit =
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
-    if ds = [] then ProgU [expD e] else
     match Lib.List.split_last ds, e with
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
       find_last_actor (ds1', e')
@@ -595,6 +593,7 @@ and comp_unit ds : Ir.comp_unit =
 
   (* find the last actor. This hack can hopefully go away
      after Claudios improvements to the source *)
+  if ds = [] then ProgU [] else
   find_last_expr (block false ds)
 
 let transform_prog (p : Syntax.prog) : Ir.prog  =
