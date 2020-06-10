@@ -231,6 +231,8 @@ let prim =
     (match Value.as_tup v with
      | [y; x] -> k (via_float2 Stdlib.atan2 y x)
      | _ -> assert false)
+  | "fexp" -> fun _ v k -> k (via_float Stdlib.exp v)
+  | "flog" -> fun _ v k -> k (via_float Stdlib.log v)
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
