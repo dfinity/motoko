@@ -460,6 +460,7 @@ func tan(f : Float) : Float = (prim "ftan" : Float -> Float) f;
 func arcsin(f : Float) : Float = (prim "fasin" : Float -> Float) f;
 func arccos(f : Float) : Float = (prim "facos" : Float -> Float) f;
 func arctan(f : Float) : Float = (prim "fatan" : Float -> Float) f;
+func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> Float) (y, x);
 
 // Array utilities
 
