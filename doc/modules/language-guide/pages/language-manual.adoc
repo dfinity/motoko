@@ -21,7 +21,7 @@
 * [X] Explain dot keys, dot vals and iterators
 * [X] Debug expressions
 * [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
-* [ ] Update ErrorCode section
+* [X] Update ErrorCode section
 * [ ] Re-section so headings appear in content outline
 ////
 
