@@ -96,7 +96,7 @@ let rec exp msgs e : f = match e.it with
       delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _ | ActorUrlE _
-  | PrimE _ | ImportE _ -> M.empty
+  | PrimE _ -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
@@ -211,14 +211,41 @@ and group msgs (grp : group) : f =
   M.disjoint_union (map_of_set Eager e) (map_of_set Delayed d) |>
     M.filter (fun v _ -> M.mem v defWhen = false)
 
-let check_prog prog =
+let import msgs imp =
+  let (id,_,_) = imp.it in
+  (M.empty, S.singleton id.it)
+
+let rec imports msgs is =
+  match is with
+  | i::is ->  import msgs i ++++ imports msgs is
+  | [] -> (M.empty, S.empty)
+
+let comp msgs cu =
+  match cu.it with
+  | ExpU e -> (exp msgs e, S.empty)
+  | ActorU(i, efs) ->
+    (M.empty, S.singleton i.it) +++ group msgs (exp_fields msgs efs @ class_self cu.at i)
+  | ActorClassU (i, p, t, i', efs) ->
+    (M.empty, S.singleton i.it) +++ delayify (
+      group msgs (exp_fields msgs efs @ class_self cu.at i') /// pat msgs p
+    )
+let check_prog (prog : prog) =
+  let (is, cu) = prog.it in
+  Diag.with_message_store (fun msgs ->
+      ignore (imports msgs is ++++ (comp msgs cu));
+    Some ()
+    )
+
+let check_fragment prog =
   Diag.with_message_store (fun msgs ->
     ignore (group msgs (decs msgs prog.it));
     Some ()
   )
 
 let check_lib lib =
+  let (is, ds) = lib.it in
   Diag.with_message_store (fun msgs ->
-    ignore (exp msgs lib.it);
+    ignore (imports msgs is +++ group msgs (decs msgs ds));
     Some ()
   )
+ 

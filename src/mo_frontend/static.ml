@@ -41,7 +41,7 @@ let rec exp m e = match e.it with
   | ObjE (_, efs) -> fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
-  | (VarE _ | ImportE _) -> ()
+  | (VarE _) -> ()
 
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)
@@ -104,5 +104,7 @@ and triv m p = match p.it with
   (* Everything else is forbidden *)
   | _ -> pat_err m p.at
 
+(*
 let prog p =
   Diag.with_message_store (fun m -> List.iter (dec m) p.it; Some ())
+ *)
