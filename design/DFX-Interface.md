@@ -32,6 +32,7 @@ the top-level `default.nix`:
 
 * `moc-bin`: contains `bin/moc`
 * `mo-ide`: contains `bin/mo-ide`
+* `mo-doc`: contains `bin/mo-doc`
 * `didc`: contains `bin/didc`
 * `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
 * `base-src`: contains the base library, directly in the top level directory,
@@ -158,3 +159,16 @@ By transitively exploring the dependency graph using this command (and
 resolving URLs appropriately before passing them as files to `moc`), one can
 determine the full set of set of `.mo` files read by the two compilation modes
 described above (to wasm and to IDL).
+
+Generating documentation
+------------------------
+
+In order to generate documentation for a given Motoko package `dfx` invokes
+
+    mo-doc 
+        [ --source source_dir ] 
+        [ --output output_dir ]
+        [ --format html|adoc ]
+
+The default source directory is `src`, the default output is `docs`, and the default format is `html`.
+`mo-doc` will then generate documentation in the output directory mirroring the directory/file structure of the source directory.

@@ -562,7 +562,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   sum(array);
   ```
 
-* The name of functions performing side effects or complex operations should describe that operation (as a verb).
+* The name of functions performing side effects or complex operations should describe that operation (as a verb in imperative form).
 
   ```
   dict.clear();
@@ -570,7 +570,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   let result = traverse(graph);
   ```
 
-* The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar name.
+* The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar description of the tested property (as a verb in indicative form).
 
   ```
   class Set<X>() {
@@ -761,6 +761,12 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
   Rationale: This expresses named paremeters. This way, arguments can be freely reordered at the call site and callers are prevented from accidentally passing them in the wrong order.
 
+* Higher-order functions (functions that take a callback argument) should put the function parameter last.
+
+  Rationale:
+  Makes call sites more readable.
+  And in the absence of currying there is no point in putting the function first, like you often would in functional languages.
+
 * Do not use sentinel values, such as `-1`, to represent invalid values.
   Use the option type instead.
 
@@ -835,15 +841,57 @@ To increase readability and uniformity of Motoko source code, this guide provide
   ```
 
 
-### Objects, Classes, Modules
+### Objects and Records
 
 * Use the short-hand object syntax `{x1 = e1; ... ; xN = eN}` when using objects as simple _records_, i.e., data structures with no private state and no methods.
 
 * Use `object` when creating singleton objects.
 
+* Limit the use of objects to records where possible.
+
+  Rationale:
+  Only records can be sent as message parameters or results and can be stored in stable variables. Objects with methods are also more expensive to create and represent in memory.
+
+* Use full objects only as a means for encapsulating state or behaviour.
+
+
+### Classes
+
 * Use `class` to create multiple objects of the same shape.
 
+* Name classes after their conceptual _functionality_, not their _implementation_,
+  except when having to distinguish multiple different implementations of the same concept (e.g., `OrderedMap` vs `HashMap`).
+
+* Classes are both type definitions and factory functions for objects.
+  Do not use classes unless both these roles are intended;
+  use plain type aliases or functions returning an object in other cases.
+
+* Do not overuse classes.
+  Use a module defining a plain type and functions on it where appropriate.
+  Use classes only as a means for encapsulating state or behaviour.
+
+  Rationale:
+  Objects with methods have disadvantages over simple record types with separate functions (see above).
+
+* If values of a class are meant to be sendable (shared), the class needs to provide a pair of `share`/`unshare` methods that convert to/from a sharable representation, e.g., as a record.
+
+  Note:
+  For immutable classes it may seem more natural to make `unshare` a kind of static function.
+  However, even for immutable ones it may depend on constructor arguments (such as an ordering function), so that the a pattern like `Map(compareInt).unshare(x)` seems appropriate.
+
+* For the time being, avoid overloading classes with too many methods, since that is currently expensive.
+  Restrict to a sufficiently small set of canonical methods and make less essential ones that can be implemented on top of those into functions in the enclosing module.
+
+* Use modules for "static" classes or methods.
+
+
+### Modules
+
 * Use `module` to group definitions (including types) and create a name spae for them.
+
+* Where applicable, name modules after the main type or class they implement or provide functions for.
+
+* Limit each module to a single main concept/type/class or closely entangled family of concepts/types/classes.
 
 
 ### To be extended...

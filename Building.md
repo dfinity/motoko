@@ -42,7 +42,7 @@ You can get a development environment without having to use `nix-shell`
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages:
    ```
-   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm obelisk
    ```
  * Install into your `PATH` various command line tools used by, in particular,
    the test suite:
@@ -74,7 +74,7 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    ```
 2. Run `moc` as normal, e.g.
    ```
-   ./src/moc -c foo.mo -o foo.wasm
+   ./src/moc -g -c foo.mo -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using

@@ -54,6 +54,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
     pkgs.ocamlPackages.wasm
@@ -65,6 +66,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
+    pkgs.ocamlPackages.obelisk
   ]; in
 
 let darwin_standalone =
@@ -143,6 +145,7 @@ rec {
   moc-bin = ocaml_exe "moc-bin" "moc";
   mo-ld = ocaml_exe "mo-ld" "mo-ld";
   mo-ide = ocaml_exe "mo-ide" "mo-ide";
+  mo-doc = ocaml_exe "mo-doc" "mo-doc";
   didc = ocaml_exe "didc" "didc";
   deser = ocaml_exe "deser" "deser";
 
@@ -334,19 +337,10 @@ rec {
   wasmtime = nixpkgs.wasmtime;
   wasm = nixpkgs.wasm;
 
-  users-guide = stdenv.mkDerivation {
-    name = "users-guide";
-    src = subpath ./guide;
-    buildInputs =
-      with nixpkgs;
-      let tex = texlive.combine {
-        inherit (texlive) scheme-small xetex newunicodechar;
-      }; in
-      [ pandoc tex bash ];
-
-    NIX_FONTCONFIG_FILE =
-      with nixpkgs;
-      nixpkgs.makeFontsConf { fontDirectories = [ gyre-fonts inconsolata unifont lmodern lmmath ]; };
+  overview-slides = stdenv.mkDerivation {
+    name = "overview-slides";
+    src = subpath ./doc;
+    buildInputs = [ nixpkgs.pandoc nixpkgs.bash ];
 
     buildPhase = ''
       patchShebangs .
@@ -355,10 +349,9 @@ rec {
 
     installPhase = ''
       mkdir -p $out
-      mv * $out/
-      rm $out/Makefile
+      mv overview-slides.html $out/
       mkdir -p $out/nix-support
-      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -370,7 +363,7 @@ rec {
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
     checkPhase = ''
-      ocamlformat --check languageServer/*.{ml,mli}
+      ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
     '';
   };
 
@@ -400,6 +393,24 @@ rec {
     '';
   };
 
+  base-doc = stdenv.mkDerivation {
+    name = "base-doc";
+    src = nixpkgs.sources.motoko-base;
+    phases = "unpackPhase buildPhase installPhase";
+    doCheck = true;
+    buildInputs = [ mo-doc ];
+    buildPhase = ''
+      mo-doc
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp -rv docs/* $out/
+
+      mkdir -p $out/nix-support
+      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
       expected = import ./nix/generate.nix { pkgs = nixpkgs; };
@@ -409,11 +420,31 @@ rec {
       touch $out
     '';
 
+  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  check-grammar = stdenv.mkDerivation {
+      name = "check-grammar";
+      src = subpath ./src/gen-grammar;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+      buildPhase = ''
+        patchShebangs .
+        ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
+        echo "If the following fails, please run:"
+        echo "nix-shell --command 'make -C src grammar'"
+        diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+        echo "ok, all good"
+      '';
+      installPhase = ''
+        touch $out
+      '';
+    };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
       moc
       mo-ide
+      mo-doc
       js
       didc
       deser
@@ -421,11 +452,13 @@ rec {
       rts
       base-src
       base-tests
-      users-guide
+      base-doc
+      overview-slides
       ic-ref
       shell
       check-formatting
       check-generated
+      check-grammar
     ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
   };
 
@@ -443,7 +476,7 @@ rec {
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.buildInputs ++
-        users-guide.buildInputs ++
+        overview-slides.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
@@ -453,7 +486,6 @@ rec {
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
-    NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
     # allow building this as a derivation, so that hydra builds and caches

@@ -14,3 +14,4 @@
 //** xref:advanced-discussion.adoc[Advanced discussion topics]
 ** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]
+** xref:motoko-grammar.adoc[Motoko grammar]

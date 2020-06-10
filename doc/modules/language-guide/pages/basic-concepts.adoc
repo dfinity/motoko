@@ -446,7 +446,7 @@ The result will _always_ type check at compile time, and _will always_ trap at r
 
 === Document longer-term holes
 
-By convention, longer-term holes can be considered "yet not implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
+By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
 
 ....
 P.nyi()

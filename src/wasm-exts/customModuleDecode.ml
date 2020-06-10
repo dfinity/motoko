@@ -6,10 +6,18 @@ The changes are:
  * Support for additional custom sections
 
 The code is otherwise as untouched as possible, so that we can relatively
-easily apply diffs froim the original code (possibly manually).
+easily apply diffs from the original code (possibly manually).
 *)
 
-open Wasm
+module Error = Wasm.Error
+module Source = Wasm.Source
+module I32 = Wasm.I32
+module I64 = Wasm.I64
+module F32 = Wasm.F32
+module F64 = Wasm.F64
+module I32_convert = Wasm.I32_convert
+module I64_convert = Wasm.I64_convert
+module Utf8 = Wasm.Utf8
 open CustomModule
 
 (* Decoding stream *)
@@ -144,7 +152,7 @@ let sized f s =
 
 (* Types *)
 
-open Types
+open Wasm.Types
 
 let value_type s =
   match vs7 s with
@@ -747,7 +755,7 @@ let module_ s =
   let magic = u32 s in
   require (magic = 0x6d736100l) s 0 "magic header not detected";
   let version = u32 s in
-  require (version = Encode.version) s 4 "unknown binary version";
+  require (version = Wasm.Encode.version) s 4 "unknown binary version";
   let dylink = dylink_section s in
   iterate skip_custom_section s;
   let types = type_section s in

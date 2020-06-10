@@ -137,5 +137,9 @@ and dec d = match d.it with
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]
 
+and comp_unit = function
+  | ProgU ds -> "ProgU" $$ List.map dec ds
+  | ActorU (ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
 
-and prog ((ds, e), _flavor)= "BlockE"  $$ List.map dec ds @ [ exp e ]
+and prog (cu, _flavor) = comp_unit cu
+
