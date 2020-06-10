@@ -583,6 +583,7 @@ and comp_unit ds : Ir.comp_unit =
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
+    if ds = [] then ProgU [expD e] else
     match Lib.List.split_last ds, e with
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
       find_last_actor (ds1', e')
