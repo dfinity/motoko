@@ -597,37 +597,31 @@ and comp_unit ds : Ir.comp_unit =
      after Claudios improvements to the source *)
   find_last_expr (block false ds)
 
-and prog (p : Syntax.prog) : Ir.prog =
-  begin match p.it with
-    | [] -> Ir.ProgU []
-    | _ -> comp_unit p.it
-  end
+let transform_prog (p : Syntax.prog) : Ir.prog  =
+  comp_unit p.it
   , { I.has_await = true
     ; I.has_async_typ = true
     ; I.has_show = true
     ; I.serialized = false
     }
 
+type import_declaration = Ir.dec list
 
-let declare_import lib =
+let transform_lib lib : import_declaration =
+  (* TODO: simplify (don’t go through Syntax) *)
   let open Source in
   let f = lib.note in
   let t = lib.it.note.Syntax.note_typ in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
-  { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
+  let d = { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note } in
+  [dec d]
 
-let combine_files prelude libs progs : Syntax.prog =
-  (* We do IR-level composition until we have incremental compilation *)
-  let open Source in
-  { it = prelude.it
-         @ List.map declare_import libs
-         @ Lib.List.concat_map (fun p -> p.it) progs
-  ; at = no_region
-  ; note = match progs with
-           | [prog] -> prog.Source.note
-           | _ -> "all"
-  }
+let transform_prelude prelude : import_declaration =
+  decs (prelude.it)
 
-let transform_graph prelude libraries progs =
-  prog (combine_files prelude libraries progs)
+let link_declarations imports (cu, flavor) =
+  let cu' = match cu with
+    | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
+    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
+  in cu', flavor

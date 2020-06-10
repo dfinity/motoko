@@ -527,9 +527,12 @@ let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
 
-let desugar libs progs name =
+let desugar imports progs name =
   phase "Desugaring" name;
-  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph prelude libs progs in
+  let open Lowering.Desugar in
+  let prog_ir' : Ir.prog = link_declarations
+    (transform_prelude prelude @ imports)
+    (transform_prog progs) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
@@ -593,9 +596,19 @@ let lower_prog mode libs progs name =
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
+let compile_classes mode libs : Lowering.Desugar.import_declaration =
+  let rec go imports = function
+    | [] -> imports
+    | l :: libs ->
+      (* where we would compile classes to wasm *)
+      go (imports @ Lowering.Desugar.transform_lib l) libs
+  in go [] libs
+
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
+  let prog = match progs with [prog] -> prog | _ -> assert false in
   let name = name_progs progs in
-  let prog_ir = lower_prog mode libs progs name in
+  let imports = compile_classes mode libs in
+  let prog_ir = lower_prog mode imports prog name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prog_ir
@@ -613,9 +626,14 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
+let dont_compile_classes libs : Lowering.Desugar.import_declaration =
+  Lib.List.concat_map (fun l -> Lowering.Desugar.transform_lib l) libs
+
 let interpret_ir_prog libs progs =
+  let prog = match progs with [prog] -> prog | _ -> assert false in
   let name = name_progs progs in
-  let prog_ir = lower_prog (!Flags.compile_mode) libs progs name in
+  let libs' = dont_compile_classes libs in
+  let prog_ir = lower_prog (!Flags.compile_mode) libs' prog name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
