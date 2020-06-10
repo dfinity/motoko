@@ -97,7 +97,7 @@ CLANG_FLAGS = \
 WASM_FLAGS = \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
-   --optimize=2 \
+   --optimize=s \
 
 #
 # Build targets
