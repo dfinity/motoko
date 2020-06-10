@@ -404,7 +404,7 @@ let load_progs parsefn files senv : load_result =
   Diag.bind (Diag.traverse parsefn files) (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
-  let libs = List.concat (List.map snd rs) in
+  let libs = Lib.List.concat_map snd rs in
   Diag.bind (chase_imports parsefn senv libs) (fun (libs, senv') ->
   Diag.bind (check_progs senv' progs') (fun senv'' ->
   Diag.return (libs, progs', senv'')
@@ -569,43 +569,43 @@ let run_files_and_stdin files =
 
 (* IR transforms *)
 
-let transform transform_name trans env prog name =
+let transform transform_name trans prog name =
   phase transform_name name;
-  let prog_ir' : Ir.prog = trans env prog in
+  let prog_ir' : Ir.prog = trans prog in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
-  then Check_ir.check_prog !Flags.verbose env transform_name prog_ir';
+  then Check_ir.check_prog !Flags.verbose transform_name prog_ir';
   prog_ir'
 
-let transform_if transform_name trans flag env prog name =
-  if flag then transform transform_name trans env prog name
+let transform_if transform_name trans flag prog name =
+  if flag then transform transform_name trans prog name
   else prog
 
-let desugar env libs progs name =
+let desugar libs progs name =
   phase "Desugaring" name;
   let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph prelude libs progs in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
-  then Check_ir.check_prog !Flags.verbose env "Desugaring" prog_ir';
+  then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
   prog_ir'
 
 let await_lowering =
-  transform_if "Await Lowering" (fun _ -> Await.transform)
+  transform_if "Await Lowering" Await.transform
 
 let async_lowering mode =
   transform_if "Async Lowering" (Async.transform mode)
 
 let tailcall_optimization =
-  transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
+  transform_if "Tailcall optimization" Tailcall.transform
 
 let show_translation =
   transform_if "Translate show" Show.transform
 
-let analyze analysis_name analysis env prog name =
+let analyze analysis_name analysis prog name =
   phase analysis_name name;
-  analysis env prog;
+  analysis prog;
   if !Flags.check_ir
-  then Check_ir.check_prog !Flags.verbose env analysis_name prog
+  then Check_ir.check_prog !Flags.verbose analysis_name prog
 
 
 (* Compilation *)
@@ -638,13 +638,13 @@ let name_progs progs =
   then "empty"
   else (Lib.List.last progs).Source.note
 
-let lower_prog mode senv libs progs name =
-  let prog_ir = desugar senv libs progs name in
-  let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
-  let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
-  let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
-  let prog_ir = show_translation true initial_stat_env prog_ir name in
-  analyze "constness analysis" Const.analyze initial_stat_env prog_ir name;
+let lower_prog mode libs progs name =
+  let prog_ir = desugar libs progs name in
+  let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
+  let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
+  let prog_ir = tailcall_optimization true prog_ir name in
+  let prog_ir = show_translation true prog_ir name in
+  analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
 (* This turns the flat list of libs (some of which are classes)
@@ -674,19 +674,19 @@ let rec compile_classes mode libs : Lowering.Desugar.lib_or_class list=
 and compile_class mode libs_and_classes (cls : Syntax.lib) : string =
   let name = cls.Source.note in
   let prog = prog_of_class cls in
-  let prog_ir = lower_prog mode initial_stat_env libs_and_classes [prog] name in
+  let prog_ir = lower_prog mode libs_and_classes [prog] name in
   phase "Compiling" name;
-  let wasm_mod = Codegen.Compile.compile mode name (Some (load_as_rts ())) [prog_ir] in
+  let wasm_mod = Codegen.Compile.compile mode name (Some (load_as_rts ())) prog_ir in
   let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
   wasm
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let name = name_progs progs in
   let libs_and_classes = compile_classes mode libs in
-  let prog_ir = lower_prog mode initial_stat_env libs_and_classes progs name in
+  let prog_ir = lower_prog mode libs_and_classes progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode name rts [prog_ir]
+  Codegen.Compile.compile mode name rts prog_ir
 
 let compile_files mode do_link files : compile_result =
   Diag.bind (load_progs parse_file files initial_stat_env)
@@ -707,13 +707,11 @@ let dont_compile_classes libs : Lowering.Desugar.lib_or_class list =
 let interpret_ir_prog libs progs =
   let name = name_progs progs in
   let libs' = dont_compile_classes libs in
-  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env libs' progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) libs' progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  let interpreter_state = initial_state () in
-  let _ = interpret_prog flags interpreter_state empty_scope prog_ir in
-  ()
+  interpret_prog flags prog_ir
 
 let interpret_ir_files files =
   Option.map

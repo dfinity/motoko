@@ -140,12 +140,11 @@ let letSeq ts e d_of_vs =
 
 (* The actual transformation *)
 
-let transform mode env prog =
+let transform mode prog =
 
   (* the state *)
-  let con_renaming = ref
-     (Type.ConSet.fold (fun c env -> ConRenaming.add c c env)
-       env.Scope.con_env ConRenaming.empty)
+  let con_renaming = ref ConRenaming.empty
+
   (* maps constructors to new constructors (name name, new stamp, new kind)
      it is initialized with the type constructors defined outside here, which are
      not rewritten.
@@ -193,14 +192,17 @@ let transform mode env prog =
       T.Def(t_binds typ_binds, t_typ typ)
 
   and t_con c =
-    match  ConRenaming.find_opt c (!con_renaming) with
-    | Some c' -> c'
-    | None ->
-      let clone = Con.clone c (Abs ([], Pre)) in
-      con_renaming := ConRenaming.add c clone (!con_renaming);
-      (* Need to extend con_renaming before traversing the kind *)
-      Type.set_kind clone (t_kind (Con.kind c));
-      clone
+    match Con.kind c with
+    | T.Def([], T.Prim _) -> c
+    | _ ->
+      match  ConRenaming.find_opt c (!con_renaming) with
+      | Some c' -> c'
+      | None ->
+        let clone = Con.clone c (Abs ([], Pre)) in
+        con_renaming := ConRenaming.add c clone (!con_renaming);
+        (* Need to extend con_renaming before traversing the kind *)
+        Type.set_kind clone (t_kind (Con.kind c));
+        clone
 
   and prim = function
     | CallPrim typs -> CallPrim (List.map t_typ typs)
@@ -434,6 +436,11 @@ let transform mode env prog =
 
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-  and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
+  and t_comp_unit = function
+    | ProgU ds -> ProgU (t_decs ds)
+    | ActorU (ds, fs, {pre; post}, t) ->
+      ActorU (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ t)
+
+  and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in
   t_prog prog
