@@ -845,7 +845,10 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 (* Programs *)
 
 and interpret_comp_unit env cu k = match cu with
-  | ProgU exp -> interpret_exp env exp k
+  | ProgU ds ->
+    let ve = declare_decs ds V.Env.empty in
+    let env' = adjoin_vals env ve in
+    interpret_decs env' ds k
   | ActorU _ -> assert false (* TODO *)
 
 let interpret_prog flags (cu, flavor) =

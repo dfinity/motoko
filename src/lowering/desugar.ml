@@ -587,7 +587,7 @@ and comp_unit ds : Ir.comp_unit =
       ActorU (ds1 @ ds2, fs, up, t)
     | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
       ActorU (ds1 @ ds2, fs, up, t)
-    | ds, e -> ProgU (blockE ds e) in
+    | ds, e -> ProgU (ds @ [ expD e ]) in
 
   (* find the last actor. This hack can hopefully go away
      after Claudios improvements to the source *)
@@ -595,7 +595,7 @@ and comp_unit ds : Ir.comp_unit =
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
-    | [] -> Ir.ProgU (tupE [])
+    | [] -> Ir.ProgU []
     | _ -> comp_unit p.it
   end
   , { I.has_await = true

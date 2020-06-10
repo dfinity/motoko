@@ -973,7 +973,10 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_comp_unit env = function
-  | ProgU exp -> check_exp env exp
+  | ProgU ds ->
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds
   | ActorU (ds, fs, { pre; post}, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in

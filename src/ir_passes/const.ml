@@ -255,13 +255,15 @@ and decs lvl env ds : (env * lazy_bool) =
   let could_be = check_decs lvl env' ds in
   (env', could_be)
 
+and decs_ lvl env ds = ignore (decs lvl env ds)
+
 and block lvl env (ds, body) =
   let (env', decs_const) = decs lvl env ds in
   let exp_const = exp lvl env' body in
   all [decs_const; exp_const]
 
 and comp_unit = function
-  | ProgU exp -> exp_ TopLvl M.empty exp
+  | ProgU ds -> decs_ TopLvl M.empty ds
   | ActorU (ds, fs, {pre; post}, typ) ->
     let (env', _) = decs TopLvl M.empty ds in
     exp_ TopLvl env' pre;

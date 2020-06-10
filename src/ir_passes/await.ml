@@ -509,7 +509,7 @@ and define_pats patenv (pats : pat list) : dec list =
   Lib.List.concat_map (define_pat patenv) pats
 
 and t_comp_unit context = function
-  | ProgU exp -> ProgU (t_exp context exp)
+  | ProgU ds -> ProgU (t_decs context ds)
   | ActorU (ds, ids, { pre; post }, t) ->
     ActorU (t_decs context ds, ids,
       { pre = t_exp LabelEnv.empty pre;

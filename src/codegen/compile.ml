@@ -7862,9 +7862,9 @@ and compile_start_func mod_env ((cu, _flavor) : Ir.prog) : E.func_with_names =
   Func.of_body mod_env [] [] (fun env ->
     let ae = VarEnv.empty_ae in
     match cu with
-    | ProgU e ->
-      let (sr, code) = compile_exp env ae e in
-      code ^^ StackRep.drop env sr
+    | ProgU ds ->
+      let _ae, codeW = compile_decs env ae ds Freevars.S.empty in
+      codeW G.nop
     | ActorU (ds, fs, up, _t) -> main_actor env ae ds fs up
   )
 

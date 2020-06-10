@@ -199,7 +199,7 @@ let full_flavor : flavor = {
 (* Program *)
 
 type comp_unit =
-  | ProgU of exp (* program *)
+  | ProgU of dec list
   | ActorU of dec list * field list * upgrade * Type.typ (* actor *)
 
 type prog = comp_unit * flavor
