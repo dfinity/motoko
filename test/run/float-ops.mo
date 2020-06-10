@@ -76,9 +76,8 @@ assert Prim.arctan2(-1, 0) == -ninetyDegrees;
 assert Prim.exp(0.0) == 1.0;
 
 let someRandomReal = 7.4225;
-//assert Prim.floatAbs(Prim.log(Prim.exp(someRandomReal)) - someRandomReal) < 0.001;
-//assert Prim.exp(Prim.log(someRandomReal)) == someRandomReal;
-
+assert Prim.log(Prim.exp(someRandomReal)) == someRandomReal;
+assert Prim.floatAbs(Prim.exp(Prim.log(someRandomReal)) - someRandomReal) < 0.000000000000001;
 
 // Conversions
 assert (Prim.floatToInt64(pi) == (3 : Int64));

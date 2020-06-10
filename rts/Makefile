@@ -17,7 +17,7 @@ TOMMATHFILES = \
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-  exp_data pow_data pow sin cos tan asin acos atan atan2 exp log \
+  exp_data pow_data pow sin cos tan asin acos atan atan2 exp log log_data \
   floor scalbn frexp strnlen memchr memset memcpy snprintf vsnprintf vfprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \

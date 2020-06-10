@@ -16,7 +16,6 @@ export as_ptr float_fmt(double a) {
 #define EXPORT_UNARY(IMP, A1, EXP) \
   export double float_ ## EXP(double A1) { \
     extern double IMP(double); \
-    if (* #IMP == 'l') { printf("%f   --->  %f\n", A1, IMP(A1)); } \
     return IMP(A1); \
   }
 
