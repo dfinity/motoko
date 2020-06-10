@@ -364,6 +364,10 @@ and text_dotE proj e =
     |  _ -> assert false
 
 and block force_unit ds =
+  match ds with
+  | [] -> ([], tupE [])
+  | [{it = S.ExpD ({it = S.BlockE ds; _}); _}] -> block force_unit ds
+  | _ -> 
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
   | _, S.ExpD e ->
@@ -583,7 +587,7 @@ and comp_unit ds : Ir.comp_unit =
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
-    if ds = [] then ProgU [expD e] else
+    if ds = [] then find_last_actor ([], e) else
     match Lib.List.split_last ds, e with
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
       find_last_actor (ds1', e')
