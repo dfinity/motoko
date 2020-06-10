@@ -581,9 +581,12 @@ let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
 
-let desugar libs progs name =
+let desugar imports progs name =
   phase "Desugaring" name;
-  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph prelude libs progs in
+  let open Lowering.Desugar in
+  let prog_ir' : Ir.prog = link_declarations
+    (transform_prelude prelude @ imports)
+    (transform_prog progs) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
@@ -657,33 +660,34 @@ let prog_of_class (cls : Syntax.lib) : Syntax.prog =
     note = cls.note
   }
 
-let rec compile_classes mode libs : Lowering.Desugar.lib_or_class list=
-  let rec go libs_and_classes = function
-    | [] -> libs_and_classes
+let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
+  let rec go imports = function
+    | [] -> imports
     | l ::libs ->
       let t = l.Source.it.Source.note.Syntax.note_typ in
       if Type.is_module t
       then
-        go (libs_and_classes @ [Lowering.Desugar.Lib l]) libs
+        go (imports @ Lowering.Desugar.transform_lib l) libs
       else
         (* This better be an actor class now *)
-        let wasm = compile_class mode libs_and_classes l in
-        go (libs_and_classes @ [Lowering.Desugar.Compiled_class (l.Source.note, t, wasm)]) libs
+        let wasm = compile_class mode imports l in
+        go (imports @ Lowering.Desugar.transform_class l.Source.note wasm) libs
   in go [] libs
 
-and compile_class mode libs_and_classes (cls : Syntax.lib) : string =
+and compile_class mode imports (cls : Syntax.lib) : string =
   let name = cls.Source.note in
   let prog = prog_of_class cls in
-  let prog_ir = lower_prog mode libs_and_classes [prog] name in
+  let prog_ir = lower_prog mode imports prog name in
   phase "Compiling" name;
   let wasm_mod = Codegen.Compile.compile mode name (Some (load_as_rts ())) prog_ir in
   let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
   wasm
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
+  let prog = match progs with [prog] -> prog | _ -> assert false in
   let name = name_progs progs in
-  let libs_and_classes = compile_classes mode libs in
-  let prog_ir = lower_prog mode libs_and_classes progs name in
+  let imports = compile_classes mode libs in
+  let prog_ir = lower_prog mode imports prog name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prog_ir
@@ -701,13 +705,14 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
-let dont_compile_classes libs : Lowering.Desugar.lib_or_class list =
-  List.map (fun l -> Lowering.Desugar.Lib l) libs
+let dont_compile_classes libs : Lowering.Desugar.import_declaration =
+  Lib.List.concat_map (fun l -> Lowering.Desugar.transform_lib l) libs
 
 let interpret_ir_prog libs progs =
+  let prog = match progs with [prog] -> prog | _ -> assert false in
   let name = name_progs progs in
   let libs' = dont_compile_classes libs in
-  let prog_ir = lower_prog (!Flags.compile_mode) libs' progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) libs' prog name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in

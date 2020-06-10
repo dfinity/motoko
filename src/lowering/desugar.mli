@@ -1,12 +1,12 @@
 open Mo_def
 open Ir_def
 
-type lib_or_class =
-  | Lib of Syntax.lib
-  | Compiled_class of (string (* file path *) * Mo_types.Type.typ * string (* module *))
+(* These declaratoins are all internal, either from prelude (@-prefixed)
+   to to bring libraries into scope *)
+type import_declaration = Ir.dec list
 
-val transform_graph :
-  Syntax.prog (* prelude *) ->
-  lib_or_class list (* libraries *) ->
-  Syntax.prog list (* main program(s) *) ->
-  Ir.prog
+val transform_lib : Syntax.lib -> import_declaration
+val transform_class : string -> string -> import_declaration
+val transform_prelude : Syntax.prog -> import_declaration
+val transform_prog : Syntax.prog -> Ir.prog
+val link_declarations : import_declaration -> Ir.prog -> Ir.prog

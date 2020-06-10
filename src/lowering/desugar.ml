@@ -592,7 +592,7 @@ and comp_unit ds : Ir.comp_unit =
       | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
         ActorU (ds1 @ ds2, fs, up, t)
       | _ ->
-        ProgU (ds @ [ expD e ]) in
+        ProgU ( ds @ [ expD e ]) in
 
     if ds = [] then ProgU [] else
     match Lib.List.split_last ds, e with
@@ -607,46 +607,39 @@ and comp_unit ds : Ir.comp_unit =
      after Claudios improvements to the source *)
   find_last_expr (block false ds)
 
-and prog (p : Syntax.prog) : Ir.prog =
-  begin match p.it with
-    | [] -> Ir.ProgU []
-    | _ -> comp_unit p.it
-  end
+let transform_prog (p : Syntax.prog) : Ir.prog  =
+  comp_unit p.it
   , { I.has_await = true
     ; I.has_async_typ = true
     ; I.has_show = true
     ; I.serialized = false
     }
 
-type lib_or_class =
-  | Lib of Syntax.lib
-  | Compiled_class of (string (* file path *) * Mo_types.Type.typ * string (* module *))
+type import_declaration = Ir.dec list
 
-let declare_import = function
-  | Lib lib ->
-    let open Source in
-    let f = lib.note in
-    let t = lib.it.note.Syntax.note_typ in
-    let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-    let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
-    { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
-  | Compiled_class (f, t, wasm) ->
-    let p = { it = Syntax.VarP (id_of_full_path f); at = no_region; note = T.blob } in
-    let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = T.blob } in
-    let exp = { it = Syntax.LitE (ref (Syntax.TextLit wasm)); at = no_region; note = typ_note} in
-    { it = Syntax.LetD (p, exp); at = no_region; note = typ_note }
-
-let combine_files prelude libs progs : Syntax.prog =
-  (* We do IR-level composition until we have incremental compilation *)
+let transform_lib lib : import_declaration =
+  (* TODO: simplify (don’t go through Syntax) *)
   let open Source in
-  { it = prelude.it
-         @ List.map declare_import libs
-         @ Lib.List.concat_map (fun p -> p.it) progs
-  ; at = no_region
-  ; note = match progs with
-           | [prog] -> prog.Source.note
-           | _ -> "all"
-  }
+  let f = lib.note in
+  let t = lib.it.note.Syntax.note_typ in
+  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
+  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
+  let d = { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note } in
+  [dec d]
 
-let transform_graph prelude libraries progs =
-  prog (combine_files prelude libraries progs)
+let transform_class f wasm : import_declaration =
+  (* TODO: simplify (don’t go through Syntax) *)
+  let p = { it = Syntax.VarP (id_of_full_path f); at = no_region; note = T.blob } in
+  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = T.blob } in
+  let exp = { it = Syntax.LitE (ref (Syntax.TextLit wasm)); at = no_region; note = typ_note} in
+  let d = { it = Syntax.LetD (p, exp); at = no_region; note = typ_note } in
+  [dec d]
+
+let transform_prelude prelude : import_declaration =
+  decs (prelude.it)
+
+let link_declarations imports (cu, flavor) =
+  let cu' = match cu with
+    | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
+    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
+  in cu', flavor
