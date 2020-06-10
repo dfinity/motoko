@@ -231,7 +231,7 @@ and dec' env d =
     (fun env1 -> VarD(i, t, exp env1 e)),
     env
 
-and block env ds exp =
+and decs env ds =
   let rec decs_aux env ds =
     match ds with
     | [] -> ([],env)
@@ -241,14 +241,24 @@ and block env ds exp =
       (mk_d :: mk_ds,env2)
   in
   let mk_ds,env1 = decs_aux env ds in
-  ( List.map
-      (fun mk_d ->
-        let env2 = { env1 with tail_pos = false } in
-        { mk_d with it = mk_d.it env2 })
-      mk_ds
-  , tailexp env1 exp)
+  env1,
+  List.map
+    (fun mk_d ->
+      let env2 = { env1 with tail_pos = false } in
+      { mk_d with it = mk_d.it env2 })
+    mk_ds
 
-and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)
+and block env ds exp =
+  let (env1, ds') = decs env ds in
+  ( ds', tailexp env1 exp)
+
+and comp_unit env = function
+  | ProgU ds -> ProgU (snd (decs env ds))
+  | ActorU (ds, fs, u, t)  -> ActorU (ds, fs, u, t) (* TODO(1358): descent into ds  *)
+
+and prog (cu, flavor) =
+  let env = { tail_pos = false; info = None } in
+  (comp_unit env cu, flavor)
 
 (* validation *)
 

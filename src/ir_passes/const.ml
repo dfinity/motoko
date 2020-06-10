@@ -255,11 +255,19 @@ and decs lvl env ds : (env * lazy_bool) =
   let could_be = check_decs lvl env' ds in
   (env', could_be)
 
+and decs_ lvl env ds = ignore (decs lvl env ds)
+
 and block lvl env (ds, body) =
   let (env', decs_const) = decs lvl env ds in
   let exp_const = exp lvl env' body in
   all [decs_const; exp_const]
 
-let analyze ((b, _flavor) : prog) =
-  let env = M.empty in
-  ignore (block TopLvl env b)
+and comp_unit = function
+  | ProgU ds -> decs_ TopLvl M.empty ds
+  | ActorU (ds, fs, {pre; post}, typ) ->
+    let (env', _) = decs TopLvl M.empty ds in
+    exp_ TopLvl env' pre;
+    exp_ TopLvl env' post
+
+let analyze ((cu, _flavor) : prog) =
+  ignore (comp_unit cu)
