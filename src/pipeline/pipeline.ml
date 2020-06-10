@@ -602,7 +602,7 @@ let lower_prog mode libs progs name =
   prog_ir
 
 let lower_libs libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.transform_lib l) libs
+  Lib.List.concat_map Lowering.Desugar.transform_lib libs
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prog = combine_progs progs in
