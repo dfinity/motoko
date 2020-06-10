@@ -96,7 +96,6 @@ CLANG_FLAGS = \
 
 WASM_FLAGS = \
    --target=wasm32-emscripten \
-   -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
