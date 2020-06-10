@@ -598,7 +598,7 @@ let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_modul
   let prog_ir = lower_prog mode libs progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode name rts [prog_ir]
+  Codegen.Compile.compile mode name rts prog_ir
 
 let compile_files mode do_link files : compile_result =
   Diag.bind (load_progs parse_file files initial_stat_env)
@@ -619,9 +619,7 @@ let interpret_ir_prog libs progs =
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  let interpreter_state = initial_state () in
-  let _ = interpret_prog flags interpreter_state empty_scope prog_ir in
-  ()
+  interpret_prog flags prog_ir
 
 let interpret_ir_files files =
   Option.map
