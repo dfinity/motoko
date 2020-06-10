@@ -82,11 +82,20 @@ type var while
 === Programs
 
 ```bnf
-<imp> ::= import
-    import <id>? =? <text>
-
 <prog> ::= programs
     <imp>;* <dec>;*
+
+<imp> ::= imports
+    import <id>? =? <url>
+
+<url> ::=
+    "<filepath>"                   import module from relative <filepath>.mo
+    "mo:<package-name>/<filepath>" import module from package
+    "canister:<canisterid>"        import external actor by <canisterid>
+    "canister:<name>"              import external actor by <name>
+
+<lib> ::= libraries
+    <imp>;* module <id>? =? { <dec-field>;* }
 ```
 
 [[syntax-decls]]
@@ -891,46 +900,55 @@ A program `<prog>` is a sequence of imports `<import>;*` followed by a sequence 
 
 All type and value declarations within `<dec>;*` are mutually-recursive.
 
-[[import]]
-== Import
+[[imports]]
+== Imports and Urls
 
-An import 'import <id>? =? <url>' declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (<id>?, when absent, defaults to some fresh identifier <id>.)
+An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
 
 `<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, or an external canister, referenced either by numeric id
 or by named alias, imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
-* "<filepath>" then `<id>` is bound to the library module defined in file `<filepath>.mo`.
+* `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in '<url>'.
-
+  Note the `.mo` extension is implicit and should *not* be included in `<url>`. 
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
-* "mo:<package-name>/<path>" then `<id>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`.
-The mapping from `<package-name>` to `<package-path>` is determined by the a compiler command-line argument '--package <package-name> <package-path>'.
+* `"mo:<package-name>/<path>"` then `<id>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`.
+  The mapping from `<package-name>` to `<package-path>` is determined by a compiler command-line argument `--package <package-name> <package-path>`. For example, `import L "mo:base/List"` defines `L` to reference the `List` library in
+   package alias `base`.
 
-   For example, 'import L "mo:base/List" ` defines `L` to reference the "List" library in
-   package alias "base".
-
-* "ic:<canisterid>" then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface file.
+* `"ic:<canisterid>"` then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
   The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`.
-  The compiler assumes that  '<actorpath>' is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
+  The compiler assumes that  `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
+  For example, `import C "ic:DEADBEEF"` defines `C` to reference the actor with canister id `ic:DEADBEEF` and IDL file `DEADBEAF.did`.
 
-  For example, `import C "ic:DEADBEEF"` defines `C` to reference the actor with canister id "ic:DEADBEEF" and IDL file `DEADBEAF.did`.
-
-* "canister:<name>" is a symbolic reference to canister alias `<name>`.
-  The compiler assumes that the mapping of `<name>` to `<canisterid> is specified by command line argument  `--actor-alias <name> <canisterid>`.
-  Once resolved, the "canister:<name>" is equivalent to "ic:<cansterid>" (see above).
-
+* `"canister:<name>"` is a symbolic reference to canister alias `<name>`.
+  The compiler assumes that the mapping of `<name>` to `<canisterid>` is specified by command line argument  `--actor-alias <name> ic:<canisterid>`.
+  If so, "canister:<name>" is equivalent to "ic:<cansterid>" (see above).
   For example, `import C "canister:counter"` defines `C` to reference the actor otherwise known as
-  "counter".
+  `counter`.
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by symbolic name (`import Actor "canister:<name>"`), without specifying low-level canister ids (`import Actor "ic:<canisterid>"`).
+(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import Actor "canister:counter"`), without specifying low-level canister ids (e.g. `import Actor "ic:DEADBEEF"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
+
+
+[[lib]]
+=== Libraries
+
+A library `<lib>` is a sequence of imports `<import>;*` followed by a named or anonymous (module) declaration `module <id>? =? { <dec-field>;* }`.
+
+Libraries stored in {ext} files may be referenced by `import`s.
+
+The name `<id>?` is only significant within the library,
+and does not determine the name of the library when imported.
+Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to
+choose names (e.g. to avoid clashes). 
+
 
 [[decl-field]]
 === Declaration fields
