@@ -527,9 +527,12 @@ let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
 
-let desugar libs progs name =
+let desugar imports prog name =
   phase "Desugaring" name;
-  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph prelude libs progs in
+  let open Lowering.Desugar in
+  let prog_ir' : Ir.prog = link_declarations
+    (transform_prelude prelude @ imports)
+    (transform_prog prog) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
@@ -579,10 +582,15 @@ let load_as_rts () =
 
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
-let name_progs progs =
+(* a hack to support compiling multiple files *)
+let combine_progs progs : Syntax.prog =
+  let open Source in
   if progs = []
-  then "empty"
-  else (Lib.List.last progs).Source.note
+  then { it = []; at = no_region; note = "empty" }
+  else { it = Lib.List.concat_map (fun p -> p.it) progs
+       ; at = (Lib.List.last progs).at
+       ; note = (Lib.List.last progs).note
+       }
 
 let lower_prog mode libs progs name =
   let prog_ir = desugar libs progs name in
@@ -593,9 +601,14 @@ let lower_prog mode libs progs name =
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
+let lower_libs libs : Lowering.Desugar.import_declaration =
+  Lib.List.concat_map Lowering.Desugar.transform_lib libs
+
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
-  let name = name_progs progs in
-  let prog_ir = lower_prog mode libs progs name in
+  let prog = combine_progs progs in
+  let name = prog.Source.note in
+  let imports = lower_libs libs in
+  let prog_ir = lower_prog mode imports prog name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prog_ir
@@ -614,8 +627,10 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let interpret_ir_prog libs progs =
-  let name = name_progs progs in
-  let prog_ir = lower_prog (!Flags.compile_mode) libs progs name in
+  let prog = combine_progs progs in
+  let name = prog.Source.note in
+  let libs' = lower_libs libs in
+  let prog_ir = lower_prog (!Flags.compile_mode) libs' prog name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
