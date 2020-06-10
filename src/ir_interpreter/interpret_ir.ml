@@ -534,6 +534,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in
     k v
   | ActorE (ds, fs, _, _) ->
+    interpret_actor env ds fs k
+  | NewObjE (sort, fs, _) ->
+    k (interpret_fields env fs)
+
+and interpret_actor env ds fs k =
     let self = V.fresh_id () in
     let env0 = {env with self = self} in
     let ve = declare_decs ds V.Env.empty in
@@ -543,8 +548,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       env.actor_env := V.Env.add self obj !(env.actor_env);
       k (V.Text self)
     )
-  | NewObjE (sort, fs, _) ->
-    k (interpret_fields env fs)
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
   last_region := lexp.at;
@@ -849,7 +852,8 @@ and interpret_comp_unit env cu k = match cu with
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
-  | ActorU _ -> assert false (* TODO *)
+  | ActorU (ds, fs, _, _) ->
+    interpret_actor env ds fs (fun _ -> k ())
 
 let interpret_prog flags (cu, flavor) =
   let state = initial_state () in
