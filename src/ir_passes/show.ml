@@ -306,8 +306,8 @@ and t_exp' env = function
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
-    let pre' = t_exp env pre in
-    let post' = t_exp env post in
+    let pre' = t_exp env1 pre in
+    let post' = t_exp env1 post in
     let decls = show_decls !(env1.params) in
     ActorE (decls @ ds', fields, {pre = pre'; post = post'}, typ)
 
