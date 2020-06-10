@@ -203,15 +203,17 @@ and dec' =
 type import = (import', typ) Source.annotated_phrase
 and import' = id * string * resolved_import
 
-(* Program *)
+(* Programs (Compilation units) *)
+
+type comp_unit = (comp_unit', typ_note) Source.annotated_phrase
+and comp_unit' =
+ | ExpU of exp                      (* non-IC expression (actor free) *)
+ | ActorClassU of typ_id * pat * typ option * id * exp_field list (* IC actor class *)
+ | ActorU of id * exp_field list       (* IC actor *)
 
 type prog = (prog', string) Source.annotated_phrase
 and prog' = (import list * comp_unit)
 
-type comp_unit =
- | ExpE of exp                      (* non-IC expression (actor free) *)
- | ActorClassU of typ_id * pat * typ option * id * exp_field list (* IC actor class *)
- | ActorU of id * exp_field list       (* IC actor *)
 
 (* Libraries *)
 
