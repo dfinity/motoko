@@ -14,7 +14,7 @@ func fullName({ first : Text; mid : Text; last : Text }) : Text {
   ...
 };
 ```
-The input is an (anonymous) object, which is deconstructed and its three `Text` fields are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function.
+The input is an (anonymous) object, which is deconstructed and its three `Text` fields are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function. Above we have resorted to _name punning_ for object field patterns, their general form allows the binding indentifier be distinct from the field name, as in `mid = middle_name : Text`.
 
 A special role comes to _literal patterns_, which look just like literal constants. They are especially useful in `switch` expressions, since they can cause the current pattern match to _fail_, and thus commencing to match the next pattern. For example
 ```
