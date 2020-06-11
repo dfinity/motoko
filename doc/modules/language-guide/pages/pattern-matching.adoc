@@ -62,13 +62,13 @@ The last kind of pattern are the `or`-patterns. As their name suggests these are
 |
 
 | tuple
-|`( component_1, component_2, ... )`
+|`( component~0~, component~1~, ... )`
 |everywhere
 |depends
 |must have at least two components
 
 | object
-|`{ field_A; field_B; ... }`
+|`{ field~A~; field~B~; ... }`
 |everywhere
 |depends
 |allowed to mention a subset of fields
