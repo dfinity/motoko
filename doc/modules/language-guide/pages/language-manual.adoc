@@ -1833,7 +1833,7 @@ The expression `debug_show <exp>` has type `Text` provided the expression `<exp>
 
 `Debug_show <exp>` uses the static type `T` to derive a human readable, textual representation of the value of `<exp>`.
 
-It is primarilly intended for debugging and, due to its current inefficiency, should not be used to display large values in production code. This feature may be removed in future.
+It is primarily intended for debugging and, due to its current inefficiency, should not be used to display large values in production code. This feature may be removed in future.
 
 [[exp-debug]]
 === Debug
