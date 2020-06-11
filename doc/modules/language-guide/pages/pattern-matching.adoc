@@ -27,6 +27,20 @@ will match the first `case` clause (because binding to the identifier `name` can
 
 The last kind of patterns are the `or`-patterns. As their name suggest these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind the same set of identifiers, and is matched from left-to-right. An `or`-pattern fails when its rightmost sub-pattern fails.
 
+The following table summarises the different ways of pattern matching for an overview
+
+| pattern kind | examples | appears in | can fail | remark
++-
+| literal | `null`, `42`, `()`, `"Hi"` | everywhere | yes | |
+| named | `age`, `x` | everywhere | no | introduces identifiers into a new scope |
+| wildcard | `_` | everywhere | no | |
+| typed | `age : Nat` | everywhere | depends | |
+| option | `?0`, `?val` | everywhere | yes | |
+| field | `age`, `count = 0` | object | depends | `age` is short for `age = age`|
+| variant | `#celsius deg`, `#sunday` | everywhere | yes | `#sunday` is short form for `#sunday ()` |
+| alternative (`or`-pattern) | `0 or 1` | everywhere | depends | all alternatives must bind same set of names |
+
+
 Errors and optional results that are discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results] represent two specific types of pattern matching.
 However, there are many other ways you can use pattern matching in {proglang} programs.
 This section highlights other examples of pattern matching.
@@ -34,15 +48,4 @@ This section highlights other examples of pattern matching.
  - point: unhandled errors are a special case of non-exhaustive pattern match (for results and option types)
  - point: null-pointer errors are a special case of non-exhaustive pattern match
  - the {proglang} type checker statically enforces exhaustive pattern matches for all optional types (and variants); hence, null-pointer errors are ruled out statically, and are impossible dynamically.
- 
- 
- 
- ------------------------
- * trivial patterns
- * type-annotated patterns
- * literal patterns
- * object field patterns
-   - punning
- * variant patterns
-   shorthand
- * or-patterns
+
