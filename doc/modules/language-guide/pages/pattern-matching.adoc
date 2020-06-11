@@ -4,7 +4,7 @@
 
 Pattern matching is a way to deal with data that is inverse of the well known _construction from smaller parts_: it takes apart structured data and brings into scope its parts by binding them to the given names. Syntactically the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` (as well as `var`) declarations.
 
-Let's observe the following function call:
+Consider the following function call:
 ```
 let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
 ```
@@ -99,4 +99,3 @@ This section highlights other examples of pattern matching.
  - point: unhandled errors are a special case of non-exhaustive pattern match (for results and option types)
  - point: null-pointer errors are a special case of non-exhaustive pattern match
  - the {proglang} type checker statically enforces exhaustive pattern matches for all optional types (and variants); hence, null-pointer errors are ruled out statically, and are impossible dynamically.
-
