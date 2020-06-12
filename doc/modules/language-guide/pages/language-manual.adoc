@@ -1829,11 +1829,28 @@ Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the r
 [[exp-debug-show]]
 === Debug Show
 
-The expression `debug_show <exp>` has type `Text` provided the expression `<exp>` has (any) type `T`.
+The expression `debug_show <exp>` has type `Text` provided:
 
-`Debug_show <exp>` uses the static type `T` to derive a human readable, textual representation of the value of `<exp>`.
+* `<exp>` has type `T`.
+* `T` is _showable_.
 
-It is primarily intended for debugging and, due to its current inefficiency, should not be used to display large values in production code. This feature may be removed in future.
+A type `T` is _showable_ if it is equivalent to:
+
+* any primitive type other than `Error`, or
+* type `Null` or `Non`, or
+* an option type `? V` where `V` is showable, or
+* a tuple type `(T0, ..., Tn)` where all `Ti` are showable, or
+* a mutable, or immutable array type `[var? V]` where `V` is showable, or
+* an `object` type whose fields are of type `var? V`, where `V` is showable, or
+* a variant type where all tags have showable type.
+
+All other types, including type parameters, functions, modules and actors, are *not* showable.
+
+`debug_show <exp>` uses the static type `T` to construct a human readable, textual representation of the value of `<exp>`.
+
+It is primarily intended for debugging and, due to its current inefficiency, should not be used to display large values in production code.
+
+This feature may be removed in future.
 
 [[exp-debug]]
 === Debug
