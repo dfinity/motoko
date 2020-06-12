@@ -11,7 +11,7 @@
 * [ ] Prelude
 * [ ] Modules and static restriction
 * [X] Type components and paths
-* [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
+* [ ] Prelude (move scattered descriptions of assorted prims like charToText (done) here)
 * [ ] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O.
 * [X] Include actual grammar (extracted from menhir) in appendix?
 * [ ] Prose description of definedness checks
@@ -22,6 +22,7 @@
 * [X] Debug expressions
 * [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
 * [X] Update ErrorCode section
+* [ ] debug_show
 * [ ] Re-section so headings appear in content outline
 ////
 
@@ -431,6 +432,7 @@ The syntax of an _expression_ is as follows:
   <exp> : <typ>                                  type annotation
   dec                                            declaration
   debug <exp>                                    debug expression
+  debug_show <exp>                               type-driven text con
   ( <exp> )                                      parentheses
 ```
 
@@ -534,10 +536,13 @@ The type `Bool` of categories L, R (Logical, Relational) has values `true` and `
 === Type `Char`
 
 A `Char` of category R (Relational) represents characters as a code point in the Unicode character
-set. Characters can be converted to `Word32`, and `Word32`s in the
+set. 
+
+Characters can be converted to (single character) `Text` and `Word32` values. `Word32`s values in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
-if outside of this range). With `charToText` a character can be
-converted into a text of length 1.
+when the value is outside of this range).
+
+The conversions are provided by `base` library `Char`, functions `Char.toText`, `Char.toWord32` and `Char.fromWord32`.
 
 [[type-text]]
 === Type `Text`
@@ -1821,6 +1826,32 @@ The declaration expression `<dec>` has type `T` provided the declaration `<dec>`
 
 Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
 
+[[exp-debug-show]]
+=== Debug Show
+
+The expression `debug_show <exp>` has type `Text` provided:
+
+* `<exp>` has type `T`.
+* `T` is _showable_.
+
+A type `T` is _showable_ if it is equivalent to:
+
+* any primitive type other than `Error`, or
+* type `Null` or `Non`, or
+* an option type `? V` where `V` is showable, or
+* a tuple type `(T0, ..., Tn)` where all `Ti` are showable, or
+* a mutable, or immutable array type `[var? V]` where `V` is showable, or
+* an `object` type whose fields are of type `var? V`, where `V` is showable, or
+* a variant type where all tags have showable type.
+
+All other types, including type parameters, functions, modules and actors, are *not* showable.
+
+`debug_show <exp>` uses the static type `T` to construct a human readable, textual representation of the value of `<exp>`.
+
+It is primarily intended for debugging and, due to its current inefficiency, should not be used to display large values in production code.
+
+This feature may be removed in future.
+
 [[exp-debug]]
 === Debug
 
@@ -1830,7 +1861,6 @@ When the program is compiled or interpreted with (default) flag `--debug`, evalu
 
 When the program is compiled or interpreted with flag `--release`, evaluating the expression `debug <exp>` immediately returns the unit value `()`.
 The code for `<exp>` is never executed, nor is its code included in the compiled binary.
-
 [[exp-paren]]
 === Parentheses
 
