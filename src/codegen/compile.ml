@@ -3402,6 +3402,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       arg_instrs ^^
+      Text.to_blob env ^^
       Blob.as_ptr_len env ^^
       system_call env "ic0" "msg_reject"
     | _ ->
