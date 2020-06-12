@@ -21,7 +21,7 @@
 * [X] Explain dot keys, dot vals and iterators
 * [X] Debug expressions
 * [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
-* [ ] Update ErrorCode section
+* [X] Update ErrorCode section
 * [ ] Re-section so headings appear in content outline
 ////
 
@@ -623,28 +623,46 @@ shared functions and used for simple authentication. Although opaque, principals
 [[type-Error]]
 === Error type
 
-Errors are opaque values constructed using operation
-* `error: Text -> Error`
-and examined using operations:
-* `errorCode`: `Error -> ErrorCode`
-* `errorMessage`: `Error -> Text`
-
-(where `ErrorCode` is the prelude defined variant type:
+Assuming base library import,
 
 ```
-type ErrorCode = {#error; #system ; /*...*/ };
+import E "mo:base/Error";
 ```
-)
 
-`Error` values can be thrown and caught within an `async` expression or `shared` function (only).
+Errors are opaque values constructed and examined with operations:
 
-A constructed error `e = error(m)` has `errorCode(e) = #error` and `errorMessage(e)=m`.
-Errors with non-`#error` (system) error codes may be caught and thrown, but not constructed.
+* `E.error : Text -> Error`
+* `E.errorCode : Error -> E.ErrorCode`
+* `E.errorMessage : Error -> Text`
 
-Note: Exiting an async block or shared function with a system error exits with a copy of the error with revised code `#error` and the original error message.
+Type `E.ErrorCode` is equivalent to variant type:
+
+```
+type ErrorCode = {
+  // Fatal error.
+  #system_fatal;
+  // Transient error.
+  #system_transient;
+  // Destination invalid.
+  #destination_invalid;
+  // Explicit reject by canister code.
+  #canister_reject;
+  // Canister trapped.
+  #canister_error;
+  // Future error code (with unrecognized numeric code)
+  #future : Nat32;
+};
+```
+
+A constructed error `e = E.error(t)` has `E.errorCode(e) = #canister_reject` and `E.errorMessage(e) = t`.
+
+`Error` values can be thrown  and caught within an `async` expression or `shared` function (only). See <<exp-throw>> and <<exp-try>>.
+
+Errors with codes other than `#canister_reject`  (i.e. _system_ errors) may be caught and thrown, but not user-constructed.
+
+Note: Exiting an async block or shared function with a system error exits with a copy of the error with revised code `#canister_reject` and the original system error message.
 This prevents programmatic forgery of system errors.
 
-// TBR
 
 [[constructed-types]]
 === Constructed types
