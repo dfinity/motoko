@@ -332,11 +332,11 @@ and array_dotE array_ty proj e =
     let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
-    | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
-    | false, "len"  -> call "@immut_array_len"  [] [T.nat]
+    | true,  "size"  -> call "@mut_array_size"    [] [T.nat]
+    | false, "size"  -> call "@immut_array_size"  [] [T.nat]
     | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
     | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
-    | true,  "set"  -> call "@mut_array_set"    [T.nat; varA] []
+    | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
     | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
     | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
     | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
@@ -359,7 +359,7 @@ and text_dotE proj e =
     let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
     callE (varE f) [] e in
   match proj with
-    | "len"   -> call "@text_len"   [] [T.nat]
+    | "size"   -> call "@text_size"   [] [T.nat]
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
@@ -367,7 +367,7 @@ and block force_unit ds =
   match ds with
   | [] -> ([], tupE [])
   | [{it = S.ExpD ({it = S.BlockE ds; _}); _}] -> block force_unit ds
-  | _ -> 
+  | _ ->
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
   | _, S.ExpD e ->
