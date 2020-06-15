@@ -45,7 +45,7 @@ actor Life {
     let (n : Nat, bits : [var Word64]) =
       switch state {
         case (#v1 css) {
-          let n = css.len();
+          let n = css.size();
           let len = (n * n) / 64 + 1;
           let bits = P.Array_init<Word64>(len, 0);
           for (i in css.keys()) {
@@ -56,7 +56,7 @@ actor Life {
           (n, bits)
         };
         case (#v2 {size; bits}) {
-          let ws = P.Array_init<Word64>(bits.len(), 0);
+          let ws = P.Array_init<Word64>(bits.size(), 0);
           for (n in bits.keys()) {
             ws[n] := P.nat64ToWord64(bits[n]);
           };
@@ -106,7 +106,7 @@ actor Life {
       let ws = bits;
       #v2 {
         size = n;
-        bits = P.Array_tabulate<Nat64>(ws.len(), func i
+        bits = P.Array_tabulate<Nat64>(ws.size(), func i
           { P.word64ToNat64(ws[i])})
       }
     };
@@ -169,4 +169,4 @@ actor Life {
      P.debugPrint(src.toText());
   };
 
-}
+};

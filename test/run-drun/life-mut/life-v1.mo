@@ -17,14 +17,14 @@ actor Life {
 
   class Grid((#v1 state) : State) {
 
-    let n = state.len();
+    let n = state.size();
 
     public func size() : Nat { n };
 
     let grid = P.Array_tabulate(n, func (i : Nat) : [var Cell] {
       let a = P.Array_init(n, false);
       let si = state[i];
-      assert (si.len() == n);
+      assert (si.size() == n);
       for (j in si.keys()) {
         a[j] := si[j];
       };

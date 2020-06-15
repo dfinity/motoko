@@ -42,7 +42,7 @@ You can get a development environment without having to use `nix-shell`
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages:
    ```
-   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm obelisk
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test atdgen wasm obelisk
    ```
  * Install into your `PATH` various command line tools used by, in particular,
    the test suite:
@@ -58,12 +58,6 @@ You can get a development environment without having to use `nix-shell`
    nix-shell --run 'make -C rts'
    ```
    to get `rts/mo-rts.wasm`.
-
-
-## Create a coverage report
-
-The coverage report support got dropped when switching to `dune`. Please monitor
-https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable again.
 
 ## Profile the compiler
 
