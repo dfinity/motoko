@@ -25,20 +25,6 @@ parallel: quick
 	$(MAKE_PAR) -C trap quick
 	$(MAKE_PAR) -C run-deser quick
 
-coverage:
-	rm -rf _coverage
-	mkdir _coverage
-	export BISECT_FILE=$$PWD/_coverage/bisect; \
-	export SKIP_RUNNING=yes; \
-	$(MAKE) -C fail; \
-	$(MAKE) -C run; \
-	$(MAKE) -C run-drun; \
-	$(MAKE) -C perf; \
-	$(MAKE) -C repl;
-	$(MAKE) -C ld || true
-	bisect-ppx-report -I ../src/_build/ -html coverage/ _coverage/bisect*.out
-	rm -rf _coverage
-
 accept:
 	$(MAKE) -C fail accept
 	$(MAKE) -C run accept
@@ -61,5 +47,3 @@ clean:
 	$(MAKE) -C mo-idl clean
 	$(MAKE) -C idl clean
 	$(MAKE) -C trap clean
-
-.PHONY: coverage
