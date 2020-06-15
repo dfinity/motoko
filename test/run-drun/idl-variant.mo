@@ -1,15 +1,15 @@
 import Prim "mo:prim";
 
-type Either = { #left: Word32; #right: Char; #fix: Either };
-
-func to_left(e : Either) : Either
-  = switch e {
-      case (#right n) #left (Prim.charToWord32 n);
-      case (#fix t) #fix (to_left t);
-      case other other
-    };
-
 actor {
+  public type Either = { #left: Word32; #right: Char; #fix: Either };
+
+  func to_left(e : Either) : Either
+    = switch e {
+        case (#right n) #left (Prim.charToWord32 n);
+        case (#fix t) #fix (to_left t);
+        case other other
+      };
+
   public query func numify(t: Either) : async Either {
     to_left t
   }
