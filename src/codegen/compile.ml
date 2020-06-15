@@ -7875,6 +7875,7 @@ and compile_start_func mod_env ((cu, _flavor) : Ir.prog) : E.func_with_names =
   Func.of_body mod_env [] [] (fun env ->
     let ae = VarEnv.empty_ae in
     match cu with
+    | LibU _ -> fatal "compile_start_func: Cannot compile library"
     | ProgU ds ->
       let _ae, codeW = compile_decs env ae ds Freevars.S.empty in
       codeW G.nop

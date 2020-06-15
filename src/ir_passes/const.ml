@@ -263,6 +263,7 @@ and block lvl env (ds, body) =
   all [decs_const; exp_const]
 
 and comp_unit = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> decs_ TopLvl M.empty ds
   | ActorU (ds, fs, {pre; post}, typ) ->
     let (env', _) = decs TopLvl M.empty ds in

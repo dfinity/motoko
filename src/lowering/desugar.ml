@@ -148,7 +148,7 @@ and exp' at note = function
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, ir) -> assert false
+  | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and url e =
@@ -572,12 +572,6 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   args, wrap_under_async, control, res_tys
 
 type import_declaration = Ir.dec list
-
-let import_lib lib : import_declaration =
-  let f = lib.note in
-  let t = lib.it.note.Syntax.note_typ in
-  [ letD (var (id_of_full_path f) t) (exp lib.it) ]
-
 let import_class f wasm : import_declaration =
   let t = T.blob in
   [ letD (var (id_of_full_path f) t) (blobE wasm) ]
@@ -585,9 +579,12 @@ let import_class f wasm : import_declaration =
 let import_prelude prelude : import_declaration =
   decs (prelude.it)
 
-let inject_decs extra_ds = function
-  | Ir.ProgU ds -> Ir.ProgU (extra_ds @ ds)
-  | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (extra_ds @ ds, fs, up, t)
+let inject_decs extra_ds =
+  let open Ir in
+  function
+  | LibU (ds, exp) -> LibU (extra_ds @ ds, exp)
+  | ProgU ds -> ProgU (extra_ds @ ds)
+  | ActorU (ds, fs, up, t) -> Ir.ActorU (extra_ds @ ds, fs, up, t)
 
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
@@ -622,9 +619,9 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
   | S.ProgU ds -> I.ProgU (decs ds)
   | S.ModuleU fields -> (* compiling a module as program *)
-    I.ProgU [expD {
+    I.LibU ([], {
       it = build_obj u.at T.Module None fields u.note.S.note_typ;
-      at = u.at; note = typ_note u.note}]
+      at = u.at; note = typ_note u.note})
   | S.ActorClassU (_typ_id, p, _, self_id, fields) ->
     begin match p.it with
     | S.TupP [] -> ()
@@ -659,3 +656,21 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
   let imports' = Lib.List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   inject_decs imports' body', initial_flavor
+
+
+(* Import a unit by substitution *)
+let import_unit (u : S.comp_unit) : import_declaration =
+  let (imports, body) = u.it in
+  let f = u.note in
+  let t = body.note.S.note_typ in
+  let imports' = Lib.List.concat_map transform_import imports in
+  let body' = transform_unit_body body in
+  let prog = inject_decs imports' body' in
+  let exp = match prog with
+    | I.LibU (ds, e) -> blockE ds e
+    | I.ActorU (ds, fs, up, t) ->
+      { it = I.ActorE (ds, fs, up, t); at = u.at; note = Note.{ def with typ = t } }
+    | I.ProgU ds -> raise (Invalid_argument "Desugar: Cannot import program")
+  in
+  [ letD (var (id_of_full_path f) t) exp ]
+

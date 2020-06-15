@@ -253,6 +253,7 @@ and block env ds exp =
   ( ds', tailexp env1 exp)
 
 and comp_unit env = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
   | ActorU (ds, fs, u, t)  -> ActorU (ds, fs, u, t) (* TODO(1358): descent into ds  *)
 

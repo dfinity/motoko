@@ -571,7 +571,7 @@ let run_files_and_stdin files =
 (* Currently happening after type checking, before desugaring.
    This maybe ought to move further up (into or after parsing) *)
 
-let comp_unit_of_prog (prog : Syntax.prog) : Syntax.comp_unit =
+let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
   let open Source in
   let open Syntax in
   let f = prog.note in
@@ -580,13 +580,11 @@ let comp_unit_of_prog (prog : Syntax.prog) : Syntax.comp_unit =
     let finish u = { it = (imports, u); note = f; at = no_region } in
     let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
     function
-    (* empty file, default to program *)
-    | [] ->
-    finish { it = ProgU []; note = prog_typ_note; at = no_region }
     (* imports *)
     | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
     let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
     go (imports @ [i]) ds
+
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] ->
     finish { it = ModuleU fields; note = e.note; at = e.at }
@@ -596,20 +594,29 @@ let comp_unit_of_prog (prog : Syntax.prog) : Syntax.comp_unit =
     assert (tbs = []);
     finish { it = ActorClassU (tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] ->
+    (* Note: Loosing the module name here! *)
+    finish { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
     finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
 
     (* Everything else is a program *)
     | ds ->
-    finish { it = ProgU ds; note = prog_typ_note; at = no_region }
+    if as_lib
+    then
+      (* when importing files, we really expect to find a module or an actor *)
+      raise (Invalid_argument(Printf.sprintf "Not some importable source:\n%s"
+        (Wasm.Sexpr.to_string 80 (Arrange.prog prog))))
+    else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
+  (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
   go [] prog.it
 
 (* Undo lib_of_prog, should go away when we use comp_unit earlier *)
 let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
   let open Source in
   let open Syntax in
-  comp_unit_of_prog (match lib.it.it with
+  comp_unit_of_prog true (match lib.it.it with
   | BlockE ds -> { it = ds; at = lib.at; note = lib.note }
   | _ -> assert false
   )
@@ -715,7 +722,7 @@ let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
         let wasm = compile_unit_to_wasm mode imports u in
         go (imports @ Lowering.Desugar.import_class u.Source.note wasm) libs
       | _ ->
-        go (imports @ Lowering.Desugar.import_lib l) libs
+        go (imports @ Lowering.Desugar.import_unit u) libs
   in go [] libs
 
 and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
@@ -734,7 +741,7 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let imports = compile_classes mode libs in
   let prog = combine_progs progs in
-  let u = comp_unit_of_prog prog in
+  let u = comp_unit_of_prog false prog in
   compile_unit mode do_link imports u
 
 let compile_files mode do_link files : compile_result =
@@ -751,13 +758,13 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let dont_compile_classes libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.import_lib l) libs
+  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit (comp_unit_of_lib l)) libs
 
 let interpret_ir_progs libs progs =
   let prog = combine_progs progs in
   let name = prog.Source.note in
   let imports = dont_compile_classes libs in
-  let u = comp_unit_of_prog prog in
+  let u = comp_unit_of_prog false prog in
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;

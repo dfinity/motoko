@@ -331,6 +331,7 @@ and t_decs env decs = List.map (t_dec env) decs
 and t_block env (ds, exp) = (t_decs env ds, t_exp env exp)
 
 and t_comp_unit = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds ->
     let env = empty_env () in
     let ds' = t_decs env ds in
