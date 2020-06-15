@@ -71,7 +71,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    obj at s None es note.Note.typ
+    obj at s.it None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -178,7 +178,7 @@ and mut m = match m.it with
   | S.Var -> Ir.Var
 
 and obj at s self_id es obj_typ =
-  match s.it with
+  match s with
   | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
 
@@ -293,7 +293,7 @@ and stabilize stab_opt d =
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
-  let obj_e = newObjE s.it fs obj_typ in
+  let obj_e = newObjE s fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
@@ -420,7 +420,7 @@ and dec' at n d = match d with
     let args, wrap, control, _n_res = to_args n.S.note_typ None p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s (Some self_id) es obj_typ;
+         { it = obj at s.it (Some self_id) es obj_typ;
            at = at;
            note = Note.{ def with typ = obj_typ } });
       at = at;
@@ -621,10 +621,20 @@ let transform_import (i : S.import) : import_declaration =
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
   | S.ProgU ds -> I.ProgU (decs ds)
-  | S.ModuleU ds -> raise (Invalid_argument ("transform_unit_body: TODO ModuleU"))
+  | S.ModuleU fields -> (* compiling a module as program *)
+    I.ProgU [expD {
+      it = build_obj u.at T.Module None fields u.note.S.note_typ;
+      at = u.at; note = typ_note u.note}]
   | S.ActorClassU (_typ_id, p, _, self_id, fields) ->
-    if p.it != S.TupP []
-    then raise (Invalid_argument ("transform_unit_body: TODO Actor class params"));
+    begin match p.it with
+    | S.TupP [] -> ()
+    | S.ParP ({ it = S.TupP [];_}) -> ()
+    | _ ->
+      raise (Invalid_argument (Printf.sprintf
+        "transform_unit_body: TODO Actor class params: %s"
+        (Wasm.Sexpr.to_string 80 (Arrange.pat p))
+      ))
+    end;
 
     let fun_typ = u.note.S.note_typ in
     let obj_typ =

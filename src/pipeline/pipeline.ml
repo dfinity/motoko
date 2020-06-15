@@ -587,15 +587,23 @@ let comp_unit_of_prog (prog : Syntax.prog) : Syntax.comp_unit =
     | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
     let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
     go (imports @ [i]) ds
-    (* bodies *)
+    (* terminal expressions *)
     | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] ->
     finish { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
     finish { it = ActorU (None, fields); note = e.note; at = e.at }
+    | [{it = ClassD (tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
+    assert (tbs = []);
+    finish { it = ActorClassU (tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
+    (* let-bound terminal expressions *)
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
+    finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
+
     (* Everything else is a program *)
     | ds ->
     finish { it = ProgU ds; note = prog_typ_note; at = no_region }
-  in go [] prog.it
+  in
+  go [] prog.it
 
 (* Undo lib_of_prog, should go away when we use comp_unit earlier *)
 let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
@@ -606,9 +614,7 @@ let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
   | _ -> assert false
   )
 
-
 (* Desguaring *)
-
 
 let desugar_unit imports u name : Ir.prog =
   phase "Desugaring" name;
@@ -705,7 +711,7 @@ let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
     | l :: libs ->
       let u = comp_unit_of_lib l in
       match (snd u.Source.it).Source.it with
-      | Syntax.ActorU _ ->
+      | Syntax.ActorU _ | Syntax.ActorClassU _ ->
         let wasm = compile_unit_to_wasm mode imports u in
         go (imports @ Lowering.Desugar.import_class u.Source.note wasm) libs
       | _ ->
