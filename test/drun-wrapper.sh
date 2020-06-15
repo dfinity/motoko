@@ -30,14 +30,18 @@ export LANG=C.UTF-8
 # affected tests on drun (only ic-ref-run).
 EXTRA_BATCHES=1
 
+# drun creates canisters with this ID:
+ID=ic:0100000000000000000000000000000000012D
+
 if [ "${1: -5}" = ".drun" ]
 then
   $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES $1
 else
-  ( echo "install ic:2A012B $1 0x"
+  ( echo "create"
+    echo "install $ID $1 0x"
     if [ -n "$2" ]
     then
-      LANG=C perl -ne 'print "$1 ic:2A012B $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade ic:2A012B '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
+      LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
   ) | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi

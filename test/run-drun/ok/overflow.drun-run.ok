@@ -1,8 +1,8 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
 ingress System
 debug.print: ok 1
 debug.print: ok 2
-debug.print: ok 3
-debug.print: ok 4
-debug.print: ok 5
-debug.print: ok 6
-ingress Completed: Canister: Reply: 0x4449444c0000
+thread '<unnamed>' panicked at 'There should be enough gas to execute the message.: CanisterOutOfGas { available: 68715825844, requested: 1000000000000 }', messaging/src/scheduling/scheduler.rs:199:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'Coordinator' panicked at 'Thread pool worker panicked', /nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-crates-io/scoped_threadpool-0.1.9/src/lib.rs:236:13
+thread 'main' panicked at 'Failed to send batch 38: background worker is dead', messaging/src/message_routing.rs:178:51

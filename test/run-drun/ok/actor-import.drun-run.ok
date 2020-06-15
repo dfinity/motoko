@@ -1,4 +1,6 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
 ingress System
 ingress Completed: Canister: Reply: 0x4449444c016900010001022a01
-ingress Completed: Canister: Reply: 0x4449444c016900010001022a01
-ingress Completed: Canister: Reply: 0x4449444c016900010001022a01
+thread 'Coordinator' panicked at 'internal error: entered unreachable code: We do not yet handle the case where the registry returns an error. DFN-959. The requested version is not available locally.', messaging/src/routing/stream_builder.rs:159:21
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at 'Failed to send batch 35: background worker is dead', messaging/src/message_routing.rs:178:51
