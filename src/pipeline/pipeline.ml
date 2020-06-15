@@ -586,7 +586,8 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     go (imports @ [i]) ds
 
     (* terminal expressions *)
-    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] ->
+
+    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
     finish { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
     finish { it = ActorU (None, fields); note = e.note; at = e.at }
@@ -594,7 +595,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     assert (tbs = []);
     finish { it = ActorClassU (tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] ->
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
     (* Note: Loosing the module name here! *)
     finish { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
