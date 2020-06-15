@@ -453,7 +453,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Text s ->
         let f = match id.it with
           | "size" when T.eq exp1.note.note_typ T.text ->
-            text_len (* TODO: remove this hack with Blob value *)
+            text_len (* TODO: remove this hack with Blob value; https://github.com/dfinity-lab/motoko/issues/1611 *)
           | "chars" -> text_chars
           | "size" -> blob_size
           | "bytes" -> blob_bytes
