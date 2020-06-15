@@ -452,7 +452,7 @@ func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> F
 
 let floatToText = @text_of_Float;
 
-// Trigonometric functions
+// Trigonometric and transcendental functions
 
 func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
 func cos(f : Float) : Float = (prim "fcos" : Float -> Float) f;
@@ -461,6 +461,9 @@ func arcsin(f : Float) : Float = (prim "fasin" : Float -> Float) f;
 func arccos(f : Float) : Float = (prim "facos" : Float -> Float) f;
 func arctan(f : Float) : Float = (prim "fatan" : Float -> Float) f;
 func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> Float) (y, x);
+
+func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
+func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
 // Array utilities
 

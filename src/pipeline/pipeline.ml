@@ -581,12 +581,12 @@ let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
 
-let desugar imports progs name =
+let desugar imports prog name =
   phase "Desugaring" name;
   let open Lowering.Desugar in
   let prog_ir' : Ir.prog = link_declarations
     (transform_prelude prelude @ imports)
-    (transform_prog progs) in
+    (transform_prog prog) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
@@ -636,10 +636,15 @@ let load_as_rts () =
 
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
-let name_progs progs =
+(* a hack to support compiling multiple files *)
+let combine_progs progs : Syntax.prog =
+  let open Source in
   if progs = []
-  then "empty"
-  else (Lib.List.last progs).Source.note
+  then { it = []; at = no_region; note = "empty" }
+  else { it = Lib.List.concat_map (fun p -> p.it) progs
+       ; at = (Lib.List.last progs).at
+       ; note = (Lib.List.last progs).note
+       }
 
 let lower_prog mode libs progs name =
   let prog_ir = desugar libs progs name in
@@ -684,8 +689,8 @@ and compile_class mode imports (cls : Syntax.lib) : string =
   wasm
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
-  let prog = match progs with [prog] -> prog | _ -> assert false in
-  let name = name_progs progs in
+  let prog = combine_progs progs in
+  let name = prog.Source.note in
   let imports = compile_classes mode libs in
   let prog_ir = lower_prog mode imports prog name in
   phase "Compiling" name;
@@ -709,8 +714,8 @@ let dont_compile_classes libs : Lowering.Desugar.import_declaration =
   Lib.List.concat_map (fun l -> Lowering.Desugar.transform_lib l) libs
 
 let interpret_ir_prog libs progs =
-  let prog = match progs with [prog] -> prog | _ -> assert false in
-  let name = name_progs progs in
+  let prog = combine_progs progs in
+  let name = prog.Source.note in
   let libs' = dont_compile_classes libs in
   let prog_ir = lower_prog (!Flags.compile_mode) libs' prog name in
   phase "Interpreting" name;
