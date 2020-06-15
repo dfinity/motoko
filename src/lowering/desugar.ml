@@ -604,6 +604,7 @@ let transform_import (i : S.import) : import_declaration =
     | S.LibPath fp ->
       varE (var (id_of_full_path fp) t)
     | S.ClassPath fp ->
+      (* NB: This wrapper should only be produced when compiling classes separately *)
       let _, c, _, _, ts = T.as_func t in
       let t = T.codom c (fun () -> assert false) ts in
       [] -->* primE (I.ActorOfIdBlob t) [
@@ -669,6 +670,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let exp = match prog with
     | I.LibU (ds, e) -> blockE ds e
     | I.ActorU (ds, fs, up, t) ->
+      (* When importing actors, but not compiling separate (i.e. for the IR interpreter) *)
       { it = I.ActorE (ds, fs, up, t); at = u.at; note = Note.{ def with typ = t } }
     | I.ProgU ds -> raise (Invalid_argument "Desugar: Cannot import program")
   in
