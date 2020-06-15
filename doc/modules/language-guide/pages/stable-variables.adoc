@@ -1,0 +1,66 @@
+= Stable and flexible variables
+
+To enable persistent state to survive upgrades, a special form of state is needed that we call _stable_.
+
+The compiler needs to take special care to never change the representation of such state.
+To make this requirement feasible, certain type restrictions apply to stable state: essentially it can only contain data.
+
+Stable state is introduced in the form of _stable variable definitions_ that are only allowed (as well as required) in actors.
+
+All `+let+` and `+var+` variable declarations that you define in an actor must be identifies as either a `+stable+` variable or `+flexible+` variable.
+This explicit declaration is required to indicate that special type restrictions apply.
+
+Concretely, the syntax of `<dec-field>` is extended as follows:
+
+```
+<dec-field> ::=
+  (public|private)? (stable|flexible)? dec
+```
+
+The following restrictions apply:
+
+* Either a `stable` or `flexible` modifier _must_ appear on `let` and `var` declarations that are actor fields.
+* A `stable` or `flexible` modifier _must not_ appear anywhere else.
+
+### Typing
+
+Because the compiler must ensure that stable variables never change their state, certain type restrictions apply to stable state: essentially it can only contain data.
+
+A stable declaration must have a _stable type_. 
+Stable types are a superset of _shared_ types.
+Specifically, stable types allow objects or arrays with mutable components.
+
+Concretely, the `stable` predicate has the same definition as the `shared` predicate, except that the case for `Mut t` is
+
+```
+  | Mut t -> go t
+```
+
+That is, shared entails stable.
+Note that this implies that stable types can contain actors or shared functions, but mutability does not extend to actors or shared functions.
+
+Note: This implies that stable state can only contain records, not objects (which contain non-shared functions).
+
+### Semantics
+
+Installing a new actor runs the initialiser expressions of all flexible and stable variables in sequence, like for ordinary variable definitions in an object.
+
+When upgrading an actor, all stable variables that existed in the previous version are pre-initialised with their old values.
+Their initialiser expressions are ignored.
+After that, the initialiser expressions of flexible and newly added stable variables are executed in sequence, like for ordinary variable definitions.
+
+This implies that any expression declaration (or any of the form `let _ = <exp>`, for which expressions are a short-hand) will always be run after an upgrade.
+They can hence be (ab)used as post-upgrade hooks.
+
+
+The textual representation for stable signatures looks like a Motoko actor type:
+
+[source,motoko]
+----
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+----
+
