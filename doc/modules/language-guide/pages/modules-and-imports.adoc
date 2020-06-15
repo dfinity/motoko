@@ -3,12 +3,14 @@
 This section provides examples of different scenarios for using the `module` and `import` keywords.
 
 To illustrate how these keywords are used, we'll step through the following sample code for the https://github.com/matthewhammer/ic-game-terminal/blob/master/examples/mazeGame[Maze game] project.
-
+[source,motoko]
+----
 import List "mo:base/List";
 import Result "mo:base/Result";
 import Render "mo:redraw/Render";
 import Mono5x5 "mo:redraw/glyph/Mono5x5";
 import Types "Types";
+----
 
 == Basic semantics
 
@@ -20,22 +22,24 @@ The first line lacks the mo: prefix, and it imports a module from the local proj
 
 The file Types.mo is in the same directory as the file for this listing.  Notice that the import omits the file suffix .mo.
 
-The second line imports a module Render from a package redraw that is provided to moc by the  package manager.  
-(I am using Vessel, but the role of vessel does not show up in the code and vessel is not required; it’s useful for managing the moc command line arguments for package names and their file paths).
+The second line imports a module Render from a package redraw that is provided to moc by the Vessel package manager.  
+Vessel is useful for managing the moc command line arguments for package names and their file paths).
 
 The final line gives another variant, where the package has internal directory structure, and it contains a subdirectory called glyph, with a module called Mono5x5. 
 
 == Using the canister prefix
 
-In addition to those above, there is another case worth discussing, that uses the canister: prefix in place of the mo: prefix:
-https://github.com/dfinity/motoko-bigmap/blob/98f58f7cb9743d41c400263e7667fe253761ac50/test/PutGet.mo#L1
+In addition to the examples above that import {proglang} modules, you can also import functions from canisters by using the `+canister: prefix+` in place of the `+mo:+` prefix.
+For example:
 
+[source,motoko]
+----
 import BigMap "canister:BigMap";
+----
 
-^ This line appears in the code linked above.
-It imports a canister named BigMap, that is produced via dfx build, and declared in the dfx.json file.
+This line imports a canister named `+BigMap+` that is produced from running `+dfx build+` and declared a project's the `+dfx.json+` file.
 
-Notably, the type for this canister will be correspond to a Motoko actor (not a Motoko module, as in each case above) --- further, the type for this actor is derived from the Candid file for the canister, and this type may differ in some ways from the Motoko code that defines it.
-For instance, if the Motoko code says Word8 in some places in its API, the canister will instead use Nat8.
-These differences come from the Candid/Motoko composition layer inherent to the canister abstraction. 
+It is important to note that the type for the imported canister corresponds to a {proglang} actor instead of a {proglang} module. The type for the imported canister actor is derived from the Candid file (the _project-name_.did file) for the canister, and this type may differ in some ways from the {proglang} code that defines it.
+For example, if the {proglang} code says `+Word8+` in some places in its API, the canister will instead use `+Nat8+`.
+These differences come from the Candid to Motoko composition layer inherent to the canister abstraction. 
 
