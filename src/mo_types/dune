@@ -2,5 +2,5 @@
   (name mo_types)
   (libraries wasm lib lang_utils mo_config)
   (inline_tests)
-  (preprocess (pps ppx_inline_test -conditional))
+  (preprocess (pps ppx_inline_test))
 )
