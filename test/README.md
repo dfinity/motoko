@@ -14,10 +14,6 @@ Run these either in the top level directory, or in one of the subdirectories.
 
    Refreshes all output
 
-* `make coverage`
-
-   Creates a coverage report in `./coverage/`
-
 * `make clean`
 
    Cleans
