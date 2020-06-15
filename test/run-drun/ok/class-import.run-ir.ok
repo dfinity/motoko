@@ -1,5 +1,5 @@
 Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
 (unknown location): IR type error, subtype violation:
-  () -> actor {}
-  Blob
+  actor {}
+  () -> anon-class-1.1
 
