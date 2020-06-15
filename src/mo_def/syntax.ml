@@ -201,15 +201,31 @@ and dec' =
       typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 
-(* Program *)
+(* Program (pre unit detection) *)
 
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
-
-(* Libraries *)
+(* Libraries (pre unit detection) *)
 
 type lib = (exp, string) Source.annotated_phrase
+
+(* Imports *)
+
+type import = (import', Type.typ) Source.annotated_phrase
+and import' = id * string * resolved_import ref
+
+(* Compilation units *)
+
+type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
+and comp_unit_body' =
+ | ProgU of dec list              (* programs *)
+ | ModuleU of exp_field list      (* modules *)
+ | ActorClassU of typ_id * pat * typ option * id option * exp_field list (* IC actor class *)
+ | ActorU of id option * exp_field list  (* IC actor *)
+
+type comp_unit = (comp_unit', string) Source.annotated_phrase
+and comp_unit' = (import list * comp_unit_body)
 
 
 (* n-ary arguments/result sequences *)

@@ -148,19 +148,7 @@ and exp' at note = function
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, ir) ->
-    begin match !ir with
-    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp -> I.VarE (id_of_full_path fp)
-    | S.ClassPath fp ->
-      let _, c, _, _, ts = T.as_func note.Note.typ in
-      let t = T.codom c (fun () -> assert false) ts in
-      ([] -->* primE (I.ActorOfIdBlob t) [
-        varE (var (id_of_full_path fp) T.blob)
-      ]).it
-    | S.PrimPath -> I.VarE (id_of_full_path "@prim")
-    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
-    end
+  | S.ImportE (f, ir) -> assert false
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and url e =
@@ -583,57 +571,81 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   args, wrap_under_async, control, res_tys
 
-and comp_unit ds : Ir.comp_unit =
-  let open Ir in
-
-  let find_last_expr (ds,e) =
-    let find_last_actor = function
-      | ds1, {it = ActorE (ds2, fs, up, t); _} ->
-        (* NB: capture! *)
-        ActorU (ds1 @ ds2, fs, up, t)
-      | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
-        ActorU (ds1 @ ds2, fs, up, t)
-      | _ ->
-        ProgU ( ds @ [ expD e ]) in
-
-    if ds = [] then find_last_actor ([], e) else
-    match Lib.List.split_last ds, e with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
-      find_last_actor (ds1', e')
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
-      find_last_actor (ds1', e')
-    | _ ->
-      find_last_actor (ds, e) in
-
-  (* find the last actor. This hack can hopefully go away
-     after Claudios improvements to the source *)
-  if ds = [] then ProgU [] else
-  find_last_expr (block false ds)
-
-let transform_prog (p : Syntax.prog) : Ir.prog  =
-  comp_unit p.it
-  , { I.has_await = true
-    ; I.has_async_typ = true
-    ; I.has_show = true
-    ; I.serialized = false
-    }
-
 type import_declaration = Ir.dec list
 
-let transform_lib lib : import_declaration =
+let import_lib lib : import_declaration =
   let f = lib.note in
   let t = lib.it.note.Syntax.note_typ in
   [ letD (var (id_of_full_path f) t) (exp lib.it) ]
 
-let transform_class f wasm : import_declaration =
+let import_class f wasm : import_declaration =
   let t = T.blob in
   [ letD (var (id_of_full_path f) t) (blobE wasm) ]
 
-let transform_prelude prelude : import_declaration =
+let import_prelude prelude : import_declaration =
   decs (prelude.it)
 
+let inject_decs extra_ds = function
+  | Ir.ProgU ds -> Ir.ProgU (extra_ds @ ds)
+  | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (extra_ds @ ds, fs, up, t)
+
 let link_declarations imports (cu, flavor) =
-  let cu' = match cu with
-    | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
-    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
-  in cu', flavor
+  inject_decs imports cu, flavor
+
+let initial_flavor : Ir.flavor =
+  { I.has_await = true
+  ; I.has_async_typ = true
+  ; I.has_show = true
+  ; I.serialized = false
+  }
+
+let transform_import (i : S.import) : import_declaration =
+  let (id, f, ir) = i.it in
+  let t = i.note in
+  let rhs = match !ir with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath fp ->
+      varE (var (id_of_full_path fp) t)
+    | S.ClassPath fp ->
+      let _, c, _, _, ts = T.as_func t in
+      let t = T.codom c (fun () -> assert false) ts in
+      [] -->* primE (I.ActorOfIdBlob t) [
+        varE (var (id_of_full_path fp) T.blob)
+      ]
+    | S.PrimPath ->
+      varE (var (id_of_full_path "@prim") t)
+    | S.IDLPath (fp, blob_id) ->
+      primE (I.ActorOfIdBlob t) [blobE blob_id]
+  in [ letD (var id.it t) rhs ]
+
+let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
+  match u.it with
+  | S.ProgU ds -> I.ProgU (decs ds)
+  | S.ModuleU ds -> raise (Invalid_argument ("transform_unit_body: TODO ModuleU"))
+  | S.ActorClassU (_typ_id, p, _, self_id, fields) ->
+    if p.it != S.TupP []
+    then raise (Invalid_argument ("transform_unit_body: TODO Actor class params"));
+
+    let fun_typ = u.note.S.note_typ in
+    let obj_typ =
+      match fun_typ with
+      | T.Func(s,c,bds,dom,[rng]) ->
+        assert(0 = List.length bds);
+        T.promote rng
+      | _ -> assert false
+    in
+    begin match build_actor u.at self_id fields obj_typ with
+    | I.ActorE (ds, fs, u, t) -> I.ActorU (ds, fs, u, t)
+    | _ -> assert false
+    end
+  | S.ActorU (self_id, fields) ->
+    begin match build_actor u.at self_id fields u.note.S.note_typ with
+    | I.ActorE (ds, fs, u, t) -> I.ActorU (ds, fs, u, t)
+    | _ -> assert false
+    end
+
+let transform_unit (u : S.comp_unit) : Ir.prog  =
+  let (imports, body) = u.it in
+  let imports' = Lib.List.concat_map transform_import imports in
+  let body' = transform_unit_body body in
+  inject_decs imports' body', initial_flavor

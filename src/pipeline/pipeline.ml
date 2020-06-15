@@ -566,6 +566,60 @@ let run_files_and_stdin files =
       Some ()
   )
 
+(* Compilation unit detection *)
+
+(* Currently happening after type checking, before desugaring.
+   This maybe ought to move further up (into or after parsing) *)
+
+let comp_unit_of_prog (prog : Syntax.prog) : Syntax.comp_unit =
+  let open Source in
+  let open Syntax in
+  let f = prog.note in
+
+  let rec go imports : Syntax.dec list -> Syntax.comp_unit =
+    let finish u = { it = (imports, u); note = f; at = no_region } in
+    let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
+    function
+    (* empty file, default to program *)
+    | [] ->
+    finish { it = ProgU []; note = prog_typ_note; at = no_region }
+    (* imports *)
+    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
+    let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
+    go (imports @ [i]) ds
+    (* bodies *)
+    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] ->
+    finish { it = ModuleU fields; note = e.note; at = e.at }
+    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
+    finish { it = ActorU (None, fields); note = e.note; at = e.at }
+    (* Everything else is a program *)
+    | ds ->
+    finish { it = ProgU ds; note = prog_typ_note; at = no_region }
+  in go [] prog.it
+
+(* Undo lib_of_prog, should go away when we use comp_unit earlier *)
+let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
+  let open Source in
+  let open Syntax in
+  comp_unit_of_prog (match lib.it.it with
+  | BlockE ds -> { it = ds; at = lib.at; note = lib.note }
+  | _ -> assert false
+  )
+
+
+(* Desguaring *)
+
+
+let desugar_unit imports u name : Ir.prog =
+  phase "Desugaring" name;
+  let open Lowering.Desugar in
+  let prog_ir' : Ir.prog = link_declarations
+    (import_prelude prelude @ imports)
+    (transform_unit u) in
+  dump_ir Flags.dump_lowering prog_ir';
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
+  prog_ir'
 
 (* IR transforms *)
 
@@ -580,17 +634,6 @@ let transform transform_name trans prog name =
 let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
-
-let desugar imports prog name =
-  phase "Desugaring" name;
-  let open Lowering.Desugar in
-  let prog_ir' : Ir.prog = link_declarations
-    (transform_prelude prelude @ imports)
-    (transform_prog prog) in
-  dump_ir Flags.dump_lowering prog_ir';
-  if !Flags.check_ir
-  then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
-  prog_ir'
 
 let await_lowering =
   transform_if "Await Lowering" Await.transform
@@ -609,6 +652,14 @@ let analyze analysis_name analysis prog name =
   analysis prog;
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose analysis_name prog
+
+let ir_passes mode prog_ir name =
+  let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
+  let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
+  let prog_ir = tailcall_optimization true prog_ir name in
+  let prog_ir = show_translation true prog_ir name in
+  analyze "constness analysis" Const.analyze prog_ir name;
+  prog_ir
 
 
 (* Compilation *)
@@ -646,78 +697,63 @@ let combine_progs progs : Syntax.prog =
        ; note = (Lib.List.last progs).note
        }
 
-let lower_prog mode libs progs name =
-  let prog_ir = desugar libs progs name in
-  let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
-  let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
-  let prog_ir = tailcall_optimization true prog_ir name in
-  let prog_ir = show_translation true prog_ir name in
-  analyze "constness analysis" Const.analyze prog_ir name;
-  prog_ir
-
 (* This turns the flat list of libs (some of which are classes)
    into a list of classes and libs *)
-
-let prog_of_class (cls : Syntax.lib) : Syntax.prog =
-  Source.{
-    it = [ { it = Syntax.ExpD cls.it; at = cls.at; note = cls.it.note } ];
-    at = cls.at;
-    note = cls.note
-  }
-
 let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
   let rec go imports = function
     | [] -> imports
-    | l ::libs ->
-      let t = l.Source.it.Source.note.Syntax.note_typ in
-      if Type.is_module t
-      then
-        go (imports @ Lowering.Desugar.transform_lib l) libs
-      else
-        (* This better be an actor class now *)
-        let wasm = compile_class mode imports l in
-        go (imports @ Lowering.Desugar.transform_class l.Source.note wasm) libs
+    | l :: libs ->
+      let u = comp_unit_of_lib l in
+      match (snd u.Source.it).Source.it with
+      | Syntax.ActorU _ ->
+        let wasm = compile_unit_to_wasm mode imports u in
+        go (imports @ Lowering.Desugar.import_class u.Source.note wasm) libs
+      | _ ->
+        go (imports @ Lowering.Desugar.import_lib l) libs
   in go [] libs
 
-and compile_class mode imports (cls : Syntax.lib) : string =
-  let name = cls.Source.note in
-  let prog = prog_of_class cls in
-  let prog_ir = lower_prog mode imports prog name in
-  phase "Compiling" name;
-  let wasm_mod = Codegen.Compile.compile mode name (Some (load_as_rts ())) prog_ir in
-  let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
-  wasm
-
-let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
-  let prog = combine_progs progs in
-  let name = prog.Source.note in
-  let imports = compile_classes mode libs in
-  let prog_ir = lower_prog mode imports prog name in
+and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
+  let name = u.Source.note in
+  let prog_ir = desugar_unit imports u name in
+  let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prog_ir
+
+and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
+  let wasm_mod = compile_unit mode true imports u in
+  let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
+  wasm
+
+and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
+  let imports = compile_classes mode libs in
+  let prog = combine_progs progs in
+  let u = comp_unit_of_prog prog in
+  compile_unit mode do_link imports u
 
 let compile_files mode do_link files : compile_result =
   Diag.bind (load_progs parse_file files initial_stat_env)
     (fun (libs, progs, senv) ->
     Diag.bind (Typing.check_actors senv progs) (fun () ->
-    Diag.return (compile_prog mode do_link libs progs)))
+    Diag.return (compile_progs mode do_link libs progs)))
 
 let compile_string mode s name : compile_result =
   Diag.bind (load_decl (parse_string name s) initial_stat_env)
     (fun (libs, prog, senv, _t, _sscope) ->
-    Diag.return (compile_prog mode false libs [prog]))
+    Diag.return (compile_progs mode false libs [prog]))
 
 (* Interpretation (IR) *)
 
 let dont_compile_classes libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.transform_lib l) libs
+  Lib.List.concat_map (fun l -> Lowering.Desugar.import_lib l) libs
 
-let interpret_ir_prog libs progs =
+let interpret_ir_progs libs progs =
   let prog = combine_progs progs in
   let name = prog.Source.note in
-  let libs' = dont_compile_classes libs in
-  let prog_ir = lower_prog (!Flags.compile_mode) libs' prog name in
+  let imports = dont_compile_classes libs in
+  let u = comp_unit_of_prog prog in
+  let prog_ir = desugar_unit imports u name in
+  let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
@@ -725,5 +761,5 @@ let interpret_ir_prog libs progs =
 
 let interpret_ir_files files =
   Option.map
-    (fun (libs, progs, senv) -> interpret_ir_prog libs progs)
+    (fun (libs, progs, senv) -> interpret_ir_progs libs progs)
     (Diag.flush_messages (load_progs parse_file files initial_stat_env))
