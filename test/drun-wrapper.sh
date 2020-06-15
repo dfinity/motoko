@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 DRUN=${DRUN:-drun}
-CONFIG=$(realpath $(dirname $0)/drun.toml)
+CONFIG=$(realpath $(dirname $0)/drun.json5)
 
 #
 # This script wraps drun to
