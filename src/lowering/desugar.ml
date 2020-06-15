@@ -16,9 +16,8 @@ variables with a special, non-colliding name, which we sometimes
 want to recognize for better user experience.
 *)
 
-let id_of_full_path (fp : string) : Syntax.id =
-  let open Source in
-  ("file$" ^ fp) @@ no_region
+let id_of_full_path (fp : string) : string =
+  "file$" ^ fp
 
 (* Combinators used in the desugaring *)
 
@@ -152,14 +151,14 @@ and exp' at note = function
   | S.ImportE (f, ir) ->
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.LibPath fp -> I.VarE (id_of_full_path fp)
     | S.ClassPath fp ->
       let _, c, _, _, ts = T.as_func note.Note.typ in
       let t = T.codom c (fun () -> assert false) ts in
       ([] -->* primE (I.ActorOfIdBlob t) [
-        varE (var (id_of_full_path fp).it T.blob)
+        varE (var (id_of_full_path fp) T.blob)
       ]).it
-    | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
+    | S.PrimPath -> I.VarE (id_of_full_path "@prim")
     | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
@@ -622,22 +621,13 @@ let transform_prog (p : Syntax.prog) : Ir.prog  =
 type import_declaration = Ir.dec list
 
 let transform_lib lib : import_declaration =
-  (* TODO: simplify (don’t go through Syntax) *)
-  let open Source in
   let f = lib.note in
   let t = lib.it.note.Syntax.note_typ in
-  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
-  let d = { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note } in
-  [dec d]
+  [ letD (var (id_of_full_path f) t) (exp lib.it) ]
 
 let transform_class f wasm : import_declaration =
-  (* TODO: simplify (don’t go through Syntax) *)
-  let p = { it = Syntax.VarP (id_of_full_path f); at = no_region; note = T.blob } in
-  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = T.blob } in
-  let exp = { it = Syntax.LitE (ref (Syntax.TextLit wasm)); at = no_region; note = typ_note} in
-  let d = { it = Syntax.LetD (p, exp); at = no_region; note = typ_note } in
-  [dec d]
+  let t = T.blob in
+  [ letD (var (id_of_full_path f) t) (blobE wasm) ]
 
 let transform_prelude prelude : import_declaration =
   decs (prelude.it)
