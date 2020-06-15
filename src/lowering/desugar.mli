@@ -5,10 +5,10 @@ open Ir_def
    or to bring libraries into scope *)
 type import_declaration = Ir.dec list
 
-val import_unit : Syntax.comp_unit -> import_declaration
+val import_unit : bool -> Syntax.comp_unit -> import_declaration
 val import_class : string -> string -> import_declaration
 val import_prelude : Syntax.prog -> import_declaration
 
-val transform_unit : Syntax.comp_unit -> Ir.prog
+val transform_unit : bool -> Syntax.comp_unit -> Ir.prog
 
 val link_declarations : import_declaration -> Ir.prog -> Ir.prog
