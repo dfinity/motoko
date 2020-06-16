@@ -260,13 +260,13 @@ module Int_64 = Ranged (Int) (IntRange (struct let upper = Big_int.power_int_pos
 
 module Blob = struct
   let escape b =
-    "\"" ^ String.concat "" (
+    String.concat "" (
       List.of_seq (
         Seq.map (fun c ->
           "\\" ^ Lib.Hex.hex_of_char c
         ) (String.to_seq b)
       )
-    ) ^ "\""
+    )
 end
 
 (* Types *)
