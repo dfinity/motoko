@@ -1,0 +1,6 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query len2(0x4449444c0002717102486905576f726c64)
+← completed: 0x4449444c016c02007c017c01000205
