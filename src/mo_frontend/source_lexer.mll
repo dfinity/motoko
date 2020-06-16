@@ -18,48 +18,50 @@ let utf8 s i =
   i := !i + len;
   List.hd (Utf8.decode (String.sub s (!i - len) (1 + len)))
 
-let codepoint of_code of_byte lexbuf s i =
+let codepoint lexbuf s i =
   let u =
-    if s.[!i] >= '\x80' then of_code (utf8 s i) else
-    if s.[!i] <> '\\' then of_code (Char.code s.[!i]) else
+    if s.[!i] >= '\x80' then Utf8.encode [utf8 s i] else
+    if s.[!i] <> '\\' then Utf8.encode [Char.code s.[!i]] else
     match (incr i; s.[!i]) with
-    | 'n' -> of_code (Char.code '\n')
-    | 'r' -> of_code (Char.code '\r')
-    | 't' -> of_code (Char.code '\t')
-    | '\\' -> of_code (Char.code '\\')
-    | '\'' -> of_code (Char.code '\'')
-    | '\"' -> of_code (Char.code '\"')
+    | 'n' -> Utf8.encode [Char.code '\n']
+    | 'r' -> Utf8.encode [Char.code '\r']
+    | 't' -> Utf8.encode [Char.code '\t']
+    | '\\' -> Utf8.encode [Char.code '\\']
+    | '\'' -> Utf8.encode [Char.code '\'']
+    | '\"' -> Utf8.encode [Char.code '\"']
     | 'u' ->
       let j = !i + 2 in
       i := String.index_from s j '}';
-      of_code (
+      Utf8.encode [
         try
           let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
           if 0 <= n && n < 0xD800 || 0xE000 <= n && n < 0x110000 then n else raise (Failure "")
         with Failure _ -> error lexbuf "unicode escape out of range"
-      )
+      ]
     | h ->
       incr i;
-      of_byte (int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i]))
+      let b = int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i]) in
+      String.of_seq (Seq.return (Char.chr b))
   in incr i; u
-
-let char lexbuf s =
-  codepoint (fun c -> c) (fun b ->
-    error lexbuf "byte escape sequence in character literal"
-  ) lexbuf s (ref 1)
 
 let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
-    let bs = codepoint
-      (fun c -> Utf8.encode [c])
-      (fun b -> String.of_seq (Seq.return (Char.chr b)))
-      lexbuf s i
-    in
+    let bs = codepoint lexbuf s i in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
   Buffer.contents b
+
+let char lexbuf s =
+  let t = text lexbuf s in
+  try
+    match Utf8.decode t with
+    | [n] -> n
+    | [] -> error lexbuf "empty character literal"
+    | _ -> error lexbuf "overlong character literal"
+  with Wasm.Utf8.Utf8 ->
+    error lexbuf "invalid utf8 in character literal"
 }
 
 let sign = '+' | '-'
@@ -92,8 +94,9 @@ let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
   | '\\'escape
-  | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
+let byte =
+    '\\'hexdigit hexdigit
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -103,8 +106,8 @@ let float =
   | num ('.' frac?)? ('e' | 'E') sign? num
   | "0x" hexnum '.' hexfrac?
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
-let char = '\'' character '\''
-let text = '"' character* '"'
+let char = '\'' (character | byte+) '\''
+let text = '"' (character|byte)* '"'
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
 
