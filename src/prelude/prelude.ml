@@ -116,7 +116,7 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
   var i = 0;
   while (n > 0) {
     let rem = n % base;
-    if (sep > 0 and (i % sep == sep - 1)) { text := "_" # text; };
+    if (sep > 0 and i == sep) { text := "_" # text; i := 0 };
     text := digits rem # text;
     n := n / base;
     i += 1;
