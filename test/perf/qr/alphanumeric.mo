@@ -30,7 +30,7 @@ module {
     let mi = List.fromArray<Bool>([false, false, true, false]);
     let cci = Util.padLeftTo(
       Common.cciLen(version, #Alphanumeric),
-      Nat.natToBits(text.len())
+      Nat.natToBits(text.size())
     );
 
     func format(body : List<Bool>) : List<Bool> {

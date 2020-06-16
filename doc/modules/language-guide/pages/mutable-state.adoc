@@ -203,7 +203,7 @@ allocates a new array by consulting a user-provided "generation
 function" `gen` for each element.
 
 ....
-Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T]
+Array_tabulate<T>(size : Nat,  gen : Nat -> T) : [T]
 ....
 
 Function `gen` specifies the array _as a function value_ of arrow
@@ -255,7 +255,7 @@ As above, the array `a` above holds three natural numbers, but has type `[var Na
 To allocate mutable arrays of non-constant size, use the `Array_init` primitive, and supply an initial value:
 
 ....
-func Array_init<T>(len : Nat,  x : T) : [var T]
+func Array_init<T>(size : Nat,  x : T) : [var T]
 ....
 
 For example:

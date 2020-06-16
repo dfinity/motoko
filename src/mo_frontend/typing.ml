@@ -636,12 +636,12 @@ let array_obj t =
   let open T in
   let immut t =
     [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
-      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
       {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
       {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
     ] in
   let mut t = immut t @
-    [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
+    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
@@ -656,7 +656,7 @@ let text_obj () =
   let open T in
   Object,
   [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
-    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
 
