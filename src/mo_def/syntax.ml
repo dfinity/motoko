@@ -84,6 +84,7 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
+  | BlobLit of string
   | PreLit of string * Type.prim
 
 
@@ -228,6 +229,7 @@ let arity t =
 
 (* Literals *)
 
+(* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
@@ -248,6 +250,7 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
+  | BlobLit b     -> b
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
 
