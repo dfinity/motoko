@@ -562,7 +562,7 @@ let analyze analysis_name analysis prog name =
 let load_as_rts () =
 
   let load_file f =
-    let ic = open_in f in
+    let ic = open_in_bin f in
     let n = in_channel_length ic in
     let s = Bytes.create n in
     really_input ic s 0 n;
