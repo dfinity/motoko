@@ -194,7 +194,8 @@ sig
    *
    * Examples:
    *
-   * TBW
+   * Asked for "Array.mo", opened "array.mo" reports
+   * "warning, file Array.mo has been located with a name of different case"
    *)
   val open_in : string -> (in_channel * string list)
 end
