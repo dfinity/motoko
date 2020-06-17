@@ -106,7 +106,7 @@ let parse_string name s : parse_result =
   | Error e -> Error [e]
 
 let parse_file filename : parse_result =
-  let ic = open_in filename in
+  let ic = Lib.FilePath.open_in filename in
   let lexer = Lexing.from_channel ic in
   let parse = Parser.Incremental.parse_prog in
   let result = parse_with Lexer.Normal lexer parse filename in

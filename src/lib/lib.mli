@@ -185,4 +185,16 @@ sig
    * is_subpath "/home" "/homepath" = false
    *)
   val is_subpath : string -> string -> bool
+
+
+  (**
+   * Opens file, and if successful checks whether there
+   * were any mismatches in filename case, returning
+   * a warning.
+   *
+   * Examples:
+   *
+   * TBW
+   *)
+  val open_in : string -> in_channel
 end

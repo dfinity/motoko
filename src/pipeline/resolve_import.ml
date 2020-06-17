@@ -146,13 +146,14 @@ let append_extension : (string -> bool) -> string -> string =
 let resolve_lib_import at full_path : (string, Diag.message) result =
   let full_path = append_extension Sys.file_exists full_path in
   if Sys.file_exists full_path
-  then Ok full_path
+  then Ok full_path (* HERE TOO?*)
   else Error (err_file_does_not_exist' at full_path)
 
 let add_lib_import msgs imported ri_ref at full_path =
   match resolve_lib_import at full_path with
   | Ok full_path -> begin
       ri_ref := LibPath full_path;
+      Printf.printf "PATH: %s\n" full_path;
       imported := RIM.add (LibPath full_path) at !imported
     end
   | Error err ->
