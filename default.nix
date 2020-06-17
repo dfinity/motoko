@@ -447,7 +447,6 @@ rec {
       moc
       mo-ide
       mo-doc
-      js
       didc
       deser
       samples
@@ -461,7 +460,9 @@ rec {
       check-formatting
       check-generated
       check-grammar
-    ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
+    ] ++
+    builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
+    builtins.attrValues js;
   };
 
   shell = nixpkgs.mkShell {
