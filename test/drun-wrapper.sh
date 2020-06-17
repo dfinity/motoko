@@ -35,7 +35,10 @@ ID=ic:0100000000000000000000000000000000012D
 
 if [ "${1: -5}" = ".drun" ]
 then
-  $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES $1
+  # work around different IDs in ic-ref-run and drun
+  ( echo "create"
+    LANG=C perl -npe 's,ic:2A012B,'$ID',g' $1
+  ) | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"

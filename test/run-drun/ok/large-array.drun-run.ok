@@ -1,0 +1,5 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+debug.print: done
+thread 'Coordinator' panicked at 'Failed to make a checkpoint @3: Persistence(FileSystemError { path: "/run/user/1000/ic_configUbvXuf/state/tmp/ic.XXX/src/lib.rs:368:29
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at 'Failed to send batch 20: background worker is dead', messaging/src/message_routing.rs:178:51
