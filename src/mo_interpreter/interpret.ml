@@ -243,6 +243,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
+  | BlobLit s -> V.Text s (* refine in #1611 *)
   | PreLit _ -> assert false
 
 
