@@ -301,33 +301,36 @@ rec {
     '';
   };
 
-  js = stdenv.mkDerivation {
-    name = "moc.js";
-
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs nixpkgs ++ [
-      nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ppx
-      nixpkgs.nodejs-10_x
-    ];
-
-    buildPhase = ''
-      make moc.js
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      cp -v moc.js $out
-      cp -vr ${rts}/rts $out
-    '';
-
-    doInstallCheck = true;
-
-    installCheckPhase = ''
-      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
-    '';
-  };
+  js =
+    let mk = n: with_rts:
+      stdenv.mkDerivation {
+        name = "${n}.js";
+        src = subpath ./src;
+        buildInputs = commonBuildInputs nixpkgs ++ [
+          nixpkgs.ocamlPackages.js_of_ocaml
+          nixpkgs.ocamlPackages.js_of_ocaml-ppx
+          nixpkgs.nodejs-10_x
+        ];
+        buildPhase = ''
+          make ${n}.js
+        '';
+        installPhase = ''
+          mkdir -p $out
+          cp -v ${n}.js $out
+        '' + (if with_rts then ''
+          cp -vr ${rts}/rts $out
+        '' else "");
+        doInstallCheck = true;
+        test = ./test + "/test-${n}.js";
+        installCheckPhase = ''
+          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+        '';
+      };
+    in
+    {
+      moc = mk "moc" true;
+      didc = mk "didc" false;
+    };
 
   inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
