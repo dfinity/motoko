@@ -196,5 +196,5 @@ sig
    *
    * TBW
    *)
-  val open_in : string -> in_channel
+  val open_in : string -> (in_channel * string list)
 end

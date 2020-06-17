@@ -106,7 +106,11 @@ let parse_string name s : parse_result =
   | Error e -> Error [e]
 
 let parse_file filename : parse_result =
-  let ic = Lib.FilePath.open_in filename in
+  let ic, messages = Lib.FilePath.open_in filename in
+  Diag.print_messages
+    (List.map
+       (fun text -> Diag.{ sev = Warning; at = Source.no_region; cat = "import"; text })
+       messages);
   let lexer = Lexing.from_channel ic in
   let parse = Parser.Incremental.parse_prog in
   let result = parse_with Lexer.Normal lexer parse filename in
@@ -310,8 +314,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
-        Error [{
-          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+        Error [Diag.{
+          sev = Error; at = ri.Source.at; cat = "import";
           text = Printf.sprintf "file %s must not depend on itself" f
         }]
       else begin
@@ -331,8 +335,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
     | Syntax.IDLPath (f, _) ->
        Diag.bind (Idllib.Pipeline.check_file f) (fun (prog, idl_scope, actor_opt) ->
        if actor_opt = None then
-         Error [{
-           Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+         Error [Diag.{
+           sev = Error; at = ri.Source.at; cat = "import";
            text = Printf.sprintf "file %s does not define a service" f
          }]
        else

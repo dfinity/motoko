@@ -457,18 +457,21 @@ struct
     else List.is_prefix (=) (segments base) (segments path)
 
   (* When opening is successful, but there is a case mismatch, warn *)
-  let open_in path =
+  let open_in path : in_channel * string list =
     let ic = Stdlib.open_in path in
     let dir, base = Filename.(dirname path, basename path) in
     let files = Sys.readdir dir in
     if not (Array.exists (fun name -> name = base) files) then
       begin
         let open Stdlib.String in
+        let message = Printf.sprintf "file %s has been located with a name of different case" base in
+        let message' = Printf.sprintf "file %s has been located with a different name" base in
         let base = lowercase_ascii base in
         if Array.exists (fun name -> lowercase_ascii name = base) files then
-          Printf.printf "CASE MISMATCH %s (want)\n" base;
-      end;
-    ic
+          ic, [message]
+        else ic, [message']
+      end
+    else ic, []
 end
 
 
