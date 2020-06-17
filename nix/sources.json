@@ -6,7 +6,7 @@
         "type": "git"
     },
     "dfinity": {
-        "ref": "dimitris\/fix-gas",
+        "ref": "dimitris/fix-gas",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
         "rev": "c34f9e6162d9426baa8943a95ba31f71095fa7d9",
         "type": "git"
