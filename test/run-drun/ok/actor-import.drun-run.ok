@@ -1,6 +1,0 @@
-ingress Canister Id: ic:0100000000000000000000000000000000012D
-ingress System
-ingress Completed: Canister: Reply: 0x4449444c016900010001022a01
-thread 'Coordinator' panicked at 'Registry returned error within deterministic processing phase.: VersionNotAvailable', messaging/src/routing/stream_builder.rs:48:9
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-thread 'main' panicked at 'Failed to send batch 34: background worker is dead', messaging/src/message_routing.rs:178:51
