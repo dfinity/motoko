@@ -6,9 +6,9 @@
         "type": "git"
     },
     "dfinity": {
-        "ref": "master",
+        "ref": "dimitris/fix-gas",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "bfd4bc9ab970101df2182bd4999a8a4848c398c0",
+        "rev": "c34f9e6162d9426baa8943a95ba31f71095fa7d9",
         "type": "git"
     },
     "esm": {
