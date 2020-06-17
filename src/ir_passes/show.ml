@@ -158,6 +158,9 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Char) ->
     define_show t (invoke_prelude_show "@text_of_Char" t (argE t)),
     []
+  | T.(Prim Blob) ->
+    define_show t (invoke_prelude_show "@text_of_Blob" t (argE t)),
+    []
   | T.(Prim Principal) ->
     define_show t (primE IcUrlOfBlob [primE T.(CastPrim (Prim Principal, Prim Blob)) [argE t]]),
     []

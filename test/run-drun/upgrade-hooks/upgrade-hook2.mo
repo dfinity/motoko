@@ -6,7 +6,7 @@ actor {
   var j = i; // cached state
   public func inc() { j += 1; };
   public query func check(n : Int) : async () {
-    assert (c.len() == 3);
+    assert (c.size() == 3);
     assert (j == n);
   };
   system func preupgrade(){
