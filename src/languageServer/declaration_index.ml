@@ -331,7 +331,7 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
     List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ())
   in
   let package_env =
-    Pipeline.chase_imports (Vfs.parse_file vfs) Pipeline.initial_stat_env
+    Pipeline.chase_imports (fun _ -> Vfs.parse_file vfs) Pipeline.initial_stat_env
       package_paths
   in
   let lib_index =
@@ -364,7 +364,7 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
   let actor_index = index_from_scope project_root lib_index [] actor_env in
   (* TODO(Christoph): We should be able to return at least the
      actor_index even if compiling from the entry points fails *)
-  Pipeline.load_progs (Vfs.parse_file vfs) entry_points
+  Pipeline.load_progs (fun _ -> Vfs.parse_file vfs) entry_points
     Pipeline.initial_stat_env
   |> Diag.map (fun (libs, _, scope) ->
          index_from_scope project_root actor_index libs scope)
