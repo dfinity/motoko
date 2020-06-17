@@ -1,12 +1,14 @@
-ingress Err: IC0301: Canister ic:2A012B not found.
-ingress Err: IC0301: Canister ic:2A012B not found
-Err: IC0301: Could not find subnet for canister ic:2A012B
-Err: IC0301: Could not find subnet for canister ic:2A012B
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found.
-Err: IC0301: Could not find subnet for canister ic:2A012B
-Err: IC0301: Could not find subnet for canister ic:2A012B
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found.
-Err: IC0301: Could not find subnet for canister ic:2A012B
-Err: IC0301: Could not find subnet for canister ic:2A012B
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress System
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress System
+Ok: Reply: 0x4449444c0000
+debug.print: hello
+Ok: Reply: 0x4449444c0000

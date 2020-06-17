@@ -2,22 +2,21 @@
 # too slow for ic-ref:
 # SKIP ic-ref-run
 
-create
-install ic:0100000000000000000000000000000000012D life-mut/life-v1.mo ""
-ingress ic:0100000000000000000000000000000000012D advance "DIDL\x00\x01\x7d\x0F"
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
+install ic:2A012B life-mut/life-v1.mo ""
+ingress ic:2A012B advance "DIDL\x00\x01\x7d\x0F"
+query ic:2A012B show "DIDL\x00\x00"
 # self-upgrade from life-v1
-upgrade ic:0100000000000000000000000000000000012D life-mut/life-v1.mo ""
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
-ingress ic:0100000000000000000000000000000000012D advance "DIDL\x00\x01\x7d\x0F"
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
+upgrade ic:2A012B life-mut/life-v1.mo ""
+query ic:2A012B show "DIDL\x00\x00"
+ingress ic:2A012B advance "DIDL\x00\x01\x7d\x0F"
+query ic:2A012B show "DIDL\x00\x00"
 # upgrade from life-v1 to life-v2
-upgrade ic:0100000000000000000000000000000000012D life-mut/life-v2.mo ""
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
-ingress ic:0100000000000000000000000000000000012D advance "DIDL\x00\x01\x7d\x01"
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
+upgrade ic:2A012B life-mut/life-v2.mo ""
+query ic:2A012B show "DIDL\x00\x00"
+ingress ic:2A012B advance "DIDL\x00\x01\x7d\x01"
+query ic:2A012B show "DIDL\x00\x00"
 # self-upgrade from life-v2
-upgrade ic:0100000000000000000000000000000000012D life-mut/life-v2.mo ""
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
-ingress ic:0100000000000000000000000000000000012D advance "DIDL\x00\x01\x7d\x0F"
-query ic:0100000000000000000000000000000000012D show "DIDL\x00\x00"
+upgrade ic:2A012B life-mut/life-v2.mo ""
+query ic:2A012B show "DIDL\x00\x00"
+ingress ic:2A012B advance "DIDL\x00\x01\x7d\x0F"
+query ic:2A012B show "DIDL\x00\x00"

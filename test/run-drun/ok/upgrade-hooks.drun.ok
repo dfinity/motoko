@@ -1,14 +1,30 @@
-ingress Err: IC0301: Canister ic:2A012B not found.
-ingress Err: IC0301: Canister ic:2A012B not found.
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found
-ingress Err: IC0301: Canister ic:2A012B not found.
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found.
-Err: IC0301: Could not find subnet for canister ic:2A012B
-ingress Err: IC0301: Canister ic:2A012B not found
-Err: IC0301: Could not find subnet for canister ic:2A012B
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+debug.print: init'ed
+ingress System
+debug.print: init'ed 0
+debug.print: postupgrade 0
+ingress System
+debug.print: a
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
+debug.print: aa
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
+debug.print: preupgrade 0
+debug.print: init'ed 1
+debug.print: postupgrade 1
+ingress System
+debug.print: 3
+debug.print: aaa
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
+debug.print: 4
+debug.print: aaa
+Ok: Reply: 0x4449444c0000
+debug.print: preupgrade 1
+debug.print: init'ed 2
+debug.print: postupgrade 2
+ingress System
+Ok: Reply: 0x4449444c0000
+ingress Completed: Canister: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
