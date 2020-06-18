@@ -8,7 +8,7 @@ CONFIG=$(realpath $(dirname $0)/drun.json5)
 #
 # * extract the methods calls from comments in the second argument
 #   (typically the test source files)
-# * adds "ic:2A012B" as the destination to these calls
+# * adds the right canister ids as the destination to these calls
 # * writes prometheus metrics to file descriptor 222
 #   (for run.sh -p; post-processing happening in run.sh)
 #
