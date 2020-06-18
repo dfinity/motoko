@@ -102,6 +102,7 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext$" $file; then return 1; fi
+  if grep -q "^//SKIP $(uname)$" $file; then return 1; fi
 
   if test -e $out/$base.$ext
   then
