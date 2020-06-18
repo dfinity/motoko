@@ -24,8 +24,6 @@ fi
 
 export LANG=C.UTF-8
 
-export RUST_BACKTRACE=1
-
 # this could be used to delay drun to make it more deterministic, but
 # it doesn't work reliably and slows down the test significantly.
 # so until DFN-1269 fixes this properly, let's just not run
