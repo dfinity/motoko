@@ -460,6 +460,7 @@ struct
   let open_in path : in_channel * string list =
     let ic = Stdlib.open_in path in
     let dir, base = Filename.(dirname path, basename path) in
+    (* TODO: we could check dir too, but it's hairier *)
     let files = Sys.readdir dir in
     if not (Array.exists (fun name -> name = base) files) then
       begin
