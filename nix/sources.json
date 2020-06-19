@@ -6,9 +6,9 @@
         "type": "git"
     },
     "dfinity": {
-        "ref": "master",
+        "ref": "joachim/more-wasm-stack",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "0ba3e2de2191279ea588254b65b92cbdd167d0c7",
+        "rev": "0c179a2aaee10942910deae0bf891be60282d1e7",
         "type": "git"
     },
     "esm": {
