@@ -219,7 +219,7 @@ let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
   | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
 
 
-let prog_imports (p : prog): (url * resolved_import ref * Source.region) list =
+let prog_imports (p : prog): (url * resolved_import ref * region) list =
   let res = ref [] in
   let f e = match e.it with
     | ImportE (f, fp) -> res := (f, fp, e.at) ::!res; e
@@ -265,7 +265,7 @@ let resolve
       let base = if Sys.is_directory base then base else Filename.dirname base in
       let imported = ref RIM.empty in
       List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
-      Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
+      Some (List.map (fun (rim,at) -> rim @@ at) (RIM.bindings !imported))
     )
   )
 
