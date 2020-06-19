@@ -64,7 +64,7 @@ invokeEmbedder embedder wasm = go embedder
             let create = unsafeTextToLine $ format "create"
             let install = unsafeTextToLine $ format ("install ic:0100000000000000000000000000000000012D "%s%" 0x") w
 
-            pipe (fileArg control) (pure install <|> pure create
+            pipe (fileArg control) (pure create <|> pure install
                                    <|> "ingress ic:0100000000000000000000000000000000012D do 0x4449444c0000")
             lns <- wait consumer
             -- view lns
