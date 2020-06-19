@@ -101,7 +101,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext$" $file; then return 1; fi
+  if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -383,7 +383,7 @@ do
 
     for runner in ic-ref-run drun
     do
-      if grep -q "# *SKIP $runner" $file
+      if grep -q "# *SKIP $runner" $(basename $file)
       then
         continue
       fi
@@ -396,7 +396,7 @@ do
       fi
 
       # collect all .mo files referenced from the file
-      mo_files="$(grep -o '[^[:space:]]\+\.mo' $file |sort -u)"
+      mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
 
       for mo_file in $mo_files
       do
@@ -404,7 +404,7 @@ do
         if [ "$(dirname $mo_file)" != "$base" ];
         then
           $ECHO ""
-          echo "$file references $mo_file which is not in directory $base"
+          echo "$base.drun references $mo_file which is not in directory $base"
           exit 1
         fi
 
@@ -413,7 +413,7 @@ do
       done
 
       # mangle drun script
-      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $file > $out/$base/$base.$runner.drun
+      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
 
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
@@ -424,7 +424,7 @@ do
   "sh")
     # The file is a shell script, just run it
     $ECHO -n " [out]"
-    ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+    ./$(basename $base.sh) > $out/$base.stdout 2> $out/$base.stderr
     normalize $out/$base.stdout
     normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
