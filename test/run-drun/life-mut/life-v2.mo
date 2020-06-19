@@ -43,7 +43,7 @@ class Grid(state : State) {
   let (n : Nat, bits : [var Word64]) =
     switch state {
       case (#v1 css) {
-        let n = css.len();
+        let n = css.size();
         let len = (n * n) / 64 + 1;
         let bits = P.Array_init<Word64>(len, 0);
         for (i in css.keys()) {

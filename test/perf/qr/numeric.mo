@@ -28,7 +28,7 @@ module {
     let mi = List.fromArray<Bool>([false, false, false, true]);
     let cci = Util.padLeftTo(
       Common.cciLen(version, #Numeric),
-      Nat.natToBits(text.len())
+      Nat.natToBits(text.size())
     );
 
     let header = List.append<Bool>(mi, cci);

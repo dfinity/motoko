@@ -147,6 +147,7 @@ and dec' =
 
 (* Literals *)
 
+(* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
@@ -198,7 +199,11 @@ let full_flavor : flavor = {
 
 (* Program *)
 
-type prog = (dec list * exp) * flavor
+type comp_unit =
+  | ProgU of dec list
+  | ActorU of dec list * field list * upgrade * Type.typ (* actor *)
+
+type prog = comp_unit * flavor
 
 
 (* object pattern helpers *)

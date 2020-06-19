@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor a {
-  
+
   flexible var pending : Int = 4;
 
   // test that oneways can locally try/throw

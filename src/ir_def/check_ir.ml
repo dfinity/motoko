@@ -65,10 +65,10 @@ type env =
     seen : con_env ref;
   }
 
-let env_of_scope scope flavor : env =
+let initial_env flavor : env =
   { flavor;
     lvl = TopLvl;
-    vals = T.Env.map (fun typ -> { typ; loc_known = true; const = true }) scope.Scope.val_env;
+    vals = T.Env.empty;
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
@@ -972,13 +972,31 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
-  let env = env_of_scope scope flavor in
-  try
+let check_comp_unit env = function
+  | ProgU ds ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
-    check_decs env' ds;
-    check_exp env' exp;
+    check_decs env' ds
+  | ActorU (ds, fs, { pre; post}, t0) ->
+    let check p = check env no_region p in
+    let (<:) t1 t2 = check_sub env no_region t1 t2 in
+    let env' = { env with async = None } in
+    let scope1 = gather_block_decs env' ds in
+    let env'' = adjoin env' scope1 in
+    check_decs env'' ds;
+    check_exp env'' pre;
+    check_exp env'' post;
+    typ pre <: T.unit;
+    typ post <: T.unit;
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    let (s0, tfs0) = T.as_obj t0 in
+    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    type_obj env'' T.Actor fs <: T.Obj (s0, val_tfs0);
+    () (* t0 <: t *)
+
+let check_prog verbose phase ((cu, flavor) as prog) : unit =
+  let env = initial_env flavor in
+  try check_comp_unit env cu
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
     if verbose

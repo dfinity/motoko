@@ -557,6 +557,11 @@ let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string
 let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string
 let check_float env = check_lit_val env T.Float Value.Float.of_string
 
+let check_text env at s =
+  (try ignore (Wasm.Utf8.decode s)
+   with Wasm.Utf8.Utf8 -> local_error env at "string literal \"%s\": is not valid utf8" (String.escaped s));
+  s
+
 
 let infer_lit env lit at : T.prim =
   match !lit with
@@ -579,6 +584,7 @@ let infer_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
+  | BlobLit _ -> T.Blob
   | PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s); (* default *)
     T.Nat
@@ -588,6 +594,9 @@ let infer_lit env lit at : T.prim =
   | PreLit (s, T.Float) ->
     lit := FloatLit (check_float env at s); (* default *)
     T.Float
+  | PreLit (s, T.Text) ->
+    lit := TextLit (check_text env at s); (* default *)
+    T.Text
   | PreLit _ ->
     assert false
 
@@ -623,6 +632,8 @@ let check_lit env t lit at =
     lit := Word64Lit (check_word64 env at s)
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) ->
     lit := FloatLit (check_float env at s)
+  | T.Prim T.Blob, PreLit (s, T.Text) ->
+    lit := BlobLit s
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
@@ -636,12 +647,12 @@ let array_obj t =
   let open T in
   let immut t =
     [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
-      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
       {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
       {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
     ] in
   let mut t = immut t @
-    [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
+    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
@@ -656,7 +667,7 @@ let text_obj () =
   let open T in
   Object,
   [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
-    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
 
@@ -2150,7 +2161,7 @@ let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
-        let prog = List.concat (List.map (fun prog -> prog.Source.it) progs) in
+        let prog = Lib.List.concat_map (fun prog -> prog.Source.it) progs in
         let env = env_of_scope msgs scope in
         let rec go = function
           | [] -> ()

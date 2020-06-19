@@ -25,6 +25,10 @@ let
                 inherit (self) stdenv fetchFromGitHub ocaml dune;
                 inherit (self.ocamlPackages) findlib;
               };
+              obelisk = import ./ocaml-obelisk.nix {
+                inherit (self) stdenv fetchFromGitHub ocaml dune_2;
+                inherit (self) ocamlPackages;
+              };
             };
             # wasmtime
             wasmtime = self.callPackage ./wasmtime.nix {};
