@@ -309,7 +309,24 @@ let transform mode prog =
       begin
         match s with
         | T.Local  ->
-          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+          begin
+          match exp.it with
+          | PrimE (CPSAsync t0, [exp1]) ->
+            FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys,
+            let t0 = t_typ t0 in
+            let tb, ts1 = match typ exp1 with
+              | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
+                tb, List.map t_typ (List.map (T.open_ [t0]) ts1)
+              | t -> assert false in
+            let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
+            (blockE [
+                 letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+                 expD (callE (t_exp exp1) [t0] (tupE [varE nary_reply; varE reject]))
+               ]
+               (varE nary_async)))
+          | _ ->
+            FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+          end
         | T.Shared s' ->
           begin
             match c, exp with
