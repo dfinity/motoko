@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "f2c7184973a5bd3d4dacfb0c1245d07ef8e39139",
+        "rev": "f484c11e040c2a91204cfddc8ddaca1c5e51979d",
         "type": "git"
     },
     "dfinity": {
@@ -40,7 +40,7 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "f70167d5bc6d05c5573d15750d266d2f7c3f20b6",
+        "rev": "ea56449ee8fada2a90614bb14dc3289d8711b296",
         "type": "git"
     },
     "musl-wasi": {

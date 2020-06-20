@@ -116,12 +116,26 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
   var i = 0;
   while (n > 0) {
     let rem = n % base;
-    if (i == sep) { text := "_" # text; i := 0 };
+    if (sep > 0 and i == sep) { text := "_" # text; i := 0 };
     text := digits rem # text;
     n := n / base;
     i += 1;
   };
   text
+};
+
+func @left_pad(pad : Nat, char : Text, t : Text) : Text {
+  if (pad > t.size()) {
+    var i = pad - t.size();
+    var text = t;
+    while (i > 0) {
+      text := char # text;
+      i -= 1;
+    };
+    text
+  } else {
+    t
+  }
 };
 
 func @digits_dec(x : Nat) : Text =
@@ -196,6 +210,17 @@ func @text_of_Char(c : Char) : Text {
   // TODO: Escape properly
   "\'" # (prim "conv_Char_Text" : Char -> Text) c # "\'";
 };
+
+func @text_of_Blob(blob : Blob) : Text {
+  var t = "\"";
+  for (b in blob.bytes()) {
+    // Could do more clever escaping, e.g. leave ascii and utf8 in place
+    t #= "\\" # @left_pad(2, "0", @text_of_num(@word8ToNat b, 16, 0, @digits_hex));
+  };
+  t #= "\"";
+  return t;
+};
+
 
 
 func @text_has_parens(t : Text) : Bool {
