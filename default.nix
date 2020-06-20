@@ -313,6 +313,7 @@ rec {
           nixpkgs.nodejs-10_x
         ];
         buildPhase = ''
+          patchShebangs .
           make ${n}.js
         '';
         installPhase = ''
