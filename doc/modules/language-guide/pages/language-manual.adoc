@@ -70,11 +70,11 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and assert assert await break case 
-catch class continue debug debug_show else 
-false for func if ignore in import not null 
-object or label let loop private public 
-query return shared switch true try
+actor and assert assert await break case
+catch class continue debug debug_show else flexible
+false for func if ignore in import not null object or
+label let loop private public query return
+shared stable system switch true try
 type var while
 ```
 
@@ -381,9 +381,15 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 
 ```bnf
 <dec-field> ::=                                object declaration fields
-  (public|private)? <dec>                        field
+  (public|private|system)? (stable|flexible)? <dec>    field
 ```
 
+* A `system` modifier _may only_ appear on `func` declarations that are actor fields.
+* A `system` modifier _must not_ appear anywhere else.
+* One of `stable` or `flexible` _should_ appear on `let` and `var` declarations that are actor fields. On actor fields,
+  an absent stability modifier defaults to `flexible` but generates a warning.
+* The pattern of a `stable` `let` declaration must be _simple_, where a pattern is _simple_ if consists of variable pattern, annotated simple pattern or parenthesised simple pattern.
+* Neither `stable` nor `flexible` may appear on non-actor fields (i.e. objects or modules).
 
 [[syntax-expressions]]
 === Expression syntax
@@ -934,6 +940,28 @@ A type `T` is _shared_ if it is
 * a shared function type, or
 * an `actor` type.
 
+[[stability]]
+=== Stability
+
+A type `T` is _stable_ if it is
+
+* `Any` or `None`, or
+* a primitive type other than `Error`, or
+* an option type `? V` where `V` is stable, or
+* a tuple type `(T0, ..., Tn)` where all `Ti` are stable, or
+* a (mutable or immutable) array type `[var V]` where `V` is stable, or
+* an `object` type where all fields have stable type, or
+* a variant type where all tags have stable type, or
+* a shared function type, or
+* an `actor` type.
+
+This definition implies that every shared type is a stable type.
+The converse does not hold: there are types that are stable but not shared (notably types with mutable components).
+
+The types of actor fields declared with the `stable` modifier must have stable type.
+The (current) value of such a field is saved and restored upon _upgrade_.
+
+
 [[semantics]]
 == Static and dynamic semantics
 
@@ -1010,12 +1038,55 @@ The SDK tooling takes care of supplying the appropriate command-line arguments t
 [[decl-field]]
 === Declaration fields
 
-Declaration fields declare the fields of actors and objects.
-They are just declarations, prefixed by an optional visibility qualifier `public` or  `private`; if omitted, visibility defaults to `private`.
+A declaration field `(public|private|system)? (stable|flexible)?`
+defines zero or more fields of an actor or object.
+
+A declaration field is just declaration, prefixed by an optional visibility qualifier `public`, `private` or `system`; if omitted, visibility defaults to `private`.
 
 Any identifier bound by a `public` declaration appears in the type of enclosing object and is accessible via the dot notation.
 
-An identifier bound by a `private` declaration is excluded form the type of the enclosing object and inaccessible via the dot notation.
+An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object and inaccessible via the dot notation.
+
+///Only actors may declare `system` fields.
+
+The declaration-field has type `T` provided:
+* `<dec>` has type `T`;
+* if declared `stable` then `T` must be stable (see <<Stability>>).
+
+(Actor fields marked `flexible` can have any type but will not be preserved across upgrade.)
+
+Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
+
+During an upgrade only, the value of a `stable` declaration is obtained as follows:
+* if the stable identifier was previously declared stable in the retired actor, its value is read from stable store.
+* if the stable identifier was not declared stable in the retired actor, and is thus new, its value is obtained by evaluating its declaration.
+
+For an upgrade to be safe:
+
+* every stable identifier declared with type `T` in the pre-upgrade actor must but be declared stable and of type `U` in the post-upgrade actor, provided `T <: U`.
+
+The condition ensures that every stable variable is either fresh, requiring initialization, or can be safely recovered from stable memory.
+Although stable variables cannot (safely) be removed across upgrades, they may effectively be deprecated by an upgrade to type `Any`.
+
+==== System fields
+
+The declaration `<dec>` of a `system` field must be a manifest `func` declaration with one of the following names and types:
+
+|===
+|  name | type | description
+
+| `preupgrade`  | `() -> ()` |
+| `postupgrade` | `() -> ()` |
+|===
+
+* `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable bindings are written to stable memory.
+* `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
+(restoring values of previously declared stable bindings from stable memory),
+and before its first message is processed.
+
+Systems method provide the opportunity to save and restore in-flight data-structures (e.g. caches) that are better represented using non-stable types.
+
+During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
 [[decl-seq]]
 === Sequence of declarations
@@ -1263,7 +1334,7 @@ The declaration `<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>?
 where:
 
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
-* `<typ-field>;*` is the set of public field types inferred from `<dec-field;*>`.
+* `<typ-field>;*` is the set of public field types inferred from `<dec-field*;*`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
 [[eval-identifiers]]
@@ -1407,7 +1478,7 @@ If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
 
-Note: the `chars`, `bytes`, `keys` and `vals` members
+Note: The `chars`, `bytes`, `keys` and `vals` members
 produce stateful *iterator objects* than can be
 consumed by `for` expressions (see <<exp-for>>).
 
@@ -1502,7 +1573,7 @@ Matching continues by matching `v1` against `<pat1>`.
 If pattern matching succeeds with some bindings, then evaluation returns the result of `exp` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
-Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
+Note: The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
 
 [[exp-func]]
 === Functions
