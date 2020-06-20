@@ -13,7 +13,7 @@ DESER_TARGET = _build/default/exes/deser.exe
 
 DUNE_OPTS ?=
 
-ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET) ($DIDC_JS_TARGET)
+ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET) $(DIDC_JS_TARGET)
 
 .PHONY: all clean moc mo-doc mo-ide mo-ld moc.js didc deser unit-tests didc.js
 
