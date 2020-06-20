@@ -1104,7 +1104,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
-Systems method provide the opportunity to save and restore in-flight data-structures (e.g. caches) that are better represented using non-stable types.
+System method provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
 During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
