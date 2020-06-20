@@ -972,7 +972,7 @@ A type `T` is _stable_ if it is
 * a primitive type other than `Error`, or
 * an option type `? V` where `V` is stable, or
 * a tuple type `(T0, ..., Tn)` where all `Ti` are stable, or
-* a (mutable or immutable) array type `[var V]` where `V` is stable, or
+* a (mutable or immutable) array type `[var? V]` where `V` is stable, or
 * an `object` type where all fields have stable type, or
 * a variant type where all tags have stable type, or
 * a shared function type, or
@@ -1069,6 +1069,7 @@ Any identifier bound by a `public` declaration appears in the type of enclosing 
 An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object, module or actor and thus inaccessible.
 
 The declaration field has type `T` provided:
+
 * `<dec>` has type `T`;
 * if `<stab>?` is `stable` then `T` must be a stable type (see <<Stability>>).
 
@@ -1077,6 +1078,7 @@ The declaration field has type `T` provided:
 Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
 During an upgrade only, the value of a `stable` declaration is obtained as follows:
+
 * if the stable declaration was previously declared stable in the retired actor, its initial value is inherited from the retired actor.
 * if the stable declaration was not declared stable in the retired actor, and is thus new, its value is obtained by evaluating `<dec>`.
 
