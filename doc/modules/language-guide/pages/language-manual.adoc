@@ -409,7 +409,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 * `<stab>` qualifiers must not may appear on fields of objects or modules.
 * The pattern in a `stable let <pat> = <exp>` declaration must be _simple_ where,  a pattern `pat` is  simple if it (recursively) consists of
 ** a variable pattern `<id>`, or
-** an annotated simple pattern `<pat> : <typ`, or
+** an annotated simple pattern `<pat> : <typ>`, or
 ** a parenthesised simple pattern `( <pat> )`.
 
 [[syntax-expressions]]
