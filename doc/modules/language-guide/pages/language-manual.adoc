@@ -1096,14 +1096,13 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |===
 |  name | type | description
 
-| `preupgrade`  | `() -> ()` |
-| `postupgrade` | `() -> ()` |
+| `preupgrade`  | `() -> ()` | pre upgrade action
+| `postupgrade` | `() -> ()` | post upgrade action
 |===
 
-* `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable bindings are written to stable memory.
+* `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable bindings are transferred to the replacement actor.
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
-(restoring values of previously declared stable bindings from stable memory),
-and before its first message is processed.
+(inheriting values of the retired actors' stable variables), and before its first message is processed.
 
 Systems method provide the opportunity to save and restore in-flight data-structures (e.g. caches) that are better represented using non-stable types.
 
