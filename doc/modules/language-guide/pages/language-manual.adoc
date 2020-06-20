@@ -22,6 +22,7 @@
 * [X] Debug expressions
 * [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
 * [X] Update ErrorCode section
+* [Floats] Literals type and operations
 * [ ] Re-section so headings appear in content outline
 ////
 
