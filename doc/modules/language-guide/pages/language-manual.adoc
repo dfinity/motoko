@@ -1100,7 +1100,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 | `postupgrade` | `() -> ()` | post upgrade action
 |===
 
-* `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable bindings are transferred to the replacement actor.
+* `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
