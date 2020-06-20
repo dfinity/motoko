@@ -89,6 +89,7 @@ let ocaml_exe = name: bin:
       buildInputs = commonBuildInputs staticpkgs;
 
       buildPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
 
