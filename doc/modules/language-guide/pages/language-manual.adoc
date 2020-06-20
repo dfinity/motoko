@@ -1498,7 +1498,7 @@ If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
 
-Note: The `chars`, `bytes`, `keys` and `vals` members
+Note: the `chars`, `bytes`, `keys` and `vals` members
 produce stateful *iterator objects* than can be
 consumed by `for` expressions (see <<exp-for>>).
 
@@ -1593,7 +1593,7 @@ Matching continues by matching `v1` against `<pat1>`.
 If pattern matching succeeds with some bindings, then evaluation returns the result of `exp` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
-Note: The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
+Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
 
 [[exp-func]]
 === Functions
