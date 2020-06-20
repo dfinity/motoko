@@ -394,7 +394,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
   flexible
 ```
 
-`<vis>?` qualifiers determine the _visibility_ of every field `<id>` declared by `<dec>`:
+The _visibility_ qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
 
 * An absent `<vis>?` qualifier defaults to `private` visibility.
 * Visibility `private` restricts access to `<id>` to the enclosing object, module or actor.
@@ -402,10 +402,10 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 * Visibility `system` extends `private` with access by the run-time system.
 * Visibility `system` _may only_ appear on `func` declarations that are actor fields, and  _must not_ appear anywhere else.
 
-`<stab>` qualifiers determine the _upgrade_ behaviour of actor fields:
+The _stability_ qualifier `<stab>` determinesa the _upgrade_ behaviour of actor fields:
 
-* A stability qualifier _should_ appear on `let` and `var` declarations that are actor fields. On actor fields,
-  an absent stability qualifier defaults to `flexible` but generates a warning to alert users of discarded actor state.
+* A stability qualifier _should_ appear on `let` and `var` declarations that are actor fields.
+  An absent stability qualifier defaults to `flexible` but generates a warning (to alert users of discarded actor state).
 * `<stab>` qualifiers must not may appear on fields of objects or modules.
 * The pattern in a `stable let <pat> = <exp>` declaration must be _simple_ where,  a pattern `pat` is  simple if it (recursively) consists of
 ** a variable pattern `<id>`, or
