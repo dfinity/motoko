@@ -89,6 +89,7 @@ let ocaml_exe = name: bin:
       buildInputs = commonBuildInputs staticpkgs;
 
       buildPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
 
@@ -312,6 +313,7 @@ rec {
           nixpkgs.nodejs-10_x
         ];
         buildPhase = ''
+          patchShebangs .
           make ${n}.js
         '';
         installPhase = ''

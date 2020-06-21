@@ -17,9 +17,12 @@ ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(
 
 .PHONY: all clean moc mo-doc mo-ide mo-ld moc.js didc deser unit-tests didc.js
 
+# let make update check this file every time
+SOURCE_ID = source_id/source_id.ml
+
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
-all: grammar
+all: $(SOURCE_ID) grammar
 	dune build $(DUNE_OPTS) $(ALL_TARGETS)
 	@ln -fs $(MOC_TARGET) moc
 	@ln -fs $(MO_IDE_TARGET) mo-ide
@@ -28,47 +31,58 @@ all: grammar
 	@ln -fs $(MOC_JS_TARGET) moc.js
 	@ln -fs $(DIDC_TARGET) didc
 	@ln -fs $(DESER_TARGET) deser
+	@ln -fs $(DIDC_JS_TARGET) didc.js
 
-moc:
+moc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MOC_TARGET)
 	@ln -fs $(MOC_TARGET) moc
 
-mo-ide:
+mo-ide: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MO_IDE_TARGET)
 	@ln -fs $(MO_IDE_TARGET) mo-ide
 
-mo-ld:
+mo-ld: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MO_LD_TARGET)
 	@ln -fs $(MO_LD_TARGET) mo-ld
 
-mo-doc:
+mo-doc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MO_DOC_TARGET)
 	@ln -fs $(MO_DOC_TARGET) mo-doc
 
-moc.js:
+moc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
 	@ln -fs $(MOC_JS_TARGET) moc.js
 
-didc.js:
+didc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_JS_TARGET)
 	@ln -fs $(DIDC_JS_TARGET) didc.js
 
-didc:
+didc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_TARGET)
 	@ln -fs $(DIDC_TARGET) didc
 
-deser:
+deser: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DESER_TARGET)
 	@ln -fs $(DESER_TARGET) deser
+
+.PHONY: $(SOURCE_ID)
+
+# only actually touch the file if changed
+$(SOURCE_ID):
+	source_id/gen.sh
 
 unit-tests:
 	dune runtest $(DUNE_OPTS)
 
 format:
-	ocamlformat --inplace docs/*.mli docs/*.ml languageServer/*.ml languageServer/*.mli
+	ocamlformat --inplace \
+	  docs/*.mli \
+          docs/*.ml \
+          languageServer/*.ml \
+          languageServer/*.mli
 
 clean:
-	rm -f moc mo-ide mo-ld moc.js didc deser
+	rm -f moc mo-ide mo-ld moc.js didc deser $(SOURCE_ID)
 	dune clean
 
 test: $(NAME)
@@ -77,7 +91,6 @@ test: $(NAME)
 
 test-quick: $(NAME)
 	make -C ../test MOC=$(MOC) quick
-
 
 grammar: ../doc/modules/language-guide/examples/grammar.txt
 
