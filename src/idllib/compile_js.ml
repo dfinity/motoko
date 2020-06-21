@@ -12,6 +12,17 @@ type typ_info = {
     is_rec : bool;
   }
 
+let as_tuple fs =
+  let fs2 = List.mapi (fun i f -> (i, f)) fs in
+  let is_tuple = List.length fs > 0 && List.for_all (fun (i, f) ->
+      match f.it.label.it with
+      | Unnamed id -> Lib.Uint32.to_int id = i
+      | _ -> false) fs2 in
+  if is_tuple then
+    Some (List.map (fun (f : typ_field) -> f.it.typ) fs)
+  else
+    None
+
 (* Gather type definitions from actor and sort the definitions in topological order *)              
 let chase_env env actor =
   let new_env = ref [] in
@@ -147,9 +158,15 @@ and pp_modes ppf modes =
 
 and pp_fields ppf fs =
   pp_open_box ppf 1;
-  str ppf "IDL.Record({";
-  concat ppf pp_field "," fs;
-  str ppf "})";
+  (match as_tuple fs with
+  | None ->
+     str ppf "IDL.Record({";
+     concat ppf pp_field "," fs;
+     str ppf "})";
+  | Some typs ->
+     str ppf "IDL.Tuple(";
+     concat ppf pp_typ "," typs;
+     str ppf ")");
   pp_close_box ppf ()
   
 and pp_field ppf tf =
