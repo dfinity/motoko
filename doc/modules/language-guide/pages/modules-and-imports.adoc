@@ -7,9 +7,9 @@ To illustrate how these keywords are used, let's step through some sample code.
 == Importing from the {proglang} base library
 
 One of the most common import scenarios is one that you see illustrated in the examples in this guide, in the {proglang} projects in the examples repository, and in the tutorials involves importing modules from the {proglang} base library.
-Importing modules from the base library enables you to use the functions defined in those modules rather than writing similar ones from scratch.
+Importing modules from the base library enables you to re-use the values, functions and types defined in those modules rather than writing similar ones from scratch.
 
-The following two lines import functions from the Array and Result modules:
+The following two lines import functions from the `+Array+` and `+Result+` modules:
 
 [source,motoko]
 ----
@@ -17,8 +17,11 @@ import Array "mo:base/Array";
 import Result "mo:base/Result";
 ----
 
-Notice that the import statement includes the `+mo:+` prefix to identify the module as a {proglang} module and that the statement does not include the `+.mo+` file type extension.
+Notice that the import declaration includes the `+mo:+` prefix to identify the module as a {proglang} module and that the declaration does not include the `+.mo+` file type extension.
 
+``
+
+(statements typically don't introduce new variable names (like Array and Result) so declarations, (that do) is a better description here (and below)`
 == Importing local files
 
 Another common approach to writing programs in {proglang} involves splitting up the source code into different modules.
@@ -38,7 +41,7 @@ import Types "types";
 import Utils "utils";
 ----
 
-Because these lines import modules from the local project instead of the {proglang} library, these import statements don't use the `+mo:+` prefix.
+Because these lines import modules from the local project instead of the {proglang} library, these import declarations don't use the `+mo:+` prefix.
 
 In this example, both the `+types.mo+` and `+utils.mo+` files are in the same directory as the `+main.mo+` file.
 Once again, import does not use the +`.mo+` file suffix.
