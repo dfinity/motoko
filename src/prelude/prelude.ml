@@ -44,34 +44,34 @@ func @immut_array_get<A>(xs : [A]) : Nat -> A =
   func (n : Nat) : A = xs[n];
 func @mut_array_get<A>(xs : [var A]) : Nat -> A =
   func (n : Nat) : A = xs[n];
-func @immut_array_len<A>(xs : [A]) : () -> Nat =
+func @immut_array_size<A>(xs : [A]) : () -> Nat =
   func () : Nat = (prim "array_len" : [A] -> Nat) xs;
-func @mut_array_len<A>(xs : [var A]) : () -> Nat =
+func @mut_array_size<A>(xs : [var A]) : () -> Nat =
   func () : Nat = (prim "array_len" : [var A] -> Nat) xs;
-func @mut_array_set<A>(xs : [var A]) : (Nat, A) -> () =
+func @mut_array_put<A>(xs : [var A]) : (Nat, A) -> () =
   func (n : Nat, x : A) = (xs[n] := x);
 func @immut_array_keys<A>(xs : [A]) : () -> @Iter<Nat> =
   func () : @Iter<Nat> = object {
     var i = 0;
-    let l = xs.len();
+    let l = xs.size();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   };
 func @mut_array_keys<A>(xs : [var A]) : () -> @Iter<Nat> =
   func () : @Iter<Nat> = object {
     var i = 0;
-    let l = xs.len();
+    let l = xs.size();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   };
 func @immut_array_vals<A>(xs : [A]) : () -> @Iter<A> =
   func () : @Iter<A> = object {
     var i = 0;
-    let l = xs.len();
+    let l = xs.size();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   };
 func @mut_array_vals<A>(xs : [var A]) : () -> @Iter<A> =
   func () : @Iter<A> = object {
     var i = 0;
-    let l = xs.len();
+    let l = xs.size();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   };
 func @blob_size(xs : Blob) : () -> Nat =
@@ -87,7 +87,7 @@ func @blob_bytes(xs : Blob) : () -> @Iter<Word8> =
         ?((prim "blob_iter_next" : BlobIter -> Word8) i)
     };
   };
-func @text_len(xs : Text) : () -> Nat =
+func @text_size(xs : Text) : () -> Nat =
   func () : Nat = (prim "text_len" : Text -> Nat) xs;
 func @text_chars(xs : Text) : () -> @Iter<Char> =
   func () : @Iter<Char> = object {
@@ -116,12 +116,26 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
   var i = 0;
   while (n > 0) {
     let rem = n % base;
-    if (i == sep) { text := "_" # text; i := 0 };
+    if (sep > 0 and i == sep) { text := "_" # text; i := 0 };
     text := digits rem # text;
     n := n / base;
     i += 1;
   };
   text
+};
+
+func @left_pad(pad : Nat, char : Text, t : Text) : Text {
+  if (pad > t.size()) {
+    var i = pad - t.size();
+    var text = t;
+    while (i > 0) {
+      text := char # text;
+      i -= 1;
+    };
+    text
+  } else {
+    t
+  }
 };
 
 func @digits_dec(x : Nat) : Text =
@@ -196,6 +210,17 @@ func @text_of_Char(c : Char) : Text {
   // TODO: Escape properly
   "\'" # (prim "conv_Char_Text" : Char -> Text) c # "\'";
 };
+
+func @text_of_Blob(blob : Blob) : Text {
+  var t = "\"";
+  for (b in blob.bytes()) {
+    // Could do more clever escaping, e.g. leave ascii and utf8 in place
+    t #= "\\" # @left_pad(2, "0", @text_of_num(@word8ToNat b, 16, 0, @digits_hex));
+  };
+  t #= "\"";
+  return t;
+};
+
 
 
 func @text_has_parens(t : Text) : Bool {
@@ -452,10 +477,18 @@ func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> F
 
 let floatToText = @text_of_Float;
 
-// Trigonometric functions
+// Trigonometric and transcendental functions
 
 func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
 func cos(f : Float) : Float = (prim "fcos" : Float -> Float) f;
+func tan(f : Float) : Float = (prim "ftan" : Float -> Float) f;
+func arcsin(f : Float) : Float = (prim "fasin" : Float -> Float) f;
+func arccos(f : Float) : Float = (prim "facos" : Float -> Float) f;
+func arctan(f : Float) : Float = (prim "fatan" : Float -> Float) f;
+func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> Float) (y, x);
+
+func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
+func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
 // Array utilities
 

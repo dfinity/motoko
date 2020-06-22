@@ -390,7 +390,7 @@ lit :
   | s=NAT { PreLit (s, Type.Nat) }
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
-  | t=TEXT { TextLit t }
+  | t=TEXT { PreLit (t, Type.Text) }
 
 %inline unop :
   | ADDOP { PosOp }
@@ -451,7 +451,7 @@ ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
-  | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
+  | t=TEXT { LitE (ref (PreLit (t, Type.Text))) @? at $sloc }
   | LPAR e=exp(bl) RPAR { e }
 
 exp_block :
@@ -566,7 +566,7 @@ exp_nondec(B) :
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)
     { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nullary(ob) CATCH c=catch
+  | TRY e1=exp_nullary(ob) c=catch
     { TryE(e1, [c]) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
@@ -602,7 +602,7 @@ case :
     { {pat = p; exp = e} @@ at $sloc }
 
 catch :
-  | p=pat_nullary e=exp(bl)
+  | CATCH p=pat_nullary e=exp(bl)
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field_nonvar :

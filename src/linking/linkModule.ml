@@ -3,7 +3,7 @@ The type for a dynamic library: A normal WebAssembly module
 plus the dylink section.
 *)
 
-open Wasm.Ast
+open Wasm_exts.Ast
 open Wasm.Source
 open Wasm_exts.CustomModule
 

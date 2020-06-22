@@ -1,5 +1,5 @@
 export default ({ IDL }) => {
- const A = IDL.Record({'_0_': IDL.Nat, '_1_': IDL.Nat, '_2_': IDL.Nat})
+ const A = IDL.Tuple(IDL.Nat, IDL.Nat, IDL.Nat)
  const B =
   IDL.Record({'_0_': IDL.Vec(IDL.Nat8), '_35_': IDL.Vec(IDL.Nat8),
    '_36_': IDL.Nat, '_37_': IDL.Nat, 'named_files': IDL.None,
@@ -10,9 +10,7 @@ export default ({ IDL }) => {
    'C': IDL.Null, 'red': IDL.Null, 'blue': IDL.Null, 'reserved': IDL.Null,
    'green': IDL.Null})
  const nest_record =
-  IDL.Record({'_0_': IDL.Nat, '_1_': IDL.Nat, '_2_': IDL.Nat,
-   '_3_': IDL.Record({'_0_': IDL.Nat, '_1_': IDL.Nat, '_2_': IDL.Nat}),
-   '_4_': IDL.Nat, '_5_': IDL.Nat, '_6_': IDL.Nat, '_7_': A, '_8_': B,
-   '_9_': C, '_10_': IDL.Nat})
+  IDL.Tuple(IDL.Nat, IDL.Nat, IDL.Nat, IDL.Tuple(IDL.Nat, IDL.Nat, IDL.Nat),
+   IDL.Nat, IDL.Nat, IDL.Nat, A, B, C, IDL.Nat)
  return IDL.Service({'f': IDL.Func([A, B, C, nest_record], [], [])});
 };

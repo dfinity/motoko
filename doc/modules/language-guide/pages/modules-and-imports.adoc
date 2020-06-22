@@ -2,44 +2,105 @@
 
 This section provides examples of different scenarios for using the `module` and `import` keywords.
 
-To illustrate how these keywords are used, we'll step through the following sample code for the https://github.com/matthewhammer/ic-game-terminal/blob/master/examples/mazeGame[Maze game] project.
+To illustrate how these keywords are used, let's step through some sample code.
+
+== Importing from the {proglang} base library
+
+One of the most common import scenarios is one that you see illustrated in the examples in this guide, in the {proglang} projects in the examples repository, and in the tutorials involves importing modules from the {proglang} base library.
+Importing modules from the base library enables you to re-use the values, functions and types defined in those modules rather than writing similar ones from scratch.
+
+The following two lines import functions from the `+Array+` and `+Result+` modules:
+
 [source,motoko]
 ----
-import List "mo:base/List";
+import Array "mo:base/Array";
 import Result "mo:base/Result";
-import Render "mo:redraw/Render";
-import Mono5x5 "mo:redraw/glyph/Mono5x5";
-import Types "Types";
 ----
 
-== Basic semantics
+Notice that the import declaration includes the `+mo:+` prefix to identify the module as a {proglang} module and that the declaration does not include the `+.mo+` file type extension.
 
-The first several lines give three cases worth noting:
-import Types "Types";
+``
+
+(statements typically don't introduce new variable names (like Array and Result) so declarations, (that do) is a better description here (and below)`
+== Importing local files
+
+Another common approach to writing programs in {proglang} involves splitting up the source code into different modules.
+For example, you might design an application to use the following model:
+
+* a `+main.mo+` file to contain the actor and functions that change state.
+* a `+types.mo+` file for all of your custom type definitions.
+* a `+utils.mo+` file for functions that do work outside of the actor.
+
+In this scenario, you might place all three files in the same directory and use a local import to make the functions available where they are needed.
+
+For example, the `+main.mo+` contains the following lines to reference the modules in the same directory:
+
+[source,motoko]
+----
+import Types "types";
+import Utils "utils";
+----
+
+Because these lines import modules from the local project instead of the {proglang} library, these import declarations don't use the `+mo:+` prefix.
+
+In this example, both the `+types.mo+` and `+utils.mo+` files are in the same directory as the `+main.mo+` file.
+Once again, import does not use the +`.mo+` file suffix.
+
+== Importing from another package or directory
+
+You can also import modules from other packages or from directories other than the local directory.
+
+For example, the following lines import modules from a `+redraw+` package that is defined as a dependency: 
+
+[source,bash]
+----
 import Render "mo:redraw/Render";
 import Mono5x5 "mo:redraw/glyph/Mono5x5";
-The first line lacks the mo: prefix, and it imports a module from the local project.
+----
 
-The file Types.mo is in the same directory as the file for this listing.  Notice that the import omits the file suffix .mo.
+You can define dependencies for a project using the Vessel package manager or in the project `+dfx.json+` configuration file.
 
-The second line imports a module Render from a package redraw that is provided to moc by the Vessel package manager.  
-Vessel is useful for managing the moc command line arguments for package names and their file paths).
+In this example, the `+Render+` module is in the default location for source code in the `+redraw+` package and the `+Mono5x5+` module is in a `+redraw+` package subdirectory called `+glyph+`.
 
-The final line gives another variant, where the package has internal directory structure, and it contains a subdirectory called glyph, with a module called Mono5x5. 
+== Importing from another canister
 
-== Using the canister prefix
+In addition to the examples above that import {proglang} modules, you can also import functions from canisters by using the `+canister:+` prefix in place of the `+mo:+` prefix.
 
-In addition to the examples above that import {proglang} modules, you can also import functions from canisters by using the `+canister: prefix+` in place of the `+mo:+` prefix.
-For example:
+For example, you might have a project that produces the following three canisters:
+
+* BigMap
+* Connectd
+* LinkedUp
+
+These three canisters are declared in the project's `+dfx.json+` configuration file and compiled by running `+dfx build+`.
+
+You can then use the following lines to import the functions from the `+BigMap+` and `+Connectd+` canisters in the LinkedUp program:
 
 [source,motoko]
 ----
 import BigMap "canister:BigMap";
+import Connectd "canister:connectd";
 ----
 
-This line imports a canister named `+BigMap+` that is produced from running `+dfx build+` and declared a project's the `+dfx.json+` file.
+When importing canisters, it is important to note that the type for the imported canister corresponds to a **{proglang} actor** instead of a **{proglang} module**. 
+This distinction can affect how some data structures are typed.
 
-It is important to note that the type for the imported canister corresponds to a {proglang} actor instead of a {proglang} module. The type for the imported canister actor is derived from the Candid file (the _project-name_.did file) for the canister, and this type may differ in some ways from the {proglang} code that defines it.
-For example, if the {proglang} code says `+Word8+` in some places in its API, the canister will instead use `+Nat8+`.
-These differences come from the Candid to Motoko composition layer inherent to the canister abstraction. 
+For the imported canister actor, types are derived from the Candid file—the _project-name_.did file—for the canister rather than from {proglang} itself.
+The type used from a call to an imported canister, therefore, might differ from the {proglang} code that defines it.
+For example, if the {proglang} code uses a `+Word8+` type, the derived type in the canister will replace the +Word8+` type to use a `+Nat8+` type.
 
+These type differences are the result of the Candid-to-Motoko composition layer inherent to the canister abstraction. 
+
+== Naming imported modules
+
+Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there's no requirement for you to do so.
+For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
+
+The following examples illustrate different names you might use when importing the `+List+` base library module, avoiding a clash with another `List` library from a fictional `collections` package.
+
+[source,motoko]
+----
+import List  "mo:base/List:";
+import Sequence  "mo:collections/List";
+import L "mo:base/List";
+----

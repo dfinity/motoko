@@ -19,11 +19,7 @@ type reply_env = V.value V.cont option
 type reject_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
-type state = actor_env
-
 let initial_state () = ref V.Env.empty
-
-type scope = val_env
 
 type flags = {
   trace : bool;
@@ -44,8 +40,6 @@ type env =
     self : V.actor_id;
     actor_env : actor_env;
   }
-
-let adjoin_scope s ve = V.Env.adjoin s ve
 
 let adjoin_vals c ve = {c with vals = V.Env.adjoin c.vals ve}
 
@@ -418,9 +412,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ActorOfIdBlob t, [v1] ->
         k v1
       | BlobOfIcUrl, [v1] ->
-        trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
+        let open Ic.Url in
+        begin match parse (V.as_text v1) with
+          | Ok (Ic bytes) -> k (V.Text bytes)
+          | _ -> trap exp.at "could not parse %s as an actor reference"  (V.as_text v1)
+        end
       | IcUrlOfBlob, [v1] ->
-        trap exp.at "IcUrlOfBlob not implemented"
+        k (V.Text (Ic.Url.encode_ic_url (V.as_text v1)))
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.num_conv_prim t1 t2 (context env) arg k
@@ -536,6 +534,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in
     k v
   | ActorE (ds, fs, _, _) ->
+    interpret_actor env ds fs k
+  | NewObjE (sort, fs, _) ->
+    k (interpret_fields env fs)
+
+and interpret_actor env ds fs k =
     let self = V.fresh_id () in
     let env0 = {env with self = self} in
     let ve = declare_decs ds V.Env.empty in
@@ -545,8 +548,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       env.actor_env := V.Env.add self obj !(env.actor_env);
       k (V.Text self)
     )
-  | NewObjE (sort, fs, _) ->
-    k (interpret_fields env fs)
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
   last_region := lexp.at;
@@ -846,15 +847,23 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog flags state scope ((ds, exp), flavor) : scope =
+and interpret_comp_unit env cu k = match cu with
+  | ProgU ds ->
+    let ve = declare_decs ds V.Env.empty in
+    let env' = adjoin_vals env ve in
+    interpret_decs env' ds k
+  | ActorU (ds, fs, _, _) ->
+    interpret_actor env ds fs (fun _ -> k ())
+
+let interpret_prog flags (cu, flavor) =
+  let state = initial_state () in
+  let scope = empty_scope in
   let env = env_of_scope flags flavor state scope in
   trace_depth := 0;
-  let ve = ref V.Env.empty in
   try
     Scheduler.queue (fun () ->
-      try interpret_block env (Some ve) ds exp  (fun v -> ())
+      try interpret_comp_unit env cu  (fun v -> ())
       with Invalid_argument s -> trap !last_region "%s" s
     );
-    Scheduler.run ();
-    !ve
-  with exn -> print_exn flags exn; !ve
+    Scheduler.run ()
+  with exn -> print_exn flags exn

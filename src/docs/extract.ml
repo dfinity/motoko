@@ -41,6 +41,7 @@ and doc_type =
 and class_doc = {
   name : string;
   type_args : Syntax.typ_bind list;
+  constructor : function_arg_doc list;
   fields : doc list;
   sort : Syntax.obj_sort;
 }
@@ -138,14 +139,14 @@ let rec extract_doc find_trivia = function
         | _ -> DTPlain typ
       in
       Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })
-  | Source.
-      { it = Syntax.ClassD (name, type_args, _ctor_pat, _, sort, _, fields); _ }
+  | Source.{ it = Syntax.ClassD (name, type_args, ctor, _, sort, _, fields); _ }
     ->
       Some
         (Class
            {
              name = name.it;
              type_args;
+             constructor = extract_func_args find_trivia ctor;
              fields = List.filter_map (extract_exp_field find_trivia) fields;
              sort;
            })

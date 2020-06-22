@@ -72,7 +72,10 @@ let rec adoc_of_declaration :
       signature (fun _ ->
           bprintf buf "class %s" class_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
-            class_doc.type_args);
+            class_doc.type_args;
+          bprintf buf "(";
+          Plain.sep_by buf ", " (adoc_of_function_arg buf) class_doc.constructor;
+          bprintf buf ")");
       bprintf buf "\n\n";
       List.iter (adoc_of_doc buf (lvl + 1)) class_doc.fields
   | Unknown unknown ->

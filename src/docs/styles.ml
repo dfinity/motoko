@@ -117,4 +117,48 @@ h4.class-declaration {
 .class-declaration ~ div {
   margin-left: 20px;
 }
+
+.index-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 1.2rem;
+}
+
+.index-header {
+  font-weight: 400;
+}
+
+.index-listing {
+  padding: 0;
+  list-style: none;
+  max-width: 960px;
+}
+
+.index-item {
+  margin-bottom: 5px;
+}
+
+.index-item-link {
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.index-item-link::after {
+  content: " \2014\00A0";
+}
+
+.index-item-comment {
+  display: inline;
+}
+
+.index-item-comment > * {
+  display: none;
+}
+
+.index-item-comment > *:first-child {
+  display: inline;
+  white-space: nowrap;
+}
+
 |}

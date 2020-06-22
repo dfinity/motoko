@@ -4,8 +4,7 @@ open Mo_config
 open Printf
 
 let name = "moc"
-let version = "0.1"
-let banner = "Motoko " ^ version ^ " interpreter"
+let banner = "Motoko compiler (revision " ^ Source_id.id ^ ")"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 

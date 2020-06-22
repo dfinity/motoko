@@ -161,7 +161,7 @@ let tagE i e =
 let dec_eff dec = match dec.it with
   | LetD (_,e) | VarD (_, _, e) -> eff e
 
-let rec simpl_decs decs = List.concat (List.map simpl_dec decs)
+let rec simpl_decs decs = Lib.List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
   | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []
@@ -365,7 +365,7 @@ let expD exp =
 let let_no_shadow (id, typ) exp decs =
   (* could be replaced by a more simple “defined by this decs” function *)
   let (_,f) = Freevars.decs decs in
-  if Freevars.S.mem id f
+  if Freevars.M.mem id f
   then decs
   else [ letD (id, typ) exp ] @ decs
 

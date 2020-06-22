@@ -6,7 +6,7 @@ actor {
   public func inc() { d #= "a"; };
   public query func check(n : Int) : async () {
     Prim.debugPrint(d);
-    assert (d.len() == n);
+    assert (d.size() == n);
   };
   system func preupgrade(){
     Prim.debugPrint("preupgrade 0");
