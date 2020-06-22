@@ -58,7 +58,7 @@ actor a {
 };
 
 ignore a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
-ignore a.evaluateAsync(); //OR-CALL ingress eviluate "DIDL\x00\x00"
+ignore a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-low
