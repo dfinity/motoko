@@ -20,7 +20,7 @@ import Prim "mo:prim"
 assert (1 == 1);
 // DWARF-LABEL: .debug_info contents:
 // DWARF:          : DW_TAG_compile_unit [1] *
-// DWARF-NEXT:         DW_AT_producer [DW_FORM_strp] {{.*}} "DFINITY Motoko compiler, version 0.1"
+// DWARF-NEXT:         DW_AT_producer [DW_FORM_strp] {{.*}} "DFINITY Motoko compiler, revision {{[0-9a-y-]*}}"
 // DWARF-NEXT:         DW_AT_language [DW_FORM_data2] (DW_LANG_C99)
 // DWARF-NEXT:         DW_AT_name     [DW_FORM_strp] {{.*}} "dwarf.mo.mangled"
 // DWARF-NEXT:         DW_AT_stmt_list [DW_FORM_sec_offset] (0x00000000)

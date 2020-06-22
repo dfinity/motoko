@@ -346,7 +346,7 @@ let rec dw_tag_open : dw_TAG -> t =
     in
     meta_tag dw_TAG_compile_unit
       (dw_attrs
-         [ Producer "DFINITY Motoko compiler, version 0.1";
+         [ Producer (Printf.sprintf "DFINITY Motoko compiler, revision %s" Source_id.id);
            Language dw_LANG_C99; Name file; Stmt_list 0;
            Comp_dir dir; Use_UTF8 true; Low_pc; Addr_base 8; Ranges ]) ^^
       base_types ^^
