@@ -105,6 +105,24 @@ nat ::= num | "0x" hexnum
 
 Negative integers may be constructed by applying a prefix negation `-` operation.
 
+[[syntax-floats]]
+=== Floats
+
+Floating point literals are written in decimal or `Ox`-prefixed hexadecimal scientific notation.
+
+```bnf
+let frac = num
+let hexfrac = hexnum
+let float =
+    num '.' frac?
+  | num ('.' frac?)? ('e' | 'E') sign? num
+  | "0x" hexnum '.' hexfrac?
+  | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
+```
+
+The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
+
+
 [[syntax-chars]]
 === Characters
 
@@ -504,6 +522,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | `Bool` | L, R | Boolean values `true` and `false` and logical operators
 | `Char` | R | Unicode characters
 | `Text` | T, R | Unicode strings of characters with concatenation `_ # _` and iteration
+| `Float` | A, R | 64-bit floating point values
 | `Int`  | A, R | signed integer values with arithmetic (unbounded)
 | `Int8`  | A, R | signed 8-bit integer values with checked arithmetic
 | `Int16`  | A, R | signed 16-bit integer values with checked arithmetic
@@ -548,6 +567,15 @@ Operations on text values include concatenation (`_ # _`) and sequential iterati
 
 // Comparison TODO.
 
+[[type-float]]
+=== Type `Float`
+
+The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and R (Relational).
+
+The semantics of `Float` and its operations is in accordance with standard https://ieeexplore.ieee.org/document/8766229[IEEE 754-2019]  (See <<IEEE754>>).
+
+
+Common functions and values are defined in base library "base/Float".
 
 [[types-int-and-nat]]
 === Types `Int` and `Nat`
@@ -1844,3 +1872,8 @@ The result of evaluating `( <exp> )` is the result of evaluating `<exp>`.
 Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by virtue of _implicit subsumption_, `<exp>` also has type `U` (without extra syntax).
 
 In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping.
+
+# References
+
+[bibliography]
+- [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
