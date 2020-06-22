@@ -96,7 +96,7 @@ These type differences are the result of the Candid-to-Motoko composition layer 
 Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there's no requirement for you to do so.
 For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
 
-The following examples illustrate different names you might use when importing the `+List+` base library module.
+The following examples illustrate different names you might use when importing the `+List+` base library module, avoiding a clash with another `List` library from a fictional `collections` package.
 
 [source,motoko]
 ----
