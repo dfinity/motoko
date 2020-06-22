@@ -28,13 +28,13 @@ actor a {
   };
 
 
-  func evil(exp : Expression) : async Int {
+  func evalAsync(exp : Expression) : async Int {
     switch (exp) {
       case (#const(n)) n;
-      case (#add(e1, e2)) (await evil(e1)) + (await evil(e2));
-      case (#mul(e1, e2)) (await evil(e1)) * (await evil(e2));
-      case (#sub(e1, e2)) (await evil(e1)) - (await evil(e2));
-      case (#pow(e1, e2)) await (pow(await (evil e1), await (evil e2)));
+      case (#add(e1, e2)) (await evalAsync(e1)) + (await evalAsync(e2));
+      case (#mul(e1, e2)) (await evalAsync(e1)) * (await evalAsync(e2));
+      case (#sub(e1, e2)) (await evalAsync(e1)) - (await evalAsync(e2));
+      case (#pow(e1, e2)) await (pow(await (evalAsync e1), await (evalAsync e2)));
     }
   };
 
@@ -49,16 +49,16 @@ actor a {
     P.debugPrint (debug_show(eval(#pow(#const 2,#const 10))));
   };
 
-  public func eviluate() : async () {
-    P.debugPrint (debug_show(await(evil(sum(32)))));
-    P.debugPrint (debug_show(await(evil(#pow(#const 2,#const 10)))));
+  public func evaluateAsync() : async () {
+    P.debugPrint (debug_show(await(evalAsync(sum(32)))));
+    P.debugPrint (debug_show(await(evalAsync(#pow(#const 2,#const 10)))));
   };
 
 
 };
 
 ignore a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
-ignore a.eviluate(); //OR-CALL ingress eviluate "DIDL\x00\x00"
+ignore a.evaluateAsync(); //OR-CALL ingress eviluate "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-low
