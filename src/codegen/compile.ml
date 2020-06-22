@@ -5504,15 +5504,16 @@ module Var = struct
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_direct_local new_env ae1 var in
-        let restore_code = G.i (LocalSet (nr j))
-        in ae2, fun body -> restore_code ^^ body
+        let restore_code = G.i (LocalSet (nr j)) in
+        let dw = G.(dw_tag_no_children (Variable (* FIXME: Constant? *) (var, no_pos, Type.Any, Int32.to_int j)))
+        in ae2, fun body -> restore_code ^^ dw ^^ body
       )
     | Some (HeapInd (i, off)) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_offset new_env ae1 var off in
         let restore_code = G.i (LocalSet (nr j))
-        in ae2, fun body -> restore_code ^^ body
+        in ae2, fun body -> restore_code ^^ (* TODO: dw ^^ *) body
       )
     | _ -> assert false
 
@@ -5621,7 +5622,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae sort control name captured args mk_body ret_tys at =
-      let is_local = (*Printf.printf "CLOSURE name: %s\n" name;*)sort = Type.Local in
+      let is_local = sort = Type.Local in
 
       let set_clos, get_clos = new_local env (name ^ "_clos") in
 
@@ -5644,7 +5645,9 @@ module FuncDec = struct
                  fun body ->
                  get_env ^^
                  Closure.load_data (Wasm.I32.of_int_u i) ^^
-                 codeW (code_restW body)
+                 G.dw_tag
+                   (G.LexicalBlock at.left)
+                   (codeW (code_restW body))
                 )
               in store_env, restore_env in
         go 0 captured in
