@@ -1116,10 +1116,10 @@ During an upgrade only, the value of a `stable` declaration is obtained as follo
 
 For an upgrade to be safe:
 
-* every stable identifier declared with type `T` in the retired actor must but be declared stable and of type `U` in the replacement actor, provided `T <: U`.
+* every stable identifier declared with type `T` in the retired actor and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
 
 This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
-Although stable variables cannot (safely) be removed across upgrades, they may be effectively deprecated by an upgrade to type `Any`.
+Not that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
 
 ==== System fields
 
