@@ -5441,6 +5441,13 @@ module VarEnv = struct
 
 end (* VarEnv *)
 
+(* type for wrapping code with context, context is establishment
+   of (pattern) binding, argument is the code using the binding,
+   result is e.g. the code for `case p e`. *)
+type scope_wrap = G.t -> G.t
+
+let unmodified : scope_wrap = fun code -> code
+
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
@@ -5491,21 +5498,21 @@ module Var = struct
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
   *)
-  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> (VarEnv.t * G.t)) =
+  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     match VarEnv.lookup_var ae0 var with
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
-        in (ae2, restore_code)
+        in ae2, fun body -> restore_code ^^ body
       )
     | Some (HeapInd (i, off)) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let (ae2, j) = VarEnv.add_local_with_offset new_env ae1 var off in
+        let ae2, j = VarEnv.add_local_with_offset new_env ae1 var off in
         let restore_code = G.i (LocalSet (nr j))
-        in (ae2, restore_code)
+        in ae2, fun body -> restore_code ^^ body
       )
     | _ -> assert false
 
@@ -5545,7 +5552,7 @@ module FuncDec = struct
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
 
-      let (ae1 (* DW TODO *)), closure_code = restore_env env ae0 get_closure in
+      let ae1, closure_codeW = restore_env env ae0 get_closure in
 
       (* Add nested DWARF *)
       (* prereq has side effects (i.e. creating DW types) that must happen before generating
@@ -5557,8 +5564,7 @@ module FuncDec = struct
       prereq_types ^^
       G.(dw_tag (Subprogram (name, at.left)))
         (dw_args ^^
-         closure_code ^^
-         mk_body env ae2)
+         closure_codeW (mk_body env ae2))
     ))
 
   let message_start env sort = match sort with
@@ -5608,7 +5614,7 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       ( Const.t_of_v (Const.Fun fi), fun env ae ->
-        let restore_no_env _env ae _ = (ae, G.nop) in
+        let restore_no_env _env ae _ = ae, unmodified in
         fill (compile_local_function env ae restore_no_env name args mk_body ret_tys at)
       )
     end
@@ -5617,30 +5623,30 @@ module FuncDec = struct
   let closure env ae sort control name captured args mk_body ret_tys at =
       let is_local = (*Printf.printf "CLOSURE name: %s\n" name;*)sort = Type.Local in
 
-      let (set_clos, get_clos) = new_local env (name ^ "_clos") in
+      let set_clos, get_clos = new_local env (name ^ "_clos") in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
-      let (store_env, restore_env) =
+      let store_env, restore_env =
         let rec go i = function
-          | [] -> (G.nop, fun _env ae1 _ -> (ae1, G.nop))
+          | [] -> (G.nop, fun _env ae1 _ -> ae1, unmodified)
           | (v::vs) ->
-              let (store_rest, restore_rest) = go (i+1) vs in
-              let (store_this, restore_this) = Var.capture env ae v in
+              let store_rest, restore_rest = go (i + 1) vs in
+              let store_this, restore_this = Var.capture env ae v in
               let store_env =
                 get_clos ^^
                 store_this ^^
                 Closure.store_data (Wasm.I32.of_int_u i) ^^
                 store_rest in
               let restore_env env ae1 get_env =
-                let (ae2, code) = restore_this env ae1 in
-                let (ae3, code_rest) = restore_rest env ae2 get_env in
+                let ae2, codeW = restore_this env ae1 in
+                let ae3, code_restW = restore_rest env ae2 get_env in
                 (ae3,
+                 fun body ->
                  get_env ^^
                  Closure.load_data (Wasm.I32.of_int_u i) ^^
-                 code ^^
-                 code_rest
+                 codeW (code_restW body)
                 )
-              in (store_env, restore_env) in
+              in store_env, restore_env in
         go 0 captured in
 
       let f =
@@ -6740,13 +6746,6 @@ let compile_relop env t op =
 let compile_load_field env typ name =
   Object.load_idx env typ name
 
-
-(* type for wrapping code with context, context is establishment
-   of (pattern) binding, argument is the code using the binding,
-   result is e.g. the code for `case p e`. *)
-type scope_wrap = G.t -> G.t
-
-let unmodified : scope_wrap = fun code -> code
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
