@@ -39,8 +39,8 @@ let
       '';
     };
 
-  baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; inherit labels; };
-  prJobs = import ./default.nix { system = "x86_64-linux"; inherit labels; };
+  baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; };
+  prJobs = import ./default.nix { system = "x86_64-linux"; };
 
   # NB: We run both compilers on the new PR’s set of tests
   wasm-hash-base = wasm-hash-for baseJobs.moc;
@@ -72,7 +72,7 @@ let
       echo "comment manifest $out/comment" >> $out/nix-support/hydra-build-products
     '';
 
-  jobs = import ./ci.nix { inherit src; } //
+  jobs = import ./ci.nix { inherit src; inherit labels; } //
     nixpkgs.lib.optionalAttrs (src ? mergeBase) {
       inherit perf-delta;
     };
