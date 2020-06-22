@@ -1,4 +1,4 @@
-Motoko 0.1 interpreter
+Motoko compiler (revision XXX)
 > #bar : {#bar}
 > #foo(#bar) : {#foo : {#bar}}
 > [#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday] : [{#Friday; #Monday; #Saturday; #Sunday; #Thursday; #Tuesday; #Wednesday}]

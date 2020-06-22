@@ -256,6 +256,19 @@ module Int_16 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_in
 module Int_32 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000_0000 end))
 module Int_64 = Ranged (Int) (IntRange (struct let upper = Big_int.power_int_positive_int 2 63 end))
 
+(* Blobs *)
+
+module Blob = struct
+  let escape b =
+    String.concat "" (
+      List.of_seq (
+        Seq.map (fun c ->
+          "\\" ^ Lib.Hex.hex_of_char c
+        ) (String.to_seq b)
+      )
+    )
+end
+
 (* Types *)
 
 type unicode = int

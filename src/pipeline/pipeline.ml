@@ -78,7 +78,8 @@ type rel_path = string
 
 type parse_result = (Syntax.prog * rel_path) Diag.result
 
-type parse_fn = rel_path -> parse_result
+type no_region_parse_fn = string -> parse_result
+type parse_fn = Source.region -> no_region_parse_fn
 
 let parse_with mode lexer parser name =
   try
@@ -105,8 +106,12 @@ let parse_string name s : parse_result =
   | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
 
-let parse_file filename : parse_result =
-  let ic = open_in filename in
+let parse_file at filename : parse_result =
+  let ic, messages = Lib.FilePath.open_in filename in
+  Diag.print_messages
+    (List.map
+       (fun text -> Diag.{ sev = Warning; at; cat = "import"; text })
+       messages);
   let lexer = Lexing.from_channel ic in
   let parse = Parser.Incremental.parse_prog in
   let result = parse_with Lexer.Normal lexer parse filename in
@@ -137,7 +142,7 @@ let resolve_progs =
 (* Printing dependency information *)
 
 let print_deps (file : string) : unit =
-  let (prog, _) =  Diag.run (parse_file file) in
+  let (prog, _) =  Diag.run (parse_file Source.no_region file) in
   let imports = Diag.run (ResolveImport.collect_imports prog file) in
   List.iter (fun (url, path) ->
       match path with
@@ -310,13 +315,13 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
-        Error [{
-          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+        Error [Diag.{
+          sev = Error; at = ri.Source.at; cat = "import";
           text = Printf.sprintf "file %s must not depend on itself" f
         }]
       else begin
         pending := add ri.Source.it !pending;
-        Diag.bind (parsefn f) (fun (prog, base) ->
+        Diag.bind (parsefn ri.Source.at f) (fun (prog, base) ->
         Diag.bind (Static.prog prog) (fun () ->
         Diag.bind (ResolveImport.resolve (resolve_flags ()) prog base) (fun more_imports ->
         Diag.bind (go_set more_imports) (fun () ->
@@ -331,8 +336,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
     | Syntax.IDLPath (f, _) ->
        Diag.bind (Idllib.Pipeline.check_file f) (fun (prog, idl_scope, actor_opt) ->
        if actor_opt = None then
-         Error [{
-           Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+         Error [Diag.{
+           sev = Error; at = ri.Source.at; cat = "import";
            text = Printf.sprintf "file %s does not define a service" f
          }]
        else
@@ -347,7 +352,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
 
 let load_progs parsefn files senv : load_result =
-  Diag.bind (Diag.traverse parsefn files) (fun parsed ->
+  Diag.bind (Diag.traverse (parsefn Source.no_region) files) (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
   let libs = Lib.List.concat_map snd rs in
@@ -562,7 +567,7 @@ let analyze analysis_name analysis prog name =
 let load_as_rts () =
 
   let load_file f =
-    let ic = open_in f in
+    let ic = open_in_bin f in
     let n = in_channel_length ic in
     let s = Bytes.create n in
     really_input ic s 0 n;
