@@ -30,11 +30,15 @@ actor {
 
 == Typing
 
-Because the compiler must ensure that stable variables never change their state, the following type restrictions apply to stable state: 
+Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
 
 * A stable declaration must have a _stable type_. 
 * Stable types are a superset of _shared_ types.
 * Stable types allow objects or arrays with mutable components.
+
+The key point to note is that stable types extend shared types to include **mutable arrays and fields**. 
+Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
+This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
 
 NOTE: Stable types can contain actors or shared functions, but mutability does not extend to actors or shared functions. 
 In addition, stable state can only contain records, not objects because objects contain non-shared functions.
