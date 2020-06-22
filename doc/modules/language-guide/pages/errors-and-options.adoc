@@ -10,12 +10,13 @@ There are two primary types of errors:
  - Errors that result from exceptional control flow operation.
 
  - `switch` supports general pattern-matching;
-   point to broader discussion of `switch` and link:pattern-matching[pattern matching]
+   point to broader discussion of `switch` and link:pattern-matching{outfilesuffix}[pattern matching]
+
  - handle errors as values with `switch` (not with `try`)
  - design question in an API: When to use which?
  - handle errors as exceptions with `try` --- in a way, these are less general for API design; may only appear in certain (`async`) contexts.  
  But they can recover from errors that would otherwise be fatal (such as system errors), so they are necessary.
  - discuss programming examples:
- - discuss use of link:base-libraries:Result{outfilesuffix}[Result] module>>, with examples
- - discuss use of link:base-libraries:Option{outfilesuffix}[Option] module>>, with examples
- - discuss use of link:type-Errpr{outfilesuffix}[Error type]; exceptions versus traps
+ - discuss use of link:base-libraries/result{outfilesuffix}[Result] module, with examples
+ - discuss use of link:base-libraries/option{outfilesuffix}[Option], with examples
+ - discuss use of link:language-manual{outfilesuffix}[error-types] and exceptions versus traps

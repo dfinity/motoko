@@ -302,7 +302,7 @@ module {
   };
 
   func alignment(version : Version) : List<(Coordinate, Bool)> {
-    let n = Common.alignments(version).len() ** 2;
+    let n = Common.alignments(version).size() ** 2;
     let m = if (n < 4) 0 else n - 3;
     let coords = alignmentCoords(version);
     let pattern = Nat.natToBits(33084991);
@@ -313,12 +313,12 @@ module {
   func alignmentCoords(version : Version) : List<Coordinate> {
 
     let alignments = Common.alignments(version);
-    if (alignments.len() == 0) {
+    if (alignments.size() == 0) {
       List.nil<Coordinate>()
     } else {
 
       let a = alignments[0];
-      let b = alignments[alignments.len() - 1];
+      let b = alignments[alignments.size() - 1];
       let reserved = List.fromArray<Coordinate>([(a, b), (b, a), (b, b)]);
       func isReserved(r : Nat, c : Nat) : Bool {
         List.exists<Coordinate>(reserved, func (x, y) {

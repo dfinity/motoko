@@ -100,6 +100,7 @@ and lit (l:lit) = match l with
   | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_pretty_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
+  | BlobLit b     -> "BlobLit"   $$ [ Atom b ]
   | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]

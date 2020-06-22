@@ -5,7 +5,7 @@ to do:
  - discuss `return`
  - discuss labels and labeled gotos
  - discuss use of `for` loops
- - discuss iterators; discuss examples of iterating an array and iterating a text value (`.keys`, `.vals`, `.chars`, `.len`, etc.)
+ - discuss iterators; discuss examples of iterating an array and iterating a text value (`.keys`, `.vals`, `.chars`, `.size`, etc.)
  - discuss use of `while` loops
  - discuss use of `do` loops
 

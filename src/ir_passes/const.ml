@@ -107,8 +107,6 @@ let all (xs : lazy_bool list) : lazy_bool =
 
 type lvl = TopLvl | NotTopLvl
 
-module S = Freevars.S
-
 module M = Env.Make(String)
 
 type info = {
@@ -229,7 +227,7 @@ and gather_dec lvl scope dec : env =
   | LetD (p, _) -> Ir_utils.is_irrefutable p
   | VarD _ -> false
   in
-  S.fold (fun v scope ->
+  M.fold (fun v _ scope ->
     if ok
     then M.add v (mk_info (maybe_false ())) scope
     else M.add v (mk_info surely_false) scope
@@ -242,7 +240,7 @@ and check_dec lvl env dec : lazy_bool = match dec.it with
   | LetD (p, e) when Ir_utils.is_irrefutable p ->
     let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
     let lb = exp lvl env e in
-    S.iter (fun v -> required_for lb (M.find v env).const) vs;
+    M.iter (fun v _ -> required_for lb (M.find v env).const) vs;
     lb
   | VarD (_, _, e) | LetD (_, e) ->
     exp_ lvl env e;
@@ -257,16 +255,19 @@ and decs lvl env ds : (env * lazy_bool) =
   let could_be = check_decs lvl env' ds in
   (env', could_be)
 
+and decs_ lvl env ds = ignore (decs lvl env ds)
+
 and block lvl env (ds, body) =
   let (env', decs_const) = decs lvl env ds in
   let exp_const = exp lvl env' body in
   all [decs_const; exp_const]
 
-let analyze scope ((b, _flavor) : prog) =
-  (*
-  We assume everything in scope is static. Right now, this is only the prelude,
-  which is static. It will blow up in compile if we get this wrong.
-  *)
-  let static_info = { loc_known = true; const = surely_true } in
-  let env = M.of_seq (Seq.map (fun (v, _typ) -> (v, static_info)) (Type.Env.to_seq scope.Scope.val_env)) in
-  ignore (block TopLvl env b)
+and comp_unit = function
+  | ProgU ds -> decs_ TopLvl M.empty ds
+  | ActorU (ds, fs, {pre; post}, typ) ->
+    let (env', _) = decs TopLvl M.empty ds in
+    exp_ TopLvl env' pre;
+    exp_ TopLvl env' post
+
+let analyze ((cu, _flavor) : prog) =
+  ignore (comp_unit cu)

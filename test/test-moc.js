@@ -3,11 +3,11 @@ process.on('unhandledRejection', error => { assert.fail(error); });
 const assert = require('assert').strict;
 
 // Load moc.js
-const m = require('moc.js');
+const moc = require('moc.js');
 
 // Compile the empty module in plain and dfinity mode
-const empty_wasm_plain = m.Motoko.compileWasm('wasm', '');
-const empty_wasm_dfinity = m.Motoko.compileWasm('dfinity', '');
+const empty_wasm_plain = moc.Motoko.compileWasm('wasm', '');
+const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', '');
 
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
@@ -33,7 +33,7 @@ WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'));
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
 
 // Check if error messages are correctly returned
-const bad_result = m.Motoko.compileWasm('dfinity', '1+');
+const bad_result = moc.Motoko.compileWasm('dfinity', '1+');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result, null, 2));
 assert.deepStrictEqual(bad_result, {
@@ -59,12 +59,12 @@ assert.deepStrictEqual(bad_result, {
 });
 
 // Check the check command (should print errors, but have no code)
-assert.deepStrictEqual(m.Motoko.check('1'), {
+assert.deepStrictEqual(moc.Motoko.check('1'), {
   "diagnostics": [],
   "code": null
 });
 
-assert.deepStrictEqual(m.Motoko.check('1+'), {
+assert.deepStrictEqual(moc.Motoko.check('1+'), {
   "diagnostics": [
     {
       "range": {
@@ -86,7 +86,7 @@ assert.deepStrictEqual(m.Motoko.check('1+'), {
 });
 
 // Create a source map, and check some of its structure
-const with_map = m.Motoko.compileWasm('dfinity', '');
+const with_map = moc.Motoko.compileWasm('dfinity', '');
 assert.equal(typeof(with_map.map), 'string')
 let map
 assert.doesNotThrow(() => map = JSON.parse(with_map.map), SyntaxError)
@@ -94,3 +94,4 @@ assert.ok(Array.isArray(map.sources))
 assert.ok(Array.isArray(map.sourcesContent))
 assert.equal(typeof(map.mappings), 'string')
 assert.equal(typeof(map.version), 'number')
+

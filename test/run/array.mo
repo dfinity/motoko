@@ -1,7 +1,7 @@
 let a = [1, 2, 42];
 let aa = a : [Nat];
 
-assert(a.len() == 3);
+assert(a.size() == 3);
 
 assert(a[0] == 1);
 assert(a[1] == 2);
@@ -14,7 +14,7 @@ assert(a.get(2) == 42);
 let b = [var 2, 3, 23];
 let bb = b : [var Nat];
 
-assert(b.len() == 3);
+assert(b.size() == 3);
 
 assert(b[0] == 2);
 assert(b[1] == 3);
@@ -27,7 +27,7 @@ assert(b.get(2) == 23);
 b[1] := 6;
 assert(b[1] == 6);
 
-b.set(2, 7);
+b.put(2, 7);
 assert(b[2] == 7);
 
 func opt_eq(x : ?Nat, y : Nat) : Bool {
@@ -63,25 +63,25 @@ for (j in a.keys()) {
   assert(j == i);
   i += 1;
 };
-assert(i == a.len());
+assert(i == a.size());
 
 i := 0;
 for (n in a.vals()) {
   assert(n == a[i]);
   i += 1;
 };
-assert(i == a.len());
+assert(i == a.size());
 
 i := 0;
 for (j in b.keys()) {
   assert(j == i);
   i += 1;
 };
-assert(i == b.len());
+assert(i == b.size());
 
 i := 0;
 for (n in b.vals()) {
   assert(n == b[i]);
   i += 1;
 };
-assert(i == b.len());
+assert(i == b.size());
