@@ -90,3 +90,17 @@ The type used from a call to an imported canister, therefore, might differ from 
 For example, if the {proglang} code uses a `+Word8+` type, the derived type in the canister will replace the +Word8+` type to use a `+Nat8+` type.
 
 These type differences are the result of the Candid-to-Motoko composition layer inherent to the canister abstraction. 
+
+== Naming imported modules
+
+Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there's no requirement for you to do so.
+For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
+
+The following examples illustrate different names you might use when importing the `+List+` base library module.
+
+[source,motoko]
+----
+import List  "mo:base/List:";
+import Sequence  "mo:collections/List";
+import L "mo:base/List";
+----
