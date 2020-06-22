@@ -1,4 +1,4 @@
-{ src ? { rev = null; }, ... }:
+{ src ? { rev = null; }, labels ? {}, ... }:
 let
   nixpkgs = import ./nix { };
 
@@ -39,8 +39,8 @@ let
       '';
     };
 
-  baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; };
-  prJobs = import ./default.nix { system = "x86_64-linux"; };
+  baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; inherit labels; };
+  prJobs = import ./default.nix { system = "x86_64-linux"; inherit labels; };
 
   # NB: We run both compilers on the new PR’s set of tests
   wasm-hash-base = wasm-hash-for baseJobs.moc;
