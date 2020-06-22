@@ -6,9 +6,9 @@
         "type": "git"
     },
     "dfinity": {
-        "ref": "akhi3030-drun-state-manager",
+        "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "9a8567c27e0feb8f4ddcb627ba0afd10cb9cb15c",
+        "rev": "95430bbc3e99de5875033a9c8031b6728c38d341",
         "type": "git"
     },
     "esm": {
