@@ -10,39 +10,30 @@ export as_ptr float_fmt(double a) {
   return text_of_ptr_size(buf, chars);
 }
 
-export double float_pow(double a, double b) {
-  extern double pow(double, double);
-  return pow(a, b);
-}
+// re-export transcendental and trigonometric functions under a modified naming scheme
+// e.g. pow(a, b) ==> float_pow
 
-export double float_sin(double a) {
-  extern double sin(double);
-  return sin(a);
-}
+#define EXPORT_UNARY(IMP, A1, EXP) \
+  export double float_ ## EXP(double A1) { \
+    extern double IMP(double); \
+    return IMP(A1); \
+  }
 
-export double float_cos(double a) {
-  extern double cos(double);
-  return cos(a);
-}
+#define EXPORT_BINARY(IMP, A1, A2, EXP) \
+  export double float_ ## EXP(double A1, double A2) { \
+    extern double IMP(double, double); \
+    return IMP(A1, A2); \
+  }
 
-export double float_tan(double a) {
-  extern double tan(double);
-  return tan(a);
-}
-
-export double float_arcsin(double a) {
-  extern double asin(double);
-  return asin(a);
-}
-
-export double float_arccos(double a) {
-  extern double acos(double);
-  return acos(a);
-}
-
-export double float_arctan(double a) {
-  extern double atan(double);
-  return atan(a);
-}
+EXPORT_BINARY(pow, a, b, pow)
+EXPORT_UNARY(sin, a, sin)
+EXPORT_UNARY(cos, a, cos)
+EXPORT_UNARY(tan, a, tan)
+EXPORT_UNARY(asin, a, arcsin)
+EXPORT_UNARY(acos, a, arccos)
+EXPORT_UNARY(atan, a, arctan)
+EXPORT_BINARY(atan2, y, x, arctan2)
+EXPORT_UNARY(exp, a, exp)
+EXPORT_UNARY(log, a, log)
 
 #endif

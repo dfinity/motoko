@@ -12,7 +12,7 @@ val file_from_uri : uri -> string
 
 val abs_file_from_uri : uri -> string
 
-val parse_file : t -> Pipeline.parse_fn
+val parse_file : t -> Pipeline.no_region_parse_fn
 
 (** Creates a new virtual file system *)
 val empty : t

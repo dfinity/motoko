@@ -791,6 +791,9 @@ module RTS = struct
     E.add_func_import env "rts" "float_arcsin" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_arccos" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_arctan" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_arctan2" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "float_exp" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_log" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type] [I32Type];
     ()
 
@@ -3399,6 +3402,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       arg_instrs ^^
+      Text.to_blob env ^^
       Blob.as_ptr_len env ^^
       system_call env "ic0" "msg_reject"
     | _ ->
@@ -5437,6 +5441,13 @@ module VarEnv = struct
 
 end (* VarEnv *)
 
+(* type for wrapping code with context, context is establishment
+   of (pattern) binding, argument is the code using the binding,
+   result is e.g. the code for `case p e`. *)
+type scope_wrap = G.t -> G.t
+
+let unmodified : scope_wrap = fun code -> code
+
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
@@ -5487,21 +5498,21 @@ module Var = struct
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
   *)
-  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> (VarEnv.t * G.t)) =
+  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     match VarEnv.lookup_var ae0 var with
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
-        in (ae2, restore_code)
+        in ae2, fun body -> restore_code ^^ body
       )
     | Some (HeapInd (i, off)) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let (ae2, j) = VarEnv.add_local_with_offset new_env ae1 var off in
+        let ae2, j = VarEnv.add_local_with_offset new_env ae1 var off in
         let restore_code = G.i (LocalSet (nr j))
-        in (ae2, restore_code)
+        in ae2, fun body -> restore_code ^^ body
       )
     | _ -> assert false
 
@@ -5539,13 +5550,12 @@ module FuncDec = struct
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
 
-      let (ae1, closure_code) = restore_env env ae0 get_closure in
+      let ae1, closure_codeW = restore_env env ae0 get_closure in
 
       (* Add arguments to the environment (shifted by 1) *)
       let ae2 = bind_args env ae1 1 args in
 
-      closure_code ^^
-      mk_body env ae2
+      closure_codeW (mk_body env ae2)
     ))
 
   let message_start env sort = match sort with
@@ -5595,7 +5605,7 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       ( Const.t_of_v (Const.Fun fi), fun env ae ->
-        let restore_no_env _env ae _ = (ae, G.nop) in
+        let restore_no_env _env ae _ = ae, unmodified in
         fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
     end
@@ -5604,30 +5614,30 @@ module FuncDec = struct
   let closure env ae sort control name captured args mk_body ret_tys at =
       let is_local = sort = Type.Local in
 
-      let (set_clos, get_clos) = new_local env (name ^ "_clos") in
+      let set_clos, get_clos = new_local env (name ^ "_clos") in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
-      let (store_env, restore_env) =
+      let store_env, restore_env =
         let rec go i = function
-          | [] -> (G.nop, fun _env ae1 _ -> (ae1, G.nop))
+          | [] -> (G.nop, fun _env ae1 _ -> ae1, unmodified)
           | (v::vs) ->
-              let (store_rest, restore_rest) = go (i+1) vs in
-              let (store_this, restore_this) = Var.capture env ae v in
+              let store_rest, restore_rest = go (i + 1) vs in
+              let store_this, restore_this = Var.capture env ae v in
               let store_env =
                 get_clos ^^
                 store_this ^^
                 Closure.store_data (Wasm.I32.of_int_u i) ^^
                 store_rest in
               let restore_env env ae1 get_env =
-                let (ae2, code) = restore_this env ae1 in
-                let (ae3, code_rest) = restore_rest env ae2 get_env in
+                let ae2, codeW = restore_this env ae1 in
+                let ae3, code_restW = restore_rest env ae2 get_env in
                 (ae3,
+                 fun body ->
                  get_env ^^
                  Closure.load_data (Wasm.I32.of_int_u i) ^^
-                 code ^^
-                 code_rest
+                 codeW (code_restW body)
                 )
-              in (store_env, restore_env) in
+              in store_env, restore_env in
         go 0 captured in
 
       let f =
@@ -6727,13 +6737,6 @@ let compile_load_field env typ name =
   Object.load_idx env typ name
 
 
-(* type for wrapping code with context, context is establishment
-   of (pattern) binding, argument is the code using the binding,
-   result is e.g. the code for `case p e`. *)
-type scope_wrap = G.t -> G.t
-
-let unmodified : scope_wrap = fun code -> code
-
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) ae lexp =
@@ -7139,6 +7142,22 @@ and compile_exp (env : E.t) ae exp =
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_arctan"
+
+    | OtherPrim "fatan2", [y; x] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 y ^^
+      compile_exp_as env ae SR.UnboxedFloat64 x ^^
+      E.call_import env "rts" "float_arctan2"
+
+    | OtherPrim "fexp", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_exp"
+
+    | OtherPrim "flog", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_log"
 
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
@@ -7743,12 +7762,6 @@ and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope
 and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
   compile_decs_public env ae decs E.NameEnv.empty captured_in_body
 
-and compile_prog env ae (ds, e) =
-  let captured = Freevars.captured_vars (Freevars.exp e) in
-  let (ae', codeW1) = compile_decs env ae ds captured in
-  let (sr, code2) = compile_exp env ae' e in
-  (ae', codeW1 code2 ^^ StackRep.drop env sr)
-
 (* This compiles expressions determined to be const as per the analysis in
    ir_passes/const.ml. See there for more details.
 *)
@@ -7857,42 +7870,15 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
 
   | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
 
-and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
-  let find_last_expr ds e =
-    if ds = [] then [], e.it else
-    match Lib.List.split_last ds, e.it with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), PrimE (TupPrim, []) ->
-      ds1', e'.it
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), VarE i2 when i1 = i2 ->
-      ds1', e'.it
-    | _ -> ds, e.it in
-
-  let find_last_actor (ds,e) = match find_last_expr ds e with
-    | ds1, ActorE (ds2, fs, up, _) ->
-      Some (ds1 @ ds2, fs, up)
-    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, _);_}) ->
-      Some (ds1 @ ds2, fs, up)
-    | _, _ ->
-      None
-  in
-
+and compile_start_func mod_env ((cu, _flavor) : Ir.prog) : E.func_with_names =
   Func.of_body mod_env [] [] (fun env ->
-    let rec go ae = function
-      | [] -> G.nop
-      (* If the last program ends with an actor, then consider this the current actor  *)
-      | [(prog, _flavor)] ->
-        begin match find_last_actor prog with
-        | Some (ds, fs, up) -> main_actor env ae ds fs up
-        | None ->
-          let (_ae, code) = compile_prog env ae prog in
-          code
-        end
-      | ((prog, _flavor) :: progs) ->
-        let (ae1, code1) = compile_prog env ae prog in
-        let code2 = go ae1 progs in
-        code1 ^^ code2 in
-    go VarEnv.empty_ae progs
-    )
+    let ae = VarEnv.empty_ae in
+    match cu with
+    | ProgU ds ->
+      let _ae, codeW = compile_decs env ae ds Freevars.S.empty in
+      codeW G.nop
+    | ActorU (ds, fs, up, _t) -> main_actor env ae ds fs up
+  )
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -8020,7 +8006,7 @@ and conclude_module env init_fi_o start_fi_o =
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
+let compile mode module_name rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts Dfinity.trap_with Lifecycle.end_ in
 
   Heap.register_globals env;
@@ -8030,7 +8016,7 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
-  let start_fun = compile_start_func env progs in
+  let start_fun = compile_start_func env prog in
   let start_fi = E.add_fun env "start" start_fun in
   let init_fi_o, start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.RefMode ->

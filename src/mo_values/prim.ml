@@ -199,6 +199,7 @@ let num_conv_prim t1 t2 =
 
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
+  let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
@@ -226,6 +227,12 @@ let prim =
   | "fasin" -> fun _ v k -> k (via_float Stdlib.asin v)
   | "facos" -> fun _ v k -> k (via_float Stdlib.acos v)
   | "fatan" -> fun _ v k -> k (via_float Stdlib.atan v)
+  | "fatan2" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [y; x] -> k (via_float2 Stdlib.atan2 y x)
+     | _ -> assert false)
+  | "fexp" -> fun _ v k -> k (via_float Stdlib.exp v)
+  | "flog" -> fun _ v k -> k (via_float Stdlib.log v)
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->

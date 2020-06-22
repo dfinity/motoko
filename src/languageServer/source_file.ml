@@ -42,9 +42,14 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
   in
   try loop (next ()) with _ -> None
 
-let is_package_path (path : string) =
+let is_non_file_path (path : string) =
   let open Ic.Url in
-  match parse path with Ok (Package _) -> true | Ok Prim -> true | _ -> false
+  match parse path with
+  | Ok (Package _) -> true
+  | Ok Prim -> true
+  | Ok (Ic _) -> true
+  | Ok (IcAlias _) -> true
+  | _ -> false
 
 let uri_for_package (path : string) =
   let open Ic.Url in
@@ -59,7 +64,7 @@ let uri_for_package (path : string) =
   | _ -> None
 
 let import_relative_to_project_root root module_path dependency =
-  if is_package_path dependency then Some dependency
+  if is_non_file_path dependency then Some dependency
   else
     match Lib.FilePath.relative_to root module_path with
     | None -> None

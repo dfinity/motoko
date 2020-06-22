@@ -63,7 +63,6 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.obelisk
@@ -90,6 +89,7 @@ let ocaml_exe = name: bin:
       buildInputs = commonBuildInputs staticpkgs;
 
       buildPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
 
@@ -302,33 +302,37 @@ rec {
     '';
   };
 
-  js = stdenv.mkDerivation {
-    name = "moc.js";
-
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs nixpkgs ++ [
-      nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ppx
-      nixpkgs.nodejs-10_x
-    ];
-
-    buildPhase = ''
-      make moc.js
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      cp -v moc.js $out
-      cp -vr ${rts}/rts $out
-    '';
-
-    doInstallCheck = true;
-
-    installCheckPhase = ''
-      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
-    '';
-  };
+  js =
+    let mk = n: with_rts:
+      stdenv.mkDerivation {
+        name = "${n}.js";
+        src = subpath ./src;
+        buildInputs = commonBuildInputs nixpkgs ++ [
+          nixpkgs.ocamlPackages.js_of_ocaml
+          nixpkgs.ocamlPackages.js_of_ocaml-ppx
+          nixpkgs.nodejs-10_x
+        ];
+        buildPhase = ''
+          patchShebangs .
+          make ${n}.js
+        '';
+        installPhase = ''
+          mkdir -p $out
+          cp -v ${n}.js $out
+        '' + (if with_rts then ''
+          cp -vr ${rts}/rts $out
+        '' else "");
+        doInstallCheck = true;
+        test = ./test + "/test-${n}.js";
+        installCheckPhase = ''
+          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+        '';
+      };
+    in
+    {
+      moc = mk "moc" true;
+      didc = mk "didc" false;
+    };
 
   inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
@@ -445,7 +449,6 @@ rec {
       moc
       mo-ide
       mo-doc
-      js
       didc
       deser
       samples
@@ -459,7 +462,9 @@ rec {
       check-formatting
       check-generated
       check-grammar
-    ] ++ builtins.attrValues (builtins.removeAttrs tests ["qc"]);
+    ] ++
+    builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
+    builtins.attrValues js;
   };
 
   shell = nixpkgs.mkShell {
@@ -475,7 +480,7 @@ rec {
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
-        js.buildInputs ++
+        js.moc.buildInputs ++
         overview-slides.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)

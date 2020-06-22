@@ -138,7 +138,7 @@ prop_charToText (UTF8 char) = monadicIO $ do
   runScriptNoFuzz "charToText" testCase
 
 prop_textLength (UTF8 text) = monadicIO $ do
-  let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
+  let testCase = "assert(\"" <> (text >>= escape) <> "\".size() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
 
 data Rope a = EmptyChunk | Chunk a | UTF8Chunk a | LongChunk a | Rope a `Rope` Rope a deriving (Eq, Show, Foldable)
@@ -176,7 +176,7 @@ prop_ropeConcat rope = monadicIO $ do
   runScriptNoFuzz "ropeConcat" testCase
 
 prop_ropeLength rope = monadicIO $ do
-  let testCase = "assert (" <> ropeMot <> ".len() == " <> show len <> ")"
+  let testCase = "assert (" <> ropeMot <> ".size() == " <> show len <> ")"
       len = length (asString rope)
       ropeMot = unparseMO (asMot rope)
   runScriptNoFuzz "ropeLength" testCase
