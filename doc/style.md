@@ -584,6 +584,9 @@ To increase readability and uniformity of Motoko source code, this guide provide
   };
   ```
 
+* Functions converting to or from a type `X` are named `toX` and `fromX`, respectively,
+  if the source, resp. target, is either the object the function is a method of, or the primary type of the module this function appears in.
+
 * In classes or objects, use a name ending with `_` to distinguish private variables from getters.
 
   ```
