@@ -22,6 +22,7 @@
 * [X] Debug expressions
 * [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
 * [X] Update ErrorCode section
+* [Floats] Literals type and operations
 * [ ] Re-section so headings appear in content outline
 ////
 
@@ -42,7 +43,7 @@ This section describes the basic language conventions you need to know for progr
 [[syntax-whitespace]]
 === Whitespace
 
-Space, newline, horizontal tab, carriage return, line feed and form feed are considered as whitespace. 
+Space, newline, horizontal tab, carriage return, line feed and form feed are considered as whitespace.
 Whitespace is ignored but used to separate adjacent keywords, identifiers and operators.
 
 In the definition of some lexemes, the quick reference uses the symbol `␣` to denote a single whitespace character.
@@ -70,11 +71,11 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and assert assert await break case 
-catch class continue debug debug_show else 
-false for func if ignore in import not null 
-object or label let loop private public 
-query return shared switch true try
+actor and assert assert await break case
+catch class continue debug debug_show else flexible
+false for func if ignore in import not null object or
+label let loop private public query return
+shared stable system switch true try
 type var while
 ```
 
@@ -402,9 +403,35 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 
 ```bnf
 <dec-field> ::=                                object declaration fields
-  (public|private)? <dec>                        field
+  <vis>? <stab>? <dec>                           field
+
+<vis> ::=                                      field visibility
+  public
+  private
+  system
+
+<stab> ::=                                     field stability (actor only)
+  stable
+  flexible
 ```
 
+The _visibility_ qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
+
+* An absent `<vis>?` qualifier defaults to `private` visibility.
+* Visibility `private` restricts access to `<id>` to the enclosing object, module or actor.
+* Visibility `public` extends `private` with external access to `<id>` using the dot notation `<exp>.<id>`.
+* Visibility `system` extends `private` with access by the run-time system.
+* Visibility `system` _may only_ appear on `func` declarations that are actor fields, and  _must not_ appear anywhere else.
+
+The _stability_ qualifier `<stab>` determinesa the _upgrade_ behaviour of actor fields:
+
+* A stability qualifier _should_ appear on `let` and `var` declarations that are actor fields.
+  An absent stability qualifier defaults to `flexible` but generates a warning (to alert users of discarded actor state).
+* `<stab>` qualifiers must not appear on fields of objects or modules.
+* The pattern in a `stable let <pat> = <exp>` declaration must be _simple_ where,  a pattern `pat` is  simple if it (recursively) consists of
+** a variable pattern `<id>`, or
+** an annotated simple pattern `<pat> : <typ>`, or
+** a parenthesised simple pattern `( <pat> )`.
 
 [[syntax-expressions]]
 === Expression syntax
@@ -965,6 +992,32 @@ A type `T` is _shared_ if it is
 * a shared function type, or
 * an `actor` type.
 
+[[stability]]
+=== Stability
+
+Stability extends sharability to include mutable types. More precisely:
+
+A type `T` is _stable_ if it is
+
+* `Any` or `None`, or
+* a primitive type other than `Error`, or
+* an option type `? V` where `V` is stable, or
+* a tuple type `(T0, ..., Tn)` where all `Ti` are stable, or
+* a (mutable or immutable) array type `[var? V]` where `V` is stable, or
+* an `object` type where all fields have stable type, or
+* a variant type where all tags have stable type, or
+* a shared function type, or
+* an `actor` type.
+
+This definition implies that every shared type is a stable type.
+The converse does not hold: there are types that are stable but not shared (notably types with mutable components).
+
+The types of actor fields declared with the `stable` qualifier must have stable type.
+
+The (current) value of such a field is preserved upon _upgrade_,
+whereas the values of other fields are reinitialized after an upgrade.
+
+
 [[semantics]]
 == Static and dynamic semantics
 
@@ -983,7 +1036,7 @@ A program `<imp>;* <dec>;*` has type `T` provided:
 
 All type and value declarations within `<dec>;*` are mutually-recursive.
 
-A program evaluates by (transitively) evaluating the imports, binding their values to the identifiers in '<imp>;*' and then evaluating the sequence of declarations in `<dec>;*`.
+A program evaluates by (transitively) evaluating the imports, binding their values to the identifiers in `<imp>;*` and then evaluating the sequence of declarations in `<dec>;*`.
 
 [[libraries]]
 === Libraries
@@ -1028,7 +1081,7 @@ In detail, if `<url>` is of the form:
 
 * `"canister:<name>"` is a symbolic reference to canister alias `<name>`.
   The compiler assumes that the mapping of `<name>` to `<canisterid>` is specified by command line argument  `--actor-alias <name> ic:<canisterid>`.
-  If so, "canister:<name>" is equivalent to "ic:<cansterid>" (see above).
+  If so, `"canister:<name>"` is equivalent to `"ic:<cansterid>"` (see above).
   For example, `import C "canister:counter"` defines `C` to reference the actor otherwise known as
   `counter`.
 
@@ -1041,12 +1094,51 @@ The SDK tooling takes care of supplying the appropriate command-line arguments t
 [[decl-field]]
 === Declaration fields
 
-Declaration fields declare the fields of actors and objects.
-They are just declarations, prefixed by an optional visibility qualifier `public` or  `private`; if omitted, visibility defaults to `private`.
+A declaration field `<vis>? <stab>? <dec>` defines zero or more fields of an actor or object, according to the set of variables defined by `<dec>`.
 
-Any identifier bound by a `public` declaration appears in the type of enclosing object and is accessible via the dot notation.
+Any identifier bound by a `public` declaration appears in the type of enclosing object, module or actor and is accessible via the dot notation.
 
-An identifier bound by a `private` declaration is excluded form the type of the enclosing object and inaccessible via the dot notation.
+An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object, module or actor and thus inaccessible.
+
+The declaration field has type `T` provided:
+
+* `<dec>` has type `T`;
+* if `<stab>?` is `stable` then `T` must be a stable type (see <<Stability>>).
+
+(Actor fields declared `flexible` (implicitly or explicitly) can have any type, but will not be preserved across upgrades.)
+
+Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
+
+During an upgrade only, the value of a `stable` declaration is obtained as follows:
+
+* if the stable declaration was previously declared stable in the retired actor, its initial value is inherited from the retired actor.
+* if the stable declaration was not declared stable in the retired actor, and is thus new, its value is obtained by evaluating `<dec>`.
+
+For an upgrade to be safe:
+
+* every stable identifier declared with type `T` in the retired actor and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
+
+This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
+Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
+
+==== System fields
+
+The declaration `<dec>` of a `system` field must be a manifest `func` declaration with one of the following names and types:
+
+|===
+|  name | type | description
+
+| `preupgrade`  | `() -> ()` | pre upgrade action
+| `postupgrade` | `() -> ()` | post upgrade action
+|===
+
+* `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
+* `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
+(inheriting values of the retired actors' stable variables), and before its first message is processed.
+
+These system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
+
+During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
 [[decl-seq]]
 === Sequence of declarations
@@ -1233,7 +1325,7 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 [[decl-obj]]
 === Object declaration
 
-Declaration `<sort> <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
+Declaration `<sort> <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp-field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
@@ -1294,7 +1386,7 @@ The declaration `<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>?
 where:
 
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
-* `<typ-field>;*` is the set of public field types inferred from `<dec-field;*>`.
+* `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
 [[eval-identifiers]]
