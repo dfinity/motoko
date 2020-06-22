@@ -406,7 +406,7 @@ The _stability_ qualifier `<stab>` determinesa the _upgrade_ behaviour of actor 
 
 * A stability qualifier _should_ appear on `let` and `var` declarations that are actor fields.
   An absent stability qualifier defaults to `flexible` but generates a warning (to alert users of discarded actor state).
-* `<stab>` qualifiers must not may appear on fields of objects or modules.
+* `<stab>` qualifiers must not appear on fields of objects or modules.
 * The pattern in a `stable let <pat> = <exp>` declaration must be _simple_ where,  a pattern `pat` is  simple if it (recursively) consists of
 ** a variable pattern `<id>`, or
 ** an annotated simple pattern `<pat> : <typ>`, or
@@ -983,7 +983,8 @@ The converse does not hold: there are types that are stable but not shared (nota
 
 The types of actor fields declared with the `stable` qualifier must have stable type.
 
-The (current) value of such a field is saved and restored upon _upgrade_.
+The (current) value of such a field is preserved upon _upgrade_,
+whereas the values of other fields are reinitialized after an upgrade.
 
 
 [[semantics]]
@@ -1073,7 +1074,7 @@ The declaration field has type `T` provided:
 * `<dec>` has type `T`;
 * if `<stab>?` is `stable` then `T` must be a stable type (see <<Stability>>).
 
-(Actor fields declared `flexible` (implicitly or explicitly) will not be preserved across upgrades and can have any type.)
+(Actor fields declared `flexible` (implicitly or explicitly) can have any type, but will not be preserved across upgrades.)
 
 Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
@@ -1086,7 +1087,7 @@ For an upgrade to be safe:
 
 * every stable identifier declared with type `T` in the retired actor must but be declared stable and of type `U` in the replacement actor, provided `T <: U`.
 
-This condition ensures that every stable variable is either fresh, requiring initialization, or can be safely inherited from the retired actor.
+This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
 Although stable variables cannot (safely) be removed across upgrades, they may be effectively deprecated by an upgrade to type `Any`.
 
 ==== System fields
@@ -1104,7 +1105,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
-System method provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
+These system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
 During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
