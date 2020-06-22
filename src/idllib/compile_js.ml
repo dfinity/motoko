@@ -13,13 +13,14 @@ type typ_info = {
   }
 
 let as_tuple fs =
-  let fs2 = List.mapi (fun i f -> (i, f)) fs in
-  let is_tuple = List.length fs > 0 && List.for_all (fun (i, f) ->
+  let open List in
+  let fs2 = mapi (fun i f -> (i, f)) fs in
+  let is_tuple = length fs > 0 && for_all (fun (i, f) ->
       match f.it.label.it with
       | Unnamed id -> Lib.Uint32.to_int id = i
       | _ -> false) fs2 in
   if is_tuple then
-    Some (List.map (fun (f : typ_field) -> f.it.typ) fs)
+    Some (map (fun (f : typ_field) -> f.it.typ) fs)
   else
     None
 
