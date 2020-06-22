@@ -45,6 +45,10 @@ In addition, stable state can only contain records, not objects because objects 
 
 == How stable variables are upgraded
 
-When you first compile and deploy a program, all flexible and stable variable are initialized in sequence.
-When you re-deploy using the upgrade mode, all stable variables that existed in the previous version are pre-initialized with their old values.
-After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
+When you first compile and deploy an actor, all of its flexible and stable declarations are initialized in sequence.
+When you deploy or re-deploy an actor as an upgrade, the actor's declarations are also executed in sequence, but with the following modification:
+
+* a new stable variable, that was not declared in the previous version, receives its initial value by executing its declaration (as in an fresh installation). 
+* a re-used stable variable, that was declared in the previous version, is initialized with its final value in that version, ignoring the new version's initializer expression entirely (including any side-effects of evaluating that initializer).
+
+This design ensures that an actor with stable declarations can be deployed from fresh, running all its initializers, or as an upgrade, running the selection of stable declarations whose values are not determined by the previous version.
