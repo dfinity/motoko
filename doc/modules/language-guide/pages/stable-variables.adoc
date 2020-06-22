@@ -30,16 +30,16 @@ A stable declaration must have a _stable type_.
 Stable types are a superset of _shared_ types.
 Specifically, stable types allow objects or arrays with mutable components.
 
-Concretely, the `stable` predicate has the same definition as the `shared` predicate, except that the case for `Mut t` is
+Concretely, the `stable` predicate has the same definition as the `shared` predicate, except that the case for `var T` is
 
 ```
-  | Mut t -> go t
+  | var T -> go t
 ```
 
 That is, shared entails stable.
 Note that this implies that stable types can contain actors or shared functions, but mutability does not extend to actors or shared functions.
 
-Note: This implies that stable state can only contain records, not objects (which contain non-shared functions).
+NOTE: This implies that stable state can only contain records, not objects (which contain non-shared functions).
 
 ### Semantics
 
