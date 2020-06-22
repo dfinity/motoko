@@ -16,9 +16,8 @@ variables with a special, non-colliding name, which we sometimes
 want to recognize for better user experience.
 *)
 
-let id_of_full_path (fp : string) : Syntax.id =
-  let open Source in
-  ("file$" ^ fp) @@ no_region
+let id_of_full_path (fp : string) : string =
+  "file$" ^ fp
 
 (* Combinators used in the desugaring *)
 
@@ -152,8 +151,8 @@ and exp' at note = function
   | S.ImportE (f, ir) ->
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
-    | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
+    | S.LibPath fp -> I.VarE (id_of_full_path fp)
+    | S.PrimPath -> I.VarE (id_of_full_path "@prim")
     | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
@@ -332,11 +331,11 @@ and array_dotE array_ty proj e =
     let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
-    | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
-    | false, "len"  -> call "@immut_array_len"  [] [T.nat]
+    | true,  "size"  -> call "@mut_array_size"    [] [T.nat]
+    | false, "size"  -> call "@immut_array_size"  [] [T.nat]
     | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
     | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
-    | true,  "set"  -> call "@mut_array_set"    [T.nat; varA] []
+    | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
     | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
     | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
     | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
@@ -359,11 +358,15 @@ and text_dotE proj e =
     let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
     callE (varE f) [] e in
   match proj with
-    | "len"   -> call "@text_len"   [] [T.nat]
+    | "size"   -> call "@text_size"   [] [T.nat]
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
 and block force_unit ds =
+  match ds with
+  | [] -> ([], tupE [])
+  | [{it = S.ExpD ({it = S.BlockE ds; _}); _}] -> block force_unit ds
+  | _ ->
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
   | _, S.ExpD e ->
@@ -471,6 +474,7 @@ and lit l = match l with
   | S.FloatLit x -> I.FloatLit x
   | S.CharLit x -> I.CharLit x
   | S.TextLit x -> I.TextLit x
+  | S.BlobLit x -> I.BlobLit x
   | S.PreLit _ -> assert false
 
 and pat_fields pfs = List.map pat_field pfs
@@ -570,38 +574,53 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   args, wrap_under_async, control, res_tys
 
-and prog (p : Syntax.prog) : Ir.prog =
-  begin match p.it with
-    | [] -> ([], tupE [])
-    | _ -> block false p.it
-  end
+and comp_unit ds : Ir.comp_unit =
+  let open Ir in
+
+  let find_last_expr (ds,e) =
+    let find_last_actor = function
+      | ds1, {it = ActorE (ds2, fs, up, t); _} ->
+        (* NB: capture! *)
+        ActorU (ds1 @ ds2, fs, up, t)
+      | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
+        ActorU (ds1 @ ds2, fs, up, t)
+      | _ ->
+        ProgU (ds @ [ expD e ]) in
+
+    if ds = [] then find_last_actor ([], e) else
+    match Lib.List.split_last ds, e with
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
+      find_last_actor (ds1', e')
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
+      find_last_actor (ds1', e')
+    | _ ->
+      find_last_actor (ds, e) in
+
+  (* find the last actor. This hack can hopefully go away
+     after Claudios improvements to the source *)
+  if ds = [] then ProgU [] else
+  find_last_expr (block false ds)
+
+let transform_prog (p : Syntax.prog) : Ir.prog  =
+  comp_unit p.it
   , { I.has_await = true
     ; I.has_async_typ = true
     ; I.has_show = true
     ; I.serialized = false
     }
 
+type import_declaration = Ir.dec list
 
-let declare_import lib =
-  let open Source in
+let transform_lib lib : import_declaration =
   let f = lib.note in
   let t = lib.it.note.Syntax.note_typ in
-  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
-  { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
+  [ letD (var (id_of_full_path f) t) (exp lib.it) ]
 
-let combine_files libs progs : Syntax.prog =
-  (* This is a hack until the backend has explicit support for libraries *)
-  let open Source in
-  { it = List.map declare_import libs
-         @ List.concat (List.map (fun p -> p.it) progs)
-  ; at = no_region
-  ; note = match progs with
-           | [prog] -> prog.Source.note
-           | _ -> "all"
-  }
+let transform_prelude prelude : import_declaration =
+  decs (prelude.it)
 
-let transform p = prog p
-
-let transform_graph libraries progs =
-  prog (combine_files libraries progs)
+let link_declarations imports (cu, flavor) =
+  let cu' = match cu with
+    | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
+    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
+  in cu', flavor

@@ -14,10 +14,6 @@ Run these either in the top level directory, or in one of the subdirectories.
 
    Refreshes all output
 
-* `make coverage`
-
-   Creates a coverage report in `./coverage/`
-
 * `make clean`
 
    Cleans
@@ -56,6 +52,8 @@ typechecked, interpreted (in various variants) and run on `wasmtime` or (with
 `-d`) `drun`/`ic-ref-run`.
 
 With comments of the form `//SKIP run-low` individual phases can be skipped.
+Similarly, mentioning the `uname` output (like `//SKIP Darwin`) skips the test
+when running on that OS.
 
 Comments of the form `//MOC-FLAG --package prim .` pass additional flags to
 `moc`.

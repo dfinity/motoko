@@ -1,0 +1,8 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query ok(0x4449444c0000)
+← rejected (RC_CANISTER_REJECT): abcdefgh
+→ query crash(0x4449444c0000)
+← rejected (RC_CANISTER_REJECT): abcdefghi

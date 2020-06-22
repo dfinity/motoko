@@ -88,6 +88,7 @@ function normalize () {
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
+    sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -102,6 +103,7 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext$" $file; then return 1; fi
+  if grep -q "^//SKIP $(uname)$" $file; then return 1; fi
 
   if test -e $out/$base.$ext
   then

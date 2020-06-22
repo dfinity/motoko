@@ -243,6 +243,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
+  | BlobLit s -> V.Text s (* refine in #1611 *)
   | PreLit _ -> assert false
 
 
@@ -256,7 +257,7 @@ let array_get a at =
     else trap at "array index out of bounds"
   )
 
-let array_set a at =
+let array_put a at =
   V.local_func 2 0 (fun c v k ->
     let v1, v2 = V.as_pair v in
     let n = V.as_int v1 in
@@ -265,7 +266,7 @@ let array_set a at =
     else trap at "array index out of bounds"
   )
 
-let array_len a at =
+let array_size a at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     k (V.Int (V.Nat.of_int (Array.length a)))
@@ -443,16 +444,17 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (find id.it fs)
       | V.Array vs ->
         let f = match id.it with
-          | "len" -> array_len
+          | "size" -> array_size
           | "get" -> array_get
-          | "set" -> array_set
+          | "put" -> array_put
           | "keys" -> array_keys
           | "vals" -> array_vals
           | _ -> assert false
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
-          | "len" -> text_len
+          | "size" when T.eq exp1.note.note_typ T.text ->
+            text_len (* TODO: remove this hack with Blob value; https://github.com/dfinity-lab/motoko/issues/1611 *)
           | "chars" -> text_chars
           | "size" -> blob_size
           | "bytes" -> blob_bytes
