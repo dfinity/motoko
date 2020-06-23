@@ -5399,13 +5399,12 @@ module VarEnv = struct
     | Some l -> not (is_non_local l)
     | None -> assert false
 
-  let add_binding' name ty at b bs = NameEnv.add name (b, ty, at) bs
-  let _add_binding name b bs = NameEnv.add name (b, Type.Any, Source.no_region) bs
+  let add_binding name ty at b bs = NameEnv.add name (b, ty, at) bs
 
   let _add_metadata name ty srcloc = NameEnv.update name (function Some (b, _, _) -> Some (b, ty, srcloc) | v -> v)
 
   let reuse_local_with_offset (ae : t) name ty at i off =
-      { ae with vars = add_binding' name ty at (HeapInd (i, off)) ae.vars }
+      { ae with vars = add_binding name ty at (HeapInd (i, off)) ae.vars }
 
   let add_local_with_offset env (ae : t) name ty at off =
       let i = E.add_anon_local env I32Type in
@@ -5413,16 +5412,16 @@ module VarEnv = struct
       (reuse_local_with_offset ae name ty at i off, i)
 
   let add_local_heap_static (ae : t) name ty at ptr =
-      { ae with vars = add_binding' name ty at (HeapStatic ptr) ae.vars }
+      { ae with vars = add_binding name ty at (HeapStatic ptr) ae.vars }
 
   let add_local_public_method (ae : t) name ty at (fi, exported_name) =
-      { ae with vars = add_binding' name ty at (PublicMethod (fi, exported_name) : varloc) ae.vars }
+      { ae with vars = add_binding name ty at (PublicMethod (fi, exported_name) : varloc) ae.vars }
 
   let add_local_const (ae : t) name ty at cv =
-      { ae with vars = add_binding' name ty at (Const cv : varloc) ae.vars }
+      { ae with vars = add_binding name ty at (Const cv : varloc) ae.vars }
 
   let add_local_local env (ae : t) name ty srcloc i =
-      { ae with vars = add_binding' name ty srcloc (Local i) ae.vars }
+      { ae with vars = add_binding name ty srcloc (Local i) ae.vars }
 
   let add_direct_local env (ae : t) name ty srcloc =
       let i = E.add_anon_local env I32Type in
@@ -5435,7 +5434,7 @@ module VarEnv = struct
     | (name, ty) :: rest ->
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      let ae' = { ae with vars = add_binding' name ty at (Local i) ae.vars } in
+      let ae' = { ae with vars = add_binding name ty at (Local i) ae.vars } in
       let (ae_final, setters) = add_argument_locals env ae' at rest
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
