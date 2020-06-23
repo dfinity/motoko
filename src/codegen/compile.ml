@@ -5363,7 +5363,7 @@ module VarEnv = struct
   module NameEnv = Env.Make(String)
   type t = {
     lvl : lvl;
-    vars : varloc NameEnv.t; (* variables ↦ their location *)
+    vars : (varloc * Type.typ) NameEnv.t; (* variables ↦ their location and metadata *)
     labels : G.depth NameEnv.t; (* jump label ↦ their depth *)
   }
 
@@ -5379,8 +5379,8 @@ module VarEnv = struct
 
   let mk_fun_ae ae = { ae with
     lvl = NotTopLvl;
-    vars = NameEnv.filter (fun v l ->
-      let non_local = is_non_local l in
+    vars = NameEnv.filter (fun v lm ->
+      let non_local = is_non_local (fst lm) in
       (* For debugging, enable this:
       (if not non_local then Printf.eprintf "VarEnv.mk_fun_ae: Removing %s\n" v);
       *)
@@ -5389,15 +5389,17 @@ module VarEnv = struct
   }
   let lookup_var ae var =
     match NameEnv.find_opt var ae.vars with
-      | Some l -> Some l
+      | Some lm -> Some (fst lm)
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
   let needs_capture ae var = match lookup_var ae var with
     | Some l -> not (is_non_local l)
     | None -> assert false
 
+  let add_binding name b bs = NameEnv.add name (b, Type.Any) bs
+
   let reuse_local_with_offset (ae : t) name i off =
-      { ae with vars = NameEnv.add name (HeapInd (i, off)) ae.vars }
+      { ae with vars = add_binding name (HeapInd (i, off)) ae.vars }
 
   let add_local_with_offset env (ae : t) name off =
       let i = E.add_anon_local env I32Type in
@@ -5405,16 +5407,16 @@ module VarEnv = struct
       (reuse_local_with_offset ae name i off, i)
 
   let add_local_heap_static (ae : t) name ptr =
-      { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
+      { ae with vars = add_binding name (HeapStatic ptr) ae.vars }
 
   let add_local_public_method (ae : t) name (fi, exported_name) =
-      { ae with vars = NameEnv.add name (PublicMethod (fi, exported_name) : varloc) ae.vars }
+      { ae with vars = add_binding name (PublicMethod (fi, exported_name) : varloc) ae.vars }
 
   let add_local_const (ae : t) name cv =
-      { ae with vars = NameEnv.add name (Const cv : varloc) ae.vars }
+      { ae with vars = add_binding name (Const cv : varloc) ae.vars }
 
   let add_local_local env (ae : t) name i =
-      { ae with vars = NameEnv.add name (Local i) ae.vars }
+      { ae with vars = add_binding name (Local i) ae.vars }
 
   let add_direct_local env (ae : t) name =
       let i = E.add_anon_local env I32Type in
@@ -5427,7 +5429,7 @@ module VarEnv = struct
     | (name :: names) ->
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
+      let ae' = { ae with vars = add_binding name (Local i) ae.vars } in
       let (ae_final, setters) = add_argument_locals env ae' names
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
@@ -6031,8 +6033,8 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  let how_of_ae ae : allocHow = M.map (fun l ->
-    match l with
+  let how_of_ae ae : allocHow = M.map (fun lm ->
+    match fst lm with
     | VarEnv.Const _ -> (Const : how)
     | VarEnv.HeapStatic _ -> StoreStatic
     | VarEnv.HeapInd _ -> StoreHeap
