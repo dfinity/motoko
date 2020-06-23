@@ -5402,24 +5402,18 @@ module VarEnv = struct
   let add_binding' name ty at b bs = NameEnv.add name (b, ty, at) bs
   let add_binding name b bs = NameEnv.add name (b, Type.Any, Source.no_region) bs
 
-  let add_metadata name ty srcloc = NameEnv.update name (function Some (b, _, _) -> Some (b, ty, srcloc) | v -> v)
+  let _add_metadata name ty srcloc = NameEnv.update name (function Some (b, _, _) -> Some (b, ty, srcloc) | v -> v)
 
-  let reuse_local_with_offset' (ae : t) name ty at i off =
+  let reuse_local_with_offset (ae : t) name ty at i off =
       { ae with vars = add_binding' name ty at (HeapInd (i, off)) ae.vars }
-  let reuse_local_with_offset (ae : t) name i off =
-      { ae with vars = add_binding name (HeapInd (i, off)) ae.vars }
 
-  let add_local_with_offset' env (ae : t) name ty at off =
+  let add_local_with_offset env (ae : t) name ty at off =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      (reuse_local_with_offset' ae name ty at i off, i)
-  let add_local_with_offset env (ae : t) name off =
-      let i = E.add_anon_local env I32Type in
-      E.add_local_name env i name;
-      (reuse_local_with_offset ae name i off, i)
+      (reuse_local_with_offset ae name ty at i off, i)
 
-  let add_local_heap_static (ae : t) name ptr =
-      { ae with vars = add_binding name (HeapStatic ptr) ae.vars }
+  let add_local_heap_static (ae : t) name ty at ptr =
+      { ae with vars = add_binding' name ty at (HeapStatic ptr) ae.vars }
 
   let add_local_public_method (ae : t) name (fi, exported_name) =
       { ae with vars = add_binding name (PublicMethod (fi, exported_name) : varloc) ae.vars }
@@ -5428,14 +5422,12 @@ module VarEnv = struct
       { ae with vars = add_binding name (Const cv : varloc) ae.vars }
 
   let add_local_local env (ae : t) name ty srcloc i =
-      { ae with vars = add_metadata name ty srcloc (add_binding name (Local i) ae.vars) }
+      { ae with vars = add_binding' name ty srcloc (Local i) ae.vars }
 
-  let add_direct_local' env (ae : t) name ty srcloc =
+  let add_direct_local env (ae : t) name ty srcloc =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
       (add_local_local env ae name ty srcloc i, i)
-
-  let _add_direct_local env (ae : t) name = add_direct_local' env (ae : t) name Type.Any Source.no_region
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_argument_locals env (ae : t) = function
@@ -5519,7 +5511,7 @@ module Var = struct
     | Some (Local i, ty, at) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_direct_local' new_env ae1 var ty at in
+        let ae2, j = VarEnv.add_direct_local new_env ae1 var ty at in
         let restore_code = G.i (LocalSet (nr j)) in
         let dw = G.(dw_tag_no_children (Variable (* FIXME: Constant? *) (var, at.left, ty, Int32.to_int j)))
         in ae2, fun body -> restore_code ^^ dw ^^ body
@@ -5527,7 +5519,7 @@ module Var = struct
     | Some (HeapInd (i, off), ty, at) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_local_with_offset' new_env ae1 var ty at off in
+        let ae2, j = VarEnv.add_local_with_offset new_env ae1 var ty at off in
         let dw = G.(dw_tag_no_children (Variable(* FIXME: Indirect *) (var, at.left, ty, Int32.to_int j))) in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ dw ^^ body
@@ -6078,11 +6070,11 @@ module AllocHow = struct
     match M.find name how with
     | (Const : how) -> G.(ae, nop, nop)
     | LocalImmut | LocalMut ->
-      let ae1, ix = VarEnv.add_direct_local' env ae name typ at in
+      let ae1, ix = VarEnv.add_direct_local env ae name typ at in
       G.(ae1, nop,
          dw_tag_no_children (Variable(*FIXME: Constant?*) (name, at.left, typ, Int32.to_int ix)))
     | StoreHeap ->
-      let ae1, ix = VarEnv.add_local_with_offset' env ae name typ at 1l in
+      let ae1, ix = VarEnv.add_local_with_offset env ae name typ at 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr ix)) in
@@ -6092,8 +6084,8 @@ module AllocHow = struct
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
       E.add_static_root env ptr;
-      let ae1 = VarEnv.add_local_heap_static ae name ptr in
-      G.(ae1, nop, nop(*FIXME:indirection?*))
+      let ae1 = VarEnv.add_local_heap_static ae name typ at ptr in
+      G.(ae1, nop, G.(dw_tag_no_children (Variable(*FIXME: ByPtr?*) (name, at.left, typ, Int32.to_int ptr))))
 
 end (* AllocHow *)
 
@@ -7441,7 +7433,7 @@ and compile_exp (env : E.t) ae exp =
       dw_ty ^^ G.dw_statement e.at ^^ code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
-    let ae1, i = VarEnv.add_local_with_offset' env ae name exp.note.Ir_def.Note.typ exp.at 1l in
+    let ae1, i = VarEnv.add_local_with_offset env ae name exp.note.Ir_def.Note.typ exp.at 1l in
     let sr, code = compile_exp env ae1 e in
     sr,
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
@@ -7689,7 +7681,7 @@ and fill_pat env ae pat : patternCode =
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
   AllocHow.M.fold (fun v typ (dw_ty, ae, dw) ->
-    let ae1, ix = VarEnv.add_direct_local' env ae v typ pat.at in
+    let ae1, ix = VarEnv.add_direct_local env ae v typ pat.at in
     let prereq_type = G.(effects (dw_tag_no_children (Type typ))) in
     G.(dw_ty ^^ prereq_type, ae1, dw ^^ dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
   ) d (G.nop, ae, G.nop)
