@@ -5420,15 +5420,15 @@ module VarEnv = struct
   let add_local_const (ae : t) name cv =
       { ae with vars = add_binding name (Const cv : varloc) ae.vars }
 
-  let add_local_local env (ae : t) name m i =
-      { ae with vars = add_metadata name m (add_binding name (Local i) ae.vars) }
+  let add_local_local env (ae : t) name ty srcloc i =
+      { ae with vars = add_metadata name ty srcloc (add_binding name (Local i) ae.vars) }
 
-  let add_direct_local' env (ae : t) name m =
+  let add_direct_local' env (ae : t) name ty srcloc =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      (add_local_local env ae name m i, i)
+      (add_local_local env ae name ty srcloc i, i)
 
-  let add_direct_local env (ae : t) name = add_direct_local' env (ae : t) name Type.Any
+  let add_direct_local env (ae : t) name = add_direct_local' env (ae : t) name Type.Any Source.no_region
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_argument_locals env (ae : t) = function
@@ -5546,7 +5546,7 @@ module FuncDec = struct
     let rec go ix ae dw = function
     | [] -> ae, dw
     | {it; at; note}::args ->
-      let ae' = VarEnv.add_local_local env ae it note (Int32.of_int ix) in
+      let ae' = VarEnv.add_local_local env ae it note at (Int32.of_int ix) in
       let dw' = G.(dw_tag_no_children (Formal_parameter (it, at.left, note, ix))) in
       go (ix + 1) ae' (dw ^^ dw') args in
     go first_arg ae0 G.nop
