@@ -5387,16 +5387,21 @@ module VarEnv = struct
       non_local
     ) ae.vars;
   }
-  let lookup_var ae var =
+
+  let lookup_var' ae var =
     match NameEnv.find_opt var ae.vars with
-      | Some lm -> Some (fst lm)
+      | Some _ as found -> found
       | None   -> Printf.eprintf "Could not find %s\n" var; None
+
+  let lookup_var ae var = Option.map fst (lookup_var' ae var)
 
   let needs_capture ae var = match lookup_var ae var with
     | Some l -> not (is_non_local l)
     | None -> assert false
 
   let add_binding name b bs = NameEnv.add name (b, Type.Any) bs
+
+  let add_metadata name m = NameEnv.update name (function Some (b, _) -> Some (b, m) | v -> v)
 
   let reuse_local_with_offset (ae : t) name i off =
       { ae with vars = add_binding name (HeapInd (i, off)) ae.vars }
@@ -5415,13 +5420,15 @@ module VarEnv = struct
   let add_local_const (ae : t) name cv =
       { ae with vars = add_binding name (Const cv : varloc) ae.vars }
 
-  let add_local_local env (ae : t) name i =
-      { ae with vars = add_binding name (Local i) ae.vars }
+  let add_local_local env (ae : t) name m i =
+      { ae with vars = add_metadata name m (add_binding name (Local i) ae.vars) }
 
-  let add_direct_local env (ae : t) name =
+  let add_direct_local' env (ae : t) name m =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      (add_local_local env ae name i, i)
+      (add_local_local env ae name m i, i)
+
+  let add_direct_local env (ae : t) name = add_direct_local' env (ae : t) name Type.Any
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_argument_locals env (ae : t) = function
@@ -5501,16 +5508,16 @@ module Var = struct
      and code to restore it, including adding to the environment
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
-    match VarEnv.lookup_var ae0 var with
-    | Some (Local i) ->
+    match VarEnv.lookup_var' ae0 var with
+    | Some (Local i, m) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_direct_local new_env ae1 var in
+        let ae2, j = VarEnv.add_direct_local' new_env ae1 var m in
         let restore_code = G.i (LocalSet (nr j)) in
-        let dw = G.(dw_tag_no_children (Variable (* FIXME: Constant? *) (var, no_pos, Type.Any, Int32.to_int j)))
+        let dw = G.(dw_tag_no_children (Variable (* FIXME: Constant? *) (var, no_pos, m, Int32.to_int j)))
         in ae2, fun body -> restore_code ^^ dw ^^ body
       )
-    | Some (HeapInd (i, off)) ->
+    | Some (HeapInd (i, off), _) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_offset new_env ae1 var off in
@@ -5539,7 +5546,7 @@ module FuncDec = struct
     let rec go ix ae dw = function
     | [] -> ae, dw
     | {it; at; note}::args ->
-      let ae' = VarEnv.add_local_local env ae it (Int32.of_int ix) in
+      let ae' = VarEnv.add_local_local env ae it note (Int32.of_int ix) in
       let dw' = G.(dw_tag_no_children (Formal_parameter (it, at.left, note, ix))) in
       go (ix + 1) ae' (dw ^^ dw') args in
     go first_arg ae0 G.nop
