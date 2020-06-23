@@ -6082,7 +6082,7 @@ module AllocHow = struct
       G.(ae1, nop,
          dw_tag_no_children (Variable(*FIXME: Constant?*) (name, at.left, typ, Int32.to_int ix)))
     | StoreHeap ->
-      let ae1, ix = VarEnv.add_local_with_offset env ae name 1l in
+      let ae1, ix = VarEnv.add_local_with_offset' env ae name typ at 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr ix)) in

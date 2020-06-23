@@ -49,6 +49,11 @@ func closureC(a : Word16) : Word16 {
 // DWARF-LABEL:   DW_AT_name ("closureC")
 // DWARF:         DW_AT_decl_line (42)
 
+// DWARF:           DW_AT_name ("c")
+// DWARF-NEXT:      DW_AT_decl_line (43)
+// DWARF-NEXT:      DW_AT_decl_column (0x02)
+// DWARF-NEXT:      DW_AT_type (0x{{[0-9a-f]*}} "Word16")
+
 
 // Now come the inner functions in reversed order
 
@@ -64,9 +69,9 @@ func closureC(a : Word16) : Word16 {
 
 // DWARF:           DW_TAG_variable
 // DWARF-NEXT:        DW_AT_name ("c")
-// DWARF-NEXT:        DW_AT_decl_line (0)
-// DWARF-NEXT:        DW_AT_decl_column (0x00)
-// DWARF-NEXT:        DW_AT_type (0x{{[0-9a-f]*}} "Any")
+// DWARF-NEXT:        DW_AT_decl_line (43)
+// DWARF-NEXT:        DW_AT_decl_column (0x02)
+// DWARF-NEXT:        DW_AT_type (0x{{[0-9a-f]*}} "Word16")
 
 
 
