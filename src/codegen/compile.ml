@@ -7441,7 +7441,7 @@ and compile_exp (env : E.t) ae exp =
       dw_ty ^^ G.dw_statement e.at ^^ code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
-    let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+    let ae1, i = VarEnv.add_local_with_offset' env ae name exp.note.Ir_def.Note.typ exp.at 1l in
     let sr, code = compile_exp env ae1 e in
     sr,
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
