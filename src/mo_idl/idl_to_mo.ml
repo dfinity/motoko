@@ -64,6 +64,7 @@ let rec check_typ env t =
      )
   | OptT t -> M.Opt (check_typ env t)
   | VecT t -> M.Array (check_typ env t)
+  | BlobT -> M.Prim M.Blob
   | RecordT fs ->
      if is_tuple fs then
        M.Tup (List.map (fun f -> check_typ env f.it.typ) fs)
