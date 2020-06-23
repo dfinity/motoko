@@ -496,5 +496,472 @@ let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
 == Language comparison cheat sheet
 
 ////
-TO DO
+=== Literals
+[width="100%",options="header"]
+|===
+|Motoko |Ocaml |JavaScript/TypeScript
+|> 3;
+3 : Nat
+|# 3;;
+- : int = 3
+|> 3
+3
+
+|> 3.141;
+3.141 : Float
+|# 3.141;;
+- : float = 3.141
+|> 3.141
+3.141
+
+|> “Hello world”;
+“Hello world” : Text
+|# “Hello world”;;
+- : string = “Hello world”
+|> “Hello world”
+“Hello world”
+
+|> ‘J’;
+‘J’ : Char
+|# ‘J’;;
+- : char = ‘J’
+|Does not have `char` literals -- use string
+
+|> true;
+true : Bool
+|# true;;
+- : bool = true
+|> true
+true
+
+|> ();
+|# ();;
+- : unit = ()
+|> undefined
+
+|> (3, true, “hi”);
+(3, true, “hi”) : (Nat, Bool, Text)
+|# (3, true, “hi”);;
+- : int * bool * string = 3, true, “hi”
+|> [3, true, “hi”]
+[3, true, “hi”]
+
+|> [var 1, 2, 3];
+[1, 2, 3] : [var Nat]
+|# [|1; 2; 3|];;
+- : int array = [|1; 2; 3|]
+|> [1, 2, 3]
+[1, 2, 3]
+
+|> [1, 2, 3];
+[1, 2, 3] : [Nat]
+|# [1; 2; 3];;
+- : int list = [1; 2; 3]
+|> [1, 2, 3]
+[1, 2, 3]
+|===
+
+=== Expressions
+
+[width="100%",options="header"]
+|===
+|Motoko |Ocaml |JavaScript/TypeScript
+|-3*(1+7)/2%3
+|-3*(1+7)/2 mod 3
+|-3*(1+7)/2%3
+
+|-1.0 / 2.0 + 1.9 * x
+|-1.0 /. 2.0 +. 1.9 *. x
+|-1 / 2 + 1.9 * x
+
+|a || b && c
+|a or b and c
+|a || b && c
+|===
+
+=== Functions
+
+[width="100%",options="header"]
+|===
+|Motoko |Ocaml |JavaScript/TypeScript
+
+|func<T1,T2,T3>(f : (T1, T2) -> T3) : T1 -> T2 -> T3 = func(x : T1) : T2 -> T3 = func(y : T2) : T3 = f(x,y)
+|fun f -> fun x -> fun y -> f (x, y)
+or
+fun f x y -> f (x, y)
+|f => x => y => f(x,y)
+
+|func<T1, T2, T3>(f : (T1, T2) -> T3, x: T1, y : T2) : T3 = f (x,y)
+|fun (f, x, y) -> f (x, y)
+|([f, x, y]) => f(x,y)
+
+|func f<T>(x:T) : T = x
+|let f x = x
+|f(x) { x }
+
+|Does not have function pattern matching
+func(x : Int) : Int =
+  switch(x) {
+    case (0) 0;
+    case (n) 1;
+  };
+|function 0 -> 0
+            | n -> 1
+|
+|===
+
+=== Control Flow
+if (3 > 2) “X” else “Y”
+if 3 > 2 then “X” else “Y”
+if (3 > 2) { “X” } else { “Y” }
+import Debug “mo:base/Debug”;
+if (3 > 2) Debug.print(“hello”);
+if 3 > 2 then print_string “hello”
+if (3 > 2) console.log(“hello”)
+while (true) {
+  Debug.print(“X”);
+}
+while true do
+  print_string “X”
+done
+while(true) {
+  console.log(“X”);
+}
+label L loop {
+  if (x == 0) break L
+  else continue L;
+} while (true);
+Does not have do while loops -- use recursion or while
+do {
+  if (x === 0) break;
+  else continue;
+} while (true);
+import Iter “mo:base/Iter”;
+for (i in Iter.range(1,10)) {
+  Debug.print(“X”);
+};
+for i = 1 to 10 do
+  print_string “X”
+done
+for (i = 1; i <= 10; i++) {
+  console.log(“X”);
+}
+print_string “hello”;
+print_string “world”
+print_string “hello”;
+print_string “world”
+console.log(“hello”);
+console.log(“world”);
+Value Declarations
+let name = expr;
+let name = expr
+const name = expr
+let f = func<T1, T2>(x : T1) : T2 { expr };
+let f x = expr
+const f = x => expr
+let fib = func(n : Nat) : Nat {expr};
+let rec fib n = expr
+const fib = n => expr
+Type Declarations
+type T = Int32 -> Bool
+type t = int -> bool
+<int is 31-bit signed int>
+type t = (x: number) => boolean;
+type AssocList<K,V> = List<(K,V)>
+type (‘a, ‘b) assoc_list = (‘a * ‘b) list
+
+
+type option<T> = ?T
+type ‘a option = None | Some of ‘a
+type option<T> = T?
+type T = {#a : Int32; #b : U};
+type U = (T, T);
+type t = A of int | B of u
+and u = t * t
+
+
+type Complex = {#c : (Float, Float)};
+func complex(x : Float, y : Float) : Complex = #c(x,y);
+func coord(#c(x, y) : Complex) : (Float, Float) = (x, y);
+type complex = C of float * float
+let complex (x,y) = C (x,y)
+let coord (C (x,y)) = (x,y)
+
+
+Pattern Matching
+func get_opt<T>(opt : ?T, d : T) : T {
+  switch(opt) {
+    case (null) d;
+    case (?x) x;
+  };
+}
+let get_opt (opt, d) =
+  match opt with
+    None -> d
+  | Some x -> x
+
+
+Does not have guards -- use if
+import prelude “mo:base/Prelude”;
+func fac(x : Nat) : Nat {
+  switch(x) {
+    case (0) 1;
+    case (n) if (n>0) n * fac(n-1) else Prelude.unreachable();
+  };
+}
+let rec fac = function
+  0 -> 1
+| n when n>0 -> n * fac(n-1)
+| _ -> raise Hell
+
+
+Does not have as pattern
+let foo ((x,y) as p) = (x,p,y)
+
+
+Tuples
+type Foo = (Int32, Float, Text)
+type foo = int * float * string
+type foo = (number, number, string)
+let bar = (0, 3.14, “hi”)
+let bar = (0, 3.14, “hi”)
+const bar = [0, 3.14, “hi”]
+let x = bar.1
+or
+let (_, x, _) = bar
+let _, x, _ = bar in x
+const x = bar[1]
+Records
+type foo = {x : Int32; y : Float; var s : Text}
+type foo = {x:int; y:float; mutable s:string}
+Everything is mutable
+type foo = {
+  x: number; y: number;
+  s: string
+}
+let bar = {x=0; y=3.14; var s=””}
+let bar = {x=0; y=3.14; s=””}
+const bar = {x:0; y:3.14; s:””}
+bar.x
+bar.y
+bar.s
+bar.x
+bar.y
+bar.s
+bar.x
+bar.y
+bar.s
+Does not pattern matching mutable fields
+let {x=x; y=y} = bar
+let {y=y} = bar
+or
+let {x;y} = bar
+let {y} = bar
+let {x=x; y=y; s=s} = bar
+let {y=y} = bar
+or
+let {x;y;s} = bar
+let {y;_} = bar
+
+
+bar.s := “something”
+bar.s <- “something”
+bar.s = “something”
+type Bar = { f: <T>T -> Int32 }
+type bar = { f:’a.’a->int }
+type bar = {
+  f<T>(x:T): number;
+}
+References/Mutable variables
+var r = 0;
+let r = ref 0
+let r = new Number(0) // object reference
+or
+let r = 0  // mutable variable
+r
+!r
+or
+r.contents
+r
+r := 1
+r := 1
+or
+r.contents <- 1
+r = 1
+Does not take mutable variables
+func f(x : Nat) : Nat = x
+let f {contents=x} = x
+
+
+r1 == r2
+r1 != r2
+r1 == r2
+r1 != r2
+r1.valueOf() === r2.valueOf()
+r1 !== r2
+Comparison
+2 == 2
+2 != 3
+2 = 2
+2 <> 3
+2 === 2
+2 !== 3
+Does not have references
+var r = 2;
+var s = 2;
+r == s
+let r = ref 2
+r == r
+r != ref 2
+
+
+Does not have generic equality
+Does not have a proper generic equality
+(2, r) != (2, r)
+(2, r) = (2, ref 2)
+(2, r) === (2, r)
+Immutable and mutable Arrays
+import Array “mo:base/Array”;
+Array.tabulate(20, func(x:Nat):Nat = x*x)
+List.init 20 (fun x -> x*x)
+
+
+Array.init(20, 1.0)
+Array.make 20 1.0
+
+
+a[2]
+Array.get a 2
+or
+a.(2)
+
+
+a[2] := x
+Array.set a 2 x
+or
+a.(2) <- x
+
+
+for (x in a.vals()) {
+  Debug.print(x)
+}
+List.iter print_string a
+
+
+Strings
+“Hello ” # “world\n”
+“Hello “ ^ “world\n”
+
+
+Int.toText(13)
+debug_show(3.141)
+string_of_int 13
+string_of_float 3.141
+
+
+s.len()
+String.length s
+
+
+for (c in s.chars()) {
+  Debug.print(debug_show(c))
+}
+String.iter print_char s
+
+
+Does not have index access
+String.get s 0 or s.[0]
+
+
+Class
+class Counter(initValue:Nat) {
+  var _value = initValue;
+  public func get() : Nat {
+    _value
+  };
+  func f(x: Nat) {};
+}
+
+
+class Counter {
+  private _value;
+  constructor(initValue) { _value = initValue }
+  public get() { return _value }
+  private f(x) {}
+}
+class Foo() = Self {
+  func f() : Foo = Self
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ////
