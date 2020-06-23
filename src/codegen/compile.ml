@@ -5400,7 +5400,7 @@ module VarEnv = struct
     | None -> assert false
 
   let add_binding' name ty at b bs = NameEnv.add name (b, ty, at) bs
-  let add_binding name b bs = NameEnv.add name (b, Type.Any, Source.no_region) bs
+  let _add_binding name b bs = NameEnv.add name (b, Type.Any, Source.no_region) bs
 
   let _add_metadata name ty srcloc = NameEnv.update name (function Some (b, _, _) -> Some (b, ty, srcloc) | v -> v)
 
@@ -5415,11 +5415,11 @@ module VarEnv = struct
   let add_local_heap_static (ae : t) name ty at ptr =
       { ae with vars = add_binding' name ty at (HeapStatic ptr) ae.vars }
 
-  let add_local_public_method (ae : t) name (fi, exported_name) =
-      { ae with vars = add_binding name (PublicMethod (fi, exported_name) : varloc) ae.vars }
+  let add_local_public_method (ae : t) name ty at (fi, exported_name) =
+      { ae with vars = add_binding' name ty at (PublicMethod (fi, exported_name) : varloc) ae.vars }
 
-  let add_local_const (ae : t) name cv =
-      { ae with vars = add_binding name (Const cv : varloc) ae.vars }
+  let add_local_const (ae : t) name ty at cv =
+      { ae with vars = add_binding' name ty at (Const cv : varloc) ae.vars }
 
   let add_local_local env (ae : t) name ty srcloc i =
       { ae with vars = add_binding' name ty srcloc (Local i) ae.vars }
@@ -5430,13 +5430,13 @@ module VarEnv = struct
       (add_local_local env ae name ty srcloc i, i)
 
   (* Adds the names to the environment and returns a list of setters *)
-  let rec add_argument_locals env (ae : t) = function
-    | [] -> (ae, [])
-    | (name :: names) ->
+  let rec add_argument_locals env (ae : t) at = function
+    | [] -> ae, []
+    | (name, ty) :: rest ->
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      let ae' = { ae with vars = add_binding name (Local i) ae.vars } in
-      let (ae_final, setters) = add_argument_locals env ae' names
+      let ae' = { ae with vars = add_binding' name ty at (Local i) ae.vars } in
+      let (ae_final, setters) = add_argument_locals env ae' at rest
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
   let add_label (ae : t) name (d : G.depth) =
@@ -5604,10 +5604,9 @@ module FuncDec = struct
          Dfinity.reply_with_data env
        else G.nop) ^^
       (* Deserialize argument and add params to the environment *)
-      let arg_names = List.map (fun a -> a.it) args in
-      let arg_tys = List.map (fun a -> a.note) args in
-      let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
-      Serialization.deserialize env arg_tys ^^
+      let arg_names_tys = List.map (fun a -> a.it, a.note) args in
+      let ae1, setters = VarEnv.add_argument_locals env ae0 at arg_names_tys in
+      Serialization.deserialize env (List.map snd arg_names_tys) ^^
       G.concat (List.rev setters) ^^
       mk_body env ae1 ^^
       message_cleanup env sort
@@ -7753,7 +7752,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     let fi = match const with
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
-    let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) in
+    let pre_ae1 = VarEnv.add_local_public_method pre_ae v e.note.Ir_def.Note.typ dec.at (fi, (E.NameEnv.find v v2en)) in
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
@@ -7878,7 +7877,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
 
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
-  | VarP v -> VarEnv.add_local_const ae v const
+  | VarP v -> VarEnv.add_local_const ae v pat.note pat.at const
   | ObjP pfs ->
     let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
