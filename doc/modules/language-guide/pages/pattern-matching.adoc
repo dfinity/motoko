@@ -34,7 +34,7 @@ The last kind of pattern are the `or`-patterns. As their name suggests these are
 |literal
 |`null`, `42`, `()`, `"Hi"`
 |everywhere
-|yes
+|when the type has more than one value
 |
 
 |named
