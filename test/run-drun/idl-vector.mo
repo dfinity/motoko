@@ -4,7 +4,7 @@ type Rose = [Rose];
 type MayRose = ?[MayRose];
 
 func may(r : Rose) : MayRose =
-  ?Prim.Array_tabulate<MayRose>(r.len(), func (i : Nat) = may(r[i]));
+  ?Prim.Array_tabulate<MayRose>(r.size(), func (i : Nat) = may(r[i]));
 
 actor {
   public query func rose(r : Rose) : async MayRose {

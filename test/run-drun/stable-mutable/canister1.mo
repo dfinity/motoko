@@ -36,7 +36,7 @@ actor {
   };
 
   public query func checkCycle() : async () {
-    assert(c.self.len() == 1);
+    assert(c.self.size() == 1);
     assert(c.field == "hello");
     assert(c.self[0].field == "hello");
     c.field #= "!";

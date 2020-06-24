@@ -390,7 +390,7 @@ lit :
   | s=NAT { PreLit (s, Type.Nat) }
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
-  | t=TEXT { TextLit t }
+  | t=TEXT { PreLit (t, Type.Text) }
 
 %inline unop :
   | ADDOP { PosOp }
@@ -451,7 +451,7 @@ ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
-  | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
+  | t=TEXT { LitE (ref (PreLit (t, Type.Text))) @? at $sloc }
   | LPAR e=exp(bl) RPAR { e }
 
 exp_block :

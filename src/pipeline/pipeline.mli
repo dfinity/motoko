@@ -4,9 +4,11 @@ open Mo_types
 
 module ResolveImport = Resolve_import
 
-type parse_fn = string -> (Syntax.prog * string) Diag.result
+type no_region_parse_fn = string -> (Syntax.prog * string) Diag.result
+type parse_fn = Source.region -> no_region_parse_fn
+
 val parse_file: parse_fn
-val parse_string: string -> parse_fn
+val parse_string: string -> no_region_parse_fn
 
 val print_deps: string -> unit
 

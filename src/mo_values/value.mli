@@ -64,6 +64,9 @@ module Nat16 : NumType
 module Nat32 : NumType
 module Nat64 : NumType
 
+module Blob : sig
+  val escape : string -> string
+end
 
 (* Environment *)
 

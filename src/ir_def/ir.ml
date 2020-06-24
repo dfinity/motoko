@@ -147,6 +147,7 @@ and dec' =
 
 (* Literals *)
 
+(* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"

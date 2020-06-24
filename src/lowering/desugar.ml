@@ -16,9 +16,8 @@ variables with a special, non-colliding name, which we sometimes
 want to recognize for better user experience.
 *)
 
-let id_of_full_path (fp : string) : Syntax.id =
-  let open Source in
-  ("file$" ^ fp) @@ no_region
+let id_of_full_path (fp : string) : string =
+  "file$" ^ fp
 
 (* Combinators used in the desugaring *)
 
@@ -152,8 +151,8 @@ and exp' at note = function
   | S.ImportE (f, ir) ->
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
-    | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
+    | S.LibPath fp -> I.VarE (id_of_full_path fp)
+    | S.PrimPath -> I.VarE (id_of_full_path "@prim")
     | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
@@ -332,11 +331,11 @@ and array_dotE array_ty proj e =
     let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
-    | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
-    | false, "len"  -> call "@immut_array_len"  [] [T.nat]
+    | true,  "size"  -> call "@mut_array_size"    [] [T.nat]
+    | false, "size"  -> call "@immut_array_size"  [] [T.nat]
     | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
     | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
-    | true,  "set"  -> call "@mut_array_set"    [T.nat; varA] []
+    | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
     | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
     | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
     | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
@@ -359,7 +358,7 @@ and text_dotE proj e =
     let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
     callE (varE f) [] e in
   match proj with
-    | "len"   -> call "@text_len"   [] [T.nat]
+    | "size"   -> call "@text_size"   [] [T.nat]
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
@@ -367,7 +366,7 @@ and block force_unit ds =
   match ds with
   | [] -> ([], tupE [])
   | [{it = S.ExpD ({it = S.BlockE ds; _}); _}] -> block force_unit ds
-  | _ -> 
+  | _ ->
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
   | _, S.ExpD e ->
@@ -475,6 +474,7 @@ and lit l = match l with
   | S.FloatLit x -> I.FloatLit x
   | S.CharLit x -> I.CharLit x
   | S.TextLit x -> I.TextLit x
+  | S.BlobLit x -> I.BlobLit x
   | S.PreLit _ -> assert false
 
 and pat_fields pfs = List.map pat_field pfs
@@ -612,14 +612,9 @@ let transform_prog (p : Syntax.prog) : Ir.prog  =
 type import_declaration = Ir.dec list
 
 let transform_lib lib : import_declaration =
-  (* TODO: simplify (don’t go through Syntax) *)
-  let open Source in
   let f = lib.note in
   let t = lib.it.note.Syntax.note_typ in
-  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
-  let d = { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note } in
-  [dec d]
+  [ letD (var (id_of_full_path f) t) (exp lib.it) ]
 
 let transform_prelude prelude : import_declaration =
   decs (prelude.it)
