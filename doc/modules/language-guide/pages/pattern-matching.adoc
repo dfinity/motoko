@@ -89,7 +89,7 @@ The last kind of pattern are the `or`-patterns. As their name suggests these are
 |`0 or 1`
 |everywhere
 |depends
-|all alternatives must bind same set of names
+| no alternative may bind an identifier
 |===
 
 Errors and optional results that are discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results] represent two specific types of pattern matching.
