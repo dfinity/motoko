@@ -67,6 +67,10 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
+  | S.SerializeE (ot, e) ->
+    I.PrimE (I.SerializePrim (Type.as_seq !ot), [exp e])
+  | S.DeserializeE (ot, e) ->
+    I.PrimE (I.DeserializePrim (Type.as_seq !ot), [exp e])
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it

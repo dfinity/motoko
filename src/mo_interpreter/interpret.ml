@@ -421,6 +421,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       if Show.can_show !ot
       then k (Value.Text (Show.show_val !ot v))
       else raise (Invalid_argument "debug_show"))
+  | SerializeE (_, exp1) | DeserializeE (_, exp1) ->
+    interpret_exp env exp1 (fun v ->
+      trap exp.at "serialization not implemented in interpreter"
+    )
   | RelE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->

@@ -106,6 +106,8 @@ s/DOT/\'.\'/g
 s/DIVOP/\'\/\'/g
 s/DIVASSIGN/\'\/=\'/g
 s/DEBUG_SHOW/\'debug_show\'/g
+s/DEBUG_SERIALIZE/\'debug_serialize\'/g
+s/DEBUG_DESERIALIZE/\'debug_deserialize\'/g
 s/DEBUG/\'debug\'/g
 s/COMMA/\',\'/g
 s/COLON/\':\'/g

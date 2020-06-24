@@ -763,11 +763,22 @@ and infer_exp'' env exp : T.typ =
     let t = infer_exp_promote env exp1 in
     if not env.pre then begin
       if not (Show.can_show t) then
-        error env exp.at "show is not defined for operand type\n  %s"
+        error env exp.at "debug_show is not defined for operand type\n  %s"
           (T.string_of_typ_expand t);
       ot := t
     end;
     T.text
+  | SerializeE (ot, exp1) ->
+    let t = infer_exp_promote env exp1 in
+    if not env.pre then begin
+      if not (Type.shared t) then
+        error env exp.at "debug_serialize not defined for operand type\n  %s"
+          (T.string_of_typ_expand t);
+      ot := t
+    end;
+    T.blob
+  | DeserializeE (ot, exp1) ->
+    error env exp.at "no type can be inferred for debug_deserialize"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1208,6 +1219,15 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
     t'
+  | DeserializeE (ot, exp1), _ ->
+    check_exp env T.blob exp1;
+    if not env.pre then begin
+      if not (Type.shared t) then
+        error env exp.at "debug_serialize not defined for operand type\n  %s"
+          (T.string_of_typ_expand t);
+      ot := t
+    end;
+    t
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then

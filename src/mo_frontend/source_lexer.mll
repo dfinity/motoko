@@ -222,6 +222,8 @@ rule token mode = parse
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
+  | "debug_serialize" { DEBUG_SERIALIZE }
+  | "debug_deserialize" { DEBUG_DESERIALIZE }
   | "query" { QUERY }
   | "switch" { SWITCH }
   | "true" { BOOL true }

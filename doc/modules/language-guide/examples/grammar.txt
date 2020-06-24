@@ -163,6 +163,8 @@
     'actor' <text_like>
     'not' <exp_un>
     'debug_show' <exp_un>
+    'debug_serialize' <exp_un>
+    'debug_deserialize' <exp_un>
 
 <exp_bin> ::= 
     <exp_un>

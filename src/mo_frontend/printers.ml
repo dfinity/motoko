@@ -101,6 +101,8 @@ let string_of_symbol symbol : string =
   | X (T T_DIVOP) -> binop "/"
   | X (T T_DIVASSIGN) -> binassign "/="
   | X (T T_DEBUG_SHOW) -> "debug_show"
+  | X (T T_DEBUG_SERIALIZE) -> "debug_serialize"
+  | X (T T_DEBUG_DESERIALIZE) -> "debug_deserialize"
   | X (T T_DEBUG) -> "debug"
   | X (T T_CONTINUE) -> "continue"
   | X (T T_COMMA) -> ","

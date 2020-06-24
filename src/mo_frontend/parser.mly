@@ -142,7 +142,7 @@ let rec normalize_let p e =
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
-%token DEBUG_SHOW
+%token DEBUG_SHOW DEBUG_SERIALIZE DEBUG_DESERIALIZE
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
@@ -512,6 +512,10 @@ exp_un(B) :
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
     { ShowE (ref Type.Pre, e) @? at $sloc }
+  | DEBUG_SERIALIZE e=exp_un(ob)
+    { SerializeE (ref Type.Pre, e) @? at $sloc }
+  | DEBUG_DESERIALIZE e=exp_un(ob)
+    { DeserializeE (ref Type.Pre, e) @? at $sloc }
 
 exp_bin(B) :
   | e=exp_un(B)

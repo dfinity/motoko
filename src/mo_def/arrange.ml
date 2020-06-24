@@ -18,6 +18,8 @@ let rec exp e = match e.it with
   | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
+  | SerializeE (ot, e)  -> "SerializeE" $$ [operator_type !ot; exp e]
+  | DeserializeE (ot, e)-> "DeserializeE" $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs

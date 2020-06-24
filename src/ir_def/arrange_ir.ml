@@ -67,9 +67,11 @@ and prim = function
   | AwaitPrim         -> Atom "AwaitPrim"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
-  | ShowPrim t        -> "ShowPrim"   $$ [typ t]
+  | ShowPrim t        -> "ShowPrim" $$ [typ t]
+  | SerializePrim t   -> "SerializePrim" $$ List.map typ t
+  | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
-  | CastPrim (t1, t2) -> "CastPrim"   $$ [typ t1; typ t2]
+  | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
