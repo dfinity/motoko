@@ -95,10 +95,10 @@ The last kind of pattern are the `or`-patterns. As their name suggests these are
 
 == Trivia about patterns
 
-Since pattern matching has a rich history, a few additional comments are justified.
+Since pattern matching has a rich history and interesting mechanics, a few additional comments are justified.
 
 - nomenclature
-The (usually structured) expression that is being matched is frequently called the _scrutinee_ and the patterns appearing behind the keyword `case` are the _alternatives_.
+The (usually structured) expression that is being matched is frequently called the _scrutinee_ and the patterns appearing behind the keyword `case` are the _alternatives_. When every possible scutinee is matched by (at least one) alternative, then we say that the scritinee is _covered_. The patterns are tried in top-down fashion and thus in case of _overlapping_ patterns the one higher-up is selected. When all possible scrutinees selected by an alternative without doubt are already covered by higher-up alternatives, then said one is considered _dead_ (or _inactive_).
 
 - booleans
 The data type `Bool` can be regarded as two disjoint altenatives (`true` and `false`) and Motoko's built-in `if` construct will _eliminate_ the data and turn it into _control_ flow. `if` expressions are a form of pattern matching that abbreviates the general `switch` expression for the special case of boolean scrutinees.
@@ -114,7 +114,9 @@ Error handling can be considered a use-case for pattern matching
 - non-failable matching
 singleton types
 
-
+- exhaustiveness (coverage) checking
+ -- warns non-covered scrutinees (Motoko tries to come up with an example of a scrutinee that is not patched). The warning points out the danger that the program may trap
+ -- warns dead alternatives
 
 Errors and optional results that are discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results] represent two specific types of pattern matching.
 However, there are many other ways you can use pattern matching in {proglang} programs.
