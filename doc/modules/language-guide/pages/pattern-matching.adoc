@@ -2,7 +2,7 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-Pattern matching is a way to deal with data that is inverse of the well known _construction from smaller parts_: it takes apart structured data and brings into scope its parts by binding them to the given names. Syntactically the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` (as well as `var`) declarations.
+Pattern matching is a language feature that makes it easy to both test and decompose structured data into its constituent parts. While most programming languages provide familiar ways to build up structured data, using pattern matching one takes apart structured data and brings into scope its fragments by binding them to the given names. Syntactically the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` (as well as `var`) declarations.
 
 Consider the following function call:
 ```
