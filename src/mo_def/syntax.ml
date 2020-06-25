@@ -62,7 +62,7 @@ and bind_sort = Type.bind_sort Source.phrase
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; sort : bind_sort; bound : typ;}
 
-and typ_item = (id option * typ)
+and typ_item = id option * typ
 
 
 (* Literals *)
