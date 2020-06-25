@@ -110,7 +110,7 @@ The data type `Bool` can be regarded as two disjoint altenatives (`true` and `fa
 Other programming languages (e.g. C, but not Motoko) often use a keyword `enum` to introduce enumerations. These are impoverished relatives of Motoko's variant types, as the alternatives are not allowed to carry any payload. Correspondingly in those languages the `switch`-like statements lack the full power of pattern matching. Motoko provides the short-hand syntax (as in `type Weekday = { #mon; #tue; ... }`) to define enumerations, where payload for the variants is not desired.
 
 - error handling
-Error handling can be considered a use-case for pattern matching
+Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (e.g. option value or a variant), pattern matching can be used to distinguish between the two as discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results].
 
 - non-failable matching
 singleton types
