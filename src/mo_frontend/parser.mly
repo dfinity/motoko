@@ -179,7 +179,8 @@ let rec normalize_let p e =
 %left POWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) text_like
-%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_item
+%type<Mo_def.Syntax.typ_item> typ_item
+%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
 %type<Mo_def.Syntax.typ_tag> typ_tag
 %type<Mo_def.Syntax.typ_tag list> typ_variant
@@ -188,7 +189,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.typ list> typ_args
 %type<Source.region -> Mo_def.Syntax.pat> sort_pat_opt
 %type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
-%type<Mo_def.Syntax.typ list> seplist(typ_item,COMMA)
+%type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
 %type<Mo_def.Syntax.typ_bind list> seplist(typ_bind,COMMA)
 %type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
@@ -312,7 +313,7 @@ typ_variant :
 
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
-    { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
+    { (match ts with [ti] -> ParT(ti) | _ -> TupT(ts)) @! at $sloc }
   | p=path tso=typ_args?
     { PathT(p, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
@@ -347,8 +348,8 @@ typ :
     { funcT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
-  | id COLON t=typ { t }
-  | t=typ { t }
+  | i=id COLON t=typ { Some i, t }
+  | t=typ { None, t }
 
 typ_args :
   | LT ts=seplist(typ, COMMA) GT { ts }

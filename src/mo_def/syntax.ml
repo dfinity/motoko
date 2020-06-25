@@ -45,10 +45,10 @@ and typ' =
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | VariantT of typ_tag list                       (* variant *)
-  | TupT of typ list                               (* tuple *)
+  | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of scope * typ                          (* future *)
-  | ParT of typ                                    (* parentheses, used to control function arity only *)
+  | ParT of typ_item                               (* parentheses, used to control function arity only *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
@@ -60,6 +60,8 @@ and typ_tag' = {tag : id; typ : typ}
 and bind_sort = Type.bind_sort Source.phrase
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; sort : bind_sort; bound : typ;}
+
+and typ_item = (id option * typ)
 
 
 (* Literals *)
@@ -213,14 +215,6 @@ type lib = (exp, string) Source.annotated_phrase
 
 
 (* n-ary arguments/result sequences *)
-
-let seqT ts =
-  match ts with
-  | [t] -> t
-  | ts ->
-    { Source.it = TupT ts;
-      at = Source.no_region;
-      Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts) }
 
 let arity t =
   match t.Source.it with

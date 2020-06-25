@@ -69,13 +69,13 @@ let rec html_of_type : Syntax.typ -> t =
           ++ join_with (string ", ") (List.map html_of_type xs)
           ++ string ">" )
   | Syntax.PrimT typ -> html_type typ
-  | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
+  | Syntax.ParT typ -> string "(" ++ html_of_typ_item typ ++ string ")"
   | Syntax.OptT typ ->
       if is_type_atom typ then string "?" ++ html_of_type typ
       else string "?(" ++ html_of_type typ ++ string ")"
   | Syntax.TupT typ_list ->
       string "("
-      ++ join_with (string ", ") (List.map html_of_type typ_list)
+      ++ join_with (string ", ") (List.map html_of_typ_item typ_list)
       ++ string ")"
   | Syntax.VariantT typ_tags ->
       string "{"
@@ -131,6 +131,13 @@ and html_of_typ_field : Syntax.typ_field -> t =
   html_of_mut field.Source.it.Syntax.mut
   ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
   ++ html_of_type field.Source.it.Syntax.typ
+
+and html_of_typ_item : Syntax.typ_item -> t =
+ fun (oid, t) ->
+  Option.fold ~none:empty
+    ~some:(fun id -> parameter id.Source.it ++ string " : ")
+    oid
+  ++ html_of_type t
 
 let html_of_type_doc : Extract.type_doc -> t =
  fun type_doc ->
