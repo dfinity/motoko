@@ -100,9 +100,13 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
   | Syntax.AsyncT (_scope, typ) ->
       bprintf buf "async ";
       plain_of_typ buf typ
-  | Syntax.ParT ti ->
+  | Syntax.ParT typ ->
       bprintf buf "(";
-      plain_of_typ_item buf ti;
+      plain_of_typ buf typ;
+      bprintf buf ")"
+  | Syntax.NamedT (id, typ) ->
+      bprintf buf "(";
+      plain_of_typ_item buf (Some id, typ);
       bprintf buf ")"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;

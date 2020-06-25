@@ -174,7 +174,8 @@ and typ t = match t.it with
   | TupT ts -> "TupT" $$ Lib.List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
-  | ParT t -> "ParT" $$ typ_item t
+  | ParT t -> "ParT" $$ [typ t]
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]

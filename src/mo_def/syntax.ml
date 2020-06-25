@@ -48,7 +48,8 @@ and typ' =
   | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of scope * typ                          (* future *)
-  | ParT of typ_item                               (* parentheses, used to control function arity only *)
+  | ParT of typ                                    (* parentheses, used to control function arity only *)
+  | NamedT of (id * typ)                           (* parenthesized single element named "tuple" *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase

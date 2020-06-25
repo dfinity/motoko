@@ -409,7 +409,9 @@ and check_typ' env typ : T.typ =
       (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
-  | ParT (_, typ) ->
+  | ParT typ ->
+    check_typ env typ
+  | NamedT (_, typ) ->
     check_typ env typ
 
 and check_typ_field env s typ_field : T.field =

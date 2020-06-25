@@ -69,7 +69,9 @@ let rec html_of_type : Syntax.typ -> t =
           ++ join_with (string ", ") (List.map html_of_type xs)
           ++ string ">" )
   | Syntax.PrimT typ -> html_type typ
-  | Syntax.ParT typ -> string "(" ++ html_of_typ_item typ ++ string ")"
+  | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
+  | Syntax.NamedT (id, t) ->
+      string "(" ++ html_of_typ_item (Some id, t) ++ string ")"
   | Syntax.OptT typ ->
       if is_type_atom typ then string "?" ++ html_of_type typ
       else string "?(" ++ html_of_type typ ++ string ")"
