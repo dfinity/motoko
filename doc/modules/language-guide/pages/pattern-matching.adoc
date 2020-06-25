@@ -122,6 +122,8 @@ In summary, pattern checking is a great tool for several use-cases and enables a
 
 ------------
 
+REMOVE
+
 Errors and optional results that are discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results] represent two specific types of pattern matching.
 However, there are many other ways you can use pattern matching in {proglang} programs.
 This section highlights other examples of pattern matching.
@@ -129,3 +131,5 @@ This section highlights other examples of pattern matching.
  - point: unhandled errors are a special case of non-exhaustive pattern match (for results and option types)
  - point: null-pointer errors are a special case of non-exhaustive pattern match
  - the {proglang} type checker statically enforces exhaustive pattern matches for all optional types (and variants); hence, null-pointer errors are ruled out statically, and are impossible dynamically.
+ 
+ /REMOVE
