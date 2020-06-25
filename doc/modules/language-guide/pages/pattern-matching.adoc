@@ -113,7 +113,7 @@ Other programming languages (e.g. C, but not Motoko) often use a keyword `enum` 
 Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (e.g. option value or a variant), pattern matching can be used to distinguish between the two as discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results].
 
 - non-failable matching
-singleton types
+Some types admit only a single value and we call these _singleton types_. Examples of these are the unit type (a.k.a. empty tuple) or tuples that only contain singleton types. Variants with only one alternative and no payload (or singleton typed payload) are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible alternative, which can never fail.
 
 - exhaustiveness (coverage) checking
  -- warns non-covered scrutinees (Motoko tries to come up with an example of a scrutinee that is not patched). The warning points out the danger that the program may trap
