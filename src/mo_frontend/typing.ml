@@ -1755,10 +1755,6 @@ and check_stab env sort scope fields =
       local_error env stab.at
         "misplaced stability declaration on field of non-actor";
       []
-    | T.Actor, None, (VarD _ | LetD _) ->
-      warn env ef.it.dec.at
-        "missing stability declaration on actor field";
-      []
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]

@@ -2759,6 +2759,19 @@ module Blob = struct
       get_x ^^ Heap.load_field len_field
     )
 
+  let of_size_copy env get_size_fun copy_fun offset =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_blob, get_blob) = new_local env "blob" in
+    get_size_fun env ^^ set_len ^^
+
+    get_len ^^ alloc env ^^ set_blob ^^
+    get_blob ^^ payload_ptr_unskewed ^^
+    compile_unboxed_const offset ^^
+    get_len ^^
+    copy_fun env ^^
+
+    get_blob
+
 
   (* Lexicographic blob comparison. Expects two blobs on the stack *)
   let rec compare env op =
@@ -3364,18 +3377,9 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
-        let (set_len, get_len) = new_local env "len" in
-        let (set_blob, get_blob) = new_local env "blob" in
-        system_call env "ic0" "canister_self_size" ^^
-        set_len ^^
-
-        get_len ^^ Blob.alloc env ^^ set_blob ^^
-        get_blob ^^ Blob.payload_ptr_unskewed ^^
-        compile_unboxed_const 0l ^^
-        get_len ^^
-        system_call env "ic0" "canister_self_copy" ^^
-
-        get_blob
+        Blob.of_size_copy env
+          (fun env -> system_call env "ic0" "canister_self_size")
+          (fun env -> system_call env "ic0" "canister_self_copy") 0l
       )
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
@@ -3384,18 +3388,9 @@ module Dfinity = struct
     SR.Vanilla,
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      let (set_len, get_len) = new_local env "len" in
-      let (set_blob, get_blob) = new_local env "blob" in
-      system_call env "ic0" "msg_caller_size" ^^
-      set_len ^^
-
-      get_len ^^ Blob.alloc env ^^ set_blob ^^
-      get_blob ^^ Blob.payload_ptr_unskewed ^^
-      compile_unboxed_const 0l ^^
-      get_len ^^
-      system_call env "ic0" "msg_caller_copy" ^^
-
-      get_blob
+      Blob.of_size_copy env
+        (fun env -> system_call env "ic0" "msg_caller_size")
+        (fun env -> system_call env "ic0" "msg_caller_copy") 0l
     | _ -> assert false
 
   let reject env arg_instrs =
@@ -3426,18 +3421,10 @@ module Dfinity = struct
         (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env)))
   let error_message env =
     Func.share_code0 env "error_message" [I32Type] (fun env ->
-      let (set_len, get_len) = new_local env "len" in
-      let (set_blob, get_blob) = new_local env "blob" in
-      system_call env "ic0" "msg_reject_msg_size" ^^
-      set_len ^^
-
-      get_len ^^ Blob.alloc env ^^ set_blob ^^
-      get_blob ^^ Blob.payload_ptr_unskewed ^^
-      compile_unboxed_const 0l ^^
-      get_len ^^
-      system_call env "ic0" "msg_reject_msg_copy" ^^
-
-      get_blob)
+      Blob.of_size_copy env
+        (fun env -> system_call env "ic0" "msg_reject_msg_size")
+        (fun env -> system_call env "ic0" "msg_reject_msg_copy") 0l
+    )
 
   let error_value env =
     Func.share_code0 env "error_value" [I32Type] (fun env ->
@@ -4733,96 +4720,83 @@ module Serialization = struct
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "data buffer not filled " ^^
 
-      match E.mode env with
-      | Flags.ICMode | Flags.RefMode ->
-        get_refs_size ^^
-        compile_unboxed_const 0l ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "cannot send references on IC System API" ^^
+      get_refs_size ^^
+      compile_unboxed_const 0l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      E.else_trap_with env "cannot send references on IC System API" ^^
 
-        get_data_start ^^
-        get_data_size
-      | Flags.WasmMode | Flags.WASIMode -> assert false
+      get_data_start ^^
+      get_data_size
     )
 
-  let deserialize_core extended source_size source_copy env ts_name ts =
-    let (set_data_size, get_data_size) = new_local env "data_size" in
-    let (set_refs_size, get_refs_size) = new_local env "refs_size" in
-    let (set_data_start, get_data_start) = new_local env "data_start" in
-    let (set_refs_start, get_refs_start) = new_local env "refs_start" in
-    let (set_arg_count, get_arg_count) = new_local env "arg_count" in
+  let deserialize_from_blob extended env ts =
+    let ts_name = typ_seq_hash ts in
+    let name =
+      if extended
+      then "@deserialize_extended<" ^ ts_name ^ ">"
+      else "@deserialize<" ^ ts_name ^ ">" in
+    Func.share_code1 env name ("blob", I32Type) (List.map (fun _ -> I32Type) ts) (fun env get_blob ->
+      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+      let (set_data_start, get_data_start) = new_local env "data_start" in
+      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+      let (set_arg_count, get_arg_count) = new_local env "arg_count" in
 
-    (* Allocate space for the data buffer and copy it *)
-    source_size env ^^ set_data_size ^^
-    get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
-    source_copy env get_data_start get_data_size ^^
+      get_blob ^^ Heap.load_field Blob.len_field ^^ set_data_size ^^
+      get_blob ^^ Blob.payload_ptr_unskewed ^^ set_data_start ^^
 
-    (* Allocate space for the reference buffer and copy it *)
-    compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
+      (* Allocate space for the reference buffer and copy it *)
+      compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
 
-    (* Allocate space for out parameters of parse_idl_header *)
-    Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
-    Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
+      (* Allocate space for out parameters of parse_idl_header *)
+      Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
+      Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
 
-    (* Set up read buffers *)
-    ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
+      (* Set up read buffers *)
+      ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
 
-    ReadBuf.set_ptr get_data_buf get_data_start ^^
-    ReadBuf.set_size get_data_buf get_data_size ^^
-    ReadBuf.set_ptr get_ref_buf get_refs_start ^^
-    ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
+      ReadBuf.set_ptr get_data_buf get_data_start ^^
+      ReadBuf.set_size get_data_buf get_data_size ^^
+      ReadBuf.set_ptr get_ref_buf get_refs_start ^^
+      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
-    (* Go! *)
-    Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
-    E.call_import env "rts" "parse_idl_header" ^^
+      (* Go! *)
+      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
+      E.call_import env "rts" "parse_idl_header" ^^
 
-    (* set up a dedicated read buffer for the list of main types *)
-    ReadBuf.alloc env (fun get_main_typs_buf ->
-      ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
-      ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
-      ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
+      (* set up a dedicated read buffer for the list of main types *)
+      ReadBuf.alloc env (fun get_main_typs_buf ->
+        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+        ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
+        ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
-      get_arg_count ^^
-      compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
-      E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
+        get_arg_count ^^
+        compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
+        E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
 
-      G.concat_map (fun t ->
-        get_data_buf ^^ get_ref_buf ^^
-        get_typtbl_ptr ^^ load_unskewed_ptr ^^
-        ReadBuf.read_sleb128 env get_main_typs_buf ^^
-        deserialize_go env t
-      ) ts ^^
+        G.concat_map (fun t ->
+          get_data_buf ^^ get_ref_buf ^^
+          get_typtbl_ptr ^^ load_unskewed_ptr ^^
+          ReadBuf.read_sleb128 env get_main_typs_buf ^^
+          deserialize_go env t
+        ) ts ^^
 
-      get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
-      G.if_ []
-        begin
-          ReadBuf.is_empty env get_data_buf ^^
-          E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
-          ReadBuf.is_empty env get_ref_buf ^^
-          E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
-        end G.nop
-    )))))
-
-  let argument_data_size env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Dfinity.system_call env "ic0" "msg_arg_data_size"
-    | _ -> assert false
-
-  let argument_data_copy env get_dest get_length =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      get_dest ^^
-      (compile_unboxed_const 0l) ^^
-      get_length ^^
-      Dfinity.system_call env "ic0" "msg_arg_data_copy"
-    | _ -> assert false
+        get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
+        G.if_ []
+          begin
+            ReadBuf.is_empty env get_data_buf ^^
+            E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
+            ReadBuf.is_empty env get_ref_buf ^^
+            E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
+          end G.nop
+      )))))
+    )
 
   let deserialize env ts =
-    let ts_name = typ_seq_hash ts in
-    let name = "@deserialize<" ^ ts_name ^ ">" in
-    Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
-      deserialize_core false argument_data_size argument_data_copy env ts_name ts)
+    Blob.of_size_copy env
+      (fun env -> Dfinity.system_call env "ic0" "msg_arg_data_size")
+      (fun env -> Dfinity.system_call env "ic0" "msg_arg_data_copy") 0l ^^
+    deserialize_from_blob false env ts
 
 (*
 Note [mutable stable values]
@@ -4961,19 +4935,11 @@ module Stabilization = struct
         get_size_ptr ^^ load_unskewed_ptr)
     | _ -> assert false
 
-  (* copy the stable data from stable memory from offset 4 *)
-  let stable_data_copy env get_dest get_length =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      get_dest ^^
-      compile_unboxed_const 4l ^^
-      get_length ^^
-      Dfinity.system_call env "ic0" "stable_read"
-    | _ -> assert false
-
   let destabilize env t =
-    let t_name = Typ_hash.typ_hash t in
-    Serialization.deserialize_core true stable_data_size stable_data_copy env t_name [t]
+    Blob.of_size_copy env stable_data_size
+      (* copy the stable data from stable memory from offset 4 *)
+      (fun env -> Dfinity.system_call env "ic0" "stable_read") 4l ^^
+    Serialization.deserialize_from_blob true env [t]
 
 end
 
