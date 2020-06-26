@@ -423,10 +423,10 @@ The _visibility_ qualifier `<vis>?` determines the accessibility of every field 
 * Visibility `system` extends `private` with access by the run-time system.
 * Visibility `system` _may only_ appear on `func` declarations that are actor fields, and  _must not_ appear anywhere else.
 
-The _stability_ qualifier `<stab>` determinesa the _upgrade_ behaviour of actor fields:
+The _stability_ qualifier `<stab>` determines the _upgrade_ behaviour of actor fields:
 
 * A stability qualifier _should_ appear on `let` and `var` declarations that are actor fields.
-  An absent stability qualifier defaults to `flexible` but generates a warning (to alert users of discarded actor state).
+  An absent stability qualifier defaults to `flexible`.
 * `<stab>` qualifiers must not appear on fields of objects or modules.
 * The pattern in a `stable let <pat> = <exp>` declaration must be _simple_ where,  a pattern `pat` is  simple if it (recursively) consists of
 ** a variable pattern `<id>`, or
@@ -1973,7 +1973,7 @@ Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by virtue of 
 
 In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping.
 
-# References
+== References
 
 [bibliography]
 - [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
