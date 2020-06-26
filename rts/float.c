@@ -6,7 +6,7 @@
 export as_ptr float_fmt(double a) {
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[50]; // corresponds to 150 bits of pure floatness, room for 64 bits needed
-  const int chars = snprintf(buf, sizeof buf, "%f", a);
+  const int chars = snprintf(buf, sizeof buf, "%.17g", a);
   return text_of_ptr_size(buf, chars);
 }
 
