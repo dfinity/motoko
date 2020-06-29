@@ -39,6 +39,11 @@ assert (9.7 > -4.2);
 
 assert (-9.7 != 4.2);
 
+Prim.debugPrint(debug_show(+5.1 % +3.0));
+Prim.debugPrint(debug_show(-5.1 % +3.0));
+Prim.debugPrint(debug_show(+5.1 % -3.0));
+Prim.debugPrint(debug_show(-5.1 % -3.0));
+
 // Trigonometric
 
 let pi = 3.141592653589793238;
