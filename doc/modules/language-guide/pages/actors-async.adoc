@@ -114,3 +114,54 @@ Their interface is common, and in terms of their types, they are compatible and 
 NOTE: For now, the {proglang} compiler gives an error when compiling
 programs that do not consist of a single actor.
 The interpreter accommodates the examples above.
+
+== Stable and flexible variables
+
+To enable {proglang} to persist the state of variables when a canister is upgraded, you must identify the variables that contain data that must be preserved.
+
+You identify the variables with data that must be preserved by using the _stable_ modifier as part of the variable declarations in an actor.
+
+Essentially, for every `+let+` and `+var+` variable declaration you define in an actor, you must specify whether the variable is a `+stable+` variable or a `+flexible+` variable.
+
+Concretely, you use the following syntax to declare stable or flexible variables in an actor:
+
+```
+<dec-field> ::=
+  (public|private)? (stable|flexible)? dec
+```
+
+Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
+Note that you should only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
+You should not use the `+stable+` or `+flexible+` modifier anywhere else in your program.
+
+The representation for stable variable signatures looks like a {proglang} actor type:
+
+[source,motoko]
+----
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+----
+
+=== Typing
+
+Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
+
+* A stable declaration must have a _stable type_. 
+* Stable types are a superset of _shared_ types.
+* Stable types allow objects or arrays with mutable components.
+
+The key point to note is that stable types extend shared types to include **mutable arrays and fields**. 
+Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
+This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
+
+NOTE: Stable types can contain actors or shared functions, but mutability does not extend to actors or shared functions. 
+In addition, stable state can only contain records, not objects because objects contain non-shared functions.
+
+=== How stable variables are upgraded
+
+When you first compile and deploy a program, all flexible and stable variable are initialized in sequence.
+When you re-deploy using the upgrade mode, all stable variables that existed in the previous version are pre-initialized with their old values.
+After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
