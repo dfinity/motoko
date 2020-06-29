@@ -109,7 +109,7 @@ let binop op t =
     | MulOp -> num_binop Nat.mul (Nat8.mul, Nat16.mul, Nat32.mul, Nat64.mul) Int.mul (Int_8.mul, Int_16.mul, Int_32.mul, Int_64.mul) (Word8.mul, Word16.mul, Word32.mul, Word64.mul) Float.mul p
     | DivOp -> num_binop Nat.div (Nat8.div, Nat16.div, Nat32.div, Nat64.div) Int.div (Int_8.div, Int_16.div, Int_32.div, Int_64.div) (Word8.div_u, Word16.div_u, Word32.div_u, Word64.div_u) Float.div p
     | ModOp -> num_binop Nat.rem (Nat8.rem, Nat16.rem, Nat32.rem, Nat64.rem)
-    Int.rem (Int_8.rem, Int_16.rem, Int_32.rem, Int_64.rem) (Word8.rem_u, Word16.rem_u, Word32.rem_u, Word64.rem_u) Float.rem p (* TBR *)
+      Int.rem (Int_8.rem, Int_16.rem, Int_32.rem, Int_64.rem) (Word8.rem_u, Word16.rem_u, Word32.rem_u, Word64.rem_u) Float.rem p (* TBR *)
     | PowOp -> num_binop Nat.pow (Nat8.pow, Nat16.pow, Nat32.pow, Nat64.pow) Int.pow (Int_8.pow, Int_16.pow, Int_32.pow, Int_64.pow) (Word8.pow, Word16.pow, Word32.pow, Word64.pow) Float.pow p (* TBR *)
     | AndOp -> word_binop (Word8.and_, Word16.and_, Word32.and_, Word64.and_) p
     | OrOp  -> word_binop (Word8.or_, Word16.or_, Word32.or_, Word64.or_) p
