@@ -3,10 +3,20 @@
 // this is not intended for native compilation/testing (yet)
 #ifdef __wasm__
 
-export as_ptr float_fmt(double a) {
+export as_ptr float_fmt(double a, unsigned mode) {
+  mode >>= 24;
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[50]; // corresponds to 150 bits of pure floatness, room for 64 bits needed
-  const int chars = snprintf(buf, sizeof buf, "%.17g", a);
+  int chars;
+  char fmt[7];
+  switch (mode) {
+    case 0: chars = snprintf(buf, sizeof buf, "%f", a); break;
+    case 1 ... 18: { snprintf(fmt, sizeof fmt, "%%.%df", mode - 1); chars = snprintf(buf, sizeof buf, fmt, a); break; }
+    case 19 ... 36: { snprintf(fmt, sizeof fmt, "%%.%de", mode - 19); chars = snprintf(buf, sizeof buf, fmt, a); break; }
+    case 37 ... 54: { snprintf(fmt, sizeof fmt, "%%.%dg", mode - 37); chars = snprintf(buf, sizeof buf, fmt, a); break; }
+    case 55 ... 72: { snprintf(fmt, sizeof fmt, "%%.%da", mode - 55); chars = snprintf(buf, sizeof buf, fmt, a); break; }
+    default: chars = snprintf(buf, sizeof buf, "%.17g", a);
+  }
   return text_of_ptr_size(buf, chars);
 }
 

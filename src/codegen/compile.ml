@@ -794,7 +794,7 @@ module RTS = struct
     E.add_func_import env "rts" "float_arctan2" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_exp" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_log" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_fmt" [F64Type] [I32Type];
+    E.add_func_import env "rts" "float_fmt" [F64Type; I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -7077,6 +7077,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "Float->Text", [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_unboxed_const (UnboxedSmallWord.vanilla_lit Type.Word16 0) ^^
       E.call_import env "rts" "float_fmt"
 
     | OtherPrim "fsin", [e] ->
