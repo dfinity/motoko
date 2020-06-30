@@ -200,13 +200,16 @@ let num_conv_prim t1 t2 =
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
-  let float_formatter prec : int -> float -> string = function
-    | 0 -> Printf.sprintf "%f"
-    | 1 -> Printf.sprintf "%.*f" prec 
-    | 2 -> Printf.sprintf "%.*e" prec
-    | 3 -> Printf.sprintf "%.*g" prec
-    | 4 -> Printf.sprintf "%.*h" prec
-    | _ -> Printf.sprintf "%.17g" in
+  let unpack_word8 v = Int32.to_int (Word8.to_bits (as_word8 v)) lsr 24 in
+  let float_formatter prec : int -> float -> string =
+    let open Printf in
+    function
+    | 0 -> sprintf "%f"
+    | 1 -> sprintf "%.*f" prec 
+    | 2 -> sprintf "%.*e" prec
+    | 3 -> sprintf "%.*g" prec
+    | 4 -> sprintf "%.*h" prec
+    | _ -> sprintf "%.17g" in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
@@ -231,7 +234,7 @@ let prim =
   | "fmtFloat->Text" -> fun _ v k ->
     (match Value.as_tup v with
      | [f; prec; mode] ->
-       k (Text (float_formatter (Int32.to_int (Word8.to_bits (as_word8 prec)) lsr 24) (Int32.to_int (Word8.to_bits (as_word8 mode)) lsr 24) Float.(to_float (as_float f))))
+       k (Text (float_formatter (unpack_word8 prec) (unpack_word8 mode) Float.(to_float (as_float f))))
      | _ -> assert false)
   | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
   | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)
