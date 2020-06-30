@@ -56,7 +56,7 @@ actor Counter {
 ....
 
 ////
-CAUTION: todo: discuss counter example
+TODO: discuss counter example
 ////
 == Using async to await values
 
