@@ -12,12 +12,11 @@ export as_ptr float_fmt(double a, uint32_t prec, uint32_t mode) {
   char buf[120]; // will be of length less than 110 for max precision
   int chars;
   switch (mode) {
-    case 0: chars = snprintf(buf, sizeof buf, "%f", a); break;
     case 1: { chars = snprintf(buf, sizeof buf, "%.*f", prec, a); break; }
     case 2: { chars = snprintf(buf, sizeof buf, "%.*e", prec, a); break; }
     case 3: { chars = snprintf(buf, sizeof buf, "%.*g", prec, a); break; }
     case 4: { chars = snprintf(buf, sizeof buf, "%.*a", prec, a); break; }
-    default: chars = snprintf(buf, sizeof buf, "%.17g", a);
+    default: chars = snprintf(buf, sizeof buf, "%f", a);
   }
   return text_of_ptr_size(buf, chars);
 }

@@ -40,6 +40,3 @@ Prim.debugPrint(Prim.floatToFormattedText(pi, 9, 4));
 Prim.debugPrint(Prim.floatToFormattedText(pi, 16, 4));
 Prim.debugPrint(Prim.floatToFormattedText(pi, 17, 4));
 Prim.debugPrint(Prim.floatToFormattedText(pi, 20, 4));
-
-Prim.debugPrint "roundtrip Float";
-Prim.debugPrint(Prim.floatToFormattedText(pi, 0, 5));

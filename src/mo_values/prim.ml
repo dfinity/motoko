@@ -204,12 +204,11 @@ let prim =
   let float_formatter prec : int -> float -> string =
     let open Printf in
     function
-    | 0 -> sprintf "%f"
     | 1 -> sprintf "%.*f" prec 
     | 2 -> sprintf "%.*e" prec
     | 3 -> sprintf "%.*g" prec
     | 4 -> sprintf "%.*h" prec
-    | _ -> sprintf "%.17g" in
+    | _ -> sprintf "%f" in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
