@@ -198,34 +198,16 @@ let num_conv_prim t1 t2 =
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 
-let fixFormatters =
-  Printf.[| sprintf "%.0f"; sprintf "%.1f"; sprintf "%.2f"; sprintf "%.3f"; sprintf "%.4f"; sprintf "%.5f"; sprintf "%.6f"
-            ; sprintf "%.7f"; sprintf "%.8f"; sprintf "%.9f"; sprintf "%.10f"; sprintf "%.11f"; sprintf "%.12f"; sprintf "%.13f"
-            ; sprintf "%.14f"; sprintf "%.15f"; sprintf "%.16f"; sprintf "%.17f"; sprintf "%.18f" |]
-let expFormatters =
-  Printf.[| sprintf "%.0e"; sprintf "%.1e"; sprintf "%.2e"; sprintf "%.3e"; sprintf "%.4e"; sprintf "%.5e"; sprintf "%.6e"
-            ; sprintf "%.7e"; sprintf "%.8e"; sprintf "%.9e"; sprintf "%.10e"; sprintf "%.11e"; sprintf "%.12e"; sprintf "%.13e"
-            ; sprintf "%.14e"; sprintf "%.15e"; sprintf "%.16e"; sprintf "%.17e"; sprintf "%.18e" |]
-let genFormatters =
-  Printf.[| sprintf "%.0g"; sprintf "%.1g"; sprintf "%.2g"; sprintf "%.3g"; sprintf "%.4g"; sprintf "%.5g"; sprintf "%.6g"
-            ; sprintf "%.7g"; sprintf "%.8g"; sprintf "%.9g"; sprintf "%.10g"; sprintf "%.11g"; sprintf "%.12g"; sprintf "%.13g"
-            ; sprintf "%.14g"; sprintf "%.15g"; sprintf "%.16g"; sprintf "%.17g"; sprintf "%.18g" |]
-let hexFormatters =
-  Printf.[| sprintf "%.0h"; sprintf "%.1h"; sprintf "%.2h"; sprintf "%.3h"; sprintf "%.4h"; sprintf "%.5h"; sprintf "%.6h"
-            ; sprintf "%.7h"; sprintf "%.8h"; sprintf "%.9h"; sprintf "%.10h"; sprintf "%.11h"; sprintf "%.12h"; sprintf "%.13h"
-            ; sprintf "%.14h"; sprintf "%.15h"; sprintf "%.16h"; sprintf "%.17h"; sprintf "%.18h" |]
-
-
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
   let float_formatter : int -> float -> string = function
     | 0 -> Printf.sprintf "%f"
     | fmt when fmt > 72 -> Printf.sprintf "%.17g"
-    | fmt when fmt >= 55 -> hexFormatters.(fmt - 55)
-    | fmt when fmt >= 37 -> genFormatters.(fmt - 37)
-    | fmt when fmt >= 19 -> expFormatters.(fmt - 19)
-    | fmt when fmt >= 1 -> fixFormatters.(fmt - 1)
+    | fmt when fmt >= 55 -> Printf.sprintf "%.*h" (fmt - 55)
+    | fmt when fmt >= 37 -> Printf.sprintf "%.*g" (fmt - 37)
+    | fmt when fmt >= 19 -> Printf.sprintf "%.*e" (fmt - 19)
+    | fmt when fmt >= 1 -> Printf.sprintf "%.*f" (fmt - 1) 
     | _ -> assert false in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
