@@ -1,4 +1,4 @@
-name: Automatically update niv-managed dependencies
+name: Update niv dependencies (weekly)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
