@@ -200,6 +200,7 @@ let num_conv_prim t1 t2 =
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
+  let float_formatter fmt : float -> string = Printf.sprintf "%f" in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
@@ -221,6 +222,10 @@ let prim =
      | [a; b] -> k (Float (Float.copysign (as_float a) (as_float b)))
      | _ -> assert false)
   | "Float->Text" -> fun _ v k -> k (Text (Float.to_string (as_float v)))
+  | "fmtFloat->Text" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [f; fmt] -> k (Text (float_formatter (as_word8 fmt) Float.(to_float (as_float f))))
+     | _ -> assert false)
   | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
   | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)
   | "ftan" -> fun _ v k -> k (via_float Stdlib.tan v)
