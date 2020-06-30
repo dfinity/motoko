@@ -157,8 +157,9 @@ The key point to note is that stable types extend shared types to include **muta
 Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
 This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
 
-NOTE:  Although object types are generally not stable, because they can contain (local) functions, the special case of a record of stable fields _is_ stable, allowing the preservation of plain record data across updates.
-In addition, actors and  shared functions are also stable, allowing one to preserve their values across upgrades (e.g. to preserve a set of actors or callbacks subscribing to a service).
+NOTE: In general, object types are not stable because they can contain local functions. 
+However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
+Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
 
 === How stable variables are upgraded
 
