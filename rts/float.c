@@ -3,18 +3,20 @@
 // this is not intended for native compilation/testing (yet)
 #ifdef __wasm__
 
-export as_ptr float_fmt(double a, unsigned mode/*, unsigned prec*/) {
-  mode >>= 24;
-  //prec >>= 24;
+export as_ptr float_fmt(double a, uint32_t prec, uint32_t mode) {
+  // prec and mode are passed boxed:
+  mode >>= 24; // unbox Word8
+  prec >>= 24; // unbox Word8
+  if (prec > 100) prec = 100;
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
-  char buf[150]; // corresponds to 150 bits of pure floatness, room for 64 bits needed
+  char buf[120]; // will be of length less than 110 for max precision
   int chars;
   switch (mode) {
     case 0: chars = snprintf(buf, sizeof buf, "%f", a); break;
-    case 1 ... 18: { chars = snprintf(buf, sizeof buf, "%.*f", mode - 1, a); break; }
-    case 19 ... 36: { chars = snprintf(buf, sizeof buf, "%.*e", mode - 19, a); break; }
-    case 37 ... 54: { chars = snprintf(buf, sizeof buf, "%.*g", mode - 37, a); break; }
-    case 55 ... 72: { chars = snprintf(buf, sizeof buf, "%.*a", mode - 55, a); break; }
+    case 1: { chars = snprintf(buf, sizeof buf, "%.*f", prec, a); break; }
+    case 2: { chars = snprintf(buf, sizeof buf, "%.*e", prec, a); break; }
+    case 3: { chars = snprintf(buf, sizeof buf, "%.*g", prec, a); break; }
+    case 4: { chars = snprintf(buf, sizeof buf, "%.*a", prec, a); break; }
     default: chars = snprintf(buf, sizeof buf, "%.17g", a);
   }
   return text_of_ptr_size(buf, chars);
