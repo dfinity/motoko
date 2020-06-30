@@ -149,7 +149,7 @@ actor {
 
 Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
 
-* A stable declaration must have a _stable type_. 
+* A `+stable+` declaration must have a _stable_ type. 
 * Stable types are a superset of _shared_ types.
 * Stable types allow objects or arrays with mutable components.
 
@@ -157,11 +157,11 @@ The key point to note is that stable types extend shared types to include **muta
 Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
 This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
 
-NOTE: Stable types can contain actors or shared functions, but mutability does not extend to actors or shared functions. 
-In addition, stable state can only contain records, not objects because objects contain non-shared functions.
+NOTE:  Although object types are generally not stable, because they can contain (local) functions, the special case of a record of stable fields _is_ stable, allowing the preservation of plain record data across updates.
+In addition, actors and  shared functions are also stable, allowing one to preserve their values across upgrades (e.g. to preserve a set of actors or callbacks subscribing to a service).
 
 === How stable variables are upgraded
 
-When you first compile and deploy a program, all flexible and stable variable are initialized in sequence.
-When you re-deploy using the upgrade mode, all stable variables that existed in the previous version are pre-initialized with their old values.
+When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
+When deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
