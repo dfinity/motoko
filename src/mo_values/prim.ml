@@ -197,7 +197,6 @@ let num_conv_prim t1 t2 =
   | T.Int64, T.Float -> fun _ v k -> k (Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))))
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
-
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
