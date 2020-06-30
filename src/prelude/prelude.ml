@@ -476,6 +476,15 @@ func floatToInt64(f : Float) : Int64 = (prim "num_conv_Float_Int64" : Float -> I
 func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> Float) (n);
 
 let floatToText = @text_of_Float;
+
+// Configurable Float formatter
+// mode:
+//  0) default format "%f" (prec ignored)
+//  1) fixed format "%.*f"
+//  2) exponent format "%.*e"
+//  3) generic format "%.*g"
+//  4) hexadecimal format "%.*h"
+//  5) roundtrip format "%.17g"  (prec ignored)
 func floatToFormattedText(f : Float, prec : Word8, mode : Word8) : Text = (prim "fmtFloat->Text" : (Float, Word8, Word8) -> Text) (f, prec, mode);
 
 // Trigonometric and transcendental functions
