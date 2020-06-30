@@ -16,7 +16,7 @@ export as_ptr float_fmt(double a, uint32_t prec, uint32_t mode) {
     case 2: { chars = snprintf(buf, sizeof buf, "%.*e", prec, a); break; }
     case 3: { chars = snprintf(buf, sizeof buf, "%.*g", prec, a); break; }
     case 4: { chars = snprintf(buf, sizeof buf, "%.*a", prec, a); break; }
-    default: chars = snprintf(buf, sizeof buf, "%f", a);
+    default: return float_fmt(a, 6 << 24, 1 << 24);
   }
   return text_of_ptr_size(buf, chars);
 }

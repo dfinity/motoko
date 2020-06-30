@@ -201,14 +201,14 @@ let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
   let unpack_word8 v = Int32.to_int (Word8.to_bits (as_word8 v)) lsr 24 in
-  let float_formatter prec : int -> float -> string =
+  let rec float_formatter prec : int -> float -> string =
     let open Printf in
     function
     | 1 -> sprintf "%.*f" prec 
     | 2 -> sprintf "%.*e" prec
     | 3 -> sprintf "%.*g" prec
     | 4 -> sprintf "%.*h" prec
-    | _ -> sprintf "%f" in
+    | _ -> float_formatter 6 1 in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
