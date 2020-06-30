@@ -121,7 +121,7 @@ To enable {proglang} to persist the state of variables when a canister is upgrad
 
 You identify the variables with data that must be preserved by using the _stable_ modifier as part of the variable declarations in an actor.
 
-Essentially, for every `+let+` and `+var+` variable declaration you define in an actor, you must specify whether the variable is a `+stable+` variable or a `+flexible+` variable.
+Essentially, for every `+let+` and `+var+` variable declaration you define in an actor, you should specify whether the variable is a `+stable+` variable or a `+flexible+` variable. An omitted modifier defaults to `flexible`.
 
 Concretely, you use the following syntax to declare stable or flexible variables in an actor:
 
