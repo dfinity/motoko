@@ -689,9 +689,9 @@ import E "mo:base/Error";
 
 Errors are opaque values constructed and examined with operations:
 
-* `E.error : Text -> Error`
-* `E.errorCode : Error -> E.ErrorCode`
-* `E.errorMessage : Error -> Text`
+* `E.reject : Text -> Error`
+* `E.code : Error -> E.ErrorCode`
+* `E.message : Error -> Text`
 
 Type `E.ErrorCode` is equivalent to variant type:
 
@@ -712,13 +712,13 @@ type ErrorCode = {
 };
 ```
 
-A constructed error `e = E.error(t)` has `E.errorCode(e) = #canister_reject` and `E.errorMessage(e) = t`.
+A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
-`Error` values can be thrown  and caught within an `async` expression or `shared` function (only). See <<exp-throw>> and <<exp-try>>.
+`Error` values can be thrown and caught within an `async` expression or `shared` function (only). See <<exp-throw>> and <<exp-try>>.
 
 Errors with codes other than `#canister_reject`  (i.e. _system_ errors) may be caught and thrown, but not user-constructed.
 
-Note: Exiting an async block or shared function with a system error exits with a copy of the error with revised code `#canister_reject` and the original system error message.
+Note: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
 This prevents programmatic forgery of system errors.
 
 

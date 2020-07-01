@@ -47,4 +47,10 @@ EXPORT_BINARY(atan2, y, x, arctan2)
 EXPORT_UNARY(exp, a, exp)
 EXPORT_UNARY(log, a, log)
 
+// Remainder of `a/b`
+//
+// Confusingly, remainder operation on doubles in C is called `fmod` and not
+// `frem`, see https://en.cppreference.com/w/c/numeric/math/fmod
+EXPORT_BINARY(fmod, a, b, rem)
+
 #endif

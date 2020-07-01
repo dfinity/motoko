@@ -119,6 +119,7 @@ module Word64 = MakeWord (Wasm.I64) (Int64)
 module type FloatType =
 sig
   include Wasm.Float.S
+  val rem : t -> t -> t
   val pow : t -> t -> t
   val to_pretty_string : t -> string
 end
@@ -126,6 +127,7 @@ end
 module MakeFloat(WasmFloat : Wasm.Float.S) =
 struct
   include WasmFloat
+  let rem x y = of_float (Float.rem (to_float x) (to_float y))
   let pow x y = of_float (to_float x ** to_float y)
   let to_pretty_string w = group_num (WasmFloat.to_string w)
   let to_string = to_pretty_string

@@ -794,6 +794,7 @@ module RTS = struct
     E.add_func_import env "rts" "float_arctan2" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_exp" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_log" [F64Type] [F64Type];
+    E.add_func_import env "rts" "float_rem" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I32Type];
     ()
 
@@ -6459,6 +6460,7 @@ let compile_binop env t op =
           end
           get_res)
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
+  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "float_rem"
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp -> UnboxedSmallWord.compile_word_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
