@@ -200,7 +200,7 @@ let num_conv_prim t1 t2 =
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
-  let unpack_word8 v = Int32.to_int (Word8.to_bits (as_word8 v)) lsr 24 in
+  let unpack_nat8 v = Nat8.to_int (as_nat8 v) in
   let float_formatter prec : int -> float -> string =
     let open Printf in
     function
@@ -233,7 +233,7 @@ let prim =
   | "fmtFloat->Text" -> fun _ v k ->
     (match Value.as_tup v with
      | [f; prec; mode] ->
-       k (Text (float_formatter (unpack_word8 prec) (unpack_word8 mode) Float.(to_float (as_float f))))
+       k (Text (float_formatter (unpack_nat8 prec) (unpack_nat8 mode) Float.(to_float (as_float f))))
      | _ -> assert false)
   | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
   | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)

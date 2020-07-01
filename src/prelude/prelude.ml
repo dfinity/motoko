@@ -484,7 +484,7 @@ let floatToText = @text_of_Float;
 //  2) generic format "%.*g"
 //  3) hexadecimal format "%.*h"
 //  _) invalid (traps)
-func floatToFormattedText(f : Float, prec : Word8, mode : Word8) : Text = (prim "fmtFloat->Text" : (Float, Word8, Word8) -> Text) (f, prec, mode);
+func floatToFormattedText(f : Float, prec : Nat8, mode : Nat8) : Text = (prim "fmtFloat->Text" : (Float, Nat8, Nat8) -> Text) (f, prec, mode);
 
 // Trigonometric and transcendental functions
 
