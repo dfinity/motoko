@@ -4,19 +4,19 @@
 #ifdef __wasm__
 
 export as_ptr float_fmt(double a, uint32_t prec, uint32_t mode) {
-  // prec and mode are passed boxed:
-  mode >>= 24; // unbox Word8
-  prec >>= 24; // unbox Word8
+  // prec and mode are passed tagged:
+  mode >>= 24; // untag Word8
+  prec >>= 24; // untag Word8
   if (prec > 100) prec = 100;
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[120]; // will be of length less than 110 for max precision
   int chars;
   switch (mode) {
-    case 1: { chars = snprintf(buf, sizeof buf, "%.*f", prec, a); break; }
-    case 2: { chars = snprintf(buf, sizeof buf, "%.*e", prec, a); break; }
-    case 3: { chars = snprintf(buf, sizeof buf, "%.*g", prec, a); break; }
-    case 4: { chars = snprintf(buf, sizeof buf, "%.*a", prec, a); break; }
-    default: return float_fmt(a, 6 << 24, 1 << 24);
+    case 0: { chars = snprintf(buf, sizeof buf, "%.*f", prec, a); break; }
+    case 1: { chars = snprintf(buf, sizeof buf, "%.*e", prec, a); break; }
+    case 2: { chars = snprintf(buf, sizeof buf, "%.*g", prec, a); break; }
+    case 3: { chars = snprintf(buf, sizeof buf, "%.*a", prec, a); break; }
+    default: rts_trap_with("unrecognised float_fmt mode");
   }
   return text_of_ptr_size(buf, chars);
 }

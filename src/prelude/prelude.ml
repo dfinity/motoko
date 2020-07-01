@@ -479,11 +479,11 @@ let floatToText = @text_of_Float;
 
 // Configurable Float formatter
 // mode:
-//  1) fixed format "%.*f"
-//  2) exponent format "%.*e"
-//  3) generic format "%.*g"
-//  4) hexadecimal format "%.*h"
-//  _) default format "%f" (prec ignored)
+//  0) fixed format "%.*f"
+//  1) exponent format "%.*e"
+//  2) generic format "%.*g"
+//  3) hexadecimal format "%.*h"
+//  _) invalid (traps)
 func floatToFormattedText(f : Float, prec : Word8, mode : Word8) : Text = (prim "fmtFloat->Text" : (Float, Word8, Word8) -> Text) (f, prec, mode);
 
 // Trigonometric and transcendental functions
