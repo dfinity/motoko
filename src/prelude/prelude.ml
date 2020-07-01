@@ -440,6 +440,10 @@ func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> 
 
 func charToText(c : Char) : Text = (prim "conv_Char_Text" : Char -> Text) c;
 
+func charToUpper(c : Char) : Char = (prim "char_to_upper" : Char -> Char) c;
+func charToLower(c : Char) : Char = (prim "char_to_lower" : Char -> Char) c;
+func charIsWhitespace(c : Char) : Bool = (prim "char_is_whitespace" : Char -> Int32) c != (0 : Int32);
+
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
 func clzWord8(w : Word8) : Word8 = (prim "clz8" : Word8 -> Word8) w;

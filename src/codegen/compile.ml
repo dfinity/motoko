@@ -800,6 +800,9 @@ module RTS = struct
     E.add_func_import env "rts" "float_log" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_rem" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -7210,6 +7213,26 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Text.prim_showChar env
+
+    | OtherPrim "char_to_upper", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      UnboxedSmallWord.unbox_codepoint ^^
+      E.call_import env "rts" "char_to_upper" ^^
+      UnboxedSmallWord.box_codepoint
+
+    | OtherPrim "char_to_lower", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      UnboxedSmallWord.unbox_codepoint ^^
+      E.call_import env "rts" "char_to_lower" ^^
+      UnboxedSmallWord.box_codepoint
+
+    | OtherPrim "char_is_whitespace", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      UnboxedSmallWord.unbox_codepoint ^^
+      E.call_import env "rts" "char_is_whitespace"
 
     | OtherPrim "print", [e] ->
       SR.unit,
