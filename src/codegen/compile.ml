@@ -7080,8 +7080,8 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "Float->Text", [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      compile_unboxed_const (UnboxedSmallWord.vanilla_lit Type.Word8 6) ^^
-      compile_unboxed_const (UnboxedSmallWord.vanilla_lit Type.Word8 0) ^^
+      compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Word8 6) ^^
+      compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Word8 0) ^^
       E.call_import env "rts" "float_fmt"
 
     | OtherPrim "fmtFloat->Text", [f; prec; mode] ->
