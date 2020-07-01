@@ -7232,6 +7232,8 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_as env ae SR.Vanilla e ^^
       UnboxedSmallWord.unbox_codepoint ^^
+      (* char_is_whitespace RTS function returns True/False Motoko values so we
+         don't need any marshalling *)
       E.call_import env "rts" "char_is_whitespace"
 
     | OtherPrim "print", [e] ->

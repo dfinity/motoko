@@ -1,8 +1,10 @@
 import Prim "mo:prim";
 
-Prim.debugPrint(debug_show(Prim.charToUpper('ö')));
-Prim.debugPrint(debug_show(Prim.charToLower('Ö')));
-Prim.debugPrint(debug_show(Prim.charIsWhitespace(' ')));
-
+assert(Prim.charIsWhitespace(' '));
+assert(not Prim.charIsWhitespace('x'));
 // 12288 (U+3000) = ideographic space
-Prim.debugPrint(debug_show(Prim.charIsWhitespace(Prim.word32ToChar(12288))));
+assert(Prim.charIsWhitespace(Prim.word32ToChar(12288)));
+
+assert(Prim.charToUpper('ö') == 'Ö');
+assert(Prim.charToUpper('σ') == 'Σ');
+assert(Prim.charToUpper('💩') == '💩');

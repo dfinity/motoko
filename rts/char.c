@@ -14,7 +14,9 @@ export int32_t char_to_lower(int32_t c) {
 
 export int32_t char_is_whitespace(int32_t c) {
   extern int iswspace(unsigned);
-  return (int32_t)iswspace((unsigned)c);
+  // Boolean values in Motoko are 0 for False and 1 for True, so we make sure we
+  // return those here don't do any marshalling in generated code.
+  return iswspace((unsigned)c) != 0;
 }
 
 #endif
