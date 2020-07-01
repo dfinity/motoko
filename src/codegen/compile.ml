@@ -1101,6 +1101,12 @@ module BitTagged = struct
      It means that 0 and 1 are also recognized as non-pointers, and we can use
      these for false and true, matching the result of WebAssembly’s comparison
      operators.
+
+     Note that Word16 and Word8 do not need to be explicitly bit-tagged:
+     The bytes are stored in the _most_ significant byte(s) of the `i32`,
+     thus the second lowest bit is 0.
+     All arithmetic is implemented directly on that representation, see
+     UnboxedSmallWord.
   *)
   let scalar_shift = 2l
 
@@ -1490,8 +1496,7 @@ end (* BoxedWord64 *)
 module BoxedSmallWord = struct
   (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
 
-     Small values (just <2^10 for now, so that both code paths are well-tested)
-     are stored unboxed, tagged, see BitTagged.
+     Small values are stored unboxed, tagged, see BitTagged.
 
      The heap layout of a BoxedSmallWord is:
 
