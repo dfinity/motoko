@@ -1210,6 +1210,10 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
     t'
+  | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
+    let {T.typ; _} = List.find (fun T.{lab; typ} -> lab = id.it) fs in
+    check_exp env typ exp1 ;
+    t
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
