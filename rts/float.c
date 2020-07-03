@@ -5,8 +5,8 @@
 
 export as_ptr float_fmt(double a, uint32_t prec, uint32_t mode) {
   // prec and mode are passed tagged:
-  mode >>= 24; // untag Word8
-  prec >>= 24; // untag Word8
+  mode >>= 24; // untag Nat8
+  prec >>= 24; // untag Nat8
   if (prec > 100) prec = 100;
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[120]; // will be of length less than 110 for max precision
