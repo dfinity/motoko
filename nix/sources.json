@@ -63,10 +63,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "210d7a173a276db1ac8077a9732572366ce64cfb",
-        "sha256": "0gfivr70jb0cwc3nhq3llr4znzf65f7qrrwg5z3yigda8j1xb8z7",
+        "rev": "41aa2272feb21b1300b9f99de3f8371a6ddd8986",
+        "sha256": "0qj3x0jcsz3lbia93a06dzvp2psayxxqxly62kjmsywvsm0picby",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/210d7a173a276db1ac8077a9732572366ce64cfb.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/41aa2272feb21b1300b9f99de3f8371a6ddd8986.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
