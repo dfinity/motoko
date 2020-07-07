@@ -19,5 +19,5 @@
     codegen
   )
   (inline_tests)
-  (preprocess (pps ppx_inline_test))
+  (preprocess (per_module ((pps ppx_inline_test) resolve_import_test)))
 )
