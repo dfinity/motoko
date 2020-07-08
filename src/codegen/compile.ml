@@ -2233,15 +2233,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       begin
         fun _ ->
         let set_a, get_a = new_local env "a" in
-        set_a ^^ get_a ^^
-        compile_bitand_const 1l ^^
+        set_a ^^
+        get_a ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
         G.if_ [I32Type]
           begin
             get_a ^^
-            compile_unboxed_one ^^ (* i.e. -(2**30) == -1073741824 *)
+            compile_unboxed_const 0xFFFFFFFEl ^^ (* i.e. -(2**31) *)
             G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
             G.if_ [I32Type]
-              (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env) (* is non-representable *)
+              (compile_unboxed_const 0x80000000l ^^ Num.from_word32 env) (* is non-representable *)
               begin
                 get_a ^^
                 compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
