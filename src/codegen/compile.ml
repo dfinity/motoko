@@ -7218,18 +7218,10 @@ and compile_exp (env : E.t) ae exp =
       Text.prim_showChar env
 
     | OtherPrim "char_to_upper", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.Vanilla e ^^
-      TaggedSmallWord.untag_codepoint ^^
-      E.call_import env "rts" "char_to_upper" ^^
-      TaggedSmallWord.tag_codepoint
+      compile_char_to_char_rts env ae e "char_to_upper"
 
     | OtherPrim "char_to_lower", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.Vanilla e ^^
-      TaggedSmallWord.untag_codepoint ^^
-      E.call_import env "rts" "char_to_lower" ^^
-      TaggedSmallWord.tag_codepoint
+      compile_char_to_char_rts env ae e "char_to_lower"
 
     | OtherPrim "char_is_whitespace", [e] ->
       compile_char_to_bool_rts env ae e "char_is_whitespace"
@@ -7497,6 +7489,14 @@ and compile_exp_vanilla (env : E.t) ae exp =
 
 and compile_exp_unit (env : E.t) ae exp =
   compile_exp_as env ae SR.unit exp
+
+(* Compile a prim of type Char -> Char to a RTS call. *)
+and compile_char_to_char_rts env ae exp rts_fn =
+  SR.Vanilla,
+  compile_exp_as env ae SR.Vanilla exp ^^
+  TaggedSmallWord.untag_codepoint ^^
+  E.call_import env "rts" rts_fn ^^
+  TaggedSmallWord.tag_codepoint
 
 (* Compile a prim of type Char -> Bool to a RTS call. The RTS function should
    have type int32_t -> int32_t where the return value is 0 for 'false' and 1
