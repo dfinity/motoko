@@ -803,6 +803,8 @@ module RTS = struct
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -7229,12 +7231,13 @@ and compile_exp (env : E.t) ae exp =
       TaggedSmallWord.tag_codepoint
 
     | OtherPrim "char_is_whitespace", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.Vanilla e ^^
-      TaggedSmallWord.untag_codepoint ^^
-      (* char_is_whitespace RTS function returns True/False Motoko values so we
-         don't need any marshalling *)
-      E.call_import env "rts" "char_is_whitespace"
+      compile_char_to_bool_rts env ae e "char_is_whitespace"
+
+    | OtherPrim "char_is_lowercase", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_lowercase"
+
+    | OtherPrim "char_is_uppercase", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_uppercase"
 
     | OtherPrim "print", [e] ->
       SR.unit,
@@ -7491,6 +7494,16 @@ and compile_exp_vanilla (env : E.t) ae exp =
 and compile_exp_unit (env : E.t) ae exp =
   compile_exp_as env ae SR.unit exp
 
+(* Compile a prim of type Char -> Bool to a RTS call. The RTS function should
+   have type int32_t -> int32_t where the return value is 0 for 'false' and 1
+   for 'true'. *)
+and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
+  SR.Vanilla,
+  compile_exp_as env ae SR.Vanilla exp ^^
+  TaggedSmallWord.untag_codepoint ^^
+  (* The RTS function returns Motoko True/False values (which are represented as
+     1 and 0, respectively) so we don't need any marshalling *)
+  E.call_import env "rts" rts_fn
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.

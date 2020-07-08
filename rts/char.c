@@ -19,4 +19,14 @@ export int32_t char_is_whitespace(int32_t c) {
   return iswspace((unsigned)c) != 0;
 }
 
+export int32_t char_is_uppercase(int32_t c) {
+  extern int iswupper(unsigned);
+  return iswupper((unsigned)c) != 0;
+}
+
+export int32_t char_is_lowercase(int32_t c) {
+  extern int iswlower(unsigned);
+  return iswlower((unsigned)c) != 0;
+}
+
 #endif

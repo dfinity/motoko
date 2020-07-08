@@ -443,6 +443,8 @@ func charToText(c : Char) : Text = (prim "conv_Char_Text" : Char -> Text) c;
 func charToUpper(c : Char) : Char = (prim "char_to_upper" : Char -> Char) c;
 func charToLower(c : Char) : Char = (prim "char_to_lower" : Char -> Char) c;
 func charIsWhitespace(c : Char) : Bool = (prim "char_is_whitespace" : Char -> Bool) c;
+func charIsLowerCase(c : Char) : Bool = (prim "char_is_lowercase" : Char -> Bool) c;
+func charIsUpperCase(c : Char) : Bool = (prim "char_is_uppercase" : Char -> Bool) c;
 
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
