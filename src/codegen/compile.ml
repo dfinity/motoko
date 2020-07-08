@@ -805,6 +805,7 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -7238,6 +7239,9 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "char_is_uppercase", [e] ->
       compile_char_to_bool_rts env ae e "char_is_uppercase"
+
+    | OtherPrim "char_is_alphabetic", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_alphabetic"
 
     | OtherPrim "print", [e] ->
       SR.unit,

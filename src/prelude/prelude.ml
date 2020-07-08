@@ -445,6 +445,7 @@ func charToLower(c : Char) : Char = (prim "char_to_lower" : Char -> Char) c;
 func charIsWhitespace(c : Char) : Bool = (prim "char_is_whitespace" : Char -> Bool) c;
 func charIsLowerCase(c : Char) : Bool = (prim "char_is_lowercase" : Char -> Bool) c;
 func charIsUpperCase(c : Char) : Bool = (prim "char_is_uppercase" : Char -> Bool) c;
+func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bool) c;
 
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
