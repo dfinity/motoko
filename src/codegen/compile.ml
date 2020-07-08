@@ -515,7 +515,6 @@ let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
 let compile_rotr_const = compile_op_const I32Op.Rotr
-let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
@@ -523,6 +522,7 @@ let compile_rel_const rel i =
   compile_unboxed_const i ^^
   G.i (Compare (Wasm.Values.I32 rel))
 let compile_eq_const = compile_rel_const I32Op.Eq
+let compile_ne_const = compile_rel_const I32Op.Ne
 
 let compile_op64_const op i =
     compile_const_64 i ^^
@@ -1089,38 +1089,44 @@ module BitTagged = struct
   (* This module takes care of pointer tagging:
 
      A pointer to an object at offset `i` on the heap is represented as
-     `i-1`, so the low two bits of the pointer are always set. We call
-     `i-1` a *skewed* pointer, in a feeble attempt to avoid the term shifted,
-     which may sound like a logical shift.
+     `i-1`, so the low two bits of the pointer are always set (0b…11).
+     We call `i-1` a *skewed* pointer, in a feeble attempt to avoid the term
+     shifted, which may sound like a logical shift.
 
      We use the constants ptr_skew and ptr_unskew to change a pointer as a
      signpost where we switch between raw pointers to skewed ones.
 
-     This means we can store a small unboxed scalar x as (x `rotl` 2), and still
-     tell it apart from a pointer.
+     This means we can store a small unboxed scalar x as (x `lsl` 1), and still
+     tell it apart from a pointer by looking at the last two bits: if both are
+     set, it is a pointer.
 
-     We actually use the *second* lowest bit to tell a pointer apart from a
-     scalar.
+     Small here means -2^30 ≤ x < 2^30, and untagging needs to happen with an
+     _arithmetic_ right shift. This is the right thing to do for signed
+     numbers, and because we want to apply a consistent logic for all types,
+     especially as there is only one wasm type, we use the same range for
+     signed numbers as well.
 
      It means that 0 and 1 are also recognized as non-pointers, and we can use
      these for false and true, matching the result of WebAssembly’s comparison
      operators.
 
+     Summary:
+
+       0b…11: A pointer
+       0b…x0: A shifted scalar
+       0b00: `false`
+       0b01: `true`
+
      Note that Word16 and Word8 do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
-     thus the second lowest bit is 0.
+     thus lowest two bits are alwayas 0.
      All arithmetic is implemented directly on that representation, see
-     TaggedSmallWord.
+     module TaggedSmallWord.
   *)
-  let scalar_shift = 2l
-
   let if_tagged_scalar env retty is1 is2 =
     Func.share_code1 env "is_tagged_scalar" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* Get bit *)
-      get_x ^^
-      compile_bitand_const 0x2l ^^
-      (* Check bit *)
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+      (* Low two bit not 0b…11 *)
+      get_x ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l
     ) ^^
     G.if_ retty is1 is2
 
@@ -1129,26 +1135,74 @@ module BitTagged = struct
      if so, and otherwise is2 (the slow path).
   *)
   let if_both_tagged_scalar env retty is1 is2 =
-    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    if_tagged_scalar env retty is1 is2
+    Func.share_code2 env "is_both_tagged_scalar" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
+      (* Get low two bit *)
+      get_x ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l ^^
+      get_y ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.And))
+    ) ^^
+    G.if_ retty is1 is2
 
-  let can_untag_scalar (n : int64) =
-    let lower_bound = 0L in (* TBR *)
-    let upper_bound = Int64.shift_left 1L 30 in
+  (* 64 bit numbers *)
+
+  let lower_bound = Int64.(neg (shift_left 1L 30))
+  let upper_bound = Int64.shift_left 1L 30
+
+  (* static *)
+  let can_tag_const (n : int64) =
     lower_bound <= n && n < upper_bound
 
-  (* The untag_scalar and tag functions expect 64 bit numbers *)
-  let untag_scalar env =
-    compile_shrU_const scalar_shift ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+  let tag_const i = Int32.shift_left (Int64.to_int32 i) 1
+
+
+  (* dynamic *)
+  let can_tag_i64 env =
+    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
+      compile_const_64 lower_bound ^^ get_x ^^
+      G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
+      get_x ^^ compile_const_64 upper_bound ^^
+      G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+      G.i (Binary (Wasm.Values.I32 I64Op.And))
+    )
+  let can_tag_u64 env =
+    Func.share_code1 env "can_tag_u64" ("x", I64Type) [I32Type] (fun env get_x ->
+      compile_const_64 0L ^^ get_x ^^
+      G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
+      get_x ^^ compile_const_64 upper_bound ^^
+      G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+      G.i (Binary (Wasm.Values.I32 I64Op.And))
+    )
 
   let tag =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_shl_const scalar_shift
+    compile_shl_const 1l
 
-  (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
-  let untag_i32 env = compile_shrU_const scalar_shift
-  let tag_i32 = compile_shl_const scalar_shift
+  let untag env =
+    compile_shrU_const 1l ^^
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+
+  (* 32 bit numbers, dynamic *)
+
+  let can_tag_i32 env =
+    Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
+      compile_unboxed_const (Int64.to_int32 lower_bound) ^^ get_x ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+      get_x ^^ compile_unboxed_const (Int64.to_int32 upper_bound) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.And))
+    )
+  let can_tag_u32 env =
+    Func.share_code1 env "can_tag_u32" ("x", I32Type) [I32Type] (fun env get_x ->
+      compile_unboxed_const 0l ^^ get_x ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+      get_x ^^ compile_unboxed_const (Int64.to_int32 upper_bound) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.And))
+    )
+
+
+  let tag_i32 = compile_shl_const 1l
+  let untag_i32 env = compile_shrU_const 1l
 
 end (* BitTagged *)
 
@@ -1402,8 +1456,8 @@ end (* Closure *)
 module BoxedWord64 = struct
   (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
 
-     Small values (just <2^5 for now, so that both code paths are well-tested)
-     are stored unboxed, tagged, see BitTagged.
+     Small values are stored unboxed, tagged, see BitTagged. The bit-tagging logic is
+     contained in BitTagged; here we just do the boxing.
 
      The heap layout of a BoxedWord64 is:
 
@@ -1416,8 +1470,8 @@ module BoxedWord64 = struct
   let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
-    if BitTagged.can_untag_scalar i
-    then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
+    if BitTagged.can_tag_const i
+    then BitTagged.tag_const i
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits64);
@@ -1433,8 +1487,7 @@ module BoxedWord64 = struct
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+      get_n ^^ BitTagged.can_tag_i64 env ^^
       G.if_ [I32Type]
         (get_n ^^ BitTagged.tag)
         (compile_box env get_n)
@@ -1443,14 +1496,12 @@ module BoxedWord64 = struct
   let unbox env = Func.share_code1 env "unbox_i64" ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag_scalar env)
+        ( get_n ^^ BitTagged.untag env)
         ( get_n ^^ Heap.load_field64 payload_field)
     )
+end (* BoxedWord64 *)
 
-  let _box32 env =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ box env
-
-  let _lit env n = compile_const_64 n ^^ box env
+module Word64 = struct
 
   let compile_add env = G.i (Binary (Wasm.Values.I64 I64Op.Add))
   let compile_signed_sub env = G.i (Binary (Wasm.Values.I64 I64Op.Sub))
@@ -1509,8 +1560,8 @@ module BoxedSmallWord = struct
   let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
-    if BitTagged.can_untag_scalar (Int64.of_int (Int32.to_int i))
-    then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
+    then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits32);
@@ -1526,7 +1577,7 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ [I32Type]
         (get_n ^^ BitTagged.tag_i32)
@@ -1934,36 +1985,30 @@ end
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* Compact BigNums are a representation of signed 31-bit bignums (of the
-     underlying boxed representation `Num`), that fit into an i32.
-     The bits are encoded as
+     underlying boxed representation `Num`), that fit into an i32 as per the
+     BitTagged representation.
 
-       ┌──────────┬───┬──────┐
-       │ mantissa │ 0 │ sign │  = i32
-       └──────────┴───┴──────┘
-     The 2nd LSBit makes unboxed bignums distinguishable from boxed ones,
-     the latter always being skewed pointers.
-
-     By a right rotation one obtains the signed (right-zero-padded) representation,
-     which is usable for arithmetic (e.g. addition-like operators). For some
-     operations (e.g. multiplication) the second argument needs to be furthermore
-     right-shifted. Similarly, for division the result must be left-shifted.
+     Many arithmetic operations can be be performed on this right-zero-padded
+     representation directly. For some operations (e.g. multiplication) the
+     second argument needs to be furthermore right-shifted to avoid overflow.
+     Similarly, for division the result must be left-shifted.
 
      Generally all operations begin with checking whether both arguments are
-     already in unboxed form. If so, the arithmetic can be performed in machine
+     already tagged scalars. If so, the arithmetic can be performed in machine
      registers (fast path). Otherwise one or both arguments need boxing and the
-     arithmetic needs to be carried out on the underlying boxed representation
-     (slow path).
+     arithmetic needs to be carried out on the underlying boxed bignum
+     representation (slow path).
 
      The result appears as a boxed number in the latter case, so a check is
-     performed for possible compactification of the result. Conversely in the
-     former case the 64-bit result is either compactable or needs to be boxed.
+     performed if it can be a tagged scalar. Conversely in the former case the
+     64-bit result can either be a tagged scalar or needs to be boxed.
 
      Manipulation of the result is unnecessary for the comparison predicates.
 
-     For the `pow` operation the check that both arguments are unboxed is not
-     sufficient. Here we count and multiply effective bitwidths to figure out
-     whether the operation will overflow 64 bits, and if so, we fall back to the
-     slow path.
+     For the `pow` operation the check that both arguments are tagged scalars
+     is not sufficient. Here we count and multiply effective bitwidths to
+     figure out whether the operation will overflow 64 bits, and if so, we fall
+     back to the slow path.
    *)
 
   (* TODO: There is some unnecessary result shifting when the div result needs
@@ -1974,55 +2019,24 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
 
-  (* input right-padded with 0 *)
-  let extend =
-    compile_rotr_const 1l
+  (* Tagged scalar to right-0-padded signed i64 *)
+  let extend64 = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* input right-padded with 0 *)
-  let extend64 =
-    extend ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+  (* A variant of BitTagged.can_tag that works on right-0-tagged 64 bit numbers *)
+  let can_tag_padded env =
+    compile_shrS64_const 1L ^^ BitTagged.can_tag_i64 env
 
-  (* predicate for i64 signed value, checking whether
-     the compact representation is viable;
-     bits should be 31 for right-aligned
-     and 32 for right-0-padded values *)
-  let speculate_compact64 bits =
-    compile_shl64_const 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 Int64.(shift_left minus_one bits) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
-
-  (* input is right-padded with 0 *)
-  let compress32 = compile_rotl_const 1l
-
-  (* input is right-padded with 0
-     precondition: upper 32 bits must be same as 32-bit sign,
-     i.e. speculate_compact64 is valid
-   *)
-  let compress64 =
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compress32
-
-  let speculate_compact =
-    compile_shl_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-    compile_unboxed_const Int32.(shift_left minus_one 31) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-
-  let compress =
-    compile_shl_const 1l ^^ compress32
+  (* right-0-padded signed i64 to tagged scalar *)
+  let tag_padded = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
   (* creates a boxed bignum from a right-0-padded signed i64 *)
   let box64 env = compile_shrS64_const 1L ^^ Num.from_signed_word64 env
 
-  (* creates a boxed bignum from an unboxed 31-bit signed (and rotated) value *)
+  (* creates a boxed bignum from an right-0-padded signed i32 *)
   let extend_and_box64 env = extend64 ^^ box64 env
 
   (* check if both arguments are tagged scalars,
-     if so, promote to signed i64 (with right bit (i.e. LSB) zero) and perform the fast path.
+     if so, promote to right-0-padded, signed i64 and perform the fast path.
      Otherwise make sure that both arguments are in heap representation,
      and run the slow path on them.
      In both cases bring the results into normal form.
@@ -2038,9 +2052,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_a ^^ extend64 ^^
             get_b ^^ extend64 ^^
             fast env ^^ set_res64 ^^
-            get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
+            get_res64 ^^ can_tag_padded env ^^
             G.if_ [I32Type]
-              (get_res64 ^^ compress64)
+              (get_res64 ^^ tag_padded)
               (get_res64 ^^ box64 env)
           end
           begin
@@ -2053,22 +2067,22 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             slow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
             G.if_ [I32Type]
-              (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+              (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
               get_res
           end)
 
-  let compile_add = try_unbox2 "B_add" BoxedWord64.compile_add Num.compile_add
+  let compile_add = try_unbox2 "B_add" Word64.compile_add Num.compile_add
 
   let adjust_arg2 code env = compile_shrS64_const 1L ^^ code env
   let adjust_result code env = code env ^^ compile_shl64_const 1L
 
-  let compile_mul = try_unbox2 "B_mul" (adjust_arg2 BoxedWord64.compile_mul) Num.compile_mul
-  let compile_signed_sub = try_unbox2 "B+sub" BoxedWord64.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 "B+div" (adjust_result BoxedWord64.compile_signed_div) Num.compile_signed_div
-  let compile_signed_mod = try_unbox2 "B_mod" BoxedWord64.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 "B_div" (adjust_result BoxedWord64.compile_unsigned_div) Num.compile_unsigned_div
-  let compile_unsigned_rem = try_unbox2 "B_rem" BoxedWord64.compile_unsigned_rem Num.compile_unsigned_rem
-  let compile_unsigned_sub = try_unbox2 "B_sub" BoxedWord64.compile_unsigned_sub Num.compile_unsigned_sub
+  let compile_mul = try_unbox2 "B_mul" (adjust_arg2 Word64.compile_mul) Num.compile_mul
+  let compile_signed_sub = try_unbox2 "B+sub" Word64.compile_signed_sub Num.compile_signed_sub
+  let compile_signed_div = try_unbox2 "B+div" (adjust_result Word64.compile_signed_div) Num.compile_signed_div
+  let compile_signed_mod = try_unbox2 "B_mod" Word64.compile_signed_mod Num.compile_signed_mod
+  let compile_unsigned_div = try_unbox2 "B_div" (adjust_result Word64.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_rem = try_unbox2 "B_rem" Word64.compile_unsigned_rem Num.compile_unsigned_rem
+  let compile_unsigned_sub = try_unbox2 "B_sub" Word64.compile_unsigned_sub Num.compile_unsigned_sub
 
   let compile_unsigned_pow env =
     Func.share_code2 env "B_pow" (("a", I32Type), ("b", I32Type)) [I32Type]
@@ -2093,11 +2107,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           begin
             get_a64 ^^ compile_shrS64_const 1L ^^
             get_b64 ^^ compile_shrS64_const 1L ^^
-            BoxedWord64.compile_unsigned_pow env ^^
+            Word64.compile_unsigned_pow env ^^
             compile_shl64_const 1L ^^ set_res64 ^^
-            get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
+            get_res64 ^^ can_tag_padded env ^^
             G.if_ [I32Type]
-              (get_res64 ^^ compress64)
+              (get_res64 ^^ tag_padded)
               (get_res64 ^^ box64 env)
           end
           begin
@@ -2106,7 +2120,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
             G.if_ [I32Type]
-              (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+              (get_res ^^ Num.truncate_to_word32 env)
               get_res
           end
       end
@@ -2120,7 +2134,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
         G.if_ [I32Type]
-          (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+          (get_res ^^ Num.truncate_to_word32 env)
           get_res
       end)
 
@@ -2131,17 +2145,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
 
-  let can_unbox (n : int) =
-    (* NB: This code is only correct on 64 bit build architectures *)
-    let open Int32 in
-    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
-    let upper_bound = to_int (shift_right_logical minus_one 2) in
-    lower_bound <= n && n <= upper_bound
-
   let vanilla_lit env = function
-    | n when Big_int.is_int_big_int n && can_unbox (Big_int.int_of_big_int n) ->
-      let i = Int32.of_int (Big_int.int_of_big_int n) in
-      Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    | n when Big_int.is_int_big_int n && BitTagged.can_tag_const (Big_int.int64_of_big_int n) ->
+      BitTagged.tag_const (Big_int.int64_of_big_int n)
     | n -> Num.vanilla_lit env n
 
   let compile_neg env =
@@ -2154,9 +2160,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             (compile_unboxed_const (vanilla_lit env (Big_int.big_int_of_int 0x40000000)))
             begin
               compile_unboxed_zero ^^
-              get_n ^^ extend ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-              compress32
+              get_n ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Sub))
             end
         end
         (get_n ^^ Num.compile_neg env)
@@ -2182,10 +2187,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             slow env
           end)
 
-  let compile_eq = try_comp_unbox2 "B_eq" BoxedWord64.compile_eq Num.compile_eq
+  let compile_eq = try_comp_unbox2 "B_eq" Word64.compile_eq Num.compile_eq
   let compile_relop env bigintop =
     try_comp_unbox2 (name_from_relop bigintop)
-      (fun env' -> BoxedWord64.compile_relop env' (i64op_from_relop bigintop))
+      (fun env' -> Word64.compile_relop env' (i64op_from_relop bigintop))
       (fun env' -> Num.compile_relop env' bigintop)
       env
 
@@ -2258,7 +2263,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_res ^^
     get_res ^^ fits_in_vanilla env ^^
     G.if_ [I32Type]
-      (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+      (get_res ^^ Num.truncate_to_word32 env)
       get_res
 
   let compile_store_to_data_buf_unsigned env =
@@ -2268,7 +2273,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
       (fun env ->
@@ -2283,7 +2288,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
       (fun env ->
@@ -2295,7 +2300,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun _ ->
         let set_x, get_x = new_local env "x" in
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 env ^^ set_x ^^
         I32Leb.compile_leb128_size get_x
       )
       (fun env -> Num.compile_data_size_unsigned env)
@@ -2305,7 +2310,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun _ ->
         let set_x, get_x = new_local env "x" in
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 env ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
       (fun env -> Num.compile_data_size_signed env)
@@ -2313,76 +2318,71 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let from_signed_word32 env =
     let set_a, get_a = new_local env "a" in
-    set_a ^^ get_a ^^ get_a ^^
-    speculate_compact ^^
+    set_a ^^
+    get_a ^^ BitTagged.can_tag_i32 env ^^
     G.if_ [I32Type]
-      (get_a ^^ compress)
+      (get_a ^^ BitTagged.tag_i32)
       (get_a ^^ Num.from_signed_word32 env)
 
   let from_signed_word64 env =
     let set_a, get_a = new_local64 env "a" in
-    set_a ^^ get_a ^^ get_a ^^
-    speculate_compact64 31 ^^
+    set_a ^^
+    get_a ^^ BitTagged.can_tag_i64 env ^^
     G.if_ [I32Type]
-      (get_a ^^ compile_shl64_const 1L ^^ compress64)
+      (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_signed_word64 env)
 
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
-    set_a ^^ get_a ^^
-    compile_unboxed_const Int32.(shift_left minus_one 30) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    set_a ^^
+    get_a ^^ BitTagged.can_tag_u32 env ^^
     G.if_ [I32Type]
-      (get_a ^^ compile_rotl_const 2l)
+      (get_a ^^ BitTagged.tag_i32)
       (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
   let from_word64 env =
     let set_a, get_a = new_local64 env "a" in
-    set_a ^^ get_a ^^
-    compile_const_64 Int64.(shift_left minus_one 30) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    set_a ^^
+    get_a ^^ BitTagged.can_tag_u64 env ^^
     G.if_ [I32Type]
-      (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_rotl_const 2l)
+      (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_word64 env)
 
   let truncate_to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      begin
-        get_a ^^ extend ^^ compile_unboxed_one ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-      end
+      (get_a ^^ BitTagged.untag env)
       (get_a ^^ Num.truncate_to_word64 env)
+
   let truncate_to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ BitTagged.untag_i32 env)
       (get_a ^^ Num.truncate_to_word32 env)
 
   let to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ extend64 ^^ compile_shrS64_const 1L)
+      (get_a ^^ BitTagged.untag env)
       (get_a ^^ Num.to_word64 env)
+
   let to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ BitTagged.untag_i32 env)
       (get_a ^^ Num.to_word32 env)
+
   let to_word32_with env =
     let set_a, get_a = new_local env "a" in
     let set_err_msg, get_err_msg = new_local env "err_msg" in
     set_err_msg ^^ set_a ^^
     get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ BitTagged.untag_i32 env)
       (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
 end
 
@@ -6509,7 +6509,7 @@ let compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
                 get_exp ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-                BoxedWord64.compile_unsigned_pow env ^^
+                Word64.compile_unsigned_pow env ^^
                 set_res ^^ get_res ^^ enforce_32_unsigned_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
@@ -6579,7 +6579,7 @@ let compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
                 get_exp ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-                BoxedWord64.compile_unsigned_pow env ^^
+                Word64.compile_unsigned_pow env ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_32_signed_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
@@ -6593,7 +6593,7 @@ let compile_binop env t op =
     get_exp ^^ BigNum.compile_is_negative env ^^
     E.then_trap_with env "negative power" ^^
     get_n ^^ get_exp ^^ pow
-  | Type.(Prim Word64),                       PowOp -> BoxedWord64.compile_unsigned_pow env
+  | Type.(Prim Word64),                       PowOp -> Word64.compile_unsigned_pow env
   | Type.(Prim Int64),                        PowOp ->
     let (set_exp, get_exp) = new_local64 env "exp" in
     set_exp ^^ get_exp ^^
@@ -6603,11 +6603,11 @@ let compile_binop env t op =
     get_exp ^^
     compile_Int64_kernel
       env "pow" BigNum.compile_unsigned_pow
-      (powInt64_shortcut (BoxedWord64.compile_unsigned_pow env))
+      (powInt64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat64),                        PowOp ->
     compile_Nat64_kernel env "pow"
       BigNum.compile_unsigned_pow
-      (powNat64_shortcut (BoxedWord64.compile_unsigned_pow env))
+      (powNat64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "float_pow"
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
