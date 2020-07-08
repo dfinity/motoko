@@ -7217,21 +7217,21 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "char_to_upper", [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.Vanilla e ^^
-      UnboxedSmallWord.unbox_codepoint ^^
+      TaggedSmallWord.untag_codepoint ^^
       E.call_import env "rts" "char_to_upper" ^^
-      UnboxedSmallWord.box_codepoint
+      TaggedSmallWord.tag_codepoint
 
     | OtherPrim "char_to_lower", [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.Vanilla e ^^
-      UnboxedSmallWord.unbox_codepoint ^^
+      TaggedSmallWord.untag_codepoint ^^
       E.call_import env "rts" "char_to_lower" ^^
-      UnboxedSmallWord.box_codepoint
+      TaggedSmallWord.tag_codepoint
 
     | OtherPrim "char_is_whitespace", [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.Vanilla e ^^
-      UnboxedSmallWord.unbox_codepoint ^^
+      TaggedSmallWord.untag_codepoint ^^
       (* char_is_whitespace RTS function returns True/False Motoko values so we
          don't need any marshalling *)
       E.call_import env "rts" "char_is_whitespace"
