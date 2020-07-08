@@ -1178,7 +1178,7 @@ module BitTagged = struct
     compile_shl_const 1l
 
   let untag env =
-    compile_shrU_const 1l ^^
+    compile_shrS_const 1l ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
   (* 32 bit numbers, dynamic *)
@@ -1202,7 +1202,7 @@ module BitTagged = struct
 
 
   let tag_i32 = compile_shl_const 1l
-  let untag_i32 env = compile_shrU_const 1l
+  let untag_i32 env = compile_shrS_const 1l
 
 end (* BitTagged *)
 
