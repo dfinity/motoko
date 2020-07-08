@@ -2202,33 +2202,29 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ slow env)
 
   let fits_unsigned_bits env n =
-    try_unbox I32Type
-      (fun _ -> match n with
-                | _ when n >= 31 -> G.i Drop ^^ Bool.lit true
-                | 30 -> compile_bitand_const 1l ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-                | _ ->
-                  compile_bitand_const
-                    Int32.(logor 1l (shift_left minus_one (n + 2))) ^^
-                  G.i (Test (Wasm.Values.I32 I32Op.Eqz)))
+    try_unbox I32Type (fun _ -> match n with
+        | 32 | 64 -> G.i Drop ^^ Bool.lit true
+        | 8 | 16 ->
+          compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + 1))) ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+        | _ -> assert false
+      )
       (fun env -> Num.fits_unsigned_bits env n)
       env
 
   let fits_signed_bits env n =
     let set_a, get_a = new_local env "a" in
-    try_unbox I32Type
-      (fun _ -> match n with
-                | _ when n >= 31 -> G.i Drop ^^ Bool.lit true
-                | 30 ->
-                  set_a ^^ get_a ^^ compile_shrU_const 31l ^^
-                    get_a ^^ compile_bitand_const 1l ^^
-                    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-                | _ -> set_a ^^ get_a ^^ compile_rotr_const 1l ^^ set_a ^^
-                       get_a ^^ get_a ^^ compile_shrS_const 1l ^^
-                       G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-                       compile_bitand_const
-                         Int32.(shift_left minus_one n) ^^
-                       G.i (Test (Wasm.Values.I32 I32Op.Eqz)))
+    try_unbox I32Type (fun _ -> match n with
+        | 32 | 64 -> G.i Drop ^^ Bool.lit true
+        | 8 | 16 ->
+           set_a ^^
+           get_a ^^ get_a ^^ compile_shrS_const 1l ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+           compile_bitand_const
+             Int32.(shift_left minus_one n) ^^
+           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+        | _ -> assert false
+      )
       (fun env -> Num.fits_signed_bits env n)
       env
 
