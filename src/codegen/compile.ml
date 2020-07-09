@@ -806,6 +806,16 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
+    E.add_func_import env "rts" "grow_memory" [I32Type] [];
+    E.add_func_import env "rts" "object_size" [I32Type] [I32Type];
+    E.add_func_import env "rts" "memcpy_words_skewed" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "is_tagged_scalar" [I32Type] [I32Type];
+    E.add_func_import env "rts" "array_field_addr" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "note_live_size" [I32Type] [];
+    E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
+    E.add_func_import env "rts" "note_reclaimed" [I32Type] [];
+    E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
+    E.add_func_import env "rts" "rust_collect_garbage" [] [];
     ()
 
 end (* RTS *)
@@ -854,13 +864,10 @@ module Heap = struct
 
   let add_reclaimed env =
     (* assumes number of reclaimed bytes on the stack *)
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "reclaimed"))) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-    G.i (GlobalSet (nr (E.get_global env "reclaimed")))
+    E.call_import env "rts" "note_reclaimed"
 
   let get_reclaimed env =
-    G.i (GlobalGet (nr (E.get_global env "reclaimed")))
+    E.call_import env "rts" "get_reclaimed"
 
   let get_memory_size =
     G.i MemorySize ^^
@@ -868,43 +875,10 @@ module Heap = struct
 
   let note_live_size env =
     (* assumes size of live set on the stack *)
-    let (set_live_size, get_live_size) = new_local env "live_size" in
-    set_live_size ^^
-    get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "max_live"))) ^^
-    G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-    G.if_ [] G.nop begin
-      get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-      G.i (GlobalSet (nr (E.get_global env "max_live")))
-    end
+    E.call_import env "rts" "note_live_size"
 
   let get_max_live_size env =
-    G.i (GlobalGet (nr (E.get_global env "max_live")))
-
-
-  (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
-  let grow_memory env =
-    Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      get_ptr ^^ compile_divU_const page_size ^^
-      compile_add_const 1l ^^
-      G.i MemorySize ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
-
-      (* Check that the new heap pointer is within the memory *)
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          G.i MemoryGrow ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow memory."
-        ) G.nop
-      )
+    E.call_import env "rts" "get_max_live_size"
 
   let dyn_alloc_words env = G.i (Call (nr (E.built_in env "alloc_words")))
   let dyn_alloc_bytes env = G.i (Call (nr (E.built_in env "alloc_bytes")))
@@ -928,7 +902,7 @@ module Heap = struct
       set_heap_ptr env ^^
 
       (* grow memory if needed *)
-      get_heap_ptr env ^^ grow_memory env
+      get_heap_ptr env ^^ E.call_import env "rts" "grow_memory"
     );
     Func.define_built_in env "alloc_bytes" [("n", I32Type)] [I32Type] (fun env ->
       let get_n = G.i (LocalGet (nr 0l)) in
@@ -1000,22 +974,7 @@ module Heap = struct
   let memcmp env = E.call_import env "rts" "as_memcmp"
 
   (* Copying words (works on skewed memory addresses) *)
-  let memcpy_words_skewed env =
-    Func.share_code3 env "memcpy_words_skewed" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^ compile_mul_const word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
-          get_from ^^
-          get_i ^^ compile_mul_const word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          load_ptr ^^
-
-          store_ptr
-      )
-    )
+  let memcpy_words_skewed env = E.call_import env "rts" "memcpy_words_skewed"
 
 end (* Heap *)
 
@@ -1121,13 +1080,7 @@ module BitTagged = struct
   let scalar_shift = 2l
 
   let if_tagged_scalar env retty is1 is2 =
-    Func.share_code1 env "is_tagged_scalar" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* Get bit *)
-      get_x ^^
-      compile_bitand_const 0x2l ^^
-      (* Check bit *)
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-    ) ^^
+    E.call_import env "rts" "is_tagged_scalar" ^^
     G.if_ retty is1 is2
 
   (* With two bit-tagged pointers on the stack, decide
@@ -1231,12 +1184,6 @@ module Tagged = struct
     load ^^
     set_tag ^^
     go cases
-
-  (* like branch_default but the tag is known statically *)
-  let branch env retty = function
-    | [] -> G.i Unreachable
-    | [_, code] -> G.i Drop ^^ code
-    | (_, code) :: cases -> branch_default env retty code cases
 
   (* like branch_default but also pushes the scrutinee on the stack for the
    * branch's consumption *)
@@ -2960,8 +2907,7 @@ module Arr = struct
      No difference between mutable and immutable arrays.
   *)
 
-  let header_size = Int32.add Tagged.header_size 1l
-  let element_size = 4l
+  let header_size = Int32.add Tagged.header_size 1l (* 2 *)
   let len_field = Int32.add Tagged.header_size 0l
 
   (* Static array access. No checking *)
@@ -2969,21 +2915,7 @@ module Arr = struct
 
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
-  let idx env =
-    Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      (* No need to check the lower bound, we interpret idx as unsigned *)
-      (* Check the upper bound *)
-      get_idx ^^
-      get_array ^^ Heap.load_field len_field ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      E.else_trap_with env "Array index out of bounds" ^^
-
-      get_idx ^^
-      compile_add_const header_size ^^
-      compile_mul_const element_size ^^
-      get_array ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add))
-    )
+  let idx env = E.call_import env "rts" "array_field_addr"
 
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
@@ -3230,6 +3162,9 @@ module Lifecycle = struct
 
 end (* Lifecycle *)
 
+let collect_garbage env =
+  G.i (Call (nr (E.built_in env "collect")))
+  (* E.call_import env "rts" "rust_collect_garbage" *)
 
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
@@ -3368,7 +3303,7 @@ module Dfinity = struct
 
       G.i (Call (nr (E.built_in env "init"))) ^^
       (* Collect garbage *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
+      collect_garbage env ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3405,7 +3340,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      G.i (Call (nr (E.built_in env "collect")))
+      collect_garbage env
     )) in
 
     E.add_export env (nr {
@@ -3574,48 +3509,8 @@ end (* RTS_Exports *)
 
 
 module HeapTraversal = struct
-  (* Returns the object size (in words) *)
   let object_size env =
-    Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^
-      Tagged.branch env [I32Type]
-        [ Tagged.Bits64,
-          compile_unboxed_const 3l
-        ; Tagged.Bits32,
-          compile_unboxed_const 2l
-        ; Tagged.BigInt,
-          compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
-        ; Tagged.Some,
-          compile_unboxed_const 2l
-        ; Tagged.Variant,
-          compile_unboxed_const 3l
-        ; Tagged.ObjInd,
-          compile_unboxed_const 2l
-        ; Tagged.MutBox,
-          compile_unboxed_const 2l
-        ; Tagged.Array,
-          get_x ^^
-          Heap.load_field Arr.len_field ^^
-          compile_add_const Arr.header_size
-        ; Tagged.Blob,
-          get_x ^^
-          Heap.load_field Blob.len_field ^^
-          compile_add_const 3l ^^
-          compile_divU_const Heap.word_size ^^
-          compile_add_const Blob.header_size
-        ; Tagged.Object,
-          get_x ^^
-          Heap.load_field Object.size_field ^^
-          compile_add_const Object.header_size
-        ; Tagged.Closure,
-          get_x ^^
-          Heap.load_field Closure.len_field ^^
-          compile_add_const Closure.header_size
-        ; Tagged.Concat,
-          compile_unboxed_const 4l
-        ]
-        (* Indirections have unknown size. *)
-    )
+    E.call_import env "rts" "object_size"
 
   let walk_heap_from_to env compile_from compile_to mk_code =
       let (set_x, get_x) = new_local env "x" in
@@ -5008,7 +4903,7 @@ module GC = struct
     get_end_to_space ^^
     get_len ^^ compile_mul_const Heap.word_size ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.grow_memory env ^^
+    E.call_import env "rts" "grow_memory" ^^
 
     (* Copy the referenced object to to space *)
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
@@ -5073,6 +4968,45 @@ module GC = struct
   )
 
   let register env static_roots (end_of_static_space : int32) =
+
+    (* TODO: Not sure about static_roots part ... *)
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env -> 
+      compile_unboxed_const static_roots
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_static_roots";
+      edesc = nr (FuncExport (nr get_static_roots))
+    });
+
+    let get_hp = E.add_fun env "get_hp" (Func.of_body env [] [I32Type] (fun env ->
+      Heap.get_heap_ptr env
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_hp";
+      edesc = nr (FuncExport (nr get_hp))
+    });
+
+    let set_hp = E.add_fun env "set_hp" (Func.of_body env [("new_hp", I32Type)] [] (fun env ->
+      G.i (LocalGet (nr (Int32.of_int 0))) ^^
+      Heap.set_heap_ptr env
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "set_hp";
+      edesc = nr (FuncExport (nr set_hp))
+    });
+
+    let get_heap_base = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
+      Heap.get_heap_base env
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_heap_base";
+      edesc = nr (FuncExport (nr get_heap_base))
+    });
+
     Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
       Heap.get_heap_ptr env ^^
       Heap.get_heap_base env ^^
@@ -5550,7 +5484,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        G.i (Call (nr (E.built_in env "collect"))) ^^
+        collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
@@ -7188,7 +7122,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_max_live_size", [] ->
       SR.Vanilla,
-      Heap.get_max_live_size env ^^ BigNum.from_word64 env
+      Heap.get_max_live_size env ^^ BigNum.from_word32 env
 
     | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,

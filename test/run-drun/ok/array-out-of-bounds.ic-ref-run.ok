@@ -3,8 +3,8 @@
 → install
 ← completed
 → update foo1(0x4449444c0000)
-Trap: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: Array index out of bounds"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: Array index out of bounds"
 → update foo2(0x4449444c0000)
-Trap: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: Array index out of bounds"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: Array index out of bounds"
