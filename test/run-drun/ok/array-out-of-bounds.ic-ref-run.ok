@@ -1,6 +1,6 @@
 → update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\b1\81\80\80\00\1c`\n\7f\7f\7f\7f…
 ← completed: ()
 → update foo1()
 Trap: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"

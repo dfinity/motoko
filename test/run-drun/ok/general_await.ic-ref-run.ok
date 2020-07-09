@@ -1,6 +1,6 @@
 → update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a6\81\80\80\00\1b`\n\7f\7f\7f\7f…
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\b7\81\80\80\00\1d`\n\7f\7f\7f\7f…
 ← completed: ()
 → update Test()
 debug.print: Ack

@@ -1,3 +1,5 @@
+SHELL:=bash -O globstar
+
 CLANG ?= clang-10
 WASM_CLANG ?= clang-10
 WASM_LD ?= wasm-ld-10
@@ -19,7 +21,7 @@ TOMMATHFILES = \
 MUSLFILES = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
   towctrans iswspace iswupper iswlower iswalpha wcschr wcslen \
-  floor scalbn frexp strnlen memchr memset memcpy snprintf vsnprintf vfprintf \
+  floor scalbn frexp strnlen memchr snprintf vsnprintf vfprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \
   stubs
@@ -154,29 +156,45 @@ _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
 _build/wasm/musl_%.o: %.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
 
+.PHONY: _build/wasm/libmotoko_rts.a
+_build/wasm/libmotoko_rts.a: | _build/wasm
+	# NB. codegen-units=1 is to make debugging easier, not strictly
+	# necessary
+	cd motoko-rts && \
+	    xargo rustc --target=wasm32-unknown-emscripten --release -- \
+		-Crelocation-model=pic -Ccodegen-units=1
+	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
+
+.PHONY: _build/native/libmotoko_rts.a
+_build/native/libmotoko_rts.a: | _build/native
+	cd motoko-rts && cargo build --release
+	cp motoko-rts/target/release/libmotoko_rts.a $@
+
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
+RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
+RTS_RUST_NATIVE_O=_build/native/libmotoko_rts.a
 
 #
 # The actual RTS, as we ship it with the compiler
 #
 
-mo-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts.wasm: $(RTS_WASM_O) $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
+		--whole-archive \
 		$+
 
 #
 # A simple program to do simple tests of rts.c, using native compilation
 #
 
-test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+test_rts: test_rts.c $(RTS_NATIVE_O) $(RTS_RUST_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ $+
 
-test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+test_leb128: test_leb128.c $(RTS_NATIVE_O) $(RTS_RUST_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ $+
 
 clean:
-	rm -rf _build mo-rts.wasm test_rts test_leb128
-
+	rm -rf _build mo-rts.wasm test_rts test_leb128 motoko-rts/target
