@@ -76,12 +76,6 @@ export blob_t blob_of_ic_url(text_t t) {
   return r;
 }
 
-static char to_hex_digit(uint8_t n) {
-  if (n < 10) return '0' + n;
-  if (n < 16) return 'A' + (n - 10);
-  rts_trap_with("to_hex_digit: out of range");
-}
-
 // Encode a blob into an IC-URL
 export text_t ic_url_of_blob(blob_t b) {
   size_t n = BLOB_LEN(b);

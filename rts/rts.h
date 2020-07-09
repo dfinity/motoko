@@ -99,4 +99,6 @@ export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 
 export as_ptr blob_of_text(as_ptr);
 
+char to_hex_digit(uint8_t);
+
 #endif /* RTS_H */

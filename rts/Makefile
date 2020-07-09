@@ -138,6 +138,7 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 #
 
 RTSFILES=rts idl bigint float char buf utf8_valid closure-table text blob url
+RTS_RUST_FILES=to_hex_digit
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
@@ -154,14 +155,22 @@ _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
 _build/wasm/musl_%.o: %.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
 
+_build/wasm/%_rs.o: %.rs | _build/wasm
+	rustc $< --target=wasm32-unknown-emscripten -O --crate-type=lib -Crelocation-model=pic --emit=obj -o $@
+
+_build/native/%_rs.o: %.rs | _build/native
+	rustc $< -O --crate-type=lib -Crelocation-model=pic --emit=obj -o $@
+
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
+RTS_RUST_WASM_O=$(RTS_RUST_FILES:%=_build/wasm/%_rs.o)
+RTS_RUST_NATIVE_O=$(RTS_RUST_FILES:%=_build/native/%_rs.o)
 
 #
 # The actual RTS, as we ship it with the compiler
 #
 
-mo-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts.wasm: $(RTS_WASM_O) $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
@@ -171,12 +180,11 @@ mo-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 # A simple program to do simple tests of rts.c, using native compilation
 #
 
-test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+test_rts: test_rts.c $(RTS_NATIVE_O) $(RTS_RUST_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ $+
 
-test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+test_leb128: test_leb128.c $(RTS_NATIVE_O) $(RTS_RUST_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ $+
 
 clean:
 	rm -rf _build mo-rts.wasm test_rts test_leb128
-
