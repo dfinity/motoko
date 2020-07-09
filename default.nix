@@ -22,16 +22,18 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  llvmBuildInputs = [
+  rtsBuildInputs = [
     nixpkgs.clang_10 # for native/wasm building
     nixpkgs.lld_10 # for wasm building
+    nixpkgs.rustc
+    nixpkgs.cargo
   ];
 
-  # When compiling natively, we want to use `clang` (which is a nixpkgs
-  # provided wrapper that sets various include paths etc).
-  # But for some reason it does not handle building for Wasm well, so
-  # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
+    # When compiling natively, we want to use `clang` (which is a nixpkgs
+    # provided wrapper that sets various include paths etc).
+    # But for some reason it does not handle building for Wasm well, so
+    # there we use plain clang-10. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_10}/bin/clang"
     export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
@@ -129,7 +131,7 @@ rec {
     src = subpath ./rts;
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = llvmBuildInputs;
+    buildInputs = rtsBuildInputs;
 
     preBuild = ''
       ${llvmEnv}
@@ -203,7 +205,7 @@ rec {
             wasmtime
             nixpkgs.sources.esm
           ] ++
-          llvmBuildInputs;
+          rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .
