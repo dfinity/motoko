@@ -3393,7 +3393,8 @@ module Dfinity = struct
       Blob.of_size_copy env
         (fun env -> system_call env "ic0" "msg_caller_size")
         (fun env -> system_call env "ic0" "msg_caller_copy") 0l
-    | _ -> assert false
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
 
   let reject env arg_instrs =
     match E.mode env with
@@ -7269,7 +7270,6 @@ and compile_exp (env : E.t) ae exp =
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
 
     | ICCallerPrim, [] ->
-      assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
       Dfinity.caller env
 
     | ICCallPrim, [f;e;k;r] ->
