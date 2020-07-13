@@ -2,21 +2,58 @@ import Prim "mo:prim";
 
 Prim.debugPrint(debug_show (true));
 Prim.debugPrint(debug_show (false));
+
+// nat
 Prim.debugPrint(debug_show (-42000000000000));
 Prim.debugPrint(debug_show (-42000000));
 Prim.debugPrint(debug_show (-42000));
 Prim.debugPrint(debug_show (-42));
+Prim.debugPrint(debug_show (-2));
+Prim.debugPrint(debug_show (-1));
 Prim.debugPrint(debug_show (-0));
 Prim.debugPrint(debug_show (+0));
+Prim.debugPrint(debug_show (+1));
+Prim.debugPrint(debug_show (+2));
 Prim.debugPrint(debug_show (+42));
 Prim.debugPrint(debug_show (+42000));
 Prim.debugPrint(debug_show (+42000000));
 Prim.debugPrint(debug_show (+420000000000000));
+
+// int
 Prim.debugPrint(debug_show (0));
+Prim.debugPrint(debug_show (1));
+Prim.debugPrint(debug_show (2));
 Prim.debugPrint(debug_show (42));
 Prim.debugPrint(debug_show (42000));
 Prim.debugPrint(debug_show (42000000));
 Prim.debugPrint(debug_show (420000000000000));
+
+
+// int corner cases
+Prim.debugPrint(debug_show (+0x7FFFFFFE));
+Prim.debugPrint(debug_show (+0x7FFFFFFF));
+Prim.debugPrint(debug_show (+0x80000000));
+Prim.debugPrint(debug_show (+0x80000001));
+Prim.debugPrint(debug_show (+0x8FFFFFFF));
+Prim.debugPrint(debug_show (+0x100000000));
+Prim.debugPrint(debug_show (+0x100000001));
+Prim.debugPrint(debug_show (-0x7FFFFFFE));
+Prim.debugPrint(debug_show (-0x7FFFFFFF));
+Prim.debugPrint(debug_show (-0x80000000));
+Prim.debugPrint(debug_show (-0x80000001));
+Prim.debugPrint(debug_show (-0x8FFFFFFF));
+Prim.debugPrint(debug_show (-0x100000000));
+Prim.debugPrint(debug_show (-0x100000001));
+
+// nat corner cases
+Prim.debugPrint(debug_show (0x7FFFFFFE));
+Prim.debugPrint(debug_show (0x7FFFFFFF));
+Prim.debugPrint(debug_show (0x80000000));
+Prim.debugPrint(debug_show (0x80000001));
+Prim.debugPrint(debug_show (0x8FFFFFFF));
+Prim.debugPrint(debug_show (0x100000000));
+Prim.debugPrint(debug_show (0x100000001));
+
 Prim.debugPrint(debug_show (42,-42,()));
 Prim.debugPrint(debug_show ("Foobar", null, null, ?23));
 Prim.debugPrint(debug_show ([]));
