@@ -8,9 +8,7 @@ type render_input = {
   declarations : Extract.doc list;  (** The list of declarations to process *)
 }
 
-let is_tuple_type typ =
-  match typ.Source.it with Syntax.TupT _ | Syntax.ParT _ -> true | _ -> false
-
+(** Does a given type need to be parenthesized? *)
 let is_type_atom typ =
   match typ.Source.it with
   | Syntax.PathT _ | Syntax.PrimT _ | Syntax.ArrayT _ | Syntax.ParT _

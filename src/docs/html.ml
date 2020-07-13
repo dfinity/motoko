@@ -93,7 +93,7 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       let ty_args = html_of_typ_binders typ_binders in
       let ty_arg =
-        if is_tuple_type arg then html_of_type arg
+        if is_type_atom arg then html_of_type arg
         else string "(" ++ html_of_type arg ++ string ")"
       in
       html_of_func_sort func_sort

@@ -111,7 +111,7 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;
       plain_of_typ_binders buf typ_binders;
-      if Common.is_tuple_type arg then plain_of_typ buf arg
+      if Common.is_type_atom arg then plain_of_typ buf arg
       else (
         bprintf buf "(";
         plain_of_typ buf arg;
