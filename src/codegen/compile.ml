@@ -6883,9 +6883,7 @@ and compile_exp (env : E.t) ae exp =
       | Int8, Word8
       | Word8, Nat8
       | Word8, Int8 ->
-        SR.Vanilla,
-        compile_exp_vanilla env ae e ^^
-        G.nop
+        compile_exp env ae e
 
       | Int, Int64 ->
         SR.UnboxedWord64,
