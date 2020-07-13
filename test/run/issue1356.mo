@@ -55,4 +55,4 @@ assert (matchInt(1073741823));
 assert (match8(42));
 assert (match16(42));
 
-// CHECK-LABEL: (func $start
+// CHECK-LABEL: (func $init
