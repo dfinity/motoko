@@ -38,9 +38,9 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "ref": "joachim/no-WordToInt",
+        "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "d25c7df75c3939e5667d1571647d110addfad48c",
+        "rev": "b0381a88e9d48047e3a04b9f1a0adfdc97c40612",
         "type": "git"
     },
     "musl-wasi": {
