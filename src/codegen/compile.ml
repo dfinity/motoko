@@ -7946,11 +7946,16 @@ and conclude_module env init_fi_o start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
-  let elems = List.map (fun (fi, fp) -> nr {
+  (* fi = function index
+     fp = function pointer = index of the function in the module table *)
+  let compare_elems (_fi1, fp1) (_fi2, fp2) = compare fp1 fp2 in
+  let elems_sorted = List.sort compare_elems (E.get_elems env) in
+
+  let elems = nr {
     index = nr 0l;
-    offset = nr (G.to_instr_list (compile_unboxed_const fp));
-    init = [ nr fi ];
-    }) (E.get_elems env) in
+    offset = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I32 (Int32.of_int 0))))));
+    init = List.map (fun (fi, _) -> nr fi) elems_sorted;
+  } in
 
   let table_sz = E.get_end_of_table env in
 
@@ -7958,7 +7963,7 @@ and conclude_module env init_fi_o start_fi_o =
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
-      elems;
+      elems = [ elems ];
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
       memories;
