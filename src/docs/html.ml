@@ -73,8 +73,7 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.NamedT (id, t) ->
       string "(" ++ html_of_typ_item (Some id, t) ++ string ")"
   | Syntax.OptT typ ->
-      if is_type_atom typ then string "?" ++ html_of_type typ
-      else string "?(" ++ html_of_type typ ++ string ")"
+      string "?" ++ html_of_type typ
   | Syntax.TupT typ_list ->
       string "("
       ++ join_with (string ", ") (List.map html_of_typ_item typ_list)
@@ -92,10 +91,7 @@ let rec html_of_type : Syntax.typ -> t =
       ++ string "}"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       let ty_args = html_of_typ_binders typ_binders in
-      let ty_arg =
-        if is_type_atom arg then html_of_type arg
-        else string "(" ++ html_of_type arg ++ string ")"
-      in
+      let ty_arg = html_of_type arg in
       html_of_func_sort func_sort
       ++ ty_args
       ++ ty_arg
