@@ -421,19 +421,12 @@ func word8ToNat8(n : Word8) : Nat8 = (prim "num_conv_Word8_Nat8" : Word8 -> Nat8
 
 func natToWord8(n : Nat) : Word8 = (prim "num_conv_Nat_Word8" : Nat -> Word8) n;
 func intToWord8(n : Int) : Word8 = (prim "num_conv_Int_Word8" : Int -> Word8) n;
-func word8ToInt(n : Word8) : Int = (prim "num_conv_Word8_Int" : Word8 -> Int) n;
-
 func natToWord16(n : Nat) : Word16 = (prim "num_conv_Nat_Word16" : Nat -> Word16) n;
 func intToWord16(n : Int) : Word16 = (prim "num_conv_Int_Word16" : Int -> Word16) n;
-func word16ToInt(n : Word16) : Int = (prim "num_conv_Word16_Int" : Word16 -> Int) n;
-
 func natToWord32(n : Nat) : Word32 = (prim "num_conv_Nat_Word32" : Nat -> Word32) n;
 func intToWord32(n : Int) : Word32 = (prim "num_conv_Int_Word32" : Int -> Word32) n;
-func word32ToInt(n : Word32) : Int = (prim "num_conv_Word32_Int" : Word32 -> Int) n;
-
 func natToWord64(n : Nat) : Word64 = (prim "num_conv_Nat_Word64" : Nat -> Word64) n;
 func intToWord64(n : Int) : Word64 = (prim "num_conv_Int_Word64" : Int -> Word64) n;
-func word64ToInt(n : Word64) : Int = (prim "num_conv_Word64_Int" : Word64 -> Int) n;
 
 func charToWord32(c : Char) : Word32 = (prim "num_conv_Char_Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> Char) w;
