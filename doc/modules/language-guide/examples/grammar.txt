@@ -64,7 +64,7 @@
     <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> <return_typ>
 
 <typ_tag> ::= 
-    <tag> (<return_typ_nullary>)?
+    <tag> (<return_typ>)?
 
 <typ_bind> ::= 
     <id> '<:' <typ>
