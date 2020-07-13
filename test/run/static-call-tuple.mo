@@ -15,7 +15,7 @@ tup.0();
 // CHECK: call $foobar1
 // CHECK: call $foobar1a
 
-// CHECK: func $start
+// CHECK: func $init
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar2
 // CHECK: call $foobar2a

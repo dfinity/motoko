@@ -10,6 +10,6 @@ foobar2();
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar1
 
-// CHECK: func $start
+// CHECK: func $init
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar2
