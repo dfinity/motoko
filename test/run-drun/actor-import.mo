@@ -22,3 +22,7 @@ actor a {
 //SKIP run-ir
 //SKIP run-low
 
+// Skip running on drun for now; hard to pass a `--actor-alias` that works for
+// both drun and ic-ref-run
+//SKIP comp
+
