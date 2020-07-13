@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.4",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "9362d9cad7d3b80b933f4c001ce6eab456dfa6f3",
+        "rev": "a7748a6cd1497e3855d7a6c2aab2726960224852",
         "type": "git"
     },
     "libtommath": {
@@ -63,10 +63,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "41aa2272feb21b1300b9f99de3f8371a6ddd8986",
-        "sha256": "0qj3x0jcsz3lbia93a06dzvp2psayxxqxly62kjmsywvsm0picby",
+        "rev": "2f92f283348a390ce7be2269f2b273c8ef359621",
+        "sha256": "1sqv330s1hnsxkwndm4llbkz1xlrlpclxggvx1jm51ccymf00pdz",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/41aa2272feb21b1300b9f99de3f8371a6ddd8986.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/2f92f283348a390ce7be2269f2b273c8ef359621.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
