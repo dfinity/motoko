@@ -116,6 +116,9 @@ and exp' at note = function
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "caller";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (es = []);
+    I.PrimE (I.ICCallerPrim, [])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->

@@ -477,6 +477,15 @@ func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> F
 
 let floatToText = @text_of_Float;
 
+// Configurable Float formatter
+// mode:
+//  0) fixed format "%.*f"
+//  1) exponent format "%.*e"
+//  2) generic format "%.*g"
+//  3) hexadecimal format "%.*h"
+//  _) invalid (traps)
+func floatToFormattedText(f : Float, prec : Nat8, mode : Nat8) : Text = (prim "fmtFloat->Text" : (Float, Nat8, Nat8) -> Text) (f, prec, mode);
+
 // Trigonometric and transcendental functions
 
 func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
@@ -530,6 +539,10 @@ func blobOfPrincipal(id : Principal) : Blob = {
 
 func principalOfActor(act : actor {}) : Principal = {
   ((prim "cast" : (actor {}) -> Principal) act)
+};
+
+func caller() : Principal = {
+  ((prim "caller" : () -> Principal) ())
 };
 
 |}

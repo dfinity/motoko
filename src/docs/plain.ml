@@ -95,7 +95,7 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       bprintf buf "}"
   | Syntax.TupT typ_list ->
       bprintf buf "(";
-      sep_by buf ", " (plain_of_typ buf) typ_list;
+      sep_by buf ", " (plain_of_typ_item buf) typ_list;
       bprintf buf ")"
   | Syntax.AsyncT (_scope, typ) ->
       bprintf buf "async ";
@@ -103,6 +103,10 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
   | Syntax.ParT typ ->
       bprintf buf "(";
       plain_of_typ buf typ;
+      bprintf buf ")"
+  | Syntax.NamedT (id, typ) ->
+      bprintf buf "(";
+      plain_of_typ_item buf (Some id, typ);
       bprintf buf ")"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;
@@ -135,6 +139,11 @@ and plain_of_typ_field : Buffer.t -> Syntax.typ_field -> unit =
   plain_of_mut buf field.it.Syntax.mut;
   bprintf buf "%s : " field.it.Syntax.id.it;
   plain_of_typ buf field.it.Syntax.typ
+
+and plain_of_typ_item : Buffer.t -> Syntax.typ_item -> unit =
+ fun buf (oid, t) ->
+  Option.iter (fun id -> bprintf buf "%s : " id.it) oid;
+  plain_of_typ buf t
 
 let opt_typ : Buffer.t -> Syntax.typ option -> unit =
  fun buf ->

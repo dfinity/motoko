@@ -238,7 +238,7 @@ let error_shared env t at fmt =
 
 let as_domT t =
   match t.Source.it with
-  | TupT ts -> ts
+  | TupT tis -> List.map snd tis
   | _ -> [t]
 
 let as_codomT sort t =
@@ -361,7 +361,7 @@ and check_typ' env typ : T.typ =
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
   | TupT typs ->
-    T.Tup (List.map (check_typ env) typs)
+    T.Tup (List.map (fun (_, t) -> check_typ env t) typs)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs typ.at in
@@ -410,6 +410,8 @@ and check_typ' env typ : T.typ =
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
   | ParT typ ->
+    check_typ env typ
+  | NamedT (_, typ) ->
     check_typ env typ
 
 and check_typ_field env s typ_field : T.field =
@@ -1208,6 +1210,10 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
     t'
+  | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
+    let {T.typ; _} = List.find (fun T.{lab; typ} -> lab = id.it) fs in
+    check_exp env typ exp1 ;
+    t
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1754,10 +1760,6 @@ and check_stab env sort scope fields =
     | (T.Object | T.Module), Some stab, _ ->
       local_error env stab.at
         "misplaced stability declaration on field of non-actor";
-      []
-    | T.Actor, None, (VarD _ | LetD _) ->
-      warn env ef.it.dec.at
-        "missing stability declaration on actor field";
       []
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
