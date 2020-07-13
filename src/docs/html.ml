@@ -72,8 +72,7 @@ let rec html_of_type : Syntax.typ -> t =
   | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
   | Syntax.NamedT (id, t) ->
       string "(" ++ html_of_typ_item (Some id, t) ++ string ")"
-  | Syntax.OptT typ ->
-      string "?" ++ html_of_type typ
+  | Syntax.OptT typ -> string "?" ++ html_of_type typ
   | Syntax.TupT typ_list ->
       string "("
       ++ join_with (string ", ") (List.map html_of_typ_item typ_list)

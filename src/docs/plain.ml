@@ -78,8 +78,8 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       plain_of_typ buf ty;
       bprintf buf "]"
   | Syntax.OptT typ ->
-        bprintf buf "?";
-        plain_of_typ buf typ
+      bprintf buf "?";
+      plain_of_typ buf typ
   | Syntax.VariantT typ_tags ->
       bprintf buf "{";
       sep_by buf "; "
