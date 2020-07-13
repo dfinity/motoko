@@ -3184,7 +3184,7 @@ module Lifecycle = struct
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
-    | InPostUpgrade -> [Idle]
+    | InPostUpgrade -> [PreInit]
 
   let get env =
     compile_unboxed_const ptr ^^
