@@ -79,14 +79,7 @@ let rec html_of_type : Syntax.typ -> t =
       ++ string ")"
   | Syntax.VariantT typ_tags ->
       string "{"
-      ++ join_with (string "; ")
-           (List.map
-              (fun typ_tag ->
-                string
-                  (Printf.sprintf "#%s : "
-                     typ_tag.Source.it.Syntax.tag.Source.it)
-                ++ html_of_type typ_tag.Source.it.Syntax.typ)
-              typ_tags)
+      ++ join_with (string "; ") (List.map html_of_typ_tag typ_tags)
       ++ string "}"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       let ty_args = html_of_typ_binders typ_binders in
@@ -104,6 +97,14 @@ let rec html_of_type : Syntax.typ -> t =
       ++ string "{ "
       ++ join_with (string "; ") (List.map html_of_typ_field fields)
       ++ string " }"
+
+and html_of_typ_tag : Syntax.typ_tag -> t =
+ fun typ_tag ->
+  string (Printf.sprintf "#%s" typ_tag.Source.it.Syntax.tag.Source.it)
+  ++
+  match typ_tag.Source.it.Syntax.typ.Source.it with
+  | Syntax.TupT [] -> nil
+  | _ -> string " : " ++ html_of_type typ_tag.Source.it.Syntax.typ
 
 and html_of_typ_bind : Syntax.typ_bind -> t =
  fun typ_bind ->
