@@ -40,8 +40,21 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "d1d0e6949818d05f72c517c12756d1a02bf2e424",
+        "rev": "b0381a88e9d48047e3a04b9f1a0adfdc97c40612",
         "type": "git"
+    },
+    "motoko-matchers": {
+        "branch": "v0.0.5",
+        "builtin": false,
+        "description": null,
+        "homepage": "http://kritzcreek.github.io/motoko-matchers",
+        "owner": "kritzcreek",
+        "repo": "motoko-matchers",
+        "rev": "b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3",
+        "sha256": "0dy29y8r7k6sshbm96g3f6avcbpl55sazqj2wvpvjxz82xq3vfcn",
+        "type": "tarball",
+        "url": "https://github.com/kritzcreek/motoko-matchers/archive/b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "musl-wasi": {
         "branch": "master",
