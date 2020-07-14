@@ -497,7 +497,7 @@ exp_un(B) :
     { e }
   | x=tag
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
-  | x=tag e=exp_nullary(ob)
+  | x=tag e=exp_post(ob)
     { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
@@ -664,7 +664,7 @@ pat_un :
     { p }
   | x=tag
     { TagP(x, TupP [] @! at $sloc) @! at $sloc }
-  | x=tag p=pat_nullary
+  | x=tag p=pat_un
     { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
