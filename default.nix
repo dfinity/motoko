@@ -392,8 +392,7 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc -C test
-      make MOC=moc -C examples
+      make MOC=moc VESSEL_PKGS="--package matchers ${nixpkgs.sources.motoko-matchers}/src" -C test
     '';
   };
 
