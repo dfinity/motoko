@@ -22,20 +22,18 @@ foobaz2();
 
 // There might be a way around using CHECK-DAG, but I am not sure.
 
-
-// CHECK: func $go
-// CHECK-NOT: call_indirect
-// CHECK: call $foobar1
-
-// CHECK: func $foobar2
-// CHECK-NOT: call_indirect
-// CHECK: call $fuzz2
-
-// CHECK: func $foobar1
-// CHECK-NOT: call_indirect
-// CHECK: call $fuzz1
-
-// CHECK: func $init
+// CHECK-LABEL: (func $init
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar2
 
+// CHECK-LABEL: (func $go
+// CHECK-NOT: call_indirect
+// CHECK: call $foobar1
+
+// CHECK-LABEL: (func $foobar2
+// CHECK-NOT: call_indirect
+// CHECK: call $fuzz2
+
+// CHECK-LABEL: (func $foobar1
+// CHECK-NOT: call_indirect
+// CHECK: call $fuzz1
