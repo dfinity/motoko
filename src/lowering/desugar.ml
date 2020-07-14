@@ -192,7 +192,7 @@ and obj at s self_id es obj_typ =
     build_obj at T.Object self_id es obj_typ
   | S.Module ->
     build_obj at T.Module self_id es obj_typ
-  | S.Actor _p -> build_actor at self_id es obj_typ (* TODO *)
+  | S.Actor p -> build_actor p at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
@@ -223,7 +223,7 @@ and call_system_func_opt name es =
       -> Some (callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
-and build_actor at self_id es obj_typ =
+and build_actor p at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
@@ -238,6 +238,15 @@ and build_actor at self_id es obj_typ =
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let ds =
+    let v = fresh_var "caller" T.caller in
+    letD v (primE I.ICCallerPrim []) ::
+    letP (pat p)
+      (newObjE T.Object
+         [{ it = {Ir.name = "caller"; var = id_of_var v};
+            at = no_region;
+            note = T.caller }]
+         T.ctxt)
+    ::
     varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
     ::
     nary_funcD get_state []

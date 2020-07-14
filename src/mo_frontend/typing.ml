@@ -2101,7 +2101,7 @@ and infer_dec_valdecs env dec : Scope.t =
         (adjoin {env with pre = true} obj_scope)
         decs obj_scope
     in
-    let sort, _ = check_obj_sort_pat env obj_sort_pat in
+    let sort = obj_sort obj_sort_pat in
     let obj_typ = object_of_scope env sort fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
