@@ -188,8 +188,11 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
-  | T.Actor -> build_actor at self_id es obj_typ
+  | S.Object ->
+    build_obj at T.Object self_id es obj_typ
+  | S.Module ->
+    build_obj at T.Module self_id es obj_typ
+  | S.Actor _p -> build_actor at self_id es obj_typ (* TODO *)
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
@@ -302,7 +305,7 @@ and stabilize stab_opt d =
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
-  let obj_e = newObjE s.it fs obj_typ in
+  let obj_e = newObjE s fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e

@@ -199,7 +199,7 @@ let is_module dec =
   let open Source in let open Syntax in
   match dec.it with
   | ExpD e | LetD (_, e) ->
-    (match e.it with ObjE (s, _) -> s.it = Type.Module | _ -> false)
+    (match e.it with ObjE (s, _) -> s.it = Module | _ -> false)
   | _ -> false
 
 let rec lib_of_prog' imps at = function
@@ -208,7 +208,7 @@ let rec lib_of_prog' imps at = function
   | ds ->
     let open Source in let open Syntax in
     let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
-    let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
+    let obj = {it = ObjE (Module @@ at, fs); at; note = empty_typ_note} in
     imps, {it = ExpD obj; at; note = empty_typ_note}
 
 let lib_of_prog f prog =

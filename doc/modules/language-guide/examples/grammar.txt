@@ -15,6 +15,11 @@
     'actor'
     'module'
 
+<obj_sort_pat> ::= 
+    'object'
+    'actor' ('(' <pat> ')')?
+    'module'
+
 <func_sort_opt> ::= 
     <empty>
     'shared' 'query'?
@@ -160,7 +165,7 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    'actor' <text_like>
+    'actor' '[' <text_like> ']'
     'not' <exp_un>
     'debug_show' <exp_un>
 
@@ -277,9 +282,9 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort> <id>? '='? <obj_body>
+    <obj_sort_pat> <id>? '='? <obj_body>
     <sort_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
-    (<obj_sort>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
+    (<obj_sort_pat>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
     'ignore' <exp>
 
 <dec> ::= 

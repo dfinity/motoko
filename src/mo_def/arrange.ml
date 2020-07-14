@@ -20,7 +20,7 @@ let rec exp e = match e.it with
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort_pat s] @ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
@@ -115,6 +115,11 @@ and obj_sort s = match s.it with
   | Type.Module -> Atom "Module"
   | Type.Memory -> Atom "Memory"
 
+and obj_sort_pat s = match s.it with
+  | Object -> Atom "Object"
+  | Actor p -> "Actor" $$ [pat p]
+  | Module -> Atom "Module"
+
 and sort_pat sp = match sp.it with
   | Type.Local -> Atom "Local"
   | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
@@ -184,11 +189,11 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, tp, p, rt, s, i', efs) ->
+  | ClassD (x, tp, p, rt, sp, i', efs) ->
     "ClassD" $$ id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
-      obj_sort s; id i'
+      obj_sort_pat sp; id i'
     ] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it
