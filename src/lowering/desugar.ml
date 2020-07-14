@@ -419,6 +419,11 @@ and dec' at n d = match d with
   | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
+    let op = match s.it with
+      | S.Module -> None
+      | S.Object -> None
+      | S.Actor { it = S.WildP; _} -> None
+      | S.Actor p -> Some p in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -434,7 +439,7 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let args, wrap, control, _n_res = to_args n.S.note_typ None p in
+    let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
@@ -515,8 +520,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   in
 
   (* In source, the context pattern is outside the argument pattern,
-  but in the IR, paramteres are bound first. So if there is a context pattern,
-  we _must_ create fresh names for the parameters and bind the actual paramters
+  but in the IR, parameters are bound first. So if there is a context pattern,
+  we _must_ create fresh names for the parameters and bind the actual parameters
   inside the wrapper. *)
   let must_wrap = po != None in
 

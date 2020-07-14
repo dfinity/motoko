@@ -2056,13 +2056,13 @@ and infer_dec_typdecs env dec : Scope.t =
     }
   | ClassD (id, binds, pat, _typ_opt, obj_sort_pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
-    (*TODO obj_sort_pat *)
+    let sort, ve0 = check_obj_sort_pat {env with pre = true} obj_sort_pat in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
-    let env' = adjoin_typs {env with pre = true} te ce in
+    let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
-    let t = infer_obj env'' (obj_sort obj_sort_pat) fields dec.at in
+    let t = infer_obj env'' sort fields dec.at in
     let k = T.Def (T.close_binds cs tbs, T.close cs t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
