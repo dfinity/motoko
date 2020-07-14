@@ -8,9 +8,15 @@ actor ({caller = creator}) a {
      return c;
   };
 
+  public shared ctxt func c2 () : async Principal {
+     return d;
+  };
+
 
 };
 
+
 ignore a.c1(); //OR-CALL ingress c1 0x4449444C0000
+ignore a.c2(); //OR-CALL ingress c2 0x4449444C0000
 
 

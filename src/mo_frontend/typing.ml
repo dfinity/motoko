@@ -2056,6 +2056,7 @@ and infer_dec_typdecs env dec : Scope.t =
     }
   | ClassD (id, binds, pat, _typ_opt, obj_sort_pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
+    (*TODO obj_sort_pat *)
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
@@ -2093,15 +2094,15 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       {it = ObjE (obj_sort_pat, fields); at; _}
-    ) ->
+) ->
+    let sort, ve = check_obj_sort_pat { env with pre = true } obj_sort_pat in
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
       infer_block_valdecs
-        (adjoin {env with pre = true} obj_scope)
+        (adjoin (adjoin_vals {env with pre = true} ve) obj_scope)
         decs obj_scope
     in
-    let sort = obj_sort obj_sort_pat in
     let obj_typ = object_of_scope env sort fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
