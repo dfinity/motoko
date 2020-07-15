@@ -2095,7 +2095,7 @@ and infer_dec_valdecs env dec : Scope.t =
       {it = VarP id; _} as pat,
       {it = ObjE (obj_sort_pat, fields); at; _}
 ) ->
-    let sort, ve = check_obj_sort_pat { env with pre = true } obj_sort_pat in
+    let sort, ve = check_obj_sort_pat {env with pre = true} obj_sort_pat in
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
