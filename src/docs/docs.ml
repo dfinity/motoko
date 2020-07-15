@@ -14,7 +14,9 @@ let write_file : string -> string -> unit =
 
 let extract : string -> string * doc list =
  fun in_file ->
-  let parse_result = Pipeline.parse_file' Lexer.NormalWithTrivia Source.no_region in_file in
+  let parse_result =
+    Pipeline.parse_file' Lexer.NormalWithTrivia Source.no_region in_file
+  in
   match parse_result with
   | Error err ->
       Diag.print_messages err;
