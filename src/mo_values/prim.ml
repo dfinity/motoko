@@ -347,4 +347,37 @@ let prim =
       num_conv_prim p1 p2
     | _ -> assert false
     end
+
+  | "char_to_upper" ->
+      fun _ v k ->
+        begin match Uucp.Case.Map.to_upper (Uchar.of_int (as_char v)) with
+        | `Uchars [c] -> k (Char (Uchar.to_int c))
+        | `Uchars _ ->
+            (* RTS implementation of to_upper returns the input for characters
+               that map to multiple characters in uppercase versions, so to be
+               in sync with that we do the same here *)
+            k v
+        | `Self -> k v
+        end
+
+  | "char_to_lower" ->
+      fun _ v k ->
+        begin match Uucp.Case.Map.to_lower (Uchar.of_int (as_char v)) with
+        | `Uchars [c] -> k (Char (Uchar.to_int c))
+        | `Uchars _ -> k v (* same as above, in char_to_upper *)
+        | `Self -> k v
+        end
+
+  | "char_is_whitespace" ->
+      fun _ v k -> k (Bool (Uucp.White.is_white_space (Uchar.of_int (as_char v))))
+
+  | "char_is_lowercase" ->
+      fun _ v k -> k (Bool (Uucp.Case.is_lower (Uchar.of_int (as_char v))))
+
+  | "char_is_uppercase" ->
+      fun _ v k -> k (Bool (Uucp.Case.is_upper (Uchar.of_int (as_char v))))
+
+  | "char_is_alphabetic" ->
+      fun _ v k -> k (Bool (Uucp.Alpha.is_alphabetic (Uchar.of_int (as_char v))))
+
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))
