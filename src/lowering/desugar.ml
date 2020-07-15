@@ -580,12 +580,19 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 and comp_unit ds : Ir.comp_unit =
   let open Ir in
 
-  let find_last_expr (ds,e) =
-    let find_last_actor = function
-      | ds1, {it = ActorE (ds2, fs, up, t); _} ->
-        (* NB: capture! *)
+  let find_last_expr (ds, e) =
+    let find_last_actor (ds1, e1) =
+      (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
+      let e1' = match (ds1, e1.it) with
+        | _ :: _ , ActorE _
+        | _ :: _, FuncE (_, _, _, [], [], _, {it = ActorE _;_}) ->
+          Rename.exp Rename.Renaming.empty e1
+        | _ -> e1
+      in
+      match e1'.it with
+      | ActorE (ds2, fs, up, t) ->
         ActorU (ds1 @ ds2, fs, up, t)
-      | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
+      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) ->
         ActorU (ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
@@ -599,7 +606,8 @@ and comp_unit ds : Ir.comp_unit =
     | _ ->
       find_last_actor (ds, e) in
 
-  (* find the last actor. This hack can hopefully go away
+
+    (* find the last actor. This hack can hopefully go away
      after Claudios improvements to the source *)
   if ds = [] then ProgU [] else
   find_last_expr (block false ds)
