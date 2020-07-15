@@ -78,20 +78,11 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       plain_of_typ buf ty;
       bprintf buf "]"
   | Syntax.OptT typ ->
-      if Common.is_type_atom typ then (
-        bprintf buf "?";
-        plain_of_typ buf typ )
-      else (
-        bprintf buf "?(";
-        plain_of_typ buf typ;
-        bprintf buf ")" )
+      bprintf buf "?";
+      plain_of_typ buf typ
   | Syntax.VariantT typ_tags ->
       bprintf buf "{";
-      sep_by buf "; "
-        (fun (typ_tag : Syntax.typ_tag) ->
-          bprintf buf "#%s : " typ_tag.it.Syntax.tag.it;
-          plain_of_typ buf typ_tag.it.Syntax.typ)
-        typ_tags;
+      sep_by buf "; " (plain_of_typ_tag buf) typ_tags;
       bprintf buf "}"
   | Syntax.TupT typ_list ->
       bprintf buf "(";
@@ -111,13 +102,18 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;
       plain_of_typ_binders buf typ_binders;
-      if Common.is_tuple_type arg then plain_of_typ buf arg
-      else (
-        bprintf buf "(";
-        plain_of_typ buf arg;
-        bprintf buf ")" );
+      plain_of_typ buf arg;
       bprintf buf " -> ";
       plain_of_typ buf res
+
+and plain_of_typ_tag : Buffer.t -> Syntax.typ_tag -> unit =
+ fun buf typ_tag ->
+  bprintf buf "#%s" typ_tag.it.Syntax.tag.it;
+  match typ_tag.it.Syntax.typ.it with
+  | Syntax.TupT [] -> ()
+  | _ ->
+      bprintf buf " : ";
+      plain_of_typ buf typ_tag.it.Syntax.typ
 
 and plain_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
  fun buf typ_bind ->
