@@ -548,4 +548,8 @@ func principalOfActor(act : actor {}) : Principal = {
   ((prim "cast" : (actor {}) -> Principal) act)
 };
 
+func caller() : Principal = {
+  ((prim "caller" : () -> Principal) ())
+};
+
 |}

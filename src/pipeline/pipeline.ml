@@ -81,15 +81,15 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let parse_with mode lexer parser name =
+let parse_with' mode lexer parser name =
   try
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let tokenizer, _ = Lexer.tokenizer mode lexer in
+    let tokenizer, get_trivia_table = Lexer.tokenizer mode lexer in
     let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer name in
     dump_prog Flags.dump_parse prog;
-    Ok prog
+    Ok (prog, get_trivia_table ())
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
@@ -99,6 +99,9 @@ let parse_with mode lexer parser name =
         right = Lexer.convert_pos end_;
       } "syntax" msg
 
+let parse_with mode lexer parser name =
+  Result.map fst (parse_with' mode lexer parser name)
+
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
@@ -106,7 +109,7 @@ let parse_string name s : parse_result =
   | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
 
-let parse_file at filename : parse_result =
+let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.print_messages
     (List.map
@@ -114,11 +117,18 @@ let parse_file at filename : parse_result =
        messages);
   let lexer = Lexing.from_channel ic in
   let parse = Parser.Incremental.parse_prog in
-  let result = parse_with Lexer.Normal lexer parse filename in
+  let result = parse_with' mode lexer parse filename in
   close_in ic;
   match result with
-  | Ok prog -> Diag.return (prog, filename)
+  | Ok (prog, triv_table) -> Diag.return (prog, triv_table, filename)
   | Error e -> Error [e]
+
+let parse_file at filename : parse_result =
+  Diag.map (fun (p, _, f) -> p, f) (parse_file' Lexer.Normal at filename)
+
+let parse_file_with_trivia at filename : (Syntax.prog * Lexer.triv_table) Diag.result =
+  Diag.map (fun (p, t, _) -> p, t) (parse_file' Lexer.NormalWithTrivia at filename)
+
 
 (* Import file name resolution *)
 
