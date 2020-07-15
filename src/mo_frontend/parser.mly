@@ -740,7 +740,7 @@ dec_nonvar :
   | s=obj_sort_pat xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
-        if (obj_sort s) = Type.Actor then List.map share_expfield efs else efs
+        if obj_sort s = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=sort_pat FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
