@@ -2006,7 +2006,7 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       {it = ObjE (obj_sort_pat, fields); at; _}
     ) ->
-    let decs = List.map (fun {it = { vis; dec; _ }; _} -> dec) fields in
+    let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
     let obj_scope_typs = infer_block_typdecs env' decs in
