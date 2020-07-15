@@ -1500,7 +1500,7 @@ object value  `{ <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of th
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
 
-* if the projection occurs as the target an assignment statement;
+* if the projection occurs as the target of an assignment expression then
   `v` is the mutable location of the field `<id>`.
 * otherwise,
   `v` (of type `T`) is the value currently stored in mutable field `<id>`.
@@ -1602,8 +1602,8 @@ If `var` is absent from `var? T` then the value `v` is the constant value `vi`.
 
 Otherwise,
 
-* if the indexing occurs as the target an assignment statement
-  then `v` is the `i`th location in the array;
+* if the indexing occurs as the target of an assignment expression
+  then `v` is the `i`th mutable location in the array;
 * otherwise,
   `v` is `vi`, the value currently stored in the `i`th location of the array.
 
