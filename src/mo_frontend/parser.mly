@@ -279,7 +279,7 @@ seplist1(X, SEP) :
 
 %inline obj_sort_opt :
   | (* empty *) { Object @@ no_region }
-  | p = obj_sort_pat  { p }
+  | p=obj_sort_pat { p }
 
 %inline mode_opt :
   | (* empty *) { Type.Write }
@@ -754,7 +754,7 @@ dec_nonvar :
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
-        if (obj_sort s) = Type.Actor then List.map share_expfield efs else efs
+        if obj_sort s = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }

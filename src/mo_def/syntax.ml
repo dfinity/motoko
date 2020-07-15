@@ -131,9 +131,9 @@ type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
 type obj_sort_pat = obj_sort_pat' Source.phrase
 and obj_sort_pat' =
-  Actor of pat
-| Module
-| Object
+  | Actor of pat
+  | Module
+  | Object
 
 type sugar = bool (* Is the source of a function body a block `<block>`,
                      subject to further desugaring during parse,
