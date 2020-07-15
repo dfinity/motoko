@@ -51,6 +51,7 @@ and typ t = match t.it with
   | PrimT p             -> "PrimT" $$ [Atom (string_of_prim p)]
   | RecordT ts        -> "RecordT" $$ List.map typ_field ts
   | VecT t       -> "VecT" $$ [typ t]
+  | BlobT -> Atom "BlobT"
   | OptT t              -> "OptT" $$ [typ t]
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
   | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
@@ -89,6 +90,7 @@ let rec pp_typ ppf t =
   | PrimT p -> str ppf (string_of_prim p)
   | OptT t -> kwd ppf "opt"; pp_typ ppf t
   | VecT t -> kwd ppf "vec"; pp_typ ppf t
+  | BlobT -> str ppf "blob"
   | RecordT fs -> pp_fields ppf "record" fs
   | VariantT fs -> pp_fields ppf "variant" fs
   | FuncT (ms,s,t) ->

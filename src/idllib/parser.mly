@@ -124,7 +124,7 @@ cons_typ :
   | VEC t=data_typ { VecT t @@ at $sloc }
   | RECORD fs=record_typs { RecordT fs @@ at $sloc }
   | VARIANT fs=variant_typs { VariantT fs @@ at $sloc }
-  | BLOB { VecT (PrimT Nat8 @@ no_region) @@ at $sloc }
+  | BLOB { BlobT @@ at $sloc }
 
 data_typ :
   | t=cons_typ { t }

@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 
-// CHECK: func $start
+// CHECK: func $init
 
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
 

@@ -81,15 +81,15 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let parse_with mode lexer parser name =
+let parse_with' mode lexer parser name =
   try
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let tokenizer, _ = Lexer.tokenizer mode lexer in
+    let tokenizer, get_trivia_table = Lexer.tokenizer mode lexer in
     let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer name in
     dump_prog Flags.dump_parse prog;
-    Ok prog
+    Ok (prog, get_trivia_table ())
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
@@ -99,6 +99,9 @@ let parse_with mode lexer parser name =
         right = Lexer.convert_pos end_;
       } "syntax" msg
 
+let parse_with mode lexer parser name =
+  Result.map fst (parse_with' mode lexer parser name)
+
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
@@ -106,7 +109,7 @@ let parse_string name s : parse_result =
   | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
 
-let parse_file at filename : parse_result =
+let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.print_messages
     (List.map
@@ -114,11 +117,18 @@ let parse_file at filename : parse_result =
        messages);
   let lexer = Lexing.from_channel ic in
   let parse = Parser.Incremental.parse_prog in
-  let result = parse_with Lexer.Normal lexer parse filename in
+  let result = parse_with' mode lexer parse filename in
   close_in ic;
   match result with
-  | Ok prog -> Diag.return (prog, filename)
+  | Ok (prog, triv_table) -> Diag.return (prog, triv_table, filename)
   | Error e -> Error [e]
+
+let parse_file at filename : parse_result =
+  Diag.map (fun (p, _, f) -> p, f) (parse_file' Lexer.Normal at filename)
+
+let parse_file_with_trivia at filename : (Syntax.prog * Lexer.triv_table) Diag.result =
+  Diag.map (fun (p, t, _) -> p, t) (parse_file' Lexer.NormalWithTrivia at filename)
+
 
 (* Import file name resolution *)
 
@@ -165,25 +175,27 @@ let infer_prog senv prog
     | Error _ -> ()
   end;
   phase "Definedness" prog.Source.note;
-  Diag.bind r (fun t_sscope ->
-    Diag.bind (Definedness.check_prog prog) (fun () -> Diag.return t_sscope)
-  )
+  let open Diag.Syntax in
+  let* t_sscope = r in
+  let* () = Definedness.check_prog prog in
+  Diag.return t_sscope
 
 let rec check_progs senv progs : Scope.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
   | p::ps ->
-    Diag.bind (infer_prog senv p) (fun (_t, sscope) ->
-      let senv' = Scope.adjoin senv sscope in
-      check_progs senv' ps
-    )
+    let open Diag.Syntax in
+    let* _t, sscope = infer_prog senv p in
+    let senv' = Scope.adjoin senv sscope in
+    check_progs senv' ps
 
 let check_lib senv lib : Scope.scope Diag.result =
   phase "Checking" (Filename.basename lib.Source.note);
-  Diag.bind (Typing.check_lib senv lib) (fun sscope ->
-    phase "Definedness" (Filename.basename lib.Source.note);
-    Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
-  )
+  let open Diag.Syntax in
+  let* sscope = Typing.check_lib senv lib in
+  phase "Definedness" (Filename.basename lib.Source.note);
+  let* () = Definedness.check_lib lib in
+  Diag.return sscope
 
 (* Parsing libraries *)
 
@@ -321,54 +333,56 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         }]
       else begin
         pending := add ri.Source.it !pending;
-        Diag.bind (parsefn ri.Source.at f) (fun (prog, base) ->
-        Diag.bind (Static.prog prog) (fun () ->
-        Diag.bind (ResolveImport.resolve (resolve_flags ()) prog base) (fun more_imports ->
-        Diag.bind (go_set more_imports) (fun () ->
+        let open Diag.Syntax in
+        let* prog, base = parsefn ri.Source.at f in
+        let* () = Static.prog prog in
+        let* more_imports =
+          ResolveImport.resolve (resolve_flags ()) prog base
+        in
+        let* () = go_set more_imports in
         let lib = lib_of_prog f prog in
-        Diag.bind (check_lib !senv lib) (fun sscope ->
+        let* sscope = check_lib !senv lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
         Diag.return ()
-        )))))
       end
     | Syntax.IDLPath (f, _) ->
-       Diag.bind (Idllib.Pipeline.check_file f) (fun (prog, idl_scope, actor_opt) ->
-       if actor_opt = None then
-         Error [Diag.{
-           sev = Error; at = ri.Source.at; cat = "import";
-           text = Printf.sprintf "file %s does not define a service" f
-         }]
-       else
-         let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
-         let sscope = Scope.lib f actor in
-         senv := Scope.adjoin !senv sscope;
-         Diag.return ()
-       )
+      let open Diag.Syntax in
+      let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
+      if actor_opt = None then
+        Error [Diag.{
+          sev = Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s does not define a service" f
+        }]
+      else
+        let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
+        let sscope = Scope.lib f actor in
+        senv := Scope.adjoin !senv sscope;
+        Diag.return ()
 
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
 
 let load_progs parsefn files senv : load_result =
-  Diag.bind (Diag.traverse (parsefn Source.no_region) files) (fun parsed ->
-  Diag.bind (resolve_progs parsed) (fun rs ->
+  let open Diag.Syntax in
+  let* parsed = Diag.traverse (parsefn Source.no_region) files in
+  let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = Lib.List.concat_map snd rs in
-  Diag.bind (chase_imports parsefn senv libs) (fun (libs, senv') ->
-  Diag.bind (check_progs senv' progs') (fun senv'' ->
+  let* libs, senv' = chase_imports parsefn senv libs in
+  let* senv'' = check_progs senv' progs' in
   Diag.return (libs, progs', senv'')
-  ))))
 
 let load_decl parse_one senv : load_decl_result =
-  Diag.bind parse_one (fun parsed ->
-  Diag.bind (resolve_prog parsed) (fun (prog, libs) ->
-  Diag.bind (chase_imports parse_file senv libs) (fun (libs, senv') ->
-  Diag.bind (infer_prog senv' prog) (fun (t, sscope) ->
+  let open Diag.Syntax in
+  let* parsed = parse_one in
+  let* prog, libs = resolve_prog parsed in
+  let* libs, senv' = chase_imports parse_file senv libs in
+  let* t, sscope = infer_prog senv' prog in
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libs, prog, senv'', t, sscope)
-  ))))
 
 
 (* Interpretation (Source) *)
@@ -440,9 +454,9 @@ let check_string s name : check_result =
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
-  Diag.bind (load_progs parse_file files initial_stat_env)
-    (fun (libs, progs, senv) ->
-      Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv)))
+  let open Diag.Syntax in
+  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
+  Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
 (* Running *)
 
@@ -619,15 +633,17 @@ let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_modul
   Codegen.Compile.compile mode name rts prog_ir
 
 let compile_files mode do_link files : compile_result =
-  Diag.bind (load_progs parse_file files initial_stat_env)
-    (fun (libs, progs, senv) ->
-    Diag.bind (Typing.check_actors senv progs) (fun () ->
-    Diag.return (compile_prog mode do_link libs progs)))
+  let open Diag.Syntax in
+  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
+  let* () = Typing.check_actors senv progs in
+  Diag.return (compile_prog mode do_link libs progs)
 
 let compile_string mode s name : compile_result =
-  Diag.bind (load_decl (parse_string name s) initial_stat_env)
-    (fun (libs, prog, senv, _t, _sscope) ->
-    Diag.return (compile_prog mode false libs [prog]))
+  let open Diag.Syntax in
+  let* libs, prog, senv, _t, _sscope =
+    load_decl (parse_string name s) initial_stat_env
+  in
+  Diag.return (compile_prog mode false libs [prog])
 
 (* Interpretation (IR) *)
 
