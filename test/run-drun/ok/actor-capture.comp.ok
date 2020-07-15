@@ -1,2 +1,0 @@
-Function import not declared: ic0.stable_read
-Fatal error: exception "Assert_failure codegen/compile.ml:4928:11"
