@@ -601,6 +601,7 @@ and comp_unit ds : Ir.comp_unit =
     let find_last_actor = function
       | ds1, {it = ActorE (ds2, fs, up, t); _} ->
         (* NB: capture! *)
+        (* @nomeata: isn't this broken unless dom(ds1) # dom(ds2) ?*)
         ActorU (ds1 @ ds2, fs, up, t)
       | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
         ActorU (ds1 @ ds2, fs, up, t)
