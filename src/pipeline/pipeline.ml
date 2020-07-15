@@ -126,6 +126,9 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
 let parse_file at filename : parse_result =
   Diag.map (fun (p, _, f) -> p, f) (parse_file' Lexer.Normal at filename)
 
+let parse_file_with_trivia at filename : (Syntax.prog * Lexer.triv_table) Diag.result =
+  Diag.map (fun (p, t, _) -> p, t) (parse_file' Lexer.NormalWithTrivia at filename)
+
 
 (* Import file name resolution *)
 

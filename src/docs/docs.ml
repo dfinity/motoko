@@ -1,4 +1,3 @@
-open Mo_frontend
 open Extract
 
 type output_format = Plain | Adoc | Html
@@ -15,13 +14,13 @@ let write_file : string -> string -> unit =
 let extract : string -> string * doc list =
  fun in_file ->
   let parse_result =
-    Pipeline.parse_file' Lexer.NormalWithTrivia Source.no_region in_file
+    Pipeline.parse_file_with_trivia Source.no_region in_file
   in
   match parse_result with
   | Error err ->
       Diag.print_messages err;
       exit 1
-  | Ok ((prog, trivia_table, _), _) ->
+  | Ok ((prog, trivia_table), _) ->
       let module_docs, imports, docs = extract_docs prog trivia_table in
       (module_docs, docs)
 

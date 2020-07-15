@@ -8,8 +8,8 @@ module ResolveImport = Resolve_import
 type no_region_parse_fn = string -> (Syntax.prog * string) Diag.result
 type parse_fn = Source.region -> no_region_parse_fn
 
-val parse_file': Lexer.mode -> Source.region -> string -> (Syntax.prog * Lexer.triv_table * string) Diag.result
 val parse_file: parse_fn
+val parse_file_with_trivia: Source.region -> string -> (Syntax.prog * Lexer.triv_table) Diag.result
 val parse_string: string -> no_region_parse_fn
 
 val print_deps: string -> unit
