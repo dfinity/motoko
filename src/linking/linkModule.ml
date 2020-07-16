@@ -149,9 +149,8 @@ let remove_fun_imports_name_section resolved : name_section -> name_section = fu
     locals_names = List.filter keep ns.locals_names;
   }
 
-let prepend_to_start fi (em : extended_module)  =
+let prepend_to_start fi ftype (em : extended_module)  =
   let imports_n = count_imports is_fun_import em.module_ in
-  let ftype = Lib.List32.length em.module_.types in
   let wrap_fi = Int32.add imports_n (Lib.List32.length em.module_.funcs) in
 
   let wrap_fun = {
@@ -167,7 +166,6 @@ let prepend_to_start fi (em : extended_module)  =
   { em with
     module_ =
       { em.module_ with
-        types = em.module_.types @ [ Wasm.Types.FuncType ([],[]) @@ no_region ];
         funcs = em.module_.funcs @ [ wrap_fun ];
         start = Some (wrap_fi @@ no_region)
       };
@@ -391,8 +389,7 @@ let rename_globals_extended rn (em : extended_module) =
   }
 
 let rename_types rn m =
-  let ty_var' = rn in
-  let ty_var = phrase ty_var' in
+  let ty_var = phrase rn in
 
   let block_type = function
     | VarBlockType tv -> VarBlockType (ty_var tv)
@@ -647,21 +644,63 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   List.iter (check_global_typ em1.module_ dm2) global_resolved12;
   List.iter (check_global_typ dm2 em1.module_) global_resolved21;
 
-  (* Rename types *)
-  let ty_offset2 = Lib.List32.length (em1.module_.types) in
-  let tys2 t = Int32.(add t ty_offset2) in
+  (* Rename types. Both modules have unique types, but when merged we can have
+     duplicates, so we maintain a hash table from function types to their
+     indices and update type indices of function in ths second module. *)
+
+  (* Initially maps function types to their indices in the first module. As we
+     rename types in the second module we add new types here for types that
+     don't exist in the first module. *)
+  let type_indices = Hashtbl.create 100 in
+
+  let add_or_get_ty (ty : Wasm.Types.func_type phrase) =
+    let idx =
+      match Hashtbl.find_opt type_indices ty.it with
+      | None ->
+        let idx = Hashtbl.length type_indices in
+        Hashtbl.add type_indices ty.it idx;
+        idx
+      | Some idx ->
+        idx
+    in
+    Int32.of_int idx
+  in
+
+  (* Add types in the first module *)
+  List.iter (fun ty -> let _ = add_or_get_ty ty in ()) em1.module_.types;
+
+  (* Rename a type in the second module. Argument is the index of the type in
+     the second module. *)
+  let ty_renamer (t : int32) : int32 =
+    let fun_ty = List.nth em2.module_.types (Int32.to_int t) in
+    add_or_get_ty fun_ty
+  in
+
+  (* Rename types in the second module and collect new types in `type_indices` *)
+  let dm2_tys =
+    { (rename_types ty_renamer dm2) with types = [] }
+  in
+
+  (* Generate type section in the final module *)
+  let type_indices_sorted : type_ list =
+    Hashtbl.to_seq type_indices |>
+    List.of_seq |>
+    List.sort (fun (_, idx1) (_, idx2) -> compare idx1 idx2) |>
+    List.map (fun (ty, _) -> (ty @@ no_region))
+  in
 
   (* Inject call to "__wasm_call_ctors" *)
   let add_call_ctors =
     match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") fun_exports2 with
-    | None -> fun em -> em;
-    | Some fi -> prepend_to_start (funs2 fi)
+    | None -> fun em -> em
+    | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], []) @@ no_region))
   in
 
-  assert (dm2.globals = []);
+  assert (dm2_tys.globals = []);
 
   join_modules
     ( em1
+    |> map_module (fun m -> { m with types = type_indices_sorted })
     |> map_module (remove_imports is_fun_import fun_resolved12)
     |> map_name_section (remove_fun_imports_name_section fun_resolved12)
     |> map_module (remove_imports is_global_import global_resolved12)
@@ -671,14 +710,13 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> map_module (set_memory_size new_heap_start)
     |> map_module (set_table_size new_elem_size)
     )
-    ( dm2
+    ( dm2_tys
     |> remove_imports is_fun_import fun_resolved21
     |> remove_imports is_global_import global_resolved21
     |> remove_imports is_memory_import [0l, 0l]
     |> remove_imports is_table_import [0l, 0l]
     |> rename_funcs funs2
     |> rename_globals globals2
-    |> rename_types tys2
     |> remove_export is_fun_export "__wasm_call_ctors"
     )
     ( em2.name
