@@ -1,4 +1,3 @@
-open Mo_frontend
 open Extract
 
 type output_format = Plain | Adoc | Html
@@ -14,17 +13,14 @@ let write_file : string -> string -> unit =
 
 let extract : string -> string * doc list =
  fun in_file ->
-  let tokenizer, get_trivia_table =
-    Lexer.tokenizer Lexer.NormalWithTrivia
-      (Lexing.from_channel (open_in in_file))
-  in
-  let parser =
-    MenhirLib.Convert.Simplified.traditional2revised Parser.parse_prog
-  in
-  let prog = parser tokenizer in_file in
-  let trivia_table = get_trivia_table () in
-  let module_docs, imports, docs = extract_docs prog trivia_table in
-  (module_docs, docs)
+  let parse_result = Pipeline.parse_file_with_trivia Source.no_region in_file in
+  match parse_result with
+  | Error err ->
+      Diag.print_messages err;
+      exit 1
+  | Ok ((prog, trivia_table), _) ->
+      let module_docs, imports, docs = extract_docs prog trivia_table in
+      (module_docs, docs)
 
 let list_files_recursively : string -> string list =
  fun dir ->

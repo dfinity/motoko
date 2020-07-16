@@ -1,5 +1,3 @@
-open Ir_def
-
 open Source
 open Ir
 
@@ -7,13 +5,7 @@ module Renaming = Map.Make(String)
 
 (* One traversal for each syntactic category, named by that category *)
 
-module Stamps = Map.Make(String)
-let stamps = ref Stamps.empty
-
-let fresh_id id =
-  let n = Lib.Option.get (Stamps.find_opt id !stamps) 0 in
-  stamps := Stamps.add id (n + 1) !stamps;
-  Printf.sprintf "%s/%i" id n
+let fresh_id id = Construct.fresh_id id ()
 
 let id rho i =
   try Renaming.find i rho
