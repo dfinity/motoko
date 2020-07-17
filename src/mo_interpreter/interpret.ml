@@ -383,7 +383,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
-    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, Prim.prim s))
+    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, fun env v k ->
+      try Prim.prim s env v k
+      with Invalid_argument s -> trap exp.at "%s" s
+    ))
   | VarE id ->
     begin match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -914,8 +917,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      try interpret_block env p.it (Some ve) (fun v -> vo := Some v)
-      with Invalid_argument s -> trap !last_region "%s" s
+      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in

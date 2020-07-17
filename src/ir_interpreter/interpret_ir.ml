@@ -406,7 +406,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.prim s (context env) arg k
+        (try Prim.prim s (context env) arg k with Invalid_argument s -> trap exp.at "%s" s)
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->
@@ -421,7 +421,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Text (Ic.Url.encode_ic_url (V.as_text v1)))
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.num_conv_prim t1 t2 (context env) arg k
+        k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in
