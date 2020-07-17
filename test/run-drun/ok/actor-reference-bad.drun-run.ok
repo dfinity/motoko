@@ -2,13 +2,13 @@ ingress Canister Id: ic:0100000000000000000000000000000000012D
 ingress System
 debug.print: "ic:C0FEFED00D41":
 debug.print: "":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not an URL
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not an ic: URL
 debug.print: "CI":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not an URL
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not an ic: URL
 debug.print: "https://cern.ch":
 debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')
 debug.print: "ic:":
-debug.print: IC0502: Canister ic:0100000000000000000000000000000000012D trapped: heap out of bounds
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: ic: URL too short
 debug.print: "ic:c0fefed00d41":
 debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit
 debug.print: "ic:ABCDEFGH":

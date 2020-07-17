@@ -5,14 +5,27 @@
 → update go(0x4449444c0000)
 debug.print: "ic:C0FEFED00D41":
 debug.print: "":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an ic: URL"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an ic: URL"
 debug.print: "CI":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an ic: URL"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an ic: URL"
 debug.print: "https://cern.ch":
 Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')"
 debug.print: "ic:":
-ic-ref-run: Out of memory
-
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: ic: URL too short"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: ic: URL too short"
+debug.print: "ic:c0fefed00d41":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
+debug.print: "ic:ABCDEFGH":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
+debug.print: "ic:C0FEFED00DE":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an even number of hex digits"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an even number of hex digits"
+debug.print: "ic:C0FEFED00D42":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: CRC-8 mismatch"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: CRC-8 mismatch"
+← completed: 0x4449444c0000
