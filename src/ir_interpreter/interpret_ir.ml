@@ -413,7 +413,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ActorOfIdBlob t, [v1] ->
         k v1
       | BlobOfIcUrl, [v1] ->
-        begin match Ic.Url.decode_prinicpal (V.as_text v1) with
+        begin match Ic.Url.decode_principal (V.as_text v1) with
           | Ok bytes -> k (V.Text bytes)
           | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
         end

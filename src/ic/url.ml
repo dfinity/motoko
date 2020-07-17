@@ -11,7 +11,7 @@ let checkbytes s : string =
   Buffer.add_int32_be buf (Lib.CRC.crc32 s); (* NB: big endian *)
   Buffer.contents buf
 
-let decode_prinicpal principal : (string, string) result =
+let decode_principal principal : (string, string) result =
   let open Stdlib.String in
 
   if equal principal "" then Error "principal cannot be empty" else
@@ -67,7 +67,7 @@ let parse (f: string) : (parsed, string) result =
     end
   | None ->
     match Lib.String.chop_prefix "ic:" f with
-    | Some principal-> begin match decode_prinicpal f with
+    | Some principal-> begin match decode_principal f with
       | Ok bytes -> Ok (Ic bytes)
       | Error err -> Error err
       end
