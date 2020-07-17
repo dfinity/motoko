@@ -238,15 +238,6 @@ and build_actor p at self_id es obj_typ =
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let ds =
-    let v = fresh_var "caller" T.caller in
-    letD v (primE I.ICCallerPrim []) ::
-    letP (pat p)
-      (newObjE T.Object
-         [{ it = {Ir.name = "caller"; var = id_of_var v};
-            at = no_region;
-            note = T.caller }]
-         T.ctxt)
-    ::
     varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
     ::
     nary_funcD get_state []
@@ -263,6 +254,7 @@ and build_actor p at self_id es obj_typ =
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
+  let actor =
   I.ActorE (ds', fs,
     { I.pre =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
@@ -284,6 +276,30 @@ and build_actor p at self_id es obj_typ =
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
+  in
+  (* insert context pat if necessary *)
+  match p.it with
+  | S.WildP -> actor
+  | _ ->
+    begin
+      match Rename.exp' Rename.Renaming.empty actor with
+      | I.ActorE(ds'', fs'', up'', t'') ->
+        let v = fresh_var "caller" T.caller in
+        I.ActorE (
+            letD v (primE I.ICCallerPrim []) ::
+              letP (pat p)
+                ( newObjE T.Object
+                    [{ it = {Ir.name = "caller"; var = id_of_var v};
+                       at = no_region;
+                       note = T.caller }]
+                    T.ctxt)
+              ::ds'',
+            fs'',
+            up'',
+            t'')
+      | _ -> assert false
+    end
+
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
