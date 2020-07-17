@@ -2,11 +2,11 @@
 
 actor {
   public query func foo() : async actor {} {
-    actor "ic:bfozs-kwa73-7nadi";
+    actor "bfozs-kwa73-7nadi";
   };
 
   public query func bar() : async actor {} {
-    actor ("ic:lsoqw-g6a73-7na" # "do-k725l-5xvnx-3xq");
+    actor ("lsoqw-g6a73-7na" # "do-k725l-5xvnx-3xq");
   }
 
 }

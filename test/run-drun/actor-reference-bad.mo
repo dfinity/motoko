@@ -6,15 +6,12 @@ actor a {
   public func go() : async () {
 
     let tests = [
-      "ic:bfozs-kwa73-7nadi", // a good one
-      "", // missing scheme
-      "CI", // missing colon
-      "https://cern.ch", // wrong scheme
-      "ic:", // empty principal
-      "ic:BFOZS-KWA73-7NADI", // lowercase not allowed
-      "ic:bfozskwa737nadi", // missing dashes
-      "ic:vpgq", // too short
-      "ic:5h74t-uga73-7nadi", // wrong checksum
+      "bfozs-kwa73-7nadi", // a good one
+      "", // empty principal
+      "BFOZS-KWA73-7NADI", // lowercase not allowed
+      "bfozskwa737nadi", // missing dashes
+      "vpgq", // too short
+      "5h74t-uga73-7nadi", // wrong checksum
     ];
 
     for (t in tests.vals()) {

@@ -6,6 +6,11 @@
 
 
 (* Decode a principal according to https://docs.dfinity.systems/public/#textual-ids *)
+let checkbytes s : string =
+  let buf = Buffer.create 4 in
+  Buffer.add_int32_be buf (Lib.CRC.crc32 s); (* NB: big endian *)
+  Buffer.contents buf
+
 let decode_prinicpal principal : (string, string) result =
   let open Stdlib.String in
 
@@ -14,18 +19,21 @@ let decode_prinicpal principal : (string, string) result =
   let isBase32 c = c == '-' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' in
   if not (Lib.Seq.for_all isBase32 (to_seq principal)) then Error "principal must only contain lowercase letters, digits and dashes" else
   (* TODO: We could check that dashes appear at suitable grouping *)
-  let bytes = Lib.Base32.decode principal in
-  if length bytes < 4 then Error "principal too short" else
-  let checkbytes = sub bytes 0 4 in
-  let payload = sub bytes 4 (length bytes - 4) in
-  let checksum = Lib.CRC.crc32 payload in
-  let buf = Buffer.create 4 in
-  Buffer.add_int32_be buf checksum;
-  if checkbytes <> Buffer.contents buf then Error "invalid checksum in principal ID, please check for typos" else
-  Ok payload
+  match Lib.Base32.decode principal with
+  | Error e -> Error e
+  | Ok bytes ->
+    if length bytes < 4 then Error "principal too short" else
+    let payload = sub bytes 4 (length bytes - 4) in
+    if sub bytes 0 4 <> checkbytes payload then Error "invalid checksum in principal ID, please check for typos" else
+    Ok payload
 
-let encode_ic_url bytes : string =
-  "ic:" ^ Lib.Hex.hex_of_bytes bytes ^ Lib.Hex.hex_of_byte (Lib.CRC.crc8 bytes)
+let rec group s =
+  let open String in
+  if length s <= 5 then s else
+  sub s 0 5 ^ "-" ^ group (sub s 5 (length s - 5))
+
+let encode_principal bytes : string =
+  group (Lib.Base32.encode (checkbytes bytes ^ bytes))
 
 type parsed =
   | Package of (string * string)

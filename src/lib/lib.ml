@@ -99,6 +99,7 @@ end
 module Base32 =
 struct
   let decode input = raise (Invalid_argument "not implemented yet")
+  let encode input = raise (Invalid_argument "not implemented yet")
 end
 
 module String =

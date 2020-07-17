@@ -155,7 +155,8 @@ end
 
 module Base32 :
 sig
-  val decode : string -> string
+  val decode : string -> (string, string) result
+  val encode : string -> string
 end
 
 module FilePath :
