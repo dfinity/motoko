@@ -429,8 +429,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjE (sort, fields) ->
-    interpret_obj env sort fields k
+  | ObjE (obj_sort, fields) ->
+    interpret_obj env obj_sort.it fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -794,17 +794,10 @@ and match_context_pat env context_pat c =
 
 (* Objects *)
 
-and interpret_obj env obj_sort_pat fields (k : V.value V.cont) =
-  let self, ve0 =
-    match obj_sort_pat.it with
-    | Module | Object -> env.self, V.Env.empty
-    | Actor context_pat ->
-      let c = V.Obj (V.Env.singleton "caller" (context env)) in
-      let ve0 = match_context_pat env (Some context_pat) c in
-      V.fresh_id (), ve0
-  in
+and interpret_obj env obj_sort fields (k : V.value V.cont) =
+  let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
   let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals { (adjoin_vals env ve0) with self = self } ve_in in
+  let env' = adjoin_vals { env with self = self } ve_in in
   interpret_exp_fields env' fields ve_ex k
 
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
@@ -869,12 +862,13 @@ and interpret_dec env dec (k : V.value V.cont) =
   | TypD _ ->
     k V.unit
   | ClassD (id, _typbinds, pat, _typ_opt, obj_sort_pat, id', fields) ->
-    let context_pat = match obj_sort_pat.it with
-      | Object | Module -> None
-      | Actor pat -> Some pat in
+    let obj_sort, context_pat = match obj_sort_pat.it with
+      | Object -> T.Object, None
+      | Module -> T.Module, None
+      | Actor pat -> T.Actor, Some pat in
     let f = interpret_func env id.it context_pat pat (fun env' k' ->
       let env'' = adjoin_vals env' (declare_id id') in
-      interpret_obj env'' obj_sort_pat fields (fun v' ->
+      interpret_obj env'' obj_sort fields (fun v' ->
         define_id env'' id' v';
         k' v'
       )

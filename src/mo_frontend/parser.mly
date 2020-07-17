@@ -68,7 +68,7 @@ let is_sugared_func_or_module dec = match dec.it with
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
      | ObjE (sort, _) ->
-       sort.it = Module
+       sort.it = Type.Module
      | FuncE _ ->
        true
      | _ -> false)
@@ -187,7 +187,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.typ_field> typ_field
 %type<Mo_def.Syntax.typ_bind> typ_bind
 %type<Mo_def.Syntax.typ list> typ_args
-%type<Source.region -> Mo_def.Syntax.pat> sort_pat_opt actor_pat_opt
+%type<Source.region -> Mo_def.Syntax.pat> sort_pat_opt 
 %type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
 %type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
@@ -272,15 +272,15 @@ seplist1(X, SEP) :
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE { Type.Module @@ at $sloc }
 
-%inline obj_sort_pat :
+%inline class_sort_pat :
   | OBJECT { Object @@ at $sloc }
-  | SHARED p=actor_pat_opt ACTOR  { Actor (p (at $sloc)) @@ at $sloc }
+  | SHARED p=sort_pat_opt ACTOR  { Actor (p (at $sloc)) @@ at $sloc }
   | ACTOR { Actor (WildP @! at $sloc) @@ at $sloc }
   | MODULE { Module @@ at $sloc }
 
-%inline obj_sort_opt :
+%inline  class_sort_opt :
   | (* empty *) { Object @@ no_region }
-  | p=obj_sort_pat { p }
+  | p=class_sort_pat { p }
 
 %inline mode_opt :
   | (* empty *) { Type.Write }
@@ -457,7 +457,7 @@ lit :
 
 (* Default {} to block or object, respectively *)
 bl : { fun ds -> BlockE(ds) }
-ob : { fun ds -> ObjE(Object @@ no_region,
+ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
@@ -472,7 +472,7 @@ exp_nullary(B) :
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
     { e ds @? at $sloc }
   | LCURLY efs=exp_field_list_unamb RCURLY
-    { ObjE(Object @@ at $sloc, efs) @? at $sloc }
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | LCURLY ds=dec_list_unamb RCURLY
     { BlockE(ds) @? at $sloc }
   | x=id
@@ -714,14 +714,6 @@ sort_pat_opt :
   | (* Empty *)
     { fun sloc -> WildP @! sloc }
 
-actor_pat_opt :
-  | p=pat
-    { fun sloc -> p }
-  | (* Empty *)
-    { fun sloc -> WildP @! sloc }
-
-
-
 (* Declarations *)
 
 dec_var :
@@ -738,10 +730,10 @@ dec_nonvar :
       LetD (p', e') @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort_pat xf=id_opt EQ? efs=obj_body
+  | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
-        if obj_sort s = Type.Actor then List.map share_expfield efs else efs
+        if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=sort_pat FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
@@ -751,7 +743,7 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt
+  | s=class_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =

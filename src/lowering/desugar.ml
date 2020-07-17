@@ -71,7 +71,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    obj at s None es note.Note.typ
+    obj at s.it None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -187,12 +187,11 @@ and mut m = match m.it with
   | S.Var -> Ir.Var
 
 and obj at s self_id es obj_typ =
-  match s.it with
-  | S.Object ->
-    build_obj at T.Object self_id es obj_typ
-  | S.Module ->
-    build_obj at T.Module self_id es obj_typ
-  | S.Actor p -> build_actor p at self_id es obj_typ
+  match s with
+  | T.Object | T.Module ->
+    build_obj at s self_id es obj_typ
+  | T.Actor -> build_actor at self_id es obj_typ
+  | T.Memory -> assert false
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
@@ -223,7 +222,7 @@ and call_system_func_opt name es =
       -> Some (callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
-and build_actor p at self_id es obj_typ =
+and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
@@ -254,7 +253,6 @@ and build_actor p at self_id es obj_typ =
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  let actor =
   I.ActorE (ds', fs,
     { I.pre =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
@@ -276,29 +274,6 @@ and build_actor p at self_id es obj_typ =
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
-  in
-  (* insert context pat if necessary *)
-  match p.it with
-  | S.WildP -> actor
-  | _ ->
-    begin
-      match Rename.exp' Rename.Renaming.empty actor with
-      | I.ActorE(ds'', fs'', up'', t'') ->
-        let v = fresh_var "caller" T.caller in
-        I.ActorE (
-            letD v (primE I.ICCallerPrim []) ::
-              letP (pat p)
-                ( newObjE T.Object
-                    [{ it = {Ir.name = "caller"; var = id_of_var v};
-                       at = no_region;
-                       note = T.caller }]
-                    T.ctxt)
-              ::ds'',
-            fs'',
-            up'',
-            t'')
-      | _ -> assert false
-    end
 
 
 and stabilize stab_opt d =
@@ -435,11 +410,11 @@ and dec' at n d = match d with
   | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
-    let op = match s.it with
-      | S.Module -> None
-      | S.Object -> None
-      | S.Actor { it = S.WildP; _} -> None
-      | S.Actor p -> Some p in
+    let obj_sort, op = match s.it with
+      | S.Module -> T.Module, None
+      | S.Object -> T.Object, None
+      | S.Actor { it = S.WildP; _} -> T.Actor, None
+      | S.Actor p -> T.Actor, Some p in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -458,7 +433,7 @@ and dec' at n d = match d with
     let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s (Some self_id) es obj_typ;
+         { it = obj at obj_sort (Some self_id) es obj_typ;
            at = at;
            note = Note.{ def with typ = obj_typ } });
       at = at;

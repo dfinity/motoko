@@ -15,9 +15,9 @@
     'actor'
     'module'
 
-<obj_sort_pat> ::= 
+<class_sort_pat> ::= 
     'object'
-    'shared' (<pat>)? 'actor'
+    'shared' (<pat_nullary>)? 'actor'
     'actor'
     'module'
 
@@ -283,9 +283,9 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort_pat> <id>? '='? <obj_body>
+    <obj_sort> <id>? '='? <obj_body>
     <sort_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
-    (<obj_sort_pat>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
+    (<class_sort_pat>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
     'ignore' <exp>
 
 <dec> ::= 

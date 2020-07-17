@@ -193,7 +193,6 @@ let string_of_symbol symbol : string =
   | X (N N_seplist_typ_tag_semicolon_) -> "seplist(<typ_tag>,<semicolon>)"
   | X (N N_seplist1_typ_tag_semicolon_) -> "seplist1(<typ_tag>,<semicolon>)"
   | X (N N_sort_pat_opt) -> "<sort_pat_opt>"
-  | X (N N_actor_pat_opt) -> "<actor_pat_opt>"
   | X (N N_text_like) -> "<text_like>"
   | X (N N_typ) -> "<typ>"
   | X (N N_typ_args) -> "<typ_args>"
