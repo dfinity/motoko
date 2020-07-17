@@ -416,7 +416,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let open Ic.Url in
         begin match parse (V.as_text v1) with
           | Ok (Ic bytes) -> k (V.Text bytes)
-          | _ -> trap exp.at "could not parse %s as an actor reference"  (V.as_text v1)
+          | _ -> trap exp.at "could not parse %S as an actor reference"  (V.as_text v1)
         end
       | IcUrlOfBlob, [v1] ->
         k (V.Text (Ic.Url.encode_ic_url (V.as_text v1)))

@@ -418,6 +418,7 @@ end
 module FilePath =
 struct
   let normalise file_path =
+    if file_path = "" then "" else
     let has_trailing_slash =
       Stdlib.Option.is_some (String.chop_suffix "/" file_path) in
     let has_leading_slash = not (Filename.is_relative file_path) in
