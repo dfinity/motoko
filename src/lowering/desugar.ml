@@ -57,7 +57,7 @@ and exp e =
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE e ->
-    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e]))
+    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -160,15 +160,13 @@ and exp' at note = function
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
-and url e =
-    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+and url e at =
+    (* Set position explicitly *)
     match e.it with
-    | S.AnnotE (e,_) -> url e
+    | S.AnnotE (e,_) -> url e at
     | _ ->
-      let transformed = typed_phrase' (url' e) e in
-      { transformed with note = Note.{ transformed.note with typ = T.blob } }
-
-and url' e at _ _ = I.(PrimE (BlobOfIcUrl, [exp e]))
+      let e' = exp e in
+      { it = I.(PrimE (BlobOfIcUrl, [e'])); at; note = Note.{def with typ = T.blob; eff = e'.note.eff } }
 
 and lexp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
