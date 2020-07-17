@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-actor ({caller = creator}) a {
+shared {caller = creator} actor a {
 
   let c : Principal = creator;
   let d = creator;

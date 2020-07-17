@@ -17,7 +17,8 @@
 
 <obj_sort_pat> ::= 
     'object'
-    'actor' ('(' <pat> ')')?
+    'shared' (<pat>)? 'actor'
+    'actor'
     'module'
 
 <func_sort_opt> ::= 
@@ -165,7 +166,7 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    'actor' '[' <text_like> ']'
+    'actor' <text_like>
     'not' <exp_un>
     'debug_show' <exp_un>
 

@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-actor ({caller = c}) a {
+shared {caller = c} actor a {
   let c  = 1;
 };
 

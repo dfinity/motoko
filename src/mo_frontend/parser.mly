@@ -274,7 +274,8 @@ seplist1(X, SEP) :
 
 %inline obj_sort_pat :
   | OBJECT { Object @@ at $sloc }
-  | ACTOR p=actor_pat_opt { Actor (p (at $sloc)) @@ at $sloc }
+  | SHARED p=actor_pat_opt ACTOR  { Actor (p (at $sloc)) @@ at $sloc }
+  | ACTOR { Actor (WildP @! at $sloc) @@ at $sloc }
   | MODULE { Module @@ at $sloc }
 
 %inline obj_sort_opt :
@@ -515,7 +516,7 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | ACTOR LBRACKET e=text_like RBRACKET
+  | ACTOR e=text_like
     { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
@@ -714,7 +715,7 @@ sort_pat_opt :
     { fun sloc -> WildP @! sloc }
 
 actor_pat_opt :
-  | LPAR p=pat RPAR
+  | p=pat
     { fun sloc -> p }
   | (* Empty *)
     { fun sloc -> WildP @! sloc }
