@@ -6,6 +6,7 @@ actor a {
   public func go() : async () {
 
     let tests = [
+      "ic:C0FEFED00D41", // a good one
       "", // missing scheme
       "CI", // missing colon
       "https://cern.ch", // wrong scheme
@@ -17,7 +18,7 @@ actor a {
     ];
 
     for (t in tests.vals()) {
-      Prim.debugPrint(t # ":");
+      Prim.debugPrint(debug_show t # ":");
       try (await async ignore (actor(t) : actor {}))
       catch (e) Prim.debugPrint(Prim.errorMessage(e))
     }

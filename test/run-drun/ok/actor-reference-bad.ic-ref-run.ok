@@ -3,15 +3,16 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-debug.print: :
+debug.print: "ic:C0FEFED00D41":
+debug.print: "":
 Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
-debug.print: CI:
+debug.print: "CI":
 Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an URL"
-debug.print: https://cern.ch:
+debug.print: "https://cern.ch":
 Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')"
-debug.print: ic::
+debug.print: "ic:":
 ic-ref-run: Out of memory
 
