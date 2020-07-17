@@ -95,6 +95,7 @@ let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavo
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
+  let trace = Printexc.get_backtrace () in
   Printf.printf "%!";
   let at = Source.string_of_region !last_region in
   Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
@@ -103,7 +104,7 @@ let print_exn flags exn =
     (fun x d -> Printf.eprintf "%s = %s\n" x (string_of_def flags d))
     !last_env.vals;
   Printf.eprintf "\n";
-  Printexc.print_backtrace stderr;
+  Printf.eprintf "%s" trace;
   Printf.eprintf "%!"
 
 (* Scheduling *)
@@ -406,7 +407,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.prim s (context env) arg k
+        (try Prim.prim s (context env) arg k with Invalid_argument s -> trap exp.at "%s" s)
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->
@@ -415,13 +416,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let open Ic.Url in
         begin match parse (V.as_text v1) with
           | Ok (Ic bytes) -> k (V.Text bytes)
-          | _ -> trap exp.at "could not parse %s as an actor reference"  (V.as_text v1)
+          | _ -> trap exp.at "could not parse %S as an actor reference"  (V.as_text v1)
         end
       | IcUrlOfBlob, [v1] ->
         k (V.Text (Ic.Url.encode_ic_url (V.as_text v1)))
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.num_conv_prim t1 t2 (context env) arg k
+        k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in
