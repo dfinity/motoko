@@ -493,6 +493,17 @@ and pat_fields pfs = List.map pat_field pfs
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
 and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+
+  let mergeE ds e =
+    match e.it with
+    | Ir.ActorE _ ->
+      (match Rename.exp' Rename.Renaming.empty e.it with
+       |  Ir.ActorE (ds', fs, up, ot) ->
+         { e with it = Ir.ActorE (ds @ ds', fs, up, ot) }
+       | _ -> assert false)
+    | _ -> blockE ds e
+  in
+
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
@@ -529,7 +540,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     |  _ ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
-      (fun e -> blockE [letP (pat p) (varE v)] e)
+      (fun e -> mergeE [letP (pat p) (varE v)] e)
   in
 
   let args, wrap =
@@ -553,7 +564,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_var vs,
-      (fun e -> blockE [letP (pat p) (tupE (List.map varE vs))] e)
+      (fun e -> mergeE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
   let wrap_po e =
@@ -561,7 +572,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
-      blockE
+      mergeE
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
@@ -580,6 +591,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
         blockE [letP pat {exp with it = Ir.AsyncE (tb,wrap_po e',t)} ] unit
+      | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
     else wrap_po e in
 

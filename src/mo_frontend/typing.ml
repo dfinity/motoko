@@ -451,7 +451,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
 
 and check_typ_bind_sorts env tbs =
   (* assert, don't error, since this should be a syntactic invariant of parsing *)
-  List.iteri (fun i tb -> assert (i == 0 || (tb.T.sort = T.Type))) tbs;
+  List.iteri (fun i tb -> assert (i = 0 || (tb.T.sort = T.Type))) tbs;
 
 and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
@@ -793,7 +793,7 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | ObjE (obj_sort, fields) ->
-    if not in_prog && obj_sort.it == T.Actor then
+    if not in_prog && obj_sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if obj_sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
     infer_obj env' obj_sort fields exp.at
@@ -1253,7 +1253,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
       try
-        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *) 
+        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *)
         let ts =
           Bi_match.bi_match_subs (scope_of_env env) tbs
             [(t2, t_arg); (t_ret, t)] in
@@ -2119,16 +2119,21 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, class_sort_pat, _, _) ->
     let sort = obj_sort class_sort_pat in
-    if sort = T.Actor then
-      error_in [Flags.ICMode; Flags.RefMode] env dec.at
-        "actor classes are not supported; use an actor declaration instead";
-     let rec is_unit_pat p = match p.it with
+    let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
       | _ -> false in
-    if sort = T.Actor && not (is_unit_pat pat) then
-      error_in [Flags.RefMode] env dec.at
-        "actor classes with parameters are not supported; use an actor declaration instead";
+    if sort = T.Actor then begin
+      if not env.in_prog then
+        error_in [Flags.ICMode; Flags.RefMode] env dec.at
+          "inner actor classes are not supported; any actor class must come last in your program";
+      if not (is_anonymous id) then
+        error_in [Flags.ICMode; Flags.RefMode] env dec.at
+          "named actor classes are not supported; use an anonymous class instead";
+      if not (is_unit_pat pat) then
+        error_in [Flags.RefMode] env dec.at
+          "actor classes with parameters are not supported; use an actor declaration instead";
+    end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
@@ -2170,6 +2175,8 @@ let check_lib scope lib : Scope.t Diag.result =
 let is_actor_dec d =
   match d.it with
   | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+  | ClassD (id, typ_binds, pat, typ_opt, class_sort_pat, self_id, fields) ->
+    obj_sort class_sort_pat = T.Actor
   | _ -> false
 
 let check_actors scope progs : unit Diag.result =
@@ -2183,7 +2190,7 @@ let check_actors scope progs : unit Diag.result =
           | [d] -> ()
           | (d::ds) when is_actor_dec d ->
             recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
-              "an actor must be the last declaration in a program"
+              "an actor or actor class must be the last declaration in a program"
           | (d::ds) -> go ds in
         go prog
       ) progs

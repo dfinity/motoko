@@ -345,3 +345,6 @@ let obj_sort osp =
   | Actor _ -> Type.Actor
   | Module -> Type.Module
   | Object -> Type.Object
+
+let is_anonymous id =
+  Lib.(String.chop_prefix "anon-" id.it <> None)

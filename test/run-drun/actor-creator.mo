@@ -1,5 +1,4 @@
-import Prim "mo:prim";
-shared {caller = creator} actor a {
+shared {caller = creator} actor class () {
 
   let c : Principal = creator;
   let d = creator;
@@ -15,8 +14,8 @@ shared {caller = creator} actor a {
 
 };
 
-
-ignore a.c1(); //OR-CALL ingress c1 0x4449444C0000
-ignore a.c2(); //OR-CALL ingress c2 0x4449444C0000
+// no way to test an anonymous class in the interpreter
+(); //OR-CALL ingress c1 0x4449444C0000
+(); //OR-CALL ingress c2 0x4449444C0000
 
 

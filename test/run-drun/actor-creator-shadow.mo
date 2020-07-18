@@ -1,14 +1,14 @@
-import Prim "mo:prim";
-shared {caller = c} actor c {
+shared {caller = c} actor class () {
   let c = 1;
 
   public shared ctxt func c1 () : async Nat {
+     assert (c == 1);
      return c;
   };
 
 };
 
-ignore c.c1(); //OR-CALL ingress c1 0x4449444C0000
+(); //OR-CALL ingress c1 0x4449444C0000
 
 
 
