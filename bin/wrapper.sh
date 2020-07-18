@@ -23,7 +23,7 @@ real[mo-ld]=src/mo-ld
 hint[mo-ld]="make -C $rel_root/src mo-ld"
 real[didc]=src/didc
 hint[didc]="make -C $rel_root/src didc"
-real[deser]=src/didc
+real[deser]=src/deser
 hint[deser]="make -C $rel_root/src deser"
 
 real[MOC_RTS]=rts/mo-rts.wasm
