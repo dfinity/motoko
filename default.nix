@@ -211,10 +211,6 @@ rec {
         checkPhase = ''
             patchShebangs .
             ${llvmEnv}
-            export MOC=moc
-            export MO_LD=mo-ld
-            export DIDC=didc
-            export DESER=deser
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
@@ -295,7 +291,6 @@ rec {
     buildInputs = [ moc ];
     buildPhase = ''
       patchShebangs .
-      export MOC=moc
       make all
     '';
     installPhase = ''
@@ -486,7 +481,9 @@ rec {
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
-    shellHook = llvmEnv;
+    shellHook = llvmEnv + ''
+      export PATH="${toString ./bin}:$PATH"
+    '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
