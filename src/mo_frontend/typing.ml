@@ -655,19 +655,19 @@ let array_obj t =
     ] in
   let mut t = immut t @
     [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
-  T.Object,
+  Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
   let open T in
-  T.Object,
+  Object,
   [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
 let text_obj () =
   let open T in
-  T.Object,
+  Object,
   [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
