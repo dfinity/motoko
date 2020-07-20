@@ -6948,7 +6948,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae e ^^
         Prim.prim_shiftWordNtoUnsigned env (TaggedSmallWord.shift_of_type t1)
 
-      | (Int8|Word8|Int16|Word16), Int ->
+      | (Int8|Int16), Int ->
         SR.Vanilla,
         compile_exp_vanilla env ae e ^^
         Prim.prim_shiftWordNtoSigned env (TaggedSmallWord.shift_of_type t1)
@@ -6958,7 +6958,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Prim.prim_word32toNat env
 
-      | (Int32|Word32), Int ->
+      | Int32, Int ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Prim.prim_word32toInt env
@@ -6968,7 +6968,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         BigNum.from_word64 env
 
-      | (Int64|Word64), Int ->
+      | Int64, Int ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         BigNum.from_signed_word64 env

@@ -97,6 +97,7 @@ let last_env = ref (env_of_scope {trace = false; print_depth = 2} empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
+  let trace = Printexc.get_backtrace () in
   Printf.printf "%!";
   let at = Source.string_of_region !last_region in
   Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
@@ -104,7 +105,7 @@ let print_exn flags exn =
   Value.Env.iter (fun x d -> Printf.eprintf "%s = %s\n" x (string_of_def flags d))
     !last_env.vals;
   Printf.eprintf "\n";
-  Printexc.print_backtrace stderr;
+  Printf.eprintf "%s" trace;
   Printf.eprintf "%!"
 
 (* Scheduling *)
@@ -379,7 +380,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
-    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, Prim.prim s))
+    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, fun env v k ->
+      try Prim.prim s env v k
+      with Invalid_argument s -> trap exp.at "%s" s
+    ))
   | VarE id ->
     begin match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -399,7 +403,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let open Ic.Url in
       match parse (V.as_text v1) with
         | Ok (Ic bytes) -> k (V.Text bytes)
-        | _ -> trap exp.at "could not parse %s as an actor reference"  (V.as_text v1)
+        | _ -> trap exp.at "could not parse %S as an actor reference"  (V.as_text v1)
     )
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
@@ -917,8 +921,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      try interpret_block env p.it (Some ve) (fun v -> vo := Some v)
-      with Invalid_argument s -> trap !last_region "%s" s
+      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in

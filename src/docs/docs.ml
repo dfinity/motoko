@@ -72,8 +72,7 @@ let start : output_format -> string -> string -> unit =
   | Plain ->
       let inputs = make_render_inputs src out in
       List.iter
-        (fun (out, input) ->
-          write_file (out ^ ".txt") (Plain.render_docs input))
+        (fun (out, input) -> write_file (out ^ ".md") (Plain.render_docs input))
         inputs
   | Adoc ->
       let inputs = make_render_inputs src out in

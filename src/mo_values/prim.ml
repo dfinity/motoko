@@ -45,156 +45,156 @@ let range_violation () = raise (Invalid_argument "numeric overflow")
 let num_conv_prim t1 t2 =
   let module T = Type in
   match (t1, t2) with
-  | T.Nat8, T.Word8 -> fun _ v k ->
+  | T.Nat8, T.Word8 -> fun v ->
     let i = Nat8.to_int (as_nat8 v)
-    in k (Word8 (Word8.of_int_u i))
-  | T.Nat, T.Word8 -> fun _ v k ->
+    in Word8 (Word8.of_int_u i)
+  | T.Nat, T.Word8 -> fun v ->
     let i = Conv.wrapped_int_of_big_int (as_int v)
-    in k (Word8 (Word8.of_int_u i))
-  | T.Nat, T.Nat8 -> fun _ v k ->
+    in Word8 (Word8.of_int_u i)
+  | T.Nat, T.Nat8 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 8) in
     let i = Big_int.int_of_big_int r
-    in Big_int.(if eq_big_int q zero_big_int then k (Nat8 (Nat8.of_int i)) else range_violation ())
-  | T.Int8, T.Word8 -> fun _ v k ->
+    in Big_int.(if eq_big_int q zero_big_int then Nat8 (Nat8.of_int i) else range_violation ())
+  | T.Int8, T.Word8 -> fun v ->
     let i = Int_8.to_int (as_int8 v)
-    in k (Word8 (Word8.of_int_s i))
-  | T.Int, T.Word8 -> fun _ v k ->
+    in Word8 (Word8.of_int_s i)
+  | T.Int, T.Word8 -> fun v ->
     let i = Conv.wrapped_int_of_big_int (as_int v)
-    in k (Word8 (Word8.of_int_s i))
-  | T.Int, T.Int8 -> fun _ v k ->
+    in Word8 (Word8.of_int_s i)
+  | T.Int, T.Int8 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 7) in
     let i = Big_int.int_of_big_int r in
     Big_int.
     (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then k (Int8(Int_8.of_int (Conv.to_signed i q 0x80))) else range_violation ())
-  | T.Nat16, T.Word16 -> fun _ v k ->
+    then Int8(Int_8.of_int (Conv.to_signed i q 0x80)) else range_violation ())
+  | T.Nat16, T.Word16 -> fun v ->
     let i = Nat16.to_int (as_nat16 v)
-    in k (Word16 (Word16.of_int_u i))
-  | T.Nat, T.Word16 -> fun _ v k ->
+    in Word16 (Word16.of_int_u i)
+  | T.Nat, T.Word16 -> fun v ->
     let i = Conv.wrapped_int_of_big_int (as_int v)
-    in k (Word16 (Word16.of_int_u i))
-  | T.Nat, T.Nat16 -> fun _ v k ->
+    in Word16 (Word16.of_int_u i)
+  | T.Nat, T.Nat16 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 16) in
     let i = Big_int.int_of_big_int r
-    in Big_int.(if eq_big_int q zero_big_int then k (Nat16 (Nat16.of_int i)) else range_violation ())
-  | T.Int16, T.Word16 -> fun _ v k ->
+    in Big_int.(if eq_big_int q zero_big_int then Nat16 (Nat16.of_int i) else range_violation ())
+  | T.Int16, T.Word16 -> fun v ->
     let i = Int_16.to_int (as_int16 v)
-    in k (Word16 (Word16.of_int_s i))
-  | T.Int, T.Word16 -> fun _ v k ->
+    in Word16 (Word16.of_int_s i)
+  | T.Int, T.Word16 -> fun v ->
     let i = Conv.wrapped_int_of_big_int (as_int v)
-    in k (Word16 (Word16.of_int_s i))
-  | T.Int, T.Int16 -> fun _ v k ->
+    in Word16 (Word16.of_int_s i)
+  | T.Int, T.Int16 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 15) in
     let i = Big_int.int_of_big_int r in
     Big_int.
     (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then k (Int16(Int_16.of_int (Conv.to_signed i q 0x8000))) else range_violation ())
-  | T.Nat32, T.Word32 -> fun _ v k ->
+    then Int16(Int_16.of_int (Conv.to_signed i q 0x8000)) else range_violation ())
+  | T.Nat32, T.Word32 -> fun v ->
     let i = Nat32.to_int (as_nat32 v)
-    in k (Word32 (Word32.of_int_u i))
-  | T.Nat, T.Word32 -> fun _ v k ->
+    in Word32 (Word32.of_int_u i)
+  | T.Nat, T.Word32 -> fun v ->
     let i = Conv.wrapped_int_of_big_int (as_int v)
-    in k (Word32 (Word32.of_int_u i))
-  | T.Nat, T.Nat32 -> fun _ v k ->
+    in Word32 (Word32.of_int_u i)
+  | T.Nat, T.Nat32 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 32) in
     let i = Big_int.int_of_big_int r
-    in Big_int.(if eq_big_int q zero_big_int then k (Nat32 (Nat32.of_int i)) else range_violation ())
-  | T.Int32, T.Word32 -> fun _ v k ->
+    in Big_int.(if eq_big_int q zero_big_int then Nat32 (Nat32.of_int i) else range_violation ())
+  | T.Int32, T.Word32 -> fun v ->
     let i = Int_32.to_int (as_int32 v)
-    in k (Word32 (Word32.of_int_s i))
-  | T.Int, T.Word32 -> fun _ v k ->
+    in Word32 (Word32.of_int_s i)
+  | T.Int, T.Word32 -> fun v ->
     let i = Conv.wrapped_int_of_big_int (as_int v)
-    in k (Word32 (Word32.of_int_s i))
-  | T.Int, T.Int32 -> fun _ v k ->
+    in Word32 (Word32.of_int_s i)
+  | T.Int, T.Int32 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 31) in
     let i = Big_int.int_of_big_int r in
     Big_int.
     (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then k (Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000))) else range_violation ())
+    then Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000)) else range_violation ())
 
-  | T.Nat64, T.Word64 -> fun _ v k ->
+  | T.Nat64, T.Word64 -> fun v ->
     let q, r = Big_int.quomod_big_int (Nat64.to_big_int (as_nat64 v)) Conv.twoRaised63 in
     let i = Conv.(to_signed_big_int r q twoRaised63) in
-    k (Word64 (Big_int.int64_of_big_int i))
-  | T.Nat, T.Word64 -> fun _ v k -> k (Word64 (Conv.word64_of_big_int_u (as_int v)))
-  | T.Nat, T.Nat64 -> fun _ v k ->
+    Word64 (Big_int.int64_of_big_int i)
+  | T.Nat, T.Word64 -> fun v -> Word64 (Conv.word64_of_big_int_u (as_int v))
+  | T.Nat, T.Nat64 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised64 in
     Big_int.
     (if eq_big_int q zero_big_int
-    then k (Nat64 (Nat64.of_big_int r))
+    then Nat64 (Nat64.of_big_int r)
     else range_violation ())
-  | T.Int64, T.Word64 -> fun _ v k -> k (Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
-  | T.Int, T.Word64 -> fun _ v k -> k (Word64 (Conv.word64_of_big_int_s (as_int v)))
-  | T.Int, T.Int64 -> fun _ v k ->
+  | T.Int64, T.Word64 -> fun v -> Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))
+  | T.Int, T.Word64 -> fun v -> Word64 (Conv.word64_of_big_int_s (as_int v))
+  | T.Int, T.Int64 -> fun v ->
     let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised63 in
     Big_int.
     (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then k (Int64 (Int_64.of_big_int Conv.(to_signed_big_int r q twoRaised63)))
+    then Int64 (Int_64.of_big_int Conv.(to_signed_big_int r q twoRaised63))
     else range_violation ())
 
-  | T.Word8, T.Nat -> fun _ v k ->
+  | T.Word8, T.Nat -> fun v ->
     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
-    in k (Int (Big_int.big_int_of_int i))
-  | T.Word8, T.Nat8 -> fun _ v k ->
+    in Int (Big_int.big_int_of_int i)
+  | T.Word8, T.Nat8 -> fun v ->
     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
-    in k (Nat8 (Nat8.of_int i))
-  | T.Int8, T.Int -> fun _ v k -> k (Int (Int.of_int (Int_8.to_int (as_int8 v))))
-  | T.Nat8, T.Nat -> fun _ v k -> k (Int (Nat.of_int (Nat8.to_int (as_nat8 v))))
-  | T.Word8, T.Int -> fun _ v k ->
+    in Nat8 (Nat8.of_int i)
+  | T.Int8, T.Int -> fun v -> Int (Int.of_int (Int_8.to_int (as_int8 v)))
+  | T.Nat8, T.Nat -> fun v -> Int (Nat.of_int (Nat8.to_int (as_nat8 v)))
+  | T.Word8, T.Int -> fun v ->
     let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
-    in k (Int (Big_int.big_int_of_int i))
-  | T.Word8, T.Int8 -> fun _ v k ->
+    in Int (Big_int.big_int_of_int i)
+  | T.Word8, T.Int8 -> fun v ->
     let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
-    in k (Int8 (Int_8.of_int i))
-  | T.Word16, T.Nat -> fun _ v k ->
+    in Int8 (Int_8.of_int i)
+  | T.Word16, T.Nat -> fun v ->
     let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
-    in k (Int (Big_int.big_int_of_int i))
-  | T.Word16, T.Nat16 -> fun _ v k ->
+    in Int (Big_int.big_int_of_int i)
+  | T.Word16, T.Nat16 -> fun v ->
     let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
-    in k (Nat16 (Nat16.of_int i))
-  | T.Int16, T.Int -> fun _ v k -> k (Int (Int.of_int (Int_16.to_int (as_int16 v))))
-  | T.Nat16, T.Nat -> fun _ v k -> k (Int (Nat.of_int (Nat16.to_int (as_nat16 v))))
-  | T.Word16, T.Int -> fun _ v k ->
+    in Nat16 (Nat16.of_int i)
+  | T.Int16, T.Int -> fun v -> Int (Int.of_int (Int_16.to_int (as_int16 v)))
+  | T.Nat16, T.Nat -> fun v -> Int (Nat.of_int (Nat16.to_int (as_nat16 v)))
+  | T.Word16, T.Int -> fun v ->
     let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
-    in k (Int (Big_int.big_int_of_int i))
-  | T.Word16, T.Int16 -> fun _ v k ->
+    in Int (Big_int.big_int_of_int i)
+  | T.Word16, T.Int16 -> fun v ->
     let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
-    in k (Int16 (Int_16.of_int i))
-  | T.Int32, T.Int -> fun _ v k -> k (Int (Int.of_int (Int_32.to_int (as_int32 v))))
-  | T.Nat32, T.Nat -> fun _ v k -> k (Int (Nat.of_int (Nat32.to_int (as_nat32 v))))
-  | T.Word32, T.Nat -> fun _ v k ->
+    in Int16 (Int_16.of_int i)
+  | T.Int32, T.Int -> fun v -> Int (Int.of_int (Int_32.to_int (as_int32 v)))
+  | T.Nat32, T.Nat -> fun v -> Int (Nat.of_int (Nat32.to_int (as_nat32 v)))
+  | T.Word32, T.Nat -> fun v ->
     let i = Conv.int_of_word32_u (as_word32 v)
-    in k (Int (Big_int.big_int_of_int i))
-  | T.Word32, T.Int -> fun _ v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
-  | T.Word32, T.Int32 -> fun _ v k ->
+    in Int (Big_int.big_int_of_int i)
+  | T.Word32, T.Int -> fun v -> Int (Big_int.big_int_of_int32 (as_word32 v))
+  | T.Word32, T.Int32 -> fun v ->
     let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
-    k (Int32 (Int_32.of_int i))
-  | T.Word32, T.Nat32 -> fun _ v k ->
+    Int32 (Int_32.of_int i)
+  | T.Word32, T.Nat32 -> fun v ->
     let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
     let i' = if i < 0 then i + 0x100000000 else i in
-    k (Nat32 (Nat32.of_int i'))
+    Nat32 (Nat32.of_int i')
 
-  | T.Int64, T.Int -> fun _ v k -> k (Int (Int_64.to_big_int (as_int64 v)))
-  | T.Nat64, T.Nat -> fun _ v k -> k (Int (Nat64.to_big_int (as_nat64 v)))
-  | T.Word64, T.Nat -> fun _ v k ->
+  | T.Int64, T.Int -> fun v -> Int (Int_64.to_big_int (as_int64 v))
+  | T.Nat64, T.Nat -> fun v -> Int (Nat64.to_big_int (as_nat64 v))
+  | T.Word64, T.Nat -> fun v ->
     let i = Conv.big_int_of_word64_u (as_word64 v)
-    in k (Int i)
-  | T.Word64, T.Nat64 -> fun _ v k ->
+    in Int i
+  | T.Word64, T.Nat64 -> fun v ->
     let i = Conv.big_int_of_word64_u (as_word64 v)
-    in k (Nat64 (Nat64.of_big_int i))
-  | T.Word64, T.Int -> fun _ v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
-  | T.Word64, T.Int64 -> fun _ v k ->
+    in Nat64 (Nat64.of_big_int i)
+  | T.Word64, T.Int -> fun v -> Int (Big_int.big_int_of_int64 (as_word64 v))
+  | T.Word64, T.Int64 -> fun v ->
     let i = Big_int.big_int_of_int64 (as_word64 v)
-    in k (Int64 (Int_64.of_big_int i))
+    in Int64 (Int_64.of_big_int i)
 
-  | T.Char, T.Word32 -> fun _ v k ->
+  | T.Char, T.Word32 -> fun v ->
     let i = as_char v
-    in k (Word32 (Word32.of_int_u i))
-  | T.Word32, T.Char -> fun _ v k ->
+    in Word32 (Word32.of_int_u i)
+  | T.Word32, T.Char -> fun v ->
     let i = Conv.int_of_word32_u (as_word32 v)
-    in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then k (Char i) else raise (Invalid_argument "character value out of bounds")
-  | T.Float, T.Int64 -> fun _ v k -> k (Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v)))))
-  | T.Int64, T.Float -> fun _ v k -> k (Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))))
+    in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then Char i else raise (Invalid_argument "character value out of bounds")
+  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
+  | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 let prim =
@@ -344,7 +344,7 @@ let prim =
     | [_;_;s1;s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
-      num_conv_prim p1 p2
+      fun env v k -> k (num_conv_prim p1 p2 v)
     | _ -> assert false
     end
 
