@@ -129,8 +129,6 @@ type inst = (typ list option, Type.typ list) Source.annotated_phrase (* For impl
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
-type class_sort_pat = sort_pat
-
 type sugar = bool (* Is the source of a function body a block `<block>`,
                      subject to further desugaring during parse,
                      or the invariant form `= <exp>`.
@@ -153,7 +151,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ObjE of obj_sort * exp_field list      (* object *)
+  | ObjE of obj_sort * exp_field list          (* object *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
@@ -203,7 +201,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      class_sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 
 (* Program *)

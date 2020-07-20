@@ -20,7 +20,7 @@
     'shared' 'query'?
     'query'
 
-<sort_pat> ::= 
+<shared_pat> ::= 
     <empty>
     'shared' 'query'? (<pat_nullary>)?
     'query' (<pat_nullary>)?
@@ -278,8 +278,8 @@
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? '='? <obj_body>
-    <sort_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
-    <sort_pat> (<obj_sort>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
+    <shared_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
+    <shared_pat> (<obj_sort>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
     'ignore' <exp>
 
 <dec> ::= 

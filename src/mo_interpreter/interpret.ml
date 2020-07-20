@@ -483,14 +483,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | FuncE (name, sort_pat, _typbinds, pat, _typ, _sugar, exp2) ->
-    let context_pat = match sort_pat.it with
-      | T.Local -> None
-      | T.Shared (_, pat) -> Some pat in
-    let f = interpret_func env name context_pat pat (fun env' -> interpret_exp env' exp2) in
+  | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, exp2) ->
+    let f = interpret_func env name shared_pat pat (fun env' -> interpret_exp env' exp2) in
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
-      match sort_pat.it with
+      match shared_pat.it with
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
@@ -785,10 +782,10 @@ and match_pat_fields pfs vs ve : val_env option =
     | None -> None
     end
 
-and match_context_pat env context_pat c =
-  match context_pat, c with
-  | None, _ -> V.Env.empty
-  | Some pat, v ->
+and match_shared_pat env shared_pat c =
+  match shared_pat.it, c with
+  | T.Local, _ -> V.Env.empty
+  | T.Shared (_, pat), v ->
     (match match_pat pat v with
      | None ->
        (* shouldn't occur with our irrefutable patterns, but may in future *)
@@ -865,12 +862,8 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (csp, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
-    let context_pat = match csp.it with
-      | T.Local -> None
-      | T.Shared (_, pat) -> Some pat
-    in
-    let f = interpret_func env id.it context_pat pat (fun env' k' ->
+  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
+    let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       let env'' = adjoin_vals env' (declare_id id') in
       interpret_obj env'' obj_sort.it fields (fun v' ->
         define_id env'' id' v';
@@ -888,10 +881,10 @@ and interpret_decs env decs (k : V.value V.cont) =
   | dec::decs' ->
     interpret_dec env dec (fun _v -> interpret_decs env decs' k)
 
-and interpret_func env name context_pat pat f c v (k : V.value V.cont) =
+and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" name (string_of_arg env v);
   let v1 = V.Obj (V.Env.singleton "caller" c) in
-  let ve1 = match_context_pat env context_pat v1 in
+  let ve1 = match_shared_pat env shared_pat v1 in
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list" (string_of_val env v)

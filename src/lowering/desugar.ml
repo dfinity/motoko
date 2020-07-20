@@ -71,7 +71,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    obj at s.it None es note.Note.typ
+    obj at s None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -185,7 +185,7 @@ and mut m = match m.it with
   | S.Var -> Ir.Var
 
 and obj at s self_id es obj_typ =
-  match s with
+  match s.it with
   | T.Object | T.Module ->
     build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
@@ -303,7 +303,7 @@ and stabilize stab_opt d =
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
-  let obj_e = newObjE s fs obj_typ in
+  let obj_e = newObjE s.it fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
@@ -405,12 +405,12 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (csp, id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
-    let op = match csp.it with
+    let op = match sp.it with
       | T.Local -> None
-      | T.Shared (_,p) -> Some p in
+      | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -429,7 +429,7 @@ and dec' at n d = match d with
     let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s.it (Some self_id) es obj_typ;
+         { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = Note.{ def with typ = obj_typ } });
       at = at;
