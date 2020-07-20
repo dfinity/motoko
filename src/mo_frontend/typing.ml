@@ -2134,7 +2134,7 @@ and infer_dec_valdecs env dec : Scope.t =
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (is_anonymous id) then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "named actor classes are not supported; use an anonymous class instead";
+          "named actor classes are not supported yet; use an anonymous class instead";
       if not (is_unit_pat pat) then
         error_in [Flags.RefMode] env dec.at
           "actor classes with parameters are not supported yet";
