@@ -1,11 +1,8 @@
 /*
 Principal encoding and decoding with integrity checking.
 */
-
 #include "rts.h"
 
-typedef as_ptr blob_t; // a skewed pointer to a Blob heap object
-typedef as_ptr text_t; // a skewed pointer to a text heap object
 typedef unsigned char uint8_t;
 
 static void check_all_uppercase_hex(const char* s, const char* const e) {
@@ -76,27 +73,23 @@ export blob_t blob_of_principal(text_t t) {
   return r;
 }
 
-static char to_hex_digit(uint8_t n) {
-  if (n < 10) return '0' + n;
-  if (n < 16) return 'A' + (n - 10);
-  rts_trap_with("to_hex_digit: out of range");
-}
-
-// Encode a blob into an textual representation
-export text_t principal_of_blob(blob_t b) {
+// Convert a checksum-prepended base32 representation blob into the public
+// principal name format by hyphenating and lowercasing
+export blob_t base32_to_principal(blob_t b) {
   size_t n = BLOB_LEN(b);
-  as_ptr r = alloc_blob(3 + 2*n + 2);
-  uint8_t *p = (uint8_t *)BLOB_PAYLOAD(r);
-  uint8_t *q = (uint8_t *)BLOB_PAYLOAD(b);
-  as_memcpy((char *)p, "ic:", 3);
-  p += 3;
-  for (;n>0; n--) {
-    *p++ = to_hex_digit(*q >> 4);
-    *p++ = to_hex_digit(*q % 16);
-    q++;
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  blob_t r = alloc_blob((n + 4) / 5 * 6); // trailing hyphen we deal with later
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
+  for (size_t i = 0; i < n; ++i) {
+    *dest++ = *data++;
+    // if uppercase, covert to lowercase
+    if (dest[-1] >= 'A' && dest[-1] <= 'Z')
+      dest[-1] += 'a' - 'A';
+    // if quintet done, add hyphen
+    if ((data - (uint8_t *)BLOB_PAYLOAD(b)) % 5 == 0 && i + 1 < n)
+      *dest++ = '-';
   }
-  uint8_t checksum = compute_crc8(BLOB_PAYLOAD(b), BLOB_LEN(b));
-  *p++ = to_hex_digit(checksum >> 4);
-  *p++ = to_hex_digit(checksum % 16);
+  // adjust result length
+  BLOB_LEN(r) = dest - (uint8_t *)BLOB_PAYLOAD(r);
   return r;
 }

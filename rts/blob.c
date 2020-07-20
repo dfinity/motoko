@@ -76,3 +76,119 @@ export uint32_t blob_iter_next(blob_iter_t i) {
   BLOB_ITER_POS(i) = (n + 1) << 2;
   return *(uint8_t*)(BLOB_PAYLOAD(s) + n);
 }
+
+
+// Base32 encoding/decoding of blobs
+//
+// These routines assume contiguous memory layout.
+// Primarily intended for encoding princials.
+
+struct Pump {
+  const int inp_gran, out_gran;
+  uint8_t *dest;
+  uint32_t pending_data, pending_bits;
+};
+
+static void stash_enc_base32(uint8_t d, uint8_t* dest) {
+  *dest = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[d & 0x1F];
+}
+
+static inline void enc_stash(struct Pump* pump, uint8_t data) {
+  pump->pending_data <<= pump->inp_gran;
+  pump->pending_data |= data;
+  pump->pending_bits += pump->inp_gran;
+
+  while (pump->pending_bits >= pump->out_gran) {
+    pump->pending_bits -= pump->out_gran;
+    stash_enc_base32(pump->pending_data >> pump->pending_bits, pump->dest++);
+    pump->pending_data &= (1 << pump->pending_bits) - 1;
+  }
+}
+
+// Encode a blob into an checksum-prepended base32 representation
+export blob_t base32_of_checksummed_blob(blob_t b) {
+  uint32_t checksum = compute_crc32(b);
+  size_t n = BLOB_LEN(b);
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  blob_t r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // contains padding
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
+
+  struct Pump pump = { .inp_gran = 8, .out_gran = 5, .dest = dest };
+  enc_stash(&pump, checksum >> 24); // checksum is serialised as big-endian
+  enc_stash(&pump, checksum >> 16);
+  enc_stash(&pump, checksum >> 8);
+  enc_stash(&pump, checksum);
+  for (size_t i = 0; i < n; ++i)
+    enc_stash(&pump, *data++);
+  if (pump.pending_bits) {
+    // flush odd bits
+    pump.pending_data <<= pump.out_gran - pump.pending_bits;
+    stash_enc_base32(pump.pending_data, pump.dest++);
+    // discount padding
+    BLOB_LEN(r) = pump.dest - dest;
+  }
+  return r;
+}
+
+static void accum_base32(struct Pump* pump, uint8_t c) {
+  // tolerant conversion array
+  // accepts lower case and fillers/padding '-', '='
+  // values are one more than base32 value
+  // 0 elements signify invalid alphabet letter
+  // fillers/padding have upper bit set
+  static const uint8_t conv[0x80] = {
+    ['-'] = 0xF0, ['='] = 0xF1,
+    ['A'] = 1, ['B'] = 2, ['C'] = 3, ['D'] = 4, ['E'] = 5, ['F'] = 6, ['G'] = 7, ['H'] = 8, ['I'] = 9, ['J'] = 10, ['K'] = 11,
+    ['L'] = 12, ['M'] = 13, ['N'] = 14, ['O'] = 15, ['P'] = 16, ['Q'] = 17, ['R'] = 18, ['S'] = 19, ['T'] = 20, ['U'] = 21, ['V'] = 22,
+    ['W'] = 23, ['X'] = 24, ['Y'] = 25, ['Z'] = 26,
+    ['a'] = 1, ['b'] = 2, ['c'] = 3, ['d'] = 4, ['e'] = 5, ['f'] = 6, ['g'] = 7, ['h'] = 8, ['i'] = 9, ['j'] = 10, ['k'] = 11,
+    ['l'] = 12, ['m'] = 13, ['n'] = 14, ['o'] = 15, ['p'] = 16, ['q'] = 17, ['r'] = 18, ['s'] = 19, ['t'] = 20, ['u'] = 21, ['v'] = 22,
+    ['w'] = 23, ['x'] = 24, ['y'] = 25, ['z'] = 26,
+    ['2'] = 27, ['3'] = 28, ['4'] = 29, ['5'] = 30, ['6'] = 31, ['7'] = 32
+  };
+  if (c > 'z') rts_trap_with("accum_base32: Base32 symbol out of range");
+  uint8_t v = conv[c & 0x7F] - 1;
+  if (v > 0xF1) rts_trap_with("accum_base32: Illegal base32 symbol");
+  if (v < 0x20) {
+    pump->pending_bits += pump->inp_gran;
+    pump->pending_data <<= pump->inp_gran;
+    pump->pending_data |= v;
+  }
+}
+
+static inline void dec_stash(struct Pump* pump, uint8_t data) {
+  accum_base32(pump, data);
+
+  while (pump->pending_bits >= pump->out_gran) {
+    pump->pending_bits -= pump->out_gran;
+    *pump->dest++ = pump->pending_data >> pump->pending_bits;
+    pump->pending_data &= (1 << pump->pending_bits) - 1;
+  }
+}
+
+// Decode a checksum-prepended base32 blob into text representation
+// `checksum` is filled in when not NULL and blob length at least 7
+// (disregarding fillers/padding)
+// Verifying that `checksum` is a correct crc32 needs to be done separately.
+//
+export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
+  size_t n = BLOB_LEN(b);
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  blob_t r = alloc_blob((n + 7) / 8 * 5); // padding we deal with later
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
+
+  struct Pump pump = { .inp_gran = 5, .out_gran = 8, .dest = dest };
+  for (size_t i = 0; i < n; ++i) {
+    if (checksum && pump.dest - dest == sizeof *checksum) {
+      // checksum is deserialised as big-endian
+      *checksum = dest[0] << 24 | dest[1] << 16 | dest[2] << 8 | dest[3];
+      checksum = NULL;
+      // fill blob from start
+      pump.dest = dest = (uint8_t *)BLOB_PAYLOAD(r);
+    }
+    dec_stash(&pump, *data++);
+  }
+  // adjust resulting blob length
+  BLOB_LEN(r) = pump.dest - dest;
+  return r;
+}
