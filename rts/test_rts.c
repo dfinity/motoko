@@ -228,9 +228,9 @@ int main () {
   }
 
   /*
-   * Testing princpal decoding
+   * Testing principal decoding
    */
-  printf("Testing prinicpal decoding...\n");
+  printf("Testing principal decoding...\n");
 
   extern as_ptr blob_of_principal(as_ptr);
   assert(
