@@ -272,15 +272,16 @@ seplist1(X, SEP) :
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE { Type.Module @@ at $sloc }
 
-%inline class_sort_pat :
+(*%inline class_sort_pat :
   | OBJECT { Object @@ at $sloc }
   | SHARED p=sort_pat_opt ACTOR  { Actor (p (at $sloc)) @@ at $sloc }
   | ACTOR { Actor (WildP @! at $sloc) @@ at $sloc }
   | MODULE { Module @@ at $sloc }
+*)
 
-%inline  class_sort_opt :
-  | (* empty *) { Object @@ no_region }
-  | p=class_sort_pat { p }
+%inline obj_sort_opt :
+  | (* empty *) { Type.Object @@ no_region }
+  | s=obj_sort { s }
 
 %inline mode_opt :
   | (* empty *) { Type.Write }
@@ -743,12 +744,12 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
-  | s=class_sort_opt CLASS xf=typ_id_opt
+  | csp=sort_pat s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
-        if obj_sort s = Type.Actor then List.map share_expfield efs else efs
-      in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+        if s.it = Type.Actor then List.map share_expfield efs else efs
+      in ClassD(csp, xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 

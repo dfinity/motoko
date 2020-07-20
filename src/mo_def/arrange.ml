@@ -115,10 +115,7 @@ and obj_sort s = match s.it with
   | Type.Module -> Atom "Module"
   | Type.Memory -> Atom "Memory"
 
-and class_sort_pat s = match s.it with
-  | Object -> Atom "Object"
-  | Actor p -> "Actor" $$ [pat p]
-  | Module -> Atom "Module"
+and class_sort_pat sp = sort_pat sp
 
 and sort_pat sp = match sp.it with
   | Type.Local -> Atom "Local"
@@ -189,11 +186,11 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, tp, p, rt, sp, i', efs) ->
-    "ClassD" $$ id x :: List.map typ_bind tp @ [
+  | ClassD (csp, x, tp, p, rt, s, i', efs) ->
+    "ClassD" $$ class_sort_pat csp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
-      class_sort_pat sp; id i'
+      obj_sort s; id i'
     ] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

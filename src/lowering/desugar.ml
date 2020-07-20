@@ -407,14 +407,12 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (csp, id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
-    let obj_sort, op = match s.it with
-      | S.Module -> T.Module, None
-      | S.Object -> T.Object, None
-      | S.Actor { it = S.WildP; _} -> T.Actor, None
-      | S.Actor p -> T.Actor, Some p in
+    let op = match csp.it with
+      | T.Local -> None
+      | T.Shared (_,p) -> Some p in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -433,7 +431,7 @@ and dec' at n d = match d with
     let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at obj_sort (Some self_id) es obj_typ;
+         { it = obj at s.it (Some self_id) es obj_typ;
            at = at;
            note = Note.{ def with typ = obj_typ } });
       at = at;

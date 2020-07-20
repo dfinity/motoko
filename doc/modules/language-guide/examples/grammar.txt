@@ -15,12 +15,6 @@
     'actor'
     'module'
 
-<class_sort_pat> ::= 
-    'object'
-    'shared' (<pat_nullary>)? 'actor'
-    'actor'
-    'module'
-
 <func_sort_opt> ::= 
     <empty>
     'shared' 'query'?
@@ -285,7 +279,7 @@
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? '='? <obj_body>
     <sort_pat> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <func_body>
-    (<class_sort_pat>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
+    <sort_pat> (<obj_sort>)? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> (<return_typ>)? <class_body>
     'ignore' <exp>
 
 <dec> ::= 

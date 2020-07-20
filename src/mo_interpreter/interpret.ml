@@ -833,7 +833,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (id, _, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -861,14 +861,14 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (id, _typbinds, pat, _typ_opt, obj_sort_pat, id', fields) ->
-    let obj_sort, context_pat = match obj_sort_pat.it with
-      | Object -> T.Object, None
-      | Module -> T.Module, None
-      | Actor pat -> T.Actor, Some pat in
+  | ClassD (csp, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
+    let context_pat = match csp.it with
+      | T.Local -> None
+      | T.Shared (_, pat) -> Some pat
+    in
     let f = interpret_func env id.it context_pat pat (fun env' k' ->
       let env'' = adjoin_vals env' (declare_id id') in
-      interpret_obj env'' obj_sort fields (fun v' ->
+      interpret_obj env'' obj_sort.it fields (fun v' ->
         define_id env'' id' v';
         k' v'
       )

@@ -66,8 +66,8 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
      { d with it = VarD (x, over_exp f e)}
   | LetD (x, e) ->
      { d with it = LetD (x, over_exp f e)}
-  | ClassD (a, b, c, d1, e, g, efs) ->
-     { d with it = ClassD (a, b, c, d1, e, g, List.map (over_exp_field f) efs)}
+  | ClassD (csp, cid, tbs, p, t_o, s, id, efs) ->
+     { d with it = ClassD (csp, cid, tbs, p, t_o, s, id, List.map (over_exp_field f) efs)}
 
 and over_exp_field (f : exp -> exp) (ef : exp_field) : exp_field =
   { ef with it = { ef.it with dec = over_dec f ef.it.dec } }
