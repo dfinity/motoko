@@ -56,7 +56,7 @@ static uint8_t compute_crc8(const char data[], size_t len) {
 export blob_t blob_of_ic_url(text_t t) {
   blob_t b0 = blob_of_text(t);
   size_t n = BLOB_LEN(b0);
-  if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
+  if (n < 5) rts_trap_with("ic_url_decode: too short for an ic: URL");
   const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
   check_ci_scheme(s);
