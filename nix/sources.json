@@ -8,7 +8,7 @@
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "82cedb0ab703d1e562e309fcf7eb803d6f2aa61b",
+        "rev": "dec121d0546ff5cd6fc803dfdf1409698ceea042",
         "type": "git"
     },
     "esm": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.8",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "eb3fd27a3c91818afabd306ddb9be0dfbf5f2792",
+        "rev": "0990d033452af92cbea2e60c44c301aa551d7b0e",
         "type": "git"
     },
     "libtommath": {
