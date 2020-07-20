@@ -55,7 +55,7 @@ struct
     Seq.fold_left outer 0 (String.to_seq bs)
 
   let crc32 (bs : string) : int32 =
-    raise (Invalid_argument "not yet implemented")
+    Optint.(to_int32 (Checkseum.Crc32.digest_string bs 0 (String.length bs) zero))
 end
 
 module Hex =
