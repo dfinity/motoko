@@ -57,7 +57,7 @@ and exp e =
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE e ->
-    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e]))
+    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -160,15 +160,13 @@ and exp' at note = function
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
-and url e =
-    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+and url e at =
+    (* Set position explicitly *)
     match e.it with
-    | S.AnnotE (e,_) -> url e
+    | S.AnnotE (e,_) -> url e at
     | _ ->
-      let transformed = typed_phrase' (url' e) e in
-      { transformed with note = Note.{ transformed.note with typ = T.blob } }
-
-and url' e at _ _ = I.(PrimE (BlobOfIcUrl, [exp e]))
+      let e' = exp e in
+      { it = I.(PrimE (BlobOfIcUrl, [e'])); at; note = Note.{def with typ = T.blob; eff = e'.note.eff } }
 
 and lexp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
@@ -580,12 +578,19 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 and comp_unit ds : Ir.comp_unit =
   let open Ir in
 
-  let find_last_expr (ds,e) =
-    let find_last_actor = function
-      | ds1, {it = ActorE (ds2, fs, up, t); _} ->
-        (* NB: capture! *)
+  let find_last_expr (ds, e) =
+    let find_last_actor (ds1, e1) =
+      (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
+      let e1' = match (ds1, e1.it) with
+        | _ :: _ , ActorE _
+        | _ :: _, FuncE (_, _, _, [], [], _, {it = ActorE _;_}) ->
+          Rename.exp Rename.Renaming.empty e1
+        | _ -> e1
+      in
+      match e1'.it with
+      | ActorE (ds2, fs, up, t) ->
         ActorU (ds1 @ ds2, fs, up, t)
-      | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
+      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) ->
         ActorU (ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
@@ -599,7 +604,8 @@ and comp_unit ds : Ir.comp_unit =
     | _ ->
       find_last_actor (ds, e) in
 
-  (* find the last actor. This hack can hopefully go away
+
+    (* find the last actor. This hack can hopefully go away
      after Claudios improvements to the source *)
   if ds = [] then ProgU [] else
   find_last_expr (block false ds)

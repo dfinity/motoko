@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "f9925783fb03ac7d8ea3372102497473d5ab1d05",
+        "rev": "4834d255f106f3f1d68907fc76be1b83d9b47d1c",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "82cedb0ab703d1e562e309fcf7eb803d6f2aa61b",
+        "rev": "dec121d0546ff5cd6fc803dfdf1409698ceea042",
         "type": "git"
     },
     "esm": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.8.1",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "eb3fd27a3c91818afabd306ddb9be0dfbf5f2792",
+        "rev": "0990d033452af92cbea2e60c44c301aa551d7b0e",
         "type": "git"
     },
     "libtommath": {
@@ -40,8 +40,21 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "d1d0e6949818d05f72c517c12756d1a02bf2e424",
+        "rev": "0375b45d6e61be79b086c3726f8edd04182df9c1",
         "type": "git"
+    },
+    "motoko-matchers": {
+        "branch": "v0.0.5",
+        "builtin": false,
+        "description": null,
+        "homepage": "http://kritzcreek.github.io/motoko-matchers",
+        "owner": "kritzcreek",
+        "repo": "motoko-matchers",
+        "rev": "b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3",
+        "sha256": "0dy29y8r7k6sshbm96g3f6avcbpl55sazqj2wvpvjxz82xq3vfcn",
+        "type": "tarball",
+        "url": "https://github.com/kritzcreek/motoko-matchers/archive/b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "musl-wasi": {
         "branch": "master",
@@ -63,10 +76,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2f92f283348a390ce7be2269f2b273c8ef359621",
-        "sha256": "1sqv330s1hnsxkwndm4llbkz1xlrlpclxggvx1jm51ccymf00pdz",
+        "rev": "df0e7ad3d610c1d72e6bd9e4b289fdbf8afb832d",
+        "sha256": "11y6ryh612x14ia274cr6sxq3d4z0dd114dbzxcgcnaackh5yr3x",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/2f92f283348a390ce7be2269f2b273c8ef359621.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/df0e7ad3d610c1d72e6bd9e4b289fdbf8afb832d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
