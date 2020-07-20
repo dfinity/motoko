@@ -2132,7 +2132,7 @@ and infer_dec_valdecs env dec : Scope.t =
           "named actor classes are not supported; use an anonymous class instead";
       if not (is_unit_pat pat) then
         error_in [Flags.RefMode] env dec.at
-          "actor classes with parameters are not supported; use an actor declaration instead";
+          "actor classes with parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
