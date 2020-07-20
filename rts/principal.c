@@ -52,6 +52,11 @@ static uint8_t compute_crc8(const char data[], size_t len) {
   return crc;
 }
 
+static uint8_t compute_crc32(const char data[], size_t len) {
+  extern uint32_t crc_32(const unsigned char*, size_t);
+  return crc_32((const unsigned char*)data, len);
+}
+
 // Decode an textual principal representation into a blob
 export blob_t blob_of_principal(text_t t) {
   blob_t b0 = blob_of_text(t);
