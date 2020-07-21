@@ -116,7 +116,7 @@ static void stash_base32_group(uint64_t g, int chars, uint8_t* dest) {
 static uint64_t pickup(int bytes, uint8_t* data) {
   uint64_t g = 0;
   for (int i = 0; i < bytes; ++i)
-    g << 8 | *data++;
+    g = g << 8 | *data++;
   return g;
 }
 
@@ -145,4 +145,5 @@ export blob_t base32_of_checksummed_blob(blob_t b) {
     default: stash_base32_group(pickup(5, data), 8, dest);
     }
   }
+  return r;
 }
