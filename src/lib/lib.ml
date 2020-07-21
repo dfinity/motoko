@@ -122,65 +122,31 @@ struct
     try Ok (Buffer.contents (dec buf input 0 len))
     with Invalid_argument s -> Error s
 
-  let rec enc buf str start stop : Buffer.t =
-    let c offs = Char.code (String.get str (start + offs)) land 0xFF in
-    let b32 = function
-      | v when v <= 25 -> 65 + v
-      | v -> 24 + v in
-    let stash v = Buffer.add_uint8 buf (b32 (v land 0x1F)) in
-    match stop - start with
-    | 1 ->
-      let c0 = c 0 in
-      stash (c0 lsr 3);
-      stash (c0 lsl 2);
-      buf
-    | 2 ->
-      let (c0, c1) = (c 0, c 1) in
-      stash (c0 lsr 3);
-      stash ((c0 lsl 2) lor (c1 lsr 6));
-      stash (c1 lsr 1);
-      stash (c1 lsl 4);
-      buf
-    | 3 ->
-      let (c0, c1, c2) = (c 0, c 1, c 2) in
-      stash (c0 lsr 3);
-      stash ((c0 lsl 2) lor (c1 lsr 6));
-      stash (c1 lsr 1);
-      stash ((c1 lsl 4) lor (c2 lsr 4));
-      stash (c2 lsl 1);
-      buf
-    | 4 ->
-      let (c0, c1, c2, c3) = (c 0, c 1, c 2, c 3) in
-      stash (c0 lsr 3);
-      stash ((c0 lsl 2) lor (c1 lsr 6));
-      stash (c1 lsr 1);
-      stash ((c1 lsl 4) lor (c2 lsr 4));
-      stash ((c2 lsl 1) lor (c3 lsr 7));
-      stash (c3 lsr 2);
-      stash (c3 lsl 3);
-      buf
-    | l when l >= 5 ->
-      let (c0, c1, c2, c3, c4) = (c 0, c 1, c 2, c 3, c 4) in
-      stash (c0 lsr 3);
-      stash ((c0 lsl 2) lor (c1 lsr 6));
-      stash (c1 lsr 1);
-      stash ((c1 lsl 4) lor (c2 lsr 4));
-      stash ((c2 lsl 1) lor (c3 lsr 7));
-      stash (c3 lsr 2);
-      stash ((c3 lsl 3) lor (c4 lsr 5));
-      stash c4;
-      enc buf str (start + 5) stop
-    | _ -> buf
+
+  let decode' input =
+    let len = String.length input in
+    let buf = Buffer.create (len / 2) in
+    let rec evac = function
+      | v, b when b >= 8 ->
+        let b' = b - 8 in
+        Buffer.add_uint8 buf (v lsr b');
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb in
+    let b32 a = function
+      | v when v >= 'A' && v <= 'Z' -> a lsl 5 lor (Char.code v - 65)
+      | v when v >= '2' && v <= '7' -> a lsl 5 lor (Char.code v - 24)
+      | '=' -> a
+      | _ -> raise (Invalid_argument "Char out of base32 alphabet") in
+    try
+      let pump (v, b) c = evac (b32 v c, b + 5) in
+      let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+      if b > 0 then ignore (evac (v lsl 7, b + 7));
+      Ok (Buffer.contents buf)
+    with Invalid_argument s -> Error s
+
+  (*let bla = let Ok s = decode' "IFAUCQKB" in Printf.printf "decode (IFAUCQKB) = %s\n" s*)
 
   let encode input =
-    let len = String.length input in
-    let buf = Buffer.create (len * 2) in
-    Buffer.contents (enc buf input 0 len)
-
-
-  (*let bla1 = Printf.printf "encode (AAAAA) = %s\n" (encode "AAAAA")*)
-
-  let encode' input =
     let len = String.length input in
     let buf = Buffer.create (len * 2) in
     let b32 = function
@@ -197,8 +163,6 @@ struct
     let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
     if b > 0 then ignore (evac (v lsl 4, b + 4));
     Buffer.contents buf
-
-  (*let bla = Printf.printf "encode' (AAAAA) = %s\n" (encode' "AAAAA")*)
 end
 
 module String =
