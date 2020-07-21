@@ -597,7 +597,7 @@ and comp_unit ds : Ir.comp_unit =
   let open Ir in
 
   let find_last_expr (ds, e) =
-    let find_last_actor (ds1, e1) =
+    let find_last_actor (ds1, free, e1) =
       (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
       let e1' = match (ds1, e1.it) with
         | _ :: _ , ActorE _
@@ -608,19 +608,25 @@ and comp_unit ds : Ir.comp_unit =
       match e1'.it with
       | ActorE (ds2, fs, up, t) ->
         ActorU (ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) ->
+      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and and e1' *)
         ActorU (ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
-    if ds = [] then find_last_actor ([], e) else
+    if ds = [] then find_last_actor ([], true, e) else
     match Lib.List.split_last ds, e with
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
-      find_last_actor (ds1', e')
+      let (_,fd) = Freevars.decs ds1' in
+      let fe = Freevars.exp e' in
+      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
+      find_last_actor (ds1', free, e')
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
-      find_last_actor (ds1', e')
+      let (_,fd) = Freevars.decs ds1' in
+      let fe = Freevars.exp e' in
+      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
+      find_last_actor (ds1', free, e')
     | _ ->
-      find_last_actor (ds, e) in
+      find_last_actor (ds, false, e) in
 
 
     (* find the last actor. This hack can hopefully go away

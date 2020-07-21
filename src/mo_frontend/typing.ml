@@ -56,6 +56,21 @@ let env_of_scope msgs scope =
     scopes = T.ConEnv.empty;
   }
 
+(* Unavailability *)
+
+(* used to mark class constructors as unavailable for reference in IC compiled code *)
+
+let unavailable_con =
+  T.(Con.fresh "unavailable" (
+    Def([ { var="T"; bound = Any; T.sort = T.Type } ], Var ("T", 0))))
+
+let unavailable_typ t =
+  T.Con(unavailable_con, [t])
+
+let is_unavailable_typ t =
+  match t with
+  | T.Con(c,[t]) -> Con.eq c unavailable_con
+  | _ -> false
 
 (* Error bookkeeping *)
 
@@ -95,7 +110,7 @@ let flag_of_compile_mode mode =
   | Flags.WasmMode -> " and flag -no-system-api"
   | Flags.RefMode -> " and flag -ref-system-api"
 
-let compile_mode_error mode env at fmt =
+let compile_mode_diagnostic type_diagnostic is_error mode env at fmt =
   Printf.ksprintf
     (fun s ->
       let s =
@@ -103,12 +118,17 @@ let compile_mode_error mode env at fmt =
           s
           (flag_of_compile_mode mode)
       in
-      Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
+      Diag.add_msg env.msgs (type_diagnostic at s); if is_error then raise Recover) fmt
 
 let error_in modes env at fmt =
   let mode = !Flags.compile_mode in
   if !Flags.compiled && List.mem mode modes then
-    compile_mode_error mode env at fmt
+    compile_mode_diagnostic type_error true mode env at fmt
+
+let warn_in modes env at fmt =
+  let mode = !Flags.compile_mode in
+  if !Flags.compiled && List.mem mode modes then
+    compile_mode_diagnostic type_warning false mode env at fmt
 
 (* Context extension *)
 
@@ -713,6 +733,10 @@ and infer_exp'' env exp : T.typ =
     (match T.Env.find_opt id.it env.vals with
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
+    | Some t when is_unavailable_typ t->
+      if !Flags.compiled = true then
+        error env id.at "variable %s is in scope but not available in compiled code" id.it
+      else T.normalize t
     | Some t -> t
     | None ->
       error env id.at "unbound variable %s" id.it
@@ -1863,7 +1887,7 @@ and infer_dec env dec : T.typ =
             (T.string_of_typ_expand t')
             (T.string_of_typ_expand t'')
     end;
-    t
+    T.normalize t
   | TypD _ ->
     T.unit
   in
@@ -2133,8 +2157,8 @@ and infer_dec_valdecs env dec : Scope.t =
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (is_anonymous id) then
-        error_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "named actor classes are not supported yet; use an anonymous class instead";
+        warn_in [Flags.ICMode; Flags.RefMode] env dec.at
+          "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
       if not (is_unit_pat pat) then
         error_in [Flags.RefMode] env dec.at
           "actor classes with parameters are not supported yet";
@@ -2146,8 +2170,11 @@ and infer_dec_valdecs env dec : Scope.t =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
+    let available_t = match !Flags.compile_mode, obj_sort.it with
+       | (Flags.ICMode | Flags.RefMode), T.Actor -> unavailable_typ t
+       | _ -> t in
     Scope.{ empty with
-      val_env = T.Env.singleton id.it t;
+      val_env = T.Env.singleton id.it available_t;
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
