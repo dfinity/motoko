@@ -98,7 +98,28 @@ end
 
 module Base32 =
 struct
-  let decode input = raise (Invalid_argument "not implemented yet")
+
+  let rec dec buf str start stop : Buffer.t =
+    let c offs =
+      let pos = (start + offs) in
+      if pos < stop then String.get str pos else '=' in
+    let b32 a = function
+      | v when v >= 'A' && v <= 'Z' -> a lsl 5 lor (Char.code v - 65)
+      | v when v >= '2' && v <= '7' -> a lsl 5 lor (Char.code v - 24)
+      | '=' -> a
+      | _ -> assert false in
+    let cs = List.map c [0; 1; 2; 3; 4; 5; 6; 7] in
+    let v = List.fold_left b32 0 cs in
+    Buffer.add_uint8 buf (v lsr 32);
+    Buffer.add_int32_be buf (Int32.of_int (v land 0xFFFFFFFF));
+    if start < stop then
+      dec buf str (start + 8) stop
+    else buf
+
+  let decode input =
+    let len = String.length input in
+    let buf = Buffer.create (len / 2) in
+    Ok (Buffer.contents (dec buf input 0 len))
 
   let rec enc buf str start stop : Buffer.t =
     let c offs = Char.code (String.get str (start + offs)) land 0xFF in
