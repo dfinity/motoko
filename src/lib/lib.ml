@@ -99,7 +99,61 @@ end
 module Base32 =
 struct
   let decode input = raise (Invalid_argument "not implemented yet")
-  let encode input = raise (Invalid_argument "not implemented yet")
+
+  let rec enc buf str start stop : Buffer.t =
+    let c offs = Char.code (String.get str (start + offs)) land 0xFF in
+    let b32 = function
+      | v when v <= 25 -> 65 + v
+      | v -> 24 + v in
+    let stash v = Buffer.add_uint8 buf (b32 (v land 0x1F)) in
+    match stop - start with
+    | 1 ->
+      let c0 = c 0 in
+      stash (c0 lsr 3);
+      stash (c0 lsl 2);
+      buf
+    | 2 ->
+      let (c0, c1) = (c 0, c 1) in
+      stash (c0 lsr 3);
+      stash ((c0 lsl 2) lor (c1 lsr 6));
+      stash (c1 lsr 1);
+      stash (c1 lsl 4);
+      buf
+    | 3 ->
+      let (c0, c1, c2) = (c 0, c 1, c 2) in
+      stash (c0 lsr 3);
+      stash ((c0 lsl 2) lor (c1 lsr 6));
+      stash (c1 lsr 1);
+      stash ((c1 lsl 4) lor (c2 lsr 4));
+      stash (c2 lsl 1);
+      buf
+    | 4 ->
+      let (c0, c1, c2, c3) = (c 0, c 1, c 2, c 3) in
+      stash (c0 lsr 3);
+      stash ((c0 lsl 2) lor (c1 lsr 6));
+      stash (c1 lsr 1);
+      stash ((c1 lsl 4) lor (c2 lsr 4));
+      stash ((c2 lsl 1) lor (c3 lsr 7));
+      stash (c3 lsr 2);
+      stash (c3 lsl 3);
+      buf
+    | l when l >= 5 ->
+      let (c0, c1, c2, c3, c4) = (c 0, c 1, c 2, c 3, c 4) in
+      stash (c0 lsr 3);
+      stash ((c0 lsl 2) lor (c1 lsr 6));
+      stash (c1 lsr 1);
+      stash ((c1 lsl 4) lor (c2 lsr 4));
+      stash ((c2 lsl 1) lor (c3 lsr 7));
+      stash (c3 lsr 2);
+      stash ((c3 lsl 3) lor (c4 lsr 5));
+      stash c4;
+      enc buf str (start + 5) stop
+    | _ -> buf
+
+  let encode input =
+    let len = String.length input in
+    let buf = Buffer.create (len * 2) in
+    Buffer.contents (enc buf input 0 len)
 end
 
 module String =
