@@ -105,3 +105,20 @@ export text_t principal_of_blob(blob_t b) {
   *p++ = to_hex_digit(checksum % 16);
   return r;
 }
+
+static void stash_base32_group(uint64_t g, int chars, uint8_t* dest) {
+  for (int c = chars; c >= 0; --c) {
+    dest[c] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[g & 0x1F];
+    g >>= 5;
+  }
+}
+
+export blob_t base32_of_checksummed_blob(blob_t b) {
+  size_t n = BLOB_LEN(b);
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  uint32_t checksum = compute_crc32(data, n);
+  as_ptr r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // TODO: minus padding
+  
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
+  stash_base32_group((uint64_t)checksum << 8 | *data, 8, dest);
+}
