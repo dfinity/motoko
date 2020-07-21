@@ -176,6 +176,29 @@ struct
     let len = String.length input in
     let buf = Buffer.create (len * 2) in
     Buffer.contents (enc buf input 0 len)
+
+
+  (*let bla1 = Printf.printf "encode (AAAAA) = %s\n" (encode "AAAAA")*)
+
+  let encode' input =
+    let len = String.length input in
+    let buf = Buffer.create (len * 2) in
+    let b32 = function
+      | v when v <= 25 -> 65 + v
+      | v -> 24 + v in
+    let rec evac = function
+      | v, b when b >= 5 ->
+        let b' = b - 5 in
+        Buffer.add_uint8 buf (b32 (v lsr b'));
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb
+    in
+    let pump (v, b) c = evac (v lsl 8 lor (Char.code c land 0xFF), b + 8) in
+    let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+    if b > 0 then ignore (evac (v lsl 4, b + 4));
+    Buffer.contents buf
+
+  (*let bla = Printf.printf "encode' (AAAAA) = %s\n" (encode' "AAAAA")*)
 end
 
 module String =
