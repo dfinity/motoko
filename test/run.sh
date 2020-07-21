@@ -25,9 +25,10 @@ DTESTS=no
 IDL=no
 PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
+export MOC
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
-DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift"
 DRUN=${DRUN:-drun}
@@ -103,7 +104,6 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
-  if grep -q "^//SKIP $(uname)$" $(basename $file); then return 1; fi
 
   if test -e $out/$base.$ext
   then
