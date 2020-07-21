@@ -1372,7 +1372,7 @@ a named `let` or anonymous declaration of a function expression. That is:
 <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp> :=
   let <id> = <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>    (when <id>? present)
 
-  <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent
+  <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent)
 ```
 
 
@@ -1396,7 +1396,7 @@ where:
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
-Note `<shared-pat>?` must not be of the form `shared query <pat>?`: - a constructor, unlike a function, cannot be a query.
+Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
 
 An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 

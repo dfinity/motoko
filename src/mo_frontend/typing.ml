@@ -796,7 +796,7 @@ and infer_exp'' env exp : T.typ =
     if not in_prog && obj_sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if obj_sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
-    infer_obj env' obj_sort fields exp.at
+    infer_obj env' obj_sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
@@ -1417,7 +1417,7 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "actor class cannot take a context pattern";
     if mode = T.Query then
-      error env pat.at "class constructor cannot be a query";
+      error env shared_pat.at "class cannot be a query";
     check_pat_exhaustive local_error env T.ctxt pat
   | _, T.Memory -> assert false
 
@@ -1694,13 +1694,13 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s fields at : T.typ =
-  let env = {env with in_actor = s.it = T.Actor} in
+  let env = {env with in_actor = s = T.Actor} in
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
-  let t = object_of_scope env s.it fields scope at in
+  let t = object_of_scope env s fields scope at in
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    if s.it = T.Actor then begin
+    if s = T.Actor then begin
       List.iter (fun T.{lab; typ} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields fields in
@@ -1719,7 +1719,7 @@ and infer_obj env s fields at : T.typ =
             "a shared function cannot be private"
       ) fields;
     end;
-    if s.it = T.Module then Static.fields env.msgs fields;
+    if s = T.Module then Static.fields env.msgs fields;
     check_system_fields env s scope fields;
     check_stab env s scope fields;
   end;
@@ -1727,7 +1727,7 @@ and infer_obj env s fields at : T.typ =
 
 and check_system_fields env sort scope fields =
   List.iter (fun ef ->
-    match sort.it, ef.it.vis.it, ef.it.dec.it with
+    match sort, ef.it.vis.it, ef.it.dec.it with
     | T.Actor, vis,
       LetD({ it = VarP id; _ },
            { it = FuncE _; _ }) ->
@@ -1771,7 +1771,7 @@ and check_stab env sort scope fields =
         local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
   in
   let idss = List.map (fun ef ->
-    match sort.it, ef.it.stab, ef.it.dec.it with
+    match sort, ef.it.stab, ef.it.dec.it with
     | (T.Object | T.Module), None, _ -> []
     | (T.Object | T.Module), Some stab, _ ->
       local_error env stab.at
@@ -1852,7 +1852,7 @@ and infer_dec env dec : T.typ =
           in_actor = obj_sort.it = T.Actor;
         }
       in
-      let t' = infer_obj env''' obj_sort fields dec.at in
+      let t' = infer_obj env''' obj_sort.it fields dec.at in
       match typ_opt with
       | None -> ()
       | Some typ ->
@@ -2067,7 +2067,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
-    let t = infer_obj env'' obj_sort fields dec.at in
+    let t = infer_obj env'' obj_sort.it fields dec.at in
     let k = T.Def (T.close_binds cs tbs, T.close cs t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
