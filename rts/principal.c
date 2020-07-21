@@ -52,7 +52,7 @@ static uint8_t compute_crc8(const char data[], size_t len) {
   return crc;
 }
 
-static uint8_t compute_crc32(const char data[], size_t len) {
+static uint32_t compute_crc32(const char data[], size_t len) {
   extern uint32_t crc_32(const unsigned char*, size_t);
   return crc_32((const unsigned char*)data, len);
 }
