@@ -276,17 +276,26 @@ int main () {
      base32_to_checksummed_blob(text_of_ptr_size("GEZDGNBVGY3TQOI", 15), NULL),
      text_of_ptr_size("123456789", 9)
     ) == 0,
-    "NOT checksummed base32 to 123456789 mismatch\n");
+    "base32 to 123456789 mismatch\n");
   /*assert(
     text_compare(
      base32_to_checksummed_blob(text_of_ptr_size("abcdefghijklmnop", 16)),
      text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
     ) == 0,
-    "NOT checksummed base32 of abcdefghijklmnop mismatch\n");*/
+    "base32 of abcdefghijklmnop mismatch\n");*/
 
-
-
-
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("ZP2DSJRRGIZTINJWG44DS", 21), &checksum),
+     text_of_ptr_size("123456789", 9)
+    ) == 0,
+    "checksummed base32 to 123456789 mismatch\n");
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32), &checksum),
+     text_of_ptr_size("abcdefghijklmnop", 16)
+    ) == 0,
+    "checksummed base32 to abcdefghijklmnop mismatch\n");
 
 
 

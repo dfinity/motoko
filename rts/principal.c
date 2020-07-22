@@ -168,12 +168,20 @@ static inline void dec_stash(struct Pump* pump, uint8_t data) {
 export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
-  blob_t r = alloc_blob((n /*+ sizeof *checksum*/ + 7) / 8 * 5); // padding we deal with later
+  blob_t r = alloc_blob((n + 7) / 8 * 5); // padding we deal with later
   uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
 
   struct Pump pump = { .inp_gran = 5, .out_gran = 8, .dest = dest };
-  for (size_t i = 0; i < n; ++i)
+  for (size_t i = 0; i < n; ++i) {
+    if (checksum && i == sizeof *checksum) {
+      *checksum = dest[0] << 24 | dest[1] << 16 | dest[2] << 8 | dest[3];
+      // fill blob from start
+      pump.dest = dest = (uint8_t *)BLOB_PAYLOAD(r);
+    }
     dec_stash(&pump, *data++);
+  }
+  // adjust resulting blob length
   BLOB_LEN(r) = pump.dest - dest;
+  // check crc?? TODO
   return r;
 }
