@@ -75,3 +75,24 @@ export blob_t blob_of_principal(text_t t) {
   }
   return r;
 }
+
+// Convert a checksum-prepended base32 representation blob into the public
+// principal name format by hyphenating and lowercasing
+export blob_t base32_to_principal(blob_t b) {
+  size_t n = BLOB_LEN(b);
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  blob_t r = alloc_blob((n + 4) / 5 * 6); // trailing hyphen we deal with later
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
+  for (size_t i = 0; i < n; ++i) {
+    *dest++ = *data++;
+    // if uppercase, covert to lowercase
+    if (dest[-1] >= 'A' && dest[-1] <= 'Z')
+      dest[-1] += 'a' - 'A';
+    // if quintet done, add hyphen
+    if ((data - (uint8_t *)BLOB_PAYLOAD(b)) % 5 == 0 && i + 1 < n)
+      *dest++ = '-';
+  }
+  // adjust result length
+  BLOB_LEN(r) = dest - (uint8_t *)BLOB_PAYLOAD(r);
+  return r;
+}

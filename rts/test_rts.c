@@ -310,6 +310,19 @@ int main () {
     "base32 to em77e-bvlzu-aq checksum mismatch (0x233FF206 == %u)\n", checksum);
 
   /*
+   * Testing principal encoding
+   */
+  printf("Testing principal encoding...\n");
+
+  extern blob_t base32_to_principal(blob_t);
+  assert(
+    text_compare(
+     base32_to_principal(text_of_ptr_size("EM77EBVLZUAQ", 12)),
+     text_of_ptr_size("em77e-bvlzu-aq", 14)
+    ) == 0,
+    "principal name to em77e-bvlzu-aq conversion mismatch\n");
+
+  /*
    * Testing princpal decoding
    */
   printf("Testing prinicpal decoding...\n");
