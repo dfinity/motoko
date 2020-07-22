@@ -52,11 +52,6 @@ static uint8_t compute_crc8(const char data[], size_t len) {
   return crc;
 }
 
-static inline uint32_t compute_crc32(const unsigned char data[], size_t len) {
-  extern uint32_t crc_32(const unsigned char*, size_t);
-  return crc_32(data, len);
-}
-
 // Decode an textual principal representation into a blob
 export blob_t blob_of_principal(text_t t) {
   blob_t b0 = blob_of_text(t);
@@ -105,9 +100,10 @@ static inline void enc_stash(struct Pump* pump, uint8_t data) {
 
 // Encode a blob into an checksum-prepended base32 representation
 export blob_t base32_of_checksummed_blob(blob_t b) {
+  extern uint32_t compute_crc32(blob_t);
+  uint32_t checksum = compute_crc32(b);
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
-  uint32_t checksum = compute_crc32(data, n);
   blob_t r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // contains padding
   uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
 
@@ -151,15 +147,13 @@ static void accum_base32(struct Pump* pump, uint8_t d) {
     pump->pending_data |= v;
   }
 }
-#include <stdio.h>
+
 static inline void dec_stash(struct Pump* pump, uint8_t data) {
   accum_base32(pump, data);
 
   while (pump->pending_bits >= pump->out_gran) {
     pump->pending_bits -= pump->out_gran;
     *pump->dest++ = pump->pending_data >> pump->pending_bits;
-    printf("stashed %c...\n", pump->dest[-1]);
-
     pump->pending_data &= (1 << pump->pending_bits) - 1;
   }
 }
@@ -173,8 +167,9 @@ export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
 
   struct Pump pump = { .inp_gran = 5, .out_gran = 8, .dest = dest };
   for (size_t i = 0; i < n; ++i) {
-    if (checksum && i == sizeof *checksum) {
+    if (checksum && i == 7) {
       *checksum = dest[0] << 24 | dest[1] << 16 | dest[2] << 8 | dest[3];
+      checksum = NULL;
       // fill blob from start
       pump.dest = dest = (uint8_t *)BLOB_PAYLOAD(r);
     }
@@ -182,6 +177,5 @@ export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
   }
   // adjust resulting blob length
   BLOB_LEN(r) = pump.dest - dest;
-  // check crc?? TODO
   return r;
 }

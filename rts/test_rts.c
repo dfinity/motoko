@@ -232,13 +232,13 @@ int main () {
    */
   printf("Testing crc32...\n");
 
-  extern uint32_t crc_32(const unsigned char*, size_t);
+  extern uint32_t compute_crc32(blob_t);
   assert(
-    crc_32((const unsigned char*)"123456789", 9) == 0xCBF43926,
+    compute_crc32(text_of_ptr_size("123456789", 9)) == 0xCBF43926,
     "crc32 of 123456789 mismatch\n");
 
   assert(
-    crc_32((const unsigned char*)"abcdefghijklmnop", 16) == 0x943AC093,
+    compute_crc32(text_of_ptr_size("abcdefghijklmnop", 16)) == 0x943AC093,
     "crc32 of abcdefghijklmnop mismatch\n");
 
   /*
@@ -259,13 +259,6 @@ int main () {
      text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
     ) == 0,
     "checksummed base32 of abcdefghijklmnop mismatch\n");
-
-
-
-
-
-
-
 
   printf("Testing base32 decoding...\n");
 
