@@ -147,3 +147,47 @@ export blob_t base32_of_checksummed_blob(blob_t b) {
   }
   return r;
 }
+
+
+struct Pump {
+  const int inp_gran, out_gran;
+  uint8_t *dest;
+  uint32_t pending_data, pending_bits;
+};
+
+static void stash_enc_base32(uint8_t d, uint8_t* dest) {
+  *dest = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[d & 0x1F];
+}
+
+static inline void enc_stash(struct Pump* pump, uint8_t data) {
+  pump->pending_data <<= pump->inp_gran;
+  pump->pending_data |= data;
+  pump->pending_bits += pump->inp_gran;
+
+  while (pump->pending_bits >= pump->out_gran) {
+    pump->pending_bits -= pump->out_gran;
+    stash_enc_base32(pump->pending_data >> pump->pending_bits, pump->dest++);
+    pump->pending_data &= (1 << pump->pending_bits) - 1;
+  }
+}
+
+export blob_t base32_of_checksummed_blob2(blob_t b) {
+  size_t n = BLOB_LEN(b);
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  uint32_t checksum = compute_crc32(data, n);
+  blob_t r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // TODO: minus padding
+
+  struct Pump pump = { .inp_gran = 8, .out_gran = 5, .dest = (uint8_t *)BLOB_PAYLOAD(r) };
+  enc_stash(&pump, checksum >> 24);
+  enc_stash(&pump, checksum >> 16);
+  enc_stash(&pump, checksum >> 8);
+  enc_stash(&pump, checksum);
+  for (size_t i = 0; i < n; ++i)
+    enc_stash(&pump, *data++);
+  if (pump.pending_bits) {
+    pump.pending_data <<= pump.out_gran - pump.pending_bits;
+    stash_enc_base32(pump.pending_data, pump.dest);
+  }
+  return r;
+}
+  
