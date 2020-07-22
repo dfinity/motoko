@@ -52,9 +52,9 @@ static uint8_t compute_crc8(const char data[], size_t len) {
   return crc;
 }
 
-static uint32_t compute_crc32(const char data[], size_t len) {
+static inline uint32_t compute_crc32(const unsigned char data[], size_t len) {
   extern uint32_t crc_32(const unsigned char*, size_t);
-  return crc_32((const unsigned char*)data, len);
+  return crc_32(data, len);
 }
 
 // Decode an textual principal representation into a blob
@@ -125,7 +125,7 @@ static uint64_t pickup(int bytes, uint8_t* data) {
 export blob_t base32_of_checksummed_blob(blob_t b) {
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
-  uint32_t checksum = compute_crc32(BLOB_PAYLOAD(b), n);
+  uint32_t checksum = compute_crc32(data, n);
   blob_t r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // TODO: minus padding
   
   uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
