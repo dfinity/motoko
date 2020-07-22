@@ -28,7 +28,7 @@ let rec exp e = match e.it with
   | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      sort_pat sp;
+      shared_pat sp;
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -115,7 +115,7 @@ and obj_sort s = match s.it with
   | Type.Module -> Atom "Module"
   | Type.Memory -> Atom "Memory"
 
-and sort_pat sp = match sp.it with
+and shared_pat sp = match sp.it with
   | Type.Local -> Atom "Local"
   | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
   | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
@@ -184,8 +184,8 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, tp, p, rt, s, i', efs) ->
-    "ClassD" $$ id x :: List.map typ_bind tp @ [
+  | ClassD (sp, x, tp, p, rt, s, i', efs) ->
+    "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
       obj_sort s; id i'

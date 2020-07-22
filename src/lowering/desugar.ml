@@ -189,8 +189,10 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module ->
+    build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
+  | T.Memory -> assert false
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
@@ -273,6 +275,7 @@ and build_actor at self_id es obj_typ =
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
+
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -405,9 +408,12 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
+    let op = match sp.it with
+      | T.Local -> None
+      | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -423,7 +429,7 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let args, wrap, control, _n_res = to_args n.S.note_typ None p in
+    let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
@@ -486,6 +492,17 @@ and pat_fields pfs = List.map pat_field pfs
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
 and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+
+  let mergeE ds e =
+    match e.it with
+    | Ir.ActorE _ ->
+      (match Rename.exp' Rename.Renaming.empty e.it with
+       |  Ir.ActorE (ds', fs, up, ot) ->
+         { e with it = Ir.ActorE (ds @ ds', fs, up, ot) }
+       | _ -> assert false)
+    | _ -> blockE ds e
+  in
+
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
@@ -504,8 +521,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   in
 
   (* In source, the context pattern is outside the argument pattern,
-  but in the IR, paramteres are bound first. So if there is a context pattern,
-  we _must_ create fresh names for the parameters and bind the actual paramters
+  but in the IR, parameters are bound first. So if there is a context pattern,
+  we _must_ create fresh names for the parameters and bind the actual parameters
   inside the wrapper. *)
   let must_wrap = po != None in
 
@@ -522,7 +539,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     |  _ ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
-      (fun e -> blockE [letP (pat p) (varE v)] e)
+      (fun e -> mergeE [letP (pat p) (varE v)] e)
   in
 
   let args, wrap =
@@ -546,7 +563,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_var vs,
-      (fun e -> blockE [letP (pat p) (tupE (List.map varE vs))] e)
+      (fun e -> mergeE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
   let wrap_po e =
@@ -554,7 +571,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
-      blockE
+      mergeE
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
@@ -573,6 +590,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
         blockE [letP pat {exp with it = Ir.AsyncE (tb,wrap_po e',t)} ] unit
+      | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
     else wrap_po e in
 
