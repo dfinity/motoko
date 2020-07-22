@@ -520,7 +520,7 @@ type ErrorCode = {
 };
 
 // creation and inspection of abstract error
-func error(message : Text) : Error = {
+func error(message : Text) : Error {
   let e = (#canister_reject, message);
   (prim "cast" : (ErrorCode, Text) -> Error) e
 };
