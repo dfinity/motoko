@@ -162,6 +162,7 @@ static inline void dec_stash(struct Pump* pump, uint8_t data) {
 
 // Decode a checksum-prepended base32 blob into text representation
 // checksum is filled in when not NULL and blob length at least 7
+// (disregarding fillers/padding)
 export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
@@ -170,7 +171,7 @@ export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
 
   struct Pump pump = { .inp_gran = 5, .out_gran = 8, .dest = dest };
   for (size_t i = 0; i < n; ++i) {
-    if (checksum && i == 7) { // 7 quintets expand to 4 bytes
+    if (checksum && pump.dest - dest == sizeof *checksum) {
       // checksum is deserialised as big-endian
       *checksum = dest[0] << 24 | dest[1] << 16 | dest[2] << 8 | dest[3];
       checksum = NULL;

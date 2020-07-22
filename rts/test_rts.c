@@ -298,11 +298,16 @@ int main () {
     0x943AC093 == checksum,
     "base32 to abcdefghijklmnop checksum mismatch (0x943AC093 == %u)\n", checksum);
 
-
-
-
-
-
+  static char hex[3] = { 0xAB, 0xCD, 0x01 };
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("em77e-bvlzu-aq", 14), &checksum),
+     text_of_ptr_size(hex, sizeof hex)
+    ) == 0,
+    "checksummed base32 to em77e-bvlzu-aq mismatch\n");
+  assert(
+    0x233FF206 == checksum,
+    "base32 to em77e-bvlzu-aq checksum mismatch (0x233FF206 == %u)\n", checksum);
 
   /*
    * Testing princpal decoding
