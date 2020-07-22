@@ -250,7 +250,7 @@ int main () {
   assert(
     text_compare(
      base32_of_checksummed_blob(text_of_ptr_size("123456789", 9)),
-     text_of_ptr_size("TODO", 4)
+     text_of_ptr_size("ZP2DSJRRGIZTINJWG44DS", 21)
     ) == 0,
     "checksummed base32 of 123456789 mismatch\n");
   assert(
