@@ -531,6 +531,12 @@ func errorMessage(e : Error) : Text = {
   ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
 };
 
+// Time
+
+func time() : Nat64 = {
+  ((prim "time" : () -> Nat64) ())
+};
+
 // Principal
 
 func blobOfPrincipal(id : Principal) : Blob = {
