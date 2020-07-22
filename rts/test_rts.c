@@ -228,6 +228,20 @@ int main () {
   }
 
   /*
+   * Testing crc32
+   */
+  printf("Testing crc32...\n");
+
+  extern uint32_t crc_32(const unsigned char*, size_t);
+  assert(
+    crc_32((const unsigned char*)"123456789", 9) == 0xCBF43926,
+    "crc32 of 123456789 mismatch\n");
+
+  assert(
+    crc_32((const unsigned char*)"abcdefghijklmnop", 16) == 0x943AC093,
+    "crc32 of abcdefghijklmnop mismatch\n");
+
+  /*
    * Testing princpal decoding
    */
   printf("Testing prinicpal decoding...\n");
