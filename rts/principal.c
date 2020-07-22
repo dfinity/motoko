@@ -1,5 +1,5 @@
 /*
-Prinicpal encoding and decoding with integrity checking.
+Principal encoding and decoding with integrity checking.
 */
 
 #include "rts.h"
