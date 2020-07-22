@@ -246,10 +246,16 @@ int main () {
    */
   printf("Testing base32...\n");
 
-  extern blob_t base32_of_checksummed_blob2(blob_t);
+  extern blob_t base32_of_checksummed_blob(blob_t);
   assert(
     text_compare(
-     base32_of_checksummed_blob2(text_of_ptr_size("abcdefghijklmnop", 16)),
+     base32_of_checksummed_blob(text_of_ptr_size("123456789", 9)),
+     text_of_ptr_size("TODO", 4)
+    ) == 0,
+    "checksummed base32 of 123456789 mismatch\n");
+  assert(
+    text_compare(
+     base32_of_checksummed_blob(text_of_ptr_size("abcdefghijklmnop", 16)),
      text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
     ) == 0,
     "checksummed base32 of abcdefghijklmnop mismatch\n");
