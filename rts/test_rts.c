@@ -244,7 +244,7 @@ int main () {
   /*
    * Testing base32
    */
-  printf("Testing base32...\n");
+  printf("Testing base32 encoding...\n");
 
   extern blob_t base32_of_checksummed_blob(blob_t);
   assert(
@@ -259,6 +259,40 @@ int main () {
      text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
     ) == 0,
     "checksummed base32 of abcdefghijklmnop mismatch\n");
+
+
+
+
+
+
+
+
+  printf("Testing base32 decoding...\n");
+
+  extern blob_t base32_to_checksummed_blob(blob_t, uint32_t*);
+  uint32_t checksum = 0;
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("GEZDGNBVGY3TQOI", 15), NULL),
+     text_of_ptr_size("123456789", 9)
+    ) == 0,
+    "NOT checksummed base32 to 123456789 mismatch\n");
+  /*assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("abcdefghijklmnop", 16)),
+     text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
+    ) == 0,
+    "NOT checksummed base32 of abcdefghijklmnop mismatch\n");*/
+
+
+
+
+
+
+
+
+
+
 
   /*
    * Testing princpal decoding
