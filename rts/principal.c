@@ -109,14 +109,15 @@ static inline void enc_stash(struct Pump* pump, uint8_t data) {
   }
 }
 
-// Encode a blob into an checksum-base32 representation
+// Encode a blob into an checksum-prepended base32 representation
 export blob_t base32_of_checksummed_blob(blob_t b) {
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
   uint32_t checksum = compute_crc32(data, n);
-  blob_t r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // TODO: minus padding
+  blob_t r = alloc_blob((n + sizeof checksum + 4) / 5 * 8); // contains padding
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
 
-  struct Pump pump = { .inp_gran = 8, .out_gran = 5, .dest = (uint8_t *)BLOB_PAYLOAD(r) };
+  struct Pump pump = { .inp_gran = 8, .out_gran = 5, .dest = dest };
   enc_stash(&pump, checksum >> 24); // checksum is serialised as big-endian
   enc_stash(&pump, checksum >> 16);
   enc_stash(&pump, checksum >> 8);
@@ -124,8 +125,11 @@ export blob_t base32_of_checksummed_blob(blob_t b) {
   for (size_t i = 0; i < n; ++i)
     enc_stash(&pump, *data++);
   if (pump.pending_bits) {
+    // flush odd bits
     pump.pending_data <<= pump.out_gran - pump.pending_bits;
-    stash_enc_base32(pump.pending_data, pump.dest);
+    stash_enc_base32(pump.pending_data, pump.dest++);
+    // discount padding
+    BLOB_LEN(r) = pump.dest - dest;
   }
   return r;
 }
