@@ -124,7 +124,7 @@ export blob_t base32_of_checksummed_blob(blob_t b) {
   return r;
 }
 
-static void accum_base32(struct Pump* pump, uint8_t d) {
+static void accum_base32(struct Pump* pump, uint8_t c) {
   // tolerant conversion array
   // accepts lower case and fillers/padding '-', '='
   // values are one more than base32 value
@@ -140,7 +140,9 @@ static void accum_base32(struct Pump* pump, uint8_t d) {
     ['w'] = 23, ['x'] = 24, ['y'] = 25, ['z'] = 26,
     ['2'] = 27, ['3'] = 28, ['4'] = 29, ['5'] = 30, ['6'] = 31, ['7'] = 32
   };
-  uint8_t v = conv[d & 0x7F] - 1;
+  // TODO: check for illegal c
+  uint8_t v = conv[c & 0x7F] - 1;
+  // TODO: check for illegal v
   if (v < 0x20) {
     pump->pending_bits += pump->inp_gran;
     pump->pending_data <<= pump->inp_gran;
