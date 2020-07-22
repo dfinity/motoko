@@ -81,12 +81,6 @@ export blob_t blob_of_principal(text_t t) {
   return r;
 }
 
-static char to_hex_digit(uint8_t n) {
-  if (n < 10) return '0' + n;
-  if (n < 16) return 'A' + (n - 10);
-  rts_trap_with("to_hex_digit: out of range");
-}
-
 struct Pump {
   const int inp_gran, out_gran;
   uint8_t *dest;
