@@ -263,20 +263,21 @@ int main () {
   printf("Testing base32 decoding...\n");
 
   extern blob_t base32_to_checksummed_blob(blob_t, uint32_t*);
-  uint32_t checksum = 0;
   assert(
     text_compare(
      base32_to_checksummed_blob(text_of_ptr_size("GEZDGNBVGY3TQOI", 15), NULL),
      text_of_ptr_size("123456789", 9)
     ) == 0,
     "base32 to 123456789 mismatch\n");
-  /*assert(
-    text_compare(
-     base32_to_checksummed_blob(text_of_ptr_size("abcdefghijklmnop", 16)),
-     text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
-    ) == 0,
-    "base32 of abcdefghijklmnop mismatch\n");*/
 
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("MFRGGZDFMZTWQ2LKNNWG23TPOA", 26), NULL),
+     text_of_ptr_size("abcdefghijklmnop", 16)
+    ) == 0,
+    "base32 to abcdefghijklmnop mismatch\n");
+
+  uint32_t checksum = 0;
   assert(
     text_compare(
      base32_to_checksummed_blob(text_of_ptr_size("ZP2DSJRRGIZTINJWG44DS", 21), &checksum),
@@ -284,11 +285,18 @@ int main () {
     ) == 0,
     "checksummed base32 to 123456789 mismatch\n");
   assert(
+    0xCBF43926 == checksum,
+    "base32 to 123456789 checksum mismatch (0xCBF43926 == %u)\n", checksum);
+
+  assert(
     text_compare(
      base32_to_checksummed_blob(text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32), &checksum),
      text_of_ptr_size("abcdefghijklmnop", 16)
     ) == 0,
     "checksummed base32 to abcdefghijklmnop mismatch\n");
+  assert(
+    0x943AC093 == checksum,
+    "base32 to abcdefghijklmnop checksum mismatch (0x943AC093 == %u)\n", checksum);
 
 
 
