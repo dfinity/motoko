@@ -452,6 +452,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Text env.self)
+      | SystemTimePrim, [] ->
+        k (V.Nat64 (Value.Nat64.of_int 42))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))

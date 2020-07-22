@@ -3245,6 +3245,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
+      E.add_func_import env "ic0" "time" [] [I64Type];
       ()
 
   let system_imports env =
@@ -3416,7 +3417,14 @@ module Dfinity = struct
           (fun env -> system_call env "ic0" "canister_self_copy") 0l
       )
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
+      E.trap_with env "cannot get self-actor-reference when running locally"
+
+  let get_system_time env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      system_call env "ic0" "time"
+    | _ ->
+      E.trap_with env "cannot get system time when running locally"
 
   let caller env =
     SR.Vanilla,
@@ -6993,7 +7001,6 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
-
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -7130,6 +7137,12 @@ and compile_exp (env : E.t) ae exp =
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_log"
+
+    (* Other prims, nullary *)
+
+    | SystemTimePrim, [] ->
+      SR.UnboxedWord64,
+      Dfinity.get_system_time env
 
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
