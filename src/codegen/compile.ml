@@ -244,7 +244,7 @@ module E = struct
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
-    globals : (global * string) list ref;
+    globals : (global Lib.Promise.t * string) list ref;
     global_names : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
@@ -329,17 +329,23 @@ module E = struct
     let gi = reg env.globals (g, name) in
     env.global_names := NameEnv.add name gi !(env.global_names)
 
-  let add_global32 (env : t) name mut init =
-    add_global env name (
-      nr { gtype = GlobalType (I32Type, mut);
+  let add_global32_delayed (env : t) name mut : (int32 -> unit) =
+    let p = Lib.Promise.make () in
+    add_global env name p;
+    (fun init ->
+      Lib.Promise.fulfill p (nr { gtype = GlobalType (I32Type, mut);
         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I32 init)))))
       })
+    )
+
+  let add_global32 (env : t) name mut init =
+    add_global32_delayed env name mut init
 
   let add_global64 (env : t) name mut init =
-    add_global env name (
+    add_global env name (Lib.Promise.make_fulfilled (
       nr { gtype = GlobalType (I64Type, mut);
         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
-      })
+      }))
 
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
@@ -357,7 +363,7 @@ module E = struct
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
-  let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
+  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) !(env.globals)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -459,7 +465,7 @@ module E = struct
   let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
 
   let reserve_static_memory (env : t) size : int32 =
-    if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
+    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -5081,7 +5087,7 @@ module GC = struct
         get_begin_from_space get_begin_to_space get_end_to_space
   )
 
-  let register env static_roots (end_of_static_space : int32) =
+  let register env static_roots =
     Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
       Heap.get_heap_ptr env ^^
       Heap.get_heap_base env ^^
@@ -7974,11 +7980,16 @@ and conclude_module env start_fi_o =
   FuncDec.export_async_method env;
 
   let static_roots = GC.store_static_roots env in
+  (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
-  E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
+  let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
+
+  GC.register env static_roots;
+
+  set_heap_base (E.get_end_of_static_memory env);
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
@@ -7991,9 +8002,6 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
-
-
-  GC.register env static_roots (E.get_end_of_static_memory env);
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in
