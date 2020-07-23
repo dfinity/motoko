@@ -2,6 +2,7 @@ func go () {
   func foobar1() = ();
   foobar1();
 };
+go();
 
 func foobar2() = ();
 foobar2();
@@ -13,3 +14,4 @@ foobar2();
 // CHECK-LABEL: func $go
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar1
+

@@ -6,6 +6,7 @@ func go () {
   let objB1 = module { public let foobar1 = objA1.foobar1; };
   objB1.foobar1();
 };
+go();
 
 let objA2 = module { public func foobar2() = () };
 let objB2 = module { public let foobar2 = objA2.foobar2; };

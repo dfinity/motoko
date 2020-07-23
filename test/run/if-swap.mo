@@ -1,5 +1,7 @@
 func wantSeeSwap() : Nat =
-    if (true != true) 42 else 25
+    if (true != true) 42 else 25;
+
+ignore(wantSeeSwap());
 
 // CHECK-LABEL: wantSeeSwap
 // CHECK: i32.eq
