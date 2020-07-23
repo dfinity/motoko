@@ -14,9 +14,6 @@ module ST = Source_token
 
 include module type of Lexer_lib
 
-val mode : mode
-val mode_priv : mode
-
 type pos = { line : int; column : int }
 
 type trivia_info = {
