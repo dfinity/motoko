@@ -26,8 +26,6 @@ IDL=no
 PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 export MOC
-MOC_UNLOCK_PRIM=yesplease
-export MOC_UNLOCK_PRIM
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 export MO_LD
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
@@ -239,16 +237,18 @@ do
   "mo")
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
+    moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
+    moc="env $moc_extra_env $MOC $moc_extra_flags"
 
     # Typecheck
-    run tc $MOC $moc_extra_flags --check $base.mo
+    run tc $moc --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $moc_extra_flags --idl $base.mo -o $out/$base.did
+        run idl $moc --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -262,10 +262,10 @@ do
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
+          run run $moc --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -275,7 +275,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $moc_extra_flags --hide-warnings -r -iR $base.mo
+          run run-low $moc --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -308,13 +308,13 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp $MOC $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $MOC $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $moc $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
-          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
