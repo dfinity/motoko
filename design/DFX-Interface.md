@@ -95,11 +95,11 @@ The given aliases must be unique (i.e. no `--actor-alias a aaaaa-aa --actor-alia
 Resolving Canister types
 ------------------------
 
-For every actor imported using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This file informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
+For every actor imported using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This file informs Motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
 
-The `canisterid` here refers the “textual representation“, e.g. `em77e-bvlzu-aq`.
+The `canisterid` here refers to the “textual representation“, e.g. `em77e-bvlzu-aq`.
 
-This files informs motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
+This file informs Motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
 
 Open problem: how to resolve mutual canister imports.
 
