@@ -26,6 +26,8 @@ IDL=no
 PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 export MOC
+MOC_UNLOCK_PRIM=yesplease
+export MOC_UNLOCK_PRIM
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 export MO_LD
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}

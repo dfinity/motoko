@@ -81,12 +81,17 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let parse_with' mode lexer parser name =
+let parse_with' mode with_trivia lexer parser name =
   try
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let tokenizer, get_trivia_table = Lexer.tokenizer mode lexer in
+    (* a back door to enable the `prim` syntax, for our test suite *)
+    let real_mode = match Sys.getenv_opt "MOC_UNLOCK_PRIM" with
+      | Some _ -> Lexer.Privileged
+      | None -> mode
+    in
+    let tokenizer, get_trivia_table = Lexer.tokenizer real_mode with_trivia lexer in
     let prog = Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer name in
     dump_prog Flags.dump_parse prog;
     Ok (prog, get_trivia_table ())
@@ -99,17 +104,17 @@ let parse_with' mode lexer parser name =
         right = Lexer.convert_pos end_;
       } "syntax" msg
 
-let parse_with mode lexer parser name =
-  Result.map fst (parse_with' mode lexer parser name)
+let parse_with mode with_trivia lexer parser name =
+  Result.map fst (parse_with' mode with_trivia lexer parser name)
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
-  match parse_with Lexer.Normal lexer parse name with
+  match parse_with Lexer.Normal false lexer parse name with
   | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
 
-let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
+let parse_file' mode with_trivia at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.print_messages
     (List.map
@@ -117,17 +122,17 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
        messages);
   let lexer = Lexing.from_channel ic in
   let parse = Parser.Incremental.parse_prog in
-  let result = parse_with' mode lexer parse filename in
+  let result = parse_with' mode with_trivia lexer parse filename in
   close_in ic;
   match result with
   | Ok (prog, triv_table) -> Diag.return (prog, triv_table, filename)
   | Error e -> Error [e]
 
 let parse_file at filename : parse_result =
-  Diag.map (fun (p, _, f) -> p, f) (parse_file' Lexer.Normal at filename)
+  Diag.map (fun (p, _, f) -> p, f) (parse_file' Lexer.Normal false at filename)
 
 let parse_file_with_trivia at filename : (Syntax.prog * Lexer.triv_table) Diag.result =
-  Diag.map (fun (p, t, _) -> p, t) (parse_file' Lexer.NormalWithTrivia at filename)
+  Diag.map (fun (p, t, _) -> p, t) (parse_file' Lexer.Normal true at filename)
 
 
 (* Import file name resolution *)
@@ -240,7 +245,7 @@ let prelude_error phase (msgs : Diag.messages) =
 let check_prelude () : Syntax.prog * stat_env =
   let lexer = Lexing.from_string Prelude.prelude in
   let parse = Parser.Incremental.parse_prog in
-  match parse_with Lexer.Privileged lexer parse prelude_name with
+  match parse_with Lexer.Privileged false lexer parse prelude_name with
   | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
     let senv0 = Typing.initial_scope in
@@ -264,7 +269,7 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string Prelude.prim_module in
   let parse = Parser.Incremental.parse_prog in
-  match parse_with Lexer.Privileged lexer parse prim_name with
+  match parse_with Lexer.Privileged false lexer parse prim_name with
   | Error e -> prim_error "parsing" [e]
   | Ok prog ->
     let senv0 = initial_stat_env in
@@ -481,7 +486,7 @@ let lexer_stdin buf len =
 let parse_lexer lexer : parse_result =
   let open Lexing in
   if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
-  match parse_with Lexer.Normal lexer Parser.Incremental.parse_prog_interactive "stdin" with
+  match parse_with Lexer.Normal false lexer Parser.Incremental.parse_prog_interactive "stdin" with
   | Error e ->
     Lexing.flush_input lexer;
     (* Reset beginning-of-line, too, to sync consecutive positions. *)

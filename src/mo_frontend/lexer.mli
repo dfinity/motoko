@@ -32,5 +32,5 @@ type parser_token = Parser.token * Lexing.position * Lexing.position
   and an accessor function for the collected trivia indexed by
   the start position for every token.
 *)
-val tokenizer : mode -> Lexing.lexbuf ->
+val tokenizer : mode -> bool -> Lexing.lexbuf ->
     (unit -> parser_token) * (unit -> triv_table)
