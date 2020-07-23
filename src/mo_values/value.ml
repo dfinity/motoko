@@ -446,12 +446,13 @@ let rec string_of_val_nullary d = function
   | Word64 w -> "0x" ^ Word64.to_pretty_string w
   | Float f -> Float.to_pretty_string f
   | Char c -> string_of_string '\'' [c] '\''
-  | Text t
-  | Blob t ->
+  | Text t ->
     begin try
       string_of_string '\"' (Wasm.Utf8.decode t) '\"'
     (* We also use Text for blobs, so be defensive here: *)
     with Wasm.Utf8.Utf8 -> "\"(invalid utf8)\"" end
+  | Blob b ->
+    "\"" ^ Blob.escape b ^ "\""
   | Tup vs ->
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_val d) vs))
