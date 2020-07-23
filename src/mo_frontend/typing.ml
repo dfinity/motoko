@@ -734,7 +734,7 @@ and infer_exp'' env exp : T.typ =
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
     | Some t when is_unavailable_typ t->
-      if !Flags.compiled = true then
+      if !Flags.compiled then
         error env id.at "variable %s is in scope but not available in compiled code" id.it
       else T.normalize t
     | Some t -> t
