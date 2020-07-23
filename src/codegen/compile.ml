@@ -111,7 +111,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of int32
+    | Fun of (unit -> int32) (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
@@ -220,10 +220,12 @@ module E = struct
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
-  type lazy_built_in =
+  type lazy_function' =
+    | Pristine
     | Declared of int32 * (func_with_names -> unit)
     | Defined of int32
     | Pending of (unit -> func_with_names)
+  type lazy_function = (string * lazy_function' ref)
   type t = {
     (* Global fields *)
     (* Static *)
@@ -244,7 +246,7 @@ module E = struct
     end_of_table : int32 ref;
     globals : (global * string) list ref;
     global_names : int32 NameEnv.t ref;
-    built_in_funcs : lazy_built_in NameEnv.t ref;
+    built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
@@ -369,29 +371,43 @@ module E = struct
     fill (f, local_names);
     fi
 
-  let built_in (env : t) name : int32 =
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-    | None ->
+  let make_lazy_function name : lazy_function =
+    (name, ref Pristine)
+
+  let get_lazy_function env ((name, lfr) : lazy_function) : int32 =
+    match !lfr with
+    | Pristine ->
         let (fi, fill) = reserve_fun env name in
-        env.built_in_funcs := NameEnv.add name (Declared (fi, fill)) !(env.built_in_funcs);
+        lfr := Declared (fi, fill);
         fi
-    | Some (Declared (fi, _)) -> fi
-    | Some (Defined fi) -> fi
-    | Some (Pending mk_fun) ->
+    | Declared (fi, _) -> fi
+    | Defined fi -> fi
+    | Pending mk_fun ->
         let (fi, fill) = reserve_fun env name in
-        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
+        lfr := Defined fi;
         fill (mk_fun ());
         fi
 
-  let define_built_in (env : t) name mk_fun : unit =
+  let fill_lazy_function ((name, lfr) : lazy_function) mk_fun =
+    match !lfr with
+    | Pristine -> lfr := Pending mk_fun
+    | Declared (fi, fill) -> lfr := Defined fi; fill (mk_fun ())
+    | Defined fi -> ()
+    | Pending mk_fun -> ()
+
+  let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
-        env.built_in_funcs := NameEnv.add name (Pending mk_fun) !(env.built_in_funcs);
-    | Some (Declared (fi, fill)) ->
-        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
-        fill (mk_fun ());
-    | Some (Defined fi) ->  ()
-    | Some (Pending mk_fun) -> ()
+      let lf = make_lazy_function name in
+      env.built_in_funcs := NameEnv.add name lf !(env.built_in_funcs);
+      lf
+    | Some lf -> lf
+
+  let built_in (env : t) name : int32 =
+    get_lazy_function env (lookup_built_in env name)
+
+  let define_built_in (env : t) name mk_fun : unit =
+    fill_lazy_function (lookup_built_in env name) mk_fun
 
   let get_return_arity (env : t) = env.return_arity
 
@@ -421,13 +437,17 @@ module E = struct
       let fi = reg env.func_imports (nr i) in
       let name = modname ^ "." ^ funcname in
       assert (not (NameEnv.mem name !(env.built_in_funcs)));
-      env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
+      env.built_in_funcs := NameEnv.add name (name, ref (Defined fi)) !(env.built_in_funcs);
     else assert false (* "add all imports before all functions!" *)
 
   let call_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
+    (* TODO: might be nicer to keep track of input fi's separate from built_in_funs *)
     match NameEnv.find_opt name !(env.built_in_funcs) with
-      | Some (Defined fi) -> G.i (Call (nr fi))
+      | Some (_, lfr) -> begin match !lfr with
+        | Defined fi -> G.i (Call (nr fi))
+        | _ -> raise (Invalid_argument "call_import, unexpected fi")
+        end
       | _ ->
         Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
@@ -5250,7 +5270,7 @@ module StackRep = struct
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
   and materialize_const_v env = function
-    | Const.Fun fi -> Closure.static_closure env fi
+    | Const.Fun get_fi -> Closure.static_closure env (get_fi ())
     | Const.Message fi -> assert false
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
@@ -5568,17 +5588,19 @@ module FuncDec = struct
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
-    let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
+      let (fi, fill) = E.reserve_fun pre_env name in
       ( Const.t_of_v (Const.Message fi), fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( Const.t_of_v (Const.Fun fi), fun env ae ->
+      let lf = E.make_lazy_function name in
+      let get_fi () = E.get_lazy_function pre_env lf in
+      ( Const.t_of_v (Const.Fun get_fi), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
-        fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
+        E.fill_lazy_function lf (fun () -> compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
     end
 
@@ -6758,11 +6780,11 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity return_arity,
       let fun_sr, code1 = compile_exp env ae e1 in
       begin match fun_sr, sort with
-       | SR.Const (_, Const.Fun fi), _ ->
+       | SR.Const (_, Const.Fun mk_fi), _ ->
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-          G.i (Call (nr fi)) ^^
+          G.i (Call (nr (mk_fi ()))) ^^
           FakeMultiVal.load env (Lib.List.make return_arity I32Type)
        | _, Type.Local ->
           let (set_clos, get_clos) = new_local env "clos" in
