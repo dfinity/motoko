@@ -8,14 +8,14 @@ module Lsp = Lsp.Lsp_t
 type import = string * string
 
 let parse_with mode lexbuf parser =
-  let tokenizer, _ = Lexer.tokenizer mode false lexbuf in
+  let tokenizer, _ = Lexer.tokenizer mode lexbuf in
   Ok (Parsing.parse 0 (parser lexbuf.Lexing.lex_curr_p) tokenizer lexbuf)
 
 let parse_string s =
   try
     let lexer = Lexing.from_string s in
     let parse = Parser.Incremental.parse_module_header in
-    ignore (parse_with Lexer.Normal lexer parse);
+    ignore (parse_with Lexer.mode lexer parse);
     []
   with
   | Parser_lib.Imports is -> is

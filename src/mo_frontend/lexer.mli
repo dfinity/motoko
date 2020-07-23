@@ -14,6 +14,9 @@ module ST = Source_token
 
 include module type of Lexer_lib
 
+val mode : mode
+val mode_priv : mode
+
 type pos = { line : int; column : int }
 
 type trivia_info = {
@@ -32,5 +35,5 @@ type parser_token = Parser.token * Lexing.position * Lexing.position
   and an accessor function for the collected trivia indexed by
   the start position for every token.
 *)
-val tokenizer : mode -> bool -> Lexing.lexbuf ->
+val tokenizer : mode -> Lexing.lexbuf ->
     (unit -> parser_token) * (unit -> triv_table)

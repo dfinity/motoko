@@ -34,7 +34,7 @@ let first (t, _, _) = t
 let opt_is_whitespace : 'a ST.trivia option -> bool =
  fun x -> Option.fold ~none:false ~some:ST.is_whitespace x
 
-let tokenizer (mode : Lexer_lib.mode) (with_trivia : bool) (lexbuf : Lexing.lexbuf) :
+let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
     (unit -> parser_token) * (unit -> triv_table) =
   let trivia_table : triv_table = PosHashtbl.create 1013 in
   let lookahead : source_token option ref = ref None in
@@ -101,7 +101,7 @@ let tokenizer (mode : Lexer_lib.mode) (with_trivia : bool) (lexbuf : Lexing.lexb
       | _ -> token
     in
     last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
-    if with_trivia then
+    if mode.with_trivia then
       PosHashtbl.add trivia_table (pos_of_lexpos start)
         { leading_trivia; trailing_trivia };
     (token, start, end_)
