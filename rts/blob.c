@@ -140,9 +140,9 @@ static void accum_base32(struct Pump* pump, uint8_t c) {
     ['w'] = 23, ['x'] = 24, ['y'] = 25, ['z'] = 26,
     ['2'] = 27, ['3'] = 28, ['4'] = 29, ['5'] = 30, ['6'] = 31, ['7'] = 32
   };
-  // TODO: check for illegal c
+  if (c > 'z') rts_trap_with("accum_base32: Base32 symbol out of range");
   uint8_t v = conv[c & 0x7F] - 1;
-  // TODO: check for illegal v
+  if (v > 0xF1) rts_trap_with("accum_base32: Illegal base32 symbol");
   if (v < 0x20) {
     pump->pending_bits += pump->inp_gran;
     pump->pending_data <<= pump->inp_gran;
