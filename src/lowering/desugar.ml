@@ -611,7 +611,7 @@ and comp_unit ds : Ir.comp_unit =
       match e1'.it with
       | ActorE (ds2, fs, up, t) ->
         ActorU (ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and and e1' *)
+      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
         ActorU (ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
