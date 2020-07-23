@@ -727,7 +727,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
-   (* TODO (osa): Should I add a case here for matching blobs? *)
+  | BlobLit b, V.Blob b' -> b = b'
   | PreLit _, _ -> assert false
   | _ -> false
 

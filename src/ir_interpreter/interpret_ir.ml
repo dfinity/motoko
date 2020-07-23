@@ -704,6 +704,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
+  | BlobLit b, V.Blob b' -> b = b'
   | _ -> false
 
 and match_id id v : val_env =
