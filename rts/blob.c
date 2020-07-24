@@ -77,6 +77,12 @@ export uint32_t blob_iter_next(blob_iter_t i) {
   return *(uint8_t*)(BLOB_PAYLOAD(s) + n);
 }
 
+
+// Base32 encoding/decoding of blobs
+//
+// These routines assume contiguous memory layout.
+// Primarily intended for encoding princials.
+
 struct Pump {
   const int inp_gran, out_gran;
   uint8_t *dest;
@@ -161,8 +167,10 @@ static inline void dec_stash(struct Pump* pump, uint8_t data) {
 }
 
 // Decode a checksum-prepended base32 blob into text representation
-// checksum is filled in when not NULL and blob length at least 7
+// `checksum` is filled in when not NULL and blob length at least 7
 // (disregarding fillers/padding)
+// Verifying that `checksum` is a correct crc32 needs to be done separately.
+//
 export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);

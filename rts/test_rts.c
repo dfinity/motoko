@@ -246,7 +246,7 @@ int main () {
    */
   printf("Testing base32 encoding...\n");
 
-  extern blob_t base32_of_checksummed_blob(blob_t);
+  //gextern blob_t base32_of_checksummed_blob(blob_t);
   assert(
     text_compare(
      base32_of_checksummed_blob(text_of_ptr_size("123456789", 9)),
@@ -262,7 +262,7 @@ int main () {
 
   printf("Testing base32 decoding...\n");
 
-  extern blob_t base32_to_checksummed_blob(blob_t, uint32_t*);
+  //extern blob_t base32_to_checksummed_blob(blob_t, uint32_t*);
   assert(
     text_compare(
      base32_to_checksummed_blob(text_of_ptr_size("GEZDGNBVGY3TQOI", 15), NULL),
@@ -314,7 +314,7 @@ int main () {
    */
   printf("Testing principal encoding...\n");
 
-  extern blob_t base32_to_principal(blob_t);
+  //extern blob_t base32_to_principal(blob_t);
   assert(
     text_compare(
      base32_to_principal(text_of_ptr_size("EM77EBVLZUAQ", 12)),
@@ -327,7 +327,7 @@ int main () {
    */
   printf("Testing principal decoding...\n");
 
-  extern as_ptr blob_of_principal(as_ptr);
+  //extern blob_t blob_of_principal(text_t);
   assert(
     text_compare(
      blob_of_principal(text_of_cstr("aaaaa-aa")),
