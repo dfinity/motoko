@@ -61,7 +61,7 @@ let env_of_scope flags scope =
     async = false;
   }
 
-let context env = V.Text env.self
+let context env = V.Blob env.self
 
 (* Error handling *)
 
@@ -244,7 +244,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | BlobLit s -> V.Text s (* refine in #1611 *)
+  | BlobLit b -> V.Blob b
   | PreLit _ -> assert false
 
 
@@ -402,7 +402,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env url (fun v1 ->
       let open Ic.Url in
       match parse (V.as_text v1) with
-        | Ok (Ic bytes) -> k (V.Text bytes)
+        | Ok (Ic bytes) -> k (V.Blob bytes)
         | _ -> trap exp.at "could not parse %S as an actor reference"  (V.as_text v1)
     )
   | UnE (ot, op, exp1) ->
@@ -453,13 +453,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
-          | "size" when T.eq exp1.note.note_typ T.text ->
-            text_len (* TODO: remove this hack with Blob value; https://github.com/dfinity-lab/motoko/issues/1611 *)
+          | "size" -> text_len
           | "chars" -> text_chars
+          | _ -> assert false
+        in k (f s exp.at)
+      | V.Blob b ->
+        let f = match id.it with
           | "size" -> blob_size
           | "bytes" -> blob_bytes
           | _ -> assert false
-        in k (f s exp.at)
+        in k (f b exp.at)
       | _ -> assert false
     )
   | AssignE (exp1, exp2) ->
@@ -724,6 +727,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
+  | BlobLit b, V.Blob b' -> b = b'
   | PreLit _, _ -> assert false
   | _ -> false
 
