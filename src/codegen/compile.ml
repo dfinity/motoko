@@ -225,7 +225,7 @@ module E = struct
     | Declared of int32 * (func_with_names -> unit)
     | Defined of int32
     | Pending of (unit -> func_with_names)
-  type lazy_function = (string * lazy_function' ref)
+  type lazy_function = string * lazy_function' ref
   type t = {
     (* Global fields *)
     (* Static *)
