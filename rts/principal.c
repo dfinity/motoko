@@ -53,14 +53,14 @@ static uint8_t compute_crc8(const char data[], size_t len) {
 export blob_t blob_of_principal(text_t t) {
   blob_t b0 = blob_of_text(t);
   size_t n = BLOB_LEN(b0);
-  if (n < 5) rts_trap_with("ic_blob_of_principal: too short for an ic: URL");
+  if (n < 5) rts_trap_with("blob_of_principal: too short for an ic: URL");
   const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
   check_ci_scheme(s);
   const char* hex = s + 3; // skip over "ic:"
   size_t hex_len = n - 5; // strip "ic:" and 2 last digits
   check_all_uppercase_hex(hex, e);
-  if (hex_len & 1) rts_trap_with("ic_blob_of_principal: Not an even number of hex digits");
+  if (hex_len & 1) rts_trap_with("blob_of_principal: Not an even number of hex digits");
   as_ptr r = alloc_blob(hex_len / 2);
   for (char *bytes = BLOB_PAYLOAD(r); hex_len; hex += 2, hex_len -= 2) {
     *bytes++ = (char)hex_byte(hex);
@@ -68,7 +68,7 @@ export blob_t blob_of_principal(text_t t) {
   uint8_t crc = compute_crc8(BLOB_PAYLOAD(r), (n-5)/2);
   uint8_t exp = hex_byte(e - 2);
   if (crc != exp) {
-    rts_trap_with("ic_blob_of_principal: CRC-8 mismatch");
+    rts_trap_with("blob_of_principal: CRC-8 mismatch");
   }
   return r;
 }
