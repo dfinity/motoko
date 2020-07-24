@@ -228,24 +228,24 @@ int main () {
   }
 
   /*
-   * Testing 'IC:' scheme URL decoding
+   * Testing principal decoding
    */
-  printf("Testing IC: URL...\n");
+  printf("Testing principal decoding...\n");
 
-  extern as_ptr blob_of_ic_url(as_ptr);
+  extern as_ptr blob_of_principal(as_ptr);
   assert(
     text_compare(
-     blob_of_ic_url(text_of_cstr("Ic:0000")),
+     blob_of_principal(text_of_cstr("aaaaa-aa")),
      text_of_ptr_size("\0",1)
     ) == 0,
-    "Ic:0000 not decoded correctly\n");
+    "aaaaa-aa not decoded correctly\n");
 
   assert(
     text_compare(
-     blob_of_ic_url(text_of_cstr("ic:C0FEFED00D41")),
+     blob_of_principal(text_of_cstr("bfozs-kwa73-7nadi")),
      text_of_ptr_size("\xC0\xFE\xFE\xD0\x0D",5)
     ) == 0,
-    "ic:C0FEFED00D41 not decoded correctly\n");
+    "bfozs-kwa73-7nadi not decoded correctly\n");
 
   return ret;
 }

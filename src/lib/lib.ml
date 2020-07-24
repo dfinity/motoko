@@ -53,6 +53,9 @@ struct
     let outer crc b =
       List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
     Seq.fold_left outer 0 (String.to_seq bs)
+
+  let crc32 (bs : string) : int32 =
+    raise (Invalid_argument "not yet implemented")
 end
 
 module Hex =
@@ -91,6 +94,12 @@ struct
   let hex_of_bytes bytes : string =
     let open Stdlib.String in
     of_seq (Stdlib.Seq.flat_map (fun c -> to_seq (hex_of_char c)) (to_seq bytes))
+end
+
+module Base32 =
+struct
+  let decode input = raise (Invalid_argument "not implemented yet")
+  let encode input = raise (Invalid_argument "not implemented yet")
 end
 
 module String =
