@@ -139,8 +139,13 @@ let rec extract_doc find_trivia = function
         | _ -> DTPlain typ
       in
       Some (Type { name = name.it; type_args = ty_args; typ = doc_typ })
-  | Source.{ it = Syntax.ClassD (name, type_args, ctor, _, sort, _, fields); _ }
-    ->
+  | Source.
+      {
+        it =
+          Syntax.ClassD
+            (shared_pat, name, type_args, ctor, _, obj_sort, _, fields);
+        _;
+      } ->
       Some
         (Class
            {
@@ -148,7 +153,7 @@ let rec extract_doc find_trivia = function
              type_args;
              constructor = extract_func_args find_trivia ctor;
              fields = List.filter_map (extract_exp_field find_trivia) fields;
-             sort;
+             sort = obj_sort;
            })
   | unknown ->
       Wasm.Sexpr.print 80 (Arrange.dec unknown);

@@ -550,6 +550,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* We could additionally keep track of the type of the current actor in
          the environment and see if this lines up. *)
       t1 <: t;
+    | SystemTimePrim, [] ->
+      T.(Prim Nat64) <: t;
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

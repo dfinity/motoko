@@ -126,6 +126,7 @@ and prim =
   | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
+  | SystemTimePrim
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
   | CPSAwait

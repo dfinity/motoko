@@ -1,0 +1,6 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update c1(0x4449444c0000)
+← completed: 0x4449444c016900010001022a01

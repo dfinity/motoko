@@ -78,3 +78,9 @@ Prim.debugPrint(debug_show 0.0);
 Prim.debugPrint(debug_show (-0.0));
 Prim.debugPrint(debug_show (-42.0));
 Prim.debugPrint(debug_show (1000000.12345));
+Prim.debugPrint(debug_show ("Test" : Blob));
+Prim.debugPrint(debug_show ("\00\01\02\03\04" : Blob));
+
+// Make sure blob-to-string conversion can handle invalid UTF-8 strings
+Prim.debugPrint(debug_show ("\FF" : Blob)); // 0xFF is never valid in a UTF-8 string
+Prim.debugPrint(debug_show ("\D8\00" : Blob)); // unpaired surrogate

@@ -25,9 +25,10 @@ DTESTS=no
 IDL=no
 PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
+export MOC
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
-DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift"
 DRUN=${DRUN:-drun}
@@ -102,8 +103,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext$" $file; then return 1; fi
-  if grep -q "^//SKIP $(uname)$" $file; then return 1; fi
+  if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -237,16 +237,18 @@ do
   "mo")
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
+    moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
+    moc="env $moc_extra_env $MOC $moc_extra_flags"
 
     # Typecheck
-    run tc $MOC $moc_extra_flags --check $base.mo
+    run tc $moc --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $moc_extra_flags --idl $base.mo -o $out/$base.did
+        run idl $moc --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -260,10 +262,10 @@ do
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
+          run run $moc --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -273,7 +275,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $moc_extra_flags --hide-warnings -r -iR $base.mo
+          run run-low $moc --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -306,13 +308,13 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp $MOC $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $MOC $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $moc $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
-          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -385,7 +387,7 @@ do
 
     for runner in ic-ref-run drun
     do
-      if grep -q "# *SKIP $runner" $file
+      if grep -q "# *SKIP $runner" $(basename $file)
       then
         continue
       fi
@@ -398,7 +400,7 @@ do
       fi
 
       # collect all .mo files referenced from the file
-      mo_files="$(grep -o '[^[:space:]]\+\.mo' $file |sort -u)"
+      mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
 
       for mo_file in $mo_files
       do
@@ -406,7 +408,7 @@ do
         if [ "$(dirname $mo_file)" != "$base" ];
         then
           $ECHO ""
-          echo "$file references $mo_file which is not in directory $base"
+          echo "$base.drun references $mo_file which is not in directory $base"
           exit 1
         fi
 
@@ -415,7 +417,7 @@ do
       done
 
       # mangle drun script
-      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $file > $out/$base/$base.$runner.drun
+      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
 
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
@@ -426,7 +428,7 @@ do
   "sh")
     # The file is a shell script, just run it
     $ECHO -n " [out]"
-    ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+    ./$(basename $base.sh) > $out/$base.stdout 2> $out/$base.stderr
     normalize $out/$base.stdout
     normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"

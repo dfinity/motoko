@@ -800,6 +800,12 @@ module RTS = struct
     E.add_func_import env "rts" "float_log" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_rem" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -3179,7 +3185,7 @@ module Lifecycle = struct
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
-    | InPostUpgrade -> [Idle]
+    | InPostUpgrade -> [InInit]
 
   let get env =
     compile_unboxed_const ptr ^^
@@ -3234,6 +3240,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
+      E.add_func_import env "ic0" "time" [] [I64Type];
       ()
 
   let system_imports env =
@@ -3338,14 +3345,14 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_init env start_fi =
+  let export_init env =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
-    let empty_f = Func.of_body env [] [] (fun env1 ->
+    let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
 
-      G.i (Call (nr start_fi)) ^^
+      G.i (Call (nr (E.built_in env "init"))) ^^
       (* Collect garbage *)
-      G.i (Call (nr (E.built_in env1 "collect"))) ^^
+      G.i (Call (nr (E.built_in env "collect"))) ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3353,22 +3360,48 @@ module Dfinity = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
-      });
-    fi
+      })
 
-  let export_wasi_start env start_fi =
+  let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
-    let empty_f = Func.of_body env [] [] (fun env1 ->
+    let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
       Lifecycle.trans env Lifecycle.InInit ^^
-      G.i (Call (nr start_fi)) ^^
+      G.i (Call (nr (E.built_in env "init"))) ^^
       Lifecycle.trans env Lifecycle.Idle
-    ) in
-    let fi = E.add_fun env "_start" empty_f in
+    )) in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "_start";
       edesc = nr (FuncExport (nr fi))
-      });
-    fi
+      })
+
+  let export_upgrade_methods env =
+    if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
+
+    let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
+      Lifecycle.trans env Lifecycle.InPreUpgrade ^^
+      G.i (Call (nr (E.built_in env "pre_exp"))) ^^
+      Lifecycle.trans env Lifecycle.PostPreUpgrade
+    )) in
+
+    let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+      Lifecycle.trans env Lifecycle.InInit ^^
+      G.i (Call (nr (E.built_in env "init"))) ^^
+      Lifecycle.trans env Lifecycle.InPostUpgrade ^^
+      G.i (Call (nr (E.built_in env "post_exp"))) ^^
+      Lifecycle.trans env Lifecycle.Idle ^^
+      G.i (Call (nr (E.built_in env "collect")))
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_pre_upgrade";
+      edesc = nr (FuncExport (nr pre_upgrade_fi))
+    });
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_post_upgrade";
+      edesc = nr (FuncExport (nr post_upgrade_fi))
+    })
+
 
   let get_self_reference env =
     match E.mode env with
@@ -3379,7 +3412,14 @@ module Dfinity = struct
           (fun env -> system_call env "ic0" "canister_self_copy") 0l
       )
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
+      E.trap_with env "cannot get self-actor-reference when running locally"
+
+  let get_system_time env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      system_call env "ic0" "time"
+    | _ ->
+      E.trap_with env "cannot get system time when running locally"
 
   let caller env =
     SR.Vanilla,
@@ -3388,7 +3428,8 @@ module Dfinity = struct
       Blob.of_size_copy env
         (fun env -> system_call env "ic0" "msg_caller_size")
         (fun env -> system_call env "ic0" "msg_caller_copy") 0l
-    | _ -> assert false
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
 
   let reject env arg_instrs =
     match E.mode env with
@@ -3478,43 +3519,6 @@ module Dfinity = struct
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
-
-let export_upgrade_methods env init_fi =
-  if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
-
-  let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
-      Lifecycle.trans env Lifecycle.InPreUpgrade ^^
-
-      (match E.NameEnv.find_opt "pre_exp" !(env.E.built_in_funcs) with
-      | Some _ -> G.i (Call (nr (E.built_in env "pre_exp")))
-      | None -> G.nop) ^^
-
-      Lifecycle.trans env Lifecycle.PostPreUpgrade))
-  in
-
-  let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
-
-      G.i (Call (nr init_fi)) ^^
-
-      Lifecycle.trans env Lifecycle.InPostUpgrade ^^
-
-      (match E.NameEnv.find_opt "post_exp" !(env.E.built_in_funcs) with
-      | Some _ -> G.i (Call (nr (E.built_in env "post_exp")))
-      | None -> G.nop) ^^
-
-      Lifecycle.trans env Lifecycle.Idle))
-  in
-
-  E.add_export env (nr {
-    name = Wasm.Utf8.decode "canister_pre_upgrade";
-    edesc = nr (FuncExport (nr pre_upgrade_fi))
-  });
-
-  E.add_export env (nr {
-    name = Wasm.Utf8.decode "canister_post_upgrade";
-    edesc = nr (FuncExport (nr post_upgrade_fi))
-  })
-
 
 end (* Dfinity *)
 
@@ -6889,9 +6893,7 @@ and compile_exp (env : E.t) ae exp =
       | Int8, Word8
       | Word8, Nat8
       | Word8, Int8 ->
-        SR.Vanilla,
-        compile_exp_vanilla env ae e ^^
-        G.nop
+        compile_exp env ae e
 
       | Int, Int64 ->
         SR.UnboxedWord64,
@@ -6949,7 +6951,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae e ^^
         Prim.prim_shiftWordNtoUnsigned env (TaggedSmallWord.shift_of_type t1)
 
-      | (Int8|Word8|Int16|Word16), Int ->
+      | (Int8|Int16), Int ->
         SR.Vanilla,
         compile_exp_vanilla env ae e ^^
         Prim.prim_shiftWordNtoSigned env (TaggedSmallWord.shift_of_type t1)
@@ -6959,7 +6961,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Prim.prim_word32toNat env
 
-      | (Int32|Word32), Int ->
+      | Int32, Int ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Prim.prim_word32toInt env
@@ -6969,7 +6971,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         BigNum.from_word64 env
 
-      | (Int64|Word64), Int ->
+      | Int64, Int ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         BigNum.from_signed_word64 env
@@ -6994,7 +6996,6 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
-
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -7132,6 +7133,12 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_log"
 
+    (* Other prims, nullary *)
+
+    | SystemTimePrim, [] ->
+      SR.UnboxedWord64,
+      Dfinity.get_system_time env
+
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
       E.call_import env "rts" "version"
@@ -7206,6 +7213,24 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       Text.prim_showChar env
 
+    | OtherPrim "char_to_upper", [e] ->
+      compile_char_to_char_rts env ae e "char_to_upper"
+
+    | OtherPrim "char_to_lower", [e] ->
+      compile_char_to_char_rts env ae e "char_to_lower"
+
+    | OtherPrim "char_is_whitespace", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_whitespace"
+
+    | OtherPrim "char_is_lowercase", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_lowercase"
+
+    | OtherPrim "char_is_uppercase", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_uppercase"
+
+    | OtherPrim "char_is_alphabetic", [e] ->
+      compile_char_to_bool_rts env ae e "char_is_alphabetic"
+
     | OtherPrim "print", [e] ->
       SR.unit,
       compile_exp_vanilla env ae e ^^
@@ -7264,7 +7289,6 @@ and compile_exp (env : E.t) ae exp =
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
 
     | ICCallerPrim, [] ->
-      assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
       Dfinity.caller env
 
     | ICCallPrim, [f;e;k;r] ->
@@ -7461,6 +7485,24 @@ and compile_exp_vanilla (env : E.t) ae exp =
 and compile_exp_unit (env : E.t) ae exp =
   compile_exp_as env ae SR.unit exp
 
+(* Compile a prim of type Char -> Char to a RTS call. *)
+and compile_char_to_char_rts env ae exp rts_fn =
+  SR.Vanilla,
+  compile_exp_as env ae SR.Vanilla exp ^^
+  TaggedSmallWord.untag_codepoint ^^
+  E.call_import env "rts" rts_fn ^^
+  TaggedSmallWord.tag_codepoint
+
+(* Compile a prim of type Char -> Bool to a RTS call. The RTS function should
+   have type int32_t -> int32_t where the return value is 0 for 'false' and 1
+   for 'true'. *)
+and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
+  SR.Vanilla,
+  compile_exp_as env ae SR.Vanilla exp ^^
+  TaggedSmallWord.untag_codepoint ^^
+  (* The RTS function returns Motoko True/False values (which are represented as
+     1 and 0, respectively) so we don't need any marshalling *)
+  E.call_import env "rts" rts_fn
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
@@ -7843,15 +7885,15 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
 
   | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
 
-and compile_start_func mod_env ((cu, _flavor) : Ir.prog) : E.func_with_names =
-  Func.of_body mod_env [] [] (fun env ->
-    let ae = VarEnv.empty_ae in
-    match cu with
-    | ProgU ds ->
-      let _ae, codeW = compile_decs env ae ds Freevars.S.empty in
+and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
+  match cu with
+  | ProgU ds ->
+    Func.define_built_in mod_env "init" [] [] (fun env ->
+      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
-    | ActorU (ds, fs, up, _t) -> main_actor env ae ds fs up
-  )
+    )
+  | ActorU (ds, fs, up, _t) ->
+    main_actor mod_env ds fs up
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -7874,34 +7916,35 @@ and export_actor_field env  ae (f : Ir.field) =
     edesc = nr (FuncExport (nr fi))
   })
 
-(* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env ae1 ds fs up =
-  (* Reverse the fs, to a map from variable to exported name *)
-  let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
+(* Main actor *)
+and main_actor mod_env ds fs up =
+  Func.define_built_in mod_env "init" [] [] (fun env ->
+    let ae1 = VarEnv.empty_ae in
 
-  (* Compile the declarations *)
-  let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
-    (Freevars.captured_vars (Freevars.upgrade up))
-  in
+    (* Reverse the fs, to a map from variable to exported name *)
+    let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
-  (* Export the public functions *)
-  List.iter (export_actor_field env ae2) fs;
+    (* Compile the declarations *)
+    let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
+      (Freevars.captured_vars (Freevars.upgrade up))
+    in
 
-  (* Define upgrade hooks *)
-  Func.define_built_in env "pre_exp" [] [] (fun env ->
-    compile_exp_as env ae2 SR.unit up.pre);
-  Func.define_built_in env "post_exp" [] [] (fun env ->
-    compile_exp_as env ae2 SR.unit up.post);
+    (* Export the public functions *)
+    List.iter (export_actor_field env ae2) fs;
 
-  decls_codeW G.nop
+    (* Export upgrade hooks *)
+    Func.define_built_in env "pre_exp" [] [] (fun env ->
+      compile_exp_as env ae2 SR.unit up.pre);
+    Func.define_built_in env "post_exp" [] [] (fun env ->
+      compile_exp_as env ae2 SR.unit up.post);
+    Dfinity.export_upgrade_methods env;
 
-and conclude_module env init_fi_o start_fi_o =
+    decls_codeW G.nop
+  )
+
+and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
-
-  (match init_fi_o with
-   | Some init_fi -> Dfinity.export_upgrade_methods env init_fi
-   | None -> ());
 
   let static_roots = GC.store_static_roots env in
 
@@ -7989,15 +8032,16 @@ let compile mode module_name rts (prog : Ir.prog) : Wasm_exts.CustomModule.exten
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
-  let start_fun = compile_start_func env prog in
-  let start_fi = E.add_fun env "start" start_fun in
-  let init_fi_o, start_fi_o = match E.mode env with
+  compile_init_func env prog;
+  let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      (Some (Dfinity.export_init env start_fi), None)
+      Dfinity.export_init env;
+      None
     | Flags.WASIMode ->
-      (Some (Dfinity.export_wasi_start env start_fi), None)
+      Dfinity.export_wasi_start env;
+      None
     | Flags.WasmMode ->
-      (None, Some (nr start_fi))
+      Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env init_fi_o start_fi_o
+  conclude_module env start_fi_o

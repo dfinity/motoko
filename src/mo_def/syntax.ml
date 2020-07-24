@@ -201,7 +201,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 
 (* Program *)
@@ -333,3 +333,6 @@ let is_any t =
   match t.it with
   | PrimT "Any" -> true
   | _ -> false
+
+let is_anonymous id =
+  Lib.(String.chop_prefix "anon-" id.it <> None)
