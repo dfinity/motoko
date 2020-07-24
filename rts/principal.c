@@ -1,11 +1,8 @@
 /*
 Principal encoding and decoding with integrity checking.
 */
-
 #include "rts.h"
 
-typedef as_ptr blob_t; // a skewed pointer to a Blob heap object
-typedef as_ptr text_t; // a skewed pointer to a text heap object
 typedef unsigned char uint8_t;
 
 static void check_all_uppercase_hex(const char* s, const char* const e) {

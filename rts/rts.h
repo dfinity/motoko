@@ -88,7 +88,7 @@ export void as_memcpy(char *str1, const char *str2, size_t n);
 export int as_memcmp(const char *str1, const char *str2, size_t n);
 export size_t as_strlen(const char *str1);
 
-typedef as_ptr text_t;
+typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
