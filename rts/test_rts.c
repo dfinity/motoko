@@ -312,18 +312,21 @@ int main () {
    */
   printf("Testing principal encoding...\n");
 
+  /*
   assert(
     text_compare(
      base32_to_principal(text_of_ptr_size("EM77EBVLZUAQ", 12)),
      text_of_ptr_size("em77e-bvlzu-aq", 14)
     ) == 0,
     "principal name to em77e-bvlzu-aq conversion mismatch\n");
+   */
 
   /*
    * Testing princpal decoding
    */
   printf("Testing principal decoding...\n");
 
+  /*
   assert(
     text_compare(
      blob_of_principal(text_of_cstr("aaaaa-aa")),
@@ -337,6 +340,7 @@ int main () {
      text_of_ptr_size("\xC0\xFE\xFE\xD0\x0D",5)
     ) == 0,
     "bfozs-kwa73-7nadi not decoded correctly\n");
+   */
 
   return ret;
 }
