@@ -2093,25 +2093,26 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Func.share_code2 env "B_pow" (("a", I32Type), ("b", I32Type)) [I32Type]
     (fun env get_a get_b ->
     let set_res, get_res = new_local env "res" in
-    let set_a64, get_a64 = new_local64 env "a64" in
-    let set_b64, get_b64 = new_local64 env "b64" in
     let set_res64, get_res64 = new_local64 env "res64" in
     get_a ^^ get_b ^^
     BitTagged.if_both_tagged_scalar env [I32Type]
       begin
-        (* estimate bitcount of result: `bits(a) * b <= 65` guarantees
+        let set_a64, get_a64 = new_local64 env "a64" in
+        let set_b64, get_b64 = new_local64 env "b64" in
+        (* Convert to plain Word64 *)
+        get_a ^^ extend64 ^^ compile_shrS64_const 1L ^^ set_a64 ^^
+        get_b ^^ extend64 ^^ compile_shrS64_const 1L ^^ set_b64 ^^
+
+        (* estimate bitcount of result: `bits(a) * b <= 64` guarantees
            the absence of overflow in 64-bit arithmetic *)
-        get_a ^^ extend64 ^^ set_a64 ^^ compile_const_64 64L ^^
-        get_a64 ^^ get_a64 ^^ compile_shrS64_const 1L ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-        G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        get_b ^^ extend64 ^^ set_b64 ^^ get_b64 ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        compile_const_64 130L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+        compile_const_64 64L ^^
+        get_a64 ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+        get_b64 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
+        compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
         G.if_ [I32Type]
           begin
-            get_a64 ^^ compile_shrS64_const 1L ^^
-            get_b64 ^^ compile_shrS64_const 1L ^^
+            get_a64 ^^
+            get_b64 ^^
             Word64.compile_unsigned_pow env ^^
             compile_shl64_const 1L ^^ set_res64 ^^
             get_res64 ^^ can_tag_padded env ^^
@@ -2120,12 +2121,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
               (get_res64 ^^ box64 env)
           end
           begin
-            get_a64 ^^ box64 env ^^
-            get_b64 ^^ box64 env ^^
-            Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
-            fits_in_vanilla env ^^
+            get_a64 ^^ Num.from_signed_word64 env ^^
+            get_b64 ^^ Num.from_signed_word64 env ^^
+            Num.compile_unsigned_pow env ^^ set_res ^^
+            get_res ^^ fits_in_vanilla env ^^
             G.if_ [I32Type]
-              (get_res ^^ Num.truncate_to_word32 env)
+              (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
               get_res
           end
       end
@@ -2136,10 +2137,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_b ^^ BitTagged.if_tagged_scalar env [I32Type]
           (get_b ^^ extend_and_box64 env)
           get_b ^^
-        Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
-        fits_in_vanilla env ^^
+        Num.compile_unsigned_pow env ^^ set_res ^^
+        get_res ^^ fits_in_vanilla env ^^
         G.if_ [I32Type]
-          (get_res ^^ Num.truncate_to_word32 env)
+          (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
           get_res
       end)
 
