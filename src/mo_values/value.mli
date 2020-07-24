@@ -43,6 +43,7 @@ end
 module type FloatType =
 sig
   include Wasm.Float.S
+  val rem : t -> t -> t
   val pow : t -> t -> t
   val to_pretty_string : t -> string
 end
@@ -102,6 +103,7 @@ and value =
   | Float of Float.t
   | Char of unicode
   | Text of string
+  | Blob of string
   | Tup of value list
   | Opt of value
   | Variant of string * value
@@ -155,6 +157,7 @@ val as_word64 : value -> Word64.t
 val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string
+val as_blob : value -> string
 val as_iter : value -> value Seq.t ref
 val as_array : value -> value array
 val as_tup : value -> value list

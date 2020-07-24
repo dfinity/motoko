@@ -5,6 +5,6 @@ Caused by:
     0: failed to invoke `_start`
     1: wasm trap: unreachable, source location: @___:
        wasm backtrace:
-         0: <unknown>!start
+         0: <unknown>!init
          1: <unknown>!_start
        

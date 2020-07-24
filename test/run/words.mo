@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 
-// CHECK: func $start
+// CHECK: func $init
 
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
 
@@ -20,8 +20,6 @@ func checkpointJuliett() {};
 {
     func printW64ln(w : Word64) {
       Prim.debugPrintNat(Prim.word64ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word64ToInt w)
     };
 
     let a : Word64 = 4567;
@@ -80,8 +78,6 @@ func checkpointJuliett() {};
 {
     func printW32ln(w : Word32) {
       Prim.debugPrintNat(Prim.word32ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word32ToInt w)
     };
 
     let a : Word32 = 4567;
@@ -139,8 +135,6 @@ func checkpointJuliett() {};
 {
     func printW16ln(w : Word16) {
       Prim.debugPrintNat(Prim.word16ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word16ToInt w)
     };
 
     let a : Word16 = 4567;
@@ -228,8 +222,6 @@ func checkpointJuliett() {};
 {
     func printW8ln(w : Word8) {
       Prim.debugPrintNat(Prim.word8ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word8ToInt w)
     };
 
     let a : Word8 = 67;

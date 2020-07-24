@@ -45,10 +45,11 @@ and typ' =
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | VariantT of typ_tag list                       (* variant *)
-  | TupT of typ list                               (* tuple *)
+  | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of scope * typ                          (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
+  | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
@@ -60,6 +61,8 @@ and typ_tag' = {tag : id; typ : typ}
 and bind_sort = Type.bind_sort Source.phrase
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; sort : bind_sort; bound : typ;}
+
+and typ_item = id option * typ
 
 
 (* Literals *)
@@ -200,7 +203,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 
 (* Program *)
@@ -215,14 +218,6 @@ type lib = (exp, string) Source.annotated_phrase
 
 
 (* n-ary arguments/result sequences *)
-
-let seqT ts =
-  match ts with
-  | [t] -> t
-  | ts ->
-    { Source.it = TupT ts;
-      at = Source.no_region;
-      Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts) }
 
 let arity t =
   match t.Source.it with
@@ -340,3 +335,6 @@ let is_any t =
   match t.it with
   | PrimT "Any" -> true
   | _ -> false
+
+let is_anonymous id =
+  Lib.(String.chop_prefix "anon-" id.it <> None)

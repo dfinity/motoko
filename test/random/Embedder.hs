@@ -61,10 +61,11 @@ invokeEmbedder embedder wasm = go embedder
             let Right c = toText control
             procs "mkfifo" [c] empty
             consumer <- forkShell $ inshell (Data.Text.unwords $ embedderInvocation embedder [c]) empty
-            let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
+            let create = unsafeTextToLine $ format "create"
+            let install = unsafeTextToLine $ format ("install ic:0100000000000000000000000000000000012D "%s%" 0x") w
 
-            pipe (fileArg control) (pure install
-                                   <|> "ingress ic:2A012B do 0x4449444c0000")
+            pipe (fileArg control) (pure create <|> pure install
+                                   <|> "ingress ic:0100000000000000000000000000000000012D do 0x4449444c0000")
             lns <- wait consumer
             -- view lns
             let errors = grep (has "Err: " <|> has "Reject: ") lns

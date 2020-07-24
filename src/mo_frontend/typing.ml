@@ -238,7 +238,7 @@ let error_shared env t at fmt =
 
 let as_domT t =
   match t.Source.it with
-  | TupT ts -> ts
+  | TupT tis -> List.map snd tis
   | _ -> [t]
 
 let as_codomT sort t =
@@ -361,7 +361,7 @@ and check_typ' env typ : T.typ =
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
   | TupT typs ->
-    T.Tup (List.map (check_typ env) typs)
+    T.Tup (List.map (fun (_, t) -> check_typ env t) typs)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs typ.at in
@@ -411,6 +411,8 @@ and check_typ' env typ : T.typ =
     T.Obj (sort.it, List.sort T.compare_field fs)
   | ParT typ ->
     check_typ env typ
+  | NamedT (_, typ) ->
+    check_typ env typ
 
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
@@ -449,7 +451,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
 
 and check_typ_bind_sorts env tbs =
   (* assert, don't error, since this should be a syntactic invariant of parsing *)
-  List.iteri (fun i tb -> assert (i == 0 || (tb.T.sort = T.Type))) tbs;
+  List.iteri (fun i tb -> assert (i = 0 || (tb.T.sort = T.Type))) tbs;
 
 and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
@@ -801,11 +803,11 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | ObjE (sort, fields) ->
-    if not in_prog && sort.it = T.Actor then
+  | ObjE (obj_sort, fields) ->
+    if not in_prog && obj_sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' = if sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
-    infer_obj env' sort.it fields exp.at
+    let env' = if obj_sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
+    infer_obj env' obj_sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
@@ -855,14 +857,14 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
-    if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
+  | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
+    if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then
       error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
-    let sort, ve = check_sort_pat env sort_pat in
+    let sort, ve = check_shared_pat env shared_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
@@ -1183,8 +1185,8 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   (* TODO: allow shared with one scope par *)
-  | FuncE (_, sort_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
-    let sort, ve = check_sort_pat env sort_pat in
+  | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
+    let sort, ve = check_shared_pat env shared_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
@@ -1228,6 +1230,10 @@ and check_exp' env0 t exp : T.typ =
       ot := t
     end;
     t
+  | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
+    let {T.typ; _} = List.find (fun T.{lab; typ} -> lab = id.it) fs in
+    check_exp env typ exp1 ;
+    t
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1267,7 +1273,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
       try
-        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *) 
+        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *)
         let ts =
           Bi_match.bi_match_subs (scope_of_env env) tbs
             [(t2, t_arg); (t_ret, t)] in
@@ -1412,13 +1418,29 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
-and check_sort_pat env sort_pat : T.func_sort * Scope.val_env =
-  match sort_pat.it with
+and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
+  match shared_pat.it with
   | T.Local -> T.Local, T.Env.empty
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
     T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
+
+and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
+  match shared_pat.it, obj_sort.it with
+  | T.Local, (T.Module | T.Object) -> T.Env.empty
+  | T.Local, T.Actor ->
+    T.Env.empty (* error instead? That's a breaking change *)
+  | T.Shared (mode, pat), sort ->
+    if sort <> T.Actor then
+      error env pat.at "non-actor class cannot take a context pattern";
+    if pat.it <> WildP then
+      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "actor class cannot take a context pattern";
+    if mode = T.Query then
+      error env shared_pat.at "class cannot be a query";
+    check_pat_exhaustive local_error env T.ctxt pat
+  | _, T.Memory -> assert false
+
 
 and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
   let ve = check_pat env t pat in
@@ -1604,7 +1626,7 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   | ExpD _ | IgnoreD _ -> xs
   | LetD (pat, _) -> pub_pat pat xs
   | VarD (id, _) -> pub_val_id id xs
-  | ClassD (id, _, _, _, _, _, _) ->
+  | ClassD (_, id, _, _, _, _, _, _) ->
     pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
 
@@ -1682,8 +1704,8 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, sort_pat, _, _, _, _, _); _}) ->
-    T.is_shared_sort sort_pat.it
+  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}) ->
+    T.is_shared_sort shared_pat.it
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with
@@ -1832,24 +1854,25 @@ and infer_dec env dec : T.typ =
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
+  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
+      let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
-      let _, ve = infer_pat_exhaustive (if sort.it = T.Actor then error else warn) env' pat in
-      let env'' = adjoin_vals env' ve in
+      let _, ve = infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
+      let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
       let env''' =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
           rets = None;
           async = C.NullCap;
-          in_actor = sort.it = T.Actor;
+          in_actor = obj_sort.it = T.Actor;
         }
       in
-      let t' = infer_obj env''' sort.it fields dec.at in
+      let t' = infer_obj env''' obj_sort.it fields dec.at in
       match typ_opt with
       | None -> ()
       | Some typ ->
@@ -1933,14 +1956,14 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      {it = ObjE ({it = sort; _}, fields); at; _}
+      {it = ObjE (obj_sort, fields); at; _}
     ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
       error env dec.at "duplicate definition for value %s in block" id.it;
     let scope' = gather_block_decs env decs in
-    let ve' = T.Env.add id.it (object_of_scope env sort fields scope' at) scope.val_env in
+    let ve' = T.Env.add id.it (object_of_scope env obj_sort.it fields scope' at) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
     { val_env = ve';
       typ_env = scope.typ_env;
@@ -1950,7 +1973,7 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
-  | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
@@ -2006,16 +2029,16 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      {it = ObjE ({it = sort; _}, fields); at; _}
+      {it = ObjE (obj_sort, fields); at; _}
     ) ->
-    let decs = List.map (fun {it = { vis; dec; _ }; _} -> dec) fields in
+    let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
     let obj_scope_typs = infer_block_typdecs env' decs in
     let obj_scope = Scope.adjoin scope obj_scope_typs in
     Scope.{ empty with
       con_env = obj_scope.con_env;
-      val_env = T.Env.singleton id.it (object_of_scope env sort fields obj_scope at);
+      val_env = T.Env.singleton id.it (object_of_scope env obj_sort.it fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
@@ -2056,14 +2079,15 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
-  | ClassD (id, binds, pat, _typ_opt, sort, self_id, fields) ->
+  | ClassD (shared_pat, id, binds, pat, _typ_opt, obj_sort, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
+    let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
-    let env' = adjoin_typs {env with pre = true} te ce in
+    let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
-    let t = infer_obj env'' sort.it fields dec.at in
+    let t = infer_obj env'' obj_sort.it fields dec.at in
     let k = T.Def (T.close_binds cs tbs, T.close cs t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
@@ -2094,8 +2118,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      {it = ObjE ({it = sort; _}, fields); at; _}
-    ) ->
+      {it = ObjE (obj_sort, fields); at; _}
+) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -2103,7 +2127,7 @@ and infer_dec_valdecs env dec : Scope.t =
         (adjoin {env with pre = true} obj_scope)
         decs obj_scope
     in
-    let obj_typ = object_of_scope env sort fields obj_scope' at in
+    let obj_typ = object_of_scope env obj_sort.it fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp) ->
@@ -2119,17 +2143,22 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;
     }
-  | ClassD (id, typ_binds, pat, _, sort, _, _) ->
-    if sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.RefMode] env dec.at
-        "actor classes are not supported; use an actor declaration instead";
-     let rec is_unit_pat p = match p.it with
+  | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
+    let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
       | _ -> false in
-    if sort.it = T.Actor && not (is_unit_pat pat) then
-      error_in [Flags.RefMode] env dec.at
-        "actor classes with parameters are not supported; use an actor declaration instead";
+    if obj_sort.it = T.Actor then begin
+      if not env.in_prog then
+        error_in [Flags.ICMode; Flags.RefMode] env dec.at
+          "inner actor classes are not supported yet; any actor class must come last in your program";
+      if not (is_anonymous id) then
+        error_in [Flags.ICMode; Flags.RefMode] env dec.at
+          "named actor classes are not supported yet; use an anonymous class instead";
+      if not (is_unit_pat pat) then
+        error_in [Flags.RefMode] env dec.at
+          "actor classes with parameters are not supported yet";
+    end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
@@ -2171,6 +2200,8 @@ let check_lib scope lib : Scope.t Diag.result =
 let is_actor_dec d =
   match d.it with
   | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
+    obj_sort.it = T.Actor
   | _ -> false
 
 let check_actors scope progs : unit Diag.result =
@@ -2184,7 +2215,7 @@ let check_actors scope progs : unit Diag.result =
           | [d] -> ()
           | (d::ds) when is_actor_dec d ->
             recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
-              "an actor must be the last declaration in a program"
+              "an actor or actor class must be the last declaration in a program"
           | (d::ds) -> go ds in
         go prog
       ) progs

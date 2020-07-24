@@ -66,6 +66,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.obelisk
+    pkgs.ocamlPackages.uucp
   ]; in
 
 let darwin_standalone =
@@ -392,8 +393,7 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc -C test
-      make MOC=moc -C examples
+      make MOC=moc VESSEL_PKGS="--package matchers ${nixpkgs.sources.motoko-matchers}/src" -C test
     '';
   };
 

@@ -336,8 +336,14 @@ The syntax of a _program_ `<prog>` is as follows:
     <imp>;* <dec>;*
 ```
 
-A program is sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor declaration.
-The actor declaration determines the main actor, if any, of the program.
+A program is sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor or actor class declaration.
+The actor or actor class declaration determines the main actor, if any, of the program.
+
+For now, compiled programs must obey the following additional restrictions (not imposed on interpreted programs):
+
+* a program may contain at most one actor or actor class declaration, i.e. the final main actor or actor class; and
+* any main actor class declaration must be *anonymous* (ruling out recursion and programmatic actor instantiation).
+
 
 [[syntax-imports]]
 === Imports
@@ -381,15 +387,15 @@ choose library names (e.g. to avoid clashes).
 The syntax of a _declaration_ is as follows:
 
 ```bnf
-<dec> ::=                                                                declaration
-  <exp>                                                                    expression
-  ignore <exp>                                                             ignore
-  let <pat> = <exp>                                                        immutable
-  var <id> (: <typ>)? = <exp>                                              mutable
-  <sort> <id>? =? { <dec-field>;* }                                        object
-  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>         function
-  type <id> <typ-params>? = <typ>                                          type
-  <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
+<dec> ::=                                                                              declaration
+  <exp>                                                                                  expression
+  ignore <exp>                                                                           ignore
+  let <pat> = <exp>                                                                      immutable
+  var <id> (: <typ>)? = <exp>                                                            mutable
+  <sort> <id>? =? { <dec-field>;* }                                                      object
+  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>                       function
+  type <id> <typ-params>? = <typ>                                                        type
+  <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -689,9 +695,9 @@ import E "mo:base/Error";
 
 Errors are opaque values constructed and examined with operations:
 
-* `E.error : Text -> Error`
-* `E.errorCode : Error -> E.ErrorCode`
-* `E.errorMessage : Error -> Text`
+* `E.reject : Text -> Error`
+* `E.code : Error -> E.ErrorCode`
+* `E.message : Error -> Text`
 
 Type `E.ErrorCode` is equivalent to variant type:
 
@@ -712,13 +718,13 @@ type ErrorCode = {
 };
 ```
 
-A constructed error `e = E.error(t)` has `E.errorCode(e) = #canister_reject` and `E.errorMessage(e) = t`.
+A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
-`Error` values can be thrown  and caught within an `async` expression or `shared` function (only). See <<exp-throw>> and <<exp-try>>.
+`Error` values can be thrown and caught within an `async` expression or `shared` function (only). See <<exp-throw>> and <<exp-try>>.
 
 Errors with codes other than `#canister_reject`  (i.e. _system_ errors) may be caught and thrown, but not user-constructed.
 
-Note: Exiting an async block or shared function with a system error exits with a copy of the error with revised code `#canister_reject` and the original system error message.
+Note: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
 This prevents programmatic forgery of system errors.
 
 
@@ -1344,7 +1350,7 @@ The object declaration has type `T` provided that:
 Note that requirement 1. imposes further constraints on the field types of `T`.
 In particular:
 
-* if the sort is `actor` then all public fields must be non-`var` (immutable)     `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
+* if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
 Evaluation of `(object|actor)? <id>? =? { <exp-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
@@ -1366,7 +1372,7 @@ a named `let` or anonymous declaration of a function expression. That is:
 <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp> :=
   let <id> = <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>    (when <id>? present)
 
-  <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent)  
+  <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent)
 ```
 
 
@@ -1375,19 +1381,26 @@ Named function definitions are recursive.
 [[decl-class]]
 === Class declaration
 
-The declaration `<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
+The declaration `<shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
 
 ```bnf
-<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
+<shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
   type <id> <typ-params> = <sort> { <typ-field>;* };
-  func <id> <typ-params>? <pat> : <id> <typ-args>  = <sort> <id_this>? { <dec-field>;* }
+  <shared-pat>? func <id> <typ-params>? <pat> : <id> <typ-args>  = <sort> <id_this>? { <dec-field>;* }
 ```
 
 where:
 
+* `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
+
+Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
+
+An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
+
+If `sort` is `actor`, then `<typ-args>?` must be absent or empty (`actor` classes cannot have type parameters).
 
 [[eval-identifiers]]
 === Identifiers
@@ -1500,7 +1513,7 @@ object value  `{ <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of th
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
 
-* if the projection occurs as the target an assignment statement;
+* if the projection occurs as the target of an assignment expression then
   `v` is the mutable location of the field `<id>`.
 * otherwise,
   `v` (of type `T`) is the value currently stored in mutable field `<id>`.
@@ -1602,8 +1615,8 @@ If `var` is absent from `var? T` then the value `v` is the constant value `vi`.
 
 Otherwise,
 
-* if the indexing occurs as the target an assignment statement
-  then `v` is the `i`th location in the array;
+* if the indexing occurs as the target of an assignment expression
+  then `v` is the `i`th mutable location in the array;
 * otherwise,
   `v` is `vi`, the value currently stored in the `i`th location of the array.
 
@@ -1638,7 +1651,7 @@ Note: the exhaustiveness side condition on `shared` function expressions ensures
 The function expression `<shared-pat>? func < X0 <: T0, ..., Xn <: Tn > <pat1> (: U2)? =?  <exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the
 assumption that `X0 <: T0, ..., Xn <: Tn`:
 
-* `<shared-pat>?` is of the form `shared query? <pat>` if and only if `<shared>?` is `shared query?`;
+* `<shared-pat>?` is of the form `shared query? <pat>` if and only if `<shared>?` is `shared query?` (the `query` modifiers must agree);
 * all the types in `T0, ..., Tn` and `U2` are well-formed and well-constrained;
 * pattern `<pat>` has *context type* `{ caller : Principal }`;
 * pattern `<pat1>` has type `U1`;
@@ -1671,7 +1684,7 @@ The type system ensures that a value identifier cannot be evaluated before its d
 
 Identifiers whose types cannot be inferred from their declaration, but are used in a forward reference, may require an additional type annotation (see <<pat-anno>>) to satisfy the type checker.
 
-The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in sequence (program order). The first declaration in `<dec>;*` that results in a trap cause the block to result in `trap`, without evaluating subsequent declarations.
+The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in sequence (program order). The first declaration in `<dec>;*` that results in a trap causes the block to result in `trap`, without evaluating subsequent declarations.
 
 [[exp-not]]
 === Not
@@ -1973,7 +1986,7 @@ Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by virtue of 
 
 In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping.
 
-# References
+== References
 
 [bibliography]
 - [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.

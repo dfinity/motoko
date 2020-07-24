@@ -1,3 +1,5 @@
+// CHECK-LABEL: (func $init
+
 func matchNat(n : Nat) : Bool =
          switch n { case 1073741823 true
                   ; case _ false };
@@ -54,5 +56,3 @@ assert (matchInt(-1073741824));
 assert (matchInt(1073741823));
 assert (match8(42));
 assert (match16(42));
-
-// CHECK-LABEL: (func $start
