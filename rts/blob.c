@@ -81,7 +81,7 @@ export uint32_t blob_iter_next(blob_iter_t i) {
 // Base32 encoding/decoding of blobs
 //
 // These routines assume contiguous memory layout.
-// Primarily intended for encoding princials.
+// Primarily intended for encoding principals.
 
 struct Pump {
   const int inp_gran, out_gran;
