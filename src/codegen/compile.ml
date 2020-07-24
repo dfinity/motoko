@@ -2114,11 +2114,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_a64 ^^
             get_b64 ^^
             Word64.compile_unsigned_pow env ^^
-            compile_shl64_const 1L ^^ set_res64 ^^
-            get_res64 ^^ can_tag_padded env ^^
+            set_res64 ^^
+            get_res64 ^^ BitTagged.can_tag_u64 env ^^
             G.if_ [I32Type]
-              (get_res64 ^^ tag_padded)
-              (get_res64 ^^ box64 env)
+              (get_res64 ^^ BitTagged.tag)
+              (get_res64 ^^ Num.from_word64 env)
           end
           begin
             get_a64 ^^ Num.from_signed_word64 env ^^
