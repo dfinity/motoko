@@ -2147,7 +2147,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_n ^^ compile_bitand_const 1l)
+      (get_n ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
   let vanilla_lit env = function
@@ -2159,12 +2159,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_tagged_scalar env [I32Type]
         begin
-          get_n ^^ compile_unboxed_one ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          get_n ^^ compile_eq_const 0x80000000l ^^ (* -2^30 shifted *)
           G.if_ [I32Type]
-            (compile_unboxed_const (vanilla_lit env (Big_int.big_int_of_int 0x40000000)))
+            (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env)
             begin
-              compile_unboxed_zero ^^
+              compile_unboxed_const 0l ^^
               get_n ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Sub))
             end
@@ -2243,14 +2242,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if_ [I32Type]
           begin
             get_a ^^
-            compile_unboxed_const 0xFFFFFFFEl ^^ (* i.e. -(2**31) *)
-            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            (* -2^30 is small enough for compact representation, but 2^30 isn't *)
+            compile_eq_const 0x80000000l ^^ (* i.e. -2^30 shifted *)
             G.if_ [I32Type]
-              (compile_unboxed_const 1l ^^ Num.from_word32 env) (* is non-representable *)
+              (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env)
               begin
+                (* absolute value works directly on shifted representation *)
+                compile_unboxed_const 0l ^^
                 get_a ^^
-                compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-                compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
+                G.i (Binary (Wasm.Values.I32 I32Op.Sub))
               end
           end
           get_a
