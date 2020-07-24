@@ -329,7 +329,7 @@ module E = struct
     let gi = reg env.globals (g, name) in
     env.global_names := NameEnv.add name gi !(env.global_names)
 
-  let add_global32_delayed (env : t) name mut : (int32 -> unit) =
+  let add_global32_delayed (env : t) name mut : int32 -> unit =
     let p = Lib.Promise.make () in
     add_global env name p;
     (fun init ->
