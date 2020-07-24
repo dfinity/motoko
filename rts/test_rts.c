@@ -324,7 +324,6 @@ int main () {
    */
   printf("Testing principal decoding...\n");
 
-  //extern blob_t blob_of_principal(text_t);
   assert(
     text_compare(
      blob_of_principal(text_of_cstr("aaaaa-aa")),
