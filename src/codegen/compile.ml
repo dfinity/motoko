@@ -2265,7 +2265,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_res ^^
     get_res ^^ fits_in_vanilla env ^^
     G.if_ [I32Type]
-      (get_res ^^ Num.truncate_to_word32 env)
+      (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
       get_res
 
   let compile_store_to_data_buf_unsigned env =
@@ -2275,7 +2275,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 env ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
       (fun env ->
@@ -2290,7 +2290,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 env ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
       (fun env ->
