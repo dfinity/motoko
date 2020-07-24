@@ -51,15 +51,19 @@ In the definition of some lexemes, the quick reference uses the symbol `␣` to 
 [[syntax-comments]]
 === Comments
 
-Single line comments are all characters following ``//`` until the end of the same line.
+Single line comments are all characters following `+//+` until the end of the same line.
 
-  // single line comment
-  x = 1
+....
+// single line comment
+x = 1
+....
 
 Single or multi-line comments are any sequence of characters delimited by `+/*+` and  `+*/+`:
 
-  /* multi-line comments
-     look like this, as in C and friends */
+....
+/* multi-line comments
+   look like this, as in C and friends */
+....
 
 Comments delimited by `+/*+` and `+*/+` may be nested, provided the nesting is well-bracketed.
 
@@ -70,25 +74,25 @@ All comments are treated as whitespace.
 
 The following keywords are reserved and may not be used as identifiers:
 
-```bnf
+....
 actor and assert assert await break case
 catch class continue debug debug_show else flexible
 false for func if ignore in import not null object or
 label let loop private public query return
 shared stable system switch true try
 type var while
-```
+....
 
 [[syntax-ids]]
 === Identifiers
 
 Identifiers are alpha-numeric, start with a letter and may contain underscores:
 
-```bnf
+....
 <id>   ::= Letter (Letter | Digit | _)*
 Letter ::= A..Z | a..z
 Digit  ::= 0..9
-```
+....
 
 [[syntax-integers]]
 === Integers
@@ -96,13 +100,13 @@ Digit  ::= 0..9
 Integers are written as decimal or hexadecimal, `Ox`-prefixed natural numbers.
 Subsequent digits may be prefixed a single, semantically irrelevant, underscore.
 
-```bnf
+....
 digit ::= ['0'-'9']
 hexdigit ::= ['0'-'9''a'-'f''A'-'F']
 num ::= digit ('_'? digit)*
 hexnum ::= hexdigit ('_'? hexdigit)*
 nat ::= num | "0x" hexnum
-```
+....
 
 Negative integers may be constructed by applying a prefix negation `-` operation.
 
@@ -111,7 +115,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 
 Floating point literals are written in decimal or `Ox`-prefixed hexadecimal scientific notation.
 
-```bnf
+....
 let frac = num
 let hexfrac = hexnum
 let float =
@@ -119,7 +123,7 @@ let float =
   | num ('.' frac?)? ('e' | 'E') sign? num
   | "0x" hexnum '.' hexfrac?
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
-```
+....
 
 The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
 In both cases, the exponent is in decimal notation.
@@ -133,11 +137,11 @@ Note: the use of decimal notation, even for the base 2 exponent, is in keeping w
 A character is a single quote (`'`) delimited:
 
 * Unicode character in UTF-8,
-* `\`-escaped  newline, carriage return, tab, single or double quotation mark
-* `\`-prefixed ASCII character (TBR),
-* or  `\u{` hexnum `}` enclosed valid, escaped Unicode character in hexadecimal (TBR).
+* `+\+`-escaped  newline, carriage return, tab, single or double quotation mark
+* `+\+`-prefixed ASCII character (TBR),
+* or  `+\u{+` hexnum `+}+` enclosed valid, escaped Unicode character in hexadecimal (TBR).
 
-```bnf
+....
 ascii ::= ['\x00'-'\x7f']
 ascii_no_nl ::= ['\x00'-'\x09''\x0b'-'\x7f']
 utf8cont ::= ['\x80'-'\xbf']
@@ -162,27 +166,27 @@ character ::=
   | "\\u{" hexnum '}'
 
 char := '\'' character '\''
-```
+....
 
 [[syntax-text]]
 === Text
 
 A text literal is `"`-delimited sequence of characters:
 
-```bnf
+....
 text ::= '"' character* '"'
-```
+....
 
 [[syntax-literals]]
 === Literals
 
-```bnf
+....
 <lit> ::=                                     literals
   <nat>                                         natural
   <float>                                       float
   <char>                                        character
   <text>                                        Unicode text
-```
+....
 
 Literals are constant values. The syntactic validity of a literal depends on the precision of the type at which it is used.
 
@@ -331,10 +335,10 @@ Tokens on the same line have equal precedence with the indicated associativity.
 The syntax of a _program_ `<prog>` is as follows:
 
 
-```bnf
+....
 <prog> ::=             programs
     <imp>;* <dec>;*
-```
+....
 
 A program is sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor declaration.
 The actor declaration determines the main actor, if any, of the program.
@@ -344,7 +348,7 @@ The actor declaration determines the main actor, if any, of the program.
 
 The syntax of an _import_ `<imp>`  is as follows:
 
-```bnf
+....
 <imp> ::= imports
     import <id>? =? <url>
 
@@ -353,7 +357,7 @@ The syntax of an _import_ `<imp>`  is as follows:
     "mo:<package-name>/<filepath>"    import module from package
     "canister:<canisterid>"           import external actor by <canisterid>
     "canister:<name>"                 import external actor by <name>
-```
+....
 
 An import introduces a resource named '<id>?' referring to a local source module, module from a package of modules, or canister (imported as an actor).
 
@@ -362,10 +366,10 @@ An import introduces a resource named '<id>?' referring to a local source module
 
 The syntax of a _library_ (that can be referenced in an import) is as follows:
 
-```bnf
+....
 <lib> ::=                                        library
     <imp>;* module <id>? =? { <dec-field>;* }
-```
+....
 
 A library `<lib>` is a sequence of imports `<imp>;*` followed by a named or anonymous (module) declaration `module <id>? =? { <dec-field>;* }`.
 
@@ -380,7 +384,7 @@ choose library names (e.g. to avoid clashes).
 
 The syntax of a _declaration_ is as follows:
 
-```bnf
+....
 <dec> ::=                                                                declaration
   <exp>                                                                    expression
   ignore <exp>                                                             ignore
@@ -390,18 +394,18 @@ The syntax of a _declaration_ is as follows:
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>         function
   type <id> <typ-params>? = <typ>                                          type
   <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
-```
+....
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
 
-```bnf
+....
 <shared-pat> ::=
   shared query? <pat>?
-```
+....
 
 For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`.
 
-```bnf
+....
 <dec-field> ::=                                object declaration fields
   <vis>? <stab>? <dec>                           field
 
@@ -413,7 +417,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 <stab> ::=                                     field stability (actor only)
   stable
   flexible
-```
+....
 
 The _visibility_ qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
 
@@ -438,7 +442,7 @@ The _stability_ qualifier `<stab>` determines the _upgrade_ behaviour of actor f
 
 The syntax of an _expression_ is as follows:
 
-```bnf
+....
 <exp> ::=                                      expressions
   <id>                                           variable
   <lit>                                          literal
@@ -480,14 +484,14 @@ The syntax of an _expression_ is as follows:
   dec                                            declaration
   debug <exp>                                    debug expression
   ( <exp> )                                      parentheses
-```
+....
 
 [[syntax-patterns]]
 === Patterns
 
 The syntax of a _pattern_ is as follows:
 
-```bnf
+....
 <pat> ::=                                      patterns
   _                                              wildcard
   <id>                                           variable
@@ -501,7 +505,7 @@ The syntax of a _pattern_ is as follows:
 
 <pat-field> ::=                                object pattern fields
   <id> = <pat>                                   field
-```
+....
 
 
 [[syntax-types]]
@@ -509,7 +513,7 @@ The syntax of a _pattern_ is as follows:
 
 Type expressions are used to specify the types of arguments, constraints (a.k.a bounds) on type parameters, definitions of type constructors, and the types of sub-expressions in type annotations.
 
-```bnf
+....
 <typ> ::=                                     type expressions
   <path> <typ-args>?                            constructor
   <sort>? { <typ-field>;* }                     object
@@ -534,7 +538,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 <path> ::=                                   paths
   <id>                                         type identifier
   <path> . <id>                                projection
-```
+....
 
 An absent `<sort>?` abbreviates `object`.
 
@@ -683,9 +687,9 @@ shared functions and used for simple authentication. Although opaque, principals
 
 Assuming base library import,
 
-```
+....
 import E "mo:base/Error";
-```
+....
 
 Errors are opaque values constructed and examined with operations:
 
@@ -695,7 +699,7 @@ Errors are opaque values constructed and examined with operations:
 
 Type `E.ErrorCode` is equivalent to variant type:
 
-```
+....
 type ErrorCode = {
   // Fatal error.
   #system_fatal;
@@ -710,7 +714,7 @@ type ErrorCode = {
   // Future error code (with unrecognized numeric code)
   #future : Nat32;
 };
-```
+....
 
 A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
@@ -825,12 +829,12 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
 [[type-fields]]
 === Type fields
 
-```bnf
+....
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
   var <id> : <typ>                              mutable
   <id> <typ-params>? <typ1> : <typ2>            function (short-hand)
-```
+....
 
 A type field specifies the name and type of a field of an object.
 The field names within a single object type must be distinct and have non-colliding hashes.
@@ -842,11 +846,11 @@ The field names within a single object type must be distinct and have non-collid
 [[type-tags]]
 === Variant type fields
 
-```bnf
+....
 <typ-tag> ::=                                 variant type fields
   # <id> : <typ>                                tag
   # <id>                                        unit tag (short-hand)
-```
+....
 
 A variant type field specifies the tag and type of a single variant of an enclosing variant type.
 The tags within a single variant type must be distinct and have non-colliding hashes.
@@ -865,13 +869,13 @@ When enclosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>`
 [[type-params]]
 === Type parameters
 
-```bnf
+....
 <typ-params> ::=                              type parameters
   < typ-param,* >
 <typ-param>
   <id> <: <typ>                               constrained type parameter
   <id>                                        unconstrained type parameter
-```
+....
 
 A type constructors, function value or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
 
@@ -887,10 +891,10 @@ All type parameters declared in a vector are in scope within its bounds.
 [[type-args]]
 === Type arguments
 
-```bnf
+....
 <typ-args> ::=                                type arguments
   < <typ>,* >
-```
+....
 Type constructors and functions may take type arguments.
 
 The number of type arguments must agree with the number of declared type parameters of the type constructor.
@@ -1362,12 +1366,12 @@ If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produc
 The function declaration  `<shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>` is syntactic sugar for
 a named `let` or anonymous declaration of a function expression. That is:
 
-```bnf
+....
 <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp> :=
   let <id> = <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>    (when <id>? present)
 
   <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent)  
-```
+....
 
 
 Named function definitions are recursive.
@@ -1377,11 +1381,11 @@ Named function definitions are recursive.
 
 The declaration `<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
 
-```bnf
+....
 <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
   type <id> <typ-params> = <sort> { <typ-field>;* };
   func <id> <typ-params>? <pat> : <id> <typ-args>  = <sort> <id_this>? { <dec-field>;* }
-```
+....
 
 where:
 
@@ -1484,9 +1488,10 @@ The tag and contents of a variant value can be tested and accessed using a <<pat
 
 Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list of expression fields:
 
-```bnf
+....
 <exp-field> ::= var? <id> = <exp>
-```
+....
+
 Such an object literal is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
 
 [[exp-proj]]
@@ -1783,7 +1788,7 @@ The iterator expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 
 The `for`-expression is syntactic sugar for
 
-```bnf
+....
 for ( <pat> in <exp1> ) <exp2> :=
   {
     let x = <exp1>;
@@ -1794,7 +1799,7 @@ for ( <pat> in <exp1> ) <exp2> :=
       }
     }
   }
-```
+....
 
 where `x` is a fresh identifier.
 
