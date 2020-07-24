@@ -119,7 +119,9 @@ and prim =
   | AwaitPrim                         (* await *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
-  | ShowPrim of Type.typ              (* debug show *)
+  | ShowPrim of Type.typ              (* debug_show *)
+  | SerializePrim of Type.typ list    (* debug_serialize *)
+  | DeserializePrim of Type.typ list  (* debug_deserialize *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ

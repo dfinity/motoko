@@ -2767,6 +2767,17 @@ module Blob = struct
       get_x ^^ Heap.load_field len_field
     )
 
+  let of_ptr_size env = Func.share_code2 env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
+    fun env get_ptr get_size ->
+      let (set_x, get_x) = new_local env "x" in
+      get_size ^^ alloc env ^^ set_x ^^
+      get_x ^^ payload_ptr_unskewed ^^
+      get_ptr ^^
+      get_size ^^
+      Heap.memcpy env ^^
+      get_x
+    )
+
   let of_size_copy env get_size_fun copy_fun offset =
     let (set_len, get_len) = new_local env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
@@ -7001,6 +7012,17 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
+    | SerializePrim ts, [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.serialize env ts ^^
+      Blob.of_ptr_size env
+
+    | DeserializePrim ts, [e] ->
+      StackRep.of_arity (List.length ts),
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.deserialize_from_blob false env ts
+
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
