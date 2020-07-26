@@ -481,7 +481,7 @@ struct
     | Defined of 'a
   type ('a, 'b) t = ('a, 'b) t' ref
 
-  let make : (unit -> ('a * ('b -> unit))) -> ('a, 'b) t =
+  let make : ('a, 'b) alloc -> ('a, 'b) t =
     fun alloc -> ref (Pristine alloc)
 
   let def : ('a, 'b) t -> (unit -> 'b) -> unit =
