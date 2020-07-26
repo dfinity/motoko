@@ -461,6 +461,54 @@ struct
     value p
 end
 
+module AllocOnUse =
+struct
+  (*
+  A slighty more elaborate form of a promise: It describes something that can
+  be allocated, defined, and used (e.g. a Wasm function with a function id). It
+  will only be allocated if it is both defined and used. Cyclic use is supported,
+  e.g. the code that defines the thing will already be able to use it.
+  *)
+
+  type ('a, 'b) alloc = unit -> ('a * ('b -> unit))
+
+  type ('a, 'b) t' =
+    | Pristine of ('a, 'b) alloc
+    | Waiting of 'a * ('b -> unit)
+    | Unused of ('a, 'b) alloc * (unit -> 'b)
+    | Defined of 'a
+  type ('a, 'b) t = ('a, 'b) t' ref
+
+  let make : (unit -> ('a * ('b -> unit))) -> ('a, 'b) t =
+    fun alloc -> ref (Pristine alloc)
+
+  let def : ('a, 'b) t -> (unit -> 'b) -> unit =
+    fun r mk -> match !r with
+      | Pristine alloc ->
+        r := Unused (alloc, mk)
+      | Waiting (a, fill) ->
+        r := Defined a;
+        fill (mk ());
+      | Unused _ | Defined _ ->
+        ()
+
+  let use : ('a, 'b) t -> 'a =
+    fun r -> match !r with
+      | Pristine alloc ->
+        let (a, fill) = alloc () in
+        r := Waiting (a, fill);
+        a
+      | Waiting (a, fill) ->
+        a
+      | Unused (alloc, mk) ->
+        let (a, fill) = alloc () in
+        r := Defined a;
+        fill (mk ());
+        a
+      | Defined a ->
+        a
+end
+
 module FilePath =
 struct
   let normalise file_path =

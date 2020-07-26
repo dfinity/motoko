@@ -96,6 +96,14 @@ sig
   val lazy_value : 'a t -> (unit -> 'a) -> 'a
 end
 
+module AllocOnUse :
+sig
+  type ('a, 'b) t
+  val make : (unit -> ('a * ('b -> unit))) -> ('a, 'b) t
+  val use : ('a, 'b) t -> 'a
+  val def : ('a, 'b) t -> (unit -> 'b) -> unit
+end
+
 module Int :
 sig
   val log2 : int -> int
