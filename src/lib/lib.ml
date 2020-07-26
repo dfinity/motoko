@@ -468,6 +468,8 @@ struct
   be allocated, defined, and used (e.g. a Wasm function with a function id). It
   will only be allocated if it is both defined and used. Cyclic use is supported,
   e.g. the code that defines the thing will already be able to use it.
+
+  Beware: Calling def twice is allowed, the second one will be ignored.
   *)
 
   type ('a, 'b) alloc = unit -> ('a * ('b -> unit))
