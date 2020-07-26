@@ -475,39 +475,39 @@ struct
   type ('a, 'b) alloc = unit -> ('a * ('b -> unit))
 
   type ('a, 'b) t' =
-    | Pristine of ('a, 'b) alloc
-    | Waiting of 'a * ('b -> unit)
-    | Unused of ('a, 'b) alloc * (unit -> 'b)
-    | Defined of 'a
+    | UnUsedUnDef of ('a, 'b) alloc
+    | UsedUnDef of 'a * ('b -> unit)
+    | UnUsedDef of ('a, 'b) alloc * (unit -> 'b)
+    | UsedDef of 'a
   type ('a, 'b) t = ('a, 'b) t' ref
 
   let make : ('a, 'b) alloc -> ('a, 'b) t =
-    fun alloc -> ref (Pristine alloc)
+    fun alloc -> ref (UnUsedUnDef alloc)
 
   let def : ('a, 'b) t -> (unit -> 'b) -> unit =
     fun r mk -> match !r with
-      | Pristine alloc ->
-        r := Unused (alloc, mk)
-      | Waiting (a, fill) ->
-        r := Defined a;
+      | UnUsedUnDef alloc ->
+        r := UnUsedDef (alloc, mk)
+      | UsedUnDef (a, fill) ->
+        r := UsedDef a;
         fill (mk ());
-      | Unused _ | Defined _ ->
+      | UnUsedDef _ | UsedDef _ ->
         ()
 
   let use : ('a, 'b) t -> 'a =
     fun r -> match !r with
-      | Pristine alloc ->
+      | UnUsedUnDef alloc ->
         let (a, fill) = alloc () in
-        r := Waiting (a, fill);
+        r := UsedUnDef (a, fill);
         a
-      | Waiting (a, fill) ->
+      | UsedUnDef (a, fill) ->
         a
-      | Unused (alloc, mk) ->
+      | UnUsedDef (alloc, mk) ->
         let (a, fill) = alloc () in
-        r := Defined a;
+        r := UsedDef a;
         fill (mk ());
         a
-      | Defined a ->
+      | UsedDef a ->
         a
 end
 
