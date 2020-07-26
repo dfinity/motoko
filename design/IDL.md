@@ -1,11 +1,17 @@
+# Candid Specification
+
+Version: 0.1.0
+
+Date: May 4, 2020
+
 ## Motivation
 
-To document, discover, and interact with actors on the platform, we need an interface description language (IDL) for specifying the signature of an actor.
+To document, discover, and interact with _canisters_ (also known as _services_ or _actors_) on the Internet Computer, we need an interface description language (IDL) for specifying the signature of a canister.
 
 #### Goals:
 
-* Language-independent description of actor interfaces and the data they
-exchange (names, parameter and result formats of actor methods)
+* Language-independent description of canister interfaces and the data they
+exchange (names, parameter and result formats of service methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
 * Well-formedness is checkable and guaranteed by the platform
@@ -16,7 +22,7 @@ exchange (names, parameter and result formats of actor methods)
 #### Non-Goals:
 
 * Specification of semantic constraints beyond representation concerns
-  (Rationale: (1) there is no natural boundary to what should be expressible, a scalable solution would quickly lead into the realm of program logics and/or dependent types; (2) cost and complexity for the platform, the hypervisor would have to check and guarantee these properties on every message send; (3) in general, interesting properties cannot be formulated or checked without contextual information such as an actor’s state.)
+  (Rationale: (1) there is no natural boundary to what should be expressible, a scalable solution would quickly lead into the realm of program logics and/or dependent types; (2) cost and complexity for the platform, the hypervisor would have to check and guarantee these properties on every message send; (3) in general, interesting properties cannot be formulated or checked without contextual information such as a canister’s state.)
 * Prescribing the wire format used internally by the network to transport data (though it will make sense to use an extension of the serialisation format decribed, which is fairly generic)
 
 #### Inspiration:
@@ -31,7 +37,7 @@ exchange (names, parameter and result formats of actor methods)
 
 #### Why not Protocol Buffers or others?
 
-Vanilla protocol buffers are not sufficient or well-suited for describing Dfinity actors:
+Vanilla protocol buffers are not sufficient or well-suited for describing canisters on the Internet Computer:
 
 * They are primarily a *data description language*, not an IDL. There is syntax for defining "services", but it assumes RPCs not messaging and requires a developing a plugin (replacing the gRPC a.k.a. Stubby one) to provide a semantics.
 
@@ -52,8 +58,8 @@ Given all of the above, I expect there would be fairly little we would be able t
 
 ## Type Structure
 
-The purpose of an IDL is defining the signature, and thereby the *type* of an actor (service), that is, the set of messages and their parameter and result types. To that end, the grammar for the IDL consists mostly of a type grammar.
- 
+The purpose of an IDL is defining the signature, and thereby the *type* of an actor (service), that is, the set of messages and their parameter and result types. To that end, the grammar for Candid consists mostly of a type grammar.
+
 #### Core Grammar
 
 This is a summary of the grammar proposed:
@@ -89,6 +95,7 @@ This is a summary of the grammar proposed:
 <reftype>  ::=
   | func <functype>
   | service <actortype>
+  | principal
 
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
@@ -132,7 +139,7 @@ Block comments nest properly (unlike in C).
 
 An *service* is a standalone actor on the platform that can communicate with other services via sending and receiving *messages*. Messages are sent to a service by invoking one of its *methods*, i.e., functions that the service provides.
 
-**Note:** The IDL is in fact agnostic to the exact nature of services. In particular, it could be applied to a setting where services are synchronous (objects with RPCs) instead of asynchronous (actors with bidirectional message sends).
+**Note:** Candid is in fact agnostic to the exact nature of services. In particular, it could be applied to a setting where services are synchronous (objects with RPCs) instead of asynchronous (actors with bidirectional message sends).
 
 
 #### Structure
@@ -154,7 +161,7 @@ A name is given either in the syntax of a typical programming language identifie
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
 <text> ::= "<char>*"
 ```
-Identifiers cannot be keywords of the IDL grammar. In case a name is needed that coincides with a keyword, it has to be quoted as a text string.
+Identifiers cannot be keywords of the Candid grammar. In case a name is needed that coincides with a keyword, it has to be quoted as a text string.
 
 
 #### Example
@@ -172,7 +179,7 @@ service {
 
 *Functions* are endpoints for communication.   A typical function invocation is a bidirectional communication, with *parameters* and *results*, a.k.a. request and response. A `oneway` function invocation is a uni-directional communication with zero or more parameters but no results, intended for fire-and-forget scenarios.
 
-**Note:** The IDL is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
+**Note:** Candid is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
 
 **Note:** In a synchronous interpretation of functions, invocation of a oneway function would return immediately, without waiting for completion of the service-side invocation of the function. In an asynchronous interpretation of functions, the invocation of a `oneway` function does not accept a callback (to invoke on completion).
 
@@ -266,7 +273,6 @@ Text strings are represented by the type `text` and consist of a sequence of Uni
 ```
 **Note:** The `text` type is distinguished from `vec nat8` (a UTF-8 string) or `vec nat32` (a sequence of code points) in order to allow bindings to map it to a suitable string type, and enable the binary format to select an efficient internal representation independently.
 
-
 #### Null
 
 The type `null` has exactly one value (the *null* value) and therefor carries no information. It can e.g. be used as a placeholder for optional fields that ought to be added to a record in future upgrades, or for *variant cases* that do not need any value, see below.
@@ -327,7 +333,7 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 ```
 We identify `<fieldtype>` lists in a record type up to reordering.
 
-The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
+The id is described as a simple unsigned integer that has to fit the 32 bit value range. It can be given in either decimal or hexadecimal notation:
 
 ```
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
@@ -343,11 +349,11 @@ An id can also be given as a *name*, which is a shorthand for a numeric id that 
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
 
-The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to an out record as long as their id has not been used before. See the discussion on upgrading below for more details.
+The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by a function: a new version of a function can safely *add* fields to an old record as long as their id has not been used before. See the discussion on upgrading below for more details.
 
 The hash function is specified as
 ```
-hash(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
+hash(id) = ( Sum_(i=0..k) utf8(id)[i] * 223^(k-i) ) mod 2^32 where k = |utf8(id)|-1
 ```
 
 This expansion implies that a hash collision between field names within a single record is disallowed.
@@ -424,7 +430,7 @@ type tree = variant {
 
 ### References
 
-A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
+A third form of value are *references*. They represent first-class handles to (possibly remote) *functions*, *services*, or *principals*.
 
 #### Actor References
 
@@ -457,6 +463,14 @@ A *function reference* is described by its function type. For example, they allo
 type engine = service {
   search : (query : text, callback : func (vec result) -> ());
 }
+```
+
+#### Principal References
+
+A *principal reference* points to an identity, such as a canister or a user. Through this, we can authenticate or authorize other services or users.
+
+```
+<reftype> ::= ... | principal | ...
 ```
 
 ### Type Definitions
@@ -636,9 +650,9 @@ where `NI*` is the `<nat>` sequence `1`..`|<datatypeNI>*|`, respectively.
 Viewed as sets, the annotations on the functions must be equal.
 
 
-#### Actors
+#### Services
 
-For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
+For a service, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
 ```
 
 ----------------------------------------
@@ -735,7 +749,7 @@ func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* 
   ~> \x.\y.f2 (x (f1 y))
 ```
 
-#### Actors
+#### Services
 
 ```
 
@@ -750,48 +764,6 @@ service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>;
 ```
 
 
-## Example Development Flow
-
-We take the produce exchange app as an example to illustrate how a developer would use IDL in their development flow.
-
-IDL for produce exchange server:
-```
-type TruckTypeId = nat;
-type Weight = float32;
-
-type TruckTypeInfo = record {
-  id : TruckTypeId;
-  short_name : Text;
-  description : Text;
-  capacity : opt Weight;
-  isFridge : opt bool;
-  isFreezer : opt bool;
-};
-
-service Server : {
-  registrarAddTruckType : (TruckTypeInfo) -> (opt TruckTypeId);
-  registrarRemTruckType : (id : nat) -> (opt ());
-};
-```
-
-Note:
-* `TruckTypeId` and `nat` are used interchangeably.
-
-With this IDL file, the server code in Motoko could be:
-```
-actor Server {
-  registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
-    getModel().truckTypeTable.AddInfoGetId(
-      func (id_ : TruckTypeId) : TruckTypeInfo = shared {
-        id = id_ : TruckTypeId;
-        short_name = truck_info.short_name : Text;
-        description = truck_info.description : Text;
-      }
-    )
-  }
-}
-```
-
 ## Open Questions
 
 * Support default field values?
@@ -802,7 +774,7 @@ actor Server {
 
 ## Binary Format
 
-At runtime, every IDL value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
+At runtime, every Candid value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
 
 By making the type of the data explicit, (1) the serialised data becomes self-describing, which is useful for tooling, (2) error discovery and error handling is improved, (3) the binary format is decoupled from versioning concerns, so that the latter can be designed more flexible.
 
@@ -817,16 +789,16 @@ Note:
 
 ### Serialisation
 
-This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+This section describes how abstract *Candid values* of the types described by Candid are serialised into a binary representation for transfer between services.
 
 Serialisation is defined by three functions `T`, `M`, and `R` given below.
 
-Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
+Most Candid values are self-explanatory, except for references. There are two forms of Candid values for service references and principal references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
 
-Likewise, there are two forms of IDL values for function references:
+Likewise, there are two forms of Candid values for function references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
@@ -847,10 +819,10 @@ The following notation is used:
 
 #### Types
 
-`T` maps an IDL type to a byte sequence representing that type.
+`T` maps an Candid type to a byte sequence representing that type.
 Each type constructor is encoded as a negative opcode;
 positive numbers index auxiliary *type definitions* that define more complex types.
-We assume that the fields in a record or function type are sorted by increasing id and the methods in an actor are sorted by name.
+We assume that the fields in a record or function type are sorted by increasing id and the methods in a service are sorted by name.
 
 ```
 T : <primtype> -> i8*
@@ -886,6 +858,7 @@ T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
   sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
+T(principal)= sleb128(-24)                                        // 0x68
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -922,7 +895,7 @@ Note:
 
 #### Memory
 
-`M` maps an IDL value to a byte sequence representing that value. The definition is indexed by type.
+`M` maps an Candid value to a byte sequence representing that value. The definition is indexed by type.
 We assume that the fields in a record value are sorted by increasing id.
 
 ```
@@ -950,16 +923,19 @@ M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
 M(ref(r) : service <actortype>) = i8(0)
-M(id(v*) : service <actortype>) = i8(1) M(v* : vec i8)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec nat8)
 
 M(ref(r)   : func <functype>) = i8(0)
 M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
+
+M(ref(r) : principal) = i8(0)
+M(id(v*) : principal) = i8(1) M(v* : vec nat8)
 ```
 
 
 #### References
 
-`R` maps an IDL value to the sequence of references contained in that value. The definition is indexed by type.
+`R` maps an Candid value to the sequence of references contained in that value. The definition is indexed by type.
 We assume that the fields in a record value are sorted by increasing id.
 
 ```
@@ -981,6 +957,8 @@ R(ref(r) : service <actortype>) = r
 R(id(b*) : service <actortype>) = .
 R(ref(r)   : func <functype>) = r
 R(pub(s,n) : func <functype>) = .
+R(ref(r) : principal) = r
+R(id(b*) : principal) = .
 ```
 
 Note:
@@ -992,7 +970,7 @@ Note:
 
 Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -23). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -24). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
 * A value corresponding to a future type is called a *future value*. It is represented by two LEB128-encoded counts, *m* and *n*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
@@ -1024,7 +1002,7 @@ Note:
 
 ## Text Format
 
-To enable convenient debugging, we also specify a text format for IDL values.
+To enable convenient debugging, we also specify a text format for Candid values.
 The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
 
 ```
@@ -1053,6 +1031,7 @@ The types of these values are assumed to be known from context, so the syntax do
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
+  | principal <text>           (principal URI)
 
 <arg> ::= ( <annval>,* )
 

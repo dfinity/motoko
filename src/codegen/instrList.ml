@@ -7,9 +7,10 @@ features are
  * Some simple peephole optimizations.
 *)
 
-open Wasm.Ast
+open Wasm_exts.Ast
 open Wasm.Source
 open Wasm.Values
+open Wasm.Types
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
@@ -42,13 +43,16 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({i with it = Block (res, else_)} :: r')
     | { it = Const {it = I32 _; _}; _} :: l', ({it = If (res,then_,_); _} as i) :: r' ->
       go l' ({i with it = Block (res, then_)} :: r')
+    (* `If` blocks after negation can swap legs *)
+    | { it = Test (I32 I32Op.Eqz); _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
+      go l' ({i with it = If (res,else_,then_)} :: r')
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)
     | {it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _} :: {it = Const cl; _} :: l',
       ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
-        when Lib.Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
-      go l' (Lib.Option.value (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
+        when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
+      go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
@@ -99,17 +103,22 @@ let with_region (pos : Source.region) (body : t) : t =
 
 (* Depths-managing combinators *)
 
-let if_ (ty : block_type) (thn : t) (els : t) : t =
-  fun d pos rest ->
-    (If (ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+let as_block_type : stack_type -> block_type = function
+  | [] -> ValBlockType None
+  | [t] -> ValBlockType (Some t)
+  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
 
-let block_ (ty : block_type) (body : t) : t =
+let if_ (ty : stack_type) (thn : t) (els : t) : t =
   fun d pos rest ->
-    (Block (ty, to_nested_list d pos body) @@ pos) :: rest
+    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
 
-let loop_ (ty : block_type) (body : t) : t =
+let block_ (ty : stack_type) (body : t) : t =
   fun d pos rest ->
-    (Loop (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+
+let loop_ (ty : stack_type) (body : t) : t =
+  fun d pos rest ->
+    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
@@ -132,9 +141,9 @@ let branch_to_ (p : depth) : t =
   fun d pos rest ->
     (Br (Int32.(sub d (Lib.Promise.value p)) @@ pos) @@ pos) :: rest
 
-(* Convenience combinations *)
+(* Convenience combinators *)
 
-let labeled_block_ (ty : block_type) depth (body : t) : t =
+let labeled_block_ (ty : stack_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
 
 (* Intended to be used within assert *)

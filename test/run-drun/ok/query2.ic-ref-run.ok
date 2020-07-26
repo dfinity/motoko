@@ -1,0 +1,17 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go(0x4449444c0000)
+debug.print: 2
+debug.print: 3
+debug.print: 4
+debug.print: 4
+debug.print: In read:
+debug.print: 5
+debug.print: 4
+debug.print: In read:
+debug.print: 5
+debug.print: 4
+debug.print: The following fails in the interpreter, for lack of query semantics
+← completed: 0x4449444c0000

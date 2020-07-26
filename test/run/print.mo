@@ -1,2 +1,3 @@
-debugPrint("Hello World!");
-debugPrint("How are you?");
+import Prim "mo:prim";
+Prim.debugPrint("Hello World!");
+Prim.debugPrint("How are you?");

@@ -4,8 +4,7 @@ open Mo_config
 open Printf
 
 let name = "moc"
-let version = "0.1"
-let banner = "Motoko " ^ version ^ " interpreter"
+let banner = "Motoko compiler (revision " ^ Source_id.id ^ ")"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -28,9 +27,9 @@ let link = ref true
 let interpret_ir = ref false
 let gen_source_map = ref false
 
-let argspec = Arg.align
-[
+let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
+  "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
@@ -40,24 +39,21 @@ let argspec = Arg.align
 
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
+  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings"; ]
+
+  @ Args.error_args
+
+  @ [
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set gen_source_map, " output source map";
 
-  "-t", Arg.Set Flags.trace, " activate tracing";
-  "--package", (let package_name_ref = ref "DEADBEEF" in
-               Arg.Tuple [
-                   Arg.Set_string package_name_ref ;
-                   Arg.String begin fun package_url ->
-                     (* push (package_name, package_url) onto the list. *)
-                     Flags.package_urls := (
-                       !package_name_ref,
-                       package_url
-                     ) :: ! Flags.package_urls
-                     end
-                 ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
+  "-t", Arg.Set Flags.trace, " activate tracing in interpreters"]
+
+  @ Args.package_args
+
+  @ [
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
@@ -75,11 +71,14 @@ let argspec = Arg.align
   "-wasi-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
-  "-stub-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
-      " use the future DFINITY system API (ic-stub-run)";
+  "-ref-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+      " use the future DFINITY system API (ic-ref-run)";
+  (* TODO: bring this back (possibly with flipped default)
+           as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
+   *)
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
@@ -125,7 +124,6 @@ let process_files files : unit =
   | Idl ->
     set_out_file files ".did";
     let prog = Diag.run (Pipeline.generate_idl files) in
-    ignore (Diag.run (Idllib.Pipeline.check_prog prog));
     let oc = open_out !out_file in
     let idl_code = Idllib.Arrange_idl.string_of_prog prog in
     output_string oc idl_code; close_out oc

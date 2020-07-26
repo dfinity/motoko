@@ -1,8 +1,9 @@
+import Prim "mo:prim";
 actor a {
   public func go() {
     actor b {
       public func bad() {
-        debugPrint ("b.bad() called (should not happen)");
+        Prim.debugPrint ("b.bad() called (should not happen)");
       }
     };
     b.bad();
@@ -10,3 +11,9 @@ actor a {
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+
+
+// disabled, because hard to use Prim from inner actor
+// a bit sad, because this test is mostly interesting on ic-ref-run
+
+//SKIP comp-ref

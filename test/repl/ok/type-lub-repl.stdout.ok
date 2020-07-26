@@ -1,4 +1,4 @@
-Motoko 0.1 interpreter
+Motoko compiler (revision XXX)
 > [null, ?42, ?(-25)] : [(?Int)]
 > [null, null] : [Null]
 > [{a = 42}, {b = 42}] : [{}]
@@ -28,5 +28,5 @@ Motoko 0.1 interpreter
 > 25 : Int
 > 42 : Int
 >   func : (C, D) -> [C]
-> [async (?4), async (?(-42))] : [(async (?Int))]
+> [async (?4), async (?(-42))] : [(async<$top-level> (?Int))]
 > 

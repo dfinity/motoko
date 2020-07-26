@@ -2,9 +2,6 @@
 
 module Fun :
 sig
-  val id : 'a -> 'a
-  val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
-
   val curry : ('a * 'b -> 'c) -> ('a -> 'b -> 'c)
   val uncurry : ('a -> 'b -> 'c) -> ('a * 'b -> 'c)
 
@@ -14,6 +11,7 @@ end
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
+  val concat_map : ('a -> 'b list) -> 'a list -> 'b list
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
@@ -23,16 +21,17 @@ sig
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
+  val last_opt : 'a list -> 'a option
   val split_last : 'a list -> 'a list * 'a (* raises Failure *)
 
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
-  val map_filter : ('a -> 'b option) -> 'a list -> 'b list
   val first_opt : ('a -> 'b option) -> 'a list -> 'b option
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
   val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
+  val is_prefix : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
 
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 end
@@ -74,17 +73,14 @@ sig
   end
 end
 
+module Seq :
+sig
+  val for_all : ('a -> bool) -> 'a Seq.t -> bool
+end
+
 module Option :
 sig
-  val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
   val get : 'a option -> 'a -> 'a
-  val value : 'a option -> 'a
-  val map : ('a -> 'b) -> 'a option -> 'b option
-  val some : 'a -> 'a option
-  val iter : ('a -> unit) -> 'a option -> unit
-  val bind : 'a option -> ('a -> 'b option) -> 'b option
-  val is_some : 'a option -> bool
-  val is_none : 'a option -> bool
 end
 
 module Promise :
@@ -97,6 +93,7 @@ sig
   val is_fulfilled : 'a t -> bool
   val value : 'a t -> 'a
   val value_opt : 'a t -> 'a option
+  val lazy_value : 'a t -> (unit -> 'a) -> 'a
 end
 
 module Int :
@@ -110,6 +107,7 @@ sig
   type t
   val to_string : t -> string
   val of_string : string -> t
+  val of_string_opt : string -> t option
   val of_int : int -> t
   val to_int : t -> int
   val of_int32 : int32 -> t
@@ -140,12 +138,71 @@ end
 
 module CRC :
 sig
-  val crc8 : bytes -> int
+  val crc8 : string -> int
+  val crc32 : string -> int32
 end
 
 module Hex :
 sig
   val hexdigit : char -> int
-  val bytes_of_hex : string -> bytes
+  val bytes_of_hex : string -> string
   val int_of_hex_byte : string -> int
+
+  val hex_of_byte  : int -> string
+  val hex_of_char  : char -> string
+  val hex_of_bytes : string -> string
+end
+
+module Base32 :
+sig
+  val decode : string -> (string, string) result
+  val encode : string -> string
+end
+
+module FilePath :
+sig
+  (**
+   * Normalises a file path
+   *)
+  val normalise : string -> string
+
+  (**
+   * Makes one path relative to another path.
+   *
+   * Examples:
+   *
+   * relative_to "/home/foo" "/home/foo/project" = Some "project"
+   * relative_to "/home/foo" "/home/foo/project/lib" = Some "project/lib"
+   * relative_to "/home/foo" "/home/bar/project" = None
+   * relative_to "foo/bar" "foo/bar/project" = Some "project"
+   *)
+  val relative_to : string -> string -> string option
+
+  val make_absolute : string -> string -> string
+
+  (**
+   * Checks whether one path is nested below another.
+   * Must only be called on two absolute paths!
+   *
+   * Examples:
+   *
+   * is_subpath "/home" "/home/path" = true
+   * is_subpath "/home" "/path" = false
+   * is_subpath "/home/path" "/home" = false
+   * is_subpath "/home" "/homepath" = false
+   *)
+  val is_subpath : string -> string -> bool
+
+
+  (**
+   * Opens file, and if successful checks whether there
+   * were any mismatches in filename case, returning
+   * a warning.
+   *
+   * Examples:
+   *
+   * Asked for "Array.mo", opened "array.mo" reports
+   * "warning, file Array.mo has been located with a name of different case"
+   *)
+  val open_in : string -> (in_channel * string list)
 end

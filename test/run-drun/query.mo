@@ -1,11 +1,12 @@
+import Prim "mo:prim";
 actor {
-  var c = 1;
+  flexible var c = 1;
   public func inc() {
     c += 1;
-    debugPrintNat c
+    Prim.debugPrintNat c
   };
   public func printCounter () {
-    debugPrintNat c
+    Prim.debugPrintNat c
   };
   public func get() : async Nat {
     return c
@@ -13,7 +14,7 @@ actor {
   public query func read() : async Nat {
     let tmp = c;
     c += 1;
-    debugPrintNat c;
+    Prim.debugPrintNat c;
     return tmp;
   };
 

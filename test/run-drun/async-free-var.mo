@@ -1,18 +1,19 @@
+import Prim "mo:prim";
 actor a {
-  public func go() = ignore async {
+  public func go() : async () {
     var x = "A";
-    debugPrint x;
+    Prim.debugPrint x;
     let a = async {
-      debugPrint "Now in async";
-      debugPrint x;
+      Prim.debugPrint "Now in async";
+      Prim.debugPrint x;
       x := "B";
-      debugPrint x;
+      Prim.debugPrint x;
     };
-    debugPrint x;
+    Prim.debugPrint x;
     x := "C";
-    debugPrint x;
+    Prim.debugPrint x;
     await a;
-    debugPrint x;
+    Prim.debugPrint x;
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

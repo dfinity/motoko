@@ -1,6 +1,6 @@
-module {
+import List = "ListLib"; // private, so we don't re-export List
 
-import List = "ListLib.mo"; // private, so we don't re-export List
+module {
 
 public type Stack = List.List<Int>;
 

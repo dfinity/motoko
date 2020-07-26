@@ -1,4 +1,4 @@
-import A "./a.mo";
+import A "./a";
 module {
   public let i = A.i
 }

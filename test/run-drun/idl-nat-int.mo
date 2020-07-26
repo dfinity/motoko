@@ -1,9 +1,11 @@
+import Prim "mo:prim";
+
 actor {
   public query func absolute(x:Int) : async Nat {
-    abs x
+    Prim.abs x
   };
   public query func absolutes(xs:[Int]) : async [Nat] {
-    Array_tabulate<Nat>(xs.len(), func (i:Int) : Nat = abs(xs[i]))
+    Prim.Array_tabulate<Nat>(xs.size(), func (i:Int) : Nat = Prim.abs(xs[i]))
   };
 }
 

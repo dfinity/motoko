@@ -34,7 +34,6 @@ let adjoin scope1 scope2 =
     obj_env = T.Env.adjoin scope1.obj_env scope2.obj_env;
   }
 
-
 let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
 
 let lib f t =

@@ -1,2 +1,0 @@
-async-new-obj.mo:5.13-14.6: type error, unsupported async block
-  (This is a limitation of the current version.)

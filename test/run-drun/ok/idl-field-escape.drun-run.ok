@@ -1,5 +1,6 @@
-ingress(0) System
-ingress(1) Completed: Canister: Payload: 0x4449444c016c01868eb7027f0100
-ingress(2) Completed: Canister: Payload: 0x4449444c016c01868eb7027f0100
-ingress(3) Completed: Canister: Payload: 0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858
-ingress(4) Completed: Canister: Payload: 0x4449444c0000
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
+Ok: Reply: 0x4449444c016c01868eb7027f0100
+Ok: Reply: 0x4449444c016c01868eb7027f0100
+Ok: Reply: 0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858
+Ok: Reply: 0x4449444c0000

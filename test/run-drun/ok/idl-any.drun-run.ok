@@ -1,57 +1,62 @@
-ingress(0) System
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
 debug.print: ok: Foo
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(2) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(3) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(4) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(5) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(6) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(7) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(8) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(9) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(10) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(11) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(12) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(13) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(14) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(15) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(16) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(17) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(18) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(19) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(20) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(21) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(22) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(23) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(24) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(25) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(26) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(27) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Foo
-ingress(28) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+debug.print: ok: Foo
+Ok: Reply: 0x4449444c0000
+debug.print: ok: Foo
+Ok: Reply: 0x4449444c0000

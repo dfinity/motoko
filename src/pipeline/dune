@@ -2,6 +2,7 @@
   (name pipeline)
   (libraries
     lib
+    idllib
     lang_utils
     mo_def
     mo_config
@@ -18,5 +19,5 @@
     codegen
   )
   (inline_tests)
-  (preprocess (pps ppx_inline_test))
+  (preprocess (per_module ((pps ppx_inline_test) resolve_import_test)))
 )

@@ -1,4 +1,0 @@
-async-calls2.mo:12.43-12.47: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-async-calls2.mo:12.72-12.79: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

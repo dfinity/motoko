@@ -1,8 +1,13 @@
 Natural subtraction underflow
-
-Error: failed to process main module `_out/subNat64-slow.wasm`
+Error: failed to run main module `_out/subNat64-slow.wasm`
 
 Caused by:
-    0: Instantiation failed during setup
-    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
-
+    0: failed to invoke `_start`
+    1: wasm trap: unreachable, source location: @___:
+       wasm backtrace:
+         0: <unknown>!assert_nonneg
+         1: <unknown>!B_sub
+         2: <unknown>!sub<Nat64>
+         3: <unknown>!init
+         4: <unknown>!_start
+       

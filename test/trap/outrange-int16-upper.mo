@@ -1,1 +1,2 @@
-let _ = intToInt16 (2 ** 15);
+import Prim "mo:prim";
+let _ = Prim.intToInt16 (2 ** 15);

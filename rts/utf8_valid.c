@@ -71,13 +71,15 @@ utf8_check(const char *src, size_t len, size_t *cursor) {
   unsigned char buf[4];
   uint32_t v;
 
-  for (p = cur;;) {
+  while (true) {
     if (cur >= end - 3) {
       if (cur == end)
         break;
       buf[0] = buf[1] = buf[2] = buf[3] = 0;
       as_memcpy((char *)buf, (const char *)cur, end - cur);
       p = (const unsigned char *)buf;
+    } else {
+      p = cur;
     }
 
     v = p[0];

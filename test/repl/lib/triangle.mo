@@ -1,1 +1,1 @@
-import "a.mo"
+import "a"

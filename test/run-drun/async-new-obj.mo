@@ -1,5 +1,6 @@
+import Prim "mo:prim";
 actor a {
-  public func go() = ignore async {
+  public func go() : async () {
     /* Test asynchronous construction of an object */
 
     let a = async {
@@ -10,7 +11,7 @@ actor a {
         public func get_b() : Text { b };
       };
       let (a, b) = (o.get_a(), o.get_b());
-      debugPrint (a#b);
+      Prim.debugPrint (a#b);
     };
 
     let b = async {
@@ -21,7 +22,7 @@ actor a {
         public func get_b() : Text { b };
       };
       let (a, b) = (o.get_a(), o.get_b());
-      debugPrint (a#b);
+      Prim.debugPrint (a#b);
     };
 
     let c = async {
@@ -32,7 +33,7 @@ actor a {
         public func get_b() : Text { b };
       };
       let (a, b) = (o.get_a(), o.get_b());
-      debugPrint (a#b);
+      Prim.debugPrint (a#b);
     };
 
     let d = async {
@@ -43,7 +44,7 @@ actor a {
         public func get_b() : Text { b };
       };
       let (a, b) = (o.get_a(), o.get_b());
-      debugPrint (a#b);
+      Prim.debugPrint (a#b);
     };
 
     let e = async {
@@ -57,9 +58,14 @@ actor a {
         };
       };
       let (a, b) = o.get_ab();
-      debugPrint (a#b);
+      Prim.debugPrint (a#b);
     };
 
+    await a;
+    await b;
+    await c;
+    await d;
+    await e;
     ()
   };
 };

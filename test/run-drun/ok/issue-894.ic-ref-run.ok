@@ -1,0 +1,15 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go(0x4449444c0000)
+debug.print: 1
+debug.print: 1
+debug.print: 1
+debug.print: 1
+debug.print: 0
+debug.print: 1
+debug.print: 2
+debug.print: 3
+debug.print: 4
+← completed: 0x4449444c0000

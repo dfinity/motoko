@@ -1,0 +1,9 @@
+bad-async.mo:4.32-4.42: type error, expression of type
+  async<$foo1> Nat
+cannot produce expected type
+  async<$top-level> Nat
+bad-async.mo:7.17-7.21: type error, ill-scoped await: expected async type from current scope $foo2, found async type from other scope $top-level
+  scope $foo2 is bad-async.mo:5.36-8.6
+  scope $top-level is the global scope
+bad-async.mo:5.36: info, start of scope $foo2 mentioned in error at bad-async.mo:7.11-7.21
+bad-async.mo:8.5: info, end of scope $foo2 mentioned in error at bad-async.mo:7.11-7.21

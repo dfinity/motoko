@@ -1,4 +1,4 @@
-{-# language ConstraintKinds, DataKinds, FlexibleContexts, FlexibleInstances, GADTs
+{-# language ConstraintKinds, DataKinds, DeriveFoldable, FlexibleContexts, FlexibleInstances, GADTs
            , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
            , UndecidableInstances, ViewPatterns #-}
@@ -8,29 +8,42 @@
 module Main where
 
 import Control.Applicative
-import Control.Monad
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
 import Test.QuickCheck.Unicode
-import qualified Data.Text (null, unpack)
+import System.Environment
+import qualified Data.Text (null, pack, unpack)
 import Data.Maybe
 import Data.Bool (bool)
 import Data.Proxy
 import Data.Type.Equality
 import GHC.Natural
-import GHC.TypeLits
+import GHC.TypeLits hiding (Text)
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
+import Data.List (intercalate)
 
-import System.Process hiding (proc)
 import Turtle
--- import Debug.Trace (traceShowId)
+import Embedder
+-- import Debug.Trace (traceShowId, traceShow)
 
-main = defaultMain tests
-  where tests :: TestTree
-        tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
+
+main = do
+  putStrLn "Probing embedders..."
+  good <- isHealthy embedder
+  goodDrun <- isHealthy Drun
+  putStrLn . ("Found " <>) . (<> ".") . intercalate " and " . map embedderCommand
+               $ [ embedder | good ] <> [ Drun | goodDrun ]
+  let tests :: TestTree
+      tests = testGroup "Motoko tests" . concat
+               $ [ [arithProps, conversionProps, utf8Props, matchingProps] | good ]
+              <> [ [encodingProps] | goodDrun ]
+
+  if not (good || goodDrun)
+  then putStrLn "No embedder available for testing. Done..."
+  else setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
@@ -52,31 +65,51 @@ utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
   , QC.testProperty "length computation" $ prop_textLength
+  , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
+  , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
+  , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
-matchingProps = testGroup "Pattern matching"
-  [ QC.testProperty "intra-actor" $ prop_matchStructured
-  , QC.testProperty "inter-actor" $ prop_matchInActor
+matchingProps = testGroup "Pattern matching" $
+  [ QC.testProperty "intra-actor" $ prop_matchStructured ]
+
+
+-- these require messaging
+--
+encodingProps = testGroup "Encoding" $
+  [ QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
+  , QC.testProperty "encoded-Nat" $ withMaxSuccess 10 prop_matchActorNat
+  , QC.testProperty "encoded-Int" $ withMaxSuccess 10 prop_matchActorInt
+  , QC.testProperty "encoded-Text" $ withMaxSuccess 10 prop_matchActorText
   ]
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
-    where runner relevant name testCase = 
-            let as = name <.> "as"
-                wasm = name <.> "wasm"
-                fileArg = fromString . encodeString
-                script = do Turtle.output as $ fromString testCase
-                            res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                ["-no-system-api", "-no-check-ir", fileArg as] empty
-                            if ExitSuccess == exitCode
-                            then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
-                            else pure (False, res)
-            in run script >>= assertSuccessNoFuzz relevant
+
+withPrim :: Line -> Line
+withPrim = (fromString "import Prim \"mo:prim\";" <>)
+
+runner :: Embedder -> ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
+runner embedder reqOutcome relevant name testCase =
+    let as = name <.> "mo"
+        wasm = name <.> "wasm"
+        fileArg = fromString . encodeString
+        script = do Turtle.output as $ withPrim <$> fromString testCase
+                    res@(exitCode, _, _) <- procStrictWithErr "moc"
+                      (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
+                    if ExitSuccess == exitCode
+                    then (True,) <$> invokeEmbedder embedder wasm
+                    else pure (False, res)
+    in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
+
+(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 134) not)
+    where runEmbedder = runner embedder
+(drunScriptNoFuzz, drunScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+    where runEmbedder = runner Drun
 
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
       testCase = "{ var str = \"\"; for (c in \""
-                 <> s <> "\".chars()) { str #= charToText c }; assert (str == \"" <> s <> "\") }"
+                 <> s <> "\".chars()) { str #= Prim.charToText c }; assert (str == \"" <> s <> "\") }"
 
       s = concatMap escape str
   runScriptNoFuzz "explodeConcat" testCase
@@ -98,32 +131,85 @@ escape '"' = "\\\""
 escape ch = pure ch
 
 prop_charToText (UTF8 char) = monadicIO $ do
-  let testCase = "assert (switch ((charToText '"
+  let testCase = "assert (switch ((Prim.charToText '"
                  <> c <> "').chars().next()) { case (?'" <> c <> "') true; case _ false })"
 
       c = escape char
   runScriptNoFuzz "charToText" testCase
 
 prop_textLength (UTF8 text) = monadicIO $ do
-  let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
+  let testCase = "assert(\"" <> (text >>= escape) <> "\".size() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
 
-assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
+data Rope a = EmptyChunk | Chunk a | UTF8Chunk a | LongChunk a | Rope a `Rope` Rope a deriving (Eq, Show, Foldable)
+
+instance Semigroup (Rope a) where
+  (<>) = Rope
+
+instance Monoid (Rope a) where
+  mempty = EmptyChunk
+
+instance Arbitrary (Rope String) where
+  arbitrary = frequency [ (2, pure mempty)
+                        , (4, Chunk <$> arbitrary)
+                        , (5, elements [ UTF8Chunk "Медве́ди хо́дят по у́лицам. Коне́чно, э́то непра́вда!"
+                                       , UTF8Chunk "Boci, boci tarka, se füle, se farka, oda megyünk lakni, ahol tejet kapni."
+                                       , UTF8Chunk "十年树木，百年树人" ])
+                        , (7, pure $ LongChunk "The quick brown fox jumps over the lazy dog")
+                        , (3, Rope <$> arbitrary <*> arbitrary) ]
+
+instance Semigroup (MOTerm String) where
+  (<>) = Concat
+
+instance Monoid (MOTerm String) where
+  mempty = Text mempty
+
+asString = foldMap id
+
+asMot :: Rope String -> MOTerm String
+asMot = foldMap Text
+
+prop_ropeConcat rope = monadicIO $ do
+  let testCase = "assert (" <> ropeMot <> " == " <> string <> ")"
+      string = unparseMO (Text (asString rope))
+      ropeMot = unparseMO (asMot rope)
+  runScriptNoFuzz "ropeConcat" testCase
+
+prop_ropeLength rope = monadicIO $ do
+  let testCase = "assert (" <> ropeMot <> ".size() == " <> show len <> ")"
+      len = length (asString rope)
+      ropeMot = unparseMO (asMot rope)
+  runScriptNoFuzz "ropeLength" testCase
+
+prop_ropeIterator rope = monadicIO $ do
+  let testCase = "func same(c : ?Char, d : Char) : Bool = switch c { case (?cc) { cc == d }; case null false };"
+              <> "let i = (" <> ropeMot <> ").chars();"
+              <> concatMap testStep string
+              <> "assert (switch (i.next()) { case null true; case _ false })"
+      testStep c = "assert (same(i.next(), '" <> escape c <> "'));"
+      string = asString rope
+      ropeMot = unparseMO (asMot rope)
+  runScriptNoFuzz "ropeLength" testCase
+
+
+assertOutcomeCheckingFuzz outcome relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
-  when fuzzErr $ do
+      fuzzErrRelevant = relevant fuzzErr
+  when (fuzzErr && fuzzErrRelevant) $ do
     monitor (counterexample "STDERR:")
     monitor (counterexample . Data.Text.unpack $ err)
   let fuzzOut = not $ Data.Text.null out
-  let fuzzOutRelevant = relevant fuzzOut
-  when (fuzzOut && fuzzOutRelevant) $ do
+  when fuzzOut $ do
     monitor (counterexample "STDOUT:")
     monitor (counterexample . Data.Text.unpack $ out)
-  assert (not $ ExitSuccess /= exitCode || (if compiled then fuzzOutRelevant else fuzzOut) || fuzzErr)
+  assert (not $ outcome /= exitCode || (if compiled then fuzzErrRelevant else fuzzErr) || fuzzOut)
+
+assertSuccessNoFuzz = assertOutcomeCheckingFuzz ExitSuccess id
 
 newtype Failing a = Failing a deriving Show
 
 instance Arbitrary (Failing String) where
-  arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
+  arbitrary = do let failed as = "let _ = " ++ unparseMO as ++ ";"
                  Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @Integer -> res) -> null res)
 
 prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
@@ -137,18 +223,16 @@ newtype TestCase = TestCase [String] deriving Show
 instance Arbitrary TestCase where
   arbitrary = do tests <- infiniteListOf arbitrary
                  let expected = evaluate @Integer <$> tests
-                 let paired as = fmap (\res -> "assert (" ++ unparseAS as ++ " == " ++ show res ++ ");")
-                 pure . TestCase . take 100 . catMaybes $ zipWith paired tests expected
-
-
+                 let paired as = fmap (\res -> "assert (" ++ unparseMO as ++ " == " ++ show res ++ ");")
+                 pure . TestCase . take 10 . catMaybes $ zipWith paired tests expected
 
 
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let script cases = do Turtle.output "tests.mo" $ msum cases
+  let script cases = do Turtle.output "tests.mo" $ msum (pure (withPrim mempty) : cases)
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                 ["-no-system-api", "-no-check-ir", "tests.mo"] empty
+                                 (addCompilerArgs embedder ["-no-check-ir", "tests.mo"]) empty
                         if ExitSuccess == exitCode
-                        then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
+                        then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
                         else pure (False, res)
   res@(compiled, (exitCode, out, err)) <- run $ script testCase
   when compiled $ do
@@ -163,10 +247,10 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
                  (_, False) -> bisect $ halve jokers
     let good = Data.Text.null out
     unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
-  assertSuccessNoFuzz id res
+  assertSuccessNoFuzz res
 
 
-newtype ConversionTest n = ConversionTest (ASTerm (BitLimited n Word)) deriving Show
+newtype ConversionTest n = ConversionTest (MOTerm (BitLimited n Word)) deriving Show
 
 instance WordLike n => Arbitrary (ConversionTest n) where
   arbitrary = ConversionTest . ConvertNatToWord . ConvertWordToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited n Word)))
@@ -176,13 +260,13 @@ prop_roundtripWNW (ConversionTest term) =
     case term of
       ConvertNatToWord (ConvertWordToNat n) ->
           case sameNat (bitsIn term) (bitsIn n) of
-            Just Refl -> let testCase = "assert(" <> unparseAS (term `Equals` n) <> ")" in
+            Just Refl -> let testCase = "assert(" <> unparseMO (term `Equals` n) <> ")" in
                          monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
-  where bitsIn :: KnownNat n => ASTerm (BitLimited n Word) -> Proxy n
+  where bitsIn :: KnownNat n => MOTerm (BitLimited n Word) -> Proxy n
         bitsIn _ = Proxy
 
 
-newtype ModuloTest (n :: Nat) = ModuloTest (ASTerm (BitLimited n Word)) deriving Show
+newtype ModuloTest (n :: Nat) = ModuloTest (MOTerm (BitLimited n Word)) deriving Show
 
 instance WordLike n => Arbitrary (ModuloTest n) where
   arbitrary = ModuloTest . ConvertNatToWord @n . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
@@ -190,11 +274,11 @@ instance WordLike n => Arbitrary (ModuloTest n) where
 prop_moduloNWN :: forall n . KnownNat n => ModuloTest n -> Property
 prop_moduloNWN (ModuloTest term@(ConvertNatToWord (Neuralgic m))) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
   where m' = evalN m .&. maskFor term
-        testCase = "assert(" <> unparseAS (ConvertWordToNat term)
+        testCase = "assert(" <> unparseMO (ConvertWordToNat term)
                 <> " == " <> show m' <> ")"
 
 data Matching where
-  Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
+  Matching :: (AnnotLit t, MOValue t, Show t) => (MOTerm t, t) -> Matching
 
 deriving instance Show Matching
 
@@ -207,7 +291,7 @@ instance Arbitrary Matching where
                     , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Word)
                     , realise Matching <$> gen @(Maybe Integer)
                     ]
-    where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
+    where gen :: (Arbitrary (MOTerm a), Evaluatable a) => Gen (MOTerm a, Maybe a)
           gen = (do term <- arbitrary
                     let val = evaluate term
                     pure (term, val)) `suchThat` (isJust . snd)
@@ -216,67 +300,86 @@ instance Arbitrary Matching where
 prop_matchStructured :: Matching -> Property
 prop_matchStructured (Matching a) = locally a
 
-locally :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
+locally :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 locally (tm, v) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
       eval'd = unparse v
-      expr = unparseAS tm
+      expr = unparseMO tm
   runScriptNoFuzz "matchLocally" testCase
 
 prop_matchInActor :: Matching -> Property
 prop_matchInActor (Matching a) = mobile a
 
-mobile :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
+mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
+  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func do () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
 
       eval'd = unparse v
       typed = unparseType v
-      expr = unparseAS tm
-  runScriptNoFuzz "matchMobile" testCase
+      expr = unparseMO tm
+  drunScriptNoFuzz "matchMobile" testCase
 
--- instances of ASValue describe "ground values" in
+
+prop_matchActorNat :: Neuralgic Natural -> Property
+prop_matchActorNat nat = monadicIO $ do
+    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
+        eval'd = evalN nat
+    drunScriptNoFuzz "matchActorNat" (Data.Text.unpack testCase)
+
+prop_matchActorInt :: Neuralgic Integer -> Property
+prop_matchActorInt int = monadicIO $ do
+    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
+        eval'd = evalN int
+    drunScriptNoFuzz "matchActorInt" (Data.Text.unpack testCase)
+
+prop_matchActorText :: UTF8 String -> Property
+prop_matchActorText (UTF8 text) = monadicIO $ do
+    let testCase = format ("actor { public func match (i : Text) : async () { assert (switch i { case (\""%s%"\") true; case _ false }) }; public func do () : async () { let res = await match (\""%s%"\" : Text); return res } };") eval'd eval'd
+        eval'd = Data.Text.pack $ text >>= escape
+    drunScriptNoFuzz "matchActorText" (Data.Text.unpack testCase)
+
+-- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have
--- well-defined AS type.
+-- well-defined Motoko type.
 --
-class ASValue a where
+class MOValue a where
   unparseType :: a -> String
   unparse :: a -> String
 
-instance ASValue Bool where
+instance MOValue Bool where
   unparseType _ = "Bool"
-  unparse = unparseAS . Bool
+  unparse = unparseMO . Bool
 
-instance ASValue Integer where
+instance MOValue Integer where
   unparseType _ = "Int"
   unparse = show
 
-instance ASValue Natural where
+instance MOValue Natural where
   unparseType _ = "Nat"
   unparse = show
 
-instance KnownNat n => ASValue (BitLimited n Natural) where
+instance KnownNat n => MOValue (BitLimited n Natural) where
   unparseType _ = "Nat" <> bitWidth (Proxy @n)
   unparse (NatN a) = annot (Five @(BitLimited n Natural)) (show a)
 
-instance KnownNat n => ASValue (BitLimited n Integer) where
+instance KnownNat n => MOValue (BitLimited n Integer) where
   unparseType _ = "Int" <> bitWidth (Proxy @n)
   unparse (IntN a) = annot (Five @(BitLimited n Integer)) (show a)
 
-instance KnownNat n => ASValue (BitLimited n Word) where
+instance KnownNat n => MOValue (BitLimited n Word) where
   unparseType _ = "Word" <> bitWidth (Proxy @n)
   unparse (WordN a) = annot (Five @(BitLimited n Word)) (show a)
 
-instance (ASValue a, ASValue b) => ASValue (a, b) where
+instance (MOValue a, MOValue b) => MOValue (a, b) where
   unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
   unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
 
-instance (ASValue a, ASValue b, ASValue c) => ASValue (a, b, c) where
+instance (MOValue a, MOValue b, MOValue c) => MOValue (a, b, c) where
   unparseType (a, b, c) = "(" <> unparseType a <> ", " <> unparseType b <> ", " <> unparseType c <> ")"
   unparse (a, b, c) = "(" <> unparse a <> ", " <> unparse b <> ", " <> unparse c <> ")"
 
-instance ASValue a => ASValue (Maybe a) where
+instance MOValue a => MOValue (Maybe a) where
   unparseType Nothing = "Null"
   unparseType (Just a) = "?" <> unparseType a
   unparse Nothing = "null"
@@ -349,48 +452,51 @@ instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Word)) where
           menu 64 = [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
 
 
-data ASTerm :: * -> * where
+data MOTerm :: * -> * where
   -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
-    :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
+    :: (AnnotLit a, Evaluatable a) => MOTerm a -> MOTerm a -> MOTerm Bool
   -- Short-circuit
   ShortAnd, ShortOr
-    :: ASTerm Bool -> ASTerm Bool -> ASTerm Bool
+    :: MOTerm Bool -> MOTerm Bool -> MOTerm Bool
   -- Boolean
-  Not :: ASTerm Bool -> ASTerm Bool
-  Bool :: Bool -> ASTerm Bool
+  Not :: MOTerm Bool -> MOTerm Bool
+  Bool :: Bool -> MOTerm Bool
   -- Bitwise
-  Complement :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
+  Complement :: MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word)
   Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned
-    :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
-  PopCnt, Clz, Ctz :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
+    :: MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word)
+  PopCnt, Clz, Ctz :: MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word)
   -- Arithmetic
-  Pos, Neg, Abs :: ASTerm a -> ASTerm a
-  Add, Sub, Mul, Div, Mod, Pow :: ASTerm a -> ASTerm a -> ASTerm a
+  Pos, Neg, Abs :: MOTerm a -> MOTerm a
+  Add, Sub, Mul, Div, Mod, Pow :: MOTerm a -> MOTerm a -> MOTerm a
   -- Numeric
-  Neuralgic :: Neuralgic a -> ASTerm a
-  Five :: ASTerm a
+  Neuralgic :: Neuralgic a -> MOTerm a
+  Five :: MOTerm a
+  -- Text
+  Text :: String -> MOTerm String
+  Concat :: MOTerm String -> MOTerm String -> MOTerm String
   -- Conditional
-  IfThenElse :: ASTerm a -> ASTerm a -> ASTerm Bool -> ASTerm a
+  IfThenElse :: MOTerm a -> MOTerm a -> MOTerm Bool -> MOTerm a
   -- Conversion
-  ConvertNatural :: ASTerm Natural -> ASTerm Integer
-  ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
-  ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
-  ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
-  ConvertNatToWord :: WordLike n => ASTerm Natural -> ASTerm (BitLimited n Word)
-  ConvertWordToNat :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Natural
+  ConvertNatural :: MOTerm Natural -> MOTerm Integer
+  ConvertNat :: KnownNat n => MOTerm (BitLimited n Natural) -> MOTerm Integer
+  ConvertInt :: KnownNat n => MOTerm (BitLimited n Integer) -> MOTerm Integer
+  ConvertWord :: WordLike n => MOTerm (BitLimited n Word) -> MOTerm Integer
+  ConvertNatToWord :: WordLike n => MOTerm Natural -> MOTerm (BitLimited n Word)
+  ConvertWordToNat :: WordLike n => MOTerm (BitLimited n Word) -> MOTerm Natural
   -- Constructors (intro forms)
-  Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
+  Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => MOTerm a -> MOTerm b -> MOTerm (a, b)
   Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
-         => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
-  Array :: ASTerm a -> ASTerm [a] -- not matchable!
-  Null :: ASTerm (Maybe a)
-  Some :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm (Maybe a)
+         => MOTerm a -> MOTerm b -> MOTerm c -> MOTerm (a, b, c)
+  Array :: MOTerm a -> MOTerm [a] -- not matchable!
+  Null :: MOTerm (Maybe a)
+  Some :: (AnnotLit a, Evaluatable a) => MOTerm a -> MOTerm (Maybe a)
   -- Variants, Objects (TODO)
 
-deriving instance Show (ASTerm t)
+deriving instance Show (MOTerm t)
 
-subTerm :: Arbitrary (ASTerm t) => Bool -> Int -> [(Int, Gen (ASTerm t))]
+subTerm :: Arbitrary (MOTerm t) => Bool -> Int -> [(Int, Gen (MOTerm t))]
 subTerm fullPow n =
     [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> arbitrary) | fullPow] ++
     [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
@@ -401,12 +507,12 @@ subTerm fullPow n =
     , (n, resize (n `div` 4) $ IfThenElse <$> arbitrary <*> arbitrary <*> arbitrary)
     ]
 
-subTermPow :: Arbitrary (ASTerm t) => (ASTerm t -> ASTerm t) -> Int -> [(Int, Gen (ASTerm t))]
+subTermPow :: Arbitrary (MOTerm t) => (MOTerm t -> MOTerm t) -> Int -> [(Int, Gen (MOTerm t))]
 subTermPow mod n = (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (mod <$> arbitrary))
                    : subTerm False n
 
-subTermPow5 :: Arbitrary (ASTerm t)
-               => Int -> [(Int, Gen (ASTerm t))]
+subTermPow5 :: Arbitrary (MOTerm t)
+               => Int -> [(Int, Gen (MOTerm t))]
 subTermPow5 n = (n, resize (n `div` 5)
                       $ Pow <$> arbitrary
                             <*> (Neuralgic <$> elements [ Around0
@@ -417,7 +523,7 @@ subTermPow5 n = (n, resize (n `div` 5)
                                                     ]))
                 : subTerm False n
 
-bitwiseTerm :: WordLike n => Arbitrary (ASTerm (BitLimited n Word)) => Int -> [(Int, Gen (ASTerm (BitLimited n Word)))]
+bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n Word)) => Int -> [(Int, Gen (MOTerm (BitLimited n Word)))]
 bitwiseTerm n =
     [ (n `div` 5, resize (n `div` 3) $ Or <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ And <$> arbitrary <*> arbitrary)
@@ -436,43 +542,43 @@ bitwiseTerm n =
 -- generate reasonably formed trees from smaller subterms
 --
 reasonablyShaped :: (Arbitrary (Neuralgic a), AnnotLit a, Evaluatable a)
-                 => (Int -> [(Int, Gen (ASTerm a))])
-                 -> Gen (ASTerm a)
+                 => (Int -> [(Int, Gen (MOTerm a))])
+                 -> Gen (MOTerm a)
 reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        (30 `div` n, Neuralgic <$> arbitrary)
                        : if n > 1 then sub n else []
 
-instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (ASTerm (BitLimited n Natural)) where
+instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (MOTerm (BitLimited n Natural)) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
-instance {-# OVERLAPS #-} Arbitrary (ASTerm Nat8) where
+instance {-# OVERLAPS #-} Arbitrary (MOTerm Nat8) where
   arbitrary = reasonablyShaped $ subTerm True
 
 
-instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (ASTerm (BitLimited n Integer)) where
+instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (MOTerm (BitLimited n Integer)) where
   arbitrary = reasonablyShaped subTermPow5
 
-instance {-# OVERLAPS #-} Arbitrary (ASTerm Int8) where
+instance {-# OVERLAPS #-} Arbitrary (MOTerm Int8) where
   arbitrary = reasonablyShaped $ subTerm True
 
 
-instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (ASTerm (BitLimited n Word)) where
+instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Word)) where
   arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
-instance {-# OVERLAPS #-} Arbitrary (ASTerm Word8) where
+instance {-# OVERLAPS #-} Arbitrary (MOTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
-instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (ASTerm a), Arbitrary (ASTerm b)) => Arbitrary (ASTerm (a, b)) where
+instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
 
-instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (ASTerm a), Arbitrary (ASTerm b), Arbitrary (ASTerm c))
-    => Arbitrary (ASTerm (a, b, c)) where
+instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (MOTerm a), Arbitrary (MOTerm b), Arbitrary (MOTerm c))
+    => Arbitrary (MOTerm (a, b, c)) where
   arbitrary = scale (`quot` 3) $ Triple <$> arbitrary <*> arbitrary <*> arbitrary
 
-instance (AnnotLit a, Evaluatable a, Arbitrary (ASTerm a)) => Arbitrary (ASTerm (Maybe a)) where
+instance (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => Arbitrary (MOTerm (Maybe a)) where
   arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
 
-instance Arbitrary (ASTerm Bool) where
+instance Arbitrary (MOTerm Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
     oneof $ (Bool <$> arbitrary) : if n <= 1 then [] else
     [ resize (n `div` 3) $ elements [NotEqual @Integer, Equals, GreaterEqual, Greater, LessEqual, Less] <*> arbitrary <*> arbitrary
@@ -480,27 +586,27 @@ instance Arbitrary (ASTerm Bool) where
     , resize (n `div` 2) $ Not <$> arbitrary
     ]
 
-instance Arbitrary (ASTerm Natural) where
+instance Arbitrary (MOTerm Natural) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
-instance Arbitrary (ASTerm Integer) where
+instance Arbitrary (MOTerm Integer) where
   arbitrary = reasonablyShaped $ \n ->
     [ (n, resize (n `div` 2) $ Pos <$> arbitrary)
     , (n, resize (n `div` 2) $ Neg <$> arbitrary)
     , (n, resize (n `div` 2) $ Abs <$> arbitrary)
     , (n, ConvertNatural <$> arbitrary)
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ASTerm Nat8)))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ASTerm Nat16)))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ASTerm Nat32)))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ASTerm Nat64)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(ASTerm Word8)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(ASTerm Word16)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(ASTerm Word32)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(ASTerm Word64)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ASTerm Int8)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ASTerm Int16)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ASTerm Int32)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ASTerm Int64)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat8)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat16)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat32)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat64)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word8)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word16)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word32)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word64)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int8)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int16)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int32)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int64)))
     ] <> subTermPow ((`Mod` Five) . Abs) n
 
 instance Num a => Num (Maybe a) where
@@ -568,7 +674,7 @@ instance KnownNat n => Restricted (BitLimited n Word) where
                   else defaultExponentRestriction
 
 class Ord a => Evaluatable a where
-  evaluate :: ASTerm a -> Maybe a
+  evaluate :: MOTerm a -> Maybe a
 
 
 data BitLimited (n :: Nat) (a :: *) where
@@ -779,11 +885,11 @@ instance Evaluatable a => Evaluatable (Maybe a) where
   evaluate Null = pure Nothing
   evaluate (Some a) = Just <$> evaluate a
 
-maskFor :: forall n . KnownNat n => ASTerm (BitLimited n Word) -> Natural
+maskFor :: forall n . KnownNat n => MOTerm (BitLimited n Word) -> Natural
 maskFor _ = fromIntegral $ 2 ^ natVal (Proxy @n) - 1
 
 
-eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
+eval :: (Restricted a, Integral a) => MOTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
 eval (Pos n) = eval n
@@ -818,11 +924,15 @@ instance Evaluatable Bool where
   evaluate (Not a) = not <$> evaluate a
   evaluate (Bool b) = pure b
 
+instance Evaluatable String where
+  evaluate (Text a) = pure a
+  evaluate (a `Concat` b) = (<>) <$> evaluate a <*> evaluate b
+
 type AnnotLit t = (Annot t, Literal t)
 
 class Annot t where
-  annot :: ASTerm t -> String -> String
-  sizeSuffix :: ASTerm t -> String -> String
+  annot :: MOTerm t -> String -> String
+  sizeSuffix :: MOTerm t -> String -> String
   sizeSuffix _ = id
 
 instance Annot (a, b) where
@@ -840,6 +950,8 @@ instance Annot Integer where
 instance Annot Natural where
   annot _ s = "((" <> s <> ") : Nat)"
 
+instance Annot String where
+  annot _ = id
 
 bitWidth :: KnownNat n => Proxy n -> String
 bitWidth p = show (natVal p)
@@ -870,6 +982,9 @@ instance Literal (a, b, c) where
 instance Literal (Maybe a) where
   literal _ = error "Literal (Maybe a) makes no sense"
 
+instance Literal String where
+  literal _ = error "Literal String makes no sense"
+
 instance Literal Integer
 instance Literal Natural
 instance Literal (BitLimited n Natural)
@@ -886,61 +1001,63 @@ instance Literal Bool where
 inParens :: (a -> String) -> String -> a -> a -> String
 inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
-unparseAS :: AnnotLit a => ASTerm a -> String
-unparseAS f@Five = annot f "5"
-unparseAS a@(Neuralgic n) = annot a $ literal n
-unparseAS (Pos n) = "(+" <> unparseAS n <> ")"
-unparseAS (Neg n) = "(-" <> unparseAS n <> ")"
-unparseAS (Abs n) = "(abs " <> unparseAS n <> ")"
-unparseAS (a `Add` b) = inParens unparseAS "+" a b
-unparseAS (a `Sub` b) = annot a $ inParens unparseAS "-" a b
-unparseAS (a `Mul` b) = inParens unparseAS "*" a b
-unparseAS (a `Div` b) = inParens unparseAS "/" a b
-unparseAS (a `Mod` b) = inParens unparseAS "%" a b
-unparseAS (a `Pow` b) = inParens unparseAS "**" a b
-unparseAS (a `Or` b) = inParens unparseAS "|" a b
-unparseAS (a `And` b) = inParens unparseAS "&" a b
-unparseAS (a `Xor` b) = inParens unparseAS "^" a b
-unparseAS (a `RotL` b) = inParens unparseAS "<<>" a b
-unparseAS (a `RotR` b) = inParens unparseAS "<>>" a b
-unparseAS (a `ShiftL` b) = inParens unparseAS "<<" a b
-unparseAS (a `ShiftR` b) = inParens unparseAS ">>" a b
-unparseAS (a `ShiftRSigned` b) = inParens unparseAS "+>>" a b
-unparseAS (PopCnt n) = sizeSuffix n "(popcntWord" <> " " <> unparseAS n <> ")"
-unparseAS (Clz n) = sizeSuffix n "(clzWord" <> " " <> unparseAS n <> ")"
-unparseAS (Ctz n) = sizeSuffix n "(ctzWord" <> " " <> unparseAS n <> ")"
-unparseAS (Complement a) = "(^ " <> unparseAS a <> ")"
-unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
-unparseAS (ConvertNat a) = unparseNat Proxy a
-unparseAS (ConvertInt a) = unparseInt Proxy a
-unparseAS (ConvertWord a) = unparseWord Proxy a
-unparseAS (ConvertWordToNat a) = sizeSuffix a "(word" <> "ToNat " <> unparseAS a <> ")"
-unparseAS t@(ConvertNatToWord a) = sizeSuffix t "(natToWord" <> " " <> unparseAS a <> ")"
-unparseAS (IfThenElse a b c) = "(if (" <> unparseAS c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
-unparseAS (a `NotEqual` b) = inParens unparseAS "!=" a b
-unparseAS (a `Equals` b) = inParens unparseAS "==" a b
-unparseAS (a `GreaterEqual` b) = inParens unparseAS ">=" a b
-unparseAS (a `Greater` b) = inParens unparseAS ">" a b
-unparseAS (a `LessEqual` b) = inParens unparseAS "<=" a b
-unparseAS (a `Less` b) = inParens unparseAS "<" a b
-unparseAS (a `ShortAnd` b) = inParens unparseAS "and" a b
-unparseAS (a `ShortOr` b) = inParens unparseAS "or" a b
-unparseAS (Not a) = "(not " <> unparseAS a <> ")"
-unparseAS (Bool False) = "false"
-unparseAS (Bool True) = "true"
-unparseAS (a `Pair` b) = "(" <> unparseAS a <> ", " <> unparseAS b <> ")"
-unparseAS (Triple a b c) = "(" <> unparseAS a <> ", " <> unparseAS b <> ", " <> unparseAS c <> ")"
-unparseAS Null = "null"
-unparseAS (Some a) = '?' : unparseAS a
+unparseMO :: AnnotLit a => MOTerm a -> String
+unparseMO f@Five = annot f "5"
+unparseMO a@(Neuralgic n) = annot a $ literal n
+unparseMO (Pos n) = "(+" <> unparseMO n <> ")"
+unparseMO (Neg n) = "(-" <> unparseMO n <> ")"
+unparseMO (Abs n) = "(Prim.abs " <> unparseMO n <> ")"
+unparseMO (a `Add` b) = inParens unparseMO "+" a b
+unparseMO (a `Sub` b) = annot a $ inParens unparseMO "-" a b
+unparseMO (a `Mul` b) = inParens unparseMO "*" a b
+unparseMO (a `Div` b) = inParens unparseMO "/" a b
+unparseMO (a `Mod` b) = inParens unparseMO "%" a b
+unparseMO (a `Pow` b) = inParens unparseMO "**" a b
+unparseMO (a `Or` b) = inParens unparseMO "|" a b
+unparseMO (a `And` b) = inParens unparseMO "&" a b
+unparseMO (a `Xor` b) = inParens unparseMO "^" a b
+unparseMO (a `RotL` b) = inParens unparseMO "<<>" a b
+unparseMO (a `RotR` b) = inParens unparseMO "<>>" a b
+unparseMO (a `ShiftL` b) = inParens unparseMO "<<" a b
+unparseMO (a `ShiftR` b) = inParens unparseMO ">>" a b
+unparseMO (a `ShiftRSigned` b) = inParens unparseMO "+>>" a b
+unparseMO (PopCnt n) = sizeSuffix n "(Prim.popcntWord" <> " " <> unparseMO n <> ")"
+unparseMO (Clz n) = sizeSuffix n "(Prim.clzWord" <> " " <> unparseMO n <> ")"
+unparseMO (Ctz n) = sizeSuffix n "(Prim.ctzWord" <> " " <> unparseMO n <> ")"
+unparseMO (Complement a) = "(^ " <> unparseMO a <> ")"
+unparseMO (ConvertNatural a) = "(++++(" <> unparseMO a <> "))"
+unparseMO (ConvertNat a) = unparseNat Proxy a
+unparseMO (ConvertInt a) = unparseInt Proxy a
+unparseMO (ConvertWord a) = unparseWord Proxy a
+unparseMO (ConvertWordToNat a) = sizeSuffix a "(Prim.word" <> "ToNat " <> unparseMO a <> ")"
+unparseMO t@(ConvertNatToWord a) = sizeSuffix t "(Prim.natToWord" <> " " <> unparseMO a <> ")"
+unparseMO (IfThenElse a b c) = "(if (" <> unparseMO c <> ") " <> unparseMO a <> " else " <> unparseMO b <> ")"
+unparseMO (a `NotEqual` b) = inParens unparseMO "!=" a b
+unparseMO (a `Equals` b) = inParens unparseMO "==" a b
+unparseMO (a `GreaterEqual` b) = inParens unparseMO ">=" a b
+unparseMO (a `Greater` b) = inParens unparseMO ">" a b
+unparseMO (a `LessEqual` b) = inParens unparseMO "<=" a b
+unparseMO (a `Less` b) = inParens unparseMO "<" a b
+unparseMO (a `ShortAnd` b) = inParens unparseMO "and" a b
+unparseMO (a `ShortOr` b) = inParens unparseMO "or" a b
+unparseMO (Not a) = "(not " <> unparseMO a <> ")"
+unparseMO (Bool False) = "false"
+unparseMO (Bool True) = "true"
+unparseMO (a `Pair` b) = "(" <> unparseMO a <> ", " <> unparseMO b <> ")"
+unparseMO (Triple a b c) = "(" <> unparseMO a <> ", " <> unparseMO b <> ", " <> unparseMO c <> ")"
+unparseMO Null = "null"
+unparseMO (Some a) = '?' : unparseMO a
+unparseMO (Text a) = '"' : (concatMap escape a) <> "\""
+unparseMO (a `Concat` b) = "(" <> unparseMO a <> " # " <> unparseMO b <> ")"
 
-unparseNat :: KnownNat n => Proxy n -> ASTerm (BitLimited n Natural) -> String
-unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
+unparseNat :: KnownNat n => Proxy n -> MOTerm (BitLimited n Natural) -> String
+unparseNat p a = "(Prim.nat" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))"
 
-unparseInt :: KnownNat n => Proxy n -> ASTerm (BitLimited n Integer) -> String
-unparseInt p a = "(int" <> bitWidth p <> "ToInt(" <> unparseAS a <> "))"
+unparseInt :: KnownNat n => Proxy n -> MOTerm (BitLimited n Integer) -> String
+unparseInt p a = "(Prim.int" <> bitWidth p <> "ToInt(" <> unparseMO a <> "))"
 
-unparseWord :: KnownNat n => Proxy n -> ASTerm (BitLimited n Word) -> String
-unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TODO we want signed too: wordToInt
+unparseWord :: KnownNat n => Proxy n -> MOTerm (BitLimited n Word) -> String
+unparseWord p a = "(Prim.word" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))" -- TODO we want signed too: wordToInt
 
 -- TODOs:
 --   - wordToInt
@@ -950,4 +1067,5 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
---   - data ASTerm (p :: {Term, Pattern}) where ... Pattern :: ASValue a => a -> ASTerm (Pattern/both) a
+--   - data MOTerm (p :: {Term, Pattern}) where ... Pattern :: MOValue a => a -> MOTerm (Pattern/both) a
+--   - Text and Concat tests (partly covered by rope tests)

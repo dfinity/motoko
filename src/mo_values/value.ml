@@ -66,6 +66,7 @@ struct
   let of_int i = inj (Rep.of_int i)
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
+  let to_hex_string i = group_num (Rep.to_hex_string (proj i))
 end
 
 module type WordType =
@@ -106,7 +107,7 @@ struct
   let to_string = to_pretty_string
 end
 
-module Int32Rep = struct include Int32 let bitwidth = 32 end
+module Int32Rep = struct include Int32 let bitwidth = 32 let to_hex_string = Printf.sprintf "%lx" end
 module Int16Rep = SubRep (Int32Rep) (struct let bitwidth = 16 end)
 module Int8Rep = SubRep (Int32Rep) (struct let bitwidth = 8 end)
 
@@ -118,6 +119,7 @@ module Word64 = MakeWord (Wasm.I64) (Int64)
 module type FloatType =
 sig
   include Wasm.Float.S
+  val rem : t -> t -> t
   val pow : t -> t -> t
   val to_pretty_string : t -> string
 end
@@ -125,6 +127,7 @@ end
 module MakeFloat(WasmFloat : Wasm.Float.S) =
 struct
   include WasmFloat
+  let rem x y = of_float (Float.rem (to_float x) (to_float y))
   let pow x y = of_float (to_float x ** to_float y)
   let to_pretty_string w = group_num (WasmFloat.to_string w)
   let to_string = to_pretty_string
@@ -255,12 +258,30 @@ module Int_16 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_in
 module Int_32 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000_0000 end))
 module Int_64 = Ranged (Int) (IntRange (struct let upper = Big_int.power_int_positive_int 2 63 end))
 
+(* Blobs *)
+
+module Blob = struct
+  let escape b =
+    String.concat "" (
+      List.of_seq (
+        Seq.map (fun c ->
+          "\\" ^ Lib.Hex.hex_of_char c
+        ) (String.to_seq b)
+      )
+    )
+end
+
 (* Types *)
 
 type unicode = int
 
-type func =
-  (value -> value cont -> unit)
+type actor_id = string
+
+type context = value
+
+and func =
+  context -> value -> value cont -> unit
+
 and value =
   | Null
   | Bool of bool
@@ -280,6 +301,7 @@ and value =
   | Float of Float.t
   | Char of unicode
   | Text of string
+  | Blob of string
   | Tup of value list
   | Opt of value
   | Variant of string * value
@@ -288,7 +310,7 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | TextIter of int list ref (* internal to t.char() iterator *)
+  | Iter of value Seq.t ref (* internal to {b.bytes(), t.chars()} iterator *)
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -329,7 +351,8 @@ let as_word64 = function Word64 w -> w | _ -> invalid "as_word64"
 let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
-let as_text_iter = function TextIter i -> i | _ -> invalid "as_text_iter"
+let as_blob = function Blob b -> b | _ -> invalid "as_blob"
+let as_iter = function Iter i -> i | _ -> invalid "as_iter"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
 let as_variant = function Variant (i, v) -> i, v | _ -> invalid "as_variant"
@@ -374,6 +397,17 @@ let rec compare x1 x2 =
 let equal x1 x2 = compare x1 x2 = 0
 
 
+(* (Pseudo)-Identities (for caller and self) *)
+
+let next_id = ref 0
+
+let fresh_id() =
+  let id = Printf.sprintf "ID:%i" (!next_id) in
+  next_id := !next_id + 1;
+  id
+
+let top_id = fresh_id ()
+
 (* Pretty Printing *)
 
 let add_unicode buf = function
@@ -413,6 +447,7 @@ let rec string_of_val_nullary d = function
   | Float f -> Float.to_pretty_string f
   | Char c -> string_of_string '\'' [c] '\''
   | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
+  | Blob b -> "\"" ^ Blob.escape b ^ "\""
   | Tup vs ->
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_val d) vs))

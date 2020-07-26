@@ -1,4 +1,0 @@
-oneway-throw.mo:14.5-14.11: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-oneway-throw.mo:15.11-15.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

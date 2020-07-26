@@ -1,0 +1,4 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← rejected (RC_CANISTER_ERROR): Initialization trapped: EvalTrapError :0.1 "NumericIntegerDivideByZero"

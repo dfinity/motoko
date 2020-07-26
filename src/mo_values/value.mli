@@ -43,6 +43,7 @@ end
 module type FloatType =
 sig
   include Wasm.Float.S
+  val rem : t -> t -> t
   val pow : t -> t -> t
   val to_pretty_string : t -> string
 end
@@ -64,6 +65,9 @@ module Nat16 : NumType
 module Nat32 : NumType
 module Nat64 : NumType
 
+module Blob : sig
+  val escape : string -> string
+end
 
 (* Environment *)
 
@@ -73,8 +77,13 @@ module Env : Env.S with type key = string
 (* Types *)
 
 type unicode = int
+type actor_id = string
 
-type func = value -> value cont -> unit
+type context = value
+
+and func =
+   context -> value -> value cont -> unit
+
 and value =
   | Null
   | Bool of bool
@@ -94,6 +103,7 @@ and value =
   | Float of Float.t
   | Char of unicode
   | Text of string
+  | Blob of string
   | Tup of value list
   | Opt of value
   | Variant of string * value
@@ -102,7 +112,7 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | TextIter of int list ref (* internal to t.char() iterator *)
+  | Iter of value Seq.t ref (* internal to {b.bytes(), t.chars()} iterator *)
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -119,6 +129,12 @@ val local_func : int -> int -> func -> value
 val message_func : Type.shared_sort -> int -> func -> value
 val async_func : Type.shared_sort -> int -> int -> func -> value
 val replies_func : Type.shared_sort -> int -> int -> func -> value
+
+
+(* Pseudo actor ids *)
+
+val fresh_id : unit -> actor_id
+val top_id : actor_id
 
 
 (* Projections *)
@@ -141,7 +157,8 @@ val as_word64 : value -> Word64.t
 val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string
-val as_text_iter : value -> int list ref
+val as_blob : value -> string
+val as_iter : value -> value Seq.t ref
 val as_array : value -> value array
 val as_tup : value -> value list
 val as_unit : value -> unit
@@ -164,4 +181,3 @@ val compare : value -> value -> int
 
 val string_of_val : int -> value -> string
 val string_of_def : int -> def -> string
-

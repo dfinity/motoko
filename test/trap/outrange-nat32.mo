@@ -1,1 +1,2 @@
-let _ = natToNat32 (2 ** 32);
+import Prim "mo:prim";
+let _ = Prim.natToNat32 (2 ** 32);

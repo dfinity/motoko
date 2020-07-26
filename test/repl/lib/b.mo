@@ -1,2 +1,2 @@
-import C "c.mo";
+import C "c";
 let i = C.i;

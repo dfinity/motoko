@@ -1,67 +1,73 @@
+import Prim "mo:prim";
 actor a {
+
+  flexible var pending : Int = 4;
+
   // test that oneways can locally try/throw
   public func oneway() : () {
-    ignore (
-      async {
-        debugPrint "1";
-        try {
-          throw (error("Error"));
-          debugPrint "unreachable";
-        }
-        catch e { debugPrint "2"};
-      }
-    )
+    Prim.debugPrint "1";
+    try {
+      throw (Prim.error("Error"));
+      Prim.debugPrint "unreachable";
+    }
+    catch e { Prim.debugPrint "2"};
+    pending -= 1;
   };
 
   // test that oneways can locally try/throw
   // using `=` syntax
   public func onewayAlt() : () =
     ignore (
-      async {
-        debugPrint "3";
+      (async {
+        Prim.debugPrint "3";
         try {
-          throw (error("Error"));
-          debugPrint "unreachable";
+          throw (Prim.error("Error"));
+          Prim.debugPrint "unreachable";
         }
-        catch e { debugPrint "4"};
-      }
+        catch e { Prim.debugPrint "4"};
+        pending -= 1;
+      }) : async ()
     );
 
 
   // test that throws from oneways are silently discarded (because replies are eager)
   public func discard() : () {
-    ignore (
-      async {
-        debugPrint "5";
-        throw (error("ignored"));
-        debugPrint "unreachable";
-      }
-    )
+    Prim.debugPrint "5";
+    pending -= 1;
+    throw (Prim.error("ignored"));
+    Prim.debugPrint "unreachable";
   };
 
   // test that throws from oneways are silently discarded (because replies are eager)
   // using `=` syntax
   public func discardAlt() : () =
     ignore (
-      async {
-        debugPrint "6";
-        throw (error("ignored"));
-        debugPrint "unreachable";
-      }
+      (async {
+        Prim.debugPrint "6"; 
+        pending -= 1;
+        throw (Prim.error("ignored"));
+        Prim.debugPrint "unreachable";
+      }) : async ()
     );
 
   // TODO test await and calls to shared functions
 
-  public func go() = ignore async {
-    debugPrint("A");
+  public func go() : async () {
+    Prim.debugPrint("A");
     oneway();
-    debugPrint("B");
+    Prim.debugPrint("B");
     onewayAlt();
-    debugPrint("C");
+    Prim.debugPrint("C");
     discard();
-    debugPrint("D");
+    Prim.debugPrint("D");
     discardAlt();
-    debugPrint("E");
+    Prim.debugPrint("E");
+    while (pending > 0)
+      await async ();
   };
+
 };
-a.go(); //OR-CALL ingress go 0x4449444C0000
+
+ignore (a.go()); //OR-CALL ingress go 0x4449444C0000
+
+

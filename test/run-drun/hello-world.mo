@@ -1,1 +1,2 @@
-debugPrint("Hello World!");
+import Prim "mo:prim";
+Prim.debugPrint("Hello World!");

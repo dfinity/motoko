@@ -1,4 +1,4 @@
-import A "nested/a.mo";
-import "nested/b.mo";
+import A "nested/a";
+import "nested/b";
 
 let i = A.i;

@@ -56,7 +56,7 @@ in
 
 # unfortunately this is not completely self-contained,
 # we needs pkgs this to get git and lib.cleanSourceWith
-let nixpkgs = (import ./nixpkgs.nix).nixpkgs {}; in
+let nixpkgs = import ./. {}; in
 
 if !isHydra && builtins.pathExists ../.git
 then
@@ -81,7 +81,7 @@ then
         cp ${git_dir + "/index"} index
         echo "ref: refs/heads/master" > HEAD
         mkdir objects refs
-        ${nixpkgs.git}/bin/git --git-dir . ls-files > $out
+        ${nixpkgs.gitMinimal}/bin/git --git-dir . ls-files > $out
       '';
 
     whitelist = lines (readFile (whitelist_file.out));

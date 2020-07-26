@@ -1,7 +1,7 @@
 #!/bin/bash
 ${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -v -i <<__END__
-import "lib/b.mo";
-import "lib/a.mo";
-import "lib/c.mo";
-import "lib/triangle.mo";
+import "lib/b";
+import "lib/a";
+import "lib/c";
+import "lib/triangle";
 __END__

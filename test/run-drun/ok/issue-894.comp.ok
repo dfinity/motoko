@@ -1,8 +1,0 @@
-issue-894.mo:15.20-15.27: type error, unsupported async block
-  (This is a limitation of the current version.)
-issue-894.mo:22.15-22.22: type error, unsupported async block
-  (This is a limitation of the current version.)
-issue-894.mo:29.15-29.22: type error, unsupported async block
-  (This is a limitation of the current version.)
-issue-894.mo:37.17-37.19: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

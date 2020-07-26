@@ -35,7 +35,7 @@ let pat_err m at =
 
 let rec exp m e = match e.it with
   (* Plain values *)
-  | (PrimE _ | LitE _ | FuncE _) -> ()
+  | (PrimE _ | LitE _ | ActorUrlE _ | FuncE _) -> ()
   | (TagE (_, exp1) | OptE exp1) -> exp m exp1
   | (TupE es | ArrayE (_, es)) -> List.iter (exp m) es
   | ObjE (_, efs) -> fields m efs
@@ -82,7 +82,7 @@ and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
-  | ExpD e -> exp m e
+  | ExpD e | IgnoreD e -> exp m e
   | LetD (p, e) -> triv m p; exp m e
   | VarD _ -> err m d.at
 

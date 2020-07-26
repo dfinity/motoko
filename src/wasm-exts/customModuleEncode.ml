@@ -122,7 +122,7 @@ let encode (em : extended_module) =
     let string bs = len (String.length bs); put_string s bs
     let name n = string (Wasm.Utf8.encode n)
     let list f xs = List.iter f xs
-    let opt f xo = Lib.Option.iter f xo
+    let opt f xo = Option.iter f xo
     let vec f xs = len (List.length xs); list f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p
@@ -171,9 +171,8 @@ let encode (em : extended_module) =
     (* Expressions *)
 
     open Wasm.Source
-    open Wasm.Ast
+    open Ast
     open Wasm.Values
-    open Wasm.Memory
 
     let op n = u8 n
     let end_ () = op 0x0b
@@ -194,10 +193,10 @@ let encode (em : extended_module) =
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
-      | Block (ts, es) -> op 0x02; block_type ts; list instr es; end_ ()
-      | Loop (ts, es) -> op 0x03; block_type ts; list instr es; end_ ()
-      | If (ts, es1, es2) ->
-        op 0x04; block_type ts; list instr es1;
+      | Block (bt, es) -> op 0x02; block_type bt; list instr es; end_ ()
+      | Loop (bt, es) -> op 0x03; block_type bt; list instr es; end_ ()
+      | If (bt, es1, es2) ->
+        op 0x04; block_type bt; list instr es1;
         if es2 <> [] then op 0x05;
         list instr es2; end_ ()
 
@@ -310,10 +309,16 @@ let encode (em : extended_module) =
       | Unary (I32 I32Op.Clz) -> op 0x67
       | Unary (I32 I32Op.Ctz) -> op 0x68
       | Unary (I32 I32Op.Popcnt) -> op 0x69
+      | Unary (I32 (I32Op.ExtendS Pack8)) -> op 0xc0
+      | Unary (I32 (I32Op.ExtendS Pack16)) -> op 0xc1
+      | Unary (I32 (I32Op.ExtendS Pack32)) -> assert false
 
       | Unary (I64 I64Op.Clz) -> op 0x79
       | Unary (I64 I64Op.Ctz) -> op 0x7a
       | Unary (I64 I64Op.Popcnt) -> op 0x7b
+      | Unary (I64 (I64Op.ExtendS Pack8)) -> op 0xc2
+      | Unary (I64 (I64Op.ExtendS Pack16)) -> op 0xc3
+      | Unary (I64 (I64Op.ExtendS Pack32)) -> op 0xc4
 
       | Unary (F32 F32Op.Abs) -> op 0x8b
       | Unary (F32 F32Op.Neg) -> op 0x8c
@@ -386,6 +391,10 @@ let encode (em : extended_module) =
       | Convert (I32 I32Op.TruncUF32) -> op 0xa9
       | Convert (I32 I32Op.TruncSF64) -> op 0xaa
       | Convert (I32 I32Op.TruncUF64) -> op 0xab
+      | Convert (I32 I32Op.TruncSatSF32) -> op 0xfc; op 0x00
+      | Convert (I32 I32Op.TruncSatUF32) -> op 0xfc; op 0x01
+      | Convert (I32 I32Op.TruncSatSF64) -> op 0xfc; op 0x02
+      | Convert (I32 I32Op.TruncSatUF64) -> op 0xfc; op 0x03
       | Convert (I32 I32Op.ReinterpretFloat) -> op 0xbc
 
       | Convert (I64 I64Op.ExtendSI32) -> op 0xac
@@ -395,6 +404,10 @@ let encode (em : extended_module) =
       | Convert (I64 I64Op.TruncUF32) -> op 0xaf
       | Convert (I64 I64Op.TruncSF64) -> op 0xb0
       | Convert (I64 I64Op.TruncUF64) -> op 0xb1
+      | Convert (I64 I64Op.TruncSatSF32) -> op 0xfc; op 0x04
+      | Convert (I64 I64Op.TruncSatUF32) -> op 0xfc; op 0x05
+      | Convert (I64 I64Op.TruncSatSF64) -> op 0xfc; op 0x06
+      | Convert (I64 I64Op.TruncSatUF64) -> op 0xfc; op 0x07
       | Convert (I64 I64Op.ReinterpretFloat) -> op 0xbd
 
       | Convert (F32 F32Op.ConvertSI32) -> op 0xb2
@@ -548,17 +561,18 @@ let encode (em : extended_module) =
       vec (fun (li, x) -> vu32 li; f x)
           (List.sort (fun (i1,_) (i2,_) -> compare i1 i2) xs)
 
-    let name_section_body (ns : name_section) =
-      (* module name section *)
-      section 0 (opt string) ns.module_ (ns.module_ <> None);
-      (* function names section *)
-      section 1 (assoc_list string) ns.function_names  (ns.function_names <> []);
-      (* locals names section *)
-      section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> [])
-
     let name_section ns =
+      let name_section_body (ns : name_section) =
+        (* module name section *)
+        section 0 (opt string) ns.module_ (ns.module_ <> None);
+        (* function names section *)
+        section 1 (assoc_list string) ns.function_names  (ns.function_names <> []);
+        (* locals names section *)
+        section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> []) in
+
       custom_section "name" name_section_body ns
-        (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
+        (!Mo_config.Flags.debug_info &&
+           (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> []))
 
     (* Module *)
 

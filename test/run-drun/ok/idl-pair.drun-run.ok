@@ -1,2 +1,3 @@
-ingress(0) System
-ingress(1) Completed: Canister: Payload: 0x4449444c016c02007c017c01000205
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
+Ok: Reply: 0x4449444c016c02007c017c01000205

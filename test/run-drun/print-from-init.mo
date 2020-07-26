@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor {
-  debugPrint("Debug out");
+  Prim.debugPrint("Debug out");
 }

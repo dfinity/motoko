@@ -1,20 +1,9 @@
 pull_request_rules:
-  - name: Automatic merge
-    conditions:
-      - "#approved-reviews-by>=1"
-      - "#changes-requested-reviews-by=0"
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
-      - base=master
-      - label=automerge
-    actions:
-      merge:
-        method: merge
-        strict: smart
-      delete_head_branch: {}
   - name: Automatic merge (squash)
     conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
+      - status-success=hydra:dfinity-ci-build:evaluation
       - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
       - base=master
       - label=automerge-squash
@@ -22,19 +11,7 @@ pull_request_rules:
       merge:
         method: squash
         strict: smart
-      delete_head_branch: {}
-  - name: Automatic merge (rebase)
-    conditions:
-      - "#approved-reviews-by>=1"
-      - "#changes-requested-reviews-by=0"
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
-      - base=master
-      - label=automerge-rebase
-    actions:
-      merge:
-        method: rebase
-        strict: smart
-        strict_method: rebase
+        commit_message: title+body
       delete_head_branch: {}
   - name: Clean up automerge tags
     conditions:
@@ -45,3 +22,10 @@ pull_request_rules:
         - automerge
         - automerge-squash
         - automerge-rebase
+  - name: Auto-approve auto-PRs
+    conditions:
+      - author=dfinity-bot
+    actions:
+      review:
+        type: APPROVE
+        message: This bot trusts that bot

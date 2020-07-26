@@ -1,2 +1,2 @@
-ingress(0) Err: IC0502: Canister 42 trapped: integer division by 0
-Error: "Failed to install canister - ignoring message stream"
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress Err: IC0502: Canister ic:0100000000000000000000000000000000012D trapped: integer division by 0

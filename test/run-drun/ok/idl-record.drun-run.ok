@@ -1,9 +1,11 @@
-ingress(0) System
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
 debug.print: ok: +42
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: Hey!
-ingress(2) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok: +25
-ingress(3) Completed: Canister: Payload: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: ok:  Hey! +25
-ingress(4) Completed: Canister: Payload: 0x4449444c00017719
+Ok: Reply: 0x4449444c00017719
+Err: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: IDL error: did not find field extra in record

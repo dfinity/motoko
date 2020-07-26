@@ -1,62 +1,50 @@
 // top-level actor objects are supported
 actor Counter {
 
-    shared func bad_private_shared() { }; // not  public
+    flexible shared func bad_private_shared() { }; // unsupported private shared
 
-    public func badactorarg(a:actor{}) : async () {};
+    public func ok_actorarg(a:actor{}) : async () {};
 
-    public func badfunctionarg(f:shared()->async ()) : async () {};
+    public func ok_functionarg(f:shared()->async ()) : async () {};
 
-    /* TODO
-    public func badoneway(){}; // unsupported oneway
-    */
+    public func ok_oneway(){}; // supported oneway
 
     public func ok() : async () {};
 
     public func ok_explicit() : async () = async {};
 
-    public func bad_call() : async () {
-        ignore (ok()); // unsupported intercanister messaging
+    public func ok_call() : async () {
+        ignore (ok()); // supported intercanister messaging
     };
 
-    public func bad_await_call() : async () {
-        await (ok()); // unsupported intercanister messaging
+    public func ok_await_call() : async () {
+        await (ok()); // supported intercanister messaging
     };
 
-    public func bad_await() : async () {
+    public func ok_await() : async () {
         let t : async () = loop {};
-	await t; // unsupported general await
+	await t; // supported general await
     };
 
-    public func badasync() : async () {
-        let a = async { 1; }; // unsupported async
+    public func ok_async() : async () {
+        let a = async { 1; }; // supported async
     };
 
 }
 ;
 
-shared func bad_shared() { }; // not actor enclosed
+shared func bad_shared() { }; // unsupported non actor-member
 
-func local_spawn() {
-  ignore(async ()); // not yet supported
+{
+    // shared function types are sharable
+    type wellformed_1 = shared (shared () -> ()) -> async ();
 };
 
 {
-    // shared function types aren't sharable
-    type illformed_1 = shared (shared () -> ()) -> async ();
+    // actors are shareable
+    type wellformed_2 = shared (actor {}) -> async ();
 };
 
-{
-    // actors aren't shareable
-    type illformed_2 = shared (actor {}) -> async ();
-};
-
-/* TODO
-{
-    // oneway functions aren't supported
-    type illformed_3 = shared () -> ();
-};
-*/
 
 {
   actor class BadActorClass () { }; // no actor classes

@@ -111,15 +111,19 @@ let check_cycle env =
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
+  | PrincipalT -> t
   | VarT id -> ignore (find_type env id); t
   | FuncT (ms, t1, t2) ->
      let t1' = List.map (fun t -> check_typ env t) t1 in
      let t2' = List.map (fun t -> check_typ env t) t2 in
-     if List.exists (fun m -> m.it == Oneway) ms && List.length t2 > 0 then
+     if List.length ms > 1 then
+       error env t.at "cannot have more than one mode"
+     else if List.length ms = 1 && (List.hd ms).it = Oneway && List.length t2 > 0 then
        error env t.at "oneway function has non-unit return type";
      FuncT (ms, t1', t2') @@ t.at
   | OptT t -> OptT (check_typ env t) @@ t.at
   | VecT t -> VecT (check_typ env t) @@ t.at
+  | BlobT -> BlobT @@ t.at
   | RecordT fs ->
      let fs' = check_fields env fs in
      RecordT (List.sort compare_field fs') @@ t.at
@@ -203,28 +207,28 @@ and gather_decs env decs =
   
 let check_actor env actor_opt =
   match actor_opt with
-  | None -> Env.empty
+  | None -> None
   | Some t ->
      (match as_serv env t with
       | None ->
          error env t.at "%s is a non-service type\n %s" (string_of_typ t) (string_of_typ t)
       | Some {it=ServT meths; _} ->
          let meths' = check_meths env meths in
-         Env.singleton "service" (ServT (List.sort compare_meth meths') @@ t.at)
+         Some (ServT (List.sort compare_meth meths') @@ t.at)
       | Some _ -> assert false
      )
 
 (* Programs *)
 
-let check_prog scope prog : scope Diag.result =
+let check_prog scope prog : (scope * typ option) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
           let env = env_of_scope msgs scope in
           let te = check_decs env prog.it.decs in
-          ignore (check_actor (env_of_scope msgs te) prog.it.actor);
-          te
+          let actor = check_actor (env_of_scope msgs te) prog.it.actor in
+          (te, actor)
         )
         prog
     )

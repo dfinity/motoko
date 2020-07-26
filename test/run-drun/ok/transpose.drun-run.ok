@@ -1,0 +1,4 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
+debug.print: All good
+ingress Completed: Canister: Reply: 0x4449444c0000

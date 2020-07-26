@@ -1,9 +1,0 @@
-→ create
-← completed: canister-id = 0x0000000000000400
-→ install
-debug.print: Hello World!
-debug.print: Hello World!
-debug.print: Hello World!
-debug.print: Hello Universe!
-debug.print: Hello Galaxy!
-← completed

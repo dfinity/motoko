@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 // test flattening of awaitable, shared function arguments
 
 let a = actor {
@@ -30,27 +31,27 @@ let a = actor {
     public func g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
        { await f3 xyz; };
 
-  public func go() = ignore async {
+  public func go() : async () {
 
-    debugPrint "first-order";
+    Prim.debugPrint "first-order";
 
     let () = await a.m0();
-    debugPrint "0";
+    Prim.debugPrint "0";
     let 1 = await a.m1(1);
-    debugPrint "1";
+    Prim.debugPrint "1";
     let (2,true) = await a.m2(2,true);
-    debugPrint "2";
+    Prim.debugPrint "2";
     let (3,false,"text") = await a.m3(3,false,"text");
-    debugPrint "3";
+    Prim.debugPrint "3";
 
     let () = await a.n0();
-    debugPrint "4";
+    Prim.debugPrint "4";
     let 1 = await a.n1(1);
-    debugPrint "5";
+    Prim.debugPrint "5";
     let (2,true) = await a.n2(2,true);
-    debugPrint "6";
+    Prim.debugPrint "6";
     let (3,false,"text") = await a.n3(3,false,"text");
-    debugPrint "7";
+    Prim.debugPrint "7";
 
     let u = ();
     let x:Int = 1;
@@ -58,59 +59,59 @@ let a = actor {
     let xyz:(Int,Bool,Text) = (3,false,"text");
 
     let () = await a.m0 u;
-    debugPrint "8";
+    Prim.debugPrint "8";
     let 1 = await a.m1 x;
-    debugPrint "9";
+    Prim.debugPrint "9";
     let (2,true) = await a.m2 xy;
-    debugPrint "10";
+    Prim.debugPrint "10";
     let (3,false,"text") = await a.m3 xyz;
-    debugPrint "11";
+    Prim.debugPrint "11";
 
     let () = await a.n0 u;
-    debugPrint "12";
+    Prim.debugPrint "12";
     let 1 = await a.n1 x;
-    debugPrint "13";
+    Prim.debugPrint "13";
     let (2,true) = await a.n2 xy;
-    debugPrint "14";
+    Prim.debugPrint "14";
     let (3,false,"text") = await a.n3 xyz;
-    debugPrint "15";
+    Prim.debugPrint "15";
 
-    debugPrint "higher-order";
+    Prim.debugPrint "higher-order";
     let () = await a.h0(a.m0,());
-    debugPrint "0";
+    Prim.debugPrint "0";
     let 1 = await a.h1(a.m1,1);
-    debugPrint "1";
+    Prim.debugPrint "1";
     let (2,true) = await a.h2(a.m2,(2,true));
-    debugPrint "2";
+    Prim.debugPrint "2";
     let (3,false,"text") = await a.h3(a.m3,(3,false,"text"));
-    debugPrint "3";
+    Prim.debugPrint "3";
 
     let () = await a.g0(a.n0,());
-    debugPrint "4";
+    Prim.debugPrint "4";
     let 1 = await a.g1(a.n1,1);
-    debugPrint "5";
+    Prim.debugPrint "5";
     let (2,true) = await a.g2(a.n2,(2,true));
-    debugPrint "6";
+    Prim.debugPrint "6";
     let (3,false,"text") = await a.g3(a.n3,(3,false,"text"));
-    debugPrint "7";
+    Prim.debugPrint "7";
 
     let () = await a.h0(a.m0,u);
-    debugPrint "8";
+    Prim.debugPrint "8";
     let 1 = await a.h1(a.m1,x);
-    debugPrint "9";
+    Prim.debugPrint "9";
     let (2,true) = await a.h2(a.m2,xy);
-    debugPrint "10";
+    Prim.debugPrint "10";
     let (3,false,"text") = await a.h3(a.m3,xyz);
-    debugPrint "11";
+    Prim.debugPrint "11";
 
     let () = await a.g0(a.n0,u);
-    debugPrint "12";
+    Prim.debugPrint "12";
     let 1 = await a.g1(a.n1,x);
-    debugPrint "13";
+    Prim.debugPrint "13";
     let (2,true) = await a.g2(a.n2,xy);
-    debugPrint "14";
+    Prim.debugPrint "14";
     let (3,false,"text") = await a.g3(a.n3,xyz);
-    debugPrint "15";
+    Prim.debugPrint "15";
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

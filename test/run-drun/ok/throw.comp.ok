@@ -1,8 +1,0 @@
-throw.mo:7.14-10.8: type error, unsupported async block
-  (This is a limitation of the current version.)
-throw.mo:22.13-41.8: type error, unsupported async block
-  (This is a limitation of the current version.)
-throw.mo:59.13-59.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-throw.mo:66.13-66.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

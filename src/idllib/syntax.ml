@@ -37,9 +37,11 @@ and typ' =
   | FuncT of func_mode list * typ list * typ list   (* function *)
   | OptT of typ   (* option *)
   | VecT of typ   (* vector *)
+  | BlobT (* vec nat8 *)
   | RecordT of typ_field list  (* record *)
   | VariantT of typ_field list (* variant *)
   | ServT of typ_meth list (* service reference *)
+  | PrincipalT
   | PreT   (* pre-type *)
 
 and typ_field = typ_field' Source.phrase

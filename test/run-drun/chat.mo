@@ -1,9 +1,10 @@
+import Prim "mo:prim";
 type List<T> = ?{head : T; var tail : List<T>};
 
 type Post = shared Text -> ();
 
 actor class Server() = {
-  var clients : List<Client> = null;
+  flexible var clients : List<Client> = null;
 
   public func broadcast(message : Text) {
     var next = clients;
@@ -28,8 +29,8 @@ actor class Server() = {
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
-  var name : Text = "";
-  var server : ?Server  = null;
+  flexible var name : Text = "";
+  flexible var server : ?Server  = null;
 
   public func go(n : Text, s : Server) {
     name := n;
@@ -42,18 +43,22 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    debugPrint(name # " received " # msg);
+    Prim.debugPrint(name # " received " # msg);
   };
 };
 
 
-let server = Server();
-let bob = Client();
-let alice = Client();
-let charlie = Client();
-bob.go("bob", server);
-alice.go("alice", server);
-charlie.go("charlie", server);
+actor Test {
+  public func go() {
+    let server = Server();
+    let bob = Client();
+    let alice = Client();
+    let charlie = Client();
+    bob.go("bob", server);
+    alice.go("alice", server);
+    charlie.go("charlie", server);
+  }
+};
 
 
 /* design flaws:
@@ -63,4 +68,6 @@ charlie.go("charlie", server);
      - parameterising Client on s:IServer argument complains about non-closed actor (expected acc. to Joachim, pending system changes)
 */
 
+Test.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP comp
+//SKIP comp-ref

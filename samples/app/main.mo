@@ -1,5 +1,5 @@
-import Server "server.mo";
-import Client "client.mo";
+import Server "server";
+import Client "client";
 
 let server = Server.Server();
 let bob = Client.Client();

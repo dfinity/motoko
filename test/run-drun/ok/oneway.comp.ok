@@ -1,8 +1,0 @@
-oneway.mo:57.5-57.11: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-oneway.mo:59.5-59.14: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-oneway.mo:61.5-61.12: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-oneway.mo:63.5-63.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

@@ -1,0 +1,11 @@
+install ic:2A012B self-upgrade/self-upgrade.mo ""
+query ic:2A012B check "DIDL\x00\x01\x7d\x01"
+ingress ic:2A012B inc "DIDL\x00\x00"
+query ic:2A012B check "DIDL\x00\x01\x7d\x02"
+ingress ic:2A012B inc "DIDL\x00\x00"
+query ic:2A012B check "DIDL\x00\x01\x7d\x03"
+upgrade ic:2A012B self-upgrade/self-upgrade.mo ""
+query ic:2A012B check "DIDL\x00\x01\x7d\x03"
+ingress ic:2A012B inc "DIDL\x00\x00"
+query ic:2A012B check "DIDL\x00\x01\x7d\x04"
+

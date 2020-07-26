@@ -1,1 +1,1 @@
-branch-before-define.mo:4.7-4.40: definedness error, cannot use g before x has been defined
+branch-before-define.mo:6.7-6.40: definedness error, cannot use g before x has been defined

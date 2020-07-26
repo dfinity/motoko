@@ -1,5 +1,5 @@
 actor class Counter(i : Int) {
-  var j = i;
+  flexible var j = i;
 
   public func dec() {
    showCounter(j);
@@ -13,15 +13,17 @@ func showCounter(c : Int) {};
 
 let c = Counter(10);
 
-func test() {
-  var i : Int = 10;
-  while (i  > 0) {
-    c.dec();
-	  i -= 1;
+actor Test {
+  public func go() {
+    var i : Int = 10;
+    while (i  > 0) {
+      c.dec();
+      i -= 1;
+    }
   }
 };
 
-let _ = test();
+Test.go();
 
 // no support for first-class shared functions anywhere yet
 //SKIP comp

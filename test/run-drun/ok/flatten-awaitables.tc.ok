@@ -1,118 +1,118 @@
-flatten-awaitables.mo:39.9-39.10: warning, this pattern consuming type
+flatten-awaitables.mo:40.9-40.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:41.9-41.17: warning, this pattern consuming type
+flatten-awaitables.mo:42.9-42.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:43.9-43.25: warning, this pattern consuming type
+flatten-awaitables.mo:44.9-44.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:48.9-48.10: warning, this pattern consuming type
+flatten-awaitables.mo:49.9-49.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:50.9-50.17: warning, this pattern consuming type
+flatten-awaitables.mo:51.9-51.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:52.9-52.25: warning, this pattern consuming type
+flatten-awaitables.mo:53.9-53.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:62.9-62.10: warning, this pattern consuming type
+flatten-awaitables.mo:63.9-63.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:64.9-64.17: warning, this pattern consuming type
+flatten-awaitables.mo:65.9-65.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:66.9-66.25: warning, this pattern consuming type
+flatten-awaitables.mo:67.9-67.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:71.9-71.10: warning, this pattern consuming type
+flatten-awaitables.mo:72.9-72.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:73.9-73.17: warning, this pattern consuming type
+flatten-awaitables.mo:74.9-74.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:75.9-75.25: warning, this pattern consuming type
+flatten-awaitables.mo:76.9-76.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:81.9-81.10: warning, this pattern consuming type
+flatten-awaitables.mo:82.9-82.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:83.9-83.17: warning, this pattern consuming type
+flatten-awaitables.mo:84.9-84.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:85.9-85.25: warning, this pattern consuming type
+flatten-awaitables.mo:86.9-86.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:90.9-90.10: warning, this pattern consuming type
+flatten-awaitables.mo:91.9-91.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:92.9-92.17: warning, this pattern consuming type
+flatten-awaitables.mo:93.9-93.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:94.9-94.25: warning, this pattern consuming type
+flatten-awaitables.mo:95.9-95.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:99.9-99.10: warning, this pattern consuming type
+flatten-awaitables.mo:100.9-100.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:101.9-101.17: warning, this pattern consuming type
+flatten-awaitables.mo:102.9-102.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:103.9-103.25: warning, this pattern consuming type
+flatten-awaitables.mo:104.9-104.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or
   (3, true, _) or
   (0 or 1 or _, _, _)
-flatten-awaitables.mo:108.9-108.10: warning, this pattern consuming type
+flatten-awaitables.mo:109.9-109.10: warning, this pattern consuming type
   Int
 does not cover value
   0 or -1 or _
-flatten-awaitables.mo:110.9-110.17: warning, this pattern consuming type
+flatten-awaitables.mo:111.9-111.17: warning, this pattern consuming type
   (Int, Bool)
 does not cover value
   (2, false) or
   (0 or 1 or _, _)
-flatten-awaitables.mo:112.9-112.25: warning, this pattern consuming type
+flatten-awaitables.mo:113.9-113.25: warning, this pattern consuming type
   (Int, Bool, Text)
 does not cover value
   (3, false, _) or

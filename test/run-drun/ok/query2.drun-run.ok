@@ -1,0 +1,14 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
+debug.print: 2
+debug.print: 3
+debug.print: 4
+debug.print: 4
+debug.print: In read:
+debug.print: 5
+debug.print: 4
+debug.print: In read:
+debug.print: 5
+debug.print: 4
+debug.print: The following fails in the interpreter, for lack of query semantics
+ingress Completed: Canister: Reply: 0x4449444c0000

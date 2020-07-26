@@ -1,4 +1,0 @@
-local-throw.mo:53.13-53.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-local-throw.mo:60.13-60.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

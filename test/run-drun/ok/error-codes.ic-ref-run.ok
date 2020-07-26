@@ -1,0 +1,9 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go(0x4449444c0000)
+debug.print: canister_reject:ball
+Trap: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
+debug.print: canister_error:canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
+← completed: 0x4449444c0000

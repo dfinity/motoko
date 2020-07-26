@@ -1,10 +1,11 @@
+import Prim "mo:prim";
 actor a {
-  public func go() = ignore async {
+  public func go() {
     { var i = 0;
       var j = 0;
       label l
       loop {
-       debugPrintNat(j);
+       Prim.debugPrintNat(j);
        assert(j == i);
        i += 1;
        j += 1;
@@ -19,7 +20,7 @@ actor a {
       var j = 0;
       label l
       loop {
-        debugPrintNat(j);
+        Prim.debugPrintNat(j);
         assert(j == i);
         i += 1;
         j += 1;
@@ -34,7 +35,7 @@ actor a {
       var j = 0;
       label l
       loop {
-       debugPrintNat(j);
+       Prim.debugPrintNat(j);
        assert(j == i);
        await (async (i += 1));
        j += 1;
@@ -53,7 +54,7 @@ actor a {
          break l;
          assert(false);
        };
-       debugPrintNat(j);
+       Prim.debugPrintNat(j);
        assert(j == i);
        await (async (i += 1));
        j += 1;
@@ -62,10 +63,5 @@ actor a {
       };
       assert(i == 3);
     };
-
-    };
-
-
-
-
-
+  };
+};

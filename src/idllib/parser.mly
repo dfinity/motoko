@@ -54,7 +54,7 @@ let record_fields fs =
 
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
-%token FUNC TYPE SERVICE IMPORT
+%token FUNC TYPE SERVICE IMPORT PRINCIPAL
 %token SEMICOLON COMMA COLON EQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
@@ -92,6 +92,7 @@ prim_typ :
 ref_typ :
   | FUNC t=func_typ { t }
   | SERVICE ts=actor_typ { ServT ts @@ at $sloc }
+  | PRINCIPAL { PrincipalT @@ at $sloc }
 
 field_typ :
   | n=NAT COLON t=data_typ
@@ -123,7 +124,7 @@ cons_typ :
   | VEC t=data_typ { VecT t @@ at $sloc }
   | RECORD fs=record_typs { RecordT fs @@ at $sloc }
   | VARIANT fs=variant_typs { VariantT fs @@ at $sloc }
-  | BLOB { VecT (PrimT Nat8 @@ no_region) @@ at $sloc }
+  | BLOB { BlobT @@ at $sloc }
 
 data_typ :
   | t=cons_typ { t }

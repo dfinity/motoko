@@ -1,15 +1,16 @@
+import Prim "mo:prim";
 actor {
   // top-level tuple
   public query func len2(x:Text, y:Text) : async (Int,Int) {
-    (x.len(), y.len())
+    (x.size(), y.size())
   };
   // a pair embedded in top-level tuple
   public query func len3((x:Text, i:Int32), y:Text) : async (Int,Int,Int) {
-    (x.len(), y.len(), int32ToInt i)
+    (x.size(), y.size(), Prim.int32ToInt i)
   };
   // a triple embedded in top-level tuple
   public query func len3a((x:Text, i:Int32, z:?(Text,Int32)), y:Text) : async (Int,Int,Int) {
-    (x.len(), y.len(), int32ToInt i)
+    (x.size(), y.size(), Prim.int32ToInt i)
   }
 }
 
@@ -22,6 +23,8 @@ actor {
 //CALL query len3 0x4449444c016c030071017502760200710548656c6c6f01020304dead05576f726c64
 //  testing third tuple member (recursive option, containing null), gets ignored
 //CALL query len3a 0x4449444c026c030071017502016e000200710548656c6c6f010203040005576f726c64
+//  testing missing field
+//CALL query len3a 0x4449444c016c02007101750200710548656c6c6f0102030405576f726c64
 
 //SKIP run
 //SKIP run-ir

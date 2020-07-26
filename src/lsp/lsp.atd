@@ -54,6 +54,14 @@ type incoming_message_params = [
   | Exit <json name="exit"> of unit nullable
 ]
 
+(* Common LSP data structures *)
+
+type text_edit = {
+  range: range;
+  newText: string;
+}
+<ocaml field_prefix="text_edit_">
+
 (*
    Outgoing messages
 
@@ -72,11 +80,11 @@ type response_message = {
 <ocaml field_prefix="response_message_">
 
 type response_result = [
-    Initialize <json name="initialize"> of initialize_result
-  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result nullable
-  | TextDocumentDefinitionResponse <json name="textDocument/definition"> of location nullable
-  | CompletionResponse <json name="textDocument/completion"> of completion_item list
-  | ShutdownResponse <json name="shutdown"> of unit nullable
+    Initialize of initialize_result
+  | TextDocumentHoverResponse of hover_result nullable
+  | TextDocumentDefinitionResponse of location list
+  | CompletionResponse of completion_item list
+  | ShutdownResponse of unit nullable
 ]
 
 type response_error = {
@@ -100,9 +108,11 @@ type markup_content = {
 type completion_item = {
   label : string;
   kind : int;
-  insertText : string;
-  insertTextFormat : int;
+  ?insertText : string nullable;
+  ?insertTextFormat : int nullable;
+  ?additionalTextEdits : text_edit list nullable;
   ?detail: string nullable;
+  ?documentation: string nullable;
 }
 <ocaml field_prefix="completion_item_">
 

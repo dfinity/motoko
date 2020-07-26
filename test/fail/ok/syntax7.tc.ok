@@ -1,0 +1,4 @@
+syntax7.mo:30.1-30.4: syntax error, unexpected token 'let', 
+expected one of token or <phrase> sequence:
+  <eof>
+  ; seplist(<dec>,<semicolon>)

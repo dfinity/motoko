@@ -1,6 +1,5 @@
 main actor creating a
 a created
-main actor calling a.foo()
 a.foo() called
 a creating b
 b created

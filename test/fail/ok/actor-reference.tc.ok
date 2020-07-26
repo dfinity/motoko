@@ -1,0 +1,5 @@
+actor-reference.mo:3.9-3.32: type error, actor reference must have an actor type
+actor-reference.mo:5.16-5.18: type error, literal of type
+  Nat
+does not have expected type
+  Text

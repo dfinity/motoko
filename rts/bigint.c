@@ -122,6 +122,14 @@ export uint32_t bigint_to_word32_trap(as_ptr a) {
   return mp_get_u32(n);
 }
 
+export uint32_t bigint_to_word32_trap_with(as_ptr a, blob_t err_msg) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n) || mp_count_bits(n) > 32) {
+    rts_trap(BLOB_PAYLOAD(err_msg), BLOB_LEN(err_msg));
+  }
+  return mp_get_u32(n);
+}
+
 export int32_t bigint_to_word32_signed_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_count_bits(n) > 32) bigint_trap();
@@ -177,6 +185,9 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
 
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
+}
+export bool bigint_ne(as_ptr a, as_ptr b) {
+  return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) != 0;
 }
 export bool bigint_lt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) < 0;
@@ -265,19 +276,19 @@ export int bigint_leb128_size(as_ptr n) {
   return ((x + 6) / 7); // divide by 7, round up
 }
 
-void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf) {
+void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf, bool add_bit) {
   // now the number should be positive
   if (mp_isneg(tmp)) bigint_trap();
   while (true) {
     buf[0] = (unsigned char)(mp_get_u32(tmp)); // get low bits
     CHECK(mp_div_2d(tmp, 7, tmp, NULL));
-    if (mp_iszero(tmp)) {
-      // we are done. high bit should be cleared anyways
-      return;
-    } else {
+    if (!mp_iszero(tmp) || (add_bit && (buf[0] & 1<<6))) {
       // more bytes to come, set high bit and continue
       buf[0] |= 1<<7;
       buf++;
+    } else {
+      // we are done. high bit should be cleared anyways
+      return;
     }
   }
 }
@@ -285,17 +296,8 @@ void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf) {
 export void bigint_leb128_encode(as_ptr n, unsigned char *buf) {
   mp_int tmp;
   CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
-  bigint_leb128_encode_go(&tmp, buf);
+  bigint_leb128_encode_go(&tmp, buf, false);
 }
-
-
-int leb128_encoding_size(unsigned char *buf) {
-  // zoom to the end
-  int i = 0;
-  while (buf[i] & (1<<7)) i++;
-  return i+1;
-}
-
 
 export int bigint_2complement_bits(as_ptr n) {
   if (mp_isneg(BIGINT_PAYLOAD(n))) {
@@ -324,9 +326,10 @@ export void bigint_sleb128_encode(as_ptr n, unsigned char *buf) {
     CHECK(mp_init(&big));
     CHECK(mp_2expt(&big, 7*bytes));
     CHECK(mp_add(&tmp, &big, &tmp));
+    bigint_leb128_encode_go(&tmp, buf, false);
+  } else {
+    bigint_leb128_encode_go(&tmp, buf, true);
   }
-
-  bigint_leb128_encode_go(&tmp, buf);
 }
 
 /* (S)LEB128 Decoding */
@@ -391,4 +394,3 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
 
   return r;
 }
-

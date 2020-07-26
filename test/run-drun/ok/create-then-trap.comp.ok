@@ -1,4 +1,2 @@
-create-then-trap.mo:3.5-7.6: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
-  (This is a limitation of the current version.)
-create-then-trap.mo:8.5-8.10: type error, calling a shared function not yet supported
+create-then-trap.mo:4.5-8.6: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)

@@ -72,8 +72,6 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 #define IDL_PRIM_reserved (-16)
 #define IDL_PRIM_empty    (-17)
 
-#define IDL_PRIM_lowest   (-17)
-
 #define IDL_CON_opt       (-18)
 #define IDL_CON_vec       (-19)
 #define IDL_CON_record    (-20)
@@ -81,6 +79,21 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 #define IDL_CON_func      (-22)
 #define IDL_CON_service   (-23)
 
+#define IDL_REF_principal (-24)
+
+#define IDL_CON_alias     (1)
+
+static bool is_primitive_type(int32_t ty) {
+  static const int32_t IDL_PRIM_lowest = -17;
+  return ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal);
+}
+
+static void check_typearg(int32_t ty, uint32_t n_types) {
+  // arguments to type constructors can be:
+  if (is_primitive_type(ty)) return;  // primitive types
+  if (ty >=0 && ty < n_types) return; // type indices.
+  idl_trap_with("invalid type argument");
+}
 
 /*
  * This function parses the IDL magic header and type description. It
@@ -93,7 +106,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
  *  * returns a pointer to the beginning of the list of main types
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
-export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
+export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
   if (buf->p == buf->e) idl_trap_with("empty input");
 
   // Magic bytes (DIDL)
@@ -115,36 +128,42 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
-    if (ty >= IDL_PRIM_lowest) {
+    if (extended && ty == IDL_CON_alias) { // internal
+      // See Note [mutable stable values] in codegen/compile.ml
+      int32_t t = read_i32_of_sleb128(buf);
+      check_typearg(t, n_types);
+    } else if (ty >= 0) {
+      idl_trap_with("illegal type table"); // illegal
+    } else if (is_primitive_type(ty)) {
       idl_trap_with("primitive type in type table"); // illegal
     } else if (ty == IDL_CON_opt) {
       int32_t t = read_i32_of_sleb128(buf);
-      if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+      check_typearg(t, n_types);
     } else if (ty == IDL_CON_vec) {
       int32_t t = read_i32_of_sleb128(buf);
-      if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+      check_typearg(t, n_types);
     } else if (ty == IDL_CON_record) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
     } else if (ty == IDL_CON_variant) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
     } else if (ty == IDL_CON_func) {
       // arg types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
       // ret types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
       // annotations
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
@@ -157,7 +176,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
         (buf->p) += size;
         // type
         int32_t t = read_i32_of_sleb128(buf);
-        if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+        check_typearg(t, n_types);
       }
     } else { // future type
       uint32_t n = read_u32_of_leb128(buf);
@@ -168,7 +187,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   *main_types_out = buf->p;
   for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
     int32_t t = read_i32_of_sleb128(buf);
-    if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
+    check_typearg(t, n_types);
   }
 
   *typtbl_out = typtbl;
@@ -227,6 +246,14 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         return;
       case IDL_PRIM_empty:
         idl_trap_with("skip_any: encountered empty");
+      case IDL_REF_principal:
+        {
+          if (read_byte(b)) {
+            uint32_t len = read_u32_of_leb128(b);
+            advance(b, len);
+          }
+          return;
+        }
       default:
         idl_trap_with("skip_any: unknown prim");
     }
@@ -279,6 +306,20 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_CON_service:
         idl_trap_with("skip_any: service");
 
+      case IDL_CON_alias: {
+        // See Note [mutable stable values] in codegen/compile.ml
+        int32_t it = read_i32_of_sleb128(&tb);
+        uint32_t tag = read_byte(b);
+        if (tag == 0) {
+          advance(b, 8);
+          // this is the contents (not a reference)
+          skip_any(b, typtbl, it, 0);
+        } else {
+          advance(b, 4);
+        }
+        return;
+      }
+
       default: { // future type
         uint32_t n_data = read_u32_of_leb128(b);
         uint32_t n_ref = read_u32_of_leb128(b);
@@ -291,25 +332,58 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
   }
 }
 
-export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t remaining_fields) {
-  while (remaining_fields-- > 0) {
+/*
+This finds a field in a record.
+
+Preconditions:
+  tb:     points into the type table,
+          into the sequence of tags/types that are the argument of IDL_CON_record,
+	  at the tag
+  b:      points into the data buffer, at value corresponding to the field
+          pointed to by tb
+  typtbl: the type table
+  tag:    the desired tag
+  n:      the number of fields left in the data
+
+If the tag exists:
+  return value: 1
+  tb:    points at the type corresponding to the found field
+  b:     points at the value corresponding to the found field
+  n:     the number of fields left after the found field
+
+If the tag does not exist:
+  return value: 0
+  tb:    points at the tag of the first field with a higher tag
+         or at the end of the buffer
+  b:     points at the value corresponding to that field
+         or at the value past the record
+  n:     the number of fields left, including the field pointed to by tb
+*/
+export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t *n) {
+  while (*n > 0) {
+    uint8_t *last_p = tb->p;
     uint32_t this_tag = read_u32_of_leb128(tb);
     if (this_tag < tag) {
       int32_t it = read_i32_of_sleb128(tb);
       skip_any(b, typtbl, it, 0);
+      (*n)--;
     } else if (tag == this_tag) {
-      return remaining_fields;
+      (*n)--;
+      return 1;
     } else {
-      idl_trap_with("expected record field skipped");
+      // rewind reading tag
+      tb->p = last_p;
+      return 0;
     }
   }
-  idl_trap_with("expected record field missing");
+  return 0;
 }
 
-export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint32_t remaining_fields) {
-  while (remaining_fields-- > 0) {
+export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint8_t *n) {
+  while (*n > 0) {
     skip_leb128(tb);
     int32_t it = read_i32_of_sleb128(tb);
     skip_any(b, typtbl, it, 0);
+    (*n)--;
   }
 }

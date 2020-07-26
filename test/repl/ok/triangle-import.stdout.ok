@@ -1,4 +1,4 @@
-Motoko 0.1 interpreter
+Motoko compiler (revision XXX)
 -- Parsing stdin:
 > -- Parsing lib/b.mo:
 -- Parsing lib/c.mo:
@@ -12,7 +12,7 @@ Motoko 0.1 interpreter
 -- Interpreting b.mo:
 -- Interpreting stdin:
 -- Finished stdin:
-let anon-import-1.1 : module {i : Nat} = {i = 42}
+let anon-import-1.1 : module {...}
 
 -- Parsing stdin:
 > -- Parsing lib/a.mo:
@@ -23,14 +23,14 @@ let anon-import-1.1 : module {i : Nat} = {i = 42}
 -- Interpreting a.mo:
 -- Interpreting stdin:
 -- Finished stdin:
-let anon-import-2.1 : module {i : Nat} = {i = 42}
+let anon-import-2.1 : module {...}
 
 -- Parsing stdin:
 > -- Checking stdin:
 -- Definedness stdin:
 -- Interpreting stdin:
 -- Finished stdin:
-let anon-import-3.1 : module {i : Nat} = {i = 42}
+let anon-import-3.1 : module {...}
 
 -- Parsing stdin:
 > -- Parsing lib/triangle.mo:
@@ -41,7 +41,7 @@ let anon-import-3.1 : module {i : Nat} = {i = 42}
 -- Interpreting triangle.mo:
 -- Interpreting stdin:
 -- Finished stdin:
-let anon-import-4.1 : module {} = {}
+let anon-import-4.1 : module {...}
 
 -- Parsing stdin:
 > 

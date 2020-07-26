@@ -1,0 +1,5 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+debug.print: Size and allocation delta:  (10_008, 10_008)
+← completed

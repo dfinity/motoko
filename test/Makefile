@@ -2,6 +2,7 @@ all:
 	$(MAKE) -C fail
 	$(MAKE) -C run
 	$(MAKE) -C run-drun
+	$(MAKE) -C perf
 	$(MAKE) -C repl
 	$(MAKE) -C ld
 	$(MAKE) -C idl
@@ -20,26 +21,15 @@ quick:
 
 parallel: quick
 	$(MAKE_PAR) -C run-drun quick
+	$(MAKE_PAR) -C perf quick
 	$(MAKE_PAR) -C trap quick
 	$(MAKE_PAR) -C run-deser quick
-
-coverage:
-	rm -rf _coverage
-	mkdir _coverage
-	export BISECT_FILE=$$PWD/_coverage/bisect; \
-	export SKIP_RUNNING=yes; \
-	$(MAKE) -C fail; \
-	$(MAKE) -C run; \
-	$(MAKE) -C run-drun; \
-	$(MAKE) -C repl;
-	$(MAKE) -C ld || true
-	bisect-ppx-report -I ../src/_build/ -html coverage/ _coverage/bisect*.out
-	rm -rf _coverage
 
 accept:
 	$(MAKE) -C fail accept
 	$(MAKE) -C run accept
 	$(MAKE) -C run-drun accept
+	$(MAKE) -C perf accept
 	$(MAKE) -C repl accept
 	$(MAKE) -C ld accept
 	$(MAKE) -C idl accept
@@ -51,10 +41,9 @@ clean:
 	$(MAKE) -C fail clean
 	$(MAKE) -C run clean
 	$(MAKE) -C run-drun clean
+	$(MAKE) -C perf clean
 	$(MAKE) -C repl clean
 	$(MAKE) -C ld clean
 	$(MAKE) -C mo-idl clean
 	$(MAKE) -C idl clean
 	$(MAKE) -C trap clean
-
-.PHONY: coverage

@@ -1,4 +1,5 @@
-import S "server.mo";
+import Prim "mo:prim";
+import S "server";
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
@@ -17,7 +18,7 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    debugPrint(name # " received " # msg # "\n");
+    Prim.debugPrint(name # " received " # msg # "\n");
   };
 };
 

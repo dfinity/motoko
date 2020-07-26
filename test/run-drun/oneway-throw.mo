@@ -1,19 +1,20 @@
+import Prim "mo:prim";
 actor a {
-  var committed = false;
-  public func throws() : () = ignore async {
-    debugPrint "throws()";
+  flexible var committed = false;
+  public func throws() : () {
+    Prim.debugPrint "throws()";
     committed := true;
-    throw (error("ignored"));
-    debugPrint "unreachable";
+    throw (Prim.error("ignored"));
+    Prim.debugPrint "unreachable";
   };
   public func ping() : async () {
-    debugPrint "ping()";
+    Prim.debugPrint "ping()";
   };
-  public func go() = ignore async {
-    debugPrint "go1";
+  public func go() : async () {
+    Prim.debugPrint "go1";
     throws();
     await ping(); // in-order delivery guarantees that throw ran
-    debugPrint "go2";
+    Prim.debugPrint "go2";
     assert(committed);
   };
 };

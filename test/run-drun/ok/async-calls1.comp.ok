@@ -1,2 +1,0 @@
-async-calls1.mo:10.43-10.47: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

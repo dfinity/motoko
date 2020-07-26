@@ -1,12 +1,2 @@
-pass-references.mo:5.5-5.6: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-pass-references.mo:9.5-9.10: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-pass-references.mo:13.5-15.6: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
-  (This is a limitation of the current version.)
-pass-references.mo:16.5-16.14: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-pass-references.mo:17.5-17.14: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-pass-references.mo:18.5-18.15: type error, calling a shared function not yet supported
+pass-references.mo:14.5-16.6: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)

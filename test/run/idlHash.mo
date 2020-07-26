@@ -1,7 +1,9 @@
+import Prim "mo:prim";
+
 func testHash(s : Text, h : Word32) {
-  debugPrint("Hash for " # s);
-  debugPrint("Expected: " # debug_show (word32ToNat(h)));
-  debugPrint("Actual:   " # debug_show (word32ToNat(idlHash s)));
+  Prim.debugPrint("Hash for " # s);
+  Prim.debugPrint("Expected: " # debug_show h);
+  Prim.debugPrint("Actual:   " # debug_show (Prim.idlHash s));
 };
 
 // The lines below can be copied verbatim out of the corresponding JS unit test

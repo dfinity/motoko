@@ -1,9 +1,10 @@
-ingress(0) System
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
 debug.print: 1
-ingress(1) Completed: Canister: Reject: Error
-debug.print: 1
-debug.print: ok
-ingress(2) Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Reject: Error
 debug.print: 1
 debug.print: ok
-ingress(3) Completed: Canister: Reject: Error
+ingress Completed: Canister: Reply: 0x4449444c0000
+debug.print: 1
+debug.print: ok
+ingress Completed: Canister: Reject: Error

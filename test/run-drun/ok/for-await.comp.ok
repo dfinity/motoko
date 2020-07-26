@@ -1,2 +1,0 @@
-for-await.mo:9.15-9.29: type error, unsupported async block
-  (This is a limitation of the current version.)

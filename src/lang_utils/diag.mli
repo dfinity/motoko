@@ -1,6 +1,6 @@
 (* A common data type for diagnostic messages *)
 
-type severity = Warning | Error
+type severity = Warning | Error | Info
 
 type message = {
   sev : severity;
@@ -34,6 +34,10 @@ val flush_messages : 'a result -> 'a option
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
 val warn : Source.region -> string -> string -> unit result
+
+module Syntax : sig
+  val (let*) : 'a result -> ('a -> 'b result) -> 'b result
+end
 
 (*
 An impure, but more more convenient interface.

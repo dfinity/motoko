@@ -15,7 +15,8 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 type resolved_import =
   | Unresolved
   | LibPath of string
-  | IDLPath of string
+  | IDLPath of (string * string) (* filepath * bytes *)
+  | PrimPath (* the built-in prim module *)
 
 (* Identifiers *)
 
@@ -44,19 +45,24 @@ and typ' =
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | VariantT of typ_tag list                       (* variant *)
-  | TupT of typ list                               (* tuple *)
+  | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of typ                                  (* future *)
+  | AsyncT of scope * typ                          (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
+  | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
 
+and scope = typ
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}
 
+and bind_sort = Type.bind_sort Source.phrase
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
-and typ_bind' = {var : id; bound : typ}
+and typ_bind' = {var : id; sort : bind_sort; bound : typ;}
+
+and typ_item = id option * typ
 
 
 (* Literals *)
@@ -81,6 +87,7 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
+  | BlobLit of string
   | PreLit of string * Type.prim
 
 
@@ -110,15 +117,33 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private
+and vis' = Public | Private | System
+
+type stab = stab' Source.phrase
+and stab' = Stable | Flexible
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
+
+
+type inst = (typ list option, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
+
+type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
+
+type sugar = bool (* Is the source of a function body a block `<block>`,
+                     subject to further desugaring during parse,
+                     or the invariant form `= <exp>`.
+                     In the final output of the parser, the exp in FuncE is
+                     always in its fully desugared form and the
+                     value of the sugar field is irrelevant.
+                     This flag is used to correctly desugar an actor's
+                     public functions as oneway, shared functions *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
+  | ActorUrlE of exp                           (* actor reference *)
   | UnE of op_typ * unop * exp                 (* unary operator *)
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
@@ -132,8 +157,8 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * func_sort * typ_bind list * pat * typ option * exp  (* function *)
-  | CallE of exp * typ list * exp              (* function call *)
+  | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
+  | CallE of exp * inst * exp                  (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -147,7 +172,7 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of exp                              (* async *)
+  | AsyncE of typ_bind * exp                   (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
@@ -160,7 +185,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {dec : dec; vis : vis}
+and exp_field' = {dec : dec; vis : vis; stab: stab option}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -170,12 +195,13 @@ and case' = {pat : pat; exp : exp}
 
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
-  | ExpD of exp                                (* plain expression *)
+  | ExpD of exp                                (* plain unit expression *)
+  | IgnoreD of exp                             (* plain any expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 
 (* Program *)
@@ -191,14 +217,6 @@ type lib = (exp, string) Source.annotated_phrase
 
 (* n-ary arguments/result sequences *)
 
-let seqT ts =
-  match ts with
-  | [t] -> t
-  | ts ->
-    { Source.it = TupT ts;
-      at = Source.no_region;
-      Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts) }
-
 let arity t =
   match t.Source.it with
   | TupT ts -> List.length ts
@@ -206,6 +224,7 @@ let arity t =
 
 (* Literals *)
 
+(* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
@@ -226,6 +245,94 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
+  | BlobLit b     -> b
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
 
+
+open Source
+let (@@) = Source.(@@)
+let (@?) it at = Source.({it; at; note = empty_typ_note})
+let (@!) it at = Source.({it; at; note = Type.Pre})
+let (@=) it at = Source.({it; at; note = None})
+
+let scope_typ region =
+  Source.(
+    { it = PathT (
+      { it = IdH { it = Type.default_scope_var; at = region; note = () };
+        at = no_region;
+        note = Type.Pre },
+      []);
+    at = region;
+    note = Type.Pre })
+
+let scope_bind var =
+  { var = Type.scope_var var @@ no_region;
+    sort = Type.Scope @@ no_region;
+    bound = PrimT "Any" @! no_region
+  } @= no_region
+
+let ensure_scope_bind var tbs =
+  match tbs with
+  | tb::_ when tb.it.sort.it = Type.Scope ->
+    tbs
+  | _ ->
+    scope_bind var::tbs
+
+
+let funcT (sort, tbs, t1, t2) =
+  match sort.it, t2.it with
+  | Type.Local, AsyncT _ ->
+    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
+  | Type.Shared _, _ ->
+    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
+  | _ ->
+    FuncT(sort, tbs, t1, t2)
+
+let is_Async e =
+  match e.it with
+  | AsyncE _ -> true
+  | _ -> false
+
+let is_IgnoreAsync e =
+  match e.it with
+  | BlockE [ { it = IgnoreD
+      { it = AnnotE ({ it = AsyncE _; _},
+        { it = AsyncT (_, { it = TupT[]; _}); _}); _}; _}] ->
+    true
+  | _ -> false
+
+let async f e =
+  AsyncE (scope_bind f, e)  @? e.at
+
+let ignoreAsync f e =
+  BlockE [ IgnoreD (
+    AnnotE (AsyncE (scope_bind f, e)  @? e.at,
+      AsyncT (scope_typ e.at,TupT[] @! e.at) @! e.at) @? e.at ) @? e.at] @? e.at
+
+let desugar sp f t_opt (sugar, e) =
+  match sugar, e with
+  | (false, e) -> false, e (* body declared as EQ e *)
+  | (true, e) -> (* body declared as immediate block *)
+    match sp.it, t_opt with
+    | _, Some {it = AsyncT _; _} ->
+      true, async f.it e
+    | Type.Shared _, (None | Some { it = TupT []; _}) ->
+      true, ignoreAsync f.it e
+    | _, _ -> (true, e)
+
+let funcE (f, s, tbs, p, t_opt, sugar, e) =
+  match s.it, t_opt, e with
+  | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Shared _, _, _ ->
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, sugar, e)
+  | _ ->
+    FuncE(f, s, tbs, p, t_opt, sugar, e)
+
+let is_any t =
+  match t.it with
+  | PrimT "Any" -> true
+  | _ -> false
+
+let is_anonymous id =
+  Lib.(String.chop_prefix "anon-" id.it <> None)

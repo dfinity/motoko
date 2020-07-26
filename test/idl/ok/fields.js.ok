@@ -1,18 +1,16 @@
 export default ({ IDL }) => {
- const A = IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
+ const A = IDL.Tuple(IDL.Nat, IDL.Nat, IDL.Nat)
  const B =
-  IDL.Record({'0': IDL.Vec(IDL.Nat8), '35': IDL.Vec(IDL.Nat8), '36': IDL.Nat,
-   '37': IDL.Nat, 'named_files': IDL.None, '3629958706': IDL.Nat,
-   '3629958707': IDL.Nat})
+  IDL.Record({'_0_': IDL.Vec(IDL.Nat8), '_35_': IDL.Vec(IDL.Nat8),
+   '_36_': IDL.Nat, '_37_': IDL.Nat, 'named_files': IDL.None,
+   '_3629958706_': IDL.Nat, '_3629958707_': IDL.Nat})
  const C =
-  IDL.Variant({'1': IDL.Unit, '2': IDL.Unit, '3': IDL.Unit, '4': IDL.Unit,
-   '10': IDL.Unit, 'A': IDL.Unit, 'B': IDL.Unit, 'C': IDL.Unit,
-   'red': IDL.Unit, 'blue': IDL.Unit, 'reserved': IDL.Unit, 'green': IDL.Unit
-   })
+  IDL.Variant({'_1_': IDL.Null, '_2_': IDL.Null, '_3_': IDL.Null,
+   '_4_': IDL.Null, '_10_': IDL.Null, 'A': IDL.Null, 'B': IDL.Null,
+   'C': IDL.Null, 'red': IDL.Null, 'blue': IDL.Null, 'reserved': IDL.Null,
+   'green': IDL.Null})
  const nest_record =
-  IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat,
-   '3': IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat}), '4': IDL.Nat,
-   '5': IDL.Nat, '6': IDL.Nat, '7': A, '8': B, '9': C, '10': IDL.Nat})
- return new IDL.ActorInterface({'f': IDL.Func([A, B, C, nest_record], [], [])
-  });
+  IDL.Tuple(IDL.Nat, IDL.Nat, IDL.Nat, IDL.Tuple(IDL.Nat, IDL.Nat, IDL.Nat),
+   IDL.Nat, IDL.Nat, IDL.Nat, A, B, C, IDL.Nat)
+ return IDL.Service({'f': IDL.Func([A, B, C, nest_record], [], [])});
 };

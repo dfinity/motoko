@@ -1,16 +1,17 @@
+import Prim "mo:prim";
 // This file only exercises local throws that don't cross function boundaries.
 // In principle, it should run on all targets.
 
 actor a {
   public func t2() : async () {
      try {
-       throw error("t2");
+       throw Prim.error("t2");
        assert(false);
      } catch e {
-          switch (errorCode(e),errorMessage(e)) {
-            case (#error, "t2") { };
-            case (#system, _ ) { assert false;};
-            case (#error, _) { assert false;};
+          switch (Prim.errorCode(e),Prim.errorMessage(e)) {
+            case (#canister_reject, "t2") { };
+            case (#canister_reject, _) { assert false;};
+            case (sys, _ ) { assert false;};
        }
      }
   };
@@ -18,47 +19,49 @@ actor a {
   public func t3() : async () {
     try {
       try {
-        throw error("t3");
+        throw Prim.error("t3");
         assert(false);
       } catch e1 {
-        switch (errorCode(e1), errorMessage(e1)) {
-          case (#error, "t3") {
-            throw error("t31");
+        switch (Prim.errorCode(e1), Prim.errorMessage(e1)) {
+          case (#canister_reject, "t3") {
+            throw Prim.error("t31");
           };
-          case (#system, _) {
+          case (#canister_reject, _) {
             assert false;
           };
-          case (#error, _) {
+          case (sys, _) {
             assert false;
           };
+
         }
       }
     }
     catch e2 {
-      switch (errorCode(e2),errorMessage(e2)) {
-       case (#error, "t31") { };
-       case (#system, _) {
-         assert false;
-       };
-       case (#error, _) {
+      switch (Prim.errorCode(e2),Prim.errorMessage(e2)) {
+       case (#canister_reject, "t31") { };
+       case (#canister_reject, _) {
          assert true;
        };
+       case (sys, _) {
+         assert false;
+       };
+
       }
     }
   };
 
 
-  public func go() = ignore async {
+  public func go() : async () {
     try {
       await t2();
-      debugPrint ("t2 ok");
+      Prim.debugPrint ("t2 ok");
     } catch _ {
       assert false;
     };
 
     try {
       await t3();
-      debugPrint ("t3 ok");
+      Prim.debugPrint ("t3 ok");
     } catch _ {
       assert false;
     };

@@ -1,22 +1,23 @@
+import Prim "mo:prim";
 let a = actor {
-  var c = 1;
-  public func inc() {
+  flexible var c = 1;
+  public func inc() : async () {
     c += 1;
-    debugPrintNat c;
+    Prim.debugPrintNat c;
   };
-  public func printCounter () {
-    debugPrintNat c;
+  public func printCounter () : async () {
+    Prim.debugPrintNat c;
   };
 
-  public func go() {
-    a.inc();
-    a.inc();
-    a.inc();
-    a.printCounter();
+  public func go() : async () {
+    await a.inc();
+    await a.inc();
+    await a.inc();
+    await a.printCounter();
 
     var i : Int = 10;
     while (i  > 0) {
-      a.inc();
+      await a.inc();
       i -= 1;
     };
   };

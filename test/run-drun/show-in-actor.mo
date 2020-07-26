@@ -1,6 +1,11 @@
-debugPrint (debug_show true);
+import Prim "mo:prim";
+Prim.debugPrint (debug_show true);
 let _ = actor {
-  debugPrint (debug_show false);
-  debugPrint (debug_show 1);
+  Prim.debugPrint (debug_show false);
+  Prim.debugPrint (debug_show 1);
 };
 ()
+
+// non-closed actors not allowed
+//SKIP comp
+//SKIP comp-ref

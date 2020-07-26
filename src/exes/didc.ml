@@ -2,8 +2,7 @@ open Idllib
 open Printf
 
 let name = "didc"
-let version = "0.1"
-let banner = "Interface Description Language (IDL) " ^ version ^ " interpreter"
+let banner = "Candid compiler (revision " ^ Source_id.id ^ ")"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -45,7 +44,7 @@ let process_file file : unit =
   | Check ->
      ignore (Diag.run (Pipeline.check_file file))
   | PrettyPrint ->
-     let (ast, _) = Diag.run (Pipeline.check_file file) in
+     let (ast, _, _) = Diag.run (Pipeline.check_file file) in
      printf "%s" (Idllib.Arrange_idl.string_of_prog ast);
   | Js ->
      if !out_file = "" then

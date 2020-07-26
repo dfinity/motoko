@@ -1,0 +1,10 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress System
+debug.print: A
+debug.print: A
+debug.print: C
+debug.print: Now in async
+debug.print: C
+debug.print: B
+debug.print: B
+ingress Completed: Canister: Reply: 0x4449444c0000

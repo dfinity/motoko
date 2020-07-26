@@ -1,6 +1,0 @@
-async-calls3.mo:10.35-10.39: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-async-calls3.mo:10.69-10.76: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-async-calls3.mo:16.5-16.9: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

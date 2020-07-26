@@ -7,10 +7,12 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Run on in drun (or, if not possible, in stub)
+#    -d: Run on in drun (or, if not possible, in ic-ref-run)
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
+#    -p: Produce perf statistics
+#        only compiles and runs drun, writes stats to $PERF_OUT
 #
 
 function realpath() {
@@ -19,26 +21,34 @@ function realpath() {
 
 
 ACCEPT=no
-DRUN=no
+DTESTS=no
 IDL=no
+PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
+export MOC
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
-DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 WASMTIME=${WASMTIME:-wasmtime}
-DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
-IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
+WASMTIME_OPTIONS="--disable-cache --cranelift"
+DRUN=${DRUN:-drun}
+WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
+WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
+IC_REF_RUN=${IC_REF_RUN:-ic-ref-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "adstir" o; do
+while getopts "adpstir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
         d)
-            DRUN=yes
+            DTESTS=yes
+            ;;
+        p)
+            PERF=yes
             ;;
         s)
             ECHO=true
@@ -65,6 +75,7 @@ function normalize () {
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/prelude:[^:]*:/prelude:___:/g' |
+    sed 's/prim:[^:]*:/prim:___:/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
     sed 's,/private/tmp/,/tmp/,g' |
@@ -78,6 +89,7 @@ function normalize () {
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
+    sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -91,7 +103,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext" $file; then return 1; fi
+  if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -115,6 +127,70 @@ function run () {
   return $ret
 }
 
+function run_if () {
+  # first argument: a file extension
+  # remaining argument: passed to run
+
+  local ext="$1"
+  shift
+
+  if test -e $out/$base.$ext
+  then
+    run "$@"
+  else
+    return 1
+  fi
+}
+
+if [ "$PERF" = "yes" ]
+then
+  if [ -z "$PERF_OUT" ]
+  then
+    echo "Warning: \$PERF_OUT not set" >&2
+  fi
+fi
+
+HAVE_drun=no
+HAVE_ic_ref_run=no
+
+FLAGS_drun=
+FLAGS_ic_ref_run=-ref-system-api
+
+if [ $DTESTS = yes -o $PERF = yes ]
+then
+  if $DRUN --version >& /dev/null
+  then
+    HAVE_drun=yes
+  else
+    if [ $ACCEPT = yes ]
+    then
+      echo "ERROR: Could not run $DRUN, cannot update expected test output"
+      exit 1
+    else
+      echo "WARNING: Could not run $DRUN, will skip some tests"
+      HAVE_drun=no
+    fi
+  fi
+fi
+
+if [ $DTESTS = yes ]
+then
+  if $IC_REF_RUN --help >& /dev/null
+  then
+    HAVE_ic_ref_run=yes
+  else
+    if [ $ACCEPT = yes ]
+    then
+      echo "ERROR: Could not run $IC_REF_RUN, cannot update expected test output"
+      exit 1
+    else
+      echo "WARNING: Could not run $IC_REF_RUN, will skip some tests"
+      HAVE_ic_ref_run=no
+    fi
+  fi
+fi
+
+
 for file in "$@";
 do
   if ! [ -r $file ]
@@ -125,15 +201,18 @@ do
   fi
 
   if [ ${file: -3} == ".mo" ]
-  then base=$(basename $file .mo)
+  then base=$(basename $file .mo); ext=mo
   elif [ ${file: -3} == ".sh" ]
-  then base=$(basename $file .sh)
+  then base=$(basename $file .sh); ext=sh
   elif [ ${file: -4} == ".wat" ]
-  then base=$(basename $file .wat)
+  then base=$(basename $file .wat); ext=wat
   elif [ ${file: -4} == ".did" ]
-  then base=$(basename $file .did)
+  then base=$(basename $file .did); ext=did
+  elif [ ${file: -5} == ".drun" ]
+  then base=$(basename $file .drun); ext=drun
   else
-    echo "Unknown file extension in $file, expected .mo, .sh, .wat or .did"; exit 1
+    echo "Unknown file extension in $file"
+    echo "Supported extensions: .mo .sh .wat .did .drun"
     failures=yes
     continue
   fi
@@ -149,25 +228,27 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.*
+  rm -rf $out/$base $out/$base.*
 
   # First run all the steps, and remember what to diff
   diff_files=
 
-  if [ ${file: -3} == ".mo" ]
-  then
-    # extra flags
-    moc_extra_flags="$(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' ')"
+  case $ext in
+  "mo")
+    # extra flags (allow shell variables there)
+    moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
+    moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
+    moc="env $moc_extra_env $MOC $moc_extra_flags"
 
     # Typecheck
-    run tc $MOC $moc_extra_flags --check $base.mo
+    run tc $moc --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $moc_extra_flags --idl $base.mo -o $out/$base.did
+        run idl $moc --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -178,13 +259,13 @@ do
           run didc $DIDC --check $out/$base.did
         fi
       else
-        if [ "$SKIP_RUNNING" != yes ]
+        if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
+          run run $moc --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -194,7 +275,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $moc_extra_flags --hide-warnings -r -iR $base.mo
+          run run-low $moc --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -225,24 +306,22 @@ do
 
 
         # Compile
-        if [ $DRUN = no ]
+        if [ $DTESTS = yes ]
         then
-          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-        else
-          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-          can_use_drun=$?
-
-          if [ "$can_use_drun" -ne 0 ];
-          then
-            run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-          fi
+          run comp $moc $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+	elif [ $PERF = yes ]
+	then
+          run comp $moc --hide-warnings --map -c $mangled -o $out/$base.wasm
+	else
+          run comp $moc -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
+
+        run_if wasm valid wasm-validate $out/$base.wasm
+        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
 
         if [ -e $out/$base.wasm ]
         then
-          # Validate wasm
-          run valid wasm-validate $out/$base.wasm
-
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
@@ -254,35 +333,107 @@ do
               diff_files="$diff_files $base.filecheck"
             fi
           fi
+        fi
 
-          # Run compiled program
-          if [ "$SKIP_RUNNING" != yes ]
+        # Run compiled program
+        if [ "$SKIP_RUNNING" != yes ]
+        then
+          if [ $DTESTS = yes ]
           then
-            if [ $DRUN = no ]
-            then
-              run wasm-run $WASMTIME --disable-cache $out/$base.wasm
-            elif [ "$can_use_drun" -eq 0 ]
-            then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            else
-              DRUN=$IC_STUB_RUN \
-              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $mangled
+            if [ $HAVE_drun = yes ]; then
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
             fi
+            if [ $HAVE_ic_ref_run = yes ]; then
+              run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
+            fi
+          elif [ $PERF = yes ]
+          then
+            if [ $HAVE_drun = yes ]; then
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
+              if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              then
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+              fi
+            fi
+          else
+            run_if wasm wasm-run $WASMTIME $WASMTIME_OPTIONS $out/$base.wasm
           fi
         fi
+
+        # collect size stats
+        if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
+        then
+	   if [ -n "$PERF_OUT" ]
+           then
+             wasm-strip $out/$base.wasm
+             echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+           fi
+        fi
+
 	rm -f $mangled
       fi
     fi
-  elif [ ${file: -3} == ".sh" ]
-  then
+  ;;
+  "drun")
+    if [ $DTESTS != yes ]
+    then
+      $ECHO ""
+      echo "Running .drun files only make sense with $0 -d";
+      continue
+    fi
+
+    # The file is a drun script, so a multi-canister project
+    mkdir -p $out/$base
+
+    for runner in ic-ref-run drun
+    do
+      if grep -q "# *SKIP $runner" $(basename $file)
+      then
+        continue
+      fi
+
+      have_var_name="HAVE_${runner//-/_}"
+      if [ ${!have_var_name} != yes ]
+      then
+        $ECHO "skipped (no drun)";
+        continue
+      fi
+
+      # collect all .mo files referenced from the file
+      mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
+
+      for mo_file in $mo_files
+      do
+        mo_base=$(basename $mo_file .mo)
+        if [ "$(dirname $mo_file)" != "$base" ];
+        then
+          $ECHO ""
+          echo "$base.drun references $mo_file which is not in directory $base"
+          exit 1
+        fi
+
+        flags_var_name="FLAGS_${runner//-/_}"
+        run $mo_base.$runner.comp $MOC ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+      done
+
+      # mangle drun script
+      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
+
+      # run wrapper
+      wrap_var_name="WRAP_${runner//-/_}"
+      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
+    done
+
+  ;;
+  "sh")
     # The file is a shell script, just run it
     $ECHO -n " [out]"
-    ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+    ./$(basename $base.sh) > $out/$base.stdout 2> $out/$base.stderr
     normalize $out/$base.stdout
     normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
-  elif [ ${file: -4} == ".wat" ]
-  then
+  ;;
+  "wat")
     # The file is a .wat file, so we are expected to test linking
     $ECHO -n " [mo-ld]"
     rm -f $out/$base.{base,lib,linked}.{wasm,wat,o}
@@ -295,8 +446,8 @@ do
         run wasm2wat wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat
         diff_files="$diff_files $base.linked.wat"
     fi
-
-  else
+  ;;
+  "did")
     # The file is a .did file, so we are expected to test the idl
     # Typecheck
     $ECHO -n " [tc]"
@@ -323,7 +474,11 @@ do
         run node node -r esm $out/$base.js
       fi
     fi
-  fi
+  ;;
+  *)
+    echo "Unknown extentions $ext";
+    exit 1
+  esac
   $ECHO ""
 
   if [ $ACCEPT = yes ]

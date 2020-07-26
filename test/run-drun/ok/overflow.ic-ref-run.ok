@@ -1,0 +1,13 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go(0x4449444c0000)
+debug.print: ok 1
+debug.print: ok 2
+Trap: EvalTrapError :0.1 "canister trapped explicitly: Natural subtraction underflow"
+debug.print: ok 3
+debug.print: ok 4
+debug.print: ok 5
+debug.print: ok 6
+← completed: 0x4449444c0000

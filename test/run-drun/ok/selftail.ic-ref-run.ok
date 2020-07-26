@@ -1,0 +1,6 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+debug.print: ok1
+debug.print: ok2
+← rejected (RC_CANISTER_ERROR): Initialization trapped: EvalExhaustionError :0.1 "call stack exhausted"

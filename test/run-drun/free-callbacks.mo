@@ -1,21 +1,22 @@
+import Prim "mo:prim";
 actor a {
   public func ping() : async () {
   };
 
-  public func go() = ignore async {
-    let s0 = rts_heap_size();
-    let a = Array_init<()>(2500, ());
+  public func go() : async () {
+    let s0 = Prim.rts_heap_size();
+    let a = Prim.Array_init<()>(2500, ());
     await ping();
-    let s1 = rts_heap_size();
+    let s1 = Prim.rts_heap_size();
     await ping();
-    let s2 = rts_heap_size();
+    let s2 = Prim.rts_heap_size();
     // last use of a
     ignore(a);
     await ping();
     // now a should be freed
-    let s3 = rts_heap_size();
+    let s3 = Prim.rts_heap_size();
 
-    debugPrint(
+    Prim.debugPrint(
       "Ignore Diff: " #
       debug_show s0 # " " #
       debug_show s1 # " " #

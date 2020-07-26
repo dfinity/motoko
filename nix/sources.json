@@ -1,0 +1,99 @@
+{
+    "common": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/common",
+        "rev": "4834d255f106f3f1d68907fc76be1b83d9b47d1c",
+        "type": "git"
+    },
+    "dfinity": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
+        "rev": "dec121d0546ff5cd6fc803dfdf1409698ceea042",
+        "type": "git"
+    },
+    "esm": {
+        "builtin": false,
+        "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
+        "type": "tarball",
+        "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz",
+        "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
+        "version": "3.2.25"
+    },
+    "ic-ref": {
+        "ref": "release-0.8",
+        "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
+        "rev": "0990d033452af92cbea2e60c44c301aa551d7b0e",
+        "type": "git"
+    },
+    "libtommath": {
+        "builtin": false,
+        "description": "LibTomMath is a free open source portable number theoretic multiple-precision integer library written entirely in C.",
+        "homepage": "https://www.libtom.net",
+        "owner": "libtom",
+        "repo": "libtommath",
+        "sha256": "0cj4xdbh874hi8hx9ajygqk5411cnv260mfjrn68fsi9a6dw56ff",
+        "type": "tarball",
+        "url": "https://github.com/libtom/libtommath/archive/v1.2.0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
+        "version": "v1.2.0"
+    },
+    "motoko-base": {
+        "ref": "next-moc",
+        "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
+        "rev": "0375b45d6e61be79b086c3726f8edd04182df9c1",
+        "type": "git"
+    },
+    "motoko-matchers": {
+        "branch": "v0.0.5",
+        "builtin": false,
+        "description": null,
+        "homepage": "http://kritzcreek.github.io/motoko-matchers",
+        "owner": "kritzcreek",
+        "repo": "motoko-matchers",
+        "rev": "b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3",
+        "sha256": "0dy29y8r7k6sshbm96g3f6avcbpl55sazqj2wvpvjxz82xq3vfcn",
+        "type": "tarball",
+        "url": "https://github.com/kritzcreek/motoko-matchers/archive/b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "musl-wasi": {
+        "branch": "master",
+        "builtin": false,
+        "description": "WASI libc implementation for WebAssembly",
+        "homepage": "https://wasi.dev",
+        "owner": "WebAssembly",
+        "repo": "wasi-libc",
+        "rev": "00cc5944dfc8c85ab5c5bee4cdef221afa2121f7",
+        "sha256": "1i41lmgpdp00pn5r5ddd2hzmk0dv0l2pzbc4b84nrsiwp605m10r",
+        "type": "tarball",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/00cc5944dfc8c85ab5c5bee4cdef221afa2121f7.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "release-20.03",
+        "builtin": true,
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "homepage": null,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "df0e7ad3d610c1d72e6bd9e4b289fdbf8afb832d",
+        "sha256": "11y6ryh612x14ia274cr6sxq3d4z0dd114dbzxcgcnaackh5yr3x",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/df0e7ad3d610c1d72e6bd9e4b289fdbf8afb832d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ocaml-vlq": {
+        "branch": "v0.2.0",
+        "builtin": false,
+        "description": "A library to encode/decode numbers in OCaml.",
+        "homepage": null,
+        "owner": "flowtype",
+        "repo": "ocaml-vlq",
+        "rev": "115bf0fef38018f31ac6386fef17a00bd8307218",
+        "sha256": "09jdgih2n2qwpxnlbcca4xa193rwbd1nw7prxaqlg134l4mbya83",
+        "type": "tarball",
+        "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "version": "v0.2.0"
+    }
+}

@@ -1,0 +1,6 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query foo(0x4e4f544449444c)
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: missing magic bytes"

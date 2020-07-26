@@ -1,6 +1,8 @@
+import Prim "mo:prim";
+
 //MOC-FLAG --release
 
-debugPrint "This should appear";
-debug { debugPrint "This shouldn't appear" };
-debugPrint "This should appear too";
+Prim.debugPrint "This should appear";
+debug { Prim.debugPrint "This shouldn't appear" };
+Prim.debugPrint "This should appear too";
 

@@ -1,4 +1,4 @@
+ingress Canister Id: ic:0100000000000000000000000000000000012D
 debug.print: ok1
 debug.print: ok2
-ingress(0) Err: IC0502: Canister 42 trapped: stack overflow
-Error: "Failed to install canister - ignoring message stream"
+ingress Err: IC0502: Canister ic:0100000000000000000000000000000000012D trapped: stack overflow

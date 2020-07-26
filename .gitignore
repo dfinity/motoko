@@ -1,10 +1,10 @@
 .database
 .dvm
-/result*
+_out
+_output
+_build
 
 **/*~
-**/_build
-**/_output
 /result*
 
 /samples/**/*.txt
