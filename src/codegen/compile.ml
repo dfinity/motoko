@@ -1172,11 +1172,8 @@ module BitTagged = struct
     )
   let can_tag_u64 env =
     Func.share_code1 env "can_tag_u64" ("x", I64Type) [I32Type] (fun env get_x ->
-      compile_const_64 0L ^^ get_x ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
       get_x ^^ compile_const_64 upper_bound ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-      G.i (Binary (Wasm.Values.I32 I64Op.And))
+      G.i (Compare (Wasm.Values.I64 I64Op.LtU))
     )
 
   let tag =
