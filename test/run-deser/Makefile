@@ -1,7 +1,5 @@
-DESER ?= ../../src/deser 
-
 _out/%.done: %.bin | _out
-	$(DESER) < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
+	deser < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
 	@ cat $@
 
 all: quick
