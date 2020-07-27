@@ -330,7 +330,8 @@ module E = struct
     let p = Lib.Promise.make () in
     add_global env name p;
     (fun init ->
-      Lib.Promise.fulfill p (nr { gtype = GlobalType (I32Type, mut);
+      Lib.Promise.fulfill p (nr {
+        gtype = GlobalType (I32Type, mut);
         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I32 init)))))
       })
     )
