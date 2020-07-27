@@ -230,7 +230,7 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc="env $moc_extra_env $mo $moc_extra_flags"
+    moc="env $moc_extra_env moc $moc_extra_flags"
 
     # Typecheck
     run tc $moc --check $base.mo
