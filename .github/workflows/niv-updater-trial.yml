@@ -1,4 +1,10 @@
-name: Update niv dependencies (weekly)
+# these dependencies are bumped weekly. But to not add churn
+# to master (e.g. downloading changed stuff in nix-shell),
+# CI/Mergify is instructed to simply close them as soon as CI is green.
+#
+# This means that we get an open PR only if something breaks, which is all we
+# want to know about.
+name: Update niv dependencies (trial)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
@@ -12,7 +18,7 @@ on:
   schedule:
     # * is a special character in YAML so you have to quote this string
     # Run every monday
-    - cron:  '0 0 * * 1'
+    - cron:  '0 0 * * 0'
 jobs:
   niv-updater:
     name: 'Check for updates'
@@ -21,10 +27,9 @@ jobs:
       - name: niv-updater-action
         uses: knl/niv-updater-action@v6
         with:
-          # might be too noisy
-          whitelist: 'dfinity,ic-ref,musl-wasi'
+          whitelist: 'nixpkgs,musl-wasi'
           labels: |
-            automerge-squash
+            autoclose
             ci-also-darwin
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}
