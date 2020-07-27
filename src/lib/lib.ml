@@ -461,6 +461,61 @@ struct
     value p
 end
 
+module AllocOnUse =
+struct
+  (*
+  A slighty more elaborate form of a promise: It describes something that can
+  be allocated, defined, and used (e.g. a Wasm function with a function id). It
+  will only be allocated if it is both defined and used. Cyclic use is supported,
+  e.g. the code that defines the thing will already be able to use it.
+
+  Beware: Calling def twice is allowed, the second one will be ignored.
+
+  Re `… Lazy.t` vs. `unit -> …`:
+  We use `… Lazy.t` for thunks that will be called exactly once (e.g. producing the
+  definition), but `unit -> …` for functions called many times with different
+  results (e.g. allocation)
+  *)
+
+  type ('a, 'b) alloc = unit -> ('a * ('b -> unit))
+
+  type ('a, 'b) t' =
+    | UnUsedUnDef of ('a, 'b) alloc
+    | UsedUnDef of 'a * ('b -> unit)
+    | UnUsedDef of ('a, 'b) alloc * ('b Lazy.t)
+    | UsedDef of 'a
+  type ('a, 'b) t = ('a, 'b) t' ref
+
+  let make : ('a, 'b) alloc -> ('a, 'b) t =
+    fun alloc -> ref (UnUsedUnDef alloc)
+
+  let def : ('a, 'b) t -> ('b Lazy.t) -> unit =
+    fun r mk -> match !r with
+      | UnUsedUnDef alloc ->
+        r := UnUsedDef (alloc, mk)
+      | UsedUnDef (a, fill) ->
+        r := UsedDef a;
+        fill (Lazy.force mk);
+      | UnUsedDef _ | UsedDef _ ->
+        ()
+
+  let use : ('a, 'b) t -> 'a =
+    fun r -> match !r with
+      | UnUsedUnDef alloc ->
+        let (a, fill) = alloc () in
+        r := UsedUnDef (a, fill);
+        a
+      | UsedUnDef (a, fill) ->
+        a
+      | UnUsedDef (alloc, mk) ->
+        let (a, fill) = alloc () in
+        r := UsedDef a;
+        fill (Lazy.force mk);
+        a
+      | UsedDef a ->
+        a
+end
+
 module FilePath =
 struct
   let normalise file_path =
