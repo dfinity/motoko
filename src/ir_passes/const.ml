@@ -68,7 +68,7 @@ type callback = unit Lazy.t
 
 let do_nothing : callback = lazy ()
 
-let (>>) cb1 cb2 = lazy (Lazy.force cb1; Lazy.force cb2)
+let (>>) cb1 cb2 = lazy Lazy.(force cb1; force cb2)
 
 (* The lazy bool value type *)
 
