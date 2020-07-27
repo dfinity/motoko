@@ -220,12 +220,7 @@ module E = struct
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
-  type lazy_function' =
-    | Pristine
-    | Declared of int32 * (func_with_names -> unit)
-    | Defined of int32
-    | Pending of (unit -> func_with_names)
-  type lazy_function = string * lazy_function' ref
+  type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
   type t = {
     (* Global fields *)
     (* Static *)
@@ -246,6 +241,7 @@ module E = struct
     end_of_table : int32 ref;
     globals : (global Lib.Promise.t * string) list ref;
     global_names : int32 NameEnv.t ref;
+    named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
@@ -280,6 +276,7 @@ module E = struct
     end_of_table = ref 0l;
     globals = ref [];
     global_names = ref NameEnv.empty;
+    named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
@@ -377,43 +374,22 @@ module E = struct
     fill (f, local_names);
     fi
 
-  let make_lazy_function name : lazy_function =
-    (name, ref Pristine)
-
-  let get_lazy_function env ((name, lfr) : lazy_function) : int32 =
-    match !lfr with
-    | Pristine ->
-        let (fi, fill) = reserve_fun env name in
-        lfr := Declared (fi, fill);
-        fi
-    | Declared (fi, _) -> fi
-    | Defined fi -> fi
-    | Pending mk_fun ->
-        let (fi, fill) = reserve_fun env name in
-        lfr := Defined fi;
-        fill (mk_fun ());
-        fi
-
-  let fill_lazy_function ((name, lfr) : lazy_function) mk_fun =
-    match !lfr with
-    | Pristine -> lfr := Pending mk_fun
-    | Declared (fi, fill) -> lfr := Defined fi; fill (mk_fun ())
-    | Defined fi -> ()
-    | Pending mk_fun -> ()
+  let make_lazy_function env name : lazy_function =
+    Lib.AllocOnUse.make (fun () -> reserve_fun env name)
 
   let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
-      let lf = make_lazy_function name in
+      let lf = make_lazy_function env name in
       env.built_in_funcs := NameEnv.add name lf !(env.built_in_funcs);
       lf
     | Some lf -> lf
 
   let built_in (env : t) name : int32 =
-    get_lazy_function env (lookup_built_in env name)
+    Lib.AllocOnUse.use (lookup_built_in env name)
 
   let define_built_in (env : t) name mk_fun : unit =
-    fill_lazy_function (lookup_built_in env name) mk_fun
+    Lib.AllocOnUse.def  (lookup_built_in env name) mk_fun
 
   let get_return_arity (env : t) = env.return_arity
 
@@ -442,18 +418,14 @@ module E = struct
       } in
       let fi = reg env.func_imports (nr i) in
       let name = modname ^ "." ^ funcname in
-      assert (not (NameEnv.mem name !(env.built_in_funcs)));
-      env.built_in_funcs := NameEnv.add name (name, ref (Defined fi)) !(env.built_in_funcs);
+      assert (not (NameEnv.mem name !(env.named_imports)));
+      env.named_imports := NameEnv.add name fi !(env.named_imports);
     else assert false (* "add all imports before all functions!" *)
 
   let call_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
-    (* TODO: might be nicer to keep track of input fi's separate from built_in_funs *)
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-      | Some (_, lfr) -> begin match !lfr with
-        | Defined fi -> G.i (Call (nr fi))
-        | _ -> raise (Invalid_argument "call_import, unexpected fi")
-        end
+    match NameEnv.find_opt name !(env.named_imports) with
+      | Some fi -> G.i (Call (nr fi))
       | _ ->
         Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
@@ -808,8 +780,8 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
-    E.add_func_import env "rts" "ic_url_of_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
+    E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
@@ -2791,6 +2763,17 @@ module Blob = struct
     fun env get_x ->
       get_x ^^ payload_ptr_unskewed ^^
       get_x ^^ Heap.load_field len_field
+    )
+
+  let of_ptr_size env = Func.share_code2 env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
+    fun env get_ptr get_size ->
+      let (set_x, get_x) = new_local env "x" in
+      get_size ^^ alloc env ^^ set_x ^^
+      get_x ^^ payload_ptr_unskewed ^^
+      get_ptr ^^
+      get_size ^^
+      Heap.memcpy env ^^
+      get_x
     )
 
   let of_size_copy env get_size_fun copy_fun offset =
@@ -5602,11 +5585,10 @@ module FuncDec = struct
       )
     end else begin
       assert (control = Type.Returns);
-      let lf = E.make_lazy_function name in
-      let get_fi () = E.get_lazy_function pre_env lf in
-      ( Const.t_of_v (Const.Fun get_fi), fun env ae ->
+      let lf = E.make_lazy_function pre_env name in
+      ( Const.t_of_v (Const.Fun (fun () -> Lib.AllocOnUse.use lf)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
-        E.fill_lazy_function lf (fun () -> compile_local_function env ae restore_no_env args mk_body ret_tys at)
+        Lib.AllocOnUse.def lf (fun () -> compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
     end
 
@@ -7029,6 +7011,17 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
+    | SerializePrim ts, [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.serialize env ts ^^
+      Blob.of_ptr_size env
+
+    | DeserializePrim ts, [e] ->
+      StackRep.of_arity (List.length ts),
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.deserialize_from_blob false env ts
+
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -7291,12 +7284,12 @@ and compile_exp (env : E.t) ae exp =
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
-    (* CRC-check and strip "ic:" and checksum *)
+    (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_ic_url")
+      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_principal")
     (* The other direction *)
     | IcUrlOfBlob, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "ic_url_of_blob")
+      const_sr SR.Vanilla (E.call_import env "rts" "principal_of_blob")
 
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->

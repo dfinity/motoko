@@ -229,9 +229,9 @@ rule token mode = parse
   | "var" { VAR }
   | "while" { WHILE }
 
-  | "prim" as s { if mode = Privileged then PRIM else ID s }
+  | "prim" as s { if mode.privileged then PRIM else ID s }
   | id as s { ID s }
-  | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
+  | privileged_id as s { if mode.privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl* as s { COMMENT s }
   | "/*" as s {

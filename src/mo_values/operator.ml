@@ -151,7 +151,7 @@ let num_relop fnat (fnat8, fnat16, fnat32, fnat64) fint (fint8, fint16, fint32, 
 let ord_relop fnat fnats fint fints fwords ffloat fchar ftext fblob = function
   | T.Char -> fun v1 v2 -> Bool (fchar (as_char v1) (as_char v2))
   | T.Text -> fun v1 v2 -> Bool (ftext (as_text v1) (as_text v2))
-  | T.Blob | T.Principal -> fun v1 v2 -> Bool (ftext (as_text v1) (as_text v2))
+  | T.Blob | T.Principal -> fun v1 v2 -> Bool (ftext (as_blob v1) (as_blob v2))
   | t -> num_relop fnat fnats fint fints fwords ffloat t
 
 let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fblob fnull fbool = function

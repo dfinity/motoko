@@ -40,7 +40,7 @@ sub comma_and {
   }
 }
 
-for my $group (keys %stats) {
+for my $group (sort keys %stats) {
   my $gstats = $stats{$group};
   my $total = 0;
   my $any_change = 0;

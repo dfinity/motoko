@@ -53,6 +53,9 @@ struct
     let outer crc b =
       List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
     Seq.fold_left outer 0 (String.to_seq bs)
+
+  let crc32 (bs : string) : int32 =
+    Optint.(to_int32 (Checkseum.Crc32.digest_string bs 0 (String.length bs) zero))
 end
 
 module Hex =
@@ -91,6 +94,49 @@ struct
   let hex_of_bytes bytes : string =
     let open Stdlib.String in
     of_seq (Stdlib.Seq.flat_map (fun c -> to_seq (hex_of_char c)) (to_seq bytes))
+end
+
+module Base32 =
+struct
+
+  let decode input =
+    let len = String.length input in
+    let buf = Buffer.create (len / 2) in
+    let rec evac = function
+      | v, b when b >= 8 ->
+        let b' = b - 8 in
+        Buffer.add_uint8 buf (v lsr b');
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb in
+    let b32 a = function
+      | v when v >= 'A' && v <= 'Z' -> a lsl 5 lor (Char.code v - 65)
+      | v when v >= '2' && v <= '7' -> a lsl 5 lor (Char.code v - 24)
+      | '=' -> a
+      | _ -> raise (Invalid_argument "Char out of base32 alphabet") in
+      let pump (v, b) c = evac (b32 v c, b + 5) in
+    try
+      let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+      if b > 0 then ignore (evac (v lsl 7, b + 7));
+      Ok (Buffer.contents buf)
+    with Invalid_argument s -> Error s
+
+  let encode input =
+    let len = String.length input in
+    let buf = Buffer.create (len * 2) in
+    let b32 = function
+      | v when v <= 25 -> 65 + v
+      | v -> 24 + v in
+    let rec evac = function
+      | v, b when b >= 5 ->
+        let b' = b - 5 in
+        Buffer.add_uint8 buf (b32 (v lsr b'));
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb
+    in
+    let pump (v, b) c = evac (v lsl 8 lor (Char.code c land 0xFF), b + 8) in
+    let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+    if b > 0 then ignore (evac (v lsl 4, b + 4));
+    Buffer.contents buf
 end
 
 module String =
@@ -413,6 +459,56 @@ struct
   let lazy_value p f =
     (if not (is_fulfilled p) then fulfill p (f ()));
     value p
+end
+
+module AllocOnUse =
+struct
+  (*
+  A slighty more elaborate form of a promise: It describes something that can
+  be allocated, defined, and used (e.g. a Wasm function with a function id). It
+  will only be allocated if it is both defined and used. Cyclic use is supported,
+  e.g. the code that defines the thing will already be able to use it.
+
+  Beware: Calling def twice is allowed, the second one will be ignored.
+  *)
+
+  type ('a, 'b) alloc = unit -> ('a * ('b -> unit))
+
+  type ('a, 'b) t' =
+    | UnUsedUnDef of ('a, 'b) alloc
+    | UsedUnDef of 'a * ('b -> unit)
+    | UnUsedDef of ('a, 'b) alloc * (unit -> 'b)
+    | UsedDef of 'a
+  type ('a, 'b) t = ('a, 'b) t' ref
+
+  let make : ('a, 'b) alloc -> ('a, 'b) t =
+    fun alloc -> ref (UnUsedUnDef alloc)
+
+  let def : ('a, 'b) t -> (unit -> 'b) -> unit =
+    fun r mk -> match !r with
+      | UnUsedUnDef alloc ->
+        r := UnUsedDef (alloc, mk)
+      | UsedUnDef (a, fill) ->
+        r := UsedDef a;
+        fill (mk ());
+      | UnUsedDef _ | UsedDef _ ->
+        ()
+
+  let use : ('a, 'b) t -> 'a =
+    fun r -> match !r with
+      | UnUsedUnDef alloc ->
+        let (a, fill) = alloc () in
+        r := UsedUnDef (a, fill);
+        a
+      | UsedUnDef (a, fill) ->
+        a
+      | UnUsedDef (alloc, mk) ->
+        let (a, fill) = alloc () in
+        r := UsedDef a;
+        fill (mk ());
+        a
+      | UsedDef a ->
+        a
 end
 
 module FilePath =
