@@ -111,7 +111,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of (int32 Lazy.t) (* function pointer calculated upon first use *)
+    | Fun of (unit -> int32) (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
@@ -5259,7 +5259,7 @@ module StackRep = struct
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
   and materialize_const_v env = function
-    | Const.Fun get_fi -> Closure.static_closure env (Lazy.force get_fi)
+    | Const.Fun get_fi -> Closure.static_closure env (get_fi ())
     | Const.Message fi -> assert false
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
@@ -5586,7 +5586,7 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
-      ( Const.t_of_v (Const.Fun (lazy (Lib.AllocOnUse.use lf))), fun env ae ->
+      ( Const.t_of_v (Const.Fun (fun () -> Lib.AllocOnUse.use lf)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -6772,7 +6772,7 @@ and compile_exp (env : E.t) ae exp =
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-          G.i (Call (nr (Lazy.force mk_fi))) ^^
+          G.i (Call (nr (mk_fi ()))) ^^
           FakeMultiVal.load env (Lib.List.make return_arity I32Type)
        | _, Type.Local ->
           let (set_clos, get_clos) = new_local env "clos" in
