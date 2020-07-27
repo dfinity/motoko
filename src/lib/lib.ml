@@ -115,7 +115,7 @@ struct
       | _ -> raise (Invalid_argument "Char out of base32 alphabet") in
       let pump (v, b) c = evac (b32 v c, b + 5) in
     try
-      let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+      ignore (Seq.fold_left pump (0, 0) (String.to_seq input));
       Ok (Buffer.contents buf)
     with Invalid_argument s -> Error s
 
