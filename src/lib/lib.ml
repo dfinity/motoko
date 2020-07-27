@@ -602,6 +602,9 @@ struct
   let %test "crc8 empty" = CRC.crc8 "" = 0x00
   let %test "crc8 0000" = CRC.crc8 "\x00\x00" = 0x00
 
+  let%test "Base32.decode empty" = Base32.decode "" = Ok ""
+  let%test "Base32.decode 0000000000" = Base32.decode "AAAAAAA" = Ok "\x00\x00\x00\x00\x00"
+  let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
   (* FilePath tests *)
   let normalise_test_case input expected =
