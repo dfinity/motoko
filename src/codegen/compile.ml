@@ -1125,13 +1125,13 @@ module BitTagged = struct
 
      Note that Word16 and Word8 do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
-     thus lowest two bits are alwayas 0.
+     thus lowest two bits are always 0.
      All arithmetic is implemented directly on that representation, see
      module TaggedSmallWord.
   *)
   let if_tagged_scalar env retty is1 is2 =
     Func.share_code1 env "is_tagged_scalar" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* Low two bit not 0b…11 *)
+      (* Low two bits not 0b…11 *)
       get_x ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l
     ) ^^
     G.if_ retty is1 is2
