@@ -116,7 +116,6 @@ struct
       let pump (v, b) c = evac (b32 v c, b + 5) in
     try
       let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
-      if b > 0 then ignore (evac (v lsl 7, b + 7));
       Ok (Buffer.contents buf)
     with Invalid_argument s -> Error s
 
