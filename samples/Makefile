@@ -2,9 +2,7 @@
 
 # This works with bash
 
-MOC?=../src/moc
 MOC_FLAGS=-r -t -v
-
 
 SAMPLES:=$(basename $(wildcard *.mo))
 SUBDIRS:=$(shell ls -d */)
@@ -12,8 +10,8 @@ SUBDIRS:=$(shell ls -d */)
 all:
 	rm -f *.txt
 	@for sample in $(SAMPLES); do \
-	  echo "$(MOC) $(MOC_FLAGS) $$sample.mo >$$sample.txt 2>&1"; \
-	  $(MOC) $(MOC_FLAGS) $$sample.mo >$$sample.txt 2>&1; \
+	  echo "moc $(MOC_FLAGS) $$sample.mo >$$sample.txt 2>&1"; \
+	  moc $(MOC_FLAGS) $$sample.mo >$$sample.txt 2>&1; \
 	  cat $$sample.txt; \
 	done
 	@for dir in $(SUBDIRS); do \

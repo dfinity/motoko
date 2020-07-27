@@ -675,7 +675,7 @@ module Func = struct
     , E.get_local_names env1)
 
   let define_built_in env name params retty mk_body =
-    E.define_built_in env name (fun () -> of_body env params retty mk_body)
+    E.define_built_in env name (lazy (of_body env params retty mk_body))
 
   (* (Almost) transparently lift code into a function and call this function. *)
   (* Also add a hack to support multiple return values *)
@@ -5588,7 +5588,7 @@ module FuncDec = struct
       let lf = E.make_lazy_function pre_env name in
       ( Const.t_of_v (Const.Fun (fun () -> Lib.AllocOnUse.use lf)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
-        Lib.AllocOnUse.def lf (fun () -> compile_local_function env ae restore_no_env args mk_body ret_tys at)
+        Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
     end
 

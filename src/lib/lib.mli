@@ -101,7 +101,7 @@ sig
   type ('a, 'b) t
   val make : (unit -> ('a * ('b -> unit))) -> ('a, 'b) t
   val use : ('a, 'b) t -> 'a
-  val def : ('a, 'b) t -> (unit -> 'b) -> unit
+  val def : ('a, 'b) t -> ('b Lazy.t) -> unit
 end
 
 module Int :
