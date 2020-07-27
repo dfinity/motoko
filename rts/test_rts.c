@@ -228,11 +228,105 @@ int main () {
   }
 
   /*
-   * Testing principal decoding
+   * Testing crc32
+   */
+  printf("Testing crc32...\n");
+
+  extern uint32_t compute_crc32(blob_t);
+  assert(
+    compute_crc32(text_of_ptr_size("123456789", 9)) == 0xCBF43926,
+    "crc32 of 123456789 mismatch\n");
+
+  assert(
+    compute_crc32(text_of_ptr_size("abcdefghijklmnop", 16)) == 0x943AC093,
+    "crc32 of abcdefghijklmnop mismatch\n");
+
+  /*
+   * Testing base32
+   */
+  printf("Testing base32 encoding...\n");
+
+  assert(
+    text_compare(
+     base32_of_checksummed_blob(text_of_ptr_size("123456789", 9)),
+     text_of_ptr_size("ZP2DSJRRGIZTINJWG44DS", 21)
+    ) == 0,
+    "checksummed base32 of 123456789 mismatch\n");
+  assert(
+    text_compare(
+     base32_of_checksummed_blob(text_of_ptr_size("abcdefghijklmnop", 16)),
+     text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32)
+    ) == 0,
+    "checksummed base32 of abcdefghijklmnop mismatch\n");
+
+  printf("Testing base32 decoding...\n");
+
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("GEZDGNBVGY3TQOI", 15), NULL),
+     text_of_ptr_size("123456789", 9)
+    ) == 0,
+    "base32 to 123456789 mismatch\n");
+
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("MFRGGZDFMZTWQ2LKNNWG23TPOA", 26), NULL),
+     text_of_ptr_size("abcdefghijklmnop", 16)
+    ) == 0,
+    "base32 to abcdefghijklmnop mismatch\n");
+
+  uint32_t checksum = 0;
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("ZP2DSJRRGIZTINJWG44DS", 21), &checksum),
+     text_of_ptr_size("123456789", 9)
+    ) == 0,
+    "checksummed base32 to 123456789 mismatch\n");
+  assert(
+    0xCBF43926 == checksum,
+    "base32 to 123456789 checksum mismatch (0xCBF43926 == %u)\n", checksum);
+
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q", 32), &checksum),
+     text_of_ptr_size("abcdefghijklmnop", 16)
+    ) == 0,
+    "checksummed base32 to abcdefghijklmnop mismatch\n");
+  assert(
+    0x943AC093 == checksum,
+    "base32 to abcdefghijklmnop checksum mismatch (0x943AC093 == %u)\n", checksum);
+
+  static char hex[3] = { 0xAB, 0xCD, 0x01 };
+  assert(
+    text_compare(
+     base32_to_checksummed_blob(text_of_ptr_size("em77e-bvlzu-aq", 14), &checksum),
+     text_of_ptr_size(hex, sizeof hex)
+    ) == 0,
+    "checksummed base32 to em77e-bvlzu-aq mismatch\n");
+  assert(
+    0x233FF206 == checksum,
+    "base32 to em77e-bvlzu-aq checksum mismatch (0x233FF206 == %u)\n", checksum);
+
+  /*
+   * Testing principal encoding
+   */
+  printf("Testing principal encoding...\n");
+
+  /*
+  assert(
+    text_compare(
+     base32_to_principal(text_of_ptr_size("EM77EBVLZUAQ", 12)),
+     text_of_ptr_size("em77e-bvlzu-aq", 14)
+    ) == 0,
+    "principal name to em77e-bvlzu-aq conversion mismatch\n");
+   */
+
+  /*
+   * Testing princpal decoding
    */
   printf("Testing principal decoding...\n");
 
-  extern as_ptr blob_of_principal(as_ptr);
+  /*
   assert(
     text_compare(
      blob_of_principal(text_of_cstr("aaaaa-aa")),
@@ -246,6 +340,7 @@ int main () {
      text_of_ptr_size("\xC0\xFE\xFE\xD0\x0D",5)
     ) == 0,
     "bfozs-kwa73-7nadi not decoded correctly\n");
+   */
 
   return ret;
 }

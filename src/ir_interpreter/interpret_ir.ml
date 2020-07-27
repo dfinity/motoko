@@ -60,7 +60,7 @@ let env_of_scope flags flavor ae ve =
     actor_env = ae;
   }
 
-let context env = V.Text env.self
+let context env = V.Blob env.self
 
 (* Error handling *)
 
@@ -269,7 +269,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | BlobLit b -> V.Text b
+  | BlobLit b -> V.Blob b
 
 (* Expressions *)
 
@@ -414,11 +414,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k v1
       | BlobOfIcUrl, [v1] ->
         begin match Ic.Url.decode_principal (V.as_text v1) with
-          | Ok bytes -> k (V.Text bytes)
+          | Ok bytes -> k (V.Blob bytes)
           | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
         end
       | IcUrlOfBlob, [v1] ->
-        k (V.Text (Ic.Url.encode_principal (V.as_text v1)))
+        k (V.Text (Ic.Url.encode_principal (V.as_blob v1)))
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
@@ -451,6 +451,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Text env.self)
+      | SystemTimePrim, [] ->
+        k (V.Nat64 (Value.Nat64.of_int 42))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -701,6 +703,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
+  | BlobLit b, V.Blob b' -> b = b'
   | _ -> false
 
 and match_id id v : val_env =

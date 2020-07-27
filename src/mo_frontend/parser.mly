@@ -187,7 +187,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.typ_field> typ_field
 %type<Mo_def.Syntax.typ_bind> typ_bind
 %type<Mo_def.Syntax.typ list> typ_args
-%type<Source.region -> Mo_def.Syntax.pat> sort_pat_opt
+%type<Source.region -> Mo_def.Syntax.pat> pat_opt 
 %type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
 %type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
@@ -285,10 +285,10 @@ seplist1(X, SEP) :
   | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
   | QUERY { Type.Shared Type.Query @@ at $sloc }
 
-%inline sort_pat :
+%inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
-  | QUERY op=sort_pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+  | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
+  | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
 
@@ -702,7 +702,7 @@ pat_field :
   | x=id COLON t=typ
     { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
 
-sort_pat_opt :
+pat_opt :
   | p=pat_nullary
     { fun sloc -> p }
   | (* Empty *)
@@ -729,7 +729,7 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
-  | sp=sort_pat FUNC xf=id_opt
+  | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
@@ -737,12 +737,12 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt
+  | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
-      in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+      in ClassD(sp, xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 

@@ -61,7 +61,7 @@ let env_of_scope flags scope =
     async = false;
   }
 
-let context env = V.Text env.self
+let context env = V.Blob env.self
 
 (* Error handling *)
 
@@ -244,7 +244,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | BlobLit s -> V.Text s (* refine in #1611 *)
+  | BlobLit b -> V.Blob b
   | PreLit _ -> assert false
 
 
@@ -338,10 +338,6 @@ let text_len t at =
     k (V.Int (V.Nat.of_int (List.length (Wasm.Utf8.decode t))))
   )
 
-(* Helpers *)
-
-let local_sort_pat = { it = T.Local; at = Source.no_region; note = () }
-
 (* Expressions *)
 
 let check_call_conv exp call_conv =
@@ -404,9 +400,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_lit env lit)
   | ActorUrlE url ->
     interpret_exp env url (fun v1 ->
-        match Ic.Url.decode_principal (V.as_text v1) with
-        | Ok bytes -> k (V.Text bytes)
-        | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
+      match Ic.Url.decode_principal (V.as_text v1) with
+      | Ok bytes -> k (V.Blob bytes)
+      | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
@@ -436,8 +432,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjE (sort, fields) ->
-    interpret_obj env sort fields k
+  | ObjE (obj_sort, fields) ->
+    interpret_obj env obj_sort.it fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -456,13 +452,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
-          | "size" when T.eq exp1.note.note_typ T.text ->
-            text_len (* TODO: remove this hack with Blob value; https://github.com/dfinity-lab/motoko/issues/1611 *)
+          | "size" -> text_len
           | "chars" -> text_chars
+          | _ -> assert false
+        in k (f s exp.at)
+      | V.Blob b ->
+        let f = match id.it with
           | "size" -> blob_size
           | "bytes" -> blob_bytes
           | _ -> assert false
-        in k (f s exp.at)
+        in k (f b exp.at)
       | _ -> assert false
     )
   | AssignE (exp1, exp2) ->
@@ -486,11 +485,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | FuncE (name, sort_pat, _typbinds, pat, _typ, _sugar, exp2) ->
-    let f = interpret_func env name sort_pat pat (fun env' -> interpret_exp env' exp2) in
+  | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, exp2) ->
+    let f = interpret_func env name shared_pat pat (fun env' -> interpret_exp env' exp2) in
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
-      match sort_pat.it with
+      match shared_pat.it with
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
@@ -727,6 +726,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
+  | BlobLit b, V.Blob b' -> b = b'
   | PreLit _, _ -> assert false
   | _ -> false
 
@@ -785,8 +785,8 @@ and match_pat_fields pfs vs ve : val_env option =
     | None -> None
     end
 
-and match_sort_pat env sort_pat c =
-  match sort_pat.it, c with
+and match_shared_pat env shared_pat c =
+  match shared_pat.it, c with
   | T.Local, _ -> V.Env.empty
   | T.Shared (_, pat), v ->
     (match match_pat pat v with
@@ -798,11 +798,11 @@ and match_sort_pat env sort_pat c =
 
 (* Objects *)
 
-and interpret_obj env sort fields (k : V.value V.cont) =
-  let self = if sort.it = T.Actor then V.fresh_id () else env.self in
+and interpret_obj env obj_sort fields (k : V.value V.cont) =
+  let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
   let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals {env with self = self} ve_in in
-  interpret_exp_fields env' sort.it fields ve_ex k
+  let env' = adjoin_vals { env with self = self } ve_in in
+  interpret_exp_fields env' fields ve_ex k
 
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
   match fields with
@@ -813,13 +813,13 @@ and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
     let ve_in' = V.Env.adjoin ve_in ve' in
     declare_exp_fields fields' ve_ex' ve_in'
 
-and interpret_exp_fields env s fields ve (k : V.value V.cont) =
+and interpret_exp_fields env fields ve (k : V.value V.cont) =
   match fields with
   | [] ->
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
     k obj
   | {it = {dec; _}; _}::fields' ->
-    interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
+    interpret_dec env dec (fun _v -> interpret_exp_fields env fields' ve k)
 
 
 (* Blocks and Declarations *)
@@ -837,7 +837,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (id, _, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -865,10 +865,10 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (id, _typbinds, pat, _typ_opt, sort, id', fields) ->
-    let f = interpret_func env id.it local_sort_pat pat (fun env' k' ->
+  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
+    let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       let env'' = adjoin_vals env' (declare_id id') in
-      interpret_obj env'' sort fields (fun v' ->
+      interpret_obj env'' obj_sort.it fields (fun v' ->
         define_id env'' id' v';
         k' v'
       )
@@ -884,10 +884,10 @@ and interpret_decs env decs (k : V.value V.cont) =
   | dec::decs' ->
     interpret_dec env dec (fun _v -> interpret_decs env decs' k)
 
-and interpret_func env name sort_pat pat f c v (k : V.value V.cont) =
+and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" name (string_of_arg env v);
   let v1 = V.Obj (V.Env.singleton "caller" c) in
-  let ve1 = match_sort_pat env sort_pat v1 in
+  let ve1 = match_shared_pat env shared_pat v1 in
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list" (string_of_val env v)

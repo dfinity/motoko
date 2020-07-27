@@ -1,11 +1,8 @@
 /*
 Principal encoding and decoding with integrity checking.
 */
-
 #include "rts.h"
 
-typedef as_ptr blob_t; // a skewed pointer to a Blob heap object
-typedef as_ptr text_t; // a skewed pointer to a text heap object
 typedef unsigned char uint8_t;
 
 static void check_all_uppercase_hex(const char* s, const char* const e) {
@@ -56,14 +53,14 @@ static uint8_t compute_crc8(const char data[], size_t len) {
 export blob_t blob_of_principal(text_t t) {
   blob_t b0 = blob_of_text(t);
   size_t n = BLOB_LEN(b0);
-  if (n < 5) rts_trap_with("ic_blob_of_principal: too short for an ic: URL");
+  if (n < 5) rts_trap_with("blob_of_principal: too short for an ic: URL");
   const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
   check_ci_scheme(s);
   const char* hex = s + 3; // skip over "ic:"
   size_t hex_len = n - 5; // strip "ic:" and 2 last digits
   check_all_uppercase_hex(hex, e);
-  if (hex_len & 1) rts_trap_with("ic_blob_of_principal: Not an even number of hex digits");
+  if (hex_len & 1) rts_trap_with("blob_of_principal: Not an even number of hex digits");
   as_ptr r = alloc_blob(hex_len / 2);
   for (char *bytes = BLOB_PAYLOAD(r); hex_len; hex += 2, hex_len -= 2) {
     *bytes++ = (char)hex_byte(hex);
@@ -71,7 +68,7 @@ export blob_t blob_of_principal(text_t t) {
   uint8_t crc = compute_crc8(BLOB_PAYLOAD(r), (n-5)/2);
   uint8_t exp = hex_byte(e - 2);
   if (crc != exp) {
-    rts_trap_with("ic_blob_of_principal: CRC-8 mismatch");
+    rts_trap_with("blob_of_principal: CRC-8 mismatch");
   }
   return r;
 }
@@ -98,5 +95,26 @@ export text_t principal_of_blob(blob_t b) {
   uint8_t checksum = compute_crc8(BLOB_PAYLOAD(b), BLOB_LEN(b));
   *p++ = to_hex_digit(checksum >> 4);
   *p++ = to_hex_digit(checksum % 16);
+  return r;
+}
+
+// Convert a checksum-prepended base32 representation blob into the public
+// principal name format by hyphenating and lowercasing
+export blob_t base32_to_principal(blob_t b) {
+  size_t n = BLOB_LEN(b);
+  uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
+  blob_t r = alloc_blob((n + 4) / 5 * 6); // trailing hyphen we deal with later
+  uint8_t* dest = (uint8_t *)BLOB_PAYLOAD(r);
+  for (size_t i = 0; i < n; ++i) {
+    *dest++ = *data++;
+    // if uppercase, covert to lowercase
+    if (dest[-1] >= 'A' && dest[-1] <= 'Z')
+      dest[-1] += 'a' - 'A';
+    // if quintet done, add hyphen
+    if ((data - (uint8_t *)BLOB_PAYLOAD(b)) % 5 == 0 && i + 1 < n)
+      *dest++ = '-';
+  }
+  // adjust result length
+  BLOB_LEN(r) = dest - (uint8_t *)BLOB_PAYLOAD(r);
   return r;
 }

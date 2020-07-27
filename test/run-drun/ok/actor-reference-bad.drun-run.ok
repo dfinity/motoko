@@ -1,20 +1,20 @@
-ingress Canister Id: ic:0100000000000000000000000000000000012D
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: "ic:C0FEFED00D41":
 debug.print: "":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: too short for an ic: URL
 debug.print: "CI":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: too short for an ic: URL
 debug.print: "https://cern.ch":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: Wrong URL scheme (not 'ic:')
 debug.print: "ic:":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: too short for an ic: URL
 debug.print: "ic:c0fefed00d41":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: Not all uppercase hex digit
 debug.print: "ic:ABCDEFGH":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: Not all uppercase hex digit
 debug.print: "ic:C0FEFED00DE":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: Not an even number of hex digits
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: Not an even number of hex digits
 debug.print: "ic:C0FEFED00D42":
-debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: ic_url_decode: CRC-8 mismatch
+debug.print: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: CRC-8 mismatch
 ingress Completed: Canister: Reply: 0x4449444c0000

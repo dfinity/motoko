@@ -123,7 +123,7 @@ let rec check_typ env t =
      FuncT (ms, t1', t2') @@ t.at
   | OptT t -> OptT (check_typ env t) @@ t.at
   | VecT t -> VecT (check_typ env t) @@ t.at
-  | BlobT -> VecT (PrimT Nat8 @@ no_region) @@ t.at
+  | BlobT -> BlobT @@ t.at
   | RecordT fs ->
      let fs' = check_fields env fs in
      RecordT (List.sort compare_field fs') @@ t.at

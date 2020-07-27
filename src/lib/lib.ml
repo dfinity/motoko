@@ -55,7 +55,7 @@ struct
     Seq.fold_left outer 0 (String.to_seq bs)
 
   let crc32 (bs : string) : int32 =
-    raise (Invalid_argument "not yet implemented")
+    Optint.(to_int32 (Checkseum.Crc32.digest_string bs 0 (String.length bs) zero))
 end
 
 module Hex =
@@ -98,8 +98,44 @@ end
 
 module Base32 =
 struct
-  let decode input = raise (Invalid_argument "not implemented yet")
-  let encode input = raise (Invalid_argument "not implemented yet")
+  let decode input =
+    let len = String.length input in
+    let buf = Buffer.create (len / 2) in
+    let rec evac = function
+      | v, b when b >= 8 ->
+        let b' = b - 8 in
+        Buffer.add_uint8 buf (v lsr b');
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb in
+    let b32 a = function
+      | v when v >= 'A' && v <= 'Z' -> a lsl 5 lor (Char.code v - 65)
+      | v when v >= '2' && v <= '7' -> a lsl 5 lor (Char.code v - 24)
+      | '=' -> a
+      | _ -> raise (Invalid_argument "Char out of base32 alphabet") in
+      let pump (v, b) c = evac (b32 v c, b + 5) in
+    try
+      let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+      if b > 0 then ignore (evac (v lsl 7, b + 7));
+      Ok (Buffer.contents buf)
+    with Invalid_argument s -> Error s
+
+  let encode input =
+    let len = String.length input in
+    let buf = Buffer.create (len * 2) in
+    let b32 = function
+      | v when v <= 25 -> 65 + v
+      | v -> 24 + v in
+    let rec evac = function
+      | v, b when b >= 5 ->
+        let b' = b - 5 in
+        Buffer.add_uint8 buf (b32 (v lsr b'));
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb
+    in
+    let pump (v, b) c = evac (v lsl 8 lor (Char.code c land 0xFF), b + 8) in
+    let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+    if b > 0 then ignore (evac (v lsl 4, b + 4));
+    Buffer.contents buf
 end
 
 module String =

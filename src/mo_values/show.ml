@@ -54,7 +54,7 @@ let rec show_val t v =
   | T.(Prim Word64), Value.Word64 i -> "0x" ^ Value.Word64.to_string i
   | T.(Prim Float), Value.Float i -> Value.Float.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
-  | T.(Prim Blob), Value.Text s -> "\"" ^ Value.Blob.escape s ^ "\""
+  | T.(Prim Blob), Value.Blob s -> "\"" ^ Value.Blob.escape s ^ "\""
   | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"
   | T.(Prim Principal), Value.Text s -> Ic.Url.encode_principal s
   | T.(Prim Null), Value.Null -> "null"
