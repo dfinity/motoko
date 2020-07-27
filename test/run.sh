@@ -24,7 +24,6 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-export MO_LD
 WASMTIME_OPTIONS="--disable-cache --cranelift"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
@@ -97,7 +96,6 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
-  if grep -q "^//SKIP $(uname)$" $(basename $file); then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -231,16 +229,18 @@ do
   "mo")
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
+    moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
+    moc="env $moc_extra_env $mo $moc_extra_flags"
 
     # Typecheck
-    run tc moc $moc_extra_flags --check $base.mo
+    run tc $moc --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl moc $moc_extra_flags --idl $base.mo -o $out/$base.did
+        run idl $moc --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -254,10 +254,10 @@ do
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run moc $moc_extra_flags --hide-warnings -r $base.mo
+          run run $moc --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir moc $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -267,7 +267,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low moc $moc_extra_flags --hide-warnings -r -iR $base.mo
+          run run-low $moc --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -300,13 +300,13 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp moc $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref moc $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $moc $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
-          run comp moc $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp moc $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm

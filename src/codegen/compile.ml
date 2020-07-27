@@ -782,8 +782,8 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
-    E.add_func_import env "rts" "ic_url_of_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
+    E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
@@ -2767,6 +2767,17 @@ module Blob = struct
       get_x ^^ Heap.load_field len_field
     )
 
+  let of_ptr_size env = Func.share_code2 env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
+    fun env get_ptr get_size ->
+      let (set_x, get_x) = new_local env "x" in
+      get_size ^^ alloc env ^^ set_x ^^
+      get_x ^^ payload_ptr_unskewed ^^
+      get_ptr ^^
+      get_size ^^
+      Heap.memcpy env ^^
+      get_x
+    )
+
   let of_size_copy env get_size_fun copy_fun offset =
     let (set_len, get_len) = new_local env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
@@ -3245,6 +3256,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
+      E.add_func_import env "ic0" "time" [] [I64Type];
       ()
 
   let system_imports env =
@@ -3416,7 +3428,14 @@ module Dfinity = struct
           (fun env -> system_call env "ic0" "canister_self_copy") 0l
       )
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
+      E.trap_with env "cannot get self-actor-reference when running locally"
+
+  let get_system_time env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      system_call env "ic0" "time"
+    | _ ->
+      E.trap_with env "cannot get system time when running locally"
 
   let caller env =
     SR.Vanilla,
@@ -6993,6 +7012,16 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
+    | SerializePrim ts, [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.serialize env ts ^^
+      Blob.of_ptr_size env
+
+    | DeserializePrim ts, [e] ->
+      StackRep.of_arity (List.length ts),
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.deserialize_from_blob false env ts
 
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
@@ -7131,6 +7160,12 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_log"
 
+    (* Other prims, nullary *)
+
+    | SystemTimePrim, [] ->
+      SR.UnboxedWord64,
+      Dfinity.get_system_time env
+
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
       E.call_import env "rts" "version"
@@ -7250,12 +7285,12 @@ and compile_exp (env : E.t) ae exp =
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
-    (* CRC-check and strip "ic:" and checksum *)
+    (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_ic_url")
+      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_principal")
     (* The other direction *)
     | IcUrlOfBlob, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "ic_url_of_blob")
+      const_sr SR.Vanilla (E.call_import env "rts" "principal_of_blob")
 
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->

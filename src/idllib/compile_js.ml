@@ -61,6 +61,7 @@ let infer_rec env_list =
     match t.it with
     | PrimT _ -> ()
     | PrincipalT -> ()
+    | BlobT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -72,7 +73,7 @@ let infer_rec env_list =
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
     | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
-    | preT -> assert false
+    | PreT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
   in

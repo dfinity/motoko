@@ -139,6 +139,7 @@ end
 module CRC :
 sig
   val crc8 : string -> int
+  val crc32 : string -> int32
 end
 
 module Hex :
@@ -150,6 +151,12 @@ sig
   val hex_of_byte  : int -> string
   val hex_of_char  : char -> string
   val hex_of_bytes : string -> string
+end
+
+module Base32 :
+sig
+  val decode : string -> (string, string) result
+  val encode : string -> string
 end
 
 module FilePath :

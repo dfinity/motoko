@@ -520,29 +520,25 @@ type ErrorCode = {
 };
 
 // creation and inspection of abstract error
-func error(message : Text) : Error = {
+func error(message : Text) : Error {
   let e = (#canister_reject, message);
-  ((prim "cast" : (ErrorCode, Text) -> Error) e)
+  (prim "cast" : (ErrorCode, Text) -> Error) e
 };
-func errorCode(e : Error) : ErrorCode = {
+func errorCode(e : Error) : ErrorCode =
   ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
-};
-func errorMessage(e : Error) : Text = {
+func errorMessage(e : Error) : Text =
   ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
-};
+
+// Time
+
+func time() : Nat64 = (prim "time" : () -> Nat64) ();
 
 // Principal
 
-func blobOfPrincipal(id : Principal) : Blob = {
-  ((prim "cast" : Principal -> Blob) id)
-};
+func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
 
-func principalOfActor(act : actor {}) : Principal = {
-  ((prim "cast" : (actor {}) -> Principal) act)
-};
+func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
-func caller() : Principal = {
-  ((prim "caller" : () -> Principal) ())
-};
+func caller() : Principal = (prim "caller" : () -> Principal) ();
 
 |}
