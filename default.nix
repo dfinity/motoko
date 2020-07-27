@@ -70,7 +70,8 @@ let commonBuildInputs = pkgs:
   ]; in
 
 let darwin_standalone =
-  let common = import nixpkgs.sources.common { inherit (nixpkgs) system; }; in
+  let common = import (nixpkgs.sources.common + "/pkgs")
+    { inherit (nixpkgs) system; repoRoot = ./.; }; in
   common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin:
