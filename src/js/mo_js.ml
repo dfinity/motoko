@@ -41,7 +41,9 @@ let js_check source =
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
-    | _ -> Flags.WasmMode
+    | "wasm" -> Flags.WasmMode
+    | "dfinity" -> Flags.ICMode
+    | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
   match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with
   | Ok (module_, msgs) ->
