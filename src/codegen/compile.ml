@@ -1151,30 +1151,30 @@ module BitTagged = struct
 
   (* 64 bit numbers *)
 
-  let lower_bound = Int64.(neg (shift_left 1L 30))
-  let upper_bound = Int64.shift_left 1L 30
-
   (* static *)
   let can_tag_const (n : int64) =
+    let lower_bound = Int64.(neg (shift_left 1L 30)) in
+    let upper_bound = Int64.shift_left 1L 30 in
     lower_bound <= n && n < upper_bound
 
   let tag_const i = Int32.shift_left (Int64.to_int32 i) 1
 
 
   (* dynamic *)
-  let can_tag_i64 env =
+  let if_can_tag_i64 env retty is1 is2 =
     Func.share_code1 env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
-      compile_const_64 lower_bound ^^ get_x ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
-      get_x ^^ compile_const_64 upper_bound ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-      G.i (Binary (Wasm.Values.I32 I64Op.And))
-    )
-  let can_tag_u64 env =
-    Func.share_code1 env "can_tag_u64" ("x", I64Type) [I32Type] (fun env get_x ->
-      get_x ^^ compile_const_64 upper_bound ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtU))
-    )
+      (* checks that all but the low 30 bits are either all 0 or all 1 *)
+      get_x ^^ compile_shl64_const 1L ^^
+      get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
+      compile_shrU64_const 31L ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+    ) ^^
+    G.if_ retty is1 is2
+
+  let if_can_tag_u64 env retty is1 is2 =
+    compile_shrU64_const 30L ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    G.if_ retty is1 is2
 
   let tag =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
@@ -1186,19 +1186,18 @@ module BitTagged = struct
 
   (* 32 bit numbers, dynamic *)
 
-  let can_tag_i32 env =
+  let if_can_tag_i32 env retty is1 is2 =
     Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      compile_unboxed_const (Int64.to_int32 lower_bound) ^^ get_x ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
-      get_x ^^ compile_unboxed_const (Int64.to_int32 upper_bound) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.And))
-    )
-  let can_tag_u32 env =
-    Func.share_code1 env "can_tag_u32" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ compile_unboxed_const (Int64.to_int32 upper_bound) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU))
-    )
+      (* checks that all but the low 30 bits are either all 0 or all 1 *)
+      get_x ^^ compile_shl_const 1l ^^
+      get_x ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+      compile_shrU_const 31l
+    ) ^^
+    G.if_ retty is2 is1 (* NB: swapped branches *)
+
+  let if_can_tag_u32 env retty is1 is2 =
+    compile_shrU_const 30l ^^
+    G.if_ retty is2 is1 (* NB: swapped branches *)
 
   let tag_i32 = compile_shl_const 1l
   let untag_i32 env = compile_shrS_const 1l
@@ -1486,8 +1485,7 @@ module BoxedWord64 = struct
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ BitTagged.can_tag_i64 env ^^
-      G.if_ [I32Type]
+      get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
         (get_n ^^ BitTagged.tag)
         (compile_box env get_n)
     )
@@ -2022,8 +2020,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let extend64 = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
   (* A variant of BitTagged.can_tag that works on right-0-tagged 64 bit numbers *)
-  let can_tag_padded env =
-    compile_shrS64_const 1L ^^ BitTagged.can_tag_i64 env
+  let if_can_tag_padded env retty is1 is2 =
+    compile_shrS64_const 1L ^^ BitTagged.if_can_tag_i64 env retty is1 is2
 
   (* right-0-padded signed i64 to tagged scalar *)
   let tag_padded = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
@@ -2051,8 +2049,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_a ^^ extend64 ^^
             get_b ^^ extend64 ^^
             fast env ^^ set_res64 ^^
-            get_res64 ^^ can_tag_padded env ^^
-            G.if_ [I32Type]
+            get_res64 ^^
+            if_can_tag_padded env [I32Type]
               (get_res64 ^^ tag_padded)
               (get_res64 ^^ box64 env)
           end
@@ -2105,12 +2103,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
         G.if_ [I32Type]
           begin
-            get_a64 ^^
-            get_b64 ^^
-            Word64.compile_unsigned_pow env ^^
-            set_res64 ^^
-            get_res64 ^^ BitTagged.can_tag_i64 env ^^
-            G.if_ [I32Type]
+            get_a64 ^^ get_b64 ^^ Word64.compile_unsigned_pow env ^^ set_res64 ^^
+            get_res64 ^^ BitTagged.if_can_tag_i64 env [I32Type]
               (get_res64 ^^ BitTagged.tag)
               (get_res64 ^^ Num.from_word64 env)
           end
@@ -2315,32 +2309,28 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let from_signed_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^
-    get_a ^^ BitTagged.can_tag_i32 env ^^
-    G.if_ [I32Type]
+    get_a ^^ BitTagged.if_can_tag_i32 env  [I32Type]
       (get_a ^^ BitTagged.tag_i32)
       (get_a ^^ Num.from_signed_word32 env)
 
   let from_signed_word64 env =
     let set_a, get_a = new_local64 env "a" in
     set_a ^^
-    get_a ^^ BitTagged.can_tag_i64 env ^^
-    G.if_ [I32Type]
+    get_a ^^ BitTagged.if_can_tag_i64 env [I32Type]
       (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_signed_word64 env)
 
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^
-    get_a ^^ BitTagged.can_tag_u32 env ^^
-    G.if_ [I32Type]
+    get_a ^^ BitTagged.if_can_tag_u32 env [I32Type]
       (get_a ^^ BitTagged.tag_i32)
       (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
   let from_word64 env =
     let set_a, get_a = new_local64 env "a" in
     set_a ^^
-    get_a ^^ BitTagged.can_tag_u64 env ^^
-    G.if_ [I32Type]
+    get_a ^^ BitTagged.if_can_tag_u64 env [I32Type]
       (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_word64 env)
 
