@@ -57,13 +57,13 @@ let err_unrecognized_url msgs at url msg =
       text = Printf.sprintf "cannot parse import URL \"%s\": %s" url msg
     }
 
-let err_unrecognized_alias_url msgs alias url msg =
+let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
   add_msg msgs {
       sev = Error;
       at = no_region;
       cat = "actor-alias";
-      text = Printf.sprintf "cannot parse URL \"%s\" for actor alias \"%s\": %s" url alias msg
+      text = Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg
     }
 
 let err_actor_import_without_idl_path msgs at =
@@ -202,10 +202,10 @@ let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath 
   else (err_package_file_does_not_exist msgs f pname;"")
 
 (* Resolve the argument to --actor-alias. Check eagerly for well-formedness *)
-let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
+let resolve_alias_principal (msgs:Diag.msg_store) (alias:string) (f:string) : blob =
   match Url.decode_principal f with
   | Ok bytes -> bytes
-  | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
+  | Error msg -> err_unrecognized_alias msgs alias f msg; ""
 
 
 let prog_imports (p : prog): (url * resolved_import ref * region) list =
@@ -225,8 +225,8 @@ type aliases = blob M.t
 let resolve_packages : package_urls -> package_map Diag.result = fun purls ->
   Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs) purls))
 
-let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_urls ->
-  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_url msgs) alias_urls))
+let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_principals ->
+  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_principal msgs) alias_principals))
 
 type flags = {
   package_urls : package_urls;
