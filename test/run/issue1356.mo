@@ -46,8 +46,9 @@ func match16(n : Word16) : Bool = switch n { case 42 true; case _ false };
 // CHECK-NEXT:   i32.eq
 // N.B.: 2752512 == 0x002a0000 == 42 << 16
 
-assert (matchNat(1073741823));
-assert (matchInt(-1073741824));
-assert (matchInt(1073741823));
-assert (match8(42));
+// NB: reverse order, so that things appear in order
 assert (match16(42));
+assert (match8(42));
+assert (matchInt(1073741823));
+assert (matchInt(-1073741824));
+assert (matchNat(1073741823));

@@ -7,6 +7,7 @@ func go () {
   };
   foobaz1();
 };
+go();
 
 let foobaz2 = {
   func fuzz2() = ();
@@ -26,13 +27,13 @@ foobaz2();
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar2
 
-// CHECK-LABEL: (func $go
-// CHECK-NOT: call_indirect
-// CHECK: call $foobar1
-
 // CHECK-LABEL: (func $foobar2
 // CHECK-NOT: call_indirect
 // CHECK: call $fuzz2
+
+// CHECK-LABEL: (func $go
+// CHECK-NOT: call_indirect
+// CHECK: call $foobar1
 
 // CHECK-LABEL: (func $foobar1
 // CHECK-NOT: call_indirect

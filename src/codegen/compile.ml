@@ -111,7 +111,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of int32
+    | Fun of (unit -> int32) (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
@@ -220,10 +220,7 @@ module E = struct
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
-  type lazy_built_in =
-    | Declared of int32 * (func_with_names -> unit)
-    | Defined of int32
-    | Pending of (unit -> func_with_names)
+  type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
   type t = {
     (* Global fields *)
     (* Static *)
@@ -242,9 +239,10 @@ module E = struct
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
-    globals : (global * string) list ref;
+    globals : (global Lib.Promise.t * string) list ref;
     global_names : int32 NameEnv.t ref;
-    built_in_funcs : lazy_built_in NameEnv.t ref;
+    named_imports : int32 NameEnv.t ref;
+    built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
@@ -278,6 +276,7 @@ module E = struct
     end_of_table = ref 0l;
     globals = ref [];
     global_names = ref NameEnv.empty;
+    named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
@@ -327,17 +326,24 @@ module E = struct
     let gi = reg env.globals (g, name) in
     env.global_names := NameEnv.add name gi !(env.global_names)
 
-  let add_global32 (env : t) name mut init =
-    add_global env name (
-      nr { gtype = GlobalType (I32Type, mut);
+  let add_global32_delayed (env : t) name mut : int32 -> unit =
+    let p = Lib.Promise.make () in
+    add_global env name p;
+    (fun init ->
+      Lib.Promise.fulfill p (nr {
+        gtype = GlobalType (I32Type, mut);
         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I32 init)))))
       })
+    )
+
+  let add_global32 (env : t) name mut init =
+    add_global32_delayed env name mut init
 
   let add_global64 (env : t) name mut init =
-    add_global env name (
+    add_global env name (Lib.Promise.make_fulfilled (
       nr { gtype = GlobalType (I64Type, mut);
         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
-      })
+      }))
 
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
@@ -355,7 +361,7 @@ module E = struct
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
-  let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
+  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) !(env.globals)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -369,29 +375,22 @@ module E = struct
     fill (f, local_names);
     fi
 
-  let built_in (env : t) name : int32 =
+  let make_lazy_function env name : lazy_function =
+    Lib.AllocOnUse.make (fun () -> reserve_fun env name)
+
+  let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
-        let (fi, fill) = reserve_fun env name in
-        env.built_in_funcs := NameEnv.add name (Declared (fi, fill)) !(env.built_in_funcs);
-        fi
-    | Some (Declared (fi, _)) -> fi
-    | Some (Defined fi) -> fi
-    | Some (Pending mk_fun) ->
-        let (fi, fill) = reserve_fun env name in
-        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
-        fill (mk_fun ());
-        fi
+      let lf = make_lazy_function env name in
+      env.built_in_funcs := NameEnv.add name lf !(env.built_in_funcs);
+      lf
+    | Some lf -> lf
+
+  let built_in (env : t) name : int32 =
+    Lib.AllocOnUse.use (lookup_built_in env name)
 
   let define_built_in (env : t) name mk_fun : unit =
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-    | None ->
-        env.built_in_funcs := NameEnv.add name (Pending mk_fun) !(env.built_in_funcs);
-    | Some (Declared (fi, fill)) ->
-        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
-        fill (mk_fun ());
-    | Some (Defined fi) ->  ()
-    | Some (Pending mk_fun) -> ()
+    Lib.AllocOnUse.def  (lookup_built_in env name) mk_fun
 
   let get_return_arity (env : t) = env.return_arity
 
@@ -420,14 +419,14 @@ module E = struct
       } in
       let fi = reg env.func_imports (nr i) in
       let name = modname ^ "." ^ funcname in
-      assert (not (NameEnv.mem name !(env.built_in_funcs)));
-      env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
+      assert (not (NameEnv.mem name !(env.named_imports)));
+      env.named_imports := NameEnv.add name fi !(env.named_imports);
     else assert false (* "add all imports before all functions!" *)
 
   let call_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-      | Some (Defined fi) -> G.i (Call (nr fi))
+    match NameEnv.find_opt name !(env.named_imports) with
+      | Some fi -> G.i (Call (nr fi))
       | _ ->
         Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
@@ -439,7 +438,7 @@ module E = struct
   let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
 
   let reserve_static_memory (env : t) size : int32 =
-    if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
+    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -677,7 +676,7 @@ module Func = struct
     , E.get_local_names env1)
 
   let define_built_in env name params retty mk_body =
-    E.define_built_in env name (fun () -> of_body env params retty mk_body)
+    E.define_built_in env name (lazy (of_body env params retty mk_body))
 
   (* (Almost) transparently lift code into a function and call this function. *)
   (* Also add a hack to support multiple return values *)
@@ -782,8 +781,8 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
-    E.add_func_import env "rts" "ic_url_of_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
+    E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
@@ -2745,6 +2744,17 @@ module Blob = struct
     fun env get_x ->
       get_x ^^ payload_ptr_unskewed ^^
       get_x ^^ Heap.load_field len_field
+    )
+
+  let of_ptr_size env = Func.share_code2 env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
+    fun env get_ptr get_size ->
+      let (set_x, get_x) = new_local env "x" in
+      get_size ^^ alloc env ^^ set_x ^^
+      get_x ^^ payload_ptr_unskewed ^^
+      get_ptr ^^
+      get_size ^^
+      Heap.memcpy env ^^
+      get_x
     )
 
   let of_size_copy env get_size_fun copy_fun offset =
@@ -5041,7 +5051,7 @@ module GC = struct
         get_begin_from_space get_begin_to_space get_end_to_space
   )
 
-  let register env static_roots (end_of_static_space : int32) =
+  let register env static_roots =
     Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
       Heap.get_heap_ptr env ^^
       Heap.get_heap_base env ^^
@@ -5230,7 +5240,7 @@ module StackRep = struct
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
   and materialize_const_v env = function
-    | Const.Fun fi -> Closure.static_closure env fi
+    | Const.Fun get_fi -> Closure.static_closure env (get_fi ())
     | Const.Message fi -> assert false
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
@@ -5548,17 +5558,18 @@ module FuncDec = struct
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
-    let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
+      let (fi, fill) = E.reserve_fun pre_env name in
       ( Const.t_of_v (Const.Message fi), fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( Const.t_of_v (Const.Fun fi), fun env ae ->
+      let lf = E.make_lazy_function pre_env name in
+      ( Const.t_of_v (Const.Fun (fun () -> Lib.AllocOnUse.use lf)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
-        fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
+        Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
     end
 
@@ -6738,11 +6749,11 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity return_arity,
       let fun_sr, code1 = compile_exp env ae e1 in
       begin match fun_sr, sort with
-       | SR.Const (_, Const.Fun fi), _ ->
+       | SR.Const (_, Const.Fun mk_fi), _ ->
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-          G.i (Call (nr fi)) ^^
+          G.i (Call (nr (mk_fi ()))) ^^
           FakeMultiVal.load env (Lib.List.make return_arity I32Type)
        | _, Type.Local ->
           let (set_clos, get_clos) = new_local env "clos" in
@@ -6981,6 +6992,17 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
+    | SerializePrim ts, [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.serialize env ts ^^
+      Blob.of_ptr_size env
+
+    | DeserializePrim ts, [e] ->
+      StackRep.of_arity (List.length ts),
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.deserialize_from_blob false env ts
+
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -7243,12 +7265,12 @@ and compile_exp (env : E.t) ae exp =
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
-    (* CRC-check and strip "ic:" and checksum *)
+    (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_ic_url")
+      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_principal")
     (* The other direction *)
     | IcUrlOfBlob, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "ic_url_of_blob")
+      const_sr SR.Vanilla (E.call_import env "rts" "principal_of_blob")
 
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->
@@ -7932,11 +7954,16 @@ and conclude_module env start_fi_o =
   FuncDec.export_async_method env;
 
   let static_roots = GC.store_static_roots env in
+  (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
-  E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
+  let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
+
+  GC.register env static_roots;
+
+  set_heap_base (E.get_end_of_static_memory env);
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
@@ -7949,9 +7976,6 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
-
-
-  GC.register env static_roots (E.get_end_of_static_memory env);
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in

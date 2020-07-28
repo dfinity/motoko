@@ -4,6 +4,7 @@ func go () {
   let tup = (func foobar1a() = (), 5);
   tup.0();
 };
+go();
 
 let (foobar2, _) = (func foobar2() = (), 5);
 foobar2();
