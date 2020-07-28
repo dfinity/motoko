@@ -601,7 +601,8 @@ struct
   let %test "crc8 0000" = CRC.crc8 "\x00\x00" = 0x00
 
   let%test "Base32.decode empty" = Base32.decode "" = Ok ""
-  let%test "Base32.decode 0000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
+  let%test "Base32.decode 0000000000" = Base32.decode "AAAAAAA" = Ok "\x00\x00\x00\x00"
+  let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
   let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
   (* FilePath tests *)

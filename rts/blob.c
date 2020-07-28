@@ -166,12 +166,8 @@ static inline void dec_stash(struct Pump* pump, uint8_t data) {
   }
 }
 
-// Decode a checksum-prepended base32 blob into text representation
-// `checksum` is filled in when not NULL and blob length at least 7
-// (disregarding fillers/padding)
-// Verifying that `checksum` is a correct crc32 needs to be done separately.
-//
-export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
+// Decode a base32 encoded blob into raw bytes
+export blob_t base32_to_blob(blob_t b) {
   size_t n = BLOB_LEN(b);
   uint8_t* data = (uint8_t *)BLOB_PAYLOAD(b);
   blob_t r = alloc_blob((n + 7) / 8 * 5); // padding we deal with later
@@ -179,13 +175,6 @@ export blob_t base32_to_checksummed_blob(blob_t b, uint32_t* checksum) {
 
   struct Pump pump = { .inp_gran = 5, .out_gran = 8, .dest = dest };
   for (size_t i = 0; i < n; ++i) {
-    if (checksum && pump.dest - dest == sizeof *checksum) {
-      // checksum is deserialised as big-endian
-      *checksum = dest[0] << 24 | dest[1] << 16 | dest[2] << 8 | dest[3];
-      checksum = NULL;
-      // fill blob from start
-      pump.dest = dest = (uint8_t *)BLOB_PAYLOAD(r);
-    }
     dec_stash(&pump, *data++);
   }
   // adjust resulting blob length

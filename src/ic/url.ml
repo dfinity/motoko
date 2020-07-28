@@ -33,8 +33,8 @@ let decode_principal principal : (string, string) result =
     if length bytes < 4 then Error "principal too short" else
     let payload = sub bytes 4 (length bytes - 4) in
     let expected = encode_principal payload in
-    if principal != expected
-    then Error (Printf.sprintf "invalid princpial id. Did you mean %S?" expected)
+    if principal <> expected
+    then Error (Printf.sprintf "invalid principal. Did you mean %S?" expected)
     else Ok payload
 
 type parsed =
