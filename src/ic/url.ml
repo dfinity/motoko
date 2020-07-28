@@ -69,7 +69,7 @@ let parse (f: string) : (parsed, string) result =
     end
   | None ->
     match Lib.String.chop_prefix "ic:" f with
-    | Some principal-> begin match decode_principal f with
+    | Some principal-> begin match decode_principal principal with
       | Ok bytes -> Ok (Ic bytes)
       | Error err -> Error err
       end

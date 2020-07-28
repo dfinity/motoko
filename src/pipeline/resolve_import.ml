@@ -104,16 +104,6 @@ let err_alias_not_defined msgs at alias =
     text = Printf.sprintf "canister alias \"%s\" not defined" alias
   }
 
-let err_alias_wrong_scheme msgs at alias url =
-  let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at;
-    cat = "import";
-    text = Printf.sprintf "canister alias \"%s\" target \"%s\" is not \"ic:\" url" alias url
-  }
-
-
 let err_package_file_does_not_exist msgs f pname =
   let open Diag in
   add_msg msgs {
@@ -213,9 +203,8 @@ let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath 
 
 (* Resolve the argument to --actor-alias. Check eagerly for well-formedness *)
 let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
-  match Url.parse f with
-  | Ok (Url.Ic bytes) -> bytes
-  | Ok _ -> err_alias_wrong_scheme msgs no_region alias f; ""
+  match Url.decode_principal f with
+  | Ok bytes -> bytes
   | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
 
 
