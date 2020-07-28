@@ -115,8 +115,7 @@ struct
       | _ -> raise (Invalid_argument "Char out of base32 alphabet") in
       let pump (v, b) c = evac (b32 v c, b + 5) in
     try
-      let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
-      if b > 0 then ignore (evac (v lsl 7, b + 7));
+      ignore (Seq.fold_left pump (0, 0) (String.to_seq input));
       Ok (Buffer.contents buf)
     with Invalid_argument s -> Error s
 
@@ -602,6 +601,9 @@ struct
   let %test "crc8 empty" = CRC.crc8 "" = 0x00
   let %test "crc8 0000" = CRC.crc8 "\x00\x00" = 0x00
 
+  let%test "Base32.decode empty" = Base32.decode "" = Ok ""
+  let%test "Base32.decode 0000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
+  let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
   (* FilePath tests *)
   let normalise_test_case input expected =
