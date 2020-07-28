@@ -1,0 +1,11 @@
+{
+  scheduler: {
+    scheduler_cores: 1,
+    round_gas_max: 10000000000000,
+    exec_gas: 1000000000000,
+  },
+  metrics: {
+    exporter: { file: "/dev/fd/222" }
+  },
+}
+

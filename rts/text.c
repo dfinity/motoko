@@ -21,8 +21,6 @@ From here on, there are stretch goals like:
 
 #include "rts.h"
 
-typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
-
 /*
 Layout of a concat node:
 

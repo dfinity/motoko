@@ -158,6 +158,9 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Char) ->
     define_show t (invoke_prelude_show "@text_of_Char" t (argE t)),
     []
+  | T.(Prim Blob) ->
+    define_show t (invoke_prelude_show "@text_of_Blob" t (argE t)),
+    []
   | T.(Prim Principal) ->
     define_show t (primE IcUrlOfBlob [primE T.(CastPrim (Prim Principal, Prim Blob)) [argE t]]),
     []
@@ -302,13 +305,14 @@ and t_exp' env = function
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
   | ActorE (ds, fields, {pre; post}, typ) ->
-    (* compare with transform below *)
+    (* Until Actor expressions become their own units,
+       we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
+    let pre' = t_exp env1 pre in
+    let post' = t_exp env1 post in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields,
-      {pre = t_exp env1 pre; post = t_exp env1 post},
-      typ)
+    ActorE (decls @ ds', fields, {pre = pre'; post = post'}, typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -329,17 +333,21 @@ and t_decs env decs = List.map (t_dec env) decs
 
 and t_block env (ds, exp) = (t_decs env ds, t_exp env exp)
 
-and t_prog env (prog, flavor) = (t_block env prog, flavor)
-
+and t_comp_unit = function
+  | ProgU ds ->
+    let env = empty_env () in
+    let ds' = t_decs env ds in
+    let decls = show_decls !(env.params) in
+    ProgU (decls @ ds')
+  | ActorU (ds, fields, {pre; post}, typ) ->
+    let env = empty_env () in
+    let ds' = t_decs env ds in
+    let pre' = t_exp env pre in
+    let post' = t_exp env post in
+    let decls = show_decls !(env.params) in
+    ActorU (decls @ ds', fields, {pre = pre'; post = post'}, typ)
 
 (* Entry point for the program transformation *)
 
-let transform scope prog =
-  let env = empty_env () in
-  (* Find all parameters to show in the program *)
-  let prog = t_prog env prog in
-  (* Create declarations for them *)
-  let decls = show_decls !(env.params) in
-  (* Add them to the program *)
-  let prog' = let ((d,e),f) = prog in ((decls @ d,e), { f with has_show = false }) in
-  prog';
+let transform (cu, flavor) =
+  (t_comp_unit cu, {flavor with has_show = false})

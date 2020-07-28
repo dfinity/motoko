@@ -126,7 +126,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 
 ### Line Breaks
 
-* Pick a fixed right margin for lines and break definitions or expessions that are longer than that
+* Pick a fixed right margin for lines and break definitions or expressions that are longer than that
   (80 still is considered a good limit by many).
 
   ```
@@ -490,7 +490,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
 ### Miscellaneous
 
 * Use `_` to group digits in numbers.
-  Group by 3 digits in decimal numbers and by 4 in hexdecimal notation.
+  Group by 3 digits in decimal numbers and by 4 in hexadecimal notation.
 
   ```
   let billion = 1_000_000_000;
@@ -584,6 +584,9 @@ To increase readability and uniformity of Motoko source code, this guide provide
   };
   ```
 
+* Functions converting to or from a type `X` are named `toX` and `fromX`, respectively,
+  if the source, resp. target, is either the object the function is a method of, or the primary type of the module this function appears in.
+
 * In classes or objects, use a name ending with `_` to distinguish private variables from getters.
 
   ```
@@ -616,7 +619,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   };
   ```
 
-  Rationale: Contrary to popular belief, overly chatty local names can decrease readability instad of increasing it, by increasing the noise level.
+  Rationale: Contrary to popular belief, overly chatty local names can decrease readability instead of increasing it, by increasing the noise level.
 
 * In suitable cases, use plural form for describing a collection of items, such as a list or array.
   This also works for short names.
@@ -641,7 +644,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   ```
 
   Note: Use floating point constants to enforce type `Float` without an extra annotation.
-  Similarly, use an explict `+` sign to produce a positive value of type `Int` instead of `Nat`, if desired.
+  Similarly, use an explicit `+` sign to produce a positive value of type `Int` instead of `Nat`, if desired.
 
   ```
   let zero = 1.0;    // type Float
@@ -759,7 +762,7 @@ To increase readability and uniformity of Motoko source code, this guide provide
   process{config = Config(); data = read(); delta = 0.01; seed = 1.0};
   ```
 
-  Rationale: This expresses named paremeters. This way, arguments can be freely reordered at the call site and callers are prevented from accidentally passing them in the wrong order.
+  Rationale: This expresses named parameters. This way, arguments can be freely reordered at the call site and callers are prevented from accidentally passing them in the wrong order.
 
 * Higher-order functions (functions that take a callback argument) should put the function parameter last.
 

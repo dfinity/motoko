@@ -1,4 +1,5 @@
 open Mo_def
+open Ic
 module Traversals = Mo_frontend.Traversals
 
 (*
@@ -218,7 +219,7 @@ let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
   | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
 
 
-let prog_imports (p : prog): (url * resolved_import ref * Source.region) list =
+let prog_imports (p : prog): (url * resolved_import ref * region) list =
   let res = ref [] in
   let f e = match e.it with
     | ImportE (f, fp) -> res := (f, fp, e.at) ::!res; e
@@ -252,20 +253,21 @@ type resolved_flags = {
 
 let resolve_flags : flags -> resolved_flags Diag.result
   = fun { actor_idl_path; package_urls; actor_aliases } ->
-  Diag.bind (resolve_packages package_urls) (fun packages ->
-  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
-      Diag.return { packages; aliases; actor_idl_path }))
+  let open Diag.Syntax in
+  let* packages = resolve_packages package_urls in
+  let* aliases = resolve_aliases actor_aliases in
+  Diag.return { packages; aliases; actor_idl_path }
 
 let resolve
   : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun flags p base ->
-  Diag.bind (resolve_flags flags) (fun { packages; aliases; actor_idl_path } ->
-    Diag.with_message_store (fun msgs ->
-      let base = if Sys.is_directory base then base else Filename.dirname base in
-      let imported = ref RIM.empty in
-      List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
-      Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
-    )
+  let open Diag.Syntax in
+  let* { packages; aliases; actor_idl_path } = resolve_flags flags in
+  Diag.with_message_store (fun msgs ->
+    let base = if Sys.is_directory base then base else Filename.dirname base in
+    let imported = ref RIM.empty in
+    List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
+    Some (List.map (fun (rim,at) -> rim @@ at) (RIM.bindings !imported))
   )
 
 

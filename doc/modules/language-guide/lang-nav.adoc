@@ -8,7 +8,7 @@
 ** xref:actors-async.adoc[Actors and async data]
 ** xref:errors-and-options.adoc[Errors and optional results]
 ** xref:pattern-matching.adoc[Pattern matching]
-** xref:sharing.adoc[Sharing among distinct actors]
+** xref:sharing.adoc[Sharing data and behavior]
 ** xref:modules-and-imports.adoc[Modules and imports]
 ** xref:control-flow.adoc[Imperative control flow]
 //** xref:advanced-discussion.adoc[Advanced discussion topics]

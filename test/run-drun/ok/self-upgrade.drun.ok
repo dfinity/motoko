@@ -1,5 +1,6 @@
+ingress Completed: Canister: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
 debug.print: init'ed
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: a
 Ok: Reply: 0x4449444c0000
 ingress Completed: Canister: Reply: 0x4449444c0000
@@ -9,7 +10,7 @@ ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: aaa
 Ok: Reply: 0x4449444c0000
 debug.print: init'ed
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: aaa
 Ok: Reply: 0x4449444c0000
 ingress Completed: Canister: Reply: 0x4449444c0000

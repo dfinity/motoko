@@ -67,13 +67,16 @@ and prim = function
   | AwaitPrim         -> Atom "AwaitPrim"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
-  | ShowPrim t        -> "ShowPrim"   $$ [typ t]
+  | ShowPrim t        -> "ShowPrim" $$ [typ t]
+  | SerializePrim t   -> "SerializePrim" $$ List.map typ t
+  | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
-  | CastPrim (t1, t2) -> "CastPrim"   $$ [typ t1; typ t2]
+  | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
+  | SystemTimePrim    -> Atom "SystemTimePrim"
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
@@ -137,5 +140,9 @@ and dec d = match d.it with
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]
 
+and comp_unit = function
+  | ProgU ds -> "ProgU" $$ List.map dec ds
+  | ActorU (ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
 
-and prog ((ds, e), _flavor)= "BlockE"  $$ List.map dec ds @ [ exp e ]
+and prog (cu, _flavor) = comp_unit cu
+
