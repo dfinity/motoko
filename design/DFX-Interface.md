@@ -61,7 +61,7 @@ in an environment where `MOC_RTS` points to the location of the Motoko runtime s
 This _reads_ the following files
  * `some/path/input.mo`
  * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
- * for every actor import `ic:canisterid` imported by any of the Motoko files, it reads `actorpath/canisterid.did`, see section Resolving Canister Ids below. Here `canisterid` is the textual representation (e.g. `em77e-bvlzu-aq`).
+ * for every actor import `ic:canisterid` imported by any of the Motoko files, it reads `actorpath/canisterid.did`, see section “Resolving Canister aliases” below. Here `canisterid` is the textual representation (e.g. `em77e-bvlzu-aq`).
  * the given `mo-rts.wasm` file.
 
 The package name `prim` is special and should not be set using `--package`.
