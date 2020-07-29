@@ -101,7 +101,8 @@ export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 export as_ptr blob_of_text(as_ptr);
 export uint32_t compute_crc32(blob_t);
 export blob_t base32_of_checksummed_blob(blob_t);
-export blob_t base32_to_checksummed_blob(blob_t, uint32_t* crc32);
+export blob_t base32_to_blob(blob_t);
+export int blob_compare(blob_t s1, blob_t s2);
 
 export blob_t blob_of_principal(text_t);
 export blob_t base32_to_principal(blob_t);
