@@ -11,4 +11,4 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-perl -0777 -ne 'print "let wasm = lazy \""; printf "\\x%02x", ord($_) for (split //,$_); print "\"";' "$1" > "$file"
+perl -0777 -ne 'print "let wasm = lazy \""; printf "\\x%02x", $_ for unpack("C*", $_); print "\"";' "$1" > "$file"
