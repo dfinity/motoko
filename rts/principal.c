@@ -172,7 +172,7 @@ export blob_t base32_to_principal(blob_t b) {
   return r;
 }
 
-// Encode a blob into an textual representation
+// Encode a blob into its textual representation
 export text_t principal_of_blob(blob_t b) {
   return base32_to_principal(base32_of_checksummed_blob(b));
 }
