@@ -2,30 +2,40 @@
 
 (*
    For usage examples take a look at url_test.ml
+*)
 
-   TODO: This could be the place to reject things like
-     ic: mo: http:std/foo
-  *)
+let checkbytes s : string =
+  let buf = Buffer.create 4 in
+  Buffer.add_int32_be buf (Lib.CRC.crc32 s); (* NB: big endian *)
+  Buffer.contents buf
 
+let rec group s =
+  let open String in
+  if length s <= 5 then s else
+  sub s 0 5 ^ "-" ^ group (sub s 5 (length s - 5))
 
-(* helper (only to be used on "ic:…" urls) *)
-let decode_ic_url url : (string, string) result =
+let encode_principal bytes : string =
+  group (String.map Char.lowercase_ascii (Lib.Base32.encode (checkbytes bytes ^ bytes)))
+
+(* Decode a principal according to https://docs.dfinity.systems/public/#textual-ids *)
+let decode_principal principal : (string, string) result =
   let open Stdlib.String in
-  let hex = Option.get (Lib.String.chop_prefix "ic:" url) in
 
-  if equal hex "" then Error "principal ID must not be empty" else
-  if uppercase_ascii hex <> hex then Error "principal ID must be uppercase" else
-  let isHex c = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') in
-  if not (Lib.Seq.for_all isHex (to_seq hex)) then Error "principal ID must contain uppercase hexadecimal digits" else
-  if length hex mod 2 = 1 then Error "principal ID must contain an even number of hexadecimal digits" else
-  let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
-  let bs = Lib.Hex.bytes_of_hex blob in
-  let checksum = Lib.CRC.crc8 bs in
-  if checksum <> Lib.Hex.int_of_hex_byte crc then Error "invalid checksum in principal ID, please check for typos" else
-  Ok bs
-
-let encode_ic_url bytes : string =
-  "ic:" ^ Lib.Hex.hex_of_bytes bytes ^ Lib.Hex.hex_of_byte (Lib.CRC.crc8 bytes)
+  if principal = "" then Error "principal cannot be empty" else
+  let filtered =
+    to_seq principal |>
+      Seq.map Char.uppercase_ascii |>
+      Seq.filter (fun c -> c >= '0' && c <= '9' || c >= 'A' && c <= 'Z') |>
+      of_seq in
+  match Lib.Base32.decode filtered with
+  | Error e -> Error e
+  | Ok bytes ->
+    if length bytes < 4 then Error "principal too short" else
+    let payload = sub bytes 4 (length bytes - 4) in
+    let expected = encode_principal payload in
+    if principal <> expected
+    then Error (Printf.sprintf "invalid principal. Did you mean %S?" expected)
+    else Ok payload
 
 type parsed =
   | Package of (string * string)
@@ -61,7 +71,7 @@ let parse (f: string) : (parsed, string) result =
     end
   | None ->
     match Lib.String.chop_prefix "ic:" f with
-    | Some _suffix -> begin match decode_ic_url f with
+    | Some principal -> begin match decode_principal principal with
       | Ok bytes -> Ok (Ic bytes)
       | Error err -> Error err
       end
