@@ -18,6 +18,12 @@ let%test "it should parse a package import (3)" =
   parse_test "mo:foo/bar" (Ok (Package ("foo", "bar")))
 let%test "it should parse a package import (4)" =
   parse_test "mo:foo" (Ok (Package ("foo", "")))
+let%test "it should reject package imports that try to escape" =
+  parse_test "mo:foo/../bar" (Error "Package imports musn't access parent directories: ../bar is invalid.")
+let%test "it should reject package imports that try to escape (2)" =
+  parse_test "mo:foo/bar/../../baz" (Error "Package imports musn't access parent directories: bar/../../baz is invalid.")
+let%test "it normalises filepaths for the escape check (3)" =
+  parse_test "mo:foo/bar/../baz" (Ok (Package ("foo", "bar/../baz")))
 
 let%test "it should parse a prim import" =
   parse_test "mo:prim" (Ok (Prim))
