@@ -58,7 +58,7 @@ and typ t = match t.it with
   | ServT ts -> "ServT" $$ List.map typ_meth ts
   | PrincipalT -> Atom "PrincipalT"
   | PreT -> Atom "PreT"
-                        
+
 and dec d = match d.it with
   | TypD (x, t) ->
      "TypD" $$ [id x] @ [typ t]
@@ -82,6 +82,16 @@ let quote ppf s =
   pp_open_hbox ppf ();
   str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
   pp_close_box ppf ()
+let text ppf s =
+  let needs_quote str =
+    let not_identifier = ref false in
+    String.iteri
+      (fun i c ->
+        if not (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c = '_' || i > 0 && c >= '0' && c <= '9') then
+          not_identifier := true;
+      ) str;
+    !not_identifier
+  in if needs_quote s then quote ppf s else str ppf s
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;
@@ -121,7 +131,7 @@ and pp_field ppf f =
   (match f.it.label.it with
   | Id n -> str ppf (Lib.Uint32.to_string n); kwd ppf ":"
   | Named name ->
-     quote ppf name;
+     text ppf name;
      kwd ppf ":"
   | Unnamed _ -> ());
   pp_typ ppf f.it.typ;
@@ -145,7 +155,7 @@ and pp_args ppf fs =
 
 and pp_meth ppf m =
   pp_open_hovbox ppf 1;
-  quote ppf m.it.var.it;
+  text ppf m.it.var.it;
   kwd ppf ":";
   (match m.it.meth.it with
    | FuncT (ms,s,t) -> pp_func ppf (ms,s,t)

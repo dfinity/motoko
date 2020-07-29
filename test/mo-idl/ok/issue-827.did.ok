@@ -4,5 +4,5 @@ type List =
        List;
      };
 service : {
-  "f": (List) -> (List);
+  f: (List) -> (List);
 }
