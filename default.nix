@@ -91,7 +91,7 @@ let ocaml_exe = name: bin: rts:
 
       buildInputs = commonBuildInputs staticpkgs;
 
-      # we ony need to include the wasm statically when building moc, not
+      # we only need to include the wasm statically when building moc, not
       # other binaries
       buildPhase = ''
         patchShebangs .
