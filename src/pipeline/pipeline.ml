@@ -581,25 +581,7 @@ let analyze analysis_name analysis prog name =
 (* Compilation *)
 
 let load_as_rts () =
-
-  let load_file f =
-    let ic = open_in_bin f in
-    let n = in_channel_length ic in
-    let s = Bytes.create n in
-    really_input ic s 0 n;
-    close_in ic;
-    Bytes.to_string s in
-
-  (*
-  The RTS can be found via environment (in particular when built via nix),
-  or relative to the directory of the invoked moc (when developing)
-  *)
-  let wasm_filename =
-    match Sys.getenv_opt "MOC_RTS" with
-    | Some filename -> filename
-    | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/mo-rts.wasm") in
-  let wasm = load_file wasm_filename in
-  Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
+  Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force Rts.wasm)
 
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
