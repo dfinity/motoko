@@ -55,7 +55,9 @@ let parse (f: string) : (parsed, string) result =
       else
         let pkg = Stdlib.String.sub suffix 0 i in
         let path = Stdlib.String.sub suffix (i+1) (Stdlib.String.length suffix - (i+1)) in
-        Ok (Package (pkg, path))
+        if Option.is_some (Lib.String.chop_prefix ".." (Lib.FilePath.normalise path))
+        then Error (Printf.sprintf "Package imports musn't access parent directories: %s is invalid." path)
+        else Ok (Package (pkg, path))
     end
   | None ->
     match Lib.String.chop_prefix "ic:" f with
