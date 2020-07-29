@@ -21,7 +21,7 @@ let encode_principal bytes : string =
 let decode_principal principal : (string, string) result =
   let open Stdlib.String in
 
-  if equal principal "" then Error "principal cannot be empty" else
+  if principal = "" then Error "principal cannot be empty" else
   let filtered =
     to_seq principal |>
       Seq.map Char.uppercase_ascii |>
