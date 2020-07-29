@@ -30,11 +30,10 @@ Nix derivations
 The `motoko` repository defines the following nix derivations, as attributes of
 the top-level `default.nix`:
 
-* `moc-bin`: contains `bin/moc`
+* `moc`: contains `bin/moc`
 * `mo-ide`: contains `bin/mo-ide`
 * `mo-doc`: contains `bin/mo-doc`
 * `didc`: contains `bin/didc`
-* `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
 * `base-src`: contains the base library, directly in the top level directory,
   as `*.mo` files. It does not contain extra files (test files, for example)
 
@@ -56,13 +55,10 @@ In order to compile a motoko file, `dfx` invokes `moc` with
         { --actor-alias alias url }
         [ --actor-idl actorpath ]
 
-in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
-
 This _reads_ the following files
  * `some/path/input.mo`
  * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
  * for every actor import `ic:canisterid` imported by any of the Motoko files, it reads `actorpath/canisterid.did`, see section Resolving Canister Ids below.
- * the given `mo-rts.wasm` file.
 
 The package name `prim` is special and should not be set using `--package`.
 
