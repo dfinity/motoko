@@ -56,7 +56,7 @@ let rec show_val t v =
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
   | T.(Prim Blob), Value.Blob s -> "\"" ^ Value.Blob.escape s ^ "\""
   | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"
-  | T.(Prim Principal), Value.Blob s -> Ic.Url.encode_ic_url s
+  | T.(Prim Principal), Value.Blob s -> Ic.Url.encode_principal s
   | T.(Prim Null), Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
   | T.Opt t', Value.Opt v -> "?" ^ parens (show_val t' v)
