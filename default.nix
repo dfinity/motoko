@@ -435,6 +435,15 @@ rec {
       '';
     };
 
+  publish =
+    let publish = import ./nix/publish.nix
+      { pkgs = nixpkgs;
+        moc = moc;
+        mo-ide = mo-ide;
+        releaseVersion = "v0.42";
+      }; in
+    publish.motokoTarBall;
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [

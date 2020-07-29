@@ -8,7 +8,9 @@
 #
 # TODO: We want to include more than just `moc` and `mo-ide` but for now they
 # should show that we can build a tarball from multiple binaries
-{ pkgs, releaseVersion, moc, mo-ide, install }:
+# TODO: What's install here?
+# { pkgs, releaseVersion, moc, mo-ide, install }:
+{ pkgs, releaseVersion, moc, mo-ide }:
 let
   s3cp = pkgs.lib.writeCheckedShellScriptBin "s3cp" [] ''
     set -eu
