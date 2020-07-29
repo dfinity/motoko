@@ -55,7 +55,7 @@ let
       tmp=$(mktemp -d)
       cp $moc/bin/moc $tmp/moc
       chmod 0755 $tmp/moc
-      cp $mo-ide/bin/mo-ide $tmp/mo-ide
+      cp ${mo-ide}/bin/mo-ide $tmp/mo-ide
       chmod 0755 $tmp/mo-ide
       tar -czf "$out" -C $tmp/ .
     '';
