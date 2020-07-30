@@ -62,8 +62,8 @@ let
 
 
 in
-{
-  motokoTarBall = mkMotokoTarball derivations;
+rec {
+  tarballs = builtins.mapAttrs (_: mkMotokoTarball) derivations;
   motoko =
     pkgs.writeShellScriptBin "activate" ''
       set -eu
@@ -75,7 +75,9 @@ in
       file="motoko-$v.tar.gz"
       dir="motoko/$v"
 
-      s3cp "${mkMotokoTarball (builtins.map (d: d) derivations)}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
+      s3cp "${tarballs.linux}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
+
+      s3cp "${tarballs.darwin}" "$dir/x86_64-darwin/$file" "application/gzip" "$cache_long"
 
       slack "$SLACK_CHANNEL_BUILD_NOTIFICATIONS_WEBHOOK" <<EOI
       *motoko-$v* has been published to DFINITY's CDN :champagne:!

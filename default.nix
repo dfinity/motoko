@@ -435,16 +435,6 @@ rec {
       '';
     };
 
-  publish = import ./nix/publish.nix
-    { pkgs = nixpkgs;
-      releaseVersion = "v0.42";
-      derivations = [
-        mo-ide
-        mo-doc
-        moc
-      ];
-    };
-
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [

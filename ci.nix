@@ -6,6 +6,16 @@ let
   linux = import ./default.nix { system = "x86_64-linux"; };
   darwin = import ./default.nix { system = "x86_64-darwin"; };
 
+  release = import ./nix/publish.nix
+    { pkgs = nixpkgs;
+      releaseVersion = "v0.42";
+      derivations = {
+        linux = with linux; [ mo-ide mo-doc moc ];
+        darwin = with darwin; [ mo-ide mo-doc moc ];
+      };
+    };
+
+
   all-systems-go =
     nixpkgs.releaseTools.aggregate {
       name = "all-systems-go";
@@ -16,6 +26,7 @@ let
     };
 in
 linux // {
+  inherit release;
   darwin = darwin.all-systems-go;
   all-systems-go = inject-rev all-systems-go;
 }
