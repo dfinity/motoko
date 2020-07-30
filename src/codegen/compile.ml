@@ -149,7 +149,7 @@ module SR = struct
 
   let unit = UnboxedTuple 0
 
-  let bool = Vanilla
+  let bool = UnboxedWord32
 
   (* Because t contains Const.t, and that contains Const.v, and that contains
      Const.lit, and that contains Big_int, we cannot just use normal `=`. So we
@@ -521,7 +521,6 @@ let compile_rel_const rel i =
   compile_unboxed_const i ^^
   G.i (Compare (Wasm.Values.I32 rel))
 let compile_eq_const = compile_rel_const I32Op.Eq
-let compile_ne_const = compile_rel_const I32Op.Ne
 
 let compile_op64_const op i =
     compile_const_64 i ^^
@@ -1072,10 +1071,9 @@ module ClosureTable = struct
 end (* ClosureTable *)
 
 module Bool = struct
-  (* Boolean literals are either 0 or 1
-     Both are recognized as unboxed scalars anyways,
-     This allows us to use the result of the WebAssembly comparison operators
-     directly, and to use the booleans directly with WebAssembly’s If.
+  (* Boolean literals are either 0 or 1,
+     at StackRep UnboxedWord32
+     They need to be shifted before put in the heap
   *)
   let vanilla_lit = function
     | false -> 0l
@@ -1087,7 +1085,6 @@ module Bool = struct
   let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
 end (* Bool *)
-
 
 module BitTagged = struct
 
@@ -1102,8 +1099,8 @@ module BitTagged = struct
      signpost where we switch between raw pointers to skewed ones.
 
      This means we can store a small unboxed scalar x as (x `lsl` 1), and still
-     tell it apart from a pointer by looking at the last two bits: if both are
-     set, it is a pointer.
+     tell it apart from a pointer by looking at the last bits: if set, it is a
+     pointer.
 
      Small here means -2^30 ≤ x < 2^30, and untagging needs to happen with an
      _arithmetic_ right shift. This is the right thing to do for signed
@@ -1111,9 +1108,16 @@ module BitTagged = struct
      especially as there is only one wasm type, we use the same range for
      signed numbers as well.
 
-     It means that 0 and 1 are also recognized as non-pointers, and we can use
-     these for false and true, matching the result of WebAssembly’s comparison
-     operators.
+     Boolean false is a non-pointer by construction.
+     Boolean true (1) needs to be shifted to be a non-pointer.
+     No unshifting necessary before a branch.
+
+     Summary:
+
+       0b…11: A pointer
+       0b…x0: A shifted scalar
+       0b000: `false`
+       0b010: `true`
 
      Summary:
 
@@ -1129,24 +1133,17 @@ module BitTagged = struct
      module TaggedSmallWord.
   *)
   let if_tagged_scalar env retty is1 is2 =
-    Func.share_code1 env "is_tagged_scalar" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* Low two bits not 0b…11 *)
-      get_x ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l
-    ) ^^
-    G.if_ retty is1 is2
+    compile_bitand_const 0x1l ^^
+    G.if_ retty is2 is1
 
   (* With two bit-tagged pointers on the stack, decide
      whether both are scalars and invoke is1 (the fast path)
      if so, and otherwise is2 (the slow path).
   *)
   let if_both_tagged_scalar env retty is1 is2 =
-    Func.share_code2 env "is_both_tagged_scalar" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      (* Get low two bit *)
-      get_x ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l ^^
-      get_y ^^ compile_bitand_const 0x3l ^^ compile_ne_const 0x3l ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.And))
-    ) ^^
-    G.if_ retty is1 is2
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    compile_bitand_const 0x1l ^^
+    G.if_ retty is2 is1
 
   (* 64 bit numbers *)
 
@@ -6039,9 +6036,8 @@ let nat64_to_int64 n =
   if sign_big_int q = 0 then r else sub_big_int r twoRaised63
 
 let const_lit_of_lit : Ir.lit -> Const.lit = function
-  (* Booleans are directly in Vanilla representation *)
-  | BoolLit false -> Const.Vanilla (Bool.vanilla_lit false)
-  | BoolLit true  -> Const.Vanilla (Bool.vanilla_lit true)
+  | BoolLit false -> Const.Word32 0l
+  | BoolLit true  -> Const.Word32 1l
   | IntLit n
   | NatLit n      -> Const.BigInt n
   | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n) (* already Msb-aligned *)
@@ -7014,7 +7010,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "text_iter", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
     | OtherPrim "text_iter_done", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_done env
+      SR.bool, compile_exp_vanilla env ae e ^^ Text.iter_done env
     | OtherPrim "text_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
 
@@ -7023,7 +7019,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "blob_iter", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
     | OtherPrim "blob_iter_done", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_done env
+      SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
     | OtherPrim "blob_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
 
@@ -7249,6 +7245,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "Array.tabulate", [_;_] ->
       const_sr SR.Vanilla (Arr.tabulate env)
     | OtherPrim "btst8", [_;_] ->
+      (* TODO: btstN returns Bool, not a small value *)
       const_sr SR.Vanilla (TaggedSmallWord.btst_kernel env Type.Word8)
     | OtherPrim "btst16", [_;_] ->
       const_sr SR.Vanilla (TaggedSmallWord.btst_kernel env Type.Word16)
@@ -7352,12 +7349,14 @@ and compile_exp (env : E.t) ae exp =
   | LitE l ->
     compile_lit env l
   | IfE (scrut, e1, e2) ->
-    let code_scrut = compile_exp_as env ae SR.bool scrut in
+    let srs, code_scrut = compile_exp env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
     let sr = StackRep.relax (StackRep.join sr1 sr2) in
     sr,
-    code_scrut ^^ G.if_
+    code_scrut ^^
+    (if srs != SR.UnboxedWord32 then StackRep.adjust env srs SR.Vanilla else G.nop) ^^
+    G.if_
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
@@ -7504,7 +7503,7 @@ and compile_char_to_char_rts env ae exp rts_fn =
    have type int32_t -> int32_t where the return value is 0 for 'false' and 1
    for 'true'. *)
 and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
-  SR.Vanilla,
+  SR.bool,
   compile_exp_as env ae SR.Vanilla exp ^^
   TaggedSmallWord.untag_codepoint ^^
   (* The RTS function returns Motoko True/False values (which are represented as
