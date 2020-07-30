@@ -1,4 +1,4 @@
-{ src ? { rev = null; }, labels ? {} }:
+{ src ? { rev = null; }, labels ? {}, releaseVersion ? "latest" }:
 let
   nixpkgs = import ./nix { };
   inject-rev = drv: drv.overrideAttrs (attrs: { rev = src.rev; });
@@ -8,7 +8,7 @@ let
 
   release = import ./nix/publish.nix
     { pkgs = nixpkgs;
-      releaseVersion = "v0.42";
+      inherit releaseVersion;
       derivations = {
         linux = with linux; [ mo-ide mo-doc moc ];
         darwin = with darwin; [ mo-ide mo-doc moc ];
