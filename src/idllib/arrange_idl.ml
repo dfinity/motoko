@@ -83,15 +83,7 @@ let quote ppf s =
   str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
   pp_close_box ppf ()
 let text ppf s =
-  let needs_quote str =
-    let not_identifier = ref false in
-    String.iteri
-      (fun i c ->
-        if not (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c = '_' || i > 0 && c >= '0' && c <= '9') then
-          not_identifier := true;
-      ) str;
-    !not_identifier
-  in if needs_quote s then quote ppf s else str ppf s
+  if Escape.needs_quote s then quote ppf s else str ppf s
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;
