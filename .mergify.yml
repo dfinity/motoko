@@ -38,3 +38,12 @@ pull_request_rules:
       review:
         type: APPROVE
         message: This bot trusts that bot
+  - name: Auto-approve changelog/release PR
+    conditions:
+      - files=Changelog.md
+      - "#files=1"
+      - label=automerge-squash
+    actions:
+      review:
+        type: APPROVE
+        message: A change to Changelog.md? I can can handle that!
