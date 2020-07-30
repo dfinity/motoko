@@ -27,6 +27,7 @@ let
     nixpkgs.lld_10 # for wasm building
     nixpkgs.rustc
     nixpkgs.cargo
+    nixpkgs.xargo
   ];
 
   rtsEnv = ''
@@ -206,6 +207,7 @@ rec {
             nixpkgs.nodejs-10_x
             filecheck
             wasmtime
+            xargo
             nixpkgs.sources.esm
           ] ++
           rtsBuildInputs;
@@ -245,7 +247,7 @@ rec {
       }); in
 
     let qc = testDerivation {
-      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
+      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime xargo drun haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
@@ -342,6 +344,7 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
+  xargo = nixpkgs.xargo;
   wasm = nixpkgs.wasm;
 
   overview-slides = stdenv.mkDerivation {
@@ -392,6 +395,7 @@ rec {
     installPhase = "touch $out";
     checkInputs = [
       nixpkgs.wasmtime
+      nixpkgs.xargo
       moc
     ];
     checkPhase = ''

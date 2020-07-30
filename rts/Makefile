@@ -156,22 +156,20 @@ _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
 _build/wasm/musl_%.o: %.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
 
-.PHONY: _build/wasm/motoko_rts.o
-_build/wasm/motoko_rts.o: | _build/wasm
-	cd motoko-rts && \
-	  cargo rustc --target=wasm32-unknown-emscripten --release -v -- -Crelocation-model=pic --emit=obj
-	cp motoko-rts/target/wasm32-unknown-emscripten/release/deps/motoko_rts*.o $@
+.PHONY: _build/wasm/libmotoko_rts.a
+_build/wasm/libmotoko_rts.a: | _build/wasm
+	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten --release
+	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-.PHONY: _build/native/motoko_rts.o
-_build/native/motoko_rts.o: | _build/native
-	cd motoko-rts && \
-	  cargo rustc --release -v -- -Crelocation-model=pic --emit=obj
-	cp motoko-rts/target/release/deps/motoko_rts*.o $@
+.PHONY: _build/native/libmotoko_rts.a
+_build/native/libmotoko_rts.a: | _build/native
+	cd motoko-rts && cargo build --release
+	cp motoko-rts/target/release/libmotoko_rts.a $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
-RTS_RUST_WASM_O=_build/wasm/motoko_rts.o
-RTS_RUST_NATIVE_O=_build/native/motoko_rts.o
+RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
+RTS_RUST_NATIVE_O=_build/native/libmotoko_rts.a
 
 #
 # The actual RTS, as we ship it with the compiler

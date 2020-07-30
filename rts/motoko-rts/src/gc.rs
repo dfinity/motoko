@@ -6,9 +6,10 @@
 // TODO: inconsistent use of size vs. len
 
 use core::arch::wasm32;
+use core::fmt::Write;
 
 use crate::array::array_idx_unchecked;
-use crate::common::rts_trap_with;
+use crate::common::{debug_print, rts_trap_with, Wrapper};
 use crate::types::*;
 
 extern "C" {
@@ -413,6 +414,8 @@ unsafe fn evac_static_roots(
 
 #[no_mangle]
 pub unsafe extern "C" fn rust_collect_garbage() {
+    debug_print("### GC begins");
+
     let static_roots = get_static_roots();
 
     // Beginning of tospace = end of fromspace
@@ -421,8 +424,21 @@ pub unsafe extern "C" fn rust_collect_garbage() {
     let begin_to_space = end_from_space;
     let mut end_to_space = begin_to_space;
 
+    debug_print("### Evacuating roots");
+
+    let mut buf = [0 as u8; 100];
+    let _ = write!(
+        Wrapper::new(&mut buf),
+        "### begin_from_space={}",
+        begin_from_space.unskew()
+    );
+    
+
     // Evacuate roots
     end_to_space = evac_static_roots(begin_from_space, begin_to_space, end_to_space, static_roots);
+
+    debug_print("### Evacuated static roots");
+
     end_to_space = evacuate(
         begin_from_space.unskew(),
         begin_to_space.unskew(),
@@ -458,4 +474,6 @@ pub unsafe extern "C" fn rust_collect_garbage() {
     set_hp(skew(
         begin_from_space.unskew() + (end_to_space.unskew() - begin_to_space.unskew()),
     ));
+
+    debug_print("### GC finished");
 }

@@ -15,6 +15,9 @@
 #        only compiles and runs drun, writes stats to $PERF_OUT
 #
 
+set -e
+set -x
+
 function realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
 }

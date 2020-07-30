@@ -3163,8 +3163,8 @@ module Lifecycle = struct
 end (* Lifecycle *)
 
 let collect_garbage env =
-  G.i (Call (nr (E.built_in env "collect")))
-  (* E.call_import env "rts" "rust_collect_garbage" *)
+  (* G.i (Call (nr (E.built_in env "collect"))) *)
+  E.call_import env "rts" "rust_collect_garbage"
 
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)

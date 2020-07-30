@@ -30,8 +30,8 @@ let
                 inherit (self) ocamlPackages;
               };
             };
-            # wasmtime
             wasmtime = self.callPackage ./wasmtime.nix {};
+            xargo = self.callPackage ./xargo.nix {};
           }
         )
         # nixpkgs's rustc does not include the wasm32-unknown-unknown target, so
