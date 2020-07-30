@@ -25,8 +25,9 @@ let
   rtsBuildInputs = [
     nixpkgs.clang_10 # for native/wasm building
     nixpkgs.lld_10 # for wasm building
-    nixpkgs.rustc
-    nixpkgs.cargo
+    nixpkgs.rustc-nightly
+    nixpkgs.cargo-nightly
+    nixpkgs.xargo
   ];
 
   llvmEnv = ''
@@ -334,6 +335,7 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
+  xargo = nixpkgs.xargo;
   wasm = nixpkgs.wasm;
 
   overview-slides = stdenv.mkDerivation {
