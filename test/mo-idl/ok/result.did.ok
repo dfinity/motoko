@@ -6,7 +6,7 @@ type Result_2 =
 type Result3 = 
  variant {
    err: Result2;
-   ok: null;
+   ok;
  };
 type Result2_2 = 
  variant {
@@ -16,12 +16,12 @@ type Result2_2 =
 type Result2 = 
  variant {
    err: Result;
-   ok: null;
+   ok;
  };
 type Result = 
  variant {
    err: text;
-   ok: null;
+   ok;
  };
 service : {
   f: (opt nat) -> (Result_2);

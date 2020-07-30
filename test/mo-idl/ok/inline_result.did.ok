@@ -7,7 +7,7 @@ service : {
         err: text;
         ok: nat;
       }) -> (variant {
-               err: null;
+               err;
                ok: int;
              });
 }

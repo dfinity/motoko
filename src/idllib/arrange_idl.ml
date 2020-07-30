@@ -69,7 +69,7 @@ and actor a = match a with
   | None -> Atom "NoActor"
   | Some t -> 
      "Actor" $$ [typ t]
-    
+
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 
@@ -109,24 +109,29 @@ let rec pp_typ ppf t =
   | PreT -> assert false);
   pp_close_box ppf ()
 and pp_fields ppf name fs =
+  let is_variant = name = "variant" in
   if List.length fs > 1 then
     pp_open_vbox ppf 2
   else
     pp_open_hovbox ppf 2;
   str ppf (name ^ " {");
-  List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
+  List.iter (fun f -> pp_print_cut ppf (); pp_field ppf is_variant f; str ppf ";") fs;
   pp_print_break ppf 0 (-2);
   str ppf "}";
   pp_close_box ppf ()
-and pp_field ppf f =
+and pp_field ppf is_variant f =
+  let hide_type = is_variant && f.it.typ.it = PrimT Null in
   pp_open_hovbox ppf 1;
   (match f.it.label.it with
-  | Id n -> str ppf (Lib.Uint32.to_string n); kwd ppf ":"
   | Named name ->
      text ppf name;
-     kwd ppf ":"
-  | Unnamed _ -> ());
-  pp_typ ppf f.it.typ;
+     if not hide_type then
+       (kwd ppf ":"; pp_typ ppf f.it.typ)
+  | Id n ->
+     str ppf (Lib.Uint32.to_string n);
+     if not hide_type then
+       (kwd ppf ":"; pp_typ ppf f.it.typ)
+  | Unnamed _ -> pp_typ ppf f.it.typ);
   pp_close_box ppf ()
 
 and pp_func ppf (ms,s,t) =
