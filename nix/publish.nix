@@ -47,7 +47,7 @@ let
   mkMotokoTarball = derivations:
     pkgs.runCommandNoCC "motoko-${v}.tar.gz" {
       allowedRequisites = [];
-    }
+    } (
       ''
       tmp=$(mktemp -d)
       ''
@@ -57,7 +57,9 @@ let
     + ''
       chmod 0755 $tmp/*
       tar -czf "$out" -C $tmp/ .
-      '';
+      ''
+    );
+
 
 in
 {
