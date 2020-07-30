@@ -2,7 +2,7 @@
 
 == UNRELEASED
 
-* TODO: Actor Class syntax (@crusso), #1737?
+* Allow actor classes to know the caller of their constructor (#1737)
 * Internals: `Prim.time()` provided
 * More dead code removal
 
