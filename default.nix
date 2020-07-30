@@ -438,9 +438,12 @@ rec {
   publish =
     let publish = import ./nix/publish.nix
       { pkgs = nixpkgs;
-        moc = moc;
-        mo-ide = mo-ide;
         releaseVersion = "v0.42";
+        derivations = [
+          mo-ide
+          mo-doc
+          moc
+        ];
       }; in
     publish.motokoTarBall;
 

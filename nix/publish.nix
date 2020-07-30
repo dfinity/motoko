@@ -8,9 +8,7 @@
 #
 # TODO: We want to include more than just `moc` and `mo-ide` but for now they
 # should show that we can build a tarball from multiple binaries
-# TODO: What's install here?
-# { pkgs, releaseVersion, moc, mo-ide, install }:
-{ pkgs, releaseVersion, moc, mo-ide }:
+{ pkgs, releaseVersion, derivations }:
 let
   s3cp = pkgs.lib.writeCheckedShellScriptBin "s3cp" [] ''
     set -eu
@@ -46,23 +44,24 @@ let
 
   v = releaseVersion;
 
-  mkMotokoTarball = moc: mo-ide:
+  mkMotokoTarball = derivations:
     pkgs.runCommandNoCC "motoko-${v}.tar.gz" {
-      inherit moc;
-      inherit mo-ide;
       allowedRequisites = [];
-    } ''
+    }
+      ''
       tmp=$(mktemp -d)
-      cp $moc/bin/moc $tmp/moc
-      chmod 0755 $tmp/moc
-      cp ${mo-ide}/bin/mo-ide $tmp/mo-ide
-      chmod 0755 $tmp/mo-ide
+      ''
+    + builtins.concatStringsSep "" (builtins.map (d: ''
+      cp -v ${d}/bin/* $tmp
+      '') derivations)
+    + ''
+      chmod 0755 $tmp/*
       tar -czf "$out" -C $tmp/ .
-    '';
+      '';
 
 in
 {
-  motokoTarBall = mkMotokoTarball moc mo-ide;
+  motokoTarBall = mkMotokoTarball derivations;
   motoko = pkgs.lib.linuxOnly (
     pkgs.lib.writeCheckedShellScriptBin "activate" [] ''
       set -eu
@@ -74,8 +73,8 @@ in
       file="motoko-$v.tar.gz"
       dir="motoko/$v"
 
-      s3cp "${mkMotokoTarball moc.x86_64-linux mo-ide.x86_64-linux}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
-      s3cp "${mkMotokoTarball moc.x86_64-darwin mo-ide.x86_64-darwin}" "$dir/x86_64-darwin/$file" "application/gzip" "$cache_long"
+      s3cp "${mkMotokoTarball (builtins.map (d: d.x86_64-linux) derivations)}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
+      s3cp "${mkMotokoTarball (builtins.map (d: d.x86_64-darwin) derivations)}" "$dir/x86_64-darwin/$file" "application/gzip" "$cache_long"
 
       slack "$SLACK_CHANNEL_BUILD_NOTIFICATIONS_WEBHOOK" <<EOI
       *motoko-$v* has been published to DFINITY's CDN :champagne:!
