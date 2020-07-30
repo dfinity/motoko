@@ -1,4 +1,5 @@
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Canister: Reply: 0x4449444c0000
 ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: 
     O OO          O             
@@ -36,7 +37,7 @@ O      O     O     O O O       O
 
 Ok: Reply: 0x4449444c0000
 debug.print: upgraded!
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: 
     O OO          O             
   O    O          O             
@@ -109,7 +110,7 @@ O O            O       OO   O OO
 
 Ok: Reply: 0x4449444c0000
 debug.print: upgraded!
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: 
      O O  O    O                
       OOOOO             OOO     
@@ -182,7 +183,7 @@ OO  O OO  O  O  O            OO
 
 Ok: Reply: 0x4449444c0000
 debug.print: upgraded!
-ingress System
+ingress Completed: Canister: Reply: 0x4449444c0000
 debug.print: 
      O     O  OO         O      
           O             OOO     

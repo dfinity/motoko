@@ -3,7 +3,6 @@
  (modules mo_js)
  (libraries mo_config pipeline)
  (preprocess (pps js_of_ocaml-ppx))
- (js_of_ocaml (flags :standard "+nat.js") )
 )
 
 (executable
@@ -11,6 +10,5 @@
  (modules didc_js)
  (libraries idllib lang_utils)
  (preprocess (pps js_of_ocaml-ppx))
- (js_of_ocaml (flags :standard "+nat.js") )
 )
 

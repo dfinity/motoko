@@ -86,11 +86,11 @@ clean:
 	dune clean
 
 test: $(NAME)
-	make -C ../test MOC=$(MOC) all
-	make -C ../samples MOC=$(MOC) all
+	make -C ../test all
+	make -C ../samples all
 
 test-quick: $(NAME)
-	make -C ../test MOC=$(MOC) quick
+	make -C ../test quick
 
 grammar: ../doc/modules/language-guide/examples/grammar.txt
 

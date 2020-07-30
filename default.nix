@@ -67,13 +67,16 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.obelisk
+    pkgs.ocamlPackages.uucp
+    pkgs.perl
   ]; in
 
 let darwin_standalone =
-  let common = import nixpkgs.sources.common { inherit (nixpkgs) system; }; in
+  let common = import (nixpkgs.sources.common + "/pkgs")
+    { inherit (nixpkgs) system; repoRoot = ./.; }; in
   common.lib.standaloneRust; in
 
-let ocaml_exe = name: bin:
+let ocaml_exe = name: bin: rts:
   let
     profile =
       if is_static
@@ -89,8 +92,13 @@ let ocaml_exe = name: bin:
 
       buildInputs = commonBuildInputs staticpkgs;
 
+      # we only need to include the wasm statically when building moc, not
+      # other binaries
       buildPhase = ''
         patchShebangs .
+      '' + nixpkgs.lib.optionalString (rts != null)''
+        ./rts/gen.sh ${rts}/rts/mo-rts.wasm
+      '' + ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
 
@@ -143,22 +151,12 @@ rec {
     '';
   };
 
-  moc-bin = ocaml_exe "moc-bin" "moc";
-  mo-ld = ocaml_exe "mo-ld" "mo-ld";
-  mo-ide = ocaml_exe "mo-ide" "mo-ide";
-  mo-doc = ocaml_exe "mo-doc" "mo-doc";
-  didc = ocaml_exe "didc" "didc";
-  deser = ocaml_exe "deser" "deser";
-
-  moc = nixpkgs.symlinkJoin {
-    name = "moc";
-    paths = [ moc-bin rts ];
-    buildInputs = [ nixpkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/moc \
-        --set-default MOC_RTS "$out/rts/mo-rts.wasm"
-    '';
-  };
+  moc = ocaml_exe "moc" "moc" rts;
+  mo-ld = ocaml_exe "mo-ld" "mo-ld" null;
+  mo-ide = ocaml_exe "mo-ide" "mo-ide" null;
+  mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
+  didc = ocaml_exe "didc" "didc" null;
+  deser = ocaml_exe "deser" "deser" null;
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
@@ -211,10 +209,6 @@ rec {
         checkPhase = ''
             patchShebangs .
             ${llvmEnv}
-            export MOC=moc
-            export MO_LD=mo-ld
-            export DIDC=didc
-            export DESER=deser
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
@@ -295,7 +289,6 @@ rec {
     buildInputs = [ moc ];
     buildPhase = ''
       patchShebangs .
-      export MOC=moc
       make all
     '';
     installPhase = ''
@@ -393,8 +386,7 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc -C test
-      make MOC=moc -C examples
+      make MOC=moc VESSEL_PKGS="--package matchers ${nixpkgs.sources.motoko-matchers}/src" -C test
     '';
   };
 
@@ -487,7 +479,9 @@ rec {
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
-    shellHook = llvmEnv;
+    shellHook = llvmEnv + ''
+      export PATH="${toString ./bin}:$PATH"
+    '';
     ESM=nixpkgs.sources.esm;
     GUI_FLAGS = ''
       "-DCURSES_INCLUDE_DIRS=${nixpkgs.ncurses.dev}/include"

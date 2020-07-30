@@ -58,6 +58,8 @@ You can get a development environment without having to use `nix-shell`
    nix-shell --run 'make -C rts'
    ```
    to get `rts/mo-rts.wasm`.
+ * Add `./bin` to your `$PATH` so that the testsuite will find the build
+   products (see `./bin/wrapper.sh` for details).
 
 ## Profile the compiler
 
@@ -68,7 +70,7 @@ You can get a development environment without having to use `nix-shell`
    ```
 2. Run `moc` as normal, e.g.
    ```
-   ./src/moc -g -c foo.mo -o foo.wasm
+   moc -g -c foo.mo -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using

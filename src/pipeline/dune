@@ -17,6 +17,7 @@
     ir_interpreter
     ir_passes
     codegen
+    rts
   )
   (inline_tests)
   (preprocess (per_module ((pps ppx_inline_test) resolve_import_test)))
