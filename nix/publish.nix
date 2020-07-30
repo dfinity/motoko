@@ -5,9 +5,6 @@
 # This script will be executed by DFINITY's Continuous Deployment
 # system. That system will also set the correct AWS credentials and the
 # DFINITY_DOWNLOAD_BUCKET environment variable.
-#
-# TODO: We want to include more than just `moc` and `mo-ide` but for now they
-# should show that we can build a tarball from multiple binaries
 { pkgs, releaseVersion, derivations }:
 let
   s3cp = pkgs.writeShellScriptBin "s3cp" ''
