@@ -1,6 +1,6 @@
 = Motoko compiler changelog
 
-== UNRELEASED
+== 0.2 (2020-07-30)
 
 * The `Blob` type round-trips through candid type export/import (#1744)
 * Allow actor classes to know the caller of their constructor (#1737)
