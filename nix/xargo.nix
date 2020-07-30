@@ -16,14 +16,9 @@ rustPlatform.buildRustPackage rec {
     fetchSubmodules = true;
   };
 
-  cargoSha256 = "1pvmgbk6ifd770g0nch21y9w1a9sxj89i8lj4xwv91xfma8r8f3h";
+  cargoSha256 = "0zzksgi2prgw01m6r4bqjjz902h5g5ich0h3xvb60w4sshlss891";
 
-  # nativeBuildInputs = [ python cmake clang ];
-  # buildInputs = [ llvmPackages.libclang ] ++
-  #  lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security ];
-  # LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
-
-  # doCheck = !stdenv.isDarwin;
+  doCheck = false;
 
   meta = with lib; {
     description = "The sysroot manager that lets you build and customize std";
