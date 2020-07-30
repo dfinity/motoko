@@ -6,11 +6,11 @@
 { rustPlatform, fetchFromGitHub, lib, python, cmake, llvmPackages, clang, stdenv, darwin }:
 
 rustPlatform.buildRustPackage rec {
-  pname = "xargo";
+  name = "xargo";
 
   src = fetchFromGitHub {
     owner = "japaric";
-    repo = "${pname}";
+    repo = "${name}";
     rev = "16035a7c401262824edcb87e1401fe4b05a5ccc0";
     sha256 = "0m1dg7vwmmlpqp20p219gsm7zbnnii6lik6hc2vvfsdmnygf271l";
     fetchSubmodules = true;
