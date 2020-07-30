@@ -10,7 +10,7 @@
 # should show that we can build a tarball from multiple binaries
 { pkgs, releaseVersion, derivations }:
 let
-  s3cp = pkgs.lib.writeCheckedShellScriptBin "s3cp" [] ''
+  s3cp = pkgs.writeShellScriptBin "s3cp" ''
     set -eu
     PATH="${pkgs.lib.makeBinPath [ pkgs.awscli ]}"
     src="$1"; dst="$2"; contentType="$3"; cacheControl="$4"
@@ -25,7 +25,7 @@ let
       --no-progress
   '';
 
-  slack = pkgs.lib.writeCheckedShellScriptBin "slack" [] ''
+  slack = pkgs.writeShellScriptBin "slack" ''
     set -eu
     PATH="${pkgs.lib.makeBinPath [ pkgs.jq pkgs.curl ]}"
     slack_channel_webhook="$1"
@@ -64,8 +64,8 @@ let
 in
 {
   motokoTarBall = mkMotokoTarball derivations;
-  motoko = pkgs.lib.linuxOnly (
-    pkgs.lib.writeCheckedShellScriptBin "activate" [] ''
+  motoko =
+    pkgs.writeShellScriptBin "activate" ''
       set -eu
       PATH="${pkgs.lib.makeBinPath [ s3cp slack ]}"
 
@@ -75,14 +75,12 @@ in
       file="motoko-$v.tar.gz"
       dir="motoko/$v"
 
-      s3cp "${mkMotokoTarball (builtins.map (d: d.x86_64-linux) derivations)}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
-      s3cp "${mkMotokoTarball (builtins.map (d: d.x86_64-darwin) derivations)}" "$dir/x86_64-darwin/$file" "application/gzip" "$cache_long"
+      s3cp "${mkMotokoTarball (builtins.map (d: d) derivations)}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
 
       slack "$SLACK_CHANNEL_BUILD_NOTIFICATIONS_WEBHOOK" <<EOI
       *motoko-$v* has been published to DFINITY's CDN :champagne:!
       - https://$DFINITY_DOWNLOAD_DOMAIN/$dir/x86_64-linux/$file
       - https://$DFINITY_DOWNLOAD_DOMAIN/$dir/x86_64-darwin/$file
       EOI
-    ''
-  );
+    '';
 }
