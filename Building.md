@@ -33,6 +33,26 @@ $ nix-build --no-out-link
 ```
 
 
+## Making releases
+
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.42) are:
+
+ * Make sure that the top section of `Changelog.md` has a title like
+
+        == 0.42 (2020-04-01)
+
+   with today’s date.
+
+ * Look at `git log 0.41..HEAD` and check that everything relevant is mentioned
+   in the changelog section, and possibly clean it up.
+
+ * `git commit -a -m "Releasing 0.42"`
+ * `git tag 0.42 -m "Motoko 0.42"`
+ * `git branch -f stable 0.42`
+ * `git push origin master stable 0.42`
+
+The `stable` branch should always reference the lateste release commit.
+
 ## Development without nix-shell
 
 You can get a development environment without having to use `nix-shell`
@@ -70,7 +90,7 @@ You can get a development environment without having to use `nix-shell`
    ```
 2. Run `moc` as normal, e.g.
    ```
-   ./src/moc -g -c foo.mo -o foo.wasm
+   moc -g -c foo.mo -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using
