@@ -400,10 +400,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_lit env lit)
   | ActorUrlE url ->
     interpret_exp env url (fun v1 ->
-      let open Ic.Url in
-      match parse (V.as_text v1) with
-        | Ok (Ic bytes) -> k (V.Blob bytes)
-        | _ -> trap exp.at "could not parse %S as an actor reference"  (V.as_text v1)
+      match Ic.Url.decode_principal (V.as_text v1) with
+      | Ok bytes -> k (V.Blob bytes)
+      | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1

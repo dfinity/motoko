@@ -117,7 +117,7 @@ main = do
         <> " --error-detail 0"
         <> " --package mydep " <> (project </> "mydependency")
         <> " --actor-idl " <> (project </> "idlpath")
-        <> " --actor-alias counter ic:00"
+        <> " --actor-alias counter aaaaa-aa"
   putStrLn "Starting server with: "
   putStrLn serverCommand
   handleHUnitFailure project do
