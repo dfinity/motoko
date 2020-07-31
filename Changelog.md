@@ -1,5 +1,10 @@
 = Motoko compiler changelog
 
+== 0.3 (2020-07-31)
+
+* Fixes an issue with boolean encoding to Candid
+* Converts the style guide to asciidocs
+
 == 0.2 (2020-07-30)
 
 * The `Blob` type round-trips through candid type export/import (#1744)
