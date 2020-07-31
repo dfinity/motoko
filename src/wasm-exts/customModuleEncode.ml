@@ -189,15 +189,7 @@ let encode (em : extended_module) =
       close_dwarf false
     | [] -> failwith "no open DW_TAG"
     | [Tag (None, t, viscera)] when Dwarf5.dw_TAG_compile_unit = t ->
-      (* we have to be careful to only reference tags already written,
-         so maintain creation order; reversal happens in writeTag *)
-      let ref_priority a b = match a, b with
-        | Tag (Some m, _, _), Tag (Some n, _, _) -> compare n m
-        | _, Tag (Some _, _, _) -> -1
-        | Tag (Some _, _, _), _ -> 1
-        | _ -> 0 in
-      let viscera' = List.stable_sort ref_priority viscera in
-      dwarf_tags := Tag (None, t, viscera') :: []
+      dwarf_tags := Tag (None, t, viscera) :: []
     | [Tag _] -> failwith "TOPLEVEL: NOT NESTING"
     | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
       dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf genuine
@@ -886,7 +878,16 @@ let encode (em : extended_module) =
           Promise.fulfill (References.find refi !dw_references) (pos s - !info_section_start)
         | None -> assert (t <> Dwarf5.dw_TAG_base_type)
         end;
-        let contents = List.rev contentsRevd in
+
+        (* we have to be careful to only reference tags already written,
+           so maintain creation order *)
+        let ref_priority a b = match a, b with
+          | Tag (Some m, _, _), Tag (Some n, _, _) -> compare n m
+          | _, Tag (Some _, _, _) -> -1
+          | Tag (Some _, _, _), _ -> 1
+          | _ -> 0 in
+
+        let contents = List.rev (List.stable_sort ref_priority contentsRevd) in
         let wanted_tag (t', _, _) = t = t' in
         let (_, has_children, forms) = List.find wanted_tag Abbreviation.abbreviations in
         let rec pairing (attr, form) = function
