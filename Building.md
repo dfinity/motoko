@@ -51,10 +51,10 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    merge it into master without additional approval, within 2 or 3 minutes.
  * Switch to master. The release commit should be your `HEAD`
  * `git tag 0.42 -m "Motoko 0.42"`
- * `git branch -f stable 0.42`
- * `git push origin stable 0.42`
+ * `git branch -f release 0.42`
+ * `git push origin release 0.42`
 
-The `stable` branch should thus always reference the lateste release commit.
+The `release` branch should thus always reference the lateste release commit.
 
 ## Development without nix-shell
 
