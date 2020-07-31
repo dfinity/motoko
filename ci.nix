@@ -20,6 +20,7 @@ let
     nixpkgs.releaseTools.aggregate {
       name = "all-systems-go";
       constituents = [
+        release.motoko
         linux.all-systems-go
         darwin.all-systems-go
       ];
