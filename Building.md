@@ -47,11 +47,14 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    in the changelog section, and possibly clean it up.
 
  * `git commit -a -m "Releasing 0.42"`
+ * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
+   merge it into master without additional approval, within 2 or 3 minutes.
+ * Switch to master. The release commit should be your `HEAD`
  * `git tag 0.42 -m "Motoko 0.42"`
  * `git branch -f release 0.42`
- * `git push origin master release 0.42`
+ * `git push origin release 0.42`
 
-The `release` branch should always reference the lateste release commit.
+The `release` branch should thus always reference the lateste release commit.
 
 ## Development without nix-shell
 
