@@ -48,10 +48,10 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
  * `git commit -a -m "Releasing 0.42"`
  * `git tag 0.42 -m "Motoko 0.42"`
- * `git branch -f stable 0.42`
- * `git push origin master stable 0.42`
+ * `git branch -f release 0.42`
+ * `git push origin master release 0.42`
 
-The `stable` branch should always reference the lateste release commit.
+The `release` branch should always reference the lateste release commit.
 
 ## Development without nix-shell
 
