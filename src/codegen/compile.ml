@@ -4178,6 +4178,7 @@ module Serialization = struct
       | Prim Bool ->
         get_data_buf ^^
         get_x ^^
+        BoxedSmallWord.unbox env (* essentially SR.adjust SR.Vanilla SR.bool *) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Tup [] -> (* e(()) = null *)
@@ -4490,7 +4491,8 @@ module Serialization = struct
         TaggedSmallWord.msb_adjust Word8
       | Prim Bool ->
         assert_prim_typ t ^^
-        ReadBuf.read_byte env get_data_buf
+        ReadBuf.read_byte env get_data_buf ^^
+        BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
       | Prim Null ->
         assert_prim_typ t ^^
         Opt.null_lit
