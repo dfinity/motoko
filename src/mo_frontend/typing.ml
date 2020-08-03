@@ -110,25 +110,28 @@ let flag_of_compile_mode mode =
   | Flags.WasmMode -> " and flag -no-system-api"
   | Flags.RefMode -> " and flag -ref-system-api"
 
-let compile_mode_diagnostic type_diagnostic is_error mode env at fmt =
-  Printf.ksprintf
-    (fun s ->
-      let s =
-        Printf.sprintf "%s\n  (This is a limitation of the current version%s.)"
-          s
-          (flag_of_compile_mode mode)
-      in
-      Diag.add_msg env.msgs (type_diagnostic at s); if is_error then raise Recover) fmt
+let diag_in type_diag modes env at fmt =
+  let mode = !Flags.compile_mode in
+  if !Flags.compiled && List.mem mode modes then
+    begin
+      Printf.ksprintf
+        (fun s ->
+          let s =
+            Printf.sprintf "%s\n  (This is a limitation of the current version%s.)"
+            s
+            (flag_of_compile_mode mode)
+          in
+          Diag.add_msg env.msgs (type_diag at s)) fmt;
+      true
+    end
+  else false
 
 let error_in modes env at fmt =
-  let mode = !Flags.compile_mode in
-  if !Flags.compiled && List.mem mode modes then
-    compile_mode_diagnostic type_error true mode env at fmt
+  if diag_in type_error modes env at fmt then
+    raise Recover
 
 let warn_in modes env at fmt =
-  let mode = !Flags.compile_mode in
-  if !Flags.compiled && List.mem mode modes then
-    compile_mode_diagnostic type_warning false mode env at fmt
+  ignore (diag_in type_warning modes env at fmt)
 
 (* Context extension *)
 
