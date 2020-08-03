@@ -1,5 +1,10 @@
 = Motoko compiler changelog
 
+== 0.4 (2020-08-03)
+
+* Candid pretty printer to use shorthand when possible (#1774)
+* fix candid import to use the new id format (#1787)
+
 == 0.3 (2020-07-31)
 
 * Fixes an issue with boolean encoding to Candid
