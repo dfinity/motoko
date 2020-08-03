@@ -3,6 +3,7 @@ func go () {
   let foobaz1 = foobar1;
   foobaz1();
 };
+go();
 
 func foobar2() = ();
 let foobaz2 = foobar2;

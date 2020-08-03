@@ -1,6 +1,7 @@
 func go () {
   (func foobar1() = ())();
 };
+go();
 
 (func foobar2() = ())();
 

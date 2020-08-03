@@ -29,7 +29,7 @@ func checkpointJuliett() {};
     let e : Word64 = 20000;
 
 // this is the value of c
-// CHECK: i32.const 35651060
+// CHECK: i32.const 17825530
 // CHECK-NOT: call $box_i64
 // CHECK: call $printW64ln
     printW64ln(+c);
@@ -89,7 +89,7 @@ func checkpointJuliett() {};
 // CHECK: call $checkpointBravo
     checkpointBravo();
 // this is the value of c
-// CHECK: i32.const 35651060
+// CHECK: i32.const 17825530
 // CHECK-NOT: call $box_i64
 // CHECK: call $printW32ln
     printW32ln(+c);

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-DRUN=${DRUN:-drun}
 CONFIG=$(realpath $(dirname $0)/drun.json5)
 
 #
@@ -38,7 +37,7 @@ then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
     LANG=C perl -npe 's,ic:2A012B,'$ID',g' $1
-  ) | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"
@@ -46,5 +45,5 @@ else
     then
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
-  ) | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
