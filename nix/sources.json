@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.8",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "c47126c8cff6aa039f70148c92f31eaad574c5f4",
+        "rev": "feb3b35861082f6a9e995342b49862a966055e4e",
         "type": "git"
     },
     "libtommath": {
