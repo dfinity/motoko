@@ -1,4 +1,4 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
 ingress Completed: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c01690001000105c0fefed00d
-Ok: Reply: 0x4449444c0169000100010dc0fefed00dcafebabedeadbeef
+Err: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: Wrong URL scheme (not 'ic:')
+Err: IC0503: Canister ic:0100000000000000000000000000000000012D trapped explicitly: RTS error: blob_of_principal: Wrong URL scheme (not 'ic:')

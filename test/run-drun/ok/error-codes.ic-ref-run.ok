@@ -1,9 +1,6 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update go(0x4449444c0000)
-debug.print: canister_reject:ball
-Trap: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
-debug.print: canister_error:canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
-← completed: 0x4449444c0000
+→ update create_canister(())
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code((record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…)
+← rejected (RC_CANISTER_ERROR): Initialization trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: Wrong URL scheme (not 'ic:')"
+→ update go(())
+← rejected (RC_DESTINATION_INVALID): canister is empty
