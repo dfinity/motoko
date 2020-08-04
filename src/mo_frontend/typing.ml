@@ -13,8 +13,15 @@ module C = Async_cap
 
 (* Contexts  *)
 
+(* availability, used to mark actor constructors as unavailable in compiled code
+   FUTURE: mark unavailable, non-shared variables *)
+type avl = Available | Unavailable
+
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
+type val_env  = (T.typ * avl) T.Env.t
+
+let available env = T.Env.map (fun ty -> (ty, Available)) env
 
 let initial_scope =
   { Scope.empty with
@@ -22,8 +29,9 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+
 type env =
-  { vals : Scope.val_env;
+  { vals : val_env;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -40,7 +48,7 @@ type env =
   }
 
 let env_of_scope msgs scope =
-  { vals = scope.Scope.val_env;
+  { vals = T.Env.map (fun typ -> (typ, Available)) scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -56,21 +64,6 @@ let env_of_scope msgs scope =
     scopes = T.ConEnv.empty;
   }
 
-(* Unavailability *)
-
-(* used to mark class constructors as unavailable for reference in IC compiled code *)
-
-let unavailable_con =
-  T.(Con.fresh "unavailable" (
-    Def([ { var="T"; bound = Any; T.sort = T.Type } ], Var ("T", 0))))
-
-let unavailable_typ t =
-  T.Con(unavailable_con, [t])
-
-let is_unavailable_typ t =
-  match t with
-  | T.Con(c,[t]) -> Con.eq c unavailable_con
-  | _ -> false
 
 (* Error bookkeeping *)
 
@@ -136,7 +129,7 @@ let warn_in modes env at fmt =
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t = {env with vals = T.Env.add x t env.vals}
+let add_val env x t = {env with vals = T.Env.add x (t, Available) env.vals}
 
 let add_typs env xs cs =
   { env with
@@ -146,14 +139,14 @@ let add_typs env xs cs =
 
 let adjoin env scope =
   { env with
-    vals = T.Env.adjoin env.vals scope.Scope.val_env;
+    vals = T.Env.adjoin env.vals (available scope.Scope.val_env);
     libs = T.Env.adjoin env.libs scope.Scope.lib_env;
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
   }
 
-let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
+let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
 let adjoin_typs env te ce =
   { env with
     typs = T.Env.adjoin env.typs te;
@@ -218,9 +211,11 @@ and check_obj_path' env path : T.typ =
   match path.it with
   | IdH id ->
     (match T.Env.find_opt id.it env.vals with
-     | Some T.Pre ->
+     | Some (T.Pre, _) ->
        error env id.at "cannot infer type of forward variable reference %s" id.it
-     | Some t -> t
+     | Some (t, Available) -> t
+     | Some (t, Unavailable) ->
+         error env id.at "unavailable variable %s" id.it
      | None -> error env id.at "unbound variable %s" id.it
     )
   | DotH (path', id) ->
@@ -734,13 +729,13 @@ and infer_exp'' env exp : T.typ =
     error env exp.at "cannot infer type of primitive"
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with
-    | Some T.Pre ->
+    | Some (T.Pre, _) ->
       error env id.at "cannot infer type of forward variable %s" id.it;
-    | Some t when is_unavailable_typ t->
+    | Some (t, Unavailable) ->
       if !Flags.compiled then
         error env id.at "variable %s is in scope but not available in compiled code" id.it
-      else T.normalize t
-    | Some t -> t
+      else t
+    | Some (t, Available) -> t
     | None ->
       error env id.at "unbound variable %s" id.it
     )
@@ -1824,7 +1819,19 @@ and check_stab env sort scope fields =
 
 and infer_block env decs at : T.typ * Scope.scope =
   let scope = infer_block_decs env decs in
-  let t = infer_block_exps (adjoin env scope) decs in
+  let env' = adjoin env scope in
+  (* HACK: when compiling to IC, mark class constructors as unavailable *)
+  let ve = match !Flags.compile_mode with
+    | (Flags.ICMode | Flags.RefMode) ->
+      List.fold_left (fun ve' dec ->
+        match dec.it with
+        | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
+          T.Env.mapi (fun id' (typ, avl) ->
+            (typ, if id' = id.it then Unavailable else avl)) ve'
+        | _ -> ve') env'.vals decs
+    | _ -> env'.vals
+  in
+  let t = infer_block_exps { env' with vals = ve } decs in
   t, scope
 
 and infer_block_decs env decs : Scope.t =
@@ -1862,7 +1869,7 @@ and infer_dec env dec : T.typ =
     if not env.pre then ignore (infer_exp env exp);
     T.unit
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
-    let t = T.Env.find id.it env.vals in
+    let (t, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
@@ -1933,7 +1940,9 @@ and infer_val_path env exp : T.typ option =
   | ImportE (f, ri) ->
     Some (check_import env exp.at f ri)
   | VarE id ->
-    T.Env.find_opt id.it env.vals
+    (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
+     | Some (t, _) -> Some t
+     | _ -> None)
   | DotE (path, id) ->
     (match infer_val_path env path with
      | None -> None
@@ -2173,11 +2182,8 @@ and infer_dec_valdecs env dec : Scope.t =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
-    let available_t = match !Flags.compile_mode, obj_sort.it with
-       | (Flags.ICMode | Flags.RefMode), T.Actor -> unavailable_typ t
-       | _ -> t in
     Scope.{ empty with
-      val_env = T.Env.singleton id.it available_t;
+      val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
