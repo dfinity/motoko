@@ -1,6 +1,5 @@
 install $ID reinstall/a.mo ""
 query $ID check "DIDL\x00\x00"
-# change this to reinstall once drun and ic-ref-run support that
-install $ID reinstall/b.mo ""
+reinstall $ID reinstall/b.mo ""
 query $ID check "DIDL\x00\x00"
 
