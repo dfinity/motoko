@@ -36,7 +36,7 @@ if [ "${1: -5}" = ".drun" ]
 then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
-    LANG=C perl -npe 's,ic:2A012B,'$ID',g' $1
+    LANG=C perl -npe 's,\$ID,'$ID',g' $1
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"

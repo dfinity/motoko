@@ -15,7 +15,8 @@ ID=cvccv-qqaaq-aaaaa-aaaaa-c
 if [ "${1: -5}" = ".drun" ]
 then
   ( echo "create"
-    grep -v '^$' $1 | grep -v '^\w*#' # ic-ref-run doesn’t like empty or comment lines
+    LANG=C perl -npe 's,\$ID,'$ID',g' $1 |
+    grep -v '^$' | grep -v '^\w*#' # ic-ref-run doesn’t like empty or comment lines
   ) | ic-ref-run /dev/stdin
 else
   ( echo "create"
