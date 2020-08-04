@@ -9,8 +9,8 @@ fi
 export LANG=C.UTF-8
 
 # drun creates canisters with this ID:
-# ID=cvccv-qqaaq-aaaaa-aaaaa-c
-ID=ic:0004000000000000014B
+ID=cvccv-qqaaq-aaaaa-aaaaa-c
+# ID=ic:0004000000000000014B
 
 if [ "${1: -5}" = ".drun" ]
 then

@@ -5,6 +5,6 @@
 → update go(())
 ← completed: 0x4449444c016900010001022a01
 → update go2(())
-← rejected (RC_CANISTER_REJECT): canister does not exist: ic:2a012b
+← rejected (RC_CANISTER_REJECT): canister does not exist: lg264-qjkae
 → update go3(())
-← rejected (RC_CANISTER_REJECT): canister does not exist: ic:2a012b
+← rejected (RC_CANISTER_REJECT): canister does not exist: lg264-qjkae
