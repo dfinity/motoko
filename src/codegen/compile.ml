@@ -4491,7 +4491,10 @@ module Serialization = struct
         TaggedSmallWord.msb_adjust Word8
       | Prim Bool ->
         assert_prim_typ t ^^
-        ReadBuf.read_byte env get_data_buf ^^
+        read_byte_tagged
+          [ Bool.lit false
+          ; Bool.lit true
+          ] ^^
         BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
       | Prim Null ->
         assert_prim_typ t ^^
