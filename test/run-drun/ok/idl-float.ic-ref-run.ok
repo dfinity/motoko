@@ -1,6 +1,6 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query foon(0x4449444c0001720000000000000840)
-← completed: 0x4449444c0001720000000000001840
+→ update create_canister(())
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code((record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a5\81\80\80\00\1b`\n\7f\7f\7f\7f…)
+← completed: ()
+→ query foon(((3.0 : float64)))
+← completed: ((6.0 : float64))
