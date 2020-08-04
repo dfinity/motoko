@@ -1,8 +1,8 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query fun(0x4449444c0001680103caffee)
-← completed: 0x4449444c0001680103caffee
-→ query fun2(0x4449444c016e680100010103caffee)
-← completed: 0x4449444c016e680100010103caffee
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
+← completed: ()
+→ query fun(service "w7x7r-cok77-xa")
+← completed: (service "w7x7r-cok77-xa")
+→ query fun2(opt service "w7x7r-cok77-xa")
+← completed: (opt service "w7x7r-cok77-xa")
