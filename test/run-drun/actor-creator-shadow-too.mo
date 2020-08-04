@@ -1,4 +1,4 @@
-shared {caller = c} actor class () = c {
+shared {caller = c} actor class C() = c {
 
   public shared ctxt func c1 () : async actor {} {
      return c;
@@ -6,8 +6,4 @@ shared {caller = c} actor class () = c {
 
 };
 
-(); //OR-CALL ingress c1 0x4449444C0000
-
-
-
-
+ignore C().c1(); //OR-CALL ingress c1 0x4449444C0000
