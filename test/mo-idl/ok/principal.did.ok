@@ -1,3 +1,3 @@
 service : {
-  "getCaller": () -> (principal, blob);
+  getCaller: () -> (principal, blob);
 }
