@@ -48,7 +48,7 @@ type env =
   }
 
 let env_of_scope msgs scope =
-  { vals = T.Env.map (fun typ -> (typ, Available)) scope.Scope.val_env;
+  { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
