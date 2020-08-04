@@ -1,45 +1,45 @@
-→ update create_canister(())
+→ update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code((record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…)
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
 debug.print: init'ed
 ← completed: ()
-→ update install_code((record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…)
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
 debug.print: init'ed 0
 debug.print: postupgrade 0
 ← completed: ()
-→ query check((1))
+→ query check(1)
 debug.print: a
 ← completed: ()
-→ update inc(())
+→ update inc()
 ← completed: ()
-→ query check((2))
+→ query check(2)
 debug.print: aa
 ← completed: ()
-→ update inc(())
+→ update inc()
 ← completed: ()
-→ update install_code((record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…)
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
 debug.print: preupgrade 0
 debug.print: init'ed 1
 debug.print: postupgrade 1
 ← completed: ()
-→ query check((3))
+→ query check(3)
 debug.print: 3
 debug.print: aaa
 ← completed: ()
-→ update inc(())
+→ update inc()
 ← completed: ()
-→ query check((4))
+→ query check(4)
 debug.print: 4
 debug.print: aaa
 ← completed: ()
-→ update install_code((record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…)
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
 debug.print: preupgrade 1
 debug.print: init'ed 2
 debug.print: postupgrade 2
 ← completed: ()
-→ query check((4))
+→ query check(4)
 ← completed: ()
-→ update inc(())
+→ update inc()
 ← completed: ()
-→ query check((5))
+→ query check(5)
 ← completed: ()
