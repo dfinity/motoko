@@ -20,9 +20,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "release-0.8",
+        "ref": "release-0.9",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "feb3b35861082f6a9e995342b49862a966055e4e",
+        "rev": "48078ecfff4f0abb63a7eee8ffa0ecdbcbe392d8",
         "type": "git"
     },
     "libtommath": {

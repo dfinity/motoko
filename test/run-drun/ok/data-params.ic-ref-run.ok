@@ -1,8 +1,8 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update go(0x4449444c0000)
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\ab\81\80\80\00\1c`\n\7f\7f\7f\7f…
+← completed: ()
+→ update go()
 debug.print: ("sendn", 0)
 debug.print: ("sendn", 1)
 debug.print: ("sendn", 2)
@@ -41,4 +41,4 @@ debug.print: ("sendi", +42)
 debug.print: ("sendi", -42)
 debug.print: ("sendn", 2_147_483_647)
 debug.print: ("sendfloat", 42.000000)
-← completed: 0x4449444c0000
+← completed: ()
