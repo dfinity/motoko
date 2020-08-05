@@ -21,7 +21,7 @@ TOMMATHFILES = \
 MUSLFILES = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
   towctrans iswspace iswupper iswlower iswalpha wcschr wcslen \
-  floor scalbn frexp strnlen memchr memset memcpy snprintf vsnprintf vfprintf \
+  floor scalbn frexp strnlen memchr printf snprintf vsnprintf vfprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \
   stubs
@@ -158,7 +158,11 @@ _build/wasm/musl_%.o: %.c | _build/wasm
 
 .PHONY: _build/wasm/libmotoko_rts.a
 _build/wasm/libmotoko_rts.a: | _build/wasm
-	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten --release
+	# NB. codegen-units=1 is to make debugging easier, not strictly
+	# necessary
+	cd motoko-rts && \
+	    xargo rustc --target=wasm32-unknown-emscripten --release -- \
+		-Crelocation-model=pic -Ccodegen-units=1
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
 .PHONY: _build/native/libmotoko_rts.a
@@ -179,6 +183,7 @@ mo-rts.wasm: $(RTS_WASM_O) $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
+		--whole-archive \
 		$+
 
 #

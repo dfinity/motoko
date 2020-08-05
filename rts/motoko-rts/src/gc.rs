@@ -6,10 +6,9 @@
 // TODO: inconsistent use of size vs. len
 
 use core::arch::wasm32;
-use core::fmt::Write;
 
 use crate::array::array_idx_unchecked;
-use crate::common::{debug_print, rts_trap_with, Wrapper};
+use crate::common::{debug_print, rts_trap_with};
 use crate::types::*;
 
 extern "C" {
@@ -427,12 +426,12 @@ pub unsafe extern "C" fn rust_collect_garbage() {
     debug_print("### Evacuating roots");
 
     let mut buf = [0 as u8; 100];
-    let _ = write!(
-        Wrapper::new(&mut buf),
-        "### begin_from_space={}",
+    libc::snprintf(
+        buf.as_mut_ptr() as *mut _,
+        100,
+        "### begin_from_space=%d".as_ptr() as *const _,
         begin_from_space.unskew()
     );
-    
 
     // Evacuate roots
     end_to_space = evac_static_roots(begin_from_space, begin_to_space, end_to_space, static_roots);
