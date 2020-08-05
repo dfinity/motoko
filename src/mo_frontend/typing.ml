@@ -1875,7 +1875,10 @@ and infer_dec env dec : T.typ =
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
-      let _, ve = infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
+      let t_pat, ve =
+        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
+      if obj_sort.it = T.Actor && not (T.shared t_pat) then
+        error_shared env t_pat pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t_pat);
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
       let env''' =
@@ -2160,10 +2163,6 @@ and infer_dec_valdecs env dec : Scope.t =
       con_env = T.ConSet.singleton c ;
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
-    let rec is_unit_pat p = match p.it with
-      | ParP p -> is_unit_pat p
-      | TupP [] -> true
-      | _ -> false in
     if obj_sort.it = T.Actor then begin
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
@@ -2171,9 +2170,9 @@ and infer_dec_valdecs env dec : Scope.t =
       if not (is_anonymous id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
           "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
-      if not (is_unit_pat pat) then
-        error_in [Flags.RefMode] env dec.at
-          "actor classes with parameters are not supported yet";
+      if not (typ_binds = []) then
+        error env dec.at
+          "actor classes with type parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in

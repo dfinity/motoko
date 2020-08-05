@@ -994,6 +994,7 @@ let check_comp_unit env = function
       | None -> { env with async = None }
       | Some as_ ->
         let ve = check_args env as_ in
+        List.iter (fun a -> check_shared env no_region a.note) as_;
         adjoin_vals { env with async = None } ve
     in
     let scope1 = gather_block_decs env' ds in
