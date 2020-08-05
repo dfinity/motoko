@@ -7932,7 +7932,7 @@ and main_actor as_opt mod_env ds fs up =
   Func.define_built_in mod_env "init" [] [] (fun env ->
     let ae0 = VarEnv.empty_ae in
 
-    (* Deserialize any arguments and add params to the environment *)
+    (* Add any params to the environment *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
     let arg_names = List.map (fun a -> a.it) args in
     let arg_tys = List.map (fun a -> a.note) args in
@@ -7956,13 +7956,23 @@ and main_actor as_opt mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.post);
     Dfinity.export_upgrade_methods env;
 
-    match as_opt with
-    | Some (_::_) ->
-      Serialization.deserialize env arg_tys ^^
-      G.concat (List.rev setters)  ^^
-      decls_codeW G.nop
-    | _ ->
-      decls_codeW G.nop
+    (* Deserialize any arguments *)
+    (match as_opt with
+     | Some [] ->
+       (* Liberally accept empty as well as unit argument *)
+       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       G.if_ [] (Serialization.deserialize env arg_tys) G.nop
+     | Some (_::_) ->
+       Serialization.deserialize env arg_tys ^^
+       G.concat (List.rev setters)
+     | None ->
+       (* Reject unexpected argument *)
+       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       E.then_trap_with env "unexpected installation argument" ^^
+       G.nop) ^^
+
+    (* Continue with decls *)
+    decls_codeW G.nop
   )
 
 and conclude_module env start_fi_o =
