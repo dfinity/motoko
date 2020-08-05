@@ -7962,7 +7962,7 @@ and main_actor as_opt mod_env ds fs up =
        (* Liberally accept empty as well as unit argument *)
        Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
-     | Some (_::_) ->
+     | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
        G.concat (List.rev setters)
      | None ->
