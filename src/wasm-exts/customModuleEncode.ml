@@ -1104,7 +1104,8 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
               let prg, (addr, _, _, (stm, _, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (prg @ [dw_LNS_advance_pc; ending - addr - 1]
+                        (dw_LNS_set_prologue_end :: prg (* FIXME: prologue_end should be after the locals *)
+                             @ [dw_LNS_advance_pc; ending - addr - 1]
                              @ (if stm then [] else [dw_LNS_negate_stmt])
                              @ [dw_LNS_set_epilogue_begin; dw_LNS_copy;
                                 dw_LNS_advance_pc; 1; dw_LNS_negate_stmt; - dw_LNE_end_sequence]))
