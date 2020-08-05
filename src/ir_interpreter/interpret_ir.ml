@@ -855,7 +855,8 @@ and interpret_comp_unit env cu k = match cu with
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
-  | ActorU (ds, fs, _, _) ->
+  | ActorU (as_opt, ds, fs, _, _) ->
+    assert (as_opt = None); (* TBC *)
     interpret_actor env ds fs (fun _ -> k ())
 
 let interpret_prog flags (cu, flavor) =

@@ -26,7 +26,7 @@ let rec exp e = match e.it with
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
-    "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
+    "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
   | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
@@ -142,7 +142,8 @@ and typ_bind (tb : typ_bind) =
 
 and comp_unit = function
   | ProgU ds -> "ProgU" $$ List.map dec ds
-  | ActorU (ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ args as_ @ List.map dec ds @ fields fs @ [upgrade u; typ t]
 
 and prog (cu, _flavor) = comp_unit cu
 
