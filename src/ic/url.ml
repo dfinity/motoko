@@ -87,4 +87,4 @@ let parse (f: string) : (parsed, string) result =
 
 (* Basename of the IDL file searched (see DFX-Interface.md) *)
 let idl_basename_of_blob bytes =
-  Lib.Hex.hex_of_bytes bytes ^ Lib.Hex.hex_of_byte (Lib.CRC.crc8 bytes) ^ ".did"
+  encode_principal bytes ^ ".did"
