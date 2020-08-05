@@ -1,0 +1,3 @@
+install $ID actor-class-arg/actor-class-arg.mo "DIDL\x00\x01\x71\x05Hello"
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID echo "DIDL\x00\x00"
