@@ -184,7 +184,14 @@ let structural_equality t =
           then go (i + 1)
           else false in
         Bool (Array.length v1 <> Array.length v2 && go 0)
-    | T.Opt t -> go t
+    | T.Opt t -> fun v1 v2 ->
+      let eq_elem = go t in
+      (match (v1, v2) with
+       | (Null, Null) -> Bool true
+       | (Null, Opt _) -> Bool false
+       | (Opt _, Null) -> Bool false
+       | (Opt v1, Opt v2) -> eq_elem v1 v2
+       | _, _ -> assert false)
     | T.Tup ts ->
       fun v1 v2 ->
         let v1 = as_tup v1 in
