@@ -18,6 +18,7 @@ sig
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
   val split_at : int -> 'a list -> ('a list * 'a list)
+  val null : 'a list -> bool
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)

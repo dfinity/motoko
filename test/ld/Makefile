@@ -14,7 +14,7 @@ WASM_LD?=wasm-ld-10
 MO_LD?=../../src/mo-ld
 
 _out/%.lib.o: %.c | _out
-	$(WASM_CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
+	$(WASM_CLANG) --compile -fPIC --target=wasm32-unknown-emscripten --optimize=3 \
 		-fno-builtin -Wall \
 		$< --output $@
 
@@ -30,7 +30,7 @@ _out/%.linked.wasm: _out/%.base.wasm _out/%.lib.wasm
 	$(MO_LD) -b _out/$*.base.wasm -l _out/$*.lib.wasm -o _out/$*.linked.wasm
 
 _out/%.wat: _out/%.wasm
-	wasm2wat --no-check $< -o $@
+	wasm2wat $< -o $@
 
 _out/%.valid: _out/%.wasm
 	wasm-validate $< > $@ 2>&1 || true
