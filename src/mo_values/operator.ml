@@ -175,17 +175,14 @@ let structural_equality t =
         | T.Def (_, t) -> go (T.open_ ts t) (* TBR this may fail to terminate *)
         )
     | T.Array t ->
-        let eq_elem = go t in
         fun v1 v2 ->
+          let eq_elem = go t in
           let v1 = as_array v1 in
           let v2 = as_array v2 in
-          let rec go i =
-            if i >= Array.length v1 then true
-            else if as_bool (eq_elem v1.(i) v2.(i)) then
-              go (i + 1)
-            else false
-          in
-          Bool (Array.length v1 == Array.length v2 && go 0)
+          Bool (
+            Array.length v1 == Array.length v2 &&
+            Lib.Array.for_all2 (fun x y -> as_bool (eq_elem x y)) v1 v2
+          )
     | T.Opt t -> (
         fun v1 v2 ->
           let eq_elem = go t in

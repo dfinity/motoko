@@ -383,6 +383,17 @@ struct
       match f x.(i) y.(i) with
       | 0 -> compare' f x y (i + 1)
       | n -> n
+
+  let for_all2 p xs ys =
+    if Array.length xs <> Array.length ys then failwith "for_all2"
+    else
+      let rec go i =
+        if i >= Array.length xs then true
+        else if p xs.(i) ys.(i) then
+          go (i + 1)
+        else false
+      in
+      go 0
 end
 
 module Array32 =
