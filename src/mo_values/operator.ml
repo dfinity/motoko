@@ -180,11 +180,12 @@ let structural_equality t =
           let v1 = as_array v1 in
           let v2 = as_array v2 in
           let rec go i =
-            if as_bool (eq_elem v1.(i) v2.(i)) && i < Array.length v1 then
+            if i >= Array.length v1 then true
+            else if as_bool (eq_elem v1.(i) v2.(i)) then
               go (i + 1)
             else false
           in
-          Bool (Array.length v1 <> Array.length v2 && go 0)
+          Bool (Array.length v1 == Array.length v2 && go 0)
     | T.Opt t -> (
         fun v1 v2 ->
           let eq_elem = go t in

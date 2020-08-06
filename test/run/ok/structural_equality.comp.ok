@@ -1,4 +1,14 @@
 compile_eq: EqOp
+StackRep.of_type: [(?Nat)]
+compile_eq: EqOp
+StackRep.of_type: [(?Nat)]
+compile_eq: EqOp
+StackRep.of_type: [Nat]
+compile_eq: EqOp
+StackRep.of_type: [Nat]
+compile_eq: EqOp
+StackRep.of_type: {x : Nat}
+compile_eq: EqOp
 StackRep.of_type: {#ok : Nat}
 compile_eq: EqOp
 StackRep.of_type: {#x; #y}
