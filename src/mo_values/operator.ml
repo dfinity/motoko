@@ -169,61 +169,72 @@ let structural_equality t =
     | T.Var _ | T.Pre | T.Prim T.Error | T.Async _ | T.Mut _ -> assert false
     | T.Any | T.Non | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim p -> eq_prim p
-    | T.Con (c, ts) ->
-      (match Mo_types.Con.kind c with
-      | T.Abs _ -> assert false
-      | T.Def (_, t) -> go (T.open_ ts t) (* TBR this may fail to terminate *)
-      )
+    | T.Con (c, ts) -> (
+        match Mo_types.Con.kind c with
+        | T.Abs _ -> assert false
+        | T.Def (_, t) -> go (T.open_ ts t) (* TBR this may fail to terminate *)
+        )
     | T.Array t ->
-      let eq_elem = go t in
-      fun v1 v2 ->
-        let v1 = as_array v1 in
-        let v2 = as_array v2 in
-        let rec go i =
-          if as_bool (eq_elem (Array.get v1 i) (Array.get v2 i)) && i < Array.length v1
-          then go (i + 1)
-          else false in
-        Bool (Array.length v1 <> Array.length v2 && go 0)
-    | T.Opt t -> fun v1 v2 ->
-      let eq_elem = go t in
-      (match (v1, v2) with
-       | (Null, Null) -> Bool true
-       | (Null, Opt _) -> Bool false
-       | (Opt _, Null) -> Bool false
-       | (Opt v1, Opt v2) -> eq_elem v1 v2
-       | _, _ -> assert false)
+        let eq_elem = go t in
+        fun v1 v2 ->
+          let v1 = as_array v1 in
+          let v2 = as_array v2 in
+          let rec go i =
+            if as_bool (eq_elem v1.(i) v2.(i)) && i < Array.length v1 then
+              go (i + 1)
+            else false
+          in
+          Bool (Array.length v1 <> Array.length v2 && go 0)
+    | T.Opt t -> (
+        fun v1 v2 ->
+          let eq_elem = go t in
+          match (v1, v2) with
+          | Null, Null -> Bool true
+          | Null, Opt _ -> Bool false
+          | Opt _, Null -> Bool false
+          | Opt v1, Opt v2 -> eq_elem v1 v2
+          | _, _ -> assert false )
     | T.Tup ts ->
-      fun v1 v2 ->
-        let v1 = as_tup v1 in
-        let v2 = as_tup v2 in
-        let rec go_inner ts v1 v2 = match (ts, v1, v2) with
-          | ([], _, _) -> true
-          | (t::ts, v1::v1s, v2::v2s) -> as_bool (go t v1 v2) && go_inner ts v1s v2s
-          | _ -> assert false
-        in
-        Bool (go_inner ts v1 v2)
-    | T.Obj (s, fs) ->
-      (match s with
-       | T.Actor -> fun v1 v2 -> Bool (v1 == v2) (* HACK *)
-       | T.Module | T.Memory -> assert false
-       | T.Object -> fun v1 v2 ->
-         let v1 = as_obj v1 in
-         let v2 = as_obj v2 in
-         Bool (List.for_all (fun f ->
-           let eq_elem = go f.T.typ
-           in as_bool (eq_elem (Env.find f.T.lab v1) (Env.find f.T.lab v2))) fs))
-    | T.Variant fs -> fun v1 v2 ->
-         let (l1, v1) = as_variant v1 in
-         let (l2, v2) = as_variant v2 in
-         if l1 <> l2
-         then Bool false
-         else
-          let eq_elem = go (List.find (fun f -> f.T.lab = l1) fs).T.typ in
-          eq_elem v1 v2
+        fun v1 v2 ->
+          let v1 = as_tup v1 in
+          let v2 = as_tup v2 in
+          let rec go_inner ts v1 v2 =
+            match (ts, v1, v2) with
+            | [], _, _ -> true
+            | t :: ts, v1 :: v1s, v2 :: v2s ->
+                as_bool (go t v1 v2) && go_inner ts v1s v2s
+            | _ -> assert false
+          in
+          Bool (go_inner ts v1 v2)
+    | T.Obj (s, fs) -> (
+        match s with
+        | T.Actor -> fun v1 v2 -> Bool (v1 == v2) (* HACK *)
+        | T.Module | T.Memory -> assert false
+        | T.Object ->
+            fun v1 v2 ->
+              let v1 = as_obj v1 in
+              let v2 = as_obj v2 in
+              Bool
+                (List.for_all
+                   (fun f ->
+                     let eq_elem = go f.T.typ in
+                     as_bool
+                       (eq_elem (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
+                   fs) )
+    | T.Variant fs ->
+        fun v1 v2 ->
+          let l1, v1 = as_variant v1 in
+          let l2, v2 = as_variant v2 in
+          if l1 <> l2 then Bool false
+          else
+            let eq_elem = go (List.find (fun f -> f.T.lab = l1) fs).T.typ in
+            eq_elem v1 v2
     | T.Func (s, c, tbs, ts1, ts2) ->
-       assert (T.is_shared_sort s);
-       fun v1 v2 -> Bool (v1 == v2) (* HACK *)
-  in go t
+        assert (T.is_shared_sort s);
+        fun v1 v2 -> Bool (v1 == v2)
+    (* HACK *)
+  in
+  go t
 
 let relop op t =
   match t with
