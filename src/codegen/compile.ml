@@ -7967,7 +7967,7 @@ and main_actor as_opt mod_env ds fs up =
        G.concat (List.rev setters)
      | None ->
        (* Reject unexpected argument *)
-       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+1       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
        E.then_trap_with env "unexpected installation argument" ^^
        G.nop) ^^
 
