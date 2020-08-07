@@ -670,8 +670,13 @@ let transform_prelude prelude : import_declaration =
 let link_declarations imports (cu, flavor) =
   let cu' = match cu with
     | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
-    | Ir.ActorU (None, ds, fs, up, t) -> Ir.ActorU (None, imports @ ds, fs, up, t)
-    | Ir.ActorU (Some as_, ds, fs, up, t) ->
-      (* TODO: rename to avoid capture *)
-      Ir.ActorU (Some as_, imports @ ds, fs, up, t)
+    | Ir.ActorU (Some (_ :: _), _, _, _, _) ->
+      (* rename to avoid capture *)
+      (match Rename.comp_unit Rename.Renaming.empty cu with
+       | Ir.ActorU (as_opt, ds, fs, up, t) ->
+         Ir.ActorU (as_opt, imports @ ds, fs, up, t)
+       | _ -> assert false)
+    | Ir.ActorU (as_opt, ds, fs, up, t) ->
+      Ir.ActorU (as_opt, imports @ ds, fs, up, t)
+
   in cu', flavor

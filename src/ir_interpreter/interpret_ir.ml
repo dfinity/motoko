@@ -855,9 +855,22 @@ and interpret_comp_unit env cu k = match cu with
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
-  | ActorU (as_opt, ds, fs, _, _) ->
-    assert (as_opt = None); (* TBC *)
+  | ActorU (None, ds, fs, _, _)
+    | ActorU (Some [], ds, fs, _, _)  (* to match semantics of installation with empty argument *)
+    ->
     interpret_actor env ds fs (fun _ -> k ())
+  | ActorU (Some as_, ds, fs, up, t) ->
+    (* create the closure *)
+    let sort = T.Local in
+    let cc = CC.({ sort; control = T.Returns; n_args = List.length as_; n_res = 1 }) in
+    let f = interpret_func env no_region sort "" as_
+      (fun env' -> interpret_actor env ds fs) in
+    let _v = match cc.CC.sort with
+      | T.Shared _ -> make_message env "" cc f
+      | _ -> V.Func (cc, f)
+    in
+    (* but discard it, since this the last expression in the unit *)
+    k ()
 
 let interpret_prog flags (cu, flavor) =
   let state = initial_state () in

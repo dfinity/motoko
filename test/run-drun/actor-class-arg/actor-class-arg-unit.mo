@@ -1,13 +1,13 @@
 import Prim "mo:prim";
 
-let t = "wrong"; // test capture avoidance
+let t = "hello";
 
-shared actor class (t : Text) {
+shared actor class () {
 
   Prim.debugPrint(t);
 
   public shared query func check () : async () {
-    assert (t == "Hello");
+    assert (t == "hello");
   };
 
   public shared func echo () : async () {
