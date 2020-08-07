@@ -339,13 +339,13 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = show_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (ds, fields, {pre; post}, typ) ->
+  | ActorU (as_opt, ds, fields, {pre; post}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
     let pre' = t_exp env pre in
     let post' = t_exp env post in
     let decls = show_decls !(env.params) in
-    ActorU (decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorU (as_opt, decls @ ds', fields, {pre = pre'; post = post'}, typ)
 
 (* Entry point for the program transformation *)
 
