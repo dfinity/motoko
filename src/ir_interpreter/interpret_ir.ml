@@ -856,8 +856,8 @@ and interpret_comp_unit env cu k = match cu with
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
   | ActorU (None, ds, fs, _, _)
-    | ActorU (Some [], ds, fs, _, _)  (* to match semantics of installation with empty argument *)
-    ->
+  | ActorU (Some [], ds, fs, _, _)  (* to match semantics of installation with empty argument *)
+  ->
     interpret_actor env ds fs (fun _ -> k ())
   | ActorU (Some as_, ds, fs, up, t) ->
     (* create the closure *)
