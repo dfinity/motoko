@@ -143,7 +143,6 @@ and typ_bind (tb : typ_bind) =
 and comp_unit = function
   | ProgU ds -> "ProgU" $$ List.map dec ds
   | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
-  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ args as_ @ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [upgrade u; typ t]
 
 and prog (cu, _flavor) = comp_unit cu
-
