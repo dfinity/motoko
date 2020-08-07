@@ -2006,11 +2006,14 @@ and gather_dec env scope dec : Scope.t =
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
     in
-    let ve' = match dec.it with
-      | ClassD _ -> T.Env.add id.it T.Pre scope.val_env
+    let val_env = match dec.it with
+      | ClassD _ ->
+        if T.Env.mem id.it scope.val_env then
+          error env id.at "duplicate definition for %s in block" id.it;
+        T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { val_env = ve';
+    { val_env;
       typ_env = T.Env.add id.it c scope.typ_env;
       con_env = T.ConSet.disjoint_add c scope.con_env;
       lib_env = scope.lib_env;
@@ -2030,7 +2033,7 @@ and gather_pat_field env ve pf : Scope.val_env =
   gather_pat env ve pf.it.pat
 
 and gather_id env ve id : Scope.val_env =
-  if T.Env.find_opt id.it ve <> None then
+  if T.Env.mem id.it ve then
     error env id.at "duplicate definition for %s in block" id.it;
   T.Env.add id.it T.Pre ve
 
