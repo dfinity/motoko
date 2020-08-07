@@ -1,4 +1,7 @@
 = Language quick reference
+:proglang: Motoko
+:candid: Candid
+:company-id: DFINITY
 ////
 * targetting release 0.5.4
 * [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
@@ -342,8 +345,11 @@ The actor or actor class declaration determines the main actor, if any, of the p
 For now, compiled programs must obey the following additional restrictions (not imposed on interpreted programs):
 
 * a program may contain at most one actor or actor class declaration, i.e. the final main actor or actor class; and
-* any main actor class declaration must be *anonymous* (ruling out recursion and programmatic actor instantiation).
+* any main actor class declaration must be *anonymous* (ruling out recursion and programmatic actor instantiation); and
 
+Note that the parameters (if any) of an actor class must have shared type (see <<sharability>>).
+
+The parameters of a program's final actor class provide access to the corresponding canister installation argument(s); the {candid} type of this argument is determined by the {candid} projection of the {proglang} type of the class parameter.
 
 [[syntax-imports]]
 === Imports
@@ -1400,7 +1406,10 @@ Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructo
 
 An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 
-If `sort` is `actor`, then `<typ-args>?` must be absent or empty (`actor` classes cannot have type parameters).
+If `sort` is `actor`, then:
+
+* `<typ-args>?` must be absent or empty (`actor` classes cannot have type parameters);
+* `<pat>`'s type must be shared (see <<sharability>>).
 
 [[eval-identifiers]]
 === Identifiers
