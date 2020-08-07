@@ -188,7 +188,7 @@ let structural_equality t =
           let eq_elem = go t in
           match (v1, v2) with
           | Null, Null -> Bool true
-          | Null, Opt _ -> Bool false
+          | Null, Opt _ 
           | Opt _, Null -> Bool false
           | Opt v1, Opt v2 -> eq_elem v1 v2
           | _, _ -> assert false )
