@@ -345,10 +345,12 @@ The actor or actor class declaration determines the main actor, if any, of the p
 For now, compiled programs must obey the following additional restrictions (not imposed on interpreted programs):
 
 * a program may contain at most one actor or actor class declaration, i.e. the final main actor or actor class; and
-* any main actor class declaration must be *anonymous* (ruling out recursion and programmatic actor instantiation); and
+* any main actor class declaration should be *anonymous*; if named,
+the name should not be referenced and will be reported as an unavailable identifier.
+
+The restrictions are designed to forbid programmatic actor instantiation and recursion, pending compiler support.
 
 Note that the parameters (if any) of an actor class must have shared type (see <<sharability>>).
-
 The parameters of a program's final actor class provide access to the corresponding canister installation argument(s); the {candid} type of this argument is determined by the {candid} projection of the {proglang} type of the class parameter.
 
 [[syntax-imports]]
