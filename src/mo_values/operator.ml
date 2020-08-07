@@ -229,8 +229,7 @@ let structural_equality t =
             eq_elem v1 v2
     | T.Func (s, c, tbs, ts1, ts2) ->
         assert (T.is_shared_sort s);
-        fun v1 v2 -> Bool (v1 == v2)
-    (* HACK *)
+        fun v1 v2 -> Bool (v1 == v2)  (* HACK *)
   in
   go t
 
