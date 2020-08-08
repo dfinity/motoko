@@ -30,13 +30,14 @@ export LANG=C.UTF-8
 EXTRA_BATCHES=1
 
 # drun creates canisters with this ID:
-ID=ic:0100000000000000000000000000000000012D
+#ID=ic:0100000000000000000000000000000000012D
+ID=75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q
 
 if [ "${1: -5}" = ".drun" ]
 then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
-    LANG=C perl -npe 's,ic:2A012B,'$ID',g' $1
+    LANG=C perl -npe 's,\$ID,'$ID',g' $1
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"

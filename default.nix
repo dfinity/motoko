@@ -475,8 +475,13 @@ rec {
         rts.buildInputs ++
         js.moc.buildInputs ++
         overview-slides.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
-        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
+        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
+        [ nixpkgs.ncurses
+	  nixpkgs.ocamlPackages.merlin
+	  nixpkgs.ocamlformat
+	  nixpkgs.ocamlPackages.utop
+	  nixpkgs.niv
+	]
       ));
 
     shellHook = llvmEnv + ''

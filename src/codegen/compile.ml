@@ -4178,6 +4178,7 @@ module Serialization = struct
       | Prim Bool ->
         get_data_buf ^^
         get_x ^^
+        BoxedSmallWord.unbox env (* essentially SR.adjust SR.Vanilla SR.bool *) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Tup [] -> (* e(()) = null *)
@@ -4490,7 +4491,11 @@ module Serialization = struct
         TaggedSmallWord.msb_adjust Word8
       | Prim Bool ->
         assert_prim_typ t ^^
-        ReadBuf.read_byte env get_data_buf
+        read_byte_tagged
+          [ Bool.lit false
+          ; Bool.lit true
+          ] ^^
+        BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
       | Prim Null ->
         assert_prim_typ t ^^
         Opt.null_lit
@@ -7935,8 +7940,8 @@ and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
       G.(dw_tag Flags.(Compile_unit (!compilation_dir, !compilation_unit)))
         (codeW G.nop)
     )
-  | ActorU (ds, fs, up, _t) ->
-    main_actor mod_env ds fs up (*DW_TODO*)
+  | ActorU (as_opt, ds, fs, up, _t) ->
+    main_actor as_opt mod_env ds fs up (*DW_TODO*)
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -7960,9 +7965,14 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor mod_env ds fs up =
+and main_actor as_opt mod_env ds fs up =
   Func.define_built_in mod_env "init" [] [] (fun env ->
-    let ae1 = VarEnv.empty_ae in
+    let ae0 = VarEnv.empty_ae in
+
+    (* Add any params to the environment *)
+    let args = match as_opt with None -> [] | Some as_ -> as_ in
+    let arg_names_tys = List.map (fun a -> a.it, a.note) args in
+    let ae1, setters = VarEnv.add_argument_locals env ae0 Source.no_region arg_names_tys in
 
     (* Reverse the fs, to a map from variable to exported name *)
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7982,6 +7992,23 @@ and main_actor mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.post);
     Dfinity.export_upgrade_methods env;
 
+    let arg_tys = List.map (fun a -> a.note) args in
+    (* Deserialize any arguments *)
+    (match as_opt with
+     | Some [] ->
+       (* Liberally accept empty as well as unit argument *)
+       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       G.if_ [] (Serialization.deserialize env arg_tys) G.nop
+     | Some (_ :: _) ->
+       Serialization.deserialize env arg_tys ^^
+       G.concat (List.rev setters)
+     | None ->
+       (* Reject unexpected argument *)
+       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       E.then_trap_with env "unexpected installation argument" ^^
+       G.nop) ^^
+
+    (* Continue with decls *)
     decls_codeW G.nop
   )
 

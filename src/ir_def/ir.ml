@@ -204,7 +204,7 @@ let full_flavor : flavor = {
 
 type comp_unit =
   | ProgU of dec list
-  | ActorU of dec list * field list * upgrade * Type.typ (* actor *)
+  | ActorU of arg list option * dec list * field list * upgrade * Type.typ (* actor (class) *)
 
 type prog = comp_unit * flavor
 

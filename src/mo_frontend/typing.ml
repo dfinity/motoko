@@ -13,8 +13,15 @@ module C = Async_cap
 
 (* Contexts  *)
 
+(* availability, used to mark actor constructors as unavailable in compiled code
+   FUTURE: mark unavailable, non-shared variables *)
+type avl = Available | Unavailable
+
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
+type val_env  = (T.typ * avl) T.Env.t
+
+let available env = T.Env.map (fun ty -> (ty, Available)) env
 
 let initial_scope =
   { Scope.empty with
@@ -22,8 +29,9 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+
 type env =
-  { vals : Scope.val_env;
+  { vals : val_env;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -40,7 +48,7 @@ type env =
   }
 
 let env_of_scope msgs scope =
-  { vals = scope.Scope.val_env;
+  { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -95,25 +103,33 @@ let flag_of_compile_mode mode =
   | Flags.WasmMode -> " and flag -no-system-api"
   | Flags.RefMode -> " and flag -ref-system-api"
 
-let compile_mode_error mode env at fmt =
-  Printf.ksprintf
-    (fun s ->
-      let s =
-        Printf.sprintf "%s\n  (This is a limitation of the current version%s.)"
-          s
-          (flag_of_compile_mode mode)
-      in
-      Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
-
-let error_in modes env at fmt =
+let diag_in type_diag modes env at fmt =
   let mode = !Flags.compile_mode in
   if !Flags.compiled && List.mem mode modes then
-    compile_mode_error mode env at fmt
+    begin
+      Printf.ksprintf
+        (fun s ->
+          let s =
+            Printf.sprintf "%s\n  (This is a limitation of the current version%s.)"
+            s
+            (flag_of_compile_mode mode)
+          in
+          Diag.add_msg env.msgs (type_diag at s)) fmt;
+      true
+    end
+  else false
+
+let error_in modes env at fmt =
+  if diag_in type_error modes env at fmt then
+    raise Recover
+
+let warn_in modes env at fmt =
+  ignore (diag_in type_warning modes env at fmt)
 
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t = {env with vals = T.Env.add x t env.vals}
+let add_val env x t = {env with vals = T.Env.add x (t, Available) env.vals}
 
 let add_typs env xs cs =
   { env with
@@ -123,14 +139,14 @@ let add_typs env xs cs =
 
 let adjoin env scope =
   { env with
-    vals = T.Env.adjoin env.vals scope.Scope.val_env;
+    vals = T.Env.adjoin env.vals (available scope.Scope.val_env);
     libs = T.Env.adjoin env.libs scope.Scope.lib_env;
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
   }
 
-let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
+let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
 let adjoin_typs env te ce =
   { env with
     typs = T.Env.adjoin env.typs te;
@@ -195,9 +211,11 @@ and check_obj_path' env path : T.typ =
   match path.it with
   | IdH id ->
     (match T.Env.find_opt id.it env.vals with
-     | Some T.Pre ->
+     | Some (T.Pre, _) ->
        error env id.at "cannot infer type of forward variable reference %s" id.it
-     | Some t -> t
+     | Some (t, Available) -> t
+     | Some (t, Unavailable) ->
+         error env id.at "unavailable variable %s" id.it
      | None -> error env id.at "unbound variable %s" id.it
     )
   | DotH (path', id) ->
@@ -711,9 +729,13 @@ and infer_exp'' env exp : T.typ =
     error env exp.at "cannot infer type of primitive"
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with
-    | Some T.Pre ->
+    | Some (T.Pre, _) ->
       error env id.at "cannot infer type of forward variable %s" id.it;
-    | Some t -> t
+    | Some (t, Unavailable) ->
+      if !Flags.compiled then
+        error env id.at "variable %s is in scope but not available in compiled code" id.it
+      else t
+    | Some (t, Available) -> t
     | None ->
       error env id.at "unbound variable %s" id.it
     )
@@ -1797,7 +1819,19 @@ and check_stab env sort scope fields =
 
 and infer_block env decs at : T.typ * Scope.scope =
   let scope = infer_block_decs env decs in
-  let t = infer_block_exps (adjoin env scope) decs in
+  let env' = adjoin env scope in
+  (* HACK: when compiling to IC, mark class constructors as unavailable *)
+  let ve = match !Flags.compile_mode with
+    | (Flags.ICMode | Flags.RefMode) ->
+      List.fold_left (fun ve' dec ->
+        match dec.it with
+        | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
+          T.Env.mapi (fun id' (typ, avl) ->
+            (typ, if id' = id.it then Unavailable else avl)) ve'
+        | _ -> ve') env'.vals decs
+    | _ -> env'.vals
+  in
+  let t = infer_block_exps { env' with vals = ve } decs in
   t, scope
 
 and infer_block_decs env decs : Scope.t =
@@ -1835,13 +1869,16 @@ and infer_dec env dec : T.typ =
     if not env.pre then ignore (infer_exp env exp);
     T.unit
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
-    let t = T.Env.find id.it env.vals in
+    let (t, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
-      let _, ve = infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
+      let t_pat, ve =
+        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
+      if obj_sort.it = T.Actor && not (T.shared t_pat) then
+        error_shared env t_pat pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t_pat);
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
       let env''' =
@@ -1863,7 +1900,7 @@ and infer_dec env dec : T.typ =
             (T.string_of_typ_expand t')
             (T.string_of_typ_expand t'')
     end;
-    t
+    T.normalize t
   | TypD _ ->
     T.unit
   in
@@ -1906,7 +1943,9 @@ and infer_val_path env exp : T.typ option =
   | ImportE (f, ri) ->
     Some (check_import env exp.at f ri)
   | VarE id ->
-    T.Env.find_opt id.it env.vals
+    (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
+     | Some (t, _) -> Some t
+     | _ -> None)
   | DotE (path, id) ->
     (match infer_val_path env path with
      | None -> None
@@ -1967,11 +2006,14 @@ and gather_dec env scope dec : Scope.t =
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
     in
-    let ve' = match dec.it with
-      | ClassD _ -> T.Env.add id.it T.Pre scope.val_env
+    let val_env = match dec.it with
+      | ClassD _ ->
+        if T.Env.mem id.it scope.val_env then
+          error env id.at "duplicate definition for %s in block" id.it;
+        T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { val_env = ve';
+    { val_env;
       typ_env = T.Env.add id.it c scope.typ_env;
       con_env = T.ConSet.disjoint_add c scope.con_env;
       lib_env = scope.lib_env;
@@ -1991,7 +2033,7 @@ and gather_pat_field env ve pf : Scope.val_env =
   gather_pat env ve pf.it.pat
 
 and gather_id env ve id : Scope.val_env =
-  if T.Env.find_opt id.it ve <> None then
+  if T.Env.mem id.it ve then
     error env id.at "duplicate definition for %s in block" id.it;
   T.Env.add id.it T.Pre ve
 
@@ -2124,20 +2166,16 @@ and infer_dec_valdecs env dec : Scope.t =
       con_env = T.ConSet.singleton c ;
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
-    let rec is_unit_pat p = match p.it with
-      | ParP p -> is_unit_pat p
-      | TupP [] -> true
-      | _ -> false in
     if obj_sort.it = T.Actor then begin
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (is_anonymous id) then
-        error_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "named actor classes are not supported yet; use an anonymous class instead";
-      if not (is_unit_pat pat) then
-        error_in [Flags.RefMode] env dec.at
-          "actor classes with parameters are not supported yet";
+        warn_in [Flags.ICMode; Flags.RefMode] env dec.at
+          "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
+      if not (typ_binds = []) then
+        error env dec.at
+          "actor classes with type parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
