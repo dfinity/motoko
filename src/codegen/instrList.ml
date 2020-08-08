@@ -356,9 +356,12 @@ let rec dw_tag_open : dw_TAG -> t =
       (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     let dw, reference = dw_type_ref ty in
+    let loc = function
+      | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; 5; dw_OP_deref; dw_OP_stack_value ]
+      | _ -> Location.local slot [ dw_OP_stack_value ] in
     dw ^^
     meta_tag dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (Location.local slot [ dw_OP_stack_value ])])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc ty)])
   | LexicalBlock pos ->
     meta_tag dw_TAG_lexical_block
       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
@@ -521,8 +524,8 @@ and dw_enum vnts =
   match EnumRefs.find_opt selectors !dw_enums with
   | Some r -> nop, r
   | None ->
-    let enum_ref =
-      (* reference to enumeration_type *)
+    let enum =
+      (*  enumeration_type, useful only with location expression *)
       let internal_enum =
         referencable_meta_tag dw_TAG_enumeration_type (dw_attr (Artificial true)) in
       let enumerator name =
@@ -530,11 +533,9 @@ and dw_enum vnts =
         meta_tag dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
       (fst internal_enum ^^
        concat_map enumerator selectors ^^
-       dw_tag_close (* enumeration_type *)) ^^<
-      referencable_meta_tag dw_TAG_reference_type
-        (dw_attr (TypeRef (snd internal_enum))) in
-    dw_enums := EnumRefs.add selectors (snd enum_ref) !dw_enums;
-    enum_ref
+       dw_tag_close (* enumeration_type *), snd internal_enum) in
+    dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
+    enum
 and dw_object fs =
   let selectors = List.map (fun Type.{lab; _} -> lab) fs in
   match ObjectRefs.find_opt selectors !dw_objects with
