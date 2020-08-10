@@ -108,8 +108,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   (* Error cases *)
   | T.Con (c,_) ->
     (* t is normalized, so this is a type parameter *)
-    define_eq t (textE ("eq_for: cannot handle type parameter " ^ T.string_of_typ t)),
-    []
+    raise (Invalid_argument ("eq_for: cannot handle type parameter " ^ T.string_of_typ t))
   (* Structured types *)
   | T.Tup ts' ->
     let ts' = List.map T.normalize ts' in
