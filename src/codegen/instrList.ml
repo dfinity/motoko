@@ -314,6 +314,8 @@ module EnumRefs = Map.Make (struct type t = string list let compare = compare en
 let dw_enums = ref EnumRefs.empty
 module ObjectRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_objects = ref ObjectRefs.empty
+module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
+let dw_tuples = ref TupleRefs.empty
 let any_type = ref None
 
 let pointer_key = ref None
@@ -409,6 +411,7 @@ and dw_type_ref =
   | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> dw_enum vs
   | Type.(Obj (Object, fs)) -> dw_object fs
+  | Type.(Tup cs) -> dw_tuple cs
 
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> (*Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ));*) dw_type_ref Type.Any (* FIXME assert false *)
@@ -567,6 +570,23 @@ and dw_object fs =
         (dw_attr (TypeRef (snd internal_struct))) in
     dw_objects := ObjectRefs.add selectors (snd struct_ref) !dw_objects;
     struct_ref
+and dw_tuple cs = (* FIXME: (mutually?) recursive tuples *)
+  let field_dw_refs = List.map dw_type_ref cs in
+  let field_refs = List.map snd field_dw_refs in
+  match TupleRefs.find_opt field_refs !dw_tuples with
+  | Some r -> nop, r
+  | None ->
+    let tuple_type =
+      let internal_struct =
+        referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "@tup"; Byte_size 4]) in
+      let field (index, dw, r) =
+        let _hash = 0 in (* TODO *)
+        dw ^^ meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
+      (fst internal_struct ^^
+       concat_map field (List.mapi (fun i (dw, r) -> (i, dw, r)) field_dw_refs) ^^
+       dw_tag_close (* structure_type *), snd internal_struct) in
+    dw_tuples := TupleRefs.add field_refs (snd tuple_type) !dw_tuples;
+    tuple_type
 
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
 let dw_tag_no_children = dw_tag_open (* self-closing *)
