@@ -29,10 +29,13 @@ let add_type env t : unit =
 
 (* Which types need transforming? *)
 
-let is_singleton_type t =
+let rec is_singleton_type t =
   let open T in
   match normalize t with
   | Prim Null | Any -> true
+  | Tup ts -> List.for_all is_singleton_type ts
+  | Obj (_, fs) -> List.for_all (fun f -> is_singleton_type f.typ) fs
+  | Variant [f] -> is_singleton_type f.typ
   | _ -> false
 
 let has_prim_eq t =
