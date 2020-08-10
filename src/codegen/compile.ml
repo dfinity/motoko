@@ -6785,6 +6785,11 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae sr_in e1 ^^
       compile_exp_as env ae sr_in e2 ^^
       code
+    (* special case: recognize negation *)
+    | RelPrim (Type.(Prim Bool), Operator.EqOp), [e1; {it = LitE (BoolLit false); _}] ->
+      SR.bool,
+      compile_exp_as_test env ae e1 ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
     | RelPrim (t, op), [e1;e2] ->
       let sr, code = compile_relop env t op in
       SR.bool,
@@ -7348,7 +7353,7 @@ and compile_exp (env : E.t) ae exp =
   | LitE l ->
     compile_lit env l
   | IfE (scrut, e1, e2) ->
-    let code_scrut = compile_scrut env ae scrut in
+    let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
     let sr = StackRep.relax (StackRep.join sr1 sr2) in
@@ -7489,11 +7494,13 @@ and compile_exp_vanilla (env : E.t) ae exp =
 and compile_exp_unit (env : E.t) ae exp =
   compile_exp_as env ae SR.unit exp
 
-(* compiles an if scrutinee *)
-and compile_scrut env ae e =
-  let srs, code_scrut = compile_exp env ae e in
-  code_scrut ^^
-  (if srs != SR.UnboxedWord32 then StackRep.adjust env srs SR.Vanilla else G.nop)
+(* compiles to something that works with IfE or Eqz
+   (SR.UnboxedWord32 or SR.Vanilla are _both_ ok)
+*)
+and compile_exp_as_test env ae e =
+  let sr, code = compile_exp env ae e in
+  code ^^
+  (if sr != SR.UnboxedWord32 then StackRep.adjust env sr SR.Vanilla else G.nop)
 
 (* Compile a prim of type Char -> Char to a RTS call. *)
 and compile_char_to_char_rts env ae exp rts_fn =

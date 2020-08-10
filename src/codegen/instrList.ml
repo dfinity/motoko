@@ -39,8 +39,14 @@ let optimize : instr list -> instr list = fun is ->
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
       List.rev (i::l)
     (* Equals zero has an dedicated operation (and works well with leg swapping) *)
-    | l', {it = Const {it = I32 0l; _}; _} :: ({it = Compare (I32 I32Op.Eq); _} as i) :: r' ->
+    | ({it = Compare (I32 I32Op.Eq); _} as i) :: {it = Const {it = I32 0l; _}; _} :: l', r' ->
       go l' ({ i with it = Test (I32 I32Op.Eqz)}  :: r')
+    (* eqz after eq has an dedicated operation *)
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Eq); _} :: l', r' ->
+      go l' ({ i with it = Compare (I32 I32Op.Ne)}  :: r')
+    (* eqz after ne has an dedicated operation *)
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Ne); _} :: l', r' ->
+      go l' ({ i with it = Compare (I32 I32Op.Eq)}  :: r')
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
