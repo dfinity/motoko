@@ -356,8 +356,14 @@ let rec dw_tag_open : dw_TAG -> t =
       (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     let dw, reference = dw_type_ref ty in
+    let unskew, past_tag = 1, 4 in
     let loc = function
-      | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; 5; dw_OP_deref; dw_OP_stack_value ]
+      | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+      | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
+      | Type.(Prim Word8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
+      | Type.(Prim Word16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
+      | Type.(Prim Word32) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
+      | Type.(Prim Word64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
       | _ -> Location.local slot [ dw_OP_stack_value ] in
     dw ^^
     meta_tag dw_TAG_formal_parameter
@@ -443,6 +449,12 @@ and dw_prim_type_ref (prim : Type.prim) =
         dw_tag_close ^^ (* closing dw_TAG_variant_part *)
         dw_tag_close,  (* closing dw_TAG_structure_type *)
         struct_ref
+      | Type.Word32 ->
+        referencable_meta_tag dw_TAG_base_type
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
+      | Type.Word64 ->
+        referencable_meta_tag dw_TAG_base_type
+          (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
       | Type.Word32 ->
         let internalU30 =
           referencable_meta_tag dw_TAG_base_type_Unsigned_Anon
