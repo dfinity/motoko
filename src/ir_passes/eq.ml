@@ -50,7 +50,7 @@ let has_prim_eq t =
 
 (* Function names *)
 
-(* For a concrete type `t` we want to create a function name for `show`.
+(* For a concrete type `t` we want to create a function name for `eq`.
    This name needs to be disjoint from all user-generated names.
    Luckily, we are not limited in the characters to use at this point.
 *)
@@ -67,7 +67,7 @@ let eq_var_for t : Construct.var =
 
 (* Smart equality constructor. *)
 
-(* This handles singletons directrly, leaves primitives as Prims,
+(* This handles singletons directly, leaves primitives as Prims,
    and calls the right eq_var_for otherwise
 *)
 
