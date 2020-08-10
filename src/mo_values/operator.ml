@@ -162,7 +162,7 @@ let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fblob fnull fbool =
 let eq_prim =
   eq_relop Nat.eq (Nat8.eq, Nat16.eq, Nat32.eq, Nat64.eq) Int.eq (Int_8.eq, Int_16.eq, Int_32.eq, Int_64.eq) (Word8.eq, Word16.eq, Word32.eq, Word64.eq) Float.eq (=) (=) (=) (=) (=)
 
-(* Follows the structure of `serializable` in mo_type/type.ml *)
+(* Follows the structure of `shared` in mo_type/type.ml *)
 let structural_equality t =
   let rec go t =
     match t with
@@ -185,12 +185,11 @@ let structural_equality t =
           )
     | T.Opt t -> (
         fun v1 v2 ->
-          let eq_elem = go t in
           match (v1, v2) with
           | Null, Null -> Bool true
           | Null, Opt _ 
           | Opt _, Null -> Bool false
-          | Opt v1, Opt v2 -> eq_elem v1 v2
+          | Opt v1, Opt v2 -> go t v1 v2
           | _, _ -> assert false )
     | T.Tup ts ->
         fun v1 v2 ->
@@ -215,9 +214,8 @@ let structural_equality t =
               Bool
                 (List.for_all
                    (fun f ->
-                     let eq_elem = go f.T.typ in
                      as_bool
-                       (eq_elem (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
+                       (go f.T.typ (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
                    fs) )
     | T.Variant fs ->
         fun v1 v2 ->
@@ -225,8 +223,7 @@ let structural_equality t =
           let l2, v2 = as_variant v2 in
           if l1 <> l2 then Bool false
           else
-            let eq_elem = go (List.find (fun f -> f.T.lab = l1) fs).T.typ in
-            eq_elem v1 v2
+            go (List.find (fun f -> f.T.lab = l1) fs).T.typ v1 v2
     | T.Func (s, c, tbs, ts1, ts2) ->
         assert (T.is_shared_sort s);
         fun v1 v2 -> Bool (v1 == v2)  (* HACK *)
