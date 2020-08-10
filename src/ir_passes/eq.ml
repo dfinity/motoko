@@ -132,7 +132,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
         (* ret type *)
         T.bool
       ) (* x1 is ?y1 *)
-      ( varP y1)
+      ( varP y1 )
       ( switch_optE (arg2E t)
         (* x2 is null *)
         falseE
