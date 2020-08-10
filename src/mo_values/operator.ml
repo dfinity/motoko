@@ -166,7 +166,7 @@ let eq_prim =
 let structural_equality t =
   let rec go t =
     match t with
-    | T.Var _ | T.Pre | T.Prim T.Error | T.Async _ | T.Mut _ -> assert false
+    | T.Var _ | T.Pre | T.Async _ | T.Mut _ -> assert false
     | T.Any | T.Non | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim p -> eq_prim p
     | T.Con (c, ts) -> (
@@ -198,7 +198,7 @@ let structural_equality t =
           let v2 = as_tup v2 in
           let rec go_inner ts v1 v2 =
             match (ts, v1, v2) with
-            | [], _, _ -> true
+            | [], [], [] -> true
             | t :: ts, v1 :: v1s, v2 :: v2s ->
                 as_bool (go t v1 v2) && go_inner ts v1s v2s
             | _ -> assert false

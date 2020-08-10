@@ -388,10 +388,7 @@ struct
     if Array.length xs <> Array.length ys then failwith "for_all2"
     else
       let rec go i =
-        if i >= Array.length xs then true
-        else if p xs.(i) ys.(i) then
-          go (i + 1)
-        else false
+        i = Array.length xs || (p xs.(i) ys.(i) && go (i + 1))
       in
       go 0
 end
