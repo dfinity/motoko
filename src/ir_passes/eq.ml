@@ -43,7 +43,7 @@ let has_prim_eq t =
   let open T in
   match normalize t with
   | Prim Null -> false (* is_singleton_type *)
-  | Prim Error -> false (* should be desugared away *)
+  | Prim Error -> false (* not equateable *)
   | Prim _ -> true (* all other prims are fine *)
   | Non -> true
   | _ -> false
@@ -93,11 +93,6 @@ let invoke_equal_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f
     T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.bool]) in
   callE (varE (var "@equal_array" fun_typ)) [t] (tupE [f; e1; e2])
 
-let invoke_equal_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
-  let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0))); T.Array (T.Mut (T.Var ("T",0)))], [T.bool]) in
-  callE (varE (var "@equal_array_mut" fun_typ)) [t] (tupE [f; e1; e2])
-
 (* Synthesizing a single show function *)
 
 (* Returns the new declarations, as well as a list of further types it needs *)
@@ -115,23 +110,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     (* t is normalized, so this is a type parameter *)
     define_eq t (textE ("eq_for: cannot handle type parameter " ^ T.string_of_typ t)),
     []
-  (* Cases via coercion *)
-  | T.(Prim Error) ->
-    (* TODO: error_rep should be defined somewhere else (and also Check_ir checked) *)
-    let error_repr = T.(Tup [
-      T.Variant (List.sort compare_field (List.map (fun lab -> T.{lab; typ = T.unit}) [
-        "system_fatal";
-        "system_transient";
-        "destination_invalid";
-        "canister_reject";
-        "canister_error";
-      ] @ [{lab = "future"; typ = T.(Prim Nat32)}]));
-      T.text]) in
-    define_eq t (invoke_eq error_repr
-        (primE T.(CastPrim (Prim Principal, Prim Blob)) [arg1E t])
-        (primE T.(CastPrim (Prim Principal, Prim Blob)) [arg2E t])
-    ),
-    [error_repr]
+  (* Structured types *)
   | T.Tup ts' ->
     let ts' = List.map T.normalize ts' in
     define_eq t (
@@ -171,9 +150,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.Array t' ->
     let t' = T.normalize t' in
     begin match t' with
-    | T.Mut t' ->
-      define_eq t (invoke_equal_array_mut t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
-      [t']
+    | T.Mut t' -> assert false (* mutable arrays not equatable *)
     | _ ->
       define_eq t (invoke_equal_array t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
       [t']
