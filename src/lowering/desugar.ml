@@ -616,15 +616,15 @@ and comp_unit ds : Ir.comp_unit =
       (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
       let e1' = match (ds1, e1.it) with
         | _ :: _ , ActorE _
-        | _ :: _, FuncE (_, _, _, [], [], _, {it = ActorE _;_}) ->
+        | _ :: _, FuncE (_, _, _, [], _, _, {it = ActorE _;_}) ->
           Rename.exp Rename.Renaming.empty e1
         | _ -> e1
       in
       match e1'.it with
       | ActorE (ds2, fs, up, t) ->
-        ActorU (ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
-        ActorU (ds1 @ ds2, fs, up, t)
+        ActorU (None, ds1 @ ds2, fs, up, t)
+      | FuncE (_name, _sort, _control, [], args, _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
+        ActorU (Some args, ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
@@ -670,5 +670,8 @@ let transform_prelude prelude : import_declaration =
 let link_declarations imports (cu, flavor) =
   let cu' = match cu with
     | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
-    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
+    | Ir.ActorU (as_opt, ds, fs, up, t) ->
+      (* NB: we rely on the property that the fresh names bound by `imports`
+         cannot be captured by any parameters in `as_opt` (no renaming required) *)
+      Ir.ActorU (as_opt, imports @ ds, fs, up, t)
   in cu', flavor

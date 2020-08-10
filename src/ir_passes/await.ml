@@ -510,8 +510,8 @@ and define_pats patenv (pats : pat list) : dec list =
 
 and t_comp_unit context = function
   | ProgU ds -> ProgU (t_decs context ds)
-  | ActorU (ds, ids, { pre; post }, t) ->
-    ActorU (t_decs context ds, ids,
+  | ActorU (as_opt, ds, ids, { pre; post }, t) ->
+    ActorU (as_opt, t_decs context ds, ids,
       { pre = t_exp LabelEnv.empty pre;
         post = t_exp LabelEnv.empty post},
       t)
