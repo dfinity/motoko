@@ -284,6 +284,33 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   text # "]"
 };
 
+func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
+  if (a.size() != b.size()) {
+    return false;
+  };
+  var i = 0;
+  while (i < a.size()) {
+    if (not eq(a[i],b[i])) {
+      return false;
+    };
+    i += 1;
+  };
+  return true;
+};
+
+func @equal_array_mut<T>(eq : (T, T) -> Bool, a : [var T], b : [var T]) : Bool {
+  if (a.size() != b.size()) {
+    return false;
+  };
+  var i = 0;
+  while (i < a.size()) {
+    if (not eq(a[i],b[i])) {
+      return false;
+    };
+    i += 1;
+  };
+  return true;
+};
 
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();

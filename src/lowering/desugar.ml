@@ -649,12 +649,7 @@ and comp_unit ds : Ir.comp_unit =
   find_last_expr (block false ds)
 
 let transform_prog (p : Syntax.prog) : Ir.prog  =
-  comp_unit p.it
-  , { I.has_await = true
-    ; I.has_async_typ = true
-    ; I.has_show = true
-    ; I.serialized = false
-    }
+  comp_unit p.it, I.full_flavor
 
 type import_declaration = Ir.dec list
 

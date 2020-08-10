@@ -6667,7 +6667,7 @@ let compile_eq env = function
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.Non -> G.i Unreachable
   | Type.(Prim Float) -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
-  | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
+  | t -> todo_trap env "compile_eq" (Arrange_type.typ t)
 
 let get_relops = Operator.(function
   | GeOp -> Ge, I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
