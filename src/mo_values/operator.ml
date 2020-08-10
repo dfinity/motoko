@@ -166,8 +166,8 @@ let eq_prim =
 let structural_equality t =
   let rec go t =
     match t with
-    | T.Var _ | T.Pre | T.Async _ | T.Mut _ -> assert false
-    | T.Any | T.Non | T.Typ _ -> fun v1 v2 -> Bool true
+    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
+    | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim p -> eq_prim p
     | T.Con (c, ts) -> (
         match Mo_types.Con.kind c with
