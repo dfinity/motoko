@@ -209,7 +209,6 @@ let boolE b =
     note = Note.{ def with typ = T.bool }
   }
 
-
 let nullE () =
   { it = LitE NullLit;
     at = no_region;
