@@ -734,7 +734,6 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_ne" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_2complement_bits" [I32Type] [I32Type];
@@ -1847,7 +1846,7 @@ module ReadBuf = struct
 end (* Buf *)
 
 
-type comparator = Lt | Le | Ge | Gt | Ne
+type comparator = Lt | Le | Ge | Gt
 
 module type BigNumType =
 sig
@@ -1930,14 +1929,12 @@ let i64op_from_relop = function
   | Le -> I64Op.LeS
   | Ge -> I64Op.GeS
   | Gt -> I64Op.GtS
-  | Ne -> I64Op.Ne
 
 let name_from_relop = function
   | Lt -> "B_lt"
   | Le -> "B_le"
   | Ge -> "B_ge"
   | Gt -> "B_gt"
-  | Ne -> "B_ne"
 
 (* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits) *)
 let unsigned_dynamics get_x =
@@ -2470,7 +2467,6 @@ module BigNumLibtommath : BigNumType = struct
       | Le -> E.call_import env "rts" "bigint_le"
       | Ge -> E.call_import env "rts" "bigint_ge"
       | Gt -> E.call_import env "rts" "bigint_gt"
-      | Ne -> E.call_import env "rts" "bigint_ne"
 
   let fits_signed_bits env bits =
     E.call_import env "rts" "bigint_2complement_bits" ^^
@@ -2777,13 +2773,13 @@ module Blob = struct
         | GeOp -> "Blob.compare_ge"
         | GtOp -> "Blob.compare_gt"
         | EqOp -> "Blob.compare_eq"
-        | NeqOp -> "Blob.compare_ne" in
+        | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       match op with
         (* Some operators can be reduced to the negation of other operators *)
         | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
         | GtOp ->  get_x ^^ get_y ^^ compare env LeOp ^^ Bool.neg
-        | NeqOp -> get_x ^^ get_y ^^ compare env EqOp ^^ Bool.neg
+        | NeqOp -> assert false
         | _ ->
       begin
         let (set_len1, get_len1) = new_local env "len1" in
@@ -2910,7 +2906,7 @@ module Text = struct
         | GeOp -> "Text.compare_ge"
         | GtOp -> "Text.compare_gt"
         | EqOp -> "Text.compare_eq"
-        | NeqOp -> "Text.compare_ne" in
+        | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
@@ -2920,7 +2916,7 @@ module Text = struct
         | GtOp -> G.i (Compare (Wasm.Values.I32 I32Op.GtS))
         | GeOp -> G.i (Compare (Wasm.Values.I32 I32Op.GeS))
         | EqOp -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-        | NeqOp -> G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^ Bool.neg
+        | NeqOp -> assert false
     )
 
 
@@ -6666,7 +6662,7 @@ let get_relops = Operator.(function
   | GtOp -> Gt, I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
   | LeOp -> Le, I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
   | LtOp -> Lt, I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
-  | NeqOp -> Ne, I64Op.Ne, I64Op.Ne, I32Op.Ne, I32Op.Ne
+  | NeqOp -> assert false
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
@@ -6688,10 +6684,8 @@ let compile_relop env t op =
   | Type.(Prim Text), _ -> Text.compare env op
   | Type.(Prim (Blob|Principal)), _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
-  | Type.(Prim Float), NeqOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ne))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
-  | _, NeqOp -> compile_eq env t ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | Type.(Prim Float), GtOp -> G.i (Compare (Wasm.Values.F64 F64Op.Gt))
   | Type.(Prim Float), GeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ge))
   | Type.(Prim Float), LeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Le))
@@ -6791,6 +6785,11 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae sr_in e1 ^^
       compile_exp_as env ae sr_in e2 ^^
       code
+    (* special case: recognize negation *)
+    | RelPrim (Type.(Prim Bool), Operator.EqOp), [e1; {it = LitE (BoolLit false); _}] ->
+      SR.bool,
+      compile_exp_as_test env ae e1 ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
     | RelPrim (t, op), [e1;e2] ->
       let sr, code = compile_relop env t op in
       SR.bool,
@@ -7354,13 +7353,12 @@ and compile_exp (env : E.t) ae exp =
   | LitE l ->
     compile_lit env l
   | IfE (scrut, e1, e2) ->
-    let srs, code_scrut = compile_exp env ae scrut in
+    let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
     let sr = StackRep.relax (StackRep.join sr1 sr2) in
     sr,
     code_scrut ^^
-    (if srs != SR.UnboxedWord32 then StackRep.adjust env srs SR.Vanilla else G.nop) ^^
     G.if_
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
@@ -7495,6 +7493,14 @@ and compile_exp_vanilla (env : E.t) ae exp =
 
 and compile_exp_unit (env : E.t) ae exp =
   compile_exp_as env ae SR.unit exp
+
+(* compiles to something that works with IfE or Eqz
+   (SR.UnboxedWord32 or SR.Vanilla are _both_ ok)
+*)
+and compile_exp_as_test env ae e =
+  let sr, code = compile_exp env ae e in
+  code ^^
+  (if sr != SR.UnboxedWord32 then StackRep.adjust env sr SR.Vanilla else G.nop)
 
 (* Compile a prim of type Char -> Char to a RTS call. *)
 and compile_char_to_char_rts env ae exp rts_fn =

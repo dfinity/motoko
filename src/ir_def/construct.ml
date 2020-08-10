@@ -2,6 +2,7 @@
 open Source
 open Ir
 open Ir_effect
+open Mo_values
 module Con = Mo_types.Con
 module T = Mo_types.Type
 
@@ -59,6 +60,12 @@ let seqP ps =
   | [p] -> p
   | ps -> tupP ps
 
+let wildP =
+  { it = WildP;
+    at = no_region;
+    note = T.Any
+  }
+
 (* Primitives *)
 
 let varE (id, typ) =
@@ -77,6 +84,7 @@ let primE prim es =
     | ICStableWrite _ -> T.unit
     | IcUrlOfBlob -> T.text
     | CastPrim (t1, t2) -> t2
+    | RelPrim _ -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -229,6 +237,17 @@ let ifE exp1 exp2 exp3 typ =
       eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
     }
   }
+
+let falseE = boolE false
+let trueE = boolE true
+let notE : Ir.exp -> Ir.exp = fun e ->
+  primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE]
+let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 falseE T.bool
+let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 trueE e2 T.bool
+let rec conjE : Ir.exp list -> Ir.exp = function
+  | [] -> trueE
+  | [x] -> x
+  | (x::xs) -> andE x (conjE xs)
 
 let dotE exp name typ =
   { it = PrimE (DotPrim name, [exp]);
