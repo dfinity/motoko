@@ -415,6 +415,7 @@ and dw_type_ref =
     end
   | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> dw_enum vs
+  | Type.Variant vs -> dw_variant vs
   | Type.(Obj (Object, fs)) -> dw_object fs
   | Type.(Tup cs) -> dw_tuple cs
   | Type.(Con _) as ty -> dw_type_ref (Type.normalize ty)
@@ -561,11 +562,31 @@ and dw_enum vnts =
       let enumerator name =
         let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
         meta_tag dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
-      (fst internal_enum ^^
-       concat_map enumerator selectors ^^
-       dw_tag_close (* enumeration_type *), snd internal_enum) in
+      internal_enum ^<^
+        (concat_map enumerator selectors ^^
+         dw_tag_close (* enumeration_type *)) in
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
+and dw_variant vnts =
+  let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
+  match (*EnumRefs.find_opt selectors !dw_enums*)None with
+  | Some r -> nop, r
+  | None ->
+    let variant =
+      (* struct_type, assumes location points at heap tag *)
+      let internal_struct =
+        referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "VARIANT"; Byte_size 8]) in
+      (*let summand (name, typ) =
+        let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
+        meta_tag dw_TAG_variant (dw_attrs [Name name; Const_value hash]) in*)
+      internal_struct ^<^
+        (meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
+         let dw2, disc = referencable_meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) in
+         dw2 ^^
+         (* concat_map summand selectors ^^*)
+         dw_tag_close (* struct_type *)) in
+    (*dw_variants := EnumRefs.add selectors (snd enum) !dw_struct;*)
+    variant
 and dw_object fs =
   let selectors = List.map (fun Type.{lab; _} -> lab) fs in
   match ObjectRefs.find_opt selectors !dw_objects with
