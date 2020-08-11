@@ -117,7 +117,7 @@ The interpreter accommodates the examples above.
 
 == Stable and flexible variables
 
-To enable {proglang} to persist the state of variables when a canister is upgraded, you must identify the variables that contain data that must be preserved.
+To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
 
 You identify the variables with data that must be preserved by using the _stable_ modifier as part of the variable declarations in an actor.
 
