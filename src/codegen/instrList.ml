@@ -322,6 +322,20 @@ let pointer_key = ref None
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
+  let unskew, past_tag = 1, 4 in
+  let loc slot = function
+    | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+    | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
+    | Type.(Prim Int8) -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
+    | Type.(Prim (Word8|Nat8)) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
+    | Type.(Prim Int16) -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
+    | Type.(Prim (Word16|Nat16)) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
+    | Type.(Prim Int32) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
+    | Type.(Prim (Word32|Nat32)) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
+    | Type.(Prim Int64) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Type.(Prim (Word64|Nat64)) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Type.Tup _ -> Location.local slot []
+    | _ -> Location.local slot [ dw_OP_stack_value ] in
   function
   | Compile_unit (dir, file) ->
     let base_types =
@@ -336,10 +350,10 @@ let rec dw_tag_open : dw_TAG -> t =
       dw_prim_type Type.Int16 ^^
       dw_prim_type Type.Word32 ^^
       dw_prim_type Type.Nat32 ^^
-      dw_prim_type Type.Int32 (* ^^
+      dw_prim_type Type.Int32 ^^
       dw_prim_type Type.Word64 ^^
       dw_prim_type Type.Nat64 ^^
-      dw_prim_type Type.Int64 *)
+      dw_prim_type Type.Int64
     in
     let builtin_types =
       dw_type Type.Any ^^
@@ -358,18 +372,9 @@ let rec dw_tag_open : dw_TAG -> t =
       (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     let dw, reference = dw_type_ref ty in
-    let unskew, past_tag = 1, 4 in
-    let loc = function
-      | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-      | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
-      | Type.(Prim Word8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
-      | Type.(Prim Word16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
-      | Type.(Prim Word32) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
-      | Type.(Prim Word64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
-      | _ -> Location.local slot [ dw_OP_stack_value ] in
     dw ^^
     meta_tag dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc ty)])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
   | LexicalBlock pos ->
     meta_tag dw_TAG_lexical_block
       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
@@ -377,7 +382,7 @@ let rec dw_tag_open : dw_TAG -> t =
     let dw, reference = dw_type_ref ty in
     dw ^^
     meta_tag dw_TAG_variable
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (Location.local slot [ dw_OP_stack_value ])])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
   | Type ty -> dw_type ty
   | _ -> assert false
 and lookup_pointer_key () : t * int =
@@ -412,9 +417,10 @@ and dw_type_ref =
   | Type.Variant vs when is_enum vs -> dw_enum vs
   | Type.(Obj (Object, fs)) -> dw_object fs
   | Type.(Tup cs) -> dw_tuple cs
+  | Type.(Con _) as ty -> dw_type_ref (Type.normalize ty)
 
   (* | Type.Opt inner -> assert false templated type *)
-  | typ -> (*Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ));*) dw_type_ref Type.Any (* FIXME assert false *)
+  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
 and (^<^) (dw1, r) dw2 = (dw1 ^^ dw2, r)
@@ -432,12 +438,15 @@ and dw_prim_type_ref (prim : Type.prim) =
       | Type.Char ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 29; Data_bit_offset 8; Encoding dw_ATE_UTF])
+(*    These don't work yet, as LLDB doesn't support bitfield simple types
+      http://lists.llvm.org/pipermail/lldb-dev/2020-August/016393.html
       | Type.(Word8 | Nat8 | Int8) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 24; Encoding dw_ATE_unsigned])
       | Type.(Word16 | Nat16 | Int16) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 16; Encoding dw_ATE_unsigned])
+ *)
       | Type.(Int | Nat) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
         let struct_dw, struct_ref = referencable_meta_tag dw_TAG_structure_type
@@ -452,10 +461,16 @@ and dw_prim_type_ref (prim : Type.prim) =
         dw_tag_close ^^ (* closing dw_TAG_variant_part *)
         dw_tag_close,  (* closing dw_TAG_structure_type *)
         struct_ref
-      | Type.Word32 ->
+      | Type.(Int8|Int16|Int32) ->
+        referencable_meta_tag dw_TAG_base_type
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
+      | Type.(Word8|Nat8|Word16|Nat16|Word32|Nat32) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
-      | Type.Word64 ->
+      | Type.Int64 ->
+        referencable_meta_tag dw_TAG_base_type
+          (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
+      | Type.(Word64|Nat64) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
       | Type.Word32 ->
@@ -570,8 +585,8 @@ and dw_object fs =
         (dw_attr (TypeRef (snd internal_struct))) in
     dw_objects := ObjectRefs.add selectors (snd struct_ref) !dw_objects;
     struct_ref
-and dw_tuple cs = (* FIXME: (mutually?) recursive tuples *)
-  let field_dw_refs = List.map dw_type_ref cs in
+and dw_tuple ts = (* FIXME: (mutually?) recursive tuples *)
+  let field_dw_refs = List.map dw_type_ref ts in
   let field_refs = List.map snd field_dw_refs in
   match TupleRefs.find_opt field_refs !dw_tuples with
   | Some r -> nop, r
