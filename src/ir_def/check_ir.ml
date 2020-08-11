@@ -388,6 +388,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       ot <: t
+    | RelPrim (ot,  Operator.NeqOp), _ ->
+      check false "negation operator should be desugared away in IR"
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
       typ exp1 <: ot;
@@ -987,10 +989,16 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (ds, fs, { pre; post}, t0) ->
+  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
-    let env' = { env with async = None } in
+    let env' = match as_opt with
+      | None -> { env with async = None }
+      | Some as_ ->
+        let ve = check_args env as_ in
+        List.iter (fun a -> check_shared env no_region a.note) as_;
+        adjoin_vals { env with async = None } ve
+    in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;

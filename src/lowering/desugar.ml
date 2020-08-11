@@ -21,9 +21,6 @@ let id_of_full_path (fp : string) : string =
 
 (* Combinators used in the desugaring *)
 
-let trueE : Ir.exp = boolE true
-let falseE : Ir.exp = boolE false
-
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
   | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
@@ -63,6 +60,8 @@ and exp' at note = function
     I.PrimE (I.UnPrim (!ot, o), [exp e])
   | S.BinE (ot, e1, o, e2) ->
     I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
+  | S.RelE (ot, e1, Operator.NeqOp, e2) ->
+    (notE (primE (I.RelPrim (!ot, Operator.EqOp)) [exp e1; exp e2])).it
   | S.RelE (ot, e1, o, e2) ->
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
@@ -143,9 +142,9 @@ and exp' at note = function
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
-  | S.NotE e -> I.IfE (exp e, falseE, trueE)
-  | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
-  | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
+  | S.NotE e -> (notE (exp e)).it
+  | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
+  | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
@@ -616,15 +615,15 @@ and comp_unit ds : Ir.comp_unit =
       (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
       let e1' = match (ds1, e1.it) with
         | _ :: _ , ActorE _
-        | _ :: _, FuncE (_, _, _, [], [], _, {it = ActorE _;_}) ->
+        | _ :: _, FuncE (_, _, _, [], _, _, {it = ActorE _;_}) ->
           Rename.exp Rename.Renaming.empty e1
         | _ -> e1
       in
       match e1'.it with
       | ActorE (ds2, fs, up, t) ->
-        ActorU (ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
-        ActorU (ds1 @ ds2, fs, up, t)
+        ActorU (None, ds1 @ ds2, fs, up, t)
+      | FuncE (_name, _sort, _control, [], args, _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
+        ActorU (Some args, ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
@@ -670,5 +669,8 @@ let transform_prelude prelude : import_declaration =
 let link_declarations imports (cu, flavor) =
   let cu' = match cu with
     | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
-    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
+    | Ir.ActorU (as_opt, ds, fs, up, t) ->
+      (* NB: we rely on the property that the fresh names bound by `imports`
+         cannot be captured by any parameters in `as_opt` (no renaming required) *)
+      Ir.ActorU (as_opt, imports @ ds, fs, up, t)
   in cu', flavor

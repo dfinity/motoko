@@ -267,8 +267,12 @@ and block lvl env (ds, body) =
 
 and comp_unit = function
   | ProgU ds -> decs_ TopLvl M.empty ds
-  | ActorU (ds, fs, {pre; post}, typ) ->
-    let (env', _) = decs TopLvl M.empty ds in
+  | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
+    let env = match as_opt with
+      | None -> M.empty
+      | Some as_ -> args M.empty as_
+    in
+    let (env', _) = decs TopLvl env ds in
     exp_ TopLvl env' pre;
     exp_ TopLvl env' post
 
