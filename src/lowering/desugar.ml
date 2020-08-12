@@ -474,18 +474,19 @@ and dec' at n d = match d with
       then
         let (_, obj_typ) = T.as_async rng_typ in
         asyncE
-          { it = obj at s (Some self_id) es (T.promote obj_typ);
+          (wrap { it = obj at s (Some self_id) es (T.promote obj_typ);
             at = at;
-            note = Note.{def with typ = obj_typ } }
+            note = Note.{def with typ = obj_typ } })
           (List.hd inst)
           at
       else
+       wrap
         { it = obj at s (Some self_id) es rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
     let fn = {
-      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], wrap body);
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], body);
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in
@@ -575,7 +576,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   but in the IR, parameters are bound first. So if there is a context pattern,
   we _must_ create fresh names for the parameters and bind the actual parameters
   inside the wrapper. *)
-  let must_wrap = po != None in
+  let must_wrap = po <> None in
 
   let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     match (pat_unannot p).it with
@@ -636,7 +637,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
-      | T.Promises, Ir.AsyncE (tb, e', t) -> { e with it = Ir.AsyncE (tb, wrap_po e', t) }
+      | (T.Promises, Ir.AsyncE (tb, e', t)) ->
+        { e with it = Ir.AsyncE (tb, wrap_po e', t) }
       | T.Returns, Ir.BlockE (
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
@@ -655,14 +657,14 @@ and comp_unit ds : Ir.comp_unit =
       (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
       let e1' = match (ds1, e1.it) with
         | _ :: _ , ActorE _
-        | _ :: _, FuncE (_, _, _, [], _, _, {it = ActorE _;_}) ->
+        | _ :: _, FuncE (_, _, _, _, _, _, { it = AsyncE ( _, {it = ActorE _;_}, _);_}) ->
           Rename.exp Rename.Renaming.empty e1
         | _ -> e1
       in
       match e1'.it with
       | ActorE (ds2, fs, up, t) ->
         ActorU (None, ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, [], args, _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
+      | FuncE (_name, _sort, _control, _, args, _, { it = AsyncE ( _, {it = ActorE (ds2, fs, up, t);_}, _); _}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
         ActorU (Some args, ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
