@@ -541,7 +541,7 @@ and dw_prim_type_ref (prim : Type.prim) =
          <453>   DW_AT_discr       : <0x44b>
             <5><457>: Abbrev Number: 11 (DW_TAG_variant)
                <458>   DW_AT_discr_value : 0
-                  <6><459>: Abbrev Number: 12 (DW_TAG_memberrefindx)
+                  <6><459>: Abbrev Number: 12 (DW_TAG_member)
                      <45a>   DW_AT_type        : <0x46b>
                      <45e>   DW_AT_alignment   : 8
                      <45f>   DW_AT_data_member_location: 0
@@ -589,6 +589,9 @@ and dw_enum vnts =
     enum
 and dw_variant vnts =
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
+  let prereq (_, typ) = fst (dw_type_ref typ) in
+  (* make sure all prerequisite types are around *)
+  let prereqs = effects (concat_map prereq selectors) in
   match (*EnumRefs.find_opt selectors !dw_enums*)None with
   | Some r -> nop, r
   | None ->
@@ -599,7 +602,9 @@ and dw_variant vnts =
       let summand (name, typ) =
         let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
+        meta_tag dw_TAG_member_In_variant (dw_attrs [Name name; TypeRef (snd (dw_type_ref typ))]) ^^
         dw_tag_close (* variant *) in
+      prereqs ^^<
       internal_struct ^<^
         (meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
          let dw2, discr = referencable_meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) in

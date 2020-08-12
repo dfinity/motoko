@@ -19,6 +19,8 @@ let dw_TAG_member_Pointer_mark = pseudo_tag Dwarf5.dw_TAG_member 1
 let dw_TAG_member_Word_sized = pseudo_tag Dwarf5.dw_TAG_member 2
 let dw_TAG_member_Word_sized_typed = pseudo_tag Dwarf5.dw_TAG_member 3
 let dw_TAG_member_Tag_variant_mark = pseudo_tag Dwarf5.dw_TAG_member 4
+let dw_TAG_member_In_variant = pseudo_tag Dwarf5.dw_TAG_member 5
+
 let dw_TAG_base_type_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 1
 let dw_TAG_base_type_Unsigned_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 2
 let dw_TAG_base_type_Unsigned_Bytes_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 3
@@ -117,6 +119,10 @@ let abbreviations =
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_type, dw_FORM_ref_udata;
         dw_AT_byte_size, dw_FORM_data1
+      ] );
+    ( dw_TAG_member_In_variant, dw_CHILDREN_no,
+      [ dw_AT_name, dw_FORM_strp;
+        dw_AT_type, dw_FORM_ref_udata;
       ] );
     ( dw_TAG_variant_part, dw_CHILDREN_yes,
       [ dw_AT_discr, dw_FORM_ref_udata
