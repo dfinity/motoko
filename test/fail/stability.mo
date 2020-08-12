@@ -18,7 +18,7 @@ actor {
    flexible var a : [var Int] = [var]; //accept
    //public stable shared func pub() {}; //what does this even mean, actually? reject?
 
-   var w : Int = 0; // accept as flexible, but warn?
+   var w : Int = 0; // accept as flexible (could warn)
    let u : Int = 0; // ditto
 
    // reject hash collisions
@@ -30,11 +30,11 @@ actor {
    private func priv1(){}; // accept as flexible (no warning)
    shared func priv2(){}; // accept as flexible (no warning)
 
-   object o1 {}; // accept as flexible (but warn)
+   object o1 {}; // accept as flexible (could warn)
    flexible object o2 {}; // accept
    stable object o3 {}; // accept
 
-   object o4 { public func f(){};}; // accept as flexible (but warn)
+   object o4 { public func f(){};}; // accept as flexible (could warn)
    flexible object o5 {public func f(){};}; // accept
    stable object o6 {public func f(){};}; // reject
 

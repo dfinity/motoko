@@ -40,7 +40,7 @@ function build_ref_to {
       -E '
       {rev, ref, path}:
       let nixpkg = import ../nix {}; in
-      let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev; name = "old-moc";}).outPath; in
+      let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev;}).outPath; in
       builtins.trace checkout (
       ((import checkout) {}).moc)' \
       --option binary-caches '' \
@@ -81,7 +81,7 @@ do
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
-  new-moc/bin/moc $mangled -ref-system-api -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
+  new-moc/bin/moc $mangled -ref-system-api -g -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
   $WASM2WAT compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
   #wasm-objdump -s -h -d compare-out/$base.new/$base.wasm > compare-out/$base.new/$base.dump

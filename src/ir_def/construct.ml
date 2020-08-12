@@ -2,6 +2,7 @@
 open Source
 open Ir
 open Ir_effect
+open Mo_values
 module Con = Mo_types.Con
 module T = Mo_types.Type
 
@@ -59,6 +60,12 @@ let seqP ps =
   | [p] -> p
   | ps -> tupP ps
 
+let wildP =
+  { it = WildP;
+    at = no_region;
+    note = T.Any
+  }
+
 (* Primitives *)
 
 let varE (id, typ) =
@@ -77,6 +84,7 @@ let primE prim es =
     | ICStableWrite _ -> T.unit
     | IcUrlOfBlob -> T.text
     | CastPrim (t1, t2) -> t2
+    | RelPrim _ -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -161,7 +169,7 @@ let tagE i e =
 let dec_eff dec = match dec.it with
   | LetD (_,e) | VarD (_, _, e) -> eff e
 
-let rec simpl_decs decs = List.concat (List.map simpl_dec decs)
+let rec simpl_decs decs = Lib.List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
   | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []
@@ -229,6 +237,17 @@ let ifE exp1 exp2 exp3 typ =
       eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
     }
   }
+
+let falseE = boolE false
+let trueE = boolE true
+let notE : Ir.exp -> Ir.exp = fun e ->
+  primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE]
+let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 falseE T.bool
+let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 trueE e2 T.bool
+let rec conjE : Ir.exp list -> Ir.exp = function
+  | [] -> trueE
+  | [x] -> x
+  | (x::xs) -> andE x (conjE xs)
 
 let dotE exp name typ =
   { it = PrimE (DotPrim name, [exp]);
@@ -365,7 +384,7 @@ let expD exp =
 let let_no_shadow (id, typ) exp decs =
   (* could be replaced by a more simple “defined by this decs” function *)
   let (_,f) = Freevars.decs decs in
-  if Freevars.S.mem id f
+  if Freevars.M.mem id f
   then decs
   else [ letD (id, typ) exp ] @ decs
 

@@ -53,5 +53,5 @@ assert (sayIcelandic (#Wednesday) == "Miðvikudagur");
 
 assert (debug_show (#foo (#bar)) == "#foo(#bar)");
 
-assert ([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday].len() == 7);
+assert ([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday].size() == 7);
 

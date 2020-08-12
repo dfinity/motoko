@@ -310,10 +310,12 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         // See Note [mutable stable values] in codegen/compile.ml
         int32_t it = read_i32_of_sleb128(&tb);
         uint32_t tag = read_byte(b);
-        advance(b, 4);
         if (tag == 0) {
+          advance(b, 8);
           // this is the contents (not a reference)
           skip_any(b, typtbl, it, 0);
+        } else {
+          advance(b, 4);
         }
         return;
       }

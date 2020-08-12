@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests that correct lub types are inferred when values appear in arrays
-${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -i lib/type-lub.mo <<__END__
+moc -i lib/type-lub.mo <<__END__
 opts;
 nulls;
 incompatible_objs;

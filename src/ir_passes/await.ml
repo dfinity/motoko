@@ -477,8 +477,8 @@ and rename_pat' pat =
     let (patenv,pat1) = rename_pat pat1 in
     (patenv, TagP (i, pat1))
   | AltP (pat1,pat2) ->
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
+    assert(Freevars.(M.is_empty (pat pat1)));
+    assert(Freevars.(M.is_empty (pat pat2)));
     (PatEnv.empty,pat.it)
 
 and rename_pats pats =
@@ -501,14 +501,22 @@ and define_pat patenv pat : dec list =
   | OptP pat1
   | TagP (_, pat1) -> define_pat patenv pat1
   | AltP (pat1, pat2) ->
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
+    assert(Freevars.(M.is_empty (pat pat1)));
+    assert(Freevars.(M.is_empty (pat pat2)));
     []
 
 and define_pats patenv (pats : pat list) : dec list =
-  List.concat (List.map (define_pat patenv) pats)
+  Lib.List.concat_map (define_pat patenv) pats
+
+and t_comp_unit context = function
+  | ProgU ds -> ProgU (t_decs context ds)
+  | ActorU (as_opt, ds, ids, { pre; post }, t) ->
+    ActorU (as_opt, t_decs context ds, ids,
+      { pre = t_exp LabelEnv.empty pre;
+        post = t_exp LabelEnv.empty post},
+      t)
 
 and t_prog (prog, flavor) =
-  (t_block LabelEnv.empty prog, { flavor with has_await = false })
+  (t_comp_unit LabelEnv.empty prog, { flavor with has_await = false })
 
 let transform prog = t_prog prog
