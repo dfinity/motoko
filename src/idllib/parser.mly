@@ -55,17 +55,24 @@ let record_fields fs =
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
+%token ASSERT
 %token SEMICOLON COMMA COLON EQ
+%token NOTCOLON EQQ NOTEQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
 
 %start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.tests> parse_tests
 
 %%
 
 (* Helpers *)
+
+endlist(X, SEP) :
+  | (* empty *) { [] }
+  | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 seplist(X, SEP) :
   | (* empty *) { [] }
@@ -189,5 +196,25 @@ actor :
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
     { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+
+(* Test suite *)
+
+input :
+  | text=TEXT { TextualInput text }
+  | BLOB text=TEXT { BinaryInput text }
+
+assertion :
+  | input=input COLON    { ParsesAs (true,  input) }
+  | input=input NOTCOLON { ParsesAs (false, input) }
+  | i1=input EQQ   i2=input COLON { ParsesEqual (true,  i1, i2) }
+  | i1=input NOTEQ i2=input COLON { ParsesEqual (false, i1, i2) }
+
+test :
+  | ASSERT assertion=assertion tys=param_typs desc=TEXT?
+    { { ttyp=tys; assertion; desc } @@ at $sloc }
+
+parse_tests :
+  | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
+    { fun filename -> { it = {tdecs; tests}; at = at $sloc; note = filename} }
 
 %%

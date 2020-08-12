@@ -1,4 +1,17 @@
 {
+    "candid": {
+        "builtin": false,
+        "branch": "master",
+        "description": "Candid Library for the Internet Computer",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "candid",
+        "rev": "a1dcbad48334d5b988dd8196d09050253ab8e1b2",
+        "sha256": "01ncv2d867w007wlkjbpv4dblk56qwymjpbmaz377qwvgadfq8ky",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/candid/archive/a1dcbad48334d5b988dd8196d09050253ab8e1b2.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",

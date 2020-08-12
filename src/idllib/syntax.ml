@@ -62,3 +62,22 @@ and dec' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = { decs : dec list; actor : typ option }
 
+(* Tests *)
+
+type input =
+  | BinaryInput of string
+  | TextualInput of string
+
+type test_assertion =
+  | ParsesAs of (bool * input)
+  | ParsesEqual of (bool * input * input)
+
+type test' = {
+  assertion : test_assertion;
+  ttyp : typ list;
+  desc : string option;
+}
+type test = test' Source.phrase
+
+type tests = (tests', string) Source.annotated_phrase
+and tests' = { tdecs : dec list; tests : test list }

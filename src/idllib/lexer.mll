@@ -110,6 +110,9 @@ rule token = parse
   | "," { COMMA }
   | ":" { COLON }
   | "=" { EQ }
+  | "==" { EQQ }
+  | "!:" { NOTCOLON }
+  | "!=" { NOTEQ }
   | "->" { ARROW }
 
   | nat as s { NAT s }
@@ -131,6 +134,7 @@ rule token = parse
   | "variant" { VARIANT }
   | "blob" { BLOB }
   | "principal" { PRINCIPAL }
+  | "assert" { ASSERT } (* how to avoid? *)
 
   | id as s { ID s }
 
