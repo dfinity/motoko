@@ -610,7 +610,8 @@ let serializable allow_mut t =
     begin
       seen := S.add t !seen;
       match t with
-      | Var _ | Pre -> assert false
+      | Pre -> assert false
+      | Var _ -> assert false
       | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false

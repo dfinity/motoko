@@ -11,6 +11,7 @@ module A = Effect
 module C = Async_cap
 
 
+
 (* Contexts  *)
 
 type lab_env = T.typ T.Env.t
@@ -22,8 +23,15 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+
+type access =
+  | Pervasive
+  | Local
+  | Restricted
+
 type env =
   { vals : Scope.val_env;
+    accs : access T.Env.t;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -41,6 +49,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.Scope.val_env;
+    accs = T.Env.map (fun t -> Pervasive) scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -56,6 +65,22 @@ let env_of_scope msgs scope =
     scopes = T.ConEnv.empty;
   }
 
+
+
+let accessible env t =
+  env.pre ||
+  match T.normalize t with
+  (*  | T.Obj(T.Module, _) -> true *)
+  | t' -> T.shared t'
+
+let restrict env ve =
+  T.Env.mapi
+    (fun id t ->
+      match T.Env.find id env.accs with
+      | Pervasive -> Pervasive
+      | Local -> if accessible env t then Local else Restricted
+      | Restricted -> Restricted
+    ) ve
 
 (* Error bookkeeping *)
 
@@ -113,7 +138,12 @@ let error_in modes env at fmt =
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t = {env with vals = T.Env.add x t env.vals}
+let add_val env x t =
+  {
+    env with
+      vals = T.Env.add x t env.vals;
+      accs = T.Env.add x Local env.accs;
+  }
 
 let add_typs env xs cs =
   { env with
@@ -124,13 +154,19 @@ let add_typs env xs cs =
 let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.Scope.val_env;
+    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> Local) scope.Scope.val_env);
     libs = T.Env.adjoin env.libs scope.Scope.lib_env;
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
   }
 
-let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
+let adjoin_vals env ve = {
+    env with
+    vals = T.Env.adjoin env.vals ve;
+    accs = T.Env.adjoin env.accs (T.Env.map (fun t -> Local) ve);
+}
+
 let adjoin_typs env te ce =
   { env with
     typs = T.Env.adjoin env.typs te;
@@ -689,10 +725,10 @@ and infer_exp' f env exp : T.typ =
   end;
   t'
 
-and infer_exp'' env exp : T.typ =
-  let in_prog = env.in_prog in
-  let in_actor = env.in_actor in
-  let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
+and infer_exp'' env0 exp : T.typ =
+  let in_prog = env0.in_prog in
+  let in_actor = env0.in_actor in
+  let env = {env0 with in_actor = false; in_prog = false; context = exp.it::env0.context} in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -700,7 +736,13 @@ and infer_exp'' env exp : T.typ =
     (match T.Env.find_opt id.it env.vals with
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
-    | Some t -> t
+    | Some t ->
+      (match T.Env.find id.it env.accs with
+      | Pervasive | Local ->
+        t
+      | Restricted ->
+        (local_error env id.at "cannot access variable %s" id.it;
+         t))
     | None ->
       error env id.at "unbound variable %s" id.it
     )
@@ -782,14 +824,10 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' =
-      if sort.it = T.Actor then
-        (if not (in_prog (* && env.async = C.NullCap*) ) then
-           sort.note <- check_AwaitCap env "actor" exp.at; (* note used in desugaring *)
-         {env with async = C.NullCap; in_actor = true})
-      else env
-    in
-    infer_obj env' sort.it fields exp.at
+    if not in_prog && sort.it = T.Actor then
+      (* note used in detecting and desugaring non-main actors *)
+      sort.note <- check_AwaitCap env "actor" exp.at;
+    infer_obj env0 sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
@@ -893,7 +931,7 @@ and infer_exp'' env exp : T.typ =
   | CallE (exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
-    let t, scope = infer_block env decs exp.at in
+    let t, scope = infer_block env decs exp.at in (* use env? *)
     (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
       error env exp.at
         "local class type %s is contained in inferred block type\n  %s"
@@ -1669,15 +1707,31 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s fields at : T.typ =
-  let env =
-    if s <> T.Actor then
-      { env with in_actor = false }
-    else
+  let env = match s with
+    | T.Actor ->
       { env with
-        in_actor = true;
+        vals = env.vals;
+        accs = if env.in_prog
+               then env.accs (* main actor can access enclosing state *)
+               else restrict env env.vals; (* other actors cannot *)
         labs = T.Env.empty;
-        rets = None;
-        async = C.NullCap; }
+        async = C.NullCap;
+        in_actor = true
+      }
+    | T.Module (* ->
+      { env with
+        vals = env.vals;
+        accs = env.accs; (*if env.in_prog
+               then env.accs (* top-level modules can access top-level functions *)
+               else restrict env env.vals; (* other modules cannot *) *)
+        labs = T.Env.empty;
+        async = C.NullCap;
+        in_actor = false;
+      } 
+                *)
+    | T.Object ->
+      { env with in_actor = false }
+    | T.Memory -> assert false
   in
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
@@ -1825,6 +1879,10 @@ and infer_dec env dec : T.typ =
   | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
+      let env =
+        if sort.it = T.Actor then
+          {  env with accs = restrict env env.vals }
+        else env in
       let c = T.Env.find id.it env.typs in
       let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
@@ -2097,8 +2155,10 @@ and infer_id_typdecs id c k : Scope.con_env =
 and infer_block_valdecs env decs scope : Scope.t =
   let _, scope' =
     List.fold_left (fun (env, scope) dec ->
-      let scope' = infer_dec_valdecs env dec in
-      adjoin env scope', Scope.adjoin scope scope'
+        let scope' = infer_dec_valdecs env dec in
+        (* TODO: make imports pervasive *)
+      adjoin env scope',
+      Scope.adjoin scope scope'
     ) (env, scope) decs
   in scope'
 
@@ -2138,7 +2198,7 @@ and infer_dec_valdecs env dec : Scope.t =
     if sort.it = T.Actor then
       error_in [Flags.ICMode; Flags.RefMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
-     let rec is_unit_pat p = match p.it with
+    let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
       | _ -> false in
@@ -2189,6 +2249,13 @@ let check_lib scope lib : Scope.t Diag.result =
         (fun lib ->
           let env = env_of_scope msgs scope in
           let typ = infer_exp env lib.it in
+          (*
+            let decs =
+            match lib.it with
+            | {it = BlockE decs; _} -> decs
+            | _ -> assert false in
+
+            let (typ, _) = infer_block env decs lib.at in *)
           Scope.lib lib.note typ
         ) lib
     )
