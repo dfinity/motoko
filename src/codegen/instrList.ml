@@ -636,10 +636,10 @@ and dw_tuple ts = (* FIXME: (mutually?) recursive tuples *)
   | Some r -> nop, r
   | None ->
     let tuple_type =
-      let field (index, r) =
+      let field index (_, r) =
         meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
       referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "@tup"; Byte_size 4]) ^<^
-      (concat_map field (List.mapi (fun i (_, r) -> (i, r)) field_dw_refs) ^^ dw_tag_close (* structure_type *)) in
+      (concat_mapi field field_dw_refs ^^ dw_tag_close (* structure_type *)) in
     dw_tuples := TupleRefs.add field_refs (snd tuple_type) !dw_tuples;
     concat_map fst field_dw_refs ^^<
     tuple_type
