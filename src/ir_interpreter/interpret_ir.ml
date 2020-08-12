@@ -878,6 +878,7 @@ let interpret_prog flags (cu, flavor) =
   let env =
     { (env_of_scope flags flavor state scope) with
       throws = Some (fun v -> trap !last_region "uncaught throw") }
+  in
   trace_depth := 0;
   try
     Scheduler.queue (fun () ->

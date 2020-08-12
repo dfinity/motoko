@@ -875,7 +875,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     k V.unit
   | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
-      if sort.it <> T.Actor then
+      if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
         interpret_obj env'' obj_sort.it fields (fun v' ->
           define_id env'' id' v';
@@ -888,7 +888,7 @@ and interpret_dec env dec (k : V.value V.cont) =
                            labs = V.Env.empty;
                            rets = Some k'' (* None?*);
                            throws = Some r; async = true} in
-            interpret_obj env''' obj_sort fields (fun v' ->
+            interpret_obj env''' obj_sort.it fields (fun v' ->
                 define_id env''' id' v';
                 k'' v'))
           k')

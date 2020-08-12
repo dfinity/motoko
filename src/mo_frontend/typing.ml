@@ -1902,7 +1902,7 @@ and infer_dec env dec : T.typ =
                  "actor class has unexpected type parameter(s)";
          | _ -> assert false (* actor class must have a scope parameter *));
         if (not (T.shared t1)) then
-        error_shared env t1 pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t_pat);
+        error_shared env t1 pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
       end;
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
@@ -2027,7 +2027,7 @@ and gather_dec env scope dec : Scope.t =
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
     let binds' = match dec.it with
-      | ClassD(_, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
+      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
       | _ -> binds
     in
     let pre_tbs = List.map (fun bind ->
@@ -2142,7 +2142,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
     let tbs', cs' =
-      if sort.it = T.Actor then
+      if obj_sort.it = T.Actor then
         List.tl tbs, List.tl cs
       else tbs, cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
@@ -2221,7 +2221,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 =
-      if sort.it = T.Actor
+      if obj_sort.it = T.Actor
       then
         T.Async(T.Con(List.hd cs, []),
                 T.Con(c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
