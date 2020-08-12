@@ -576,14 +576,17 @@ and dw_variant vnts =
       (* struct_type, assumes location points at heap tag *)
       let internal_struct =
         referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "VARIANT"; Byte_size 8]) in
-      (*let summand (name, typ) =
+      let summand (name, typ) =
         let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
-        meta_tag dw_TAG_variant (dw_attrs [Name name; Const_value hash]) in*)
+        meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
+        dw_tag_close (* variant *) in
       internal_struct ^<^
         (meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
-         let dw2, disc = referencable_meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) in
+         let dw2, discr = referencable_meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) in
          dw2 ^^
-         (* concat_map summand selectors ^^*)
+         (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
+         concat_map summand selectors ^^
+         dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
     (*dw_variants := EnumRefs.add selectors (snd enum) !dw_struct;*)
     variant

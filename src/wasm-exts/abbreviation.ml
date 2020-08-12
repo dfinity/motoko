@@ -23,6 +23,7 @@ let dw_TAG_base_type_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 1
 let dw_TAG_base_type_Unsigned_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 2
 let dw_TAG_base_type_Unsigned_Bytes_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 3
 
+let dw_TAG_variant_Named = pseudo_tag Dwarf5.dw_TAG_variant 1
 let abbreviations =
   let open Dwarf5 in
   [ ( dw_TAG_compile_unit, dw_CHILDREN_yes,
@@ -122,6 +123,10 @@ let abbreviations =
       ] );
     ( dw_TAG_variant, dw_CHILDREN_yes,
       [ dw_AT_discr_value, dw_FORM_data1
+      ] );
+    ( dw_TAG_variant_Named, dw_CHILDREN_yes,
+      [ dw_AT_name, dw_FORM_strp;
+        dw_AT_discr_value, dw_FORM_data4
       ] );
     ( dw_TAG_enumeration_type, dw_CHILDREN_yes,
       [ dw_AT_artificial, dw_FORM_flag_present (* to avoid elimination *)
