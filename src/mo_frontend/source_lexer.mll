@@ -20,38 +20,48 @@ let utf8 s i =
 
 let codepoint lexbuf s i =
   let u =
-    if s.[!i] >= '\x80' then utf8 s i else
-    if s.[!i] <> '\\' then Char.code s.[!i] else
+    if s.[!i] >= '\x80' then Utf8.encode [utf8 s i] else
+    if s.[!i] <> '\\' then Utf8.encode [Char.code s.[!i]] else
     match (incr i; s.[!i]) with
-    | 'n' -> Char.code '\n'
-    | 'r' -> Char.code '\r'
-    | 't' -> Char.code '\t'
-    | '\\' -> Char.code '\\'
-    | '\'' -> Char.code '\''
-    | '\"' -> Char.code '\"'
+    | 'n' -> Utf8.encode [Char.code '\n']
+    | 'r' -> Utf8.encode [Char.code '\r']
+    | 't' -> Utf8.encode [Char.code '\t']
+    | '\\' -> Utf8.encode [Char.code '\\']
+    | '\'' -> Utf8.encode [Char.code '\'']
+    | '\"' -> Utf8.encode [Char.code '\"']
     | 'u' ->
       let j = !i + 2 in
       i := String.index_from s j '}';
-      (try
-        let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
-        if 0 <= n && n < 0xD800 || 0xE000 <= n && n < 0x110000 then n else raise (Failure "")
-      with Failure _ -> error lexbuf "unicode escape out of range")
+      Utf8.encode [
+        try
+          let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
+          if 0 <= n && n < 0xD800 || 0xE000 <= n && n < 0x110000 then n else raise (Failure "")
+        with Failure _ -> error lexbuf "unicode escape out of range"
+      ]
     | h ->
       incr i;
-      int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i])
+      let b = int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i]) in
+      String.of_seq (Seq.return (Char.chr b))
   in incr i; u
-
-let char lexbuf s =
-  codepoint lexbuf s (ref 1)
 
 let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
-    let bs = Utf8.encode [codepoint lexbuf s i] in
+    let bs = codepoint lexbuf s i in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
   Buffer.contents b
+
+let char lexbuf s =
+  let t = text lexbuf s in
+  try
+    match Utf8.decode t with
+    | [n] -> n
+    | [] -> error lexbuf "empty character literal"
+    | _ -> error lexbuf "overlong character literal"
+  with Wasm.Utf8.Utf8 ->
+    error lexbuf "invalid utf8 in character literal"
 }
 
 let sign = '+' | '-'
@@ -84,8 +94,9 @@ let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
   | '\\'escape
-  | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
+let byte =
+    '\\'hexdigit hexdigit
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -95,8 +106,8 @@ let float =
   | num ('.' frac?)? ('e' | 'E') sign? num
   | "0x" hexnum '.' hexfrac?
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
-let char = '\'' character '\''
-let text = '"' character* '"'
+let char = '\'' (character | byte+) '\''
+let text = '"' (character|byte)* '"'
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
 
@@ -218,9 +229,9 @@ rule token mode = parse
   | "var" { VAR }
   | "while" { WHILE }
 
-  | "prim" as s { if mode = Privileged then PRIM else ID s }
+  | "prim" as s { if mode.privileged then PRIM else ID s }
   | id as s { ID s }
-  | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
+  | privileged_id as s { if mode.privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl* as s { COMMENT s }
   | "/*" as s {

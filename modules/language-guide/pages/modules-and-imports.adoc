@@ -1,9 +1,0 @@
-= Modules and imports
-
-CAUTION: Not complete
-
-to do:
-
- - discuss use of `module` keyword
- - discuss use of `import` keyword
-

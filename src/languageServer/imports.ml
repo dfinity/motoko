@@ -15,7 +15,7 @@ let parse_string s =
   try
     let lexer = Lexing.from_string s in
     let parse = Parser.Incremental.parse_module_header in
-    ignore (parse_with Lexer.Normal lexer parse);
+    ignore (parse_with Lexer.mode lexer parse);
     []
   with
   | Parser_lib.Imports is -> is

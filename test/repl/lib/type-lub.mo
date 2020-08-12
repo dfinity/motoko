@@ -9,15 +9,15 @@ let tup1s = [(-1,), 25];
 
 let arrs = [[-42], [25]];
 
-let incompatible_funcs = [ func (a : [Int]) : Nat = a.len()
+let incompatible_funcs = [ func (a : [Int]) : Nat = a.size()
                          , func (a : ()) : Int = -42
                          ];
 
-let poly_funcs = [ func<A> (a : [Int]) : Nat = a.len()
+let poly_funcs = [ func<A> (a : [Int]) : Nat = a.size()
                  , func<A> (a : [Nat]) : Int = -42
                  ];
 
-let poly_funcs2 = [ func<A> (a : [Int]) : Nat = a.len()
+let poly_funcs2 = [ func<A> (a : [Int]) : Nat = a.size()
                   , func<B> (a : [Nat]) : Int = -42
                   ];
 
@@ -29,7 +29,7 @@ let poly_funcs4 = [ func<A <: Int, B <: Nat> (as : [A], b : B) : A = as[0]
                   , func<B <: Nat, A <: Int> (bs : [B], a : A) : B = bs[0]
                   ];
 
-let funcs = [ func (a : [Int]) : Nat = a.len()
+let funcs = [ func (a : [Int]) : Nat = a.size()
             , func (a : [Nat]) : Int = -42
             ];
 

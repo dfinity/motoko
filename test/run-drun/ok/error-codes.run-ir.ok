@@ -1,1 +1,2 @@
-error-codes.mo:8.32-8.49: execution error, BlobOfIcUrl not implemented
+canister_reject:ball
+error-codes.mo:10.33-10.50: execution error, assertion failure

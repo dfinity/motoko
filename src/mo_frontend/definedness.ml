@@ -88,12 +88,8 @@ let rec exp msgs e : f = match e.it with
   | RetE e              -> eagerify (exp msgs e)
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, sort_pat, tp, p, t, _, e) ->
-    (match sort_pat.it with
-     | Type.Local ->
-       delayify (exp msgs e /// pat msgs p)
-     | Type.Shared (_, p1) ->
-      delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
+  | FuncE (_, sp, tp, p, t, _, e) ->
+      delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _ | ActorUrlE _
   | PrimE _ | ImportE _ -> M.empty
@@ -150,6 +146,13 @@ and pats msgs ps : fd = union_binders (pat msgs) ps
 
 and pat_fields msgs pfs = union_binders (fun (pf : pat_field) -> pat msgs pf.it.pat) pfs
 
+and shared_pat msgs shared_pat =
+  match shared_pat.it with
+  | Type.Local ->
+    (M.empty, S.empty)
+  | Type.Shared (_, p1) ->
+    pat msgs p1
+
 and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
 and cases msgs cs : f = unions (case msgs) cs
@@ -162,9 +165,9 @@ and dec msgs d = match d.it with
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, tp, p, t, s, i', efs) ->
+  | ClassD (csp, i, tp, p, t, s, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (
-      group msgs (exp_fields msgs efs @ class_self d.at i') /// pat msgs p
+      group msgs (exp_fields msgs efs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
     )
 
 (* The class self binding is treated as defined at the very end of the group *)

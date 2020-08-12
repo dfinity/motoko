@@ -59,13 +59,16 @@ open Ir
   nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
 
-(* A type for callbacks *)
+(*
+A type for callbacks, or notification sinks
+These are invoked at most once, hence `unit Lazy.t` (and not `unit -> unit`)
+*)
 
-type callback = unit -> unit
+type callback = unit Lazy.t
 
-let do_nothing : callback = fun () -> ()
+let do_nothing : callback = lazy ()
 
-let (>>) cb1 cb2 = fun () -> cb1 (); cb2 ()
+let (>>) cb1 cb2 = lazy Lazy.(force cb1; force cb2)
 
 (* The lazy bool value type *)
 
@@ -81,21 +84,21 @@ let set_false (l : lazy_bool) =
   | SurelyFalse -> ()
   | MaybeFalse when_false ->
     l := SurelyFalse; (* do this first, this breaks cycles *)
-    when_false ()
+    Lazy.force when_false
 
-let when_false (l : lazy_bool) (act : unit -> unit) =
+let when_false (l : lazy_bool) (act : callback) =
   match !l with
   | SurelyTrue -> ()
-  | SurelyFalse -> act ()
+  | SurelyFalse -> Lazy.force act
   | MaybeFalse when_false ->
     l := MaybeFalse (act >> when_false)
 
 let surely_true = ref SurelyTrue (* sharing is ok *)
 let surely_false = ref SurelyFalse (* sharing is ok *)
-let maybe_false () = ref (MaybeFalse do_nothing)
+let maybe_false () = ref (MaybeFalse do_nothing) (* no sharing, so unit argument *)
 
 let required_for (a : lazy_bool) (b : lazy_bool) =
-  when_false a (fun () -> set_false b)
+  when_false a (lazy (set_false b))
 
 let all (xs : lazy_bool list) : lazy_bool =
   if xs = [] then surely_true else
@@ -106,8 +109,6 @@ let all (xs : lazy_bool list) : lazy_bool =
 (* The environment *)
 
 type lvl = TopLvl | NotTopLvl
-
-module S = Freevars.S
 
 module M = Env.Make(String)
 
@@ -143,7 +144,7 @@ let set_const e b =
 
 let set_lazy_const e lb =
   set_const e true;
-  when_false lb (fun () -> set_const e false)
+  when_false lb (lazy (set_const e false))
 
 (* Traversals *)
 
@@ -229,7 +230,7 @@ and gather_dec lvl scope dec : env =
   | LetD (p, _) -> Ir_utils.is_irrefutable p
   | VarD _ -> false
   in
-  S.fold (fun v scope ->
+  M.fold (fun v _ scope ->
     if ok
     then M.add v (mk_info (maybe_false ())) scope
     else M.add v (mk_info surely_false) scope
@@ -242,7 +243,7 @@ and check_dec lvl env dec : lazy_bool = match dec.it with
   | LetD (p, e) when Ir_utils.is_irrefutable p ->
     let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
     let lb = exp lvl env e in
-    S.iter (fun v -> required_for lb (M.find v env).const) vs;
+    M.iter (fun v _ -> required_for lb (M.find v env).const) vs;
     lb
   | VarD (_, _, e) | LetD (_, e) ->
     exp_ lvl env e;
@@ -257,16 +258,23 @@ and decs lvl env ds : (env * lazy_bool) =
   let could_be = check_decs lvl env' ds in
   (env', could_be)
 
+and decs_ lvl env ds = ignore (decs lvl env ds)
+
 and block lvl env (ds, body) =
   let (env', decs_const) = decs lvl env ds in
   let exp_const = exp lvl env' body in
   all [decs_const; exp_const]
 
-let analyze scope ((b, _flavor) : prog) =
-  (*
-  We assume everything in scope is static. Right now, this is only the prelude,
-  which is static. It will blow up in compile if we get this wrong.
-  *)
-  let static_info = { loc_known = true; const = surely_true } in
-  let env = M.of_seq (Seq.map (fun (v, _typ) -> (v, static_info)) (Type.Env.to_seq scope.Scope.val_env)) in
-  ignore (block TopLvl env b)
+and comp_unit = function
+  | ProgU ds -> decs_ TopLvl M.empty ds
+  | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
+    let env = match as_opt with
+      | None -> M.empty
+      | Some as_ -> args M.empty as_
+    in
+    let (env', _) = decs TopLvl env ds in
+    exp_ TopLvl env' pre;
+    exp_ TopLvl env' post
+
+let analyze ((cu, _flavor) : prog) =
+  ignore (comp_unit cu)

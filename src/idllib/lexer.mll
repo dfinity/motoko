@@ -97,7 +97,7 @@ let character =
 
 let nat = num | "0x" hexnum
 let text = '"' character* '"'
-let id = letter ((letter | digit | '_')*)
+let id = (letter | '_') ((letter | digit | '_')*)
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 

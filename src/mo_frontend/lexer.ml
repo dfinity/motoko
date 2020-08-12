@@ -101,7 +101,7 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       | _ -> token
     in
     last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
-    if mode = NormalWithTrivia then
+    if mode.with_trivia then
       PosHashtbl.add trivia_table (pos_of_lexpos start)
         { leading_trivia; trailing_trivia };
     (token, start, end_)

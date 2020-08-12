@@ -1,131 +1,87 @@
 import Prim "mo:prim";
 actor a {
-  flexible var c : Int = 0;
-  public func inci(n : Int) : async () {
-    c += n;
-    Prim.debugPrintInt(c);
+  public func sendi(n : Int) : async () {
+    Prim.debugPrint(debug_show ("sendi", n));
   };
-  public func incn(n : Nat) : async () {
-    c += n;
-    Prim.debugPrintInt(c);
+  public func sendn(n : Nat) : async () {
+    Prim.debugPrint(debug_show ("sendn", n));
   };
-  public func incnn(n1 : Nat, n2 : Nat) : async () {
-    c += n1 + n2;
-    Prim.debugPrintInt(c);
+  public func sendnn(n1 : Nat, n2 : Nat) : async () {
+    Prim.debugPrint(debug_show ("sendnn", n1, n2));
   };
-  public func incnested(n1 : Nat, (n2 : Nat, n3 : Nat)) : async () {
-    c += n1 + n2 + n3;
-    Prim.debugPrintInt(c);
+  public func sendnested(n1 : Nat, (n2 : Nat, n3 : Nat)) : async () {
+    Prim.debugPrint(debug_show ("sendnested", n1, n2, n3));
   };
-  public func incarray(a : [Nat]) : async () {
-    for (i in a.vals()) { c += i };
-    Prim.debugPrintInt(c);
+  public func sendarray(a : [Nat]) : async () {
+    Prim.debugPrint(debug_show ("sendarray", a))
   };
-  public func incopt(a : ?Nat) : async () {
-    switch a {
-      case null { c += 1000000 };
-      case (?a) { c += a };
-    };
-    Prim.debugPrintInt(c);
+  public func sendopt(a : ?Nat) : async () {
+    Prim.debugPrint(debug_show ("sendopt", a))
   };
-  public func increcord(a : { x : Nat; y : Nat }) : async () {
-    c += a.x;
-    c += a.y;
-    Prim.debugPrintInt(c);
+  public func sendrecord(a : { x : Nat; y : Nat }) : async () {
+    Prim.debugPrint(debug_show ("sendrecord", a))
   };
-  public func incVariant(v : { #foo : Nat; #bar : Nat }) : async () {
-    c += (switch v {
-      case (#foo n) n;
-      case (#bar n) n;
-    });
-    Prim.debugPrintInt(c);
+  public func sendVariant(v : { #foo : Nat; #bar : Nat }) : async () {
+    Prim.debugPrint(debug_show ("sendVariant", v))
   };
-  public func printCounter() : async () {
-    Prim.debugPrintInt(c);
+  public func sendLabeled(l:Text) : async () {
+    Prim.debugPrint(debug_show ("sendLabeled", l))
   };
-  public func printLabeled(l:Text) : async () {
-    Prim.debugPrint l;
-    Prim.debugPrintInt(c);
+  public func sendLabeledOpt(lo:?Text) : async () {
+    Prim.debugPrint(debug_show ("sendLabeledOpt", lo))
   };
-  public func printLabeledOpt(lo:?Text) : async () {
-    let ?l = lo;
-    Prim.debugPrint l;
-    Prim.debugPrintInt(c);
+  public func sendwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : async () {
+    Prim.debugPrint(debug_show ("sendwords", w8, w16, w32, w64))
   };
-  public func incwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : async () {
-    c += Prim.word8ToInt(w8);
-    c += Prim.word16ToInt(w16);
-    c += Prim.word32ToInt(w32);
-    c += Prim.word64ToInt(w64);
-    Prim.debugPrintInt(c);
+  public func sendnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : async () {
+    Prim.debugPrint(debug_show ("sendnats", n8, n16, n32, n64))
   };
-  public func incnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : async () {
-    c += Prim.nat8ToNat(n8);
-    c += Prim.nat16ToNat(n16);
-    c += Prim.nat32ToNat(n32);
-    c += Prim.nat64ToNat(n64);
-    Prim.debugPrintInt(c);
+  public func sendints(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : async () {
+    Prim.debugPrint(debug_show ("sendints", i8, i16, i32, i64))
   };
-  public func incints(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : async () {
-    c += Prim.int8ToInt(i8);
-    c += Prim.int16ToInt(i16);
-    c += Prim.int32ToInt(i32);
-    c += Prim.int64ToInt(i64);
-    Prim.debugPrintInt(c);
-  };
-  flexible var f : Float = 0.0;
-  public func incfloat(f64 : Float) : async () {
-    f += f64;
-    assert(f == 42.0);
-    Prim.debugPrint(debug_show(f));
-    c += Prim.int64ToInt(Prim.floatToInt64(f));
-    Prim.debugPrintInt(c);
-    f += Prim.int64ToFloat(Prim.intToInt64(c));
-    Prim.debugPrint(debug_show(f));
-    f += Prim.int64ToFloat(Prim.intToInt64(-c));
-    Prim.debugPrint(debug_show(f));
+  public func sendfloat(f64 : Float) : async () {
+    Prim.debugPrint(debug_show ("sendfloat", f64))
   };
 
   public func go() : async () {
-    await a.incn(0);
-    await a.incn(1);
-    await a.incn(2);
-    await a.incn(3);
-    await a.incn(4);
-    await a.incn(1000);
-    await a.incnn(5,6);
-    await a.incnn(2000,3000);
-    await a.incnested(7,(8,9));
-    await a.incarray([10,11,12,13]);
-    await a.incopt(null);
-    await a.incopt(?14);
-    await a.increcord({x = 15; y = 16});
-    await a.increcord({x = 17; y = 18; z = 19});
-    await a.incVariant(#foo 20);
-    await a.incVariant(#bar 20);
-    await a.printCounter();
-    await a.printLabeled("Foo1: ");
-    await a.printLabeled("μεταγράψτε: ");
-    await a.printLabeledOpt(?"Foo2: ");
-    await a.incn(10000000000000);
-    await a.inci(10000000000000);
-    await a.inci(-20000000000000);
-    await a.incwords(1,2,3,4);
-    await a.incwords(-1,-2,-3,-4);
-    await a.incnats(1,2,3,4);
-    await a.incints(1,2,3,4);
-    await a.incints(-1,-2,-3,-4);
-    await a.incn(2**100);
-    await a.inci(2**100);
-    await a.inci(-(2**101));
-    await a.inci(-2**30); // lowest compact
-    await a.inci(2**30 - 1); // highest compact
-    await a.inci(0);
-    await a.inci(1);
-    await a.inci(42);
-    await a.inci(-42);
-    await a.incn(2**31 - 1); // highest compact
-    await a.incfloat(42.0);
+    await a.sendn(0);
+    await a.sendn(1);
+    await a.sendn(2);
+    await a.sendn(3);
+    await a.sendn(4);
+    await a.sendn(1000);
+    await a.sendnn(5,6);
+    await a.sendnn(2000,3000);
+    await a.sendnested(7,(8,9));
+    await a.sendarray([10,11,12,13]);
+    await a.sendopt(null);
+    await a.sendopt(?14);
+    await a.sendrecord({x = 15; y = 16});
+    await a.sendrecord({x = 17; y = 18; z = 19});
+    await a.sendVariant(#foo 20);
+    await a.sendVariant(#bar 20);
+    await a.sendLabeled("Foo1: ");
+    await a.sendLabeled("μεταγράψτε: ");
+    await a.sendLabeledOpt(?"Foo2: ");
+    await a.sendn(10000000000000);
+    await a.sendi(10000000000000);
+    await a.sendi(-20000000000000);
+    await a.sendwords(1,2,3,4);
+    await a.sendwords(-1,-2,-3,-4);
+    await a.sendnats(1,2,3,4);
+    await a.sendints(1,2,3,4);
+    await a.sendints(-1,-2,-3,-4);
+    await a.sendn(2**100);
+    await a.sendi(2**100);
+    await a.sendi(-(2**101));
+    await a.sendi(-2**30); // lowest compact
+    await a.sendi(2**30 - 1); // highest compact
+    await a.sendi(0);
+    await a.sendi(1);
+    await a.sendi(42);
+    await a.sendi(-42);
+    await a.sendn(2**31 - 1); // highest compact
+    await a.sendfloat(42.0);
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

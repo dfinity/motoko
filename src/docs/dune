@@ -1,0 +1,3 @@
+(library
+  (name docs)
+  (libraries cow mo_def mo_types mo_frontend pipeline))
