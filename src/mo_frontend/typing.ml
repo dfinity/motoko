@@ -2211,9 +2211,6 @@ and infer_dec_valdecs env dec : Scope.t =
       if not (is_anonymous id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
           "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
-      if not (typ_binds = []) then
-        error env dec.at
-          "actor classes with type parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
