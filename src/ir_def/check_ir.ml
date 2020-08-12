@@ -388,6 +388,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       ot <: t
+    | RelPrim (ot,  Operator.NeqOp), _ ->
+      check false "negation operator should be desugared away in IR"
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
       typ exp1 <: ot;

@@ -1,10 +1,10 @@
-func wantSeeSwap() : Nat =
-    if (true != true) 42 else 25;
+func wantSeeSwap(x : Bool) : Nat =
+    if (not x) 42 else 25;
 
-ignore(wantSeeSwap());
+ignore(wantSeeSwap(true));
 
-// CHECK-LABEL: wantSeeSwap
-// CHECK: i32.eq
+// CHECK-LABEL: (func $wantSeeSwap
+// CHECK-NEXT: local.get $x
 // CHECK-NEXT: if (result i32)
 // CHECK-NEXT: i32.const 50
 // CHECK-NEXT: else

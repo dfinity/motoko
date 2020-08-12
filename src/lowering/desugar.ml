@@ -21,9 +21,6 @@ let id_of_full_path (fp : string) : string =
 
 (* Combinators used in the desugaring *)
 
-let trueE : Ir.exp = boolE true
-let falseE : Ir.exp = boolE false
-
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
   | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
@@ -63,6 +60,8 @@ and exp' at note = function
     I.PrimE (I.UnPrim (!ot, o), [exp e])
   | S.BinE (ot, e1, o, e2) ->
     I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
+  | S.RelE (ot, e1, Operator.NeqOp, e2) ->
+    (notE (primE (I.RelPrim (!ot, Operator.EqOp)) [exp e1; exp e2])).it
   | S.RelE (ot, e1, o, e2) ->
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
@@ -143,9 +142,9 @@ and exp' at note = function
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
-  | S.NotE e -> I.IfE (exp e, falseE, trueE)
-  | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
-  | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
+  | S.NotE e -> (notE (exp e)).it
+  | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
+  | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
