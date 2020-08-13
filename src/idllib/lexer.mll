@@ -85,17 +85,17 @@ let utf8enc =
 let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
+let byte = '\\'hexdigit hexdigit
 let escape = ['n''r''t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
+  | byte
   | '\\'escape
   | "\\u{" hexnum '}'
-let byte =
-    '\\'hexdigit hexdigit
 
 let nat = num | "0x" hexnum
-let text = '"' (character|byte)* '"'
+let text = '"' character* '"'
 let id = (letter | '_') ((letter | digit | '_')*)
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
