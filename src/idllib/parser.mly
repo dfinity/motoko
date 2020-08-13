@@ -78,7 +78,7 @@ seplist(X, SEP) :
  | s=TEXT
    { try ignore (Wasm.Utf8.decode s); s
      (* TODO: how to do that properly *)
-     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid utf8"))
+     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
    }
 
 %inline id :
