@@ -147,10 +147,9 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     [t']
   | T.Array t' ->
-    let t' = T.normalize t' in
-    begin match t' with
-    | T.Mut t' -> assert false (* mutable arrays not equatable *)
-    | _ ->
+    begin match T.normalize t' with
+    | T.Mut _ -> assert false (* mutable arrays not equatable *)
+    | t' ->
       define_eq t (invoke_equal_array t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
       [t']
     end
@@ -212,7 +211,7 @@ let eq_decls : T.typ M.t -> Ir.dec list = fun roots ->
 (* Does two things:
  - collects all structured uses of `OpEq` in the `env`
  - for each actor, resets the environment, recurses,
-   and adds the show functions (this keeps closed actors closed)
+   and adds the equality functions (this keeps closed actors closed)
 *)
 
 let rec t_exps env = List.map (t_exp env)

@@ -289,7 +289,8 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
     return false;
   };
   var i = 0;
-  while (i < a.size()) {
+  let s = a.size();
+  while (i < s) {
     if (not eq(a[i],b[i])) {
       return false;
     };
