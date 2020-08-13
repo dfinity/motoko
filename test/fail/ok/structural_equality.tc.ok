@@ -10,13 +10,13 @@ structural_equality.mo:6.1-6.11: type error, operator not defined for operand ty
   {inner : () -> Nat}
 and
   {inner : () -> Nat}
-structural_equality.mo:8.9-8.37: warning, comparing scary things...
+structural_equality.mo:8.9-8.37: warning, comparing incompatible types
   {x : Nat}
 and
   {var x : Nat}
-at
   {x : Any}
-structural_equality.mo:10.8-10.18: type error, comparing two incompatible types
+structural_equality.mo:10.8-10.18: warning, comparing incompatible types
   Nat
 and
   Text
+  Any

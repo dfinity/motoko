@@ -781,13 +781,8 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
           (T.string_of_typ_expand t2);
       if not (T.eq t t1 || T.eq t t2) then
-        if T.eq t T.Any then
-          error env exp.at
-            "comparing two incompatible types\n  %s\nand\n  %s"
-            (T.string_of_typ_expand t1)
-            (T.string_of_typ_expand t2)
-        else warn env exp.at
-         "comparing scary things...\n  %s\nand\n  %s\nat\n  %s"
+        warn env exp.at
+          "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
           (T.string_of_typ_expand t1)
           (T.string_of_typ_expand t2)
           (T.string_of_typ_expand t);
