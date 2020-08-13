@@ -780,6 +780,12 @@ and infer_exp'' env exp : T.typ =
           "operator not defined for operand types\n  %s\nand\n  %s"
           (T.string_of_typ_expand t1)
           (T.string_of_typ_expand t2);
+      if not (T.eq t t1 || T.eq t t2) then
+        warn env exp.at
+          "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
+          (T.string_of_typ_expand t1)
+          (T.string_of_typ_expand t2)
+          (T.string_of_typ_expand t);
       ot := t;
     end;
     T.bool
