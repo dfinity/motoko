@@ -81,12 +81,18 @@ seplist(X, SEP) :
 
 (* Basics *)
 
+%inline text : s=TEXT {
+  try ignore (Wasm.Utf8.decode s); s
+  (* TODO: how to do that properly *)
+  with Wasm.Utf8.Utf8 -> $syntaxerror
+  }
+
 %inline id :
   | id=ID { id @@ at $sloc }
 
 %inline name :
   | id=ID { id @@ at $sloc }
-  | text=TEXT { text @@ at $sloc }
+  | text=text { text @@ at $sloc }
 
 (* Types *)
 
@@ -177,7 +183,7 @@ def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
   (* TODO enforce all imports to go first in the type definitions  *)
-  | IMPORT file=TEXT
+  | IMPORT file=text
     { ImportD (file, ref "") @@ at $sloc }
 
 id_opt :
@@ -200,7 +206,7 @@ parse_prog :
 (* Test suite *)
 
 input :
-  | text=TEXT { TextualInput text }
+  | text=text { TextualInput text }
   | BLOB text=TEXT { BinaryInput text }
 
 assertion :

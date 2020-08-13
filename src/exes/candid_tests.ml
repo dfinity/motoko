@@ -18,6 +18,7 @@ let usage = "Usage: " ^ name ^ " -i path/to/candid/test"
 (* Argument handling *)
 
 let test_dir = ref ""
+let pattern = ref ""
 
 let print_banner () =
   printf "%s\n" banner;
@@ -31,6 +32,7 @@ let usage_err s =
 let argspec = Arg.align
 [
   "-i", Arg.Set_string test_dir, " candid test directory";
+  "-p", Arg.Set_string pattern, " test selector (substring/regex)";
   "--version", Arg.Unit print_banner, " show version";
 ]
 
@@ -93,6 +95,17 @@ let () =
   Arg.parse argspec (fun _ -> usage_err "no arguments expected") usage;
   if !test_dir = "" then usage_err "no candid test directory specified";
 
+
+  let filter =
+    if !pattern = ""
+    then fun name -> true
+    else
+      let r = Str.regexp !pattern in
+      fun name ->
+        try ignore(Str.search_forward r name 0); true
+        with Not_found -> false
+  in
+
   let files = Sys.readdir !test_dir in
   Array.sort compare files;
   Array.iter (fun base ->
@@ -104,29 +117,33 @@ let () =
       then (Printf.eprintf "Definitions not yet supported\n"; exit 1);
 
       List.iter (fun test ->
-        match test.it.desc with
-        | None -> Printf.printf "%s:%d...%!" name test.at.left.line
-        | Some n -> Printf.printf "%s:%d %s...%!" name test.at.left.line n;
+        let testname =
+          match test.it.desc with
+          | None -> Printf.sprintf "%s:%d" name test.at.left.line
+          | Some n -> Printf.sprintf "%s:%d %s" name test.at.left.line n in
 
-        (* generate test program *)
-        match mo_of_test test with
-        | None -> Printf.printf " ignored.\n"
-        | Some (src, must_not_trap) ->
-          (* Printf.printf "\n%s" src *)
-          Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
-          write_file "tmp.mo" src;
-          match run_cmd "moc -wasi-system-api tmp.mo -o tmp.wasm" with
-          | (false, stdout, stderr) ->
-            Printf.printf " compilation failed:\n%s%s\n" stdout stderr
-          | (true, _, _) ->
-            match must_not_trap, run_cmd "wasmtime tmp.wasm" with
-            | true, (true, _, _)
-            | false, (false, _, _) ->
-              Printf.printf " ok!\n";
-            | true, (false, stdout, stderr) ->
-              Printf.printf " fail (unexpected trap)!\n%s%s\n" stdout stderr;
-            | false, (true, _, _) ->
-              Printf.printf " fail (unexpected pass)!\n";
+        if filter testname then begin
+          Printf.printf "%s...%!" testname;
+          (* generate test program *)
+          match mo_of_test test with
+          | None -> Printf.printf " ignored.\n"
+          | Some (src, must_not_trap) ->
+            (* Printf.printf "\n%s" src *)
+            Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
+            write_file "tmp.mo" src;
+            match run_cmd "moc -wasi-system-api tmp.mo -o tmp.wasm" with
+            | (false, stdout, stderr) ->
+              Printf.printf " compilation failed:\n%s%s\n" stdout stderr
+            | (true, _, _) ->
+              match must_not_trap, run_cmd "wasmtime tmp.wasm" with
+              | true, (true, _, _)
+              | false, (false, _, _) ->
+                Printf.printf " ok!\n";
+              | true, (false, stdout, stderr) ->
+                Printf.printf " fail (unexpected trap)!\n%s%s\n" stdout stderr;
+              | false, (true, _, _) ->
+                Printf.printf " fail (unexpected pass)!\n";
+        end
       ) tests.it.tests;
     | None ->
       match Lib.String.chop_suffix ".did" base with
