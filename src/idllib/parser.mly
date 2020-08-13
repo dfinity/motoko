@@ -210,7 +210,7 @@ assertion :
 
 test :
   | id=id assertion=assertion tys=param_typs desc=text?
-    { if id.it != "assert" then raise (ParseError (at $loc(id), "Expect an assert"))
+    { if id.it <> "assert" then raise (ParseError (at $loc(id), id.it))
       else { ttyp=tys; assertion; desc } @@ at $sloc }
 
 parse_tests :

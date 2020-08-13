@@ -6,8 +6,7 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "a1dcbad48334d5b988dd8196d09050253ab8e1b2",
-        "sha256": "01ncv2d867w007wlkjbpv4dblk56qwymjpbmaz377qwvgadfq8ky",
+        "rev": "10f084326fc5e755a100932919469ad14cf54b56",
         "type": "tarball",
         "url": "https://github.com/dfinity/candid/archive/a1dcbad48334d5b988dd8196d09050253ab8e1b2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
