@@ -1,5 +1,15 @@
 = Motoko compiler changelog
 
+== 0.4.1 (2020-08-13)
+
+* Switching to bumping the third component of the version number
+* Bugfix: clashing declarations via function and class caught (#1756)
+* Bugfix: Candid bool decoding rejects invalid input (#1783)
+* Canisters can take installation arguments (#1809)
+  NB: Communicatig the type of the canister installation methods is still
+  missing.
+* Optimization: Handling of `Bool` in the backend.
+
 == 0.4 (2020-08-03)
 
 * Candid pretty printer to use shorthand when possible (#1774)
