@@ -48,6 +48,7 @@ end
 module Array :
 sig
   val compare : ('a -> 'a -> int) -> 'a array -> 'a array -> int
+  val for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool (* raises Failure *)
 end
 
 module Array32 :

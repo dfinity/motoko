@@ -2,8 +2,6 @@
 open Parser
 module Utf8 = Wasm.Utf8
 
-exception Error of Source.region * string
-
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
     Source.line = pos.Lexing.pos_lnum;
@@ -15,7 +13,7 @@ let region lexbuf =
   let right = convert_pos (Lexing.lexeme_end_p lexbuf) in
   {Source.left = left; Source.right = right}
 
-let error lexbuf msg = raise (Error (region lexbuf, msg))
+let error lexbuf msg = raise (Source.ParseError (region lexbuf, msg))
 let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
@@ -87,17 +85,17 @@ let utf8enc =
 let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
+let byte = '\\'hexdigit hexdigit
 let escape = ['n''r''t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
+  | byte
   | '\\'escape
   | "\\u{" hexnum '}'
-let byte =
-    '\\'hexdigit hexdigit
 
 let nat = num | "0x" hexnum
-let text = '"' (character|byte)* '"'
+let text = '"' character* '"'
 let id = (letter | '_') ((letter | digit | '_')*)
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
