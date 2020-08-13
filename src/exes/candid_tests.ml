@@ -106,6 +106,11 @@ let () =
         with Not_found -> false
   in
 
+  let count = ref 0 in
+  let count_ok = ref 0 in
+  let count_fail = ref 0 in
+  let count_skip = ref 0 in
+
   let files = Sys.readdir !test_dir in
   Array.sort compare files;
   Array.iter (fun base ->
@@ -122,6 +127,7 @@ let () =
           | None -> Printf.sprintf "%s:%d" name test.at.left.line
           | Some n -> Printf.sprintf "%s:%d %s" name test.at.left.line n in
 
+        count := !count + 1;
         if filter testname then begin
           Printf.printf "%s...%!" testname;
           (* generate test program *)
@@ -133,20 +139,31 @@ let () =
             write_file "tmp.mo" src;
             match run_cmd "moc -wasi-system-api tmp.mo -o tmp.wasm" with
             | (false, stdout, stderr) ->
+              count_fail := !count_fail + 1;
               Printf.printf " compilation failed:\n%s%s\n" stdout stderr
             | (true, _, _) ->
               match must_not_trap, run_cmd "wasmtime tmp.wasm" with
               | true, (true, _, _)
               | false, (false, _, _) ->
+                count_ok := !count_ok + 1;
                 Printf.printf " ok!\n";
               | true, (false, stdout, stderr) ->
+                count_fail := !count_fail + 1;
                 Printf.printf " fail (unexpected trap)!\n%s%s\n" stdout stderr;
               | false, (true, _, _) ->
+                count_fail := !count_fail + 1;
                 Printf.printf " fail (unexpected pass)!\n";
-        end
+        end else count_skip := !count_skip + 1;
       ) tests.it.tests;
     | None ->
       match Lib.String.chop_suffix ".did" base with
       | Some _ -> Printf.printf "Ignoring file %s...\n" base;
       | None -> ()
-  ) files
+  ) files;
+
+  Printf.printf "%d tests: %d skipped, %d ok, %d failed\n"
+    !count !count_skip !count_ok !count_fail;
+  if !count_fail > 0
+  then exit 1
+  else exit 0
+
