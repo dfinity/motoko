@@ -30,9 +30,6 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
                  "null", Null; "reserved", Reserved; "empty", Empty]
 let is_prim_typs t = List.assoc_opt t prim_typs
 
-let func_modes = ["oneway", Oneway; "query", Query]
-let get_func_mode m = List.assoc_opt m func_modes               
-
 let hash = IdlHash.idl_hash
 let record_fields fs =
   let open Uint32 in
@@ -55,10 +52,9 @@ let record_fields fs =
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
-%token ASSERT
 %token SEMICOLON COMMA COLON EQ
 %token NOTCOLON EQQ NOTEQ
-%token OPT VEC RECORD VARIANT BLOB
+%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
@@ -153,11 +149,8 @@ param_typ :
   | name COLON t=data_typ { t }
 
 func_mode :
-  | m=id
-    { match get_func_mode m.it with
-        Some m -> m @@ at $sloc
-      | None -> $syntaxerror
-    }
+  | ONEWAY { Oneway @@ at $sloc }
+  | QUERY { Query @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -216,8 +209,9 @@ assertion :
   | i1=input NOTEQ i2=input COLON { ParsesEqual (false, i1, i2) }
 
 test :
-  | ASSERT assertion=assertion tys=param_typs desc=text?
-    { { ttyp=tys; assertion; desc } @@ at $sloc }
+  | id=id assertion=assertion tys=param_typs desc=text?
+    { if id.it != "assert" then raise (ParseError (at $loc(id), "Expect an assert"))
+      else { ttyp=tys; assertion; desc } @@ at $sloc }
 
 parse_tests :
   | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
