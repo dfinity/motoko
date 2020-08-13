@@ -216,7 +216,7 @@ assertion :
   | i1=input NOTEQ i2=input COLON { ParsesEqual (false, i1, i2) }
 
 test :
-  | ASSERT assertion=assertion tys=param_typs desc=TEXT?
+  | ASSERT assertion=assertion tys=param_typs desc=text?
     { { ttyp=tys; assertion; desc } @@ at $sloc }
 
 parse_tests :
