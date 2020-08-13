@@ -330,6 +330,8 @@ let dw_tag_close : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
+module VariantRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+let dw_variants = ref VariantRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_enums = ref EnumRefs.empty
 module ObjectRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
@@ -587,12 +589,12 @@ and dw_enum vnts =
          dw_tag_close (* enumeration_type *)) in
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
-and dw_variant vnts =
+and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
   let prereq (_, typ) = fst (dw_type_ref typ) in
   (* make sure all prerequisite types are around *)
   let prereqs = effects (concat_map prereq selectors) in
-  match (*EnumRefs.find_opt selectors !dw_enums*)None with
+  match VariantRefs.find_opt (List.map fst selectors) !dw_variants with
   | Some r -> nop, r
   | None ->
     let variant =
@@ -613,7 +615,7 @@ and dw_variant vnts =
          concat_map summand selectors ^^
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
-    (*dw_variants := EnumRefs.add selectors (snd enum) !dw_struct;*)
+    dw_variants := VariantRefs.add (List.map fst selectors) (snd variant) !dw_variants;
     variant
 and dw_object fs =
   let selectors = List.map (fun Type.{lab; _} -> lab) fs in
