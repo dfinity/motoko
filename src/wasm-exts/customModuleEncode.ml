@@ -871,7 +871,7 @@ let encode (em : extended_module) =
 
     let info_section_start = ref 0
 
-    let rec writeTag = function
+    let rec writeTag at_toplevel = function
       | Tag (r, t, contentsRevd) ->
         begin match r with
         | Some refi ->
@@ -887,7 +887,7 @@ let encode (em : extended_module) =
           | Tag (Some _, _, _), _ -> 1
           | _ -> 0 in
 
-        let contents = List.rev (List.stable_sort ref_priority contentsRevd) in
+        let contents = List.rev (if at_toplevel then List.stable_sort ref_priority contentsRevd else contentsRevd) in
         let wanted_tag (t', _, _) = t = t' in
         let (_, has_children, forms) = List.find wanted_tag Abbreviation.abbreviations in
         let rec pairing (attr, form) = function
@@ -913,7 +913,7 @@ let encode (em : extended_module) =
         let nested_tags, attrs = List.partition (function Tag _ -> true | _ -> false) contents in
 
         List.iter2 pairing forms attrs;
-        List.iter writeTag nested_tags;
+        List.iter (writeTag false) nested_tags;
         if has_children <> 0 then close_section ()
       | _ -> failwith "Tag expected"
 
@@ -939,7 +939,7 @@ let encode (em : extended_module) =
             info_section_start := info_start;
 
             match !dwarf_tags with
-            | [toplevel] -> writeTag toplevel
+            | [toplevel] -> writeTag true toplevel
             | _ -> failwith "expected one toplevel tag"
           ) in
       let relevant ts = ts <> [Tag (None, 0, [])] in
