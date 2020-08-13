@@ -13,3 +13,5 @@ val span : region -> region -> region
 val between : region -> region -> region
 
 val (@@) : 'a -> region -> 'a phrase
+
+exception ParseError of region * string

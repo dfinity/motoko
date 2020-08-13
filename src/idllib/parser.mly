@@ -74,11 +74,12 @@ seplist(X, SEP) :
 
 (* Basics *)
 
-%inline text : s=TEXT {
-  try ignore (Wasm.Utf8.decode s); s
-  (* TODO: how to do that properly *)
-  with Wasm.Utf8.Utf8 -> $syntaxerror
-  }
+%inline text :
+ | s=TEXT
+   { try ignore (Wasm.Utf8.decode s); s
+     (* TODO: how to do that properly *)
+     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid utf8"))
+   }
 
 %inline id :
   | id=ID { id @@ at $sloc }
