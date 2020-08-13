@@ -243,6 +243,7 @@ type dw_AT = Producer of string
            | TypeRef of int (* reference *)
            | Encoding of int
            | Location of int list
+           | DataMemberLocation of int
 
 (* DWARF tags *)
 
@@ -289,6 +290,13 @@ let dw_attr' : dw_AT -> die =
   | Encoding e -> IntAttribute (dw_AT_encoding, e)
   | Discr_value v -> IntAttribute (dw_AT_discr_value, v)
   | Const_value v -> IntAttribute (dw_AT_const_value, v)
+  | DataMemberLocation offs ->
+    let open Buffer in
+    let buf = create 4 in
+    add_int8 buf dw_OP_plus_uconst;
+    assert (offs >= 0 && offs < 64); (* one-byte ULEB128 *)
+    add_int8 buf offs;
+    StringAttribute (dw_AT_data_member_location, contents buf)
   | Location ops ->
     let string_of_ops ops =
       let open Buffer in
@@ -301,8 +309,8 @@ let dw_attr' : dw_AT -> die =
           stash (i land 0x7F lor 0x80);
           stash (- (i lsr 7)) in
       List.iter stash ops;
-      Buffer.contents buf in
-    StringAttribute (dw_AT_location, (string_of_ops ops))
+      contents buf in
+    StringAttribute (dw_AT_location, string_of_ops ops)
   | Discr_list -> assert false (* not yet *)
 
 let dw_attr at : die list = [dw_attr' at]
@@ -604,12 +612,13 @@ and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
       let summand (name, typ) =
         let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
-        meta_tag dw_TAG_member_In_variant (dw_attrs [Name name; TypeRef (snd (dw_type_ref typ))]) ^^
+          meta_tag dw_TAG_member_In_variant
+            (dw_attrs [Name name; TypeRef (snd (dw_type_ref typ)); DataMemberLocation 8]) ^^
         dw_tag_close (* variant *) in
       prereqs ^^<
       internal_struct ^<^
-        (meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
-         let dw2, discr = referencable_meta_tag dw_TAG_member_Tag_variant_mark (dw_attrs [Artificial true; Byte_size 4]) in
+        (meta_tag dw_TAG_member_Tag_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
+         let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
          dw2 ^^
          (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
          concat_map summand selectors ^^
