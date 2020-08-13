@@ -14,6 +14,9 @@ shared {caller = creator} actor class C() {
 
 };
 
+//contains features that can't be lowered (toplevel awaits)
+//SKIP run-low
+
 let c = await C(); ignore c.c1(); //OR-CALL ingress c1 0x4449444C0000
 ignore c.c2(); //OR-CALL ingress c2 0x4449444C0000
 

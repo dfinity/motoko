@@ -10,5 +10,8 @@ actor class C() {
 
 };
 
+//contains features that can't be lowered (toplevel awaits)
+//SKIP run-low
+
 ignore (await C()).m() //OR-CALL ingress m 0x4449444C0000
 
