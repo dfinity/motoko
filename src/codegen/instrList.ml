@@ -290,13 +290,7 @@ let dw_attr' : dw_AT -> die =
   | Encoding e -> IntAttribute (dw_AT_encoding, e)
   | Discr_value v -> IntAttribute (dw_AT_discr_value, v)
   | Const_value v -> IntAttribute (dw_AT_const_value, v)
-  | DataMemberLocation offs ->
-    let open Buffer in
-    let buf = create 4 in
-    add_int8 buf dw_OP_plus_uconst;
-    assert (offs >= 0 && offs < 64); (* one-byte ULEB128 *)
-    add_int8 buf offs;
-    StringAttribute (dw_AT_data_member_location, contents buf)
+  | DataMemberLocation offs -> IntAttribute (dw_AT_data_member_location, offs)
   | Location ops ->
     let string_of_ops ops =
       let open Buffer in

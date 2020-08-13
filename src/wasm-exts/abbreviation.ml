@@ -114,7 +114,7 @@ let abbreviations =
     ( dw_TAG_member_Variant_mark, dw_CHILDREN_no,
       [ dw_AT_artificial, dw_FORM_flag_present;
         dw_AT_byte_size, dw_FORM_data1;
-        dw_AT_data_member_location, dw_FORM_exprloc
+        dw_AT_data_member_location, dw_FORM_data1
       ] );
     ( dw_TAG_member_Word_sized, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
@@ -129,7 +129,7 @@ let abbreviations =
     ( dw_TAG_member_In_variant, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_type, dw_FORM_ref_udata;
-        dw_AT_data_member_location, dw_FORM_exprloc
+        dw_AT_data_member_location, dw_FORM_data1
       ] );
     ( dw_TAG_variant_part, dw_CHILDREN_yes,
       [ dw_AT_discr, dw_FORM_ref_udata
