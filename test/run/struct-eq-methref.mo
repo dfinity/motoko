@@ -7,6 +7,3 @@ assert((actor "aaaaa-aa" : A).foo != (actor "psokg-ww6vw-7o6" : A).foo);
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-
-// Remove in #1821
-//SKIP comp

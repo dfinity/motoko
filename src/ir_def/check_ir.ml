@@ -132,12 +132,15 @@ let check_concrete env at t =
 
 let has_prim_eq t =
   (* Which types have primitive equality implemented in the backend? *)
+  (* Keep in sync with Compile.compileq_eq *)
   let open T in
   match normalize t with
   | Prim Null -> false (* Ir_passes.Eq handles singleton types *)
   | Prim Error -> false (* should be desugared away *)
   | Prim _ -> true (* all other prims are fine *)
   | Non -> true
+  (* references are handled in the back-end: *)
+  | Obj (Actor, _) | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
 let check_field_hashes env what at =

@@ -38,15 +38,7 @@ let rec is_singleton_type t =
   | Variant [f] -> is_singleton_type f.typ
   | _ -> false
 
-let has_prim_eq t =
-  (* keep in sync with Compile.compile_eq and Ir_check.has_prim_eq *)
-  let open T in
-  match normalize t with
-  | Prim Null -> false (* is_singleton_type *)
-  | Prim Error -> false (* not equateable *)
-  | Prim _ -> true (* all other prims are fine *)
-  | Non -> true
-  | _ -> false
+let has_prim_eq = Check_ir.has_prim_eq
 
 (* Function names *)
 
@@ -153,7 +145,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       define_eq t (invoke_equal_array t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
       [t']
     end
-  | T.Obj (T.Object, fs) ->
+  | T.Obj ((T.Object | T.Memory | T.Module), fs) ->
     define_eq t (
       conjE (List.map (fun f ->
         let t' = T.as_immut (T.normalize f.Type.typ) in
@@ -189,7 +181,8 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.Non ->
     define_eq t unreachableE,
     []
-  | _ -> assert false (* Should be prevented by the type checker *)
+  | t ->
+    raise (Invalid_argument ("Ir_passes.Eq.eq_on: Unexpected type " ^ T.string_of_typ t))
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)
 
