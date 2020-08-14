@@ -15,8 +15,8 @@ service : {
   fieldnat: (record {2 : int; "2": nat}) -> (record { int });
   field: (record {test: nat16; nat8;}) -> (record {});
   "variant": (variant { A; B; C: null; D: float64}) -> ();
-  oneway: (nat8) -> () oneway;
-  query: (blob) -> (blob) query;
+  "oneway": (nat8) -> () oneway;
+  "query": (blob) -> (blob) query;
   //"service": t;
   "👀": () -> ();
   tuple: (record { int; blob; text }) -> (record { int; 1: nat8 });

@@ -130,6 +130,8 @@ rule token = parse
   | "variant" { VARIANT }
   | "blob" { BLOB }
   | "principal" { PRINCIPAL }
+  | "oneway" { ONEWAY }
+  | "query" { QUERY }
 
   | id as s { ID s }
 
