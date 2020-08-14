@@ -597,11 +597,17 @@ and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
   | Some r -> nop, r
   | None ->
     let prereq (name, typ) =
-      let dw, r = dw_type_ref typ in
+      let dw_payload_pre, dw_payload_mem =
+        match typ with
+        | Type.Tup [] -> nop, nop
+        | _ ->
+          let dw, r = dw_type_ref typ in
+          dw,
+          meta_tag dw_TAG_member_In_variant (dw_attrs [Name ("#" ^ name); TypeRef r; DataMemberLocation 8]) in
       let dw_overlay, ref_overlay =
-        dw ^^<
+        dw_payload_pre ^^<
         (referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name name; Byte_size 12 (*; Artificial *)]) ^<^
-         meta_tag dw_TAG_member_In_variant (dw_attrs [Name ("#" ^ name); TypeRef r; DataMemberLocation 8]) ^^
+         dw_payload_mem ^^
          dw_tag_close (* structure_type *)) in
     (dw_overlay,
      meta_tag dw_TAG_member_In_variant
