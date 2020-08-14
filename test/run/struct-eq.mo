@@ -21,3 +21,6 @@ type List<A> = ?(A, List<A>);
 let xs : List<Nat> = ?(10, ?(20, null));
 let ys : List<Nat> = ?(20, ?(10, null));
 assert(xs != ys);
+
+// Remove in #1821
+//SKIP comp
