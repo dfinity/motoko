@@ -2168,9 +2168,11 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
+(* HACK restore me       
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
+ *)
       if not (is_anonymous id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
           "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
