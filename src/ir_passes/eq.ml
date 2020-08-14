@@ -27,19 +27,6 @@ let empty_env () : env = {
 let add_type env t : unit =
   env.params := M.add (typ_hash t) t !(env.params)
 
-(* Which types need transforming? *)
-
-let rec is_singleton_type t =
-  let open T in
-  match normalize t with
-  | Prim Null | Any -> true
-  | Tup ts -> List.for_all is_singleton_type ts
-  | Obj (_, fs) -> List.for_all (fun f -> is_singleton_type f.typ) fs
-  | Variant [f] -> is_singleton_type f.typ
-  | _ -> false
-
-let has_prim_eq = Check_ir.has_prim_eq
-
 (* Function names *)
 
 (* For a concrete type `t` we want to create a function name for `eq`.
@@ -64,9 +51,9 @@ let eq_var_for t : Construct.var =
 *)
 
 let invoke_eq : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t e1 e2 ->
-  if is_singleton_type t
+  if T.singleton t
   then trueE
-  else if has_prim_eq t
+  else if Check_ir.has_prim_eq t
   then primE (RelPrim (t, Operator.EqOp)) [e1; e2]
   else varE (eq_var_for t) -*- (tupE [e1; e2])
 
@@ -94,7 +81,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   (* Function wrappers around primitive types *)
   (* These are needed when one of these types apperas in arrays, as we
      need a function to pass to @equal_array *)
-  | t when is_singleton_type t || has_prim_eq t ->
+  | t when T.singleton t || Check_ir.has_prim_eq t ->
     define_eq t (invoke_eq t (arg1E t) (arg2E t)),
     []
   (* Error cases *)
@@ -215,9 +202,9 @@ and t_exp env (e : Ir.exp) =
 and t_exp' env = function
   | LitE l -> LitE l
   | VarE id -> VarE id
-  | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when is_singleton_type ot ->
+  | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when T.singleton ot ->
     trueE.it
-  | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when not (has_prim_eq ot) ->
+  | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when not (Check_ir.has_prim_eq ot) ->
     let t' = T.normalize ot in
     add_type env t';
     (varE (eq_var_for t') -*- (tupE [t_exp env exp1; t_exp env exp2])).it

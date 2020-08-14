@@ -184,6 +184,7 @@ val is_shared_func : typ -> bool
 val stable : typ -> bool
 
 val inhabited : typ -> bool
+val singleton : typ -> bool
 val span : typ -> int option
 
 
