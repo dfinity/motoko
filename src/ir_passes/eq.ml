@@ -79,7 +79,7 @@ let invoke_equal_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f
 let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
   (* Function wrappers around primitive types *)
-  (* These are needed when one of these types apperas in arrays, as we
+  (* These are needed when one of these types appears in an array, as we
      need a function to pass to @equal_array *)
   | t when T.singleton t || Check_ir.has_prim_eq t ->
     define_eq t (invoke_eq t (arg1E t) (arg2E t)),
