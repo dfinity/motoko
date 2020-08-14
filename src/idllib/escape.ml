@@ -20,7 +20,41 @@ let is_valid_as_id str = match Lib.String.explode str with
 
 let ends_with_underscore str = Lib.String.chop_suffix "_" str <> None
 
-let is_keyword = function
+let is_candid_keyword = function
+  | "import"
+  | "service"
+  | "func"
+  | "type"
+  | "opt"
+  | "vec"
+  | "record"
+  | "variant"
+  | "blob"
+  | "principal"
+  | "nat"
+  | "nat8"
+  | "nat16"
+  | "nat32"
+  | "nat64"
+  | "int"
+  | "int8"
+  | "int16"
+  | "int32"
+  | "int64"
+  | "float32"
+  | "float64"
+  | "bool"
+  | "text"
+  | "null"
+  | "reserved"
+  | "empty"
+  | "oneway"
+  | "query"
+  -> true
+  | _
+  -> false
+
+let is_motoko_keyword = function
   | "actor"
   | "and"
   | "async"
@@ -69,7 +103,7 @@ let is_keyword = function
 let escape_num h = Printf.sprintf "_%s_" (Lib.Uint32.to_string h)
 
 let escape str =
-  if is_keyword str then str ^ "_" else
+  if is_motoko_keyword str then str ^ "_" else
   if is_valid_as_id str
   then if ends_with_underscore str then str ^ "_" else str
   else escape_num (IdlHash.idl_hash str)
@@ -101,3 +135,7 @@ let unescape str =
 let unescape_hash str = match unescape str with
   | Nat h -> h
   | Id s -> IdlHash.idl_hash s
+
+let needs_quote str =
+  not (is_valid_as_id str) || is_candid_keyword str
+

@@ -388,6 +388,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       ot <: t
+    | RelPrim (ot,  Operator.NeqOp), _ ->
+      check false "negation operator should be desugared away in IR"
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
       typ exp1 <: ot;
@@ -480,6 +482,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
       T.text <: t
+    | SerializePrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
+      typ exp1 <: T.seq ots;
+      T.blob <: t
+    | DeserializePrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
+      typ exp1 <: T.blob;
+      T.seq ots <: t
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
@@ -550,6 +560,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* We could additionally keep track of the type of the current actor in
          the environment and see if this lines up. *)
       t1 <: t;
+    | SystemTimePrim, [] ->
+      T.(Prim Nat64) <: t;
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -982,10 +994,16 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (ds, fs, { pre; post}, t0) ->
+  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
-    let env' = { env with async = None } in
+    let env' = match as_opt with
+      | None -> { env with async = None }
+      | Some as_ ->
+        let ve = check_args env as_ in
+        List.iter (fun a -> check_shared env no_region a.note) as_;
+        adjoin_vals { env with async = None } ve
+    in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;

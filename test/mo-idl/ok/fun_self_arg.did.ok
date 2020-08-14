@@ -1,6 +1,6 @@
 type F = func () -> (F);
 type A = 
  service {
-   "foo": F;
+   foo: F;
  };
 

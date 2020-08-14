@@ -119,6 +119,7 @@ module Word64 = MakeWord (Wasm.I64) (Int64)
 module type FloatType =
 sig
   include Wasm.Float.S
+  val rem : t -> t -> t
   val pow : t -> t -> t
   val to_pretty_string : t -> string
 end
@@ -126,6 +127,7 @@ end
 module MakeFloat(WasmFloat : Wasm.Float.S) =
 struct
   include WasmFloat
+  let rem x y = of_float (Float.rem (to_float x) (to_float y))
   let pow x y = of_float (to_float x ** to_float y)
   let to_pretty_string w = group_num (WasmFloat.to_string w)
   let to_string = to_pretty_string
@@ -256,6 +258,19 @@ module Int_16 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_in
 module Int_32 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000_0000 end))
 module Int_64 = Ranged (Int) (IntRange (struct let upper = Big_int.power_int_positive_int 2 63 end))
 
+(* Blobs *)
+
+module Blob = struct
+  let escape b =
+    String.concat "" (
+      List.of_seq (
+        Seq.map (fun c ->
+          "\\" ^ Lib.Hex.hex_of_char c
+        ) (String.to_seq b)
+      )
+    )
+end
+
 (* Types *)
 
 type unicode = int
@@ -286,6 +301,7 @@ and value =
   | Float of Float.t
   | Char of unicode
   | Text of string
+  | Blob of string
   | Tup of value list
   | Opt of value
   | Variant of string * value
@@ -335,6 +351,7 @@ let as_word64 = function Word64 w -> w | _ -> invalid "as_word64"
 let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
+let as_blob = function Blob b -> b | _ -> invalid "as_blob"
 let as_iter = function Iter i -> i | _ -> invalid "as_iter"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
@@ -429,11 +446,8 @@ let rec string_of_val_nullary d = function
   | Word64 w -> "0x" ^ Word64.to_pretty_string w
   | Float f -> Float.to_pretty_string f
   | Char c -> string_of_string '\'' [c] '\''
-  | Text t ->
-    begin try
-      string_of_string '\"' (Wasm.Utf8.decode t) '\"'
-    (* We also use Text for blobs, so be defensive here: *)
-    with Wasm.Utf8.Utf8 -> "\"(invalid utf8)\"" end
+  | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
+  | Blob b -> "\"" ^ Blob.escape b ^ "\""
   | Tup vs ->
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_val d) vs))

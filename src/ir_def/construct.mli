@@ -36,6 +36,7 @@ val fresh_vars : string -> typ list -> var list
 
 val varP : var -> pat
 val tupP :  pat list -> pat
+val wildP : pat
 
 val seqP : pat list -> pat
 
@@ -79,6 +80,13 @@ val loopE : exp -> exp
 val forE : pat -> exp -> exp -> exp
 val loopWhileE : exp -> exp -> exp
 val whileE : exp -> exp -> exp
+
+val falseE : exp
+val trueE : exp
+val notE : exp -> exp
+val andE : exp -> exp -> exp
+val orE : exp -> exp -> exp
+val conjE : exp list -> exp
 
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp

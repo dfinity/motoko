@@ -35,6 +35,10 @@ val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
 val warn : Source.region -> string -> string -> unit result
 
+module Syntax : sig
+  val (let*) : 'a result -> ('a -> 'b result) -> 'b result
+end
+
 (*
 An impure, but more more convenient interface.
 

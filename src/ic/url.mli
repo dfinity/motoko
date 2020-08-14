@@ -9,4 +9,6 @@ type parsed =
 val string_of_parsed : parsed -> string
 val parse : string -> (parsed, string) result
 val idl_basename_of_blob : string -> string
-val encode_ic_url : string -> string
+
+val decode_principal : string -> (string, string) result
+val encode_principal : string -> string

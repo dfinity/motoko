@@ -255,7 +255,7 @@ and block env ds exp =
 and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
-  | ActorU (ds, fs, u, t)  -> ActorU (ds, fs, u, t) (* TODO(1358): descent into ds  *)
+  | ActorU (as_opt, ds, fs, u, t)  -> ActorU (as_opt, ds, fs, u, t) (* TODO(1358): descent into ds  *)
 
 and prog (cu, flavor) =
   let env = { tail_pos = false; info = None } in

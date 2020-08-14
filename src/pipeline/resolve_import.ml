@@ -57,13 +57,13 @@ let err_unrecognized_url msgs at url msg =
       text = Printf.sprintf "cannot parse import URL \"%s\": %s" url msg
     }
 
-let err_unrecognized_alias_url msgs alias url msg =
+let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
   add_msg msgs {
       sev = Error;
       at = no_region;
       cat = "actor-alias";
-      text = Printf.sprintf "cannot parse URL \"%s\" for actor alias \"%s\": %s" url alias msg
+      text = Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg
     }
 
 let err_actor_import_without_idl_path msgs at =
@@ -103,16 +103,6 @@ let err_alias_not_defined msgs at alias =
     cat = "import";
     text = Printf.sprintf "canister alias \"%s\" not defined" alias
   }
-
-let err_alias_wrong_scheme msgs at alias url =
-  let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at;
-    cat = "import";
-    text = Printf.sprintf "canister alias \"%s\" target \"%s\" is not \"ic:\" url" alias url
-  }
-
 
 let err_package_file_does_not_exist msgs f pname =
   let open Diag in
@@ -224,14 +214,13 @@ let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath 
   else (err_package_file_does_not_exist msgs f pname;"")
 
 (* Resolve the argument to --actor-alias. Check eagerly for well-formedness *)
-let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
-  match Url.parse f with
-  | Ok (Url.Ic bytes) -> bytes
-  | Ok _ -> err_alias_wrong_scheme msgs no_region alias f; ""
-  | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
+let resolve_alias_principal (msgs:Diag.msg_store) (alias:string) (f:string) : blob =
+  match Url.decode_principal f with
+  | Ok bytes -> bytes
+  | Error msg -> err_unrecognized_alias msgs alias f msg; ""
 
 
-let prog_imports (p : prog): (url * resolved_import ref * Source.region) list =
+let prog_imports (p : prog): (url * resolved_import ref * region) list =
   let res = ref [] in
   let f e = match e.it with
     | ImportE (f, fp) -> res := (f, fp, e.at) ::!res; e
@@ -248,8 +237,8 @@ type aliases = blob M.t
 let resolve_packages : package_urls -> package_map Diag.result = fun purls ->
   Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs) purls))
 
-let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_urls ->
-  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_url msgs) alias_urls))
+let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_principals ->
+  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_principal msgs) alias_principals))
 
 type flags = {
   package_urls : package_urls;
@@ -265,20 +254,21 @@ type resolved_flags = {
 
 let resolve_flags : flags -> resolved_flags Diag.result
   = fun { actor_idl_path; package_urls; actor_aliases } ->
-  Diag.bind (resolve_packages package_urls) (fun packages ->
-  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
-      Diag.return { packages; aliases; actor_idl_path }))
+  let open Diag.Syntax in
+  let* packages = resolve_packages package_urls in
+  let* aliases = resolve_aliases actor_aliases in
+  Diag.return { packages; aliases; actor_idl_path }
 
 let resolve
   : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun flags p base ->
-  Diag.bind (resolve_flags flags) (fun { packages; aliases; actor_idl_path } ->
-    Diag.with_message_store (fun msgs ->
-      let base = if Sys.is_directory base then base else Filename.dirname base in
-      let imported = ref RIM.empty in
-      List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
-      Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
-    )
+  let open Diag.Syntax in
+  let* { packages; aliases; actor_idl_path } = resolve_flags flags in
+  Diag.with_message_store (fun msgs ->
+    let base = if Sys.is_directory base then base else Filename.dirname base in
+    let imported = ref RIM.empty in
+    List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
+    Some (List.map (fun (rim,at) -> rim @@ at) (RIM.bindings !imported))
   )
 
 

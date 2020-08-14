@@ -4,3 +4,4 @@ val escape : string -> string
 val escape_num : Lib.Uint32.t -> string
 val unescape : string -> label
 val unescape_hash : string -> Lib.Uint32.t
+val needs_quote : string -> bool

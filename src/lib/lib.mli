@@ -96,6 +96,14 @@ sig
   val lazy_value : 'a t -> (unit -> 'a) -> 'a
 end
 
+module AllocOnUse :
+sig
+  type ('a, 'b) t
+  val make : (unit -> ('a * ('b -> unit))) -> ('a, 'b) t
+  val use : ('a, 'b) t -> 'a
+  val def : ('a, 'b) t -> ('b Lazy.t) -> unit
+end
+
 module Int :
 sig
   val log2 : int -> int
@@ -139,6 +147,7 @@ end
 module CRC :
 sig
   val crc8 : string -> int
+  val crc32 : string -> int32
 end
 
 module Hex :
@@ -150,6 +159,12 @@ sig
   val hex_of_byte  : int -> string
   val hex_of_char  : char -> string
   val hex_of_bytes : string -> string
+end
+
+module Base32 :
+sig
+  val decode : string -> (string, string) result
+  val encode : string -> string
 end
 
 module FilePath :
@@ -185,4 +200,17 @@ sig
    * is_subpath "/home" "/homepath" = false
    *)
   val is_subpath : string -> string -> bool
+
+
+  (**
+   * Opens file, and if successful checks whether there
+   * were any mismatches in filename case, returning
+   * a warning.
+   *
+   * Examples:
+   *
+   * Asked for "Array.mo", opened "array.mo" reports
+   * "warning, file Array.mo has been located with a name of different case"
+   *)
+  val open_in : string -> (in_channel * string list)
 end

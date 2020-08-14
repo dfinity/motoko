@@ -18,6 +18,12 @@ let%test "it should parse a package import (3)" =
   parse_test "mo:foo/bar" (Ok (Package ("foo", "bar")))
 let%test "it should parse a package import (4)" =
   parse_test "mo:foo" (Ok (Package ("foo", "")))
+let%test "it should reject package imports that try to escape" =
+  parse_test "mo:foo/../bar" (Error "Package imports musn't access parent directories: ../bar is invalid.")
+let%test "it should reject package imports that try to escape (2)" =
+  parse_test "mo:foo/bar/../../baz" (Error "Package imports musn't access parent directories: bar/../../baz is invalid.")
+let%test "it normalises filepaths for the escape check (3)" =
+  parse_test "mo:foo/bar/../baz" (Ok (Package ("foo", "bar/../baz")))
 
 let%test "it should parse a prim import" =
   parse_test "mo:prim" (Ok (Prim))
@@ -27,8 +33,7 @@ let%test "it should fail to parse a malformed prim import" =
   parse_test "mo:prim/bar" (Ok (Package ("prim", "bar")))
 
 let%test "it should parse an ic import" =
-  (* TODO We need a non-trivial ID with a correct CRC *)
-  parse_test "ic:DEADBEEF" (Error "invalid checksum in principal ID, please check for typos")
+  parse_test "ic:5h74t-uga73-7nadi" (Error "invalid principal. Did you mean \"bfozs-kwa73-7nadi\"?")
 
 let%test "it should parse a canister alias import" =
   parse_test "canister:foo" (Ok (IcAlias "foo"))

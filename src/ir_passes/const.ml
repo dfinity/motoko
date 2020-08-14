@@ -59,13 +59,16 @@ open Ir
   nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
 
-(* A type for callbacks *)
+(*
+A type for callbacks, or notification sinks
+These are invoked at most once, hence `unit Lazy.t` (and not `unit -> unit`)
+*)
 
-type callback = unit -> unit
+type callback = unit Lazy.t
 
-let do_nothing : callback = fun () -> ()
+let do_nothing : callback = lazy ()
 
-let (>>) cb1 cb2 = fun () -> cb1 (); cb2 ()
+let (>>) cb1 cb2 = lazy Lazy.(force cb1; force cb2)
 
 (* The lazy bool value type *)
 
@@ -81,21 +84,21 @@ let set_false (l : lazy_bool) =
   | SurelyFalse -> ()
   | MaybeFalse when_false ->
     l := SurelyFalse; (* do this first, this breaks cycles *)
-    when_false ()
+    Lazy.force when_false
 
-let when_false (l : lazy_bool) (act : unit -> unit) =
+let when_false (l : lazy_bool) (act : callback) =
   match !l with
   | SurelyTrue -> ()
-  | SurelyFalse -> act ()
+  | SurelyFalse -> Lazy.force act
   | MaybeFalse when_false ->
     l := MaybeFalse (act >> when_false)
 
 let surely_true = ref SurelyTrue (* sharing is ok *)
 let surely_false = ref SurelyFalse (* sharing is ok *)
-let maybe_false () = ref (MaybeFalse do_nothing)
+let maybe_false () = ref (MaybeFalse do_nothing) (* no sharing, so unit argument *)
 
 let required_for (a : lazy_bool) (b : lazy_bool) =
-  when_false a (fun () -> set_false b)
+  when_false a (lazy (set_false b))
 
 let all (xs : lazy_bool list) : lazy_bool =
   if xs = [] then surely_true else
@@ -141,7 +144,7 @@ let set_const e b =
 
 let set_lazy_const e lb =
   set_const e true;
-  when_false lb (fun () -> set_const e false)
+  when_false lb (lazy (set_const e false))
 
 (* Traversals *)
 
@@ -265,8 +268,12 @@ and block lvl env (ds, body) =
 and comp_unit = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> decs_ TopLvl M.empty ds
-  | ActorU (ds, fs, {pre; post}, typ) ->
-    let (env', _) = decs TopLvl M.empty ds in
+  | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
+    let env = match as_opt with
+      | None -> M.empty
+      | Some as_ -> args M.empty as_
+    in
+    let (env', _) = decs TopLvl env ds in
     exp_ TopLvl env' pre;
     exp_ TopLvl env' post
 

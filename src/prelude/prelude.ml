@@ -116,12 +116,26 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
   var i = 0;
   while (n > 0) {
     let rem = n % base;
-    if (i == sep) { text := "_" # text; i := 0 };
+    if (sep > 0 and i == sep) { text := "_" # text; i := 0 };
     text := digits rem # text;
     n := n / base;
     i += 1;
   };
   text
+};
+
+func @left_pad(pad : Nat, char : Text, t : Text) : Text {
+  if (pad > t.size()) {
+    var i = pad - t.size();
+    var text = t;
+    while (i > 0) {
+      text := char # text;
+      i -= 1;
+    };
+    text
+  } else {
+    t
+  }
 };
 
 func @digits_dec(x : Nat) : Text =
@@ -196,6 +210,17 @@ func @text_of_Char(c : Char) : Text {
   // TODO: Escape properly
   "\'" # (prim "conv_Char_Text" : Char -> Text) c # "\'";
 };
+
+func @text_of_Blob(blob : Blob) : Text {
+  var t = "\"";
+  for (b in blob.bytes()) {
+    // Could do more clever escaping, e.g. leave ascii and utf8 in place
+    t #= "\\" # @left_pad(2, "0", @text_of_num(@word8ToNat b, 16, 0, @digits_hex));
+  };
+  t #= "\"";
+  return t;
+};
+
 
 
 func @text_has_parens(t : Text) : Bool {
@@ -396,24 +421,24 @@ func word8ToNat8(n : Word8) : Nat8 = (prim "num_conv_Word8_Nat8" : Word8 -> Nat8
 
 func natToWord8(n : Nat) : Word8 = (prim "num_conv_Nat_Word8" : Nat -> Word8) n;
 func intToWord8(n : Int) : Word8 = (prim "num_conv_Int_Word8" : Int -> Word8) n;
-func word8ToInt(n : Word8) : Int = (prim "num_conv_Word8_Int" : Word8 -> Int) n;
-
 func natToWord16(n : Nat) : Word16 = (prim "num_conv_Nat_Word16" : Nat -> Word16) n;
 func intToWord16(n : Int) : Word16 = (prim "num_conv_Int_Word16" : Int -> Word16) n;
-func word16ToInt(n : Word16) : Int = (prim "num_conv_Word16_Int" : Word16 -> Int) n;
-
 func natToWord32(n : Nat) : Word32 = (prim "num_conv_Nat_Word32" : Nat -> Word32) n;
 func intToWord32(n : Int) : Word32 = (prim "num_conv_Int_Word32" : Int -> Word32) n;
-func word32ToInt(n : Word32) : Int = (prim "num_conv_Word32_Int" : Word32 -> Int) n;
-
 func natToWord64(n : Nat) : Word64 = (prim "num_conv_Nat_Word64" : Nat -> Word64) n;
 func intToWord64(n : Int) : Word64 = (prim "num_conv_Int_Word64" : Int -> Word64) n;
-func word64ToInt(n : Word64) : Int = (prim "num_conv_Word64_Int" : Word64 -> Int) n;
 
 func charToWord32(c : Char) : Word32 = (prim "num_conv_Char_Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> Char) w;
 
 func charToText(c : Char) : Text = (prim "conv_Char_Text" : Char -> Text) c;
+
+func charToUpper(c : Char) : Char = (prim "char_to_upper" : Char -> Char) c;
+func charToLower(c : Char) : Char = (prim "char_to_lower" : Char -> Char) c;
+func charIsWhitespace(c : Char) : Bool = (prim "char_is_whitespace" : Char -> Bool) c;
+func charIsLowercase(c : Char) : Bool = (prim "char_is_lowercase" : Char -> Bool) c;
+func charIsUppercase(c : Char) : Bool = (prim "char_is_uppercase" : Char -> Bool) c;
+func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bool) c;
 
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
@@ -452,6 +477,15 @@ func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> F
 
 let floatToText = @text_of_Float;
 
+// Configurable Float formatter
+// mode:
+//  0) fixed format "%.*f"
+//  1) exponent format "%.*e"
+//  2) generic format "%.*g"
+//  3) hexadecimal format "%.*h"
+//  _) invalid (traps)
+func floatToFormattedText(f : Float, prec : Nat8, mode : Nat8) : Text = (prim "fmtFloat->Text" : (Float, Nat8, Nat8) -> Text) (f, prec, mode);
+
 // Trigonometric and transcendental functions
 
 func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
@@ -486,25 +520,25 @@ type ErrorCode = {
 };
 
 // creation and inspection of abstract error
-func error(message : Text) : Error = {
+func error(message : Text) : Error {
   let e = (#canister_reject, message);
-  ((prim "cast" : (ErrorCode, Text) -> Error) e)
+  (prim "cast" : (ErrorCode, Text) -> Error) e
 };
-func errorCode(e : Error) : ErrorCode = {
+func errorCode(e : Error) : ErrorCode =
   ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
-};
-func errorMessage(e : Error) : Text = {
+func errorMessage(e : Error) : Text =
   ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
-};
+
+// Time
+
+func time() : Nat64 = (prim "time" : () -> Nat64) ();
 
 // Principal
 
-func blobOfPrincipal(id : Principal) : Blob = {
-  ((prim "cast" : Principal -> Blob) id)
-};
+func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
 
-func principalOfActor(act : actor {}) : Principal = {
-  ((prim "cast" : (actor {}) -> Principal) act)
-};
+func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
+
+func caller() : Principal = (prim "caller" : () -> Principal) ();
 
 |}
