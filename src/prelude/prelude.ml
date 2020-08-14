@@ -338,6 +338,32 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 
   (enqueue, fulfill, fail)
 };
+
+let @ic00 = actor "ic:00" : actor {
+  create_canister : { desired_id : ?Principal } -> async { canister_id : Principal };
+  install_code : {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : Blob;
+    arg : Blob;
+    compute_allocation : ?Nat;
+  } -> async ()
+};
+
+// It would be desireable if create_actor_helper can be defined
+// without paying the extra self-remote-call-cost
+func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let { canister_id = canister_id_ } = await @ic00.create_canister({desired_id = null});
+  await @ic00.install_code({
+    mode = #install;
+    canister_id = canister_id_;
+    wasm_module = wasm_module_;
+    arg = arg_;
+    compute_allocation = null
+  });
+  return canister_id_;
+};
+
 |}
 
 (*
@@ -540,5 +566,18 @@ func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
 func caller() : Principal = (prim "caller" : () -> Principal) ();
+
+
+// Just for testing
+
+// That’s the only way to have blob literals at the moment
+func blobLit(url : Text) : Blob = blobOfPrincipal(principalOfActor(actor (url)));
+
+func installEmptyActor() : async actor {} = async {
+  let wasm_mod = blobLit "ic:0061736D01000000DD";
+  let empty_arg = blobLit "ic:00";
+  let principal = await @create_actor_helper(wasm_mod, empty_arg);
+  ((prim "cast" : Principal -> actor {}) principal);
+}
 
 |}

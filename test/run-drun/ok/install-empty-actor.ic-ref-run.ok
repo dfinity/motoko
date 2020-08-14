@@ -1,0 +1,8 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ update go(0x4449444c0000)
+debug.print: Installing actor...
+debug.print: ic:0004000000000000014B
+← completed: 0x4449444c0000
