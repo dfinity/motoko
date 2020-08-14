@@ -584,7 +584,7 @@ and dw_enum vnts =
       let internal_enum =
         referencable_meta_tag dw_TAG_enumeration_type (dw_attr (Artificial true)) in
       let enumerator name =
-        let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
+        let hash = Int32.to_int (Mo_types.Hash.hash name) in
         meta_tag dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
       internal_enum ^<^
         (concat_map enumerator selectors ^^
@@ -593,9 +593,15 @@ and dw_enum vnts =
     enum
 and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
-  let prereq (_, typ) = fst (dw_type_ref typ) in
+  let prereq (name, typ) =
+    let dw, r = dw_type_ref typ in
+    dw ^^<
+    (referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name name; Byte_size 12 (*; Artificial *)]) ^<^
+     meta_tag dw_TAG_member_In_variant (dw_attrs [Name "@overlay"; TypeRef r; DataMemberLocation 8]) ^^
+     dw_tag_close (* structure_type *)) in
   (* make sure all prerequisite types are around *)
-  let prereqs = effects (concat_map prereq selectors) in
+  let overlays = List.map prereq selectors in
+  let prereqs = effects (concat_map fst overlays) in
   match VariantRefs.find_opt (List.map fst selectors) !dw_variants with
   | Some r -> nop, r
   | None ->
@@ -603,11 +609,11 @@ and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
       (* struct_type, assumes location points at heap tag *)
       let internal_struct =
         referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "VARIANT"; Byte_size 8]) in
-      let summand (name, typ) =
-        let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
+      let summand (name, r) =
+        let hash = Int32.to_int (Mo_types.Hash.hash name) in
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
           meta_tag dw_TAG_member_In_variant
-            (dw_attrs [Name name; TypeRef (snd (dw_type_ref typ)); DataMemberLocation 8]) ^^
+            (dw_attrs [Name name; TypeRef r; DataMemberLocation 8]) ^^
         dw_tag_close (* variant *) in
       prereqs ^^<
       internal_struct ^<^
@@ -615,7 +621,7 @@ and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
          let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
          dw2 ^^
          (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
-         concat_map summand selectors ^^
+         concat_map summand (List.map2 (fun (name, _) (_, r) -> name, r) selectors overlays) ^^
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
     dw_variants := VariantRefs.add (List.map fst selectors) (snd variant) !dw_variants;
