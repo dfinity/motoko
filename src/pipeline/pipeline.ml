@@ -571,6 +571,9 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
+let eq_translation =
+  transform_if "Translate polymorphic equality" Eq.transform
+
 let analyze analysis_name analysis prog name =
   phase analysis_name name;
   analysis prog;
@@ -601,6 +604,7 @@ let lower_prog mode libs progs name =
   let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
   let prog_ir = tailcall_optimization true prog_ir name in
   let prog_ir = show_translation true prog_ir name in
+  let prog_ir = eq_translation true prog_ir name in
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 

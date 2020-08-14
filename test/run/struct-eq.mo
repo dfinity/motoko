@@ -22,5 +22,5 @@ let xs : List<Nat> = ?(10, ?(20, null));
 let ys : List<Nat> = ?(20, ?(10, null));
 assert(xs != ys);
 
-// Remove in #1821
-//SKIP comp
+type T = ((), T);
+func e(t1 : T, t2 : T) : Bool = t1 == t2;
