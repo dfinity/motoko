@@ -205,7 +205,11 @@ let structural_equality t =
           Bool (go_inner ts v1 v2)
     | T.Obj (s, fs) -> (
         match s with
-        | T.Actor -> fun v1 v2 -> Bool (v1 == v2) (* HACK *)
+        | T.Actor ->
+            fun v1 v2 ->
+              (match (v1, v2) with
+               | Blob s1, Blob s2 -> Bool (s1 = s2)
+               | _, _ -> Bool (v1 == v2) (* HACK *))
         | T.Module | T.Memory -> assert false
         | T.Object ->
             fun v1 v2 ->
