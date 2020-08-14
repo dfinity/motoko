@@ -339,7 +339,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
-let @ic00 = actor "ic:00" : actor {
+let @ic00 = actor "aaaaa-aa" : actor {
   create_canister : { desired_id : ?Principal } -> async { canister_id : Principal };
   install_code : {
     mode : { #install; #reinstall; #upgrade };
@@ -354,6 +354,7 @@ let @ic00 = actor "ic:00" : actor {
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
   let { canister_id = canister_id_ } = await @ic00.create_canister({desired_id = null});
+  (prim "print" : Text -> ()) ("create_canister");
   await @ic00.install_code({
     mode = #install;
     canister_id = canister_id_;
