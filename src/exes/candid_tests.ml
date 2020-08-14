@@ -142,7 +142,7 @@ let () =
               count_fail := !count_fail + 1;
               Printf.printf " compilation failed:\n%s%s\n" stdout stderr
             | (true, _, _) ->
-              match must_not_trap, run_cmd "wasmtime tmp.wasm" with
+              match must_not_trap, run_cmd "wasmtime --disable-cache --cranelift tmp.wasm" with
               | true, (true, _, _)
               | false, (false, _, _) ->
                 count_ok := !count_ok + 1;
