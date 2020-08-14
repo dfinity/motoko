@@ -225,7 +225,7 @@ type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list              (* programs *)
  | ModuleU of exp_field list      (* modules *)
- | ActorClassU of typ_id * pat * typ option * id option * exp_field list (* IC actor class *)
+ | ActorClassU of sort_pat * typ_id * pat * typ option * id option * exp_field list (* IC actor class *)
  | ActorU of id option * exp_field list  (* IC actor *)
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase

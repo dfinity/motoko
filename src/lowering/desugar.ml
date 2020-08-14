@@ -709,21 +709,12 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module None fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (_typ_id, p, _, self_id, fields) ->
-    begin match p.it with
-    | S.TupP [] -> ()
-    | S.ParP ({ it = S.TupP [];_}) -> ()
-    | _ ->
-      raise (Invalid_argument (Printf.sprintf
-        "transform_unit_body: TODO Actor class params: %s"
-        (Wasm.Sexpr.to_string 80 (Arrange.pat p))
-      ))
-    end;
-
-    (* TODO: compiled as_ from p *)
-    let as_ = [] in
-
+  | S.ActorClassU (sp, typ_id, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
+    let op = match sp.it with
+      | T.Local -> None
+      | T.Shared (_, p) -> Some p in
+    let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
       match fun_typ with
       | T.Func(s,c,bds,dom,[rng]) ->
@@ -731,8 +722,13 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
-    begin match build_actor u.at self_id fields obj_typ with
-    | I.ActorE(ds, fs, u, t) -> I.ActorU (Some as_, ds, fs, u, t)
+    let e = wrap {
+       it = build_actor u.at self_id fields obj_typ;
+       at = no_region;
+       note = Note.{ def with typ = obj_typ } }
+    in
+    begin match e.it with
+    | I.ActorE(ds, fs, u, t) -> I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->

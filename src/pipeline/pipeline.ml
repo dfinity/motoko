@@ -615,8 +615,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     finish { it = ActorU (None, fields); note = e.note; at = e.at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
     assert (tbs = []);
-    (* TODO: sp *)
-    finish { it = ActorClassU (tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
+    finish { it = ActorClassU (sp, tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
     (* Note: Loosing the module name here! *)
