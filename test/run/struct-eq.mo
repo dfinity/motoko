@@ -22,9 +22,5 @@ let xs : List<Nat> = ?(10, ?(20, null));
 let ys : List<Nat> = ?(20, ?(10, null));
 assert(xs != ys);
 
-type A = actor { foo : ()->(); bar : () -> () };
-assert((actor "aaaaa-aa" : A) == (actor "aaaaa-aa" : A));
-assert((actor "aaaaa-aa" : A) != (actor "psokg-ww6vw-7o6" : A));
-assert((actor "aaaaa-aa" : A).foo == (actor "aaaaa-aa" : A).foo);
-assert((actor "aaaaa-aa" : A).foo != (actor "aaaaa-aa" : A).bar);
-assert((actor "aaaaa-aa" : A).foo != (actor "psokg-ww6vw-7o6" : A).foo);
+// Remove in #1821
+//SKIP comp
