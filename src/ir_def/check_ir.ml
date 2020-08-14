@@ -130,6 +130,19 @@ let check_concrete env at t =
   check env at (T.concrete t)
     "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
+let has_prim_eq t =
+  (* Which types have primitive equality implemented in the backend? *)
+  (* Keep in sync with Compile.compileq_eq *)
+  let open T in
+  match normalize t with
+  | Prim Null -> false (* Ir_passes.Eq handles singleton types *)
+  | Prim Error -> false (* should be desugared away *)
+  | Prim _ -> true (* all other prims are fine *)
+  | Non -> true
+  (* references are handled in the back-end: *)
+  | Obj (Actor, _) | Func (Shared _, _, _, _, _) -> true
+  | _ -> false
+
 let check_field_hashes env what at =
   Lib.List.iter_pairs
     (fun x y ->
@@ -390,6 +403,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       ot <: t
     | RelPrim (ot,  Operator.NeqOp), _ ->
       check false "negation operator should be desugared away in IR"
+    | RelPrim (ot,  Operator.EqOp), [exp1; exp2] when (not env.flavor.has_poly_eq) ->
+      check (has_prim_eq ot) "primitive equality is not defined for operand type";
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      T.bool <: t
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
       typ exp1 <: ot;
