@@ -20,3 +20,9 @@ Ok: Reply: 0x4449444c0000
 debug.print: Hello
 debug.print: World
 ingress Completed: Reply: 0x4449444c0000
+debug.print: Hello
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+debug.print: Hello
+debug.print: World
+ingress Completed: Reply: 0x4449444c0000

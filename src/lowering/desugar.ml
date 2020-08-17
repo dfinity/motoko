@@ -423,7 +423,11 @@ and dec' at n d = match d with
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local ->
+        if s.it = T.Actor then (* HACK: work around for issue #1847 *)
+          Some { it = S.WildP; at = no_region; note = T.ctxt }
+        else
+          None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
