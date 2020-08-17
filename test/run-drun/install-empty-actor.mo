@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor {
-  public func go() {
+  public func go() : async() {
     try {
       Prim.debugPrint("Installing actor...");
       let id = await Prim.installEmptyActor();
