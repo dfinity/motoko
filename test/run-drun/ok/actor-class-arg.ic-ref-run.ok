@@ -33,3 +33,12 @@ debug.print: Hello
 debug.print: Hello
 debug.print: World
 ← completed: ()
+→ update install_code(record {4849238 = blob "DIDL\00\02qq\05Hello\05World"; 265441191 = blob "\00asm\01\00\00\00\01\a0\8…
+debug.print: Hello
+← completed: ()
+→ query check(1)
+← completed: ()
+→ update echo()
+debug.print: Hello
+debug.print: World
+← completed: ()
