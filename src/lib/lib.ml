@@ -264,10 +264,6 @@ struct
     then (take n xs, drop n xs)
     else (xs, [])
 
-  let null = function
-    | [] -> true
-    | _ :: _ -> false
-
   let hd_opt = function
     | x :: _ -> Some x
     | _ -> None

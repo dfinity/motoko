@@ -264,9 +264,9 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
   let keep_export exp =
     is_ic_export exp ||
     match exp.it.edesc.it with
-      | FuncExport _ -> false
+      | FuncExport _
       | GlobalExport _ -> false
-      | MemoryExport _ -> true
+      | MemoryExport _
       | TableExport _ -> true in
 
   map_module (fun m -> { m with exports = List.filter keep_export m.exports }) em
@@ -731,7 +731,7 @@ let collect_got_func_imports (m : module_') : (int32 * int32) list =
    GOT.func functions. *)
 let replace_got_func_imports (tbl_size : int32) (imports : (int32 * int32) list) (m : module_') : module_' =
   (* null check to avoid adding empty elem section *)
-  if Lib.List.null imports then
+  if imports = [] then
     m
   else
     let imports =
