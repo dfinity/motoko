@@ -6,27 +6,28 @@
 // TODO: inconsistent use of size vs. len
 
 use core::arch::wasm32;
+use core::fmt::Write;
 
 use crate::array::array_idx_unchecked;
-use crate::common::{debug_print, rts_trap_with};
+use crate::common::{debug_print, rts_trap_with, FmtWrite};
 use crate::types::*;
 
 const WORD_SIZE: u32 = 4;
 
 extern "C" {
     /// Get end_of_heap
-    fn get_hp() -> SkewedPtr;
+    fn get_hp() -> usize;
 
     /// Set end_of_heap
     fn set_hp(hp: SkewedPtr);
 
     /// Get __heap_base
-    fn get_heap_base() -> SkewedPtr;
+    fn get_heap_base() -> usize;
 
     /// See closure-table.c
     fn closure_table_loc() -> SkewedPtr;
 
-    fn get_static_roots() -> *const Array;
+    fn get_static_roots() -> SkewedPtr;
 }
 
 /// Maximum live data retained in a GC, in bytes.
@@ -76,8 +77,8 @@ pub unsafe extern "C" fn grow_memory(ptr: usize) {
 
 /// Returns object size in words
 #[no_mangle]
-pub unsafe extern "C" fn object_size(obj: SkewedPtr) -> Words<u32> {
-    let obj = obj.unskew() as *const Obj;
+pub unsafe extern "C" fn object_size(obj: usize) -> Words<u32> {
+    let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
             let object = obj as *const Object;
@@ -196,7 +197,7 @@ unsafe fn evac(
         *ptr_loc = fwd;
     }
 
-    let obj_size = object_size(obj_skewed);
+    let obj_size = object_size(obj_skewed.unskew());
     let obj_size_bytes = words_to_bytes(obj_size);
 
     // Grow memory if needed
@@ -405,9 +406,20 @@ unsafe fn evac_static_roots(
     mut end_to_space: SkewedPtr,
     roots: *const Array,
 ) -> SkewedPtr {
+    let mut buf = [0 as u8; 200];
+    let mut fmt = FmtWrite::new(&mut buf);
+
+    write!(&mut fmt, "Evacuating {} roots...\n", (*roots).len).unwrap();
+    fmt.print();
+
     // Roots are in a static array which we don't evacuate. Only evacuate elements.
     for i in 0..(*roots).len {
         let obj = array_idx_unchecked(roots, i);
+
+        fmt.reset();
+        write!(&mut fmt, "Evacuating root {}: {:#x}", i, obj.unskew()).unwrap();
+        fmt.print();
+
         end_to_space = scav(begin_from_space, begin_to_space, end_to_space, obj);
     }
     end_to_space
@@ -417,7 +429,7 @@ unsafe fn evac_static_roots(
 pub unsafe extern "C" fn rust_collect_garbage() {
     debug_print("### GC begins");
 
-    let static_roots = get_static_roots();
+    let static_roots = get_static_roots().unskew() as *const Array;
 
     // Beginning of tospace = end of fromspace
     let begin_from_space = get_heap_base();
@@ -427,54 +439,70 @@ pub unsafe extern "C" fn rust_collect_garbage() {
 
     debug_print("### Evacuating roots");
 
-    let mut buf = [0 as u8; 100];
-    libc::snprintf(
-        buf.as_mut_ptr() as *mut _,
-        100,
-        "### begin_from_space=%d".as_ptr() as *const _,
-        begin_from_space.unskew()
-    );
+    let mut buf = [0 as u8; 200];
+    let mut fmt = FmtWrite::new(&mut buf);
+
+    write!(
+        &mut fmt,
+        "### begin_from_space={:#x}\n\
+         ### end_from_space={:#x}\n\
+         ### begin_to_space={:#x}\n\
+         ### end_to_space={:#x}\n\
+         ### static_roots={:#x}\n",
+        begin_from_space, end_from_space, begin_to_space, end_to_space, static_roots as usize,
+    )
+    .expect("Can't write");
+
+    fmt.print();
 
     // Evacuate roots
-    end_to_space = evac_static_roots(begin_from_space, begin_to_space, end_to_space, static_roots);
+    end_to_space = evac_static_roots(
+        skew(begin_from_space),
+        skew(begin_to_space),
+        skew(end_to_space),
+        static_roots,
+    )
+    .unskew();
 
     debug_print("### Evacuated static roots");
 
     end_to_space = evacuate(
-        begin_from_space.unskew(),
-        begin_to_space.unskew(),
-        end_to_space.unskew(),
+        begin_from_space,
+        begin_to_space,
+        end_to_space,
         closure_table_loc(),
-    );
+    )
+    .unskew();
 
     // Scavenge to-space
     let mut p = begin_to_space;
-    while p.unskew() < end_to_space.unskew() {
-        end_to_space = scav(begin_from_space, begin_to_space, end_to_space, p);
-        p.0 += words_to_bytes(object_size(p)).0 as usize;
+    while p < end_to_space {
+        end_to_space = scav(
+            skew(begin_from_space),
+            skew(begin_to_space),
+            skew(end_to_space),
+            skew(p),
+        )
+        .unskew();
+        p += words_to_bytes(object_size(p)).0 as usize;
     }
 
     // Note the stats
-    let new_live_size = end_to_space.unskew() - begin_to_space.unskew();
+    let new_live_size = end_to_space - begin_to_space;
     note_live_size(Bytes(new_live_size as u32));
 
-    let reclaimed = (end_from_space.unskew() - begin_from_space.unskew())
-        - (end_to_space.unskew() - begin_to_space.unskew());
+    let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
     note_reclaimed(Bytes(reclaimed as u32));
 
     // Copy to-space to the beginning of from-space
     memcpy_words_skewed(
-        begin_from_space,
-        begin_to_space,
-        bytes_to_words(Bytes(
-            (end_to_space.unskew() - begin_to_space.unskew()) as u32,
-        )),
+        skew(begin_from_space),
+        skew(begin_to_space),
+        bytes_to_words(Bytes((end_to_space - begin_to_space) as u32)),
     );
 
     // Reset the heap pointer
-    set_hp(skew(
-        begin_from_space.unskew() + (end_to_space.unskew() - begin_to_space.unskew()),
-    ));
+    set_hp(skew(begin_from_space + (end_to_space - begin_to_space)));
 
     debug_print("### GC finished");
 }
