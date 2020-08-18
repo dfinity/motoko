@@ -689,7 +689,8 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
     | S.LibPath fp ->
       varE (var (id_of_full_path fp) t)
     | S.ClassPath fp when classes_are_separate ->
-    begin
+      begin
+      Printf.printf "%s" (T.string_of_typ t);
       let s, cntrl, tbs, ts1, ts = T.as_func t in
       let cs = T.open_binds tbs in
       let c = match cs with
@@ -703,14 +704,11 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
       in
       let ts' = List.map (T.open_ cs) ts in
       let ts1' = List.map (T.open_ cs) ts1 in
-      let vs = fresh_vars "param" ts' in
+      let vs = fresh_vars "param" ts1' in
       let arg_blob = fresh_var "arg_blob" T.blob in
       let principal = fresh_var "principal" (T.Prim T.Principal) in
-      let t = T.codom cntrl (fun () -> assert false) ts1 in
-(*      [] -->* primE (I.ActorOfIdBlob t) [
-        varE (var (id_of_full_path fp) T.blob)
-      ] *)
-      let _, t_actor = T.as_async (T.normalize t) in
+      let t_async = T.codom cntrl (fun () -> assert false) ts' in
+      let _, t_actor = T.as_async (T.normalize t_async) in
       let wasm_blob = var (id_of_full_path fp) T.blob in
       let create_actor_helper = var "@create_actor_helper"
         (T.Func (T.Local, T.Returns, [T.scope_bind],
@@ -724,12 +722,18 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
               note = ()},
             blockE [
               letD arg_blob (primE (Ir.SerializePrim ts1') [tupE (List.map varE vs)]);
-              letD principal (callE (varE create_actor_helper) [T.Con(c',[])]
-                                (tupE [varE wasm_blob;  varE arg_blob]))]
+              letD principal
+                { it = Ir.PrimE (Ir.AwaitPrim, [
+                   callE (varE create_actor_helper) [T.Con(c',[])]
+                    (tupE [varE wasm_blob;  varE arg_blob])]);
+                  at = no_region;
+                  note = Note.{ def with typ = T.Prim T.Principal; eff = T.Await}
+                 }
+              ]
               (primE (Ir.CastPrim (T.Prim T.Principal, t_actor)) [varE principal]),
             List.hd cs);
           at = no_region;
-          note = Note.{ def with typ = List.hd ts; eff = T.Triv };
+          note = Note.{ def with typ = List.hd ts'; eff = T.Triv };
         }
       in
       { it = Ir.FuncE("", T.Local, T.Returns,
@@ -737,7 +741,7 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
                         at = no_region;
                         note = ()}],
                    List.map arg_of_var vs,
-                   ts1',
+                   ts',
                    body);
         at = no_region;
         note = Note.{ def with typ = t; eff = T.Triv };
