@@ -2,8 +2,8 @@ import Prim "mo:prim";
 import C "class:class-import/empty";
 
 actor a {
-  public func go() {
-    let p = C();
+  public func go() : async () {
+    let p = await C();
     let blob = Prim.blobOfPrincipal (Prim.principalOfActor p);
     let c = blob.bytes();
     Prim.debugPrint(debug_show (c.next()));

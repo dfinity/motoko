@@ -86,6 +86,7 @@ let primE prim es =
     | ActorOfIdBlob t -> t
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
+    | SerializePrim _ -> T.blob
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
