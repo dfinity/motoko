@@ -11,6 +11,8 @@ use crate::array::array_idx_unchecked;
 use crate::common::{debug_print, rts_trap_with};
 use crate::types::*;
 
+const WORD_SIZE: u32 = 4;
+
 extern "C" {
     /// Get end_of_heap
     fn get_hp() -> SkewedPtr;
@@ -132,14 +134,14 @@ pub unsafe extern "C" fn is_tagged_scalar(p: SkewedPtr) -> bool {
 }
 
 fn words_to_bytes(words: Words<u32>) -> Bytes<u32> {
-    Bytes(words.0 * 4)
+    Bytes(words.0 * WORD_SIZE)
 }
 
+// Rounds up
 fn bytes_to_words(bytes: Bytes<u32>) -> Words<u32> {
-    Words(bytes.0 / 4)
+    // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
+    Words((bytes.0 + WORD_SIZE - 1) / WORD_SIZE)
 }
-
-const WORD_SIZE: u32 = 4;
 
 #[no_mangle]
 pub unsafe extern "C" fn memcpy_words_skewed(to: SkewedPtr, from: SkewedPtr, n: Words<u32>) {
