@@ -76,9 +76,10 @@ pub unsafe extern "C" fn grow_memory(ptr: usize) {
 }
 
 /// Returns object size in words
+// NB. Called from generated code so the arg needs to be skewed ptr
 #[no_mangle]
-pub unsafe extern "C" fn object_size(obj: usize) -> Words<u32> {
-    let obj = obj as *const Obj;
+pub unsafe extern "C" fn object_size(obj: SkewedPtr) -> Words<u32> {
+    let obj = obj.unskew() as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
             let object = obj as *const Object;
@@ -123,8 +124,11 @@ pub unsafe extern "C" fn object_size(obj: usize) -> Words<u32> {
 
         TAG_CONCAT => Words(4),
 
-        _ => {
-            rts_trap_with("invalid object tag in object_size\0".as_ptr());
+        other => {
+            let mut buf = [0 as u8; 200];
+            let mut fmt = FmtWrite::new(&mut buf);
+            write!(&mut fmt, "invalid object tag {} in object size\0", other).unwrap();
+            rts_trap_with(buf.as_ptr());
         }
     }
 }
@@ -197,7 +201,7 @@ unsafe fn evac(
         *ptr_loc = fwd;
     }
 
-    let obj_size = object_size(obj_skewed.unskew());
+    let obj_size = object_size(obj_skewed);
     let obj_size_bytes = words_to_bytes(obj_size);
 
     // Grow memory if needed
@@ -484,7 +488,7 @@ pub unsafe extern "C" fn rust_collect_garbage() {
             skew(p),
         )
         .unskew();
-        p += words_to_bytes(object_size(p)).0 as usize;
+        p += words_to_bytes(object_size(skew(p))).0 as usize;
     }
 
     // Note the stats
