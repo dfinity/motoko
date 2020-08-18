@@ -1,6 +1,6 @@
 = Motoko compiler changelog
 
-== Unreleased
+== 0.4.2 (2020-08-18)
 
 * Polymorphic equality.  `==` and `!=` now work on all shareable types.
 
