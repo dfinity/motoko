@@ -128,7 +128,7 @@ pub unsafe extern "C" fn object_size(obj: SkewedPtr) -> Words<u32> {
 
 #[no_mangle]
 pub unsafe extern "C" fn is_tagged_scalar(p: SkewedPtr) -> bool {
-    p.0 & 0b10 == 0
+    p.0 & 0b1 == 0
 }
 
 fn words_to_bytes(words: Words<u32>) -> Bytes<u32> {
