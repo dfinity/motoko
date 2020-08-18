@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 import C "class:class-import/empty";
-//import One "class:class-import/one";
+import One "class:class-import/one";
 import Two "class:class-import/two";
 
 actor a {
@@ -14,10 +14,10 @@ actor a {
     Prim.debugPrint(debug_show (c.next()));
 
     // test single arg class
-//    let one = One("one");
+    let one = await One("one");
 
     // test two arg class
-    let two = Two("one","two");
+    let two = await Two("one","two");
 
   }
 };

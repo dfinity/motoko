@@ -79,6 +79,7 @@ val text : typ
 val blob : typ
 val error : typ
 val char : typ
+val principal : typ
 
 val throwErrorCodes : field list
 val catchErrorCodes : field list

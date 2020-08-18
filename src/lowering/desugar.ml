@@ -689,51 +689,43 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
     | S.LibPath fp ->
       varE (var (id_of_full_path fp) t)
     | S.ClassPath fp when classes_are_separate ->
-      begin
-      Printf.printf "%s" (T.string_of_typ t);
-      let s, cntrl, tbs, ts1, ts = T.as_func t in
+      let s, cntrl, tbs, ts1, ts2 = T.as_func t in
       let cs = T.open_binds tbs in
-      let c = match cs with
-        | (T.Con(c,[])::_)-> c
-        | _ -> assert false
-      in
-      let cs' = T.open_binds tbs in
-      let c' = match cs' with
-        | (T.Con(c',[])::_) -> c'
-        | _ -> assert false
-      in
-      let ts' = List.map (T.open_ cs) ts in
+      let c, _ = T.as_con (List.hd cs) in
       let ts1' = List.map (T.open_ cs) ts1 in
+      let ts2' = List.map (T.open_ cs) ts2 in
       let vs = fresh_vars "param" ts1' in
       let arg_blob = fresh_var "arg_blob" T.blob in
-      let principal = fresh_var "principal" (T.Prim T.Principal) in
-      let t_async = T.codom cntrl (fun () -> assert false) ts' in
+      let principal = fresh_var "principal" T.principal in
+      let t_async = T.codom cntrl (fun () -> assert false) ts2' in
       let _, t_actor = T.as_async (T.normalize t_async) in
       let wasm_blob = var (id_of_full_path fp) T.blob in
       let create_actor_helper = var "@create_actor_helper"
         (T.Func (T.Local, T.Returns, [T.scope_bind],
           [T.blob; T.blob],
-          [T.Async(T.Var (T.default_scope_var,0), T.Prim(T.Principal))]))
+          [T.Async(T.Var (T.default_scope_var, 0), T.principal)]))
       in
+      let cs' = T.open_binds tbs in
+      let c', _ = T.as_con (List.hd cs') in
       let body =
         { it = Ir.AsyncE(
-            { it = {Ir.con = c'; Ir.sort = T.Scope; Ir.bound = T.scope_bound};
+            { it = { Ir.con = c'; Ir.sort = T.Scope; Ir.bound = T.scope_bound };
               at = no_region;
               note = ()},
             blockE [
-              letD arg_blob (primE (Ir.SerializePrim ts1') [tupE (List.map varE vs)]);
+              letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
               letD principal
                 { it = Ir.PrimE (Ir.AwaitPrim, [
-                   callE (varE create_actor_helper) [T.Con(c',[])]
-                    (tupE [varE wasm_blob;  varE arg_blob])]);
+                   callE (varE create_actor_helper) cs'
+                     (tupE [varE wasm_blob;  varE arg_blob])]);
                   at = no_region;
-                  note = Note.{ def with typ = T.Prim T.Principal; eff = T.Await}
+                  note = Note.{ def with typ = T.principal; eff = T.Await }
                  }
               ]
-              (primE (Ir.CastPrim (T.Prim T.Principal, t_actor)) [varE principal]),
+              (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]),
             List.hd cs);
           at = no_region;
-          note = Note.{ def with typ = List.hd ts'; eff = T.Triv };
+          note = Note.{ def with typ = List.hd ts2'; eff = T.Triv };
         }
       in
       { it = Ir.FuncE("", T.Local, T.Returns,
@@ -741,12 +733,11 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
                         at = no_region;
                         note = ()}],
                    List.map arg_of_var vs,
-                   ts',
+                   ts2',
                    body);
         at = no_region;
         note = Note.{ def with typ = t; eff = T.Triv };
       }
-    end
     | S.ClassPath fp ->
       varE (var (id_of_full_path fp) t)
     | S.PrimPath ->

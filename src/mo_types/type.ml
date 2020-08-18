@@ -106,6 +106,7 @@ let text = Prim Text
 let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
+let principal = Prim Principal
 
 let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit }
