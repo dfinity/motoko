@@ -4,6 +4,7 @@ extern "C" {
     pub fn rts_trap_with(msg: *const u8) -> !;
 }
 
+/*
 #[cfg(target_arch = "wasm32")]
 pub mod ic0 {
     // NB: The #[link(...)] line below really needs to be before `extern "C"` part, we can't move
@@ -14,10 +15,11 @@ pub mod ic0 {
         pub fn debug_print(msg: *const u8, len: u32);
     }
 }
+*/
 
 #[cfg(target_arch = "wasm32")]
 pub unsafe fn debug_print(s: &str) {
-    ic0::debug_print(s.as_ptr(), s.len() as u32)
+    // ic0::debug_print(s.as_ptr(), s.len() as u32)
     // libc::printf("%s\n".as_ptr() as *const _, s);
 }
 
@@ -40,7 +42,7 @@ impl<'a> FmtWrite<'a> {
 
     #[cfg(target_arch = "wasm32")]
     pub fn print(&self) {
-        unsafe { ic0::debug_print(self.buf.as_ptr(), self.offset as u32) };
+        // unsafe { ic0::debug_print(self.buf.as_ptr(), self.offset as u32) };
     }
 }
 
