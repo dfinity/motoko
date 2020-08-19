@@ -52,7 +52,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 == Language features
 
-The next sections highlight {proglang} programming language features in simolified forn.
+The next sections highlight {proglang} programming language features in simplified forn.
 
 === Expressions
 
