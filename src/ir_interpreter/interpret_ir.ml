@@ -60,7 +60,7 @@ let env_of_scope flags flavor ae ve =
     actor_env = ae;
   }
 
-let context env = V.Text env.self
+let context env = V.Blob env.self
 
 (* Error handling *)
 
@@ -95,6 +95,7 @@ let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavo
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
+  let trace = Printexc.get_backtrace () in
   Printf.printf "%!";
   let at = Source.string_of_region !last_region in
   Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
@@ -103,7 +104,7 @@ let print_exn flags exn =
     (fun x d -> Printf.eprintf "%s = %s\n" x (string_of_def flags d))
     !last_env.vals;
   Printf.eprintf "\n";
-  Printexc.print_backtrace stderr;
+  Printf.eprintf "%s" trace;
   Printf.eprintf "%!"
 
 (* Scheduling *)
@@ -268,7 +269,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | BlobLit b -> V.Text b
+  | BlobLit b -> V.Blob b
 
 (* Expressions *)
 
@@ -406,22 +407,21 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.prim s (context env) arg k
+        (try Prim.prim s (context env) arg k with Invalid_argument s -> trap exp.at "%s" s)
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->
         k v1
       | BlobOfIcUrl, [v1] ->
-        let open Ic.Url in
-        begin match parse (V.as_text v1) with
-          | Ok (Ic bytes) -> k (V.Text bytes)
-          | _ -> trap exp.at "could not parse %s as an actor reference"  (V.as_text v1)
+        begin match Ic.Url.decode_principal (V.as_text v1) with
+          | Ok bytes -> k (V.Blob bytes)
+          | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
         end
       | IcUrlOfBlob, [v1] ->
-        k (V.Text (Ic.Url.encode_ic_url (V.as_text v1)))
+        k (V.Text (Ic.Url.encode_principal (V.as_blob v1)))
       | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.num_conv_prim t1 t2 (context env) arg k
+        k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in
@@ -451,6 +451,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Text env.self)
+      | SystemTimePrim, [] ->
+        k (V.Nat64 (Value.Nat64.of_int 42))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -701,6 +703,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
+  | BlobLit b, V.Blob b' -> b = b'
   | _ -> false
 
 and match_id id v : val_env =
@@ -852,8 +855,22 @@ and interpret_comp_unit env cu k = match cu with
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
-  | ActorU (ds, fs, _, _) ->
+  | ActorU (None, ds, fs, _, _)
+  | ActorU (Some [], ds, fs, _, _)  (* to match semantics of installation with empty argument *)
+  ->
     interpret_actor env ds fs (fun _ -> k ())
+  | ActorU (Some as_, ds, fs, up, t) ->
+    (* create the closure *)
+    let sort = T.Local in
+    let cc = CC.({ sort; control = T.Returns; n_args = List.length as_; n_res = 1 }) in
+    let f = interpret_func env no_region sort "" as_
+      (fun env' -> interpret_actor env ds fs) in
+    let _v = match cc.CC.sort with
+      | T.Shared _ -> make_message env "" cc f
+      | _ -> V.Func (cc, f)
+    in
+    (* but discard it, since this the last expression in the unit *)
+    k ()
 
 let interpret_prog flags (cu, flavor) =
   let state = initial_state () in

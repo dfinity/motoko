@@ -1,4 +1,4 @@
-name: Automatically update niv-managed dependencies
+name: Update niv dependencies (weekly)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        uses: knl/niv-updater-action@v5
+        uses: knl/niv-updater-action@v6
         with:
           # might be too noisy
-          whitelist: 'nixpkgs,dfinity,ic-ref,musl-wasi'
+          whitelist: 'dfinity,ic-ref,musl-wasi'
           labels: |
             automerge-squash
             ci-also-darwin

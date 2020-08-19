@@ -28,7 +28,7 @@ let rec exp e = match e.it with
   | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      sort_pat sp;
+      shared_pat sp;
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -115,7 +115,7 @@ and obj_sort s = match s.it with
   | Type.Module -> Atom "Module"
   | Type.Memory -> Atom "Memory"
 
-and sort_pat sp = match sp.it with
+and shared_pat sp = match sp.it with
   | Type.Local -> Atom "Local"
   | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
   | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
@@ -144,6 +144,11 @@ and stab s_opt = match s_opt with
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
 
+and typ_item ((id, ty) : typ_item) =
+  match id with
+  | None -> [typ ty]
+  | Some { it;_ } -> [Atom it; typ ty]
+
 and typ_tag (tt : typ_tag)
   = tt.it.tag.it $$ [typ tt.it.typ]
 
@@ -160,16 +165,17 @@ and path p = match p.it with
   | DotH (p,i) -> "DotH" $$ [path p; id i]
 
 and typ t = match t.it with
-  | PathT (p, ts)       -> "PathT" $$ [path p] @ List.map typ ts
-  | PrimT p             -> "PrimT" $$ [Atom p]
-  | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
-  | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
-  | OptT t              -> "OptT" $$ [typ t]
-  | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
-  | TupT ts             -> "TupT" $$ List.map typ ts
+  | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
+  | PrimT p -> "PrimT" $$ [Atom p]
+  | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
+  | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
+  | OptT t -> "OptT" $$ [typ t]
+  | VariantT cts -> "VariantT" $$ List.map typ_tag cts
+  | TupT ts -> "TupT" $$ Lib.List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT (t1, t2)     -> "AsyncT" $$ [typ t1; typ t2]
-  | ParT t              -> "ParT" $$ [typ t]
+  | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | ParT t -> "ParT" $$ [typ t]
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
@@ -178,8 +184,8 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, tp, p, rt, s, i', efs) ->
-    "ClassD" $$ id x :: List.map typ_bind tp @ [
+  | ClassD (sp, x, tp, p, rt, s, i', efs) ->
+    "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
       obj_sort s; id i'

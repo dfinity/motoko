@@ -21,9 +21,6 @@ let id_of_full_path (fp : string) : string =
 
 (* Combinators used in the desugaring *)
 
-let trueE : Ir.exp = boolE true
-let falseE : Ir.exp = boolE false
-
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
   | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
@@ -57,12 +54,14 @@ and exp e =
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE e ->
-    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e]))
+    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
   | S.BinE (ot, e1, o, e2) ->
     I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
+  | S.RelE (ot, e1, Operator.NeqOp, e2) ->
+    (notE (primE (I.RelPrim (!ot, Operator.EqOp)) [exp e1; exp e2])).it
   | S.RelE (ot, e1, o, e2) ->
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
@@ -116,6 +115,24 @@ and exp' at note = function
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
+    begin match note.S.note_typ with
+    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+      I.PrimE (I.SerializePrim ts1, [exp e])
+    | _ -> assert false
+    end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "deserialize";_}, _);note;_}, _, e) ->
+    begin match note.S.note_typ with
+    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+      I.PrimE (I.DeserializePrim ts2, [exp e])
+    | _ -> assert false
+    end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "caller";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (es = []);
+    I.PrimE (I.ICCallerPrim, [])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "time";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (es = []);
+    I.PrimE (I.SystemTimePrim, [])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
@@ -125,9 +142,9 @@ and exp' at note = function
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
-  | S.NotE e -> I.IfE (exp e, falseE, trueE)
-  | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
-  | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
+  | S.NotE e -> (notE (exp e)).it
+  | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
+  | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
@@ -157,15 +174,13 @@ and exp' at note = function
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
-and url e =
-    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+and url e at =
+    (* Set position explicitly *)
     match e.it with
-    | S.AnnotE (e,_) -> url e
+    | S.AnnotE (e,_) -> url e at
     | _ ->
-      let transformed = typed_phrase' (url' e) e in
-      { transformed with note = Note.{ transformed.note with typ = T.blob } }
-
-and url' e at _ _ = I.(PrimE (BlobOfIcUrl, [exp e]))
+      let e' = exp e in
+      { it = I.(PrimE (BlobOfIcUrl, [e'])); at; note = Note.{def with typ = T.blob; eff = e'.note.eff } }
 
 and lexp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
@@ -185,8 +200,10 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module | T.Memory -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module ->
+    build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
+  | T.Memory -> assert false
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
@@ -269,6 +286,7 @@ and build_actor at self_id es obj_typ =
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
+
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -401,9 +419,16 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
+    let op = match sp.it with
+      | T.Local ->
+        if s.it = T.Actor then (* HACK: work around for issue #1847 *)
+          Some { it = S.WildP; at = no_region; note = T.ctxt }
+        else
+          None
+      | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -419,7 +444,7 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let args, wrap, control, _n_res = to_args n.S.note_typ None p in
+    let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
@@ -482,6 +507,17 @@ and pat_fields pfs = List.map pat_field pfs
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
 and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+
+  let mergeE ds e =
+    match e.it with
+    | Ir.ActorE _ ->
+      (match Rename.exp' Rename.Renaming.empty e.it with
+       |  Ir.ActorE (ds', fs, up, ot) ->
+         { e with it = Ir.ActorE (ds @ ds', fs, up, ot) }
+       | _ -> assert false)
+    | _ -> blockE ds e
+  in
+
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
@@ -500,8 +536,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   in
 
   (* In source, the context pattern is outside the argument pattern,
-  but in the IR, paramteres are bound first. So if there is a context pattern,
-  we _must_ create fresh names for the parameters and bind the actual paramters
+  but in the IR, parameters are bound first. So if there is a context pattern,
+  we _must_ create fresh names for the parameters and bind the actual parameters
   inside the wrapper. *)
   let must_wrap = po != None in
 
@@ -518,7 +554,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     |  _ ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
-      (fun e -> blockE [letP (pat p) (varE v)] e)
+      (fun e -> mergeE [letP (pat p) (varE v)] e)
   in
 
   let args, wrap =
@@ -542,7 +578,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_var vs,
-      (fun e -> blockE [letP (pat p) (tupE (List.map varE vs))] e)
+      (fun e -> mergeE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
   let wrap_po e =
@@ -550,7 +586,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
-      blockE
+      mergeE
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
@@ -569,6 +605,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
         blockE [letP pat {exp with it = Ir.AsyncE (tb,wrap_po e',t)} ] unit
+      | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
     else wrap_po e in
 
@@ -577,37 +614,46 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 and comp_unit ds : Ir.comp_unit =
   let open Ir in
 
-  let find_last_expr (ds,e) =
-    let find_last_actor = function
-      | ds1, {it = ActorE (ds2, fs, up, t); _} ->
-        (* NB: capture! *)
-        ActorU (ds1 @ ds2, fs, up, t)
-      | ds1, {it = FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, up, t);_}); _} ->
-        ActorU (ds1 @ ds2, fs, up, t)
+  let find_last_expr (ds, e) =
+    let find_last_actor (ds1, free, e1) =
+      (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
+      let e1' = match (ds1, e1.it) with
+        | _ :: _ , ActorE _
+        | _ :: _, FuncE (_, _, _, [], _, _, {it = ActorE _;_}) ->
+          Rename.exp Rename.Renaming.empty e1
+        | _ -> e1
+      in
+      match e1'.it with
+      | ActorE (ds2, fs, up, t) ->
+        ActorU (None, ds1 @ ds2, fs, up, t)
+      | FuncE (_name, _sort, _control, [], args, _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
+        ActorU (Some args, ds1 @ ds2, fs, up, t)
       | _ ->
         ProgU (ds @ [ expD e ]) in
 
-    if ds = [] then find_last_actor ([], e) else
+    if ds = [] then find_last_actor ([], true, e) else
     match Lib.List.split_last ds, e with
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
-      find_last_actor (ds1', e')
+      let (_,fd) = Freevars.decs ds1' in
+      let fe = Freevars.exp e' in
+      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
+      find_last_actor (ds1', free, e')
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
-      find_last_actor (ds1', e')
+      let (_,fd) = Freevars.decs ds1' in
+      let fe = Freevars.exp e' in
+      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
+      find_last_actor (ds1', free, e')
     | _ ->
-      find_last_actor (ds, e) in
+      find_last_actor (ds, false, e) in
 
-  (* find the last actor. This hack can hopefully go away
+
+    (* find the last actor. This hack can hopefully go away
      after Claudios improvements to the source *)
   if ds = [] then ProgU [] else
   find_last_expr (block false ds)
 
 let transform_prog (p : Syntax.prog) : Ir.prog  =
-  comp_unit p.it
-  , { I.has_await = true
-    ; I.has_async_typ = true
-    ; I.has_show = true
-    ; I.serialized = false
-    }
+  comp_unit p.it, I.full_flavor
 
 type import_declaration = Ir.dec list
 
@@ -622,5 +668,8 @@ let transform_prelude prelude : import_declaration =
 let link_declarations imports (cu, flavor) =
   let cu' = match cu with
     | Ir.ProgU ds -> Ir.ProgU (imports @ ds)
-    | Ir.ActorU (ds, fs, up, t) -> Ir.ActorU (imports @ ds, fs, up, t)
+    | Ir.ActorU (as_opt, ds, fs, up, t) ->
+      (* NB: we rely on the property that the fresh names bound by `imports`
+         cannot be captured by any parameters in `as_opt` (no renaming required) *)
+      Ir.ActorU (as_opt, imports @ ds, fs, up, t)
   in cu', flavor

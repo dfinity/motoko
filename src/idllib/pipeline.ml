@@ -18,11 +18,11 @@ let dump_prog flag prog =
     if flag then
       Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
     else ()
-    
+
 (* Parsing *)
 
 type rel_path = string
-  
+
 type parse_result = (Syntax.prog * rel_path) Diag.result
 
 let parse_with lexer parser name =
@@ -34,7 +34,7 @@ let parse_with lexer parser name =
     dump_prog !Flags.dump_parse prog;
     Ok prog
   with
-    | Lexer.Error (at, msg) ->
+    | Source.ParseError (at, msg) ->
       error at "syntax" msg
     | Parser.Error ->
       error (Lexer.region lexer) "syntax" "unexpected token"
@@ -62,7 +62,7 @@ let parse_file filename : parse_result =
   try parse_file filename
   with Sys_error s ->
     error Source.no_region "file" (sprintf "cannot open \"%s\"" filename)
-             
+
 (* Type checking *)
 
 let check_prog senv prog
@@ -103,26 +103,27 @@ let chase_imports senv imports =
       Diag.return ()
     else begin
         pending := S.add file !pending;
-        Diag.bind (parse_file file) (fun (prog, base) ->
-            Diag.bind (Resolve_import.resolve prog base) (fun imports ->
-                Diag.bind (go_set imports) (fun () ->
-                    Diag.bind (merge_env imports senv !lib_env) (fun base_env ->
-                        Diag.bind (check_prog base_env prog) (fun (scope, _) ->
-                            lib_env := LibEnv.add file scope !lib_env;
-                            pending := S.remove file !pending;
-                            Diag.return ()
-          )))))
+        let open Diag.Syntax in
+        let* prog, base = parse_file file in
+        let* imports = Resolve_import.resolve prog base in
+        let* () = go_set imports in
+        let* base_env = merge_env imports senv !lib_env in
+        let* scope, _ = check_prog base_env prog in
+        lib_env := LibEnv.add file scope !lib_env;
+        pending := S.remove file !pending;
+        Diag.return ()
       end
   and go_set todo = Diag.traverse_ go todo
   in Diag.map (fun () -> !lib_env) (go_set imports)
 
 let load_prog parse senv =
-  Diag.bind parse (fun (prog, base) ->
-      Diag.bind (Resolve_import.resolve prog base) (fun imports ->
-          Diag.bind (chase_imports senv imports) (fun lib_env ->
-              Diag.bind (merge_env imports senv lib_env) (fun base_env ->
-                  Diag.bind (check_prog base_env prog) (fun (scope, actor) ->
-                      Diag.return (prog, scope, actor))))))
+  let open Diag.Syntax in
+  let* prog, base = parse in
+  let* imports = Resolve_import.resolve prog base in
+  let* lib_env = chase_imports senv imports in
+  let* base_env = merge_env imports senv lib_env in
+  let* scope, actor = check_prog base_env prog in
+  Diag.return (prog, scope, actor)
 
 (* Only type checking *)
 
@@ -131,20 +132,22 @@ let initial_stat_env = Typing.empty_scope
 let check_string source : load_result = load_prog (parse_string source) initial_stat_env
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
 let check_prog prog : Typing.scope Diag.result =
-  Diag.bind (check_prog initial_stat_env prog) (fun (scope, _) -> Diag.return scope)
+  let open Diag.Syntax in
+  let* scope, _ = check_prog initial_stat_env prog in
+  Diag.return scope
 
 (* JS Compilation *)
 
 type compile_result = Buffer.t Diag.result
 
 let compile_js_file file : compile_result =
-  Diag.bind (check_file file)
-    (fun (prog, senv, _) ->
-      phase "JS Compiling" file;
-      Diag.return (Compile_js.compile senv prog))
+  let open Diag.Syntax in
+  let* prog, senv, _ = check_file file in
+  phase "JS Compiling" file;
+  Diag.return (Compile_js.compile senv prog)
 
 let compile_js_string source : compile_result =
-  Diag.bind (check_string source)
-    (fun (prog, senv, _) ->
-      phase "JS Compiling" "source3";
-      Diag.return (Compile_js.compile senv prog))
+  let open Diag.Syntax in
+  let* prog, senv, _ = check_string source in
+  phase "JS Compiling" "source3";
+  Diag.return (Compile_js.compile senv prog)

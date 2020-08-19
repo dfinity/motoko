@@ -70,30 +70,20 @@ let rec html_of_type : Syntax.typ -> t =
           ++ string ">" )
   | Syntax.PrimT typ -> html_type typ
   | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
-  | Syntax.OptT typ ->
-      if is_type_atom typ then string "?" ++ html_of_type typ
-      else string "?(" ++ html_of_type typ ++ string ")"
+  | Syntax.NamedT (id, t) ->
+      string "(" ++ html_of_typ_item (Some id, t) ++ string ")"
+  | Syntax.OptT typ -> string "?" ++ html_of_type typ
   | Syntax.TupT typ_list ->
       string "("
-      ++ join_with (string ", ") (List.map html_of_type typ_list)
+      ++ join_with (string ", ") (List.map html_of_typ_item typ_list)
       ++ string ")"
   | Syntax.VariantT typ_tags ->
       string "{"
-      ++ join_with (string "; ")
-           (List.map
-              (fun typ_tag ->
-                string
-                  (Printf.sprintf "#%s : "
-                     typ_tag.Source.it.Syntax.tag.Source.it)
-                ++ html_of_type typ_tag.Source.it.Syntax.typ)
-              typ_tags)
+      ++ join_with (string "; ") (List.map html_of_typ_tag typ_tags)
       ++ string "}"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       let ty_args = html_of_typ_binders typ_binders in
-      let ty_arg =
-        if is_tuple_type arg then html_of_type arg
-        else string "(" ++ html_of_type arg ++ string ")"
-      in
+      let ty_arg = html_of_type arg in
       html_of_func_sort func_sort
       ++ ty_args
       ++ ty_arg
@@ -107,6 +97,14 @@ let rec html_of_type : Syntax.typ -> t =
       ++ string "{ "
       ++ join_with (string "; ") (List.map html_of_typ_field fields)
       ++ string " }"
+
+and html_of_typ_tag : Syntax.typ_tag -> t =
+ fun typ_tag ->
+  string (Printf.sprintf "#%s" typ_tag.Source.it.Syntax.tag.Source.it)
+  ++
+  match typ_tag.Source.it.Syntax.typ.Source.it with
+  | Syntax.TupT [] -> nil
+  | _ -> string " : " ++ html_of_type typ_tag.Source.it.Syntax.typ
 
 and html_of_typ_bind : Syntax.typ_bind -> t =
  fun typ_bind ->
@@ -131,6 +129,13 @@ and html_of_typ_field : Syntax.typ_field -> t =
   html_of_mut field.Source.it.Syntax.mut
   ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
   ++ html_of_type field.Source.it.Syntax.typ
+
+and html_of_typ_item : Syntax.typ_item -> t =
+ fun (oid, t) ->
+  Option.fold ~none:empty
+    ~some:(fun id -> parameter id.Source.it ++ string " : ")
+    oid
+  ++ html_of_type t
 
 let html_of_type_doc : Extract.type_doc -> t =
  fun type_doc ->

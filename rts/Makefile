@@ -17,7 +17,8 @@ TOMMATHFILES = \
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-  pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data \
+  pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
+  towctrans iswspace iswupper iswlower iswalpha wcschr wcslen \
   floor scalbn frexp strnlen memchr memset memcpy snprintf vsnprintf vfprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \
@@ -63,6 +64,7 @@ MUSL_FLAGS = \
   -isystem $(MUSLSRC)/src/internal \
   -isystem $(MUSL_WASI_SYSROOT)/include \
   -I $(MUSLSRC)/../headers/private \
+  -I $(MUSLSRC)/src/include \
   -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
   -Derrno='(*({ static int bla = 0; &bla; }))' \
   -DNL_ARGMAX=9 \
@@ -77,6 +79,7 @@ MUSL_FLAGS = \
   -D__wasi__ \
   -D__NEED_va_list \
   -D__NEED_off_t \
+  -D__NEED_locale_t \
   -Dsqrt=__builtin_sqrt \
   -Dfabs=__builtin_fabs
 
@@ -128,13 +131,13 @@ MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 # Look into following directories for source dependencies
 #
 
-vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(TOMMATHSRC)
+vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
 
 #
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint float buf utf8_valid closure-table text blob url
+RTSFILES=rts idl bigint float char buf utf8_valid closure-table text blob principal
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@

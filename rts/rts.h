@@ -88,6 +88,7 @@ export void as_memcpy(char *str1, const char *str2, size_t n);
 export int as_memcmp(const char *str1, const char *str2, size_t n);
 export size_t as_strlen(const char *str1);
 
+typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
@@ -98,5 +99,13 @@ export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 
 export as_ptr blob_of_text(as_ptr);
+export uint32_t compute_crc32(blob_t);
+export blob_t base32_of_checksummed_blob(blob_t);
+export blob_t base32_to_blob(blob_t);
+export int blob_compare(blob_t s1, blob_t s2);
+
+export blob_t blob_of_principal(text_t);
+export blob_t base32_to_principal(blob_t);
+
 
 #endif /* RTS_H */

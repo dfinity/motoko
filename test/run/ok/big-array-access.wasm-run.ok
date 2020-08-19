@@ -8,6 +8,6 @@ Caused by:
          0: <unknown>!rts_trap
          1: <unknown>!bigint_to_word32_trap_with
          2: <unknown>!Array.idx_bigint
-         3: <unknown>!start
+         3: <unknown>!init
          4: <unknown>!_start
        

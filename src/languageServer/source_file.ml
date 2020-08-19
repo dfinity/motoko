@@ -13,7 +13,7 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
   let line = position.Lsp.position_line + 1 in
   let column = position.Lsp.position_character + 1 in
   let lexbuf = Lexing.from_string file_contents in
-  let tokenizer, _ = Lexer.tokenizer Lexer.Normal lexbuf in
+  let tokenizer, _ = Lexer.tokenizer Lexer.mode lexbuf in
   let next () =
     let t, start, end_ = tokenizer () in
     (t, Lexer.convert_pos start, Lexer.convert_pos end_)
@@ -80,7 +80,7 @@ let import_relative_to_project_root root module_path dependency =
    filepaths relative to the project root *)
 let parse_module_header project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
-  let tokenizer, _ = Lexer.tokenizer Lexer.Normal lexbuf in
+  let tokenizer, _ = Lexer.tokenizer Lexer.mode lexbuf in
   let next () =
     let t, _, _ = tokenizer () in
     t
