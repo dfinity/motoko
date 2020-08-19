@@ -815,6 +815,9 @@ module RTS = struct
     E.add_func_import env "rts" "note_reclaimed" [I32Type] [];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "rust_collect_garbage" [] [];
+    E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     ()
 
 end (* RTS *)
@@ -842,24 +845,14 @@ module Heap = struct
     (* end-of-heap pointer, we set this to __heap_base upon start *)
     E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
 
-    (* counter for total allocations *)
-    E.add_global64 env "allocations" Mutable 0L;
-
     (* counter for total reclaimed bytes *)
     E.add_global64 env "reclaimed" Mutable 0L;
 
     (* counter for max live bytes *)
     E.add_global64 env "max_live" Mutable 0L
 
-  let count_allocations env =
-    (* assumes number of allocated bytes on the stack *)
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "allocations"))) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-    G.i (GlobalSet (nr (E.get_global env "allocations")))
-
   let get_total_allocation env =
-    G.i (GlobalGet (nr (E.get_global env "allocations")))
+    E.call_import env "rts" "get_total_allocations"
 
   let add_reclaimed env =
     (* assumes number of reclaimed bytes on the stack *)
@@ -879,38 +872,10 @@ module Heap = struct
   let get_max_live_size env =
     E.call_import env "rts" "get_max_live_size"
 
-  let dyn_alloc_words env = G.i (Call (nr (E.built_in env "alloc_words")))
-  let dyn_alloc_bytes env = G.i (Call (nr (E.built_in env "alloc_bytes")))
-
-  let declare_alloc_functions env =
-    (* Dynamic allocation *)
-    Func.define_built_in env "alloc_words" [("n", I32Type)] [I32Type] (fun env ->
-      (* expects the size (in words), returns the skewed pointer *)
-      let get_n = G.i (LocalGet (nr 0l)) in
-      (* return the current pointer (skewed) *)
-      get_skewed_heap_ptr env ^^
-
-      (* Count allocated bytes *)
-      get_n ^^ compile_mul_const word_size ^^
-      count_allocations env ^^
-
-      (* Update heap pointer *)
-      get_heap_ptr env ^^
-      get_n ^^ compile_mul_const word_size ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      set_heap_ptr env ^^
-
-      (* grow memory if needed *)
-      get_heap_ptr env ^^ E.call_import env "rts" "grow_memory"
-    );
-    Func.define_built_in env "alloc_bytes" [("n", I32Type)] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
-      (* Round up to next multiple of the word size and convert to words *)
-      get_n ^^
-      compile_add_const 3l ^^
-      compile_divU_const word_size ^^
-      dyn_alloc_words env
-    )
+  let dyn_alloc_words env =
+    E.call_import env "rts" "alloc_words"
+  let dyn_alloc_bytes env =
+    E.call_import env "rts" "alloc_bytes"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -3452,15 +3417,6 @@ end (* Dfinity *)
 
 module RTS_Exports = struct
   let system_exports env =
-    Heap.declare_alloc_functions env;
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_bytes";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
-    });
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_words";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_words")))
-    });
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"

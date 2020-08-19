@@ -3,9 +3,12 @@
 
 #![no_std]
 
-pub mod array;
-pub mod common;
-pub mod types;
+mod array;
+mod common;
+mod types;
+
+#[cfg(target_arch = "wasm32")]
+mod alloc;
 
 #[cfg(target_arch = "wasm32")]
 pub mod gc;

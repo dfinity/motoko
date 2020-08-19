@@ -1,3 +1,15 @@
+pub const WORD_SIZE: u32 = 4;
+
+pub fn words_to_bytes(words: Words<u32>) -> Bytes<u32> {
+    Bytes(words.0 * WORD_SIZE)
+}
+
+// Rounds up
+pub fn bytes_to_words(bytes: Bytes<u32>) -> Words<u32> {
+    // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
+    Words((bytes.0 + WORD_SIZE - 1) / WORD_SIZE)
+}
+
 /// The unit "words": `Words(123u32)` means 123 words.
 #[repr(C)]
 #[derive(PartialEq, Eq, Clone, Copy)]

@@ -12,14 +12,12 @@ use crate::array::array_idx_unchecked;
 use crate::common::{debug_print, rts_trap_with, FmtWrite};
 use crate::types::*;
 
-const WORD_SIZE: u32 = 4;
-
 extern "C" {
     /// Get end_of_heap
-    fn get_hp() -> usize;
+    pub fn get_hp() -> usize;
 
     /// Set end_of_heap
-    fn set_hp(hp: SkewedPtr);
+    pub fn set_hp(hp: usize);
 
     /// Get __heap_base
     fn get_heap_base() -> usize;
@@ -42,6 +40,9 @@ static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 // TODO: I don't understand what this is for
 static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
+/// Counter for total allocations
+pub static mut ALLOCATED: Bytes<u64> = Bytes(0);
+
 #[no_mangle]
 pub unsafe extern "C" fn note_live_size(live: Bytes<u32>) {
     MAX_LIVE = Bytes(::core::cmp::max(MAX_LIVE.0, live.0));
@@ -62,7 +63,12 @@ pub unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
     RECLAIMED
 }
 
-/// Page allocation. Ensures that the memory up to the given unskewed pointer is allocated.
+#[no_mangle]
+pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
+    ALLOCATED
+}
+
+/// Page allocation. Ensures that the memory up to the given pointer is allocated.
 #[no_mangle]
 pub unsafe extern "C" fn grow_memory(ptr: usize) {
     let total_pages_needed = ((ptr / 65536) + 1) as i32;
@@ -136,16 +142,6 @@ pub unsafe extern "C" fn object_size(obj: SkewedPtr) -> Words<u32> {
 #[no_mangle]
 pub unsafe extern "C" fn is_tagged_scalar(p: SkewedPtr) -> bool {
     p.0 & 0b1 == 0
-}
-
-fn words_to_bytes(words: Words<u32>) -> Bytes<u32> {
-    Bytes(words.0 * WORD_SIZE)
-}
-
-// Rounds up
-fn bytes_to_words(bytes: Bytes<u32>) -> Words<u32> {
-    // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
-    Words((bytes.0 + WORD_SIZE - 1) / WORD_SIZE)
 }
 
 #[no_mangle]
@@ -506,7 +502,7 @@ pub unsafe extern "C" fn rust_collect_garbage() {
     );
 
     // Reset the heap pointer
-    set_hp(skew(begin_from_space + (end_to_space - begin_to_space)));
+    set_hp(begin_from_space + (end_to_space - begin_to_space));
 
     debug_print("### GC finished");
 }
