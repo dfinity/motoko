@@ -26,6 +26,7 @@ second half to the free list. Since all indices are relative to the payload
 begin, they stay valid. We never shrink the table.
 */
 
+/*
 #define FULL ((uint32_t)(-1) << 2)
 #define INITIAL_SIZE 256
 
@@ -101,7 +102,7 @@ export as_ptr recall_closure(uint32_t idx) {
   return cls;
 }
 
-export uint32_t closure_count() {
+export as_ptr closure_count() {
   return n_closures;
 }
 
@@ -115,3 +116,4 @@ export as_ptr closure_table_size() {
   else
     return ARRAY_LEN(table);
 }
+*/

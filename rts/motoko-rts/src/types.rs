@@ -25,6 +25,12 @@ pub struct Bytes<A>(pub A);
 pub struct SkewedPtr(pub usize);
 
 impl SkewedPtr {
+    pub(crate) fn check_sanity(self) -> bool {
+        self.0 & 0b10 == 0b10
+    }
+}
+
+impl SkewedPtr {
     pub fn unskew(self) -> usize {
         self.0.wrapping_add(1)
     }
@@ -69,6 +75,18 @@ pub struct Array {
     // Array elements follow, each u32 sized. We can't have variable-sized structs in Rust so we
     // can't add a field here for the elements.
     // https://doc.rust-lang.org/nomicon/exotic-sizes.html
+}
+
+pub(crate) unsafe fn array_set(array: *mut Array, idx: u32, elem: u32) {
+    assert!((*array).len > idx);
+    let slot_addr = array.offset(1) as usize + (idx * WORD_SIZE) as usize;
+    *(slot_addr as *mut u32) = elem;
+}
+
+pub(crate) unsafe fn array_get(array: *const Array, idx: u32) -> u32 {
+    assert!((*array).len > idx);
+    let slot_addr = array.offset(1) as usize + (idx * WORD_SIZE) as usize;
+    *(slot_addr as *const u32)
 }
 
 #[repr(C)]

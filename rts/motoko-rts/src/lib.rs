@@ -3,15 +3,14 @@
 
 #![no_std]
 
+mod alloc;
 mod array;
+mod closure_table;
 mod common;
 mod types;
 
 #[cfg(target_arch = "wasm32")]
-mod alloc;
-
-#[cfg(target_arch = "wasm32")]
-pub mod gc;
+mod gc;
 
 #[cfg(target_arch = "wasm32")]
 #[panic_handler]
