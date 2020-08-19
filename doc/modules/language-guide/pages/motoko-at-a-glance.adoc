@@ -432,6 +432,8 @@ actor Self {
 
 === Principal and caller
 
+`Principal` represents the identity of a user or canister/actor.
+
 ```
 actor Self {
   let myself : Principal = Principal.fromActor(Self);
@@ -445,9 +447,8 @@ actor Self {
 }
 ```
 
-`Principal`: identity of a user or canister/actor
 
-==# Type system
+== Type system
 
 === Structural
 
@@ -488,77 +489,176 @@ type List<T> = ?{head : T; tail : List<T>};
 let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
 ```
 
-== Error handling (
+== Error handling
 
 `try … catch …`
+
 `throw …`
 
 == Language comparison cheat sheet
 
-////
 === Literals
-[width="100%",options="header"]
+
+[width="100%",options="header",frame="topbot"]
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
-|> 3;
+
+a|
+----
+> 3;
 3 : Nat
-|# 3;;
+----
+
+a|
+----
+# 3;;
 - : int = 3
-|> 3
+----
+
+a|
+----
+> 3
 3
+----
 
-|> 3.141;
+a|
+----
+> 3.141;
 3.141 : Float
-|# 3.141;;
+----
+
+a|
+----
+# 3.141;;
 - : float = 3.141
-|> 3.141
+----
+
+a|
+----
+> 3.141
 3.141
+----
 
-|> “Hello world”;
+a|
+----
+> “Hello world”;
 “Hello world” : Text
-|# “Hello world”;;
+----
+
+a|
+----
+# “Hello world”;;
 - : string = “Hello world”
-|> “Hello world”
+----
+
+a|
+----
+> “Hello world”
 “Hello world”
+----
 
-|> ‘J’;
+a|
+----
+> ‘J’;
 ‘J’ : Char
-|# ‘J’;;
+----
+
+a|
+----
+# ‘J’;;
 - : char = ‘J’
-|Does not have `char` literals -- use string
+----
 
-|> true;
+a|
+Does not have `char` literals -- use string
+
+a|
+----
+> true;
 true : Bool
-|# true;;
+----
+
+a|
+----
+# true;;
 - : bool = true
-|> true
+----
+
+a|
+----
+> true
 true
+----
 
-|> ();
-|# ();;
+a|
+----
+> ();
+----
+
+a|
+----
+# ();;
 - : unit = ()
-|> undefined
+----
 
-|> (3, true, “hi”);
+a|
+----
+> undefined
+----
+
+a|
+----
+> (3, true, “hi”);
 (3, true, “hi”) : (Nat, Bool, Text)
-|# (3, true, “hi”);;
+----
+
+a|
+----
+# (3, true, “hi”);;
 - : int * bool * string = 3, true, “hi”
-|> [3, true, “hi”]
+----
+
+a|
+----
+> [3, true, “hi”]
 [3, true, “hi”]
+----
 
-|> [var 1, 2, 3];
+a|
+----
+> [var 1, 2, 3];
 [1, 2, 3] : [var Nat]
-|# [|1; 2; 3|];;
-- : int array = [|1; 2; 3|]
-|> [1, 2, 3]
-[1, 2, 3]
+----
 
-|> [1, 2, 3];
-[1, 2, 3] : [Nat]
-|# [1; 2; 3];;
-- : int list = [1; 2; 3]
-|> [1, 2, 3]
+a|
+----
+# [\|1; 2; 3\|];;
+- : int array = [\|1; 2; 3\|]
+----
+
+a|
+----
+> [1, 2, 3]
 [1, 2, 3]
+----
+
+a|
+----
+> [1, 2, 3];
+[1, 2, 3] : [Nat]
+----
+
+a|
+----
+# [1; 2; 3];;
+- : int list = [1; 2; 3]
+----
+
+a|
+----
+> [1, 2, 3]
+[1, 2, 3]
+----
 |===
 
 === Expressions
@@ -566,17 +666,50 @@ true
 [width="100%",options="header"]
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
-|-3*(1+7)/2%3
-|-3*(1+7)/2 mod 3
-|-3*(1+7)/2%3
 
-|-1.0 / 2.0 + 1.9 * x
-|-1.0 /. 2.0 +. 1.9 *. x
-|-1 / 2 + 1.9 * x
+a|
+----
+-3*(1+7)/2%3
+----
 
-|a || b && c
-|a or b and c
-|a || b && c
+a|
+----
+-3*(1+7)/2 mod 3
+----
+
+a|
+----
+-3*(1+7)/2%3
+----
+
+a|
+----
+-1.0 / 2.0 + 1.9 * x
+----
+
+a|
+----
+-1.0 /. 2.0 +. 1.9 *. x
+----
+
+a|
+----
+-1 / 2 + 1.9 * x
+----
+a|
+----
+a \|\| b && c
+----
+
+a|
+----
+a or b and c
+----
+
+a|
+----
+a \|\| b && c
+----
 |===
 
 === Functions
@@ -585,118 +718,276 @@ true
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|func<T1,T2,T3>(f : (T1, T2) -> T3) : T1 -> T2 -> T3 = func(x : T1) : T2 -> T3 = func(y : T2) : T3 = f(x,y)
-|fun f -> fun x -> fun y -> f (x, y)
+a|
+----
+func<T1,T2,T3>(f : (T1, T2) -> T3) : T1 -> T2 -> T3 = func(x : T1) : T2 -> T3 = func(y : T2) : T3 = f(x,y)
+----
+
+a|
+----
+fun f -> fun x -> fun y -> f (x, y)
 or
 fun f x y -> f (x, y)
-|f => x => y => f(x,y)
+----
 
-|func<T1, T2, T3>(f : (T1, T2) -> T3, x: T1, y : T2) : T3 = f (x,y)
-|fun (f, x, y) -> f (x, y)
-|([f, x, y]) => f(x,y)
+a|
+----
+f => x => y => f(x,y)
+----
 
-|func f<T>(x:T) : T = x
-|let f x = x
-|f(x) { x }
+a|
+----
+func<T1, T2, T3>(f : (T1, T2) -> T3, x: T1, y : T2) : T3 = f (x,y)
+----
 
-|Does not have function pattern matching
+a|
+----
+fun (f, x, y) -> f (x, y)
+----
+
+a|
+----
+([f, x, y]) => f(x,y)
+----
+
+a|
+----
+func f<T>(x:T) : T = x
+----
+
+a|
+----
+let f x = x
+----
+
+a|
+----
+f(x) { x }
+----
+a|
+Does not have function pattern matching
+----
 func(x : Int) : Int =
   switch(x) {
     case (0) 0;
     case (n) 1;
   };
-|function 0 -> 0
-            | n -> 1
-|
+----
+
+a|
+----
+function 0 -> 0
+         \| n -> 1
+----
+
+a|
+ 
 |===
 
-=== Control Flow
+=== Control flow
 
 [width="100%",options="header"]
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|if (3 > 2) “X” else “Y”
-|if 3 > 2 then “X” else “Y”
-|if (3 > 2) { “X” } else { “Y” }
+a|
+----
+if (3 > 2) “X” else “Y”
+----
 
-|import Debug “mo:base/Debug”;
+a|
+----
+if 3 > 2 then “X” else “Y”
+----
+
+a|
+----
+if (3 > 2) { “X” } else { “Y” }
+----
+
+a|
+----
+import Debug “mo:base/Debug”;
 if (3 > 2) Debug.print(“hello”);
-|if 3 > 2 then print_string “hello”
-|if (3 > 2) console.log(“hello”)
+----
 
-|while (true) {
+a|
+----
+if 3 > 2 then print_string “hello”
+----
+
+a|
+----
+if (3 > 2) console.log(“hello”)
+----
+
+a|
+----
+while (true) {
   Debug.print(“X”);
 }
-|while true do
+----
+
+a|
+----
+while true do
   print_string “X”
 done
-|while(true) {
+----
+
+a|
+----
+while(true) {
   console.log(“X”);
 }
+----
 
-|label L loop {
+a|
+----
+label L loop {
   if (x == 0) break L
   else continue L;
 } while (true);
-|Does not have do while loops -- use recursion or while
-|do {
+----
+
+a|
+Does not have do while loops -- use recursion or while
+
+a|
+----
+do {
   if (x === 0) break;
   else continue;
 } while (true);
+----
 
-|import Iter “mo:base/Iter”;
+a|
+----
+import Iter “mo:base/Iter”;
 for (i in Iter.range(1,10)) {
   Debug.print(“X”);
 };
-|for i = 1 to 10 do
+----
+
+a|
+----
+for i = 1 to 10 do
   print_string “X”
 done
-|for (i = 1; i <= 10; i++) {
+----
+
+a|
+----
+for (i = 1; i <= 10; i++) {
   console.log(“X”);
 }
+----
 
-|print_string “hello”;
+a|
+----
+print_string “hello”;
 print_string “world”
-|print_string “hello”;
+----
+
+a|
+----
+print_string “hello”;
 print_string “world”
-|console.log(“hello”);
+----
+
+a|
+----
+console.log(“hello”);
 console.log(“world”);
+----
 |===
 
-=== Value Declarations
+=== Value declarations
 
 [width="100%",options="header"]
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|let name = expr;
-|let name = expr
-|const name = expr
+a|
+----
+let name = expr;
+----
 
-|let f = func<T1, T2>(x : T1) : T2 { expr };
-|let f x = expr
-|const f = x => expr
+a|
+----
+let name = expr
+----
 
-|let fib = func(n : Nat) : Nat {expr};
-|let rec fib n = expr
-|const fib = n => expr
+a|
+----
+const name = expr
+----
+
+a|
+----
+let f = func<T1, T2>(x : T1) : T2 { expr };
+----
+
+a|
+----
+let f x = expr
+----
+
+a|
+----
+const f = x => expr
+----
+
+a|
+----
+let fib = func(n : Nat) : Nat {expr};
+----
+
+a|
+----
+let rec fib n = expr
+----
+
+a|
+----
+const fib = n => expr
+----
 |===
 
-=== Type Declarations
+=== Type declarations
 
 [width="100%",options="header"]
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|type T = Int32 -> Bool
-|type t = int -> bool
+a|
+----
+type T = Int32 -> Bool
+----
+
+a|
+----
+type t = int -> bool
 <int is 31-bit signed int>
-|type t = (x: number) => boolean;
+----
 
-|type AssocList<K,V> = List<(K,V)>
-|type (‘a, ‘b) assoc_list = (‘a * ‘b) list
-|not applicable
+a|
+----
+type t = (x: number) => boolean;
+----
+
+a|
+----
+type AssocList<K,V> = List<(K,V)>
+----
+
+a|
+----
+type (‘a, ‘b) assoc_list = (‘a * ‘b) list
+----
+
+a|
+not applicable
 
 |type option<T> = ?T
 |type ‘a option = None | Some of ‘a
@@ -717,25 +1008,33 @@ let coord (C (x,y)) = (x,y)
 |not applicable
 |===
 
-=== Pattern Matching
+=== Pattern matching
 
 [width="100%",options="header"]
 |===
-|Motoko |Ocaml |JavaScript/TypeScript
+|Motoko |Ocaml
 
-|func get_opt<T>(opt : ?T, d : T) : T {
+a|
+----
+func get_opt<T>(opt : ?T, d : T) : T {
   switch(opt) {
     case (null) d;
     case (?x) x;
   };
 }
-|let get_opt (opt, d) =
+----
+
+a|
+----
+let get_opt (opt, d) =
   match opt with
     None -> d
-  | Some x -> x
-|
+  \| Some x -> x
+----
 
-|Does not have guards -- use if
+a| 
+Does not have guards -- use if
+----
 import prelude “mo:base/Prelude”;
 func fac(x : Nat) : Nat {
   switch(x) {
@@ -743,19 +1042,24 @@ func fac(x : Nat) : Nat {
     case (n) if (n>0) n * fac(n-1) else Prelude.unreachable();
   };
 }
-|
---
+----
+
+a|
+----
 let rec fac = function
   0 -> 1
-| n when n>0 -> n * fac(n-1)
-| _ -> raise Hell
---|
-|
+\| n when n>0 -> n * fac(n-1)
+\| _ -> raise Hell
+----
 
-|Does not have as pattern
-|let foo ((x,y) as p) = (x,p,y)
-|
-|==
+a|
+Does not have as a pattern
+
+a|
+----
+let foo ((x,y) as p) = (x,p,y)
+----
+|===
 
 === Tuples
 
@@ -763,20 +1067,53 @@ let rec fac = function
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|type Foo = (Int32, Float, Text)
-|type foo = int * float * string
-|type foo = (number, number, string)
+a|
+----
+type Foo = (Int32, Float, Text)
+----
 
-|let bar = (0, 3.14, “hi”)
-|let bar = (0, 3.14, “hi”)
-|const bar = [0, 3.14, “hi”]
+a|
+----
+type foo = int * float * string
+----
 
-|let x = bar.1
+a|
+----
+type foo = (number, number, string)
+----
+
+a|
+----
+let bar = (0, 3.14, “hi”)
+----
+
+a|
+----
+let bar = (0, 3.14, “hi”)
+----
+
+a|
+----
+const bar = [0, 3.14, “hi”]
+----
+
+a|
+----
+let x = bar.1
 or
 let (_, x, _) = bar
-|let _, x, _ = bar in x
-|const x = bar[1]
-|==
+----
+
+a|
+----
+let _, x, _ = bar in x
+----
+
+a|
+----
+const x = bar[1]
+----
+|===
 
 === Records
 
@@ -784,88 +1121,203 @@ let (_, x, _) = bar
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|type foo = {x : Int32; y : Float; var s : Text}
-|type foo = {x:int; y:float; mutable s:string}
-|Everything is mutable
+a|
+----
+type foo = {x : Int32; y : Float; var s : Text}
+----
+
+a|
+----
+type foo = {x:int; y:float; mutable s:string}
+----
+
+a|
+Everything is mutable
+----
 type foo = {
   x: number; y: number;
   s: string
 }
+----
 
-|let bar = {x=0; y=3.14; var s=””}
-|let bar = {x=0; y=3.14; s=””}
-|const bar = {x:0; y:3.14; s:””}
+a|
+----
+let bar = {x=0; y=3.14; var s=””}
+----
 
-|bar.x
+a|
+----
+let bar = {x=0; y=3.14; s=””}
+----
+
+a|
+----
+const bar = {x:0; y:3.14; s:””}
+----
+
+a|
+----
+bar.x
 bar.y
 bar.s
-|bar.x
-bar.y
-bar.s
-|bar.x
-bar.y
-bar.s
+----
 
-|Does not do pattern matching on mutable fields
+a|
+----
+bar.x
+bar.y
+bar.s
+----
+
+a|
+----
+bar.x
+bar.y
+bar.s
+----
+
+a|
+Does not do pattern matching on mutable fields
+----
 let {x=x; y=y} = bar
 let {y=y} = bar
 or
 let {x;y} = bar
 let {y} = bar
-|let {x=x; y=y; s=s} = bar
+----
+
+a|
+----
+let {x=x; y=y; s=s} = bar
 let {y=y} = bar
 or
 let {x;y;s} = bar
 let {y;_} = bar
-|
+----
 
-|bar.s := “something”
-|bar.s <- “something”
-|bar.s = “something”
+a|
+ 
+a|
+----
+bar.s := “something”
+----
 
-|type Bar = { f: <T>T -> Int32 }
-|type bar = { f:’a.’a->int }
-|type bar = {
+a|
+----
+bar.s <- “something”
+----
+
+a|
+----
+bar.s = “something”
+----
+
+a|
+----
+type Bar = { f: <T>T -> Int32 }
+----
+
+a|
+----
+type bar = { f:’a.’a->int }
+----
+
+a|
+----
+type bar = {
   f<T>(x:T): number;
 }
-|==
+----
+|===
 
-=== References/Mutable variables
+=== References and mutable variables
 
 [width="100%",options="header"]
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|var r = 0;
-|let r = ref 0
-|let r = new Number(0) // object reference
+a|
+----
+var r = 0;
+----
+
+a|
+----
+let r = ref 0
+----
+
+a|
+----
+let r = new Number(0) // object reference
 or
 let r = 0  // mutable variable
+----
 
-|r
-|!r
+a|
+----
+r
+----
+
+a|
+----
+!r
 or
 r.contents
-|r
+----
 
-|r := 1
-|r := 1
+a|
+----
+r
+----
+
+a|
+----
+r := 1
+----
+
+a|
+----
+r := 1
 or
 r.contents <- 1
-|r = 1
+----
 
-|Does not take mutable variables
+a|
+----
+r = 1
+----
+
+a|
+Does not take mutable variables
+----
 func f(x : Nat) : Nat = x
-|let f {contents=x} = x
-|
+----
 
-|r1 == r2
+a|
+----
+let f {contents=x} = x
+----
+
+a|
+
+a|
+----
+r1 == r2
 r1 != r2
-|r1 == r2
+----
+
+a|
+----
+r1 == r2
 r1 != r2
-|r1.valueOf() === r2.valueOf()
+----
+
+a|
+----
+r1.valueOf() === r2.valueOf()
 r1 !== r2
-|==
+----
+|===
 
 === Comparison
 
@@ -873,118 +1325,212 @@ r1 !== r2
 |===
 |Motoko |Ocaml |JavaScript/TypeScript
 
-|2 == 2
+a|
+----
+2 == 2
 2 != 3
-|2 = 2
-2 <> 3
-|2 === 2
-2 !== 3
+----
 
-|Does not have references
+a|
+----
+2 = 2
+2 <> 3
+----
+
+a|
+----
+2 === 2
+2 !== 3
+----
+
+a|
+Does not have references
+----
 var r = 2;
 var s = 2;
 r == s
-|let r = ref 2
+----
+
+a|
+----
+let r = ref 2
 r == r
 r != ref 2
-|
+----
 
-|Does not have generic equality
-|Does not have a proper generic equality
+a|
+ 
+a|
+Does not have generic equality
+
+a|
+Does not have a generic equality
+----
 (2, r) != (2, r)
 (2, r) = (2, ref 2)
-|(2, r) === (2, r)
-|==
+----
 
-=== Immutable and mutable Arrays
+a|
+----
+(2, r) === (2, r)
+----
+|===
+
+=== Immutable and mutable srrays
 
 [width="100%",options="header"]
 |===
-|Motoko |Ocaml |JavaScript/TypeScript
+|Motoko |Ocaml
 
-|import Array “mo:base/Array”;
+a|
+----
+import Array “mo:base/Array”;
 Array.tabulate(20, func(x:Nat):Nat = x*x)
-|List.init 20 (fun x -> x*x)
-|
+----
 
-|Array.init(20, 1.0)
-|Array.make 20 1.0
-|
+a|
+----
+List.init 20 (fun x -> x*x)
+----
 
-|a[2]
-|Array.get a 2
-or
+a|
+----
+Array.init(20, 1.0)
+----
+
+a|
+----
+Array.make 20 1.0
+----
+
+a|
+----
+a[2]
+----
+
+a|
+----
+Array.get a 2
+
 a.(2)
-|
+----
 
-|a[2] := x
-|Array.set a 2 x
+a|
+----
+a[2] := x
+----
+
+a|
+----
+Array.set a 2 x
 or
 a.(2) <- x
-|
+----
 
-|for (x in a.vals()) {
+a|
+----
+for (x in a.vals()) {
   Debug.print(x)
 }
-|List.iter print_string a
-|
-|==
+----
+a|
+----
+List.iter print_string a
+----
+|===
 
 === Strings
 
 [width="100%",options="header"]
 |===
-|Motoko |Ocaml |JavaScript/TypeScript
+|Motoko |Ocaml
 
-|“Hello ” # “world\n”
-|“Hello “ ^ “world\n”
-|
+a|
+----
+“Hello ” # “world\n”
+----
+a|
+----
+“Hello “ ^ “world\n”
+----
 
-|Int.toText(13)
+a|
+----
+Int.toText(13)
 debug_show(3.141)
-|string_of_int 13
+----
+
+a|
+----
+string_of_int 13
 string_of_float 3.141
-|
+----
 
-|s.len()
-|String.length s
-|
+a|
+----
+s.len()
+----
 
-|for (c in s.chars()) {
+a|
+----
+String.length s
+----
+
+a|
+----
+for (c in s.chars()) {
   Debug.print(debug_show(c))
 }
-|String.iter print_char s
-|
+----
 
-|Does not have index access
-|String.get s 0 or s.[0]
-|
-|==
+a|
+----
+String.iter print_char s
+----
+
+a|
+Does not have index access
+
+a|
+----
+String.get s 0 or s.[0]
+----
+|===
 
 === Class
 
 [width="100%",options="header"]
 |===
-|Motoko |Ocaml |JavaScript/TypeScript
+|Motoko |JavaScript/TypeScript
 
-|class Counter(initValue:Nat) {
+a|
+----
+class Counter(initValue:Nat) {
   var _value = initValue;
   public func get() : Nat {
     _value
   };
   func f(x: Nat) {};
 }
-|
-|class Counter {
+----
+
+a|
+----
+class Counter {
   private _value;
   constructor(initValue) { _value = initValue }
   public get() { return _value }
   private f(x) {}
 }
+----
 
-|class Foo() = Self {
+a|
+----
+class Foo() = Self {
   func f() : Foo = Self
 }
-|
-|
-////
+----
+
+a| 
+ 
+|===
