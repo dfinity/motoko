@@ -789,11 +789,34 @@ let import_unit classes_are_separate (u : S.comp_unit) : import_declaration =
   let exp = match prog with
     | I.LibU (ds, e) -> blockE ds e
     | I.ActorU (None, ds, fs, up, t) -> assert false
-    | I.ActorU (Some as_, ds, fs, up, t) ->
-      (* TODO: make async *)
+    | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+      let s, cntrl, tbs, ts1, ts2 = T.as_func t in
+      assert (tbs == []);
+      let cs = T.open_binds [T.scope_bind] in
+      let c, _ = T.as_con (List.hd cs) in
+      let cs' = T.open_binds [T.scope_bind] in
       let vs = List.map var_of_arg as_ in
-      vs -->* { it = I.ActorE (ds, fs, up, t); at = u.at; note = Note.{ def with typ = t } }
+      let c', _ = T.as_con (List.hd cs') in
+      let body =
+        asyncE
+          (typ_arg c' T.Scope T.scope_bound)
+          { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
+          (List.hd cs)
+      in
+      let func_t =
+        T.Func(T.Local, T.Returns, [T.scope_bind],
+               ts1,
+               [T.Async (T.Var (T.default_scope_var, 0), actor_t)])
+      in
+      { it = Ir.FuncE("", T.Local, T.Returns,
+          [typ_arg c T.Scope T.scope_bound],
+          List.map arg_of_var vs,
+          [T.Async (List.hd cs, actor_t)],
+          body);
+        at = no_region;
+        note = Note.{ def with typ = func_t; eff = T.Triv };
+      }
     | I.ProgU ds -> raise (Invalid_argument "Desugar: Cannot import program")
   in
-  [ letD (var (id_of_full_path f) t) exp ]
+  [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
 

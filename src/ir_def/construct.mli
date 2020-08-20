@@ -106,7 +106,7 @@ val letD : var -> exp -> dec
 val varD : id -> typ -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
-val nary_funcD : var  -> var list -> exp -> dec
+val nary_funcD : var -> var list -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 
