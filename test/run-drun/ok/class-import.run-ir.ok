@@ -1,5 +1,6 @@
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-(unknown location): IR type error, subtype violation:
-  () -> anon-class-2.1
-  () -> async actor {test : shared () -> async ()}
-
+empty
+() tested
+one
+"one" tested
+("one", "two")
+("one", "two")tested
