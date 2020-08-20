@@ -41,6 +41,12 @@ let fresh_var name_base typ : var =
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
 
+(* type arguments *)
+
+let typ_arg c sort typ =
+  { it = { Ir.con = c; Ir.sort = sort; Ir.bound = typ };
+    at = no_region;
+    note = () }
 
 (* Patterns *)
 
@@ -102,11 +108,6 @@ let selfRefE typ =
     note = Note.{ def with typ }
   }
 
-let asyncE typ1 typ2 e =
-  { it = PrimE (CPSAsync typ1, [e]);
-    at = no_region;
-    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
-  }
 
 let assertE e =
   { it = PrimE (AssertPrim, [e]);
@@ -114,7 +115,26 @@ let assertE e =
     note = Note.{ def with typ = T.unit; eff = eff e}
   }
 
-let awaitE typ e1 e2 =
+
+let asyncE typ_bind e typ1 =
+  { it = AsyncE (typ_bind, e, typ1);
+    at = no_region;
+    note = Note.{ def with typ = T.Async (typ1, typ e); eff = T.Triv }
+  }
+
+let awaitE typ e =
+  { it = PrimE (AwaitPrim, [e]);
+    at = no_region;
+    note = Note.{ def with typ; eff = T.Await }
+  }
+
+let cps_asyncE typ1 typ2 e =
+  { it = PrimE (CPSAsync typ1, [e]);
+    at = no_region;
+    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
+  }
+
+let cps_awaitE typ e1 e2 =
   { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = max_eff (eff e1) (eff e2) }
@@ -405,7 +425,7 @@ let ignoreE exp =
 (* Mono-morphic function expression *)
 let arg_of_var (id, typ) =
   { it = id; at = no_region; note = typ }
-let var_of_arg { it = id; note = typ; _} = (id, typ) 
+let var_of_arg { it = id; note = typ; _} = (id, typ)
 
 let funcE name typ x exp =
   let sort, control, arg_tys, ret_tys = match typ with

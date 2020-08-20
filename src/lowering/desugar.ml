@@ -708,33 +708,23 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
       let cs' = T.open_binds tbs in
       let c', _ = T.as_con (List.hd cs') in
       let body =
-        { it = Ir.AsyncE(
-            { it = { Ir.con = c'; Ir.sort = T.Scope; Ir.bound = T.scope_bound };
-              at = no_region;
-              note = ()},
-            blockE [
+        asyncE
+            (typ_arg c' T.Scope T.scope_bound)
+            (blockE [
               letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
               letD principal
-                { it = Ir.PrimE (Ir.AwaitPrim, [
-                   callE (varE create_actor_helper) cs'
-                     (tupE [varE wasm_blob;  varE arg_blob])]);
-                  at = no_region;
-                  note = Note.{ def with typ = T.principal; eff = T.Await }
-                 }
+                (awaitE T.principal
+                  (callE (varE create_actor_helper) cs'
+                     (tupE [varE wasm_blob;  varE arg_blob])))
               ]
-              (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]),
-            List.hd cs);
-          at = no_region;
-          note = Note.{ def with typ = List.hd ts2'; eff = T.Triv };
-        }
+              (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
+            (List.hd cs);
       in
       { it = Ir.FuncE("", T.Local, T.Returns,
-                      [{it = {Ir.con = c; Ir.sort = T.Scope; Ir.bound = T.scope_bound};
-                        at = no_region;
-                        note = ()}],
-                   List.map arg_of_var vs,
-                   ts2',
-                   body);
+          [typ_arg c T.Scope T.scope_bound],
+          List.map arg_of_var vs,
+          ts2',
+          body);
         at = no_region;
         note = Note.{ def with typ = t; eff = T.Triv };
       }

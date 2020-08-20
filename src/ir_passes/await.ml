@@ -108,7 +108,7 @@ and t_exp' context exp' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
-     (asyncE typ1 (typ exp1)
+     (cps_asyncE typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
                        c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _ -> assert false (* these never have effect T.Triv *)
@@ -352,7 +352,7 @@ and c_exp' context exp k =
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
     k -@-
-      (asyncE typ1 (typ exp1)
+      (cps_asyncE typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret)))))
   | PrimE (AwaitPrim, [exp1]) ->
@@ -366,10 +366,10 @@ and c_exp' context exp k =
        let kr = tupE [varE k; varE r] in
        match eff exp1 with
        | T.Triv ->
-          awaitE (typ exp) (t_exp context exp1) kr
+          cps_awaitE (typ exp) (t_exp context exp1) kr
        | T.Await ->
           c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (awaitE (typ exp) (varE v1) kr)))
+            (meta (typ exp1) (fun v1 -> (cps_awaitE (typ exp) (varE v1) kr)))
      ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
