@@ -126,6 +126,7 @@ let error_in modes env at fmt =
 let warn_in modes env at fmt =
   ignore (diag_in type_warning modes env at fmt)
 
+
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
@@ -157,6 +158,7 @@ let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
 
+
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -172,12 +174,14 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+
 (* System method types *)
 
 let system_funcs = [
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
   ]
+
 
 (* Imports *)
 
@@ -194,6 +198,7 @@ let check_import env at f ri =
     error env at "cannot infer type of forward import %s" f
   | Some t -> t
   | None -> error env at "imported file %s not loaded" full_path
+
 
 (* Paths *)
 
@@ -554,6 +559,7 @@ and check_inst_bounds env tbs inst at =
   check_typ_bounds env tbs ts ats at;
   ts
 
+
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -661,6 +667,7 @@ let check_lit env t lit at =
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
+
 (* Coercions *)
 
 let array_obj t =
@@ -692,6 +699,11 @@ let text_obj () =
 
 
 (* Expressions *)
+
+let error_duplicate env kind id =
+  match Lib.String.chop_prefix "." id.it with
+  | None -> error env id.at "duplicate definition for %s%s in block" kind id.it
+  | Some x -> error env id.at "duplicate %sfield name %s in object" kind x
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -1313,6 +1325,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
+
 (* Cases *)
 
 and infer_cases env t_pat t cases : T.typ =
@@ -1659,6 +1672,7 @@ and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
 and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
 
+
 (* Object/Scope transformations *)
 
 and gather_typ con_env t =
@@ -1986,7 +2000,7 @@ and gather_dec env scope dec : Scope.t =
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
-      error env dec.at "duplicate definition for value %s in block" id.it;
+      error_duplicate env "" id;
     let scope' = gather_block_decs env decs in
     let ve' = T.Env.add id.it (object_of_scope env obj_sort.it fields scope' at) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
@@ -2001,7 +2015,7 @@ and gather_dec env scope dec : Scope.t =
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
-      error env dec.at "duplicate definition for type %s in block" id.it;
+      error_duplicate env "type " id;
     let pre_tbs = List.map (fun bind ->
                       {T.var = bind.it.var.it;
                        T.sort = T.Type;
@@ -2015,7 +2029,7 @@ and gather_dec env scope dec : Scope.t =
     let val_env = match dec.it with
       | ClassD _ ->
         if T.Env.mem id.it scope.val_env then
-          error env id.at "duplicate definition for %s in block" id.it;
+          error_duplicate env "" id;
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
@@ -2040,7 +2054,7 @@ and gather_pat_field env ve pf : Scope.val_env =
 
 and gather_id env ve id : Scope.val_env =
   if T.Env.mem id.it ve then
-    error env id.at "duplicate definition for %s in block" id.it;
+    error_duplicate env "" id;
   T.Env.add id.it T.Pre ve
 
 (* Pass 2 and 3: infer type definitions *)

@@ -63,6 +63,21 @@ let let_or_exp named x e' at =
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
+let field_id x = ("." ^ x.it) @@ x.at
+let field_var_dec d =
+  match d.it with
+  | VarD(x, e) ->
+    let x' = field_id x in
+    x, x', LetD(VarP(x'.it @@ x'.at) @! x'.at, e) @? d.at
+  | _ -> assert false
+
+let field d = {dec = d; vis = Public @@ d.at; stab = None}
+let let_field x x' = field (LetD(VarP(x) @! x.at, VarE(x') @? x'.at) @? x.at)
+let var_field x x' = field (VarD(x, VarE(x') @? x'.at) @? x.at)
+
+let obj ds' ds at =
+  BlockE(ds' @ [ExpD(ObjE(Type.Object @@ no_region, ds) @? at) @? at])
+
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
@@ -197,7 +212,9 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body exp_field_list_unamb
+%type<(Mo_def.Syntax.dec * Mo_def.Syntax.exp_field) list> seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.exp_field list> seplist(dec_field,semicolon) obj_body
+%type<Mo_def.Syntax.dec list * Mo_def.Syntax.exp_field list> exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ> return_typ_nullary return_typ
 %type<Mo_def.Syntax.typ option> option(return_typ_nullary) option(return_typ)
@@ -211,11 +228,12 @@ let rec normalize_let p e =
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
-%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar dec_field
+%type<Mo_def.Syntax.dec * Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
+%type<Mo_def.Syntax.exp_field> dec_field
 %type<Mo_def.Syntax.dec list> dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
 %type<Mo_def.Syntax.case> catch case
-%type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
+%type<Mo_def.Syntax.dec list -> Source.region -> Mo_def.Syntax.exp'> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
@@ -450,9 +468,14 @@ lit :
 
 
 (* Default {} to block or object, respectively *)
-bl : { fun ds -> BlockE(ds) }
-ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
+bl : { fun ds at -> BlockE(ds) }
+ob : { fun ds at ->
+       let ds', ds = List.fold_right
+         (fun d (ds', efs) ->
+           let x, x', d' = field_var_dec d in
+           d'::ds', (var_field x x' @@ at)::efs
+         ) ds ([], [])
+       in obj ds' ds at }
 
 text_like :
   | t=TEXT { LitE (ref (PreLit (t, Type.Text))) @? at $sloc }
@@ -464,9 +487,9 @@ exp_block :
 
 exp_nullary(B) :
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
-    { e ds @? at $sloc }
+    { e ds (at $sloc) @? at $sloc }
   | LCURLY efs=exp_field_list_unamb RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
+    { let ds', ds = efs in obj ds' ds (at $sloc) @? at $sloc }
   | LCURLY ds=dec_list_unamb RCURLY
     { BlockE(ds) @? at $sloc }
   | x=id
@@ -611,20 +634,29 @@ catch :
 
 exp_field_nonvar :
   | x=id EQ e=exp(ob)
-    { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
-      {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
+    { let x' = field_id x in
+      LetD(VarP(x') @! x'.at, e) @? at $sloc, let_field x x' @@ at $sloc }
+(*
+  | x=id
+    { let x' = field_id x in
+      let e = VarE(x.it @@ x.at) @@ x.at in
+      LetD(VarP(x') @! x'.at, e) @? at $sloc, let_field x x' @@ at $sloc }
+*)
 
 exp_field :
-  | ef=exp_field_nonvar { ef }
-  | d=dec_var { {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
+  | d_ef=exp_field_nonvar { d_ef }
+  | d=dec_var
+    { let x, x', d' = field_var_dec d in
+      d', var_field x x' @@ at $sloc }
 
 exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
-  | ef=exp_field_nonvar
-    { [ef] }
-  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
-    { ef::efs }
-  | d=dec_var semicolon efs=exp_field_list_unamb
-    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
+  | d_ef=exp_field_nonvar
+    { let d, ef = d_ef in [d], [ef] }
+  | d_ef=exp_field_nonvar semicolon defs=seplist(exp_field, semicolon)
+    { let d, ef = d_ef and ds, efs = List.split defs in d::ds, ef::efs }
+  | d=dec_var semicolon ds_efs=exp_field_list_unamb
+    { let x, x', d' = field_var_dec d and ds, efs = ds_efs in
+      d'::ds, (var_field x x' @@ at $sloc)::efs }
 
 dec_field :
   | v=vis s=stab d=dec

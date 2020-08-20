@@ -195,31 +195,32 @@ struct
     let n = ref 0 in
     for i = 0 to String.length str - 1 do
       n := !n +
-             (match str.[i] with
-              | '\"' | '\'' | '\\' | '\n' | '\r' | '\b' | '\t' -> 2
-              | _ -> 1)
+        (match str.[i] with
+        | '\"' | '\'' | '\\' | '\n' | '\r' | '\b' | '\t' -> 2
+        | _ -> 1
+        )
     done;
     if !n = String.length str then str else begin
-        let s' = Bytes.create !n in
-        n := 0;
-        for i = 0 to String.length str -1 do
-          begin match str.[i] with
-          | ('\"' | '\'' | '\\') as c ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n c
-          | '\n' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'n'
-          | '\r' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'r'
-          | '\b' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
-          | '\t' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'
-          | c -> Bytes.set s' !n c
-          end;
-          n := !n + 1
-        done;
-        Bytes.unsafe_to_string s'
-      end
+      let s' = Bytes.create !n in
+      n := 0;
+      for i = 0 to String.length str -1 do
+        begin match str.[i] with
+        | ('\"' | '\'' | '\\') as c ->
+          Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n c
+        | '\n' ->
+          Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'n'
+        | '\r' ->
+          Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'r'
+        | '\b' ->
+          Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
+        | '\t' ->
+          Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'
+        | c -> Bytes.set s' !n c
+        end;
+        n := !n + 1
+      done;
+      Bytes.unsafe_to_string s'
+    end
 end
 
 module List =
