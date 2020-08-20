@@ -1,4 +1,10 @@
 import Prim "mo:prim";
-actor class(a : Text, b : Text) {
+shared actor class(a : Text, b : Text) {
+
    Prim.debugPrint(debug_show((a,b)));
+
+   public func test() : async () {
+      Prim.debugPrint(debug_show((a,b)) # "tested");
+   };
+
 }

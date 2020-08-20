@@ -1,4 +1,5 @@
-?0x49
-?0x44
-?0x3A
-?0x32
+Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
+(unknown location): IR type error, subtype violation:
+  () -> anon-class-2.1
+  () -> async actor {test : shared () -> async ()}
+

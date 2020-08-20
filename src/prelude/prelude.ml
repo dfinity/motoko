@@ -353,10 +353,7 @@ let @ic00 = actor "aaaaa-aa" : actor {
 // It would be desireable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  (prim "print" : Text -> ()) ("(create_canister");
   let { canister_id = canister_id_ } = await @ic00.create_canister({desired_id = null});
-  (prim "print" : Text -> ()) ("create_canister)");
-  (prim "print" : Text -> ()) ("(install_code");
   await @ic00.install_code({
     mode = #install;
     canister_id = canister_id_;
@@ -364,7 +361,6 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
     arg = arg_;
     compute_allocation = null
   });
-  (prim "print" : Text -> ()) ("install_code)");
   return canister_id_;
 };
 

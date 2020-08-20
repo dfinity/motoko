@@ -4,21 +4,17 @@ import One "class:class-import/one";
 import Two "class:class-import/two";
 
 actor a {
-  public func go() : async () {
-    let p = await C();
-    let blob = Prim.blobOfPrincipal (Prim.principalOfActor p);
-    let c = blob.bytes();
-    Prim.debugPrint(debug_show (c.next()));
-    Prim.debugPrint(debug_show (c.next()));
-    Prim.debugPrint(debug_show (c.next()));
-    Prim.debugPrint(debug_show (c.next()));
+ public func go() : async () {
+    let empty = await C();
+    await empty.test();
 
     // test single arg class
     let one = await One("one");
+    await one.test();
 
     // test two arg class
     let two = await Two("one","two");
-
+    await two.test();
   }
 };
 
