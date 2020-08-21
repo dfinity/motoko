@@ -32,7 +32,7 @@ let x5 = switch (?{}) {
 };
 assert (x5 == 1);
 
-let oo : ?{} = ?{};
+let oo : ?{} = ?{.};
 let x6 = switch oo {
   case null 0;
   case _ 1;

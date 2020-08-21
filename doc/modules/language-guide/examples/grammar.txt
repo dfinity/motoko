@@ -130,20 +130,20 @@
     '<>>='
     '@='
 
-<text_like> ::= 
-    <text>
-    '(' <exp> ')'
-
 <exp_block> ::= 
     '{' <list(<dec>, ';')> '}'
 
-<exp_nullary> ::= 
-    '{' <list(<dec_var>, ';')> '}'
-    '{' <exp_field_list_unamb> '}'
-    '{' <dec_list_unamb> '}'
-    <id>
+<exp_plain> ::= 
     <lit>
     '(' <list(<exp>, ',')> ')'
+
+<exp_nullary> ::= 
+    <exp_plain>
+    '{' '}'
+    '{' '.' '}'
+    '{' <list1(<exp_field>, ';')> '}'
+    '{' <list1(<dec>, ';')> '}'
+    <id>
 
 <exp_post> ::= 
     <exp_nullary>
@@ -160,7 +160,7 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    'actor' <text_like>
+    'actor' <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
 
@@ -209,17 +209,10 @@
 <catch> ::= 
     'catch' <pat_nullary> <exp>
 
-<exp_field_nonvar> ::= 
-    <id> '=' <exp>
-
 <exp_field> ::= 
-    <exp_field_nonvar>
-    <dec_var>
-
-<exp_field_list_unamb> ::= 
-    <exp_field_nonvar>
-    <exp_field_nonvar> ';' <list(<exp_field>, ';')>
-    <dec_var> ';' <exp_field_list_unamb>
+    '.' <id>
+    '.' <id> '=' <exp>
+    'var' '.' <id> '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -243,7 +236,8 @@
 
 <pat_nullary> ::= 
     <pat_param>
-    '{' <list(<pat_field>, ';')> '}'
+    '{' '.' '}'
+    '{' <list1(<pat_field>, ';')> '}'
 
 <pat_un> ::= 
     <pat_nullary>
@@ -267,9 +261,9 @@
     ':' <typ_nullary>
 
 <pat_field> ::= 
-    <id>
-    <id> '=' <pat>
-    <id> ':' <typ>
+    '.' <id>
+    '.' <id> '=' <pat>
+    '.' <id> ':' <typ>
 
 <dec_var> ::= 
     'var' <id> <return_typ>? '=' <exp>
@@ -286,13 +280,6 @@
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
-
-<dec_list_unamb> ::= 
-    <exp_nondec>
-    <dec_nonvar>
-    <exp_nondec> ';' <list(<dec>, ';')>
-    <dec_nonvar> ';' <list(<dec>, ';')>
-    <dec_var> ';' <dec_list_unamb>
 
 <func_body> ::= 
     '=' <exp>

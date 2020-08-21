@@ -1,4 +1,4 @@
-shared {caller = creator} actor class C() {
+shared {.caller = creator} actor class C() {
 
   let c : Principal = creator;
   let d = creator;

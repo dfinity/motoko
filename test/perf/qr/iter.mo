@@ -100,6 +100,6 @@ module {
       _length += 1;
       _list := List.push<A>(x, _list);
     }, xs);
-    { length = _length; list = List.rev<A>(_list); };
+    { .length = _length; .list = List.rev<A>(_list); };
   };
 }

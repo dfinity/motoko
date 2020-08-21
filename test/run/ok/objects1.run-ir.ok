@@ -1,2 +1,2 @@
-objects1.mo:26.3-26.26: warning, this case is never reached
-objects1.mo:27.3-27.14: warning, this case is never reached
+objects1.mo:26.3-26.28: warning, this case is never reached
+objects1.mo:27.3-27.15: warning, this case is never reached

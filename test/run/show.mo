@@ -64,7 +64,7 @@ class Foo() { public let foo : Int = 42; public var bar : Bool = true ; let hidd
 Prim.debugPrint(debug_show (Foo()));
 Prim.debugPrint(debug_show (#foo ()));
 Prim.debugPrint(debug_show (#bar (1, 2)));
-Prim.debugPrint(debug_show (#bar {}));
+Prim.debugPrint(debug_show (#bar {.}));
 Prim.debugPrint(debug_show (#bar ([])));
 Prim.debugPrint(debug_show (#bar 42));
 Prim.debugPrint(debug_show (#bar (-42)));

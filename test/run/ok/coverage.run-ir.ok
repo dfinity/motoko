@@ -13,10 +13,10 @@ coverage.mo:31.25-31.34: warning, this case is never reached
 coverage.mo:32.43-32.44: warning, this pattern is never matched
 coverage.mo:33.35-33.49: warning, this case is never reached
 coverage.mo:34.42-34.51: warning, this case is never reached
-coverage.mo:37.51-37.73: warning, this case is never reached
-coverage.mo:38.39-38.54: warning, this case is never reached
-coverage.mo:39.56-39.65: warning, this case is never reached
-coverage.mo:40.49-40.58: warning, this case is never reached
+coverage.mo:37.55-37.79: warning, this case is never reached
+coverage.mo:38.42-38.58: warning, this case is never reached
+coverage.mo:39.60-39.69: warning, this case is never reached
+coverage.mo:40.52-40.61: warning, this case is never reached
 coverage.mo:46.58-46.72: warning, this case is never reached
 coverage.mo:61.22-61.31: warning, this case is never reached
 coverage.mo:62.28-62.37: warning, this case is never reached

@@ -7,8 +7,8 @@ type Status = {
 
 let appendStatus = func (x : Status, y : Status) : Status {
   {
-    failed_ = x.failed_ + y.failed_;
-    passed_ = x.passed_ + y.passed_;
-    pending_ = x.pending_ + y.pending_;
+    .failed_ = x.failed_ + y.failed_;
+    .passed_ = x.passed_ + y.passed_;
+    .pending_ = x.pending_ + y.pending_;
   };
 };

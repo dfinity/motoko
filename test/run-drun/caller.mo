@@ -6,7 +6,7 @@ actor a {
     return;
   };
 
-  public shared {caller} func c2 () : async () {
+  public shared {.caller} func c2 () : async () {
     let c1 : Principal = caller;
     return;
   };
@@ -15,20 +15,20 @@ actor a {
     return;
   };
 
-  public shared {} func c4 () : async () {
+  public shared {.} func c4 () : async () {
   };
 
-  public shared {caller = c} func c5 (c:Bool) : async () { // allow shadowing
+  public shared {.caller = c} func c5 (c:Bool) : async () { // allow shadowing
     let c1 : Bool = c;
     return;
   };
 
-  public shared query {caller} func c6 () : async () {
+  public shared query {.caller} func c6 () : async () {
     let c1 : Principal = caller;
     return;
   };
 
-  public shared {caller} func c7() : async Principal {
+  public shared {.caller} func c7() : async Principal {
     return caller;
   };
 
@@ -39,15 +39,15 @@ actor a {
   // NB: The following tests are more about Blob than Principal
   // Maybe move to their own tests once we have intro forms for blobs
 
-  public shared query {caller} func c9() : async Word32 {
+  public shared query {.caller} func c9() : async Word32 {
     Prim.hashBlob (Prim.blobOfPrincipal caller);
   };
 
-  public shared query {caller} func c10() : async Nat {
+  public shared query {.caller} func c10() : async Nat {
       (Prim.blobOfPrincipal caller).size();
   };
 
-  public shared query {caller} func c11() : async ?Word8 {
+  public shared query {.caller} func c11() : async ?Word8 {
       (Prim.blobOfPrincipal caller).bytes().next();
   };
 

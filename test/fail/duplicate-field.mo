@@ -17,11 +17,11 @@ type T = {#foo : Int; #nxnnbkddcv: Bool}
 };
 
 {
-ignore({foo = 5; foo = true});
+ignore({.foo = 5; .foo = true});
 };
 
 {
-ignore({foo = 5; nxnnbkddcv = true});
+ignore({.foo = 5; .nxnnbkddcv = true});
 };
 
 {

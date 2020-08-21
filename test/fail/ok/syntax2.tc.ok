@@ -2,17 +2,17 @@ syntax2.mo:2.1-2.4: syntax error, unexpected token 'let',
 expected one of token or <phrase> sequence:
   <eof>
   .<nat>
-  <exp_nullary(ob)>
-  <binop> <exp(ob)>
+  <exp_nullary>
+  <binop> <exp>
   ; seplist(<dec>,<semicolon>)
-  or <exp_bin(ob)>
-  <unassign> <exp(ob)>
-  <relop> <exp_bin(ob)>
+  or <exp_bin>
+  <unassign> <exp>
+  <relop> <exp_bin>
   . <id>
   : <typ>
-  <binop> <exp_bin(ob)>
-  <binassign> <exp(ob)>
-  and <exp_bin(ob)>
-  <unop> <exp_bin(ob)>
-  <inst> <exp_nullary(ob)>
-  [ <exp(ob)> ]
+  <binop> <exp_bin>
+  <binassign> <exp>
+  and <exp_bin>
+  <unop> <exp_bin>
+  <inst> <exp_nullary>
+  [ <exp> ]

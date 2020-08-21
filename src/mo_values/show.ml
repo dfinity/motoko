@@ -71,6 +71,8 @@ let rec show_val t v =
   | T.Array t', Value.Array a ->
     Printf.sprintf "[%s]"
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
+  | T.Obj (_, []), Value.Obj _ ->
+    "{.}"
   | T.Obj (_, fts), Value.Obj fs ->
     Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
   | T.Variant fs, Value.Variant (l, v) ->
@@ -94,4 +96,4 @@ and show_field fs ft =
   (* With types:
   Printf.sprintf "%s%s : %s = %s" m ft.T.name (T.string_of_typ t') (show_val t' v')
   *)
-  Printf.sprintf "%s = %s" ft.T.lab (show_val t' v')
+  Printf.sprintf ".%s = %s" ft.T.lab (show_val t' v')

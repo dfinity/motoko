@@ -3,7 +3,7 @@
 actor a {
 
   // returns caller id
-  public shared { caller = c } func getCaller() : async Principal {
+  public shared { .caller = c } func getCaller() : async Principal {
     c
   };
 
@@ -18,7 +18,7 @@ actor a {
 actor class C () {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Principal {
+  public shared { .caller = c } func getCaller()  : async Principal {
     c
   };
 
@@ -51,7 +51,7 @@ ignore async {
 actor Ping {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Principal {
+  public shared { .caller = c } func getCaller()  : async Principal {
     c
   };
 
@@ -60,7 +60,7 @@ actor Ping {
     await getCaller();
   };
 
-  public shared {caller} func call (n:Nat) : async () {
+  public shared {.caller} func call (n:Nat) : async () {
     if (n > 0) {
       assert (caller == (await Pong.getSelf()));
       await Pong.call(n - 1);
@@ -71,7 +71,7 @@ actor Ping {
 actor Pong {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Principal {
+  public shared { .caller = c } func getCaller()  : async Principal {
     c
   };
 
@@ -80,7 +80,7 @@ actor Pong {
     await getCaller();
   };
 
- public shared {caller} func call (n:Nat) : async () {
+ public shared {.caller} func call (n:Nat) : async () {
     if (n > 0) {
       assert caller == (await Ping.getSelf());
       await Ping.call(n - 1);

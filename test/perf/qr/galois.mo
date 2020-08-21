@@ -96,7 +96,7 @@ module {
   public type Elem = { unbox : Nat };
 
   public func elemNew(n : Nat) : Elem {
-    { unbox = n % 256 }
+    { .unbox = n % 256 }
   };
 
   public func elemShow(elem : Elem) : Text {
@@ -108,7 +108,7 @@ module {
   };
 
   public func elemFromBit(bit : Bool) : Elem {
-    if bit { unbox = 1 } else { unbox = 0 }
+    if bit { .unbox = 1 } else { .unbox = 0 }
   };
 
   public func elemToBits(elem : Elem) : List<Bool> {
@@ -124,7 +124,7 @@ module {
   };
 
   public func elemAdd(elem1 : Elem, elem2 : Elem) : Elem {
-    { unbox = Nat.natXor(elem1.unbox, elem2.unbox) }
+    { .unbox = Nat.natXor(elem1.unbox, elem2.unbox) }
   };
 
   public func elemSub(elem1 : Elem, elem2 : Elem) : Elem {
@@ -135,7 +135,7 @@ module {
     switch (elem1.unbox, elem2.unbox) {
       case (0, _) { elem1 };
       case (_, 0) { elem2 };
-      case (a, b) { unbox = alog((log(a) + log(b)) % 255) }
+      case (a, b) { .unbox = alog((log(a) + log(b)) % 255) }
     }
   };
 
@@ -145,8 +145,8 @@ module {
         Prelude.printLn("Error: Division by zero is undefined in GF(256)!");
         Prelude.unreachable()
       };
-      case (0, _) { unbox = 0 };
-      case (a, b) { unbox = alog((255 + log(a) - log(b)) % 255) }
+      case (0, _) { .unbox = 0 };
+      case (a, b) { .unbox = alog((255 + log(a) - log(b)) % 255) }
     }
   };
 
@@ -162,7 +162,7 @@ module {
       List.push<Elem>(elemNew(n), accum)
     };
     let base = List.nil<Elem>();
-    { unbox = Array.foldr<Nat, List<Elem>>(step, base, coeffs) }
+    { .unbox = Array.foldr<Nat, List<Elem>>(step, base, coeffs) }
   };
 
   public func polyShow(poly : Poly) : Text {
@@ -183,7 +183,7 @@ module {
   };
 
   public func polyFromBits(bits : List<Bool>) : Poly {
-    { unbox = List.map<Bool, Elem>(bits, elemFromBit) }
+    { .unbox = List.map<Bool, Elem>(bits, elemFromBit) }
   };
 
   public func polyLen(poly : Poly) : Nat {
@@ -193,11 +193,11 @@ module {
   public func polyTrim(poly : Poly) : Poly {
     func go(elems : List<Elem>) : List<Elem> {
       switch (List.pop<Elem>(elems)) {
-        case (?{ unbox = 0 }, tail) { go(tail) };
+        case (?{ .unbox = 0 }, tail) { go(tail) };
         case _ { elems }
       }
     };
-    { unbox = go(poly.unbox) }
+    { .unbox = go(poly.unbox) }
   };
 
   public func polyOrder(poly : Poly) : Int {
@@ -207,18 +207,18 @@ module {
   public func polyLeadCoeff(poly : Poly) : Elem {
     switch (List.pop<Elem>(polyTrim(poly).unbox).0) {
       case (?elem) { elem };
-      case (null) { unbox = 0 }
+      case (null) { .unbox = 0 }
     }
   };
 
   public func polyPadLeft(n : Nat, poly : Poly) : Poly {
-    let zeros = List.replicate<Elem>(n, { unbox = 0 });
-    { unbox = List.append<Elem>(zeros, poly.unbox) }
+    let zeros = List.replicate<Elem>(n, { .unbox = 0 });
+    { .unbox = List.append<Elem>(zeros, poly.unbox) }
   };
 
   public func polyPadRight(n : Nat, poly : Poly) : Poly {
-    let zeros = List.replicate<Elem>(n, { unbox = 0 });
-    { unbox = List.append<Elem>(poly.unbox, zeros) }
+    let zeros = List.replicate<Elem>(n, { .unbox = 0 });
+    { .unbox = List.append<Elem>(poly.unbox, zeros) }
   };
 
   public func polyGrow(to : Nat, poly : Poly) : Poly {
@@ -236,7 +236,7 @@ module {
     let n1 = polyLen(poly1);
     let n2 = polyLen(poly2);
     let to = if (n1 > n2) n1 else n2;
-    { unbox = List.zipWith<Elem, Elem, Elem>(
+    { .unbox = List.zipWith<Elem, Elem, Elem>(
       polyGrow(to, poly1).unbox,
       polyGrow(to, poly2).unbox,
       f
@@ -257,7 +257,7 @@ module {
 
   public func polyScale(alpha : Elem, poly : Poly) : Poly {
     func scale(elem : Elem) : Elem = elemMul(alpha, elem);
-    { unbox = List.map<Elem, Elem>(poly.unbox, scale) }
+    { .unbox = List.map<Elem, Elem>(poly.unbox, scale) }
   };
 
   public type Term = { coeff : Elem; order : Int };
@@ -282,7 +282,7 @@ module {
       } else {
         let currentDividendLeadCoeff = polyLeadCoeff(currentDividend);
         let currentCoeff = elemDiv(currentDividendLeadCoeff, divisorLeadCoeff);
-        let currentTerm = { coeff = currentCoeff; order = currentOrder };
+        let currentTerm = { .coeff = currentCoeff; .order = currentOrder };
         let currentQuotient = polyMulTerm(poly2, currentTerm);
         let nextDividend = polySub(currentQuotient, currentDividend);
         let nextDivisor = polyAddTerm(currentDivisor, currentTerm);

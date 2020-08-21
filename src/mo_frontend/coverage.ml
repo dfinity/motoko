@@ -158,7 +158,7 @@ let rec string_of_desc t = function
     string_of_descs t (expand_nottag tfs 0 ls)
 
 and string_of_ldesc tfs (l, desc) =
-  l ^ " = " ^ string_of_desc (T.lookup_val_field l tfs) desc
+  "." ^ l ^ " = " ^ string_of_desc (T.lookup_val_field l tfs) desc
 
 and string_of_descs t descs =
   assert (descs <> []);

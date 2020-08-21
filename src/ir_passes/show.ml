@@ -200,6 +200,9 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
       define_show t (invoke_text_of_array t' (varE (show_var_for t')) (argE t)),
       [t']
     end
+  | T.Obj (T.Object, []) ->
+    define_show t (textE "{.}"),
+    []
   | T.Obj (T.Object, fs) ->
     define_show t (
       cat_list (list_build
@@ -207,7 +210,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
         (List.map (fun f ->
           let t' = T.as_immut (T.normalize f.Type.typ) in
           catE
-            (textE (f.Type.lab ^ " = "))
+            (textE ("." ^ f.Type.lab ^ " = "))
             (invoke_generated_show t' (dotE (argE t) f.Type.lab t'))
           ) fs
         )
