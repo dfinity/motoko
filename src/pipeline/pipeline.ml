@@ -683,6 +683,9 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
+let eq_translation =
+  transform_if "Translate polymorphic equality" Eq.transform
+
 let analyze analysis_name analysis prog name =
   phase analysis_name name;
   analysis prog;
@@ -694,6 +697,7 @@ let ir_passes mode prog_ir name =
   let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
   let prog_ir = tailcall_optimization true prog_ir name in
   let prog_ir = show_translation true prog_ir name in
+  let prog_ir = eq_translation true prog_ir name in
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
@@ -715,6 +719,7 @@ let combine_progs progs : Syntax.prog =
        ; note = (Lib.List.last progs).note
        }
 
+
 (* This turns the flat list of libs (some of which are classes)
    into a list of classes and libs *)
 let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
@@ -734,6 +739,27 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let name = u.Source.note in
   let prog_ir = desugar_unit true imports u name in
   let prog_ir = ir_passes mode prog_ir name in
+(* =======
+let lower_prog mode libs progs name =
+  let prog_ir = desugar libs progs name in
+  let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
+  let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
+  let prog_ir = tailcall_optimization true prog_ir name in
+  let prog_ir = show_translation true prog_ir name in
+  let prog_ir = eq_translation true prog_ir name in
+  analyze "constness analysis" Const.analyze prog_ir name;
+  prog_ir
+
+let lower_libs libs : Lowering.Desugar.import_declaration =
+  Lib.List.concat_map Lowering.Desugar.transform_lib libs
+
+let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
+  let prog = combine_progs progs in
+  let name = prog.Source.note in
+  let imports = lower_libs libs in
+  let prog_ir = lower_prog mode imports prog name in
+>>>>>>> master 
+*)
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prog_ir

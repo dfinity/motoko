@@ -941,6 +941,29 @@ and inhabited_field co tf = inhabited_typ co tf.typ
 
 and inhabited t : bool = inhabited_typ (ref S.empty) t
 
+let rec singleton_typ co t =
+  S.mem t !co || begin
+  co := S.add t !co;
+  match normalize t with
+  | Pre -> assert false
+  | Prim Null | Any -> true
+  | Tup ts -> List.for_all (singleton_typ co) ts
+  | Obj ((Object|Memory|Module), fs) -> List.for_all (singleton_field co) fs
+  | Variant [f] -> singleton_field co f
+
+  | Non -> false
+  | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
+  | Mut t' -> false
+  | Obj (_, _) -> false
+  | Variant _ -> false
+  | Var _ -> false
+  | Con _ -> false
+  end
+
+and singleton_field co tf = singleton_typ co tf.typ
+
+and singleton t : bool = singleton_typ (ref S.empty) t
+
 
 (* Least upper bound and greatest lower bound *)
 

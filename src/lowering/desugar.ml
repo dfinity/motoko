@@ -430,7 +430,11 @@ and dec' at n d = match d with
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local ->
+        if s.it = T.Actor then (* HACK: work around for issue #1847 (also below) *)
+          Some { it = S.WildP; at = no_region; note = T.ctxt }
+        else
+          None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -542,7 +546,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   but in the IR, parameters are bound first. So if there is a context pattern,
   we _must_ create fresh names for the parameters and bind the actual parameters
   inside the wrapper. *)
-  let must_wrap = po != None in
+  let must_wrap = po <> None in
 
   let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     match (pat_unannot p).it with
@@ -638,6 +642,7 @@ let initial_flavor : Ir.flavor =
   { I.has_await = true
   ; I.has_async_typ = true
   ; I.has_show = true
+  ; I.has_poly_eq = true
   ; I.serialized = false
   }
 
@@ -746,7 +751,9 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   | S.ActorClassU (sp, typ_id, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local ->
+        (* HACK: work around for issue #1847 (also above) *)
+        Some { it = S.WildP; at = no_region; note = T.ctxt }
       | T.Shared (_, p) -> Some p in
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
@@ -770,6 +777,17 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     | I.ActorE (ds, fs, u, t) -> I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
+(* =======
+let transform_prog (p : Syntax.prog) : Ir.prog  =
+  comp_unit p.it, I.full_flavor
+
+type import_declaration = Ir.dec list
+
+let transform_lib lib : import_declaration =
+  let f = lib.note in
+  let t = lib.it.note.Syntax.note_typ in
+  [ letD (var (id_of_full_path f) t) (exp lib.it) ]
+>>>>>>> master *)
 
 let transform_unit classes_are_separate (u : S.comp_unit) : Ir.prog  =
   let (imports, body) = u.it in

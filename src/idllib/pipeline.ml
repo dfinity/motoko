@@ -34,7 +34,7 @@ let parse_with lexer parser name =
     dump_prog !Flags.dump_parse prog;
     Ok prog
   with
-    | Lexer.Error (at, msg) ->
+    | Source.ParseError (at, msg) ->
       error at "syntax" msg
     | Parser.Error ->
       error (Lexer.region lexer) "syntax" "unexpected token"
