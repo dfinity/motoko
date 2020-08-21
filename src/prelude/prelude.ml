@@ -569,16 +569,11 @@ func caller() : Principal = (prim "caller" : () -> Principal) ();
 
 
 // Just for testing
-
-// That’s the only way to have blob literals at the moment
-func blobLit(url : Text) : Blob = blobOfPrincipal(principalOfActor(actor (url)));
-
 func installEmptyActor() : async actor {} = async {
-  debugPrint("(installEmptyActor");
-  let wasm_mod =  blobLit "drfth-tqamf-zw2ai-aaaaa"; //blobLit "ic:0061736D01000000DD";
-  let empty_arg = blobLit "aaaaa-aa"; //blobLit "ic:00";
+  let wasm_mod : Blob = "\00\61\73\6D\01\00\00\00";
+
+  let empty_arg : Blob = "";
   let principal = await @create_actor_helper(wasm_mod, empty_arg);
-  debugPrint("installEmptyActor)");
   ((prim "cast" : Principal -> actor {}) principal);
 }
 

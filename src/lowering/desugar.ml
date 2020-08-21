@@ -791,11 +791,10 @@ let import_unit classes_are_separate (u : S.comp_unit) : import_declaration =
     | I.ActorU (None, ds, fs, up, t) -> assert false
     | I.ActorU (Some as_, ds, fs, up, actor_t) ->
       let s, cntrl, tbs, ts1, ts2 = T.as_func t in
-      assert (tbs == []);
+      assert (tbs = []);
       let cs = T.open_binds [T.scope_bind] in
       let c, _ = T.as_con (List.hd cs) in
       let cs' = T.open_binds [T.scope_bind] in
-      let vs = List.map var_of_arg as_ in
       let c', _ = T.as_con (List.hd cs') in
       let body =
         asyncE
@@ -810,7 +809,7 @@ let import_unit classes_are_separate (u : S.comp_unit) : import_declaration =
       in
       { it = Ir.FuncE("", T.Local, T.Returns,
           [typ_arg c T.Scope T.scope_bound],
-          List.map arg_of_var vs,
+          as_,
           [T.Async (List.hd cs, actor_t)],
           body);
         at = no_region;
