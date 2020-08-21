@@ -2,6 +2,7 @@ import Prim "mo:prim";
 import C "class:class-import/empty";
 import One "class:class-import/one";
 import Two "class:class-import/two";
+import Trap "class:class-import/trap";
 
 actor a {
  public func go() : async () {
@@ -15,9 +16,25 @@ actor a {
     // test two arg class
     let two = await Two("one","two");
     await two.test();
+
+    // test non-trapping install
+    try {
+      let trap = await Trap(false);
+    }
+    catch _ {
+      assert false;
+    };
+
+    // test trapping install
+    try {
+      let trap = await Trap(true);
+      assert false;
+    }
+    catch _ {
+      Prim.debugPrint("caught trap");
+    };
+
   }
 };
-
-//SKIP run
 
 a.go() //OR-CALL ingress go "DIDL\x00\x00"
