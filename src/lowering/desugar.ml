@@ -166,15 +166,6 @@ and exp' at note = function
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
-(* MASTER
-  | S.ImportE (f, ir) ->
-    begin match !ir with
-    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp -> I.VarE (id_of_full_path fp)
-    | S.PrimPath -> I.VarE (id_of_full_path "@prim")
-    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
-    end
- *)
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and url e at =
@@ -777,17 +768,6 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     | I.ActorE (ds, fs, u, t) -> I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
-(* =======
-let transform_prog (p : Syntax.prog) : Ir.prog  =
-  comp_unit p.it, I.full_flavor
-
-type import_declaration = Ir.dec list
-
-let transform_lib lib : import_declaration =
-  let f = lib.note in
-  let t = lib.it.note.Syntax.note_typ in
-  [ letD (var (id_of_full_path f) t) (exp lib.it) ]
->>>>>>> master *)
 
 let transform_unit classes_are_separate (u : S.comp_unit) : Ir.prog  =
   let (imports, body) = u.it in
