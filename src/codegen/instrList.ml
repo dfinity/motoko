@@ -355,7 +355,9 @@ let rec dw_tag_open : dw_TAG -> t =
     | Type.(Prim Int16) -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
     | Type.(Prim (Word16|Nat16)) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
     | Type.(Prim Int32) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
-    | Type.(Prim (Word32|Nat32)) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
+    | Type.(Prim (Word32|Nat32)) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
+                                                          dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
+                                                          dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
     | Type.(Prim Int64) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Type.(Prim (Word64|Nat64)) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Type.Tup _ -> Location.local slot []
