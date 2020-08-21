@@ -567,14 +567,7 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 
 func caller() : Principal = (prim "caller" : () -> Principal) ();
 
-
-// Just for testing
-func installEmptyActor() : async actor {} = async {
-  let wasm_mod : Blob = "\00\61\73\6D\01\00\00\00";
-
-  let empty_arg : Blob = "";
-  let principal = await @create_actor_helper(wasm_mod, empty_arg);
-  ((prim "cast" : Principal -> actor {}) principal);
-}
+// Untyped dynamic actor creation from blobs
+let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
 |}

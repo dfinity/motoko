@@ -3,6 +3,6 @@
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
 ← completed: ()
 → update go()
-debug.print: Installing actor...
+debug.print: Installing actor:
 debug.print: ai7t5-aibaq-aaaaa-aaaaa-c
 ← completed: ()
