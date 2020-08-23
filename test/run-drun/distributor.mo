@@ -32,6 +32,7 @@ actor a {
     node
   };
 
+  // would be nice if these were both tail calls on the platform
   public func lookup(k : Key) : async ?Value {
     await (await node(k)).lookup(k);
   };
