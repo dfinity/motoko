@@ -357,52 +357,9 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
     | Syntax.Unresolved -> assert false
     | Syntax.LibPath f ->
-      if Type.Env.mem f !senv.Scope.lib_env then
-        Diag.return ()
-      else if mem ri.Source.it !pending then
-        Error [Diag.{
-          sev = Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s must not depend on itself" f
-        }]
-      else begin
-        pending := add ri.Source.it !pending;
-        let open Diag.Syntax in
-        let* prog, base = parsefn ri.Source.at f in
-        let* () = Static.prog prog in
-        let* more_imports =
-          ResolveImport.resolve (resolve_flags ()) prog base
-        in
-        let* () = go_set more_imports in
-        let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv lib in
-        libs := lib :: !libs; (* NB: Conceptually an append *)
-        senv := Scope.adjoin !senv sscope;
-        pending := remove ri.Source.it !pending;
-        Diag.return ()
-      end
+      go_lib ri f lib_of_prog check_lib
     | Syntax.ClassPath f ->
-      (* TODO: fix duplication with above *)
-      if Type.Env.mem f !senv.Scope.lib_env then
-        Diag.return ()
-      else if mem ri.Source.it !pending then
-        Error [{
-          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s must not depend on itself" f
-        }]
-      else begin
-        pending := add ri.Source.it !pending;
-        let open Diag.Syntax in
-        let* prog, base = parsefn ri.Source.at f in
-        let* () = Static.prog prog in
-        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-        let* () = go_set more_imports in
-        let lib = class_of_prog f prog in
-        let* sscope  =  check_class !senv lib in
-        libs := lib :: !libs; (* NB: Conceptually an append *)
-        senv := Scope.adjoin !senv sscope;
-        pending := remove ri.Source.it !pending;
-        Diag.return ()
-      end
+      go_lib ri f class_of_prog check_class
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
@@ -416,7 +373,29 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let sscope = Scope.lib f actor in
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
-
+  (* used for both classes and modules *)
+  and go_lib ri f lib_of_prog check_lib =
+    if Type.Env.mem f !senv.Scope.lib_env then
+      Diag.return ()
+    else if mem ri.Source.it !pending then
+      Error [{
+        Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+        text = Printf.sprintf "file %s must not depend on itself" f
+      }]
+    else begin
+      pending := add ri.Source.it !pending;
+      let open Diag.Syntax in
+      let* prog, base = parsefn ri.Source.at f in
+      let* () = Static.prog prog in
+      let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
+      let* () = go_set more_imports in
+      let lib = lib_of_prog f prog in
+      let* sscope  = check_lib !senv lib in
+      libs := lib :: !libs; (* NB: Conceptually an append *)
+      senv := Scope.adjoin !senv sscope;
+      pending := remove ri.Source.it !pending;
+      Diag.return ()
+    end
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
