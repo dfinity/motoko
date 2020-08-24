@@ -10,6 +10,20 @@ The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs froim the original code (possibly manually).
 *)
 
+open Dwarf5.Meta
+
+(* Utility predicates *)
+
+let rec is_dwarf_like' = function
+  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
+  | Grouped parts -> List.exists is_dwarf_like' parts
+  | _ -> false
+let is_dwarf_like = function
+  | Ast.Meta m -> is_dwarf_like' m
+  | _ -> false
+
+module Promise = Lib.Promise
+
 open CustomModule
 
 (* Version *)
@@ -58,16 +72,35 @@ let encode (em : extended_module) =
   let prev_il = ref 0 in
   let prev_ic = ref 0 in
 
-  let rec add_source x lst = match lst with
+  (* modify reference *)
+  let modif r f = r := f !r in
+
+  let rec add_source x = function (* FIXME: use add_string *)
     | [] ->
       sources := !sources @ [ x ];
       sourcesContent := !sourcesContent @ [ "" ];
       0
-    | h :: t -> if x = h then 0 else 1 + (add_source x t)
+    | h :: t -> if x = h then 0 else 1 + add_source x t
   in
 
   sources := !sources @ [ "prelude" ];
   sourcesContent := !sourcesContent @ [ Prelude.prelude ];
+
+  let add_string gen strings str = (* FIXME: perform suffix compression? *)
+    let strs = !strings in
+    match List.assoc_opt str strs with
+    | Some v -> v
+    | _ ->
+      let v = gen strs in
+      let strs' = (str, v) :: strs in strings := strs'; v
+  in
+
+  let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
+  let statement_positions = ref Instrs.empty in
+  let module Sequ = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
+  let sequence_bounds = ref Sequ.empty in
+
+  let code_section_start = ref 0 in
 
   let add_to_map file il ic ol oc =
     let il = il - 1 in
@@ -123,7 +156,8 @@ let encode (em : extended_module) =
     let name n = string (Wasm.Utf8.encode n)
     let list f xs = List.iter f xs
     let opt f xo = Option.iter f xo
-    let vec f xs = len (List.length xs); list f xs
+    let vec_by l f xs = l (List.length xs); list f xs
+    let vec f xs = vec_by len f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p
     let patch_gap32 p n =
@@ -186,10 +220,15 @@ let encode (em : extended_module) =
       | ValBlockType None -> vs7 (-0x40)
       | ValBlockType (Some t) -> value_type t
 
-    let rec instr e =
+    let rec instr noting e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
+      noting e;
+      let instr = instr noting in
 
       match e.it with
+      | Meta (StatementDelimiter left) ->
+        modif statement_positions (Instrs.add (pos s, left))
+      | Meta _ -> assert false
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
@@ -427,7 +466,7 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
 
     let const c =
-      list instr c.it; end_ ()
+      list (instr ignore) c.it; end_ ()
 
     (* Sections *)
 
@@ -525,17 +564,47 @@ let encode (em : extended_module) =
 
     let local (t, n) = len n; value_type t
 
+    let (here_dir, asset_dir) = (0, 1) (* reversed indices in dir_names, below *)
+    let source_names =
+      ref [ "prim", (Promise.make (), asset_dir)
+          ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
+    let dir_names = (* dito, but reversed: 6.2.4.1 Standard Content Descriptions *)
+      ref [ "<moc-asset>", (Promise.make (), asset_dir)
+          ; Filename.dirname "", (Promise.make (), here_dir) ]
+    let source_path_indices = ref (List.map (fun (p, (_, i)) -> p, i) !source_names)
+    let add_source_name =
+      let source_adder dir_index _ = Promise.make (), dir_index in
+      let add_source_path_index (_, _) = function
+        | "" -> assert false
+        | str ->
+          ignore (add_string (function [] -> assert false | (_, i) :: _ -> i + 1) source_path_indices str) in
+      function
+      | "" -> ()
+      | ("prelude" | "prim" | "rts.wasm") as asset ->
+        add_source_path_index (add_string (source_adder asset_dir) source_names asset) asset
+      | path ->
+        let dir, basename = Filename.(dirname path, basename path) in
+        let _, dir_index = add_string (function [] -> assert false | (_, (_, i)) :: _ -> Promise.make (), i + 1) dir_names dir in
+        let promise = add_string (source_adder dir_index) source_names basename in
+        add_source_path_index promise path
+
     let code f =
       let {locals; body; _} = f.it in
       let g = gap32 () in
       let p = pos s in
       vec local (compress locals);
-      list instr body;
+      let instr_notes = ref Instrs.empty in
+      let note i =
+        if not (is_dwarf_like i.it) then
+          (modif instr_notes (Instrs.add (pos s, i.at.left));
+           ignore (add_source_name i.at.left.file)
+          ) in
+      list (instr note) body;
       end_ ();
       patch_gap32 g (pos s - p)
 
     let code_section fs =
-      section 10 (vec code) fs (fs <> [])
+      section 10 (fun fs -> code_section_start := pos s; vec code fs) fs (fs <> [])
 
     (* Element section *)
     let segment dat seg =
@@ -574,6 +643,133 @@ let encode (em : extended_module) =
         (!Mo_config.Flags.debug_info &&
            (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> []))
 
+
+    let uleb128 n = vu64 (Int64.of_int n)
+    let sleb128 n = vs64 (Int64.of_int n)
+    let write16 = Buffer.add_int16_le s.buf
+    let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
+    let vec_uleb128 el = vec_by uleb128 el
+
+    let unit f =
+      let dw_gap32 () = let p = pos s in write32 0x0; p in
+      let dw_patch_gap32 p n =
+        let lsb i = Char.chr (i land 0xff) in
+        patch s p (lsb n);
+        patch s (p + 1) (lsb (n lsr 8));
+        patch s (p + 2) (lsb (n lsr 16));
+        patch s (p + 3) (lsb (n lsr 24)) in
+      let g = dw_gap32 () in (* unit_length *)
+      let p = pos s in
+      f g; dw_patch_gap32 g (pos s - p)
+
+
+    let debug_line_section fs =
+      let debug_line_section_body () =
+
+        unit(fun start ->
+            write16 0x0005;
+            u8 4;
+            u8 0; (* segment_selector_size *)
+            unit(fun _ ->
+                u8 1; (* min_inst_length *)
+                u8 1; (* max_ops_per_inst *)
+                u8 (if Dwarf5.Machine.default_is_stmt then 1 else 0); (* default_is_stmt *)
+                u8 0; (* line_base *)
+                u8 12; (* line_range *)
+                u8 13; (* opcode_base *)
+                (*
+standard_opcode_lengths[DW_LNS_copy] = 0
+standard_opcode_lengths[DW_LNS_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_advance_line] = 1
+standard_opcode_lengths[DW_LNS_set_file] = 1
+standard_opcode_lengths[DW_LNS_set_column] = 1
+standard_opcode_lengths[DW_LNS_negate_stmt] = 0
+standard_opcode_lengths[DW_LNS_set_basic_block] = 0
+standard_opcode_lengths[DW_LNS_const_add_pc] = 0
+standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
+standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
+standard_opcode_lengths[DW_LNS_set_isa] = 1
+                 *)
+                let open List in
+                iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
+
+                let format (l, f) = uleb128 l; uleb128 f in
+                let vec_format = vec_by u8 format in
+
+                (* directory_entry_format_count, directory_entry_formats *)
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp];
+
+                (* directories_count, directories *)
+                vec_uleb128 write32 (rev_map (fun (_, (p, _)) -> Promise.value p) !dir_names);
+
+                (* file_name_entry_format_count, file_name_entry_formats *)
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp; dw_LNCT_directory_index, dw_FORM_udata];
+
+                (* The first entry in the sequence is the primary source file whose file name exactly
+                   matches that given in the DW_AT_name attribute in the compilation unit debugging
+                   information entry. This is ensured by the heuristics, that the last noted source file
+                   will be placed at position 0 in the table *)
+                vec_uleb128
+                  (fun (pos, indx) -> write32 pos; uleb128 indx)
+                  (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
+            );
+
+            (* build the statement loc -> addr map *)
+            let statement_positions = !statement_positions in
+            let module StmtsAt = Map.Make (struct type t = Wasm.Source.pos let compare = compare end) in
+            let statements_at = StmtsAt.of_seq (Seq.map (fun (k, v) -> v, k) (Instrs.to_seq statement_positions)) in
+            let is_statement_at (addr, loc) =
+              match StmtsAt.find_opt loc statements_at with
+              | Some addr' when addr = addr' -> true
+              | _ -> false in
+
+            (* generate the line section *)
+            let code_start = !code_section_start in
+            let rel addr = addr - code_start in
+            let source_indices = !source_path_indices in
+
+            let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
+              let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
+              let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
+              rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
+
+            let joining (prg, state) state' : int list * Dwarf5.Machine.state =
+              (* FIXME: quadratic *)
+              prg @ Dwarf5.Machine.infer state state', state'
+            in
+
+            let sequence (sta, notes, en) =
+              let start, ending = rel sta, rel en in
+              (* Printf.printf "LINES::::  SEQUENCE start/END    ADDR: 0x%x - 0x%x\n" start ending;
+              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s(=%d):%d:%d)    %s\n" (rel addr) file List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
+               *)
+              let notes_seq = Instrs.to_seq notes in
+              (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* an instruction) *)
+              let start_state = let _, loc, d, (_, bb, pe, eb) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, pe, eb) in
+              let states_seq () =
+                let open Seq in
+                match map mapping notes_seq () with
+                | Cons ((a, _, _, _), _) when a = start -> failwith "at start already an instruction?"
+                | Cons ((a, l, d, (stm, bb, _, epi)), t) ->
+                  let start_state' = let a, _, d, f  = start_state in a, l, d, f in
+                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, false, epi)), t))
+                | Nil -> Cons (start_state, fun () -> Nil)
+              in
+
+              let prg, (addr, _, _, (stm, _, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
+              Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
+                        (dw_LNS_set_prologue_end :: prg (* FIXME: prologue_end should be after the locals *)
+                             @ [dw_LNS_advance_pc; ending - addr - 1]
+                             @ (if stm then [] else [dw_LNS_negate_stmt])
+                             @ [dw_LNS_set_epilogue_begin; dw_LNS_copy;
+                                dw_LNS_advance_pc; 1; dw_LNS_negate_stmt; - dw_LNE_end_sequence]))
+            in
+            Sequ.iter sequence !sequence_bounds
+        )
+      in
+      custom_section ".debug_line" debug_line_section_body () (fs <> [])
+
     (* Module *)
 
     let module_ (em : extended_module) =
@@ -596,6 +792,10 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      if !Mo_config.Flags.debug_info then
+        begin
+          debug_line_section m.funcs;
+        end
   end
   in E.module_ em;
 

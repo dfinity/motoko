@@ -116,7 +116,7 @@ and instr' =
   | Unary of unop                     (* unary numeric operator *)
   | Binary of binop                   (* binary numeric operator *)
   | Convert of cvtop                  (* conversion *)
-
+  | Meta of Dwarf5.Meta.die           (* debugging metadata *)
 
 (* Globals & Functions *)
 
