@@ -390,19 +390,18 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
           text = Printf.sprintf "file %s must not depend on itself" f
         }]
       else begin
-        (* TODO: rewrite using let* *)
         pending := add ri.Source.it !pending;
-        Diag.bind (parsefn ri.Source.at f) (fun (prog, base) ->
-        Diag.bind (Static.prog prog) (fun () ->
-        Diag.bind (ResolveImport.resolve (resolve_flags ()) prog base) (fun more_imports ->
-        Diag.bind (go_set more_imports) (fun () ->
+        let open Diag.Syntax in
+        let* prog, base = parsefn ri.Source.at f in
+        let* () = Static.prog prog in
+        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
+        let* () = go_set more_imports in
         let lib = class_of_prog f prog in
-        Diag.bind (check_class !senv lib) (fun sscope ->
+        let* sscope  =  check_class !senv lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
         Diag.return ()
-        )))))
       end
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
