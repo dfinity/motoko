@@ -768,7 +768,9 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             Sequ.iter sequence !sequence_bounds
         )
       in
-      custom_section ".debug_line" debug_line_section_body () (fs <> [])
+      custom_section ".debug_line" debug_line_section_body ()
+        (fs <> []
+        && List.for_all (fun (_, p) -> Promise.is_fulfilled (fst p)) !source_names)
 
     (* Module *)
 
