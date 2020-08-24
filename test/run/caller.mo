@@ -1,19 +1,19 @@
 import Prim "mo:prim";
 actor a {
 
-  public shared { caller = c } func getCaller() : async Principal {
-    return c;
+  public shared(c) func getCaller() : async Principal {
+    return c.caller;
   };
 
-  public shared query { caller = c } func getCallerHash() : async Word32 {
+  public shared query(.{ caller = c }) func getCallerHash() : async Word32 {
     Prim.hashBlob (Prim.blobOfPrincipal c);
   };
 
-  public shared query { caller = c } func getCallerSize() : async Nat {
+  public shared query(.{ caller = c }) func getCallerSize() : async Nat {
       (Prim.blobOfPrincipal c).size();
   };
 
-  public shared {caller} func c () : async () {
+  public shared(.{caller}) func c () : async () {
     let self1 = await getCaller();
     let self2 = await getCaller();
     assert caller != self1; // assuming this is an ingress message

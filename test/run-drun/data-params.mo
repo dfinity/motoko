@@ -56,8 +56,8 @@ actor a {
     await a.sendarray([10,11,12,13]);
     await a.sendopt(null);
     await a.sendopt(?14);
-    await a.sendrecord({x = 15; y = 16});
-    await a.sendrecord({x = 17; y = 18; z = 19});
+    await a.sendrecord(.{x = 15; y = 16});
+    await a.sendrecord(.{x = 17; y = 18; z = 19});
     await a.sendVariant(#foo 20);
     await a.sendVariant(#bar 20);
     await a.sendLabeled("Foo1: ");

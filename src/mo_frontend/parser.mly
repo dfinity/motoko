@@ -24,6 +24,11 @@ let positions_to_region position1 position2 =
     right = position_to_pos position2
   }
 
+let warn_deprecated_obj at =
+  Printf.fprintf stderr
+    "%s: warning, old object syntax is deprecated, use .{ } instead\n"
+    (Source.string_of_region at)
+
 let at (startpos, endpos) = positions_to_region startpos endpos
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
@@ -134,7 +139,7 @@ let rec normalize_let p e =
 %token EOF
 
 %token LET VAR
-%token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
+%token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY DOT_LCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
@@ -178,7 +183,7 @@ let rec normalize_let p e =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) text_like
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain deprecated_exp_nullary(ob)
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -197,25 +202,25 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body exp_field_list_unamb
+%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ> return_typ_nullary return_typ
 %type<Mo_def.Syntax.typ option> option(return_typ_nullary) option(return_typ)
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_param pat_nullary pat_bin
+%type<Mo_def.Syntax.pat> pat pat_un pat_param pat_nullary pat_bin deprecated_pat_nullary
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
 %type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
 %type<unit option> option(EQ)
-%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) exp_block exp_bin(ob) exp_bin(bl) exp(bl)
+%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) exp_block exp_bin(ob) exp_bin(bl) exp(bl) deprecated_exp_nullary(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
-%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar dec_field
-%type<Mo_def.Syntax.dec list> dec_list_unamb
+%type<Mo_def.Syntax.exp_field> exp_field deprecated_exp_field_unamb dec_field
+%type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
 %type<Mo_def.Syntax.case> catch case
-%type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
+%type<Mo_def.Syntax.dec list -> Source.region -> Mo_def.Syntax.exp'> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
@@ -227,6 +232,7 @@ let rec normalize_let p e =
 
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
+
 
 (* Helpers *)
 
@@ -289,6 +295,7 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
   | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+
 
 (* Paths *)
 
@@ -386,6 +393,7 @@ typ_bind :
   | x=id
     { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
 
+
 (* Expressions *)
 
 lit :
@@ -449,34 +457,31 @@ lit :
   | CATASSIGN { CatOp }
 
 
-(* Default {} to block or object, respectively *)
-bl : { fun ds -> BlockE(ds) }
-ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
-
-text_like :
-  | t=TEXT { LitE (ref (PreLit (t, Type.Text))) @? at $sloc }
-  | LPAR e=exp(bl) RPAR { e }
+exp_plain :
+  | l=lit
+    { LitE(ref l) @? at $sloc }
+  | LPAR es=seplist(exp(ob), COMMA) RPAR
+    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
 exp_nullary(B) :
-  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
-    { e ds @? at $sloc }
-  | LCURLY efs=exp_field_list_unamb RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
-  | LCURLY ds=dec_list_unamb RCURLY
-    { BlockE(ds) @? at $sloc }
+  | e=exp_plain
+    { e }
+/* Activate once deprecated object disambiguation is removed
+  | e=exp_block
+    { e }
+*/
   | x=id
     { VarE(x) @? at $sloc }
-  | l=lit
-    { LitE(ref l) @? at $sloc }
-  | LPAR es=seplist(exp(ob), COMMA) RPAR
-    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+  | DOT_LCURLY efs=seplist(exp_field, semicolon) RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
+  | e=deprecated_exp_nullary(B)
+    { e }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -510,7 +515,7 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | ACTOR e=text_like
+  | ACTOR e=exp_plain
     { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
@@ -609,22 +614,13 @@ catch :
   | CATCH p=pat_nullary e=exp(bl)
     { {pat = p; exp = e} @@ at $sloc }
 
-exp_field_nonvar :
+exp_field :
   | x=id EQ e=exp(ob)
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
       {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
-
-exp_field :
-  | ef=exp_field_nonvar { ef }
-  | d=dec_var { {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
-
-exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
-  | ef=exp_field_nonvar
-    { [ef] }
-  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
-    { ef::efs }
-  | d=dec_var semicolon efs=exp_field_list_unamb
-    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
+  | VAR x=id EQ e=exp(ob)
+    { let d = VarD(x, e) @? at $sloc in
+      {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
 
 dec_field :
   | v=vis s=stab d=dec
@@ -641,6 +637,7 @@ stab :
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
 
+
 (* Patterns *)
 
 pat_param :
@@ -656,8 +653,10 @@ pat_param :
 pat_nullary :
   | p=pat_param
     { p }
-  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+  | DOT_LCURLY fps=seplist(pat_field, semicolon) RCURLY
     { ObjP(fps) @! at $sloc }
+  | p=deprecated_pat_nullary
+    { p }
 
 pat_un :
   | p=pat_nullary
@@ -708,6 +707,7 @@ pat_opt :
   | (* Empty *)
     { fun sloc -> WildP @! sloc }
 
+
 (* Declarations *)
 
 dec_var :
@@ -754,18 +754,6 @@ dec :
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
 
-dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
-  | e=exp_nondec(ob)
-    { [ExpD e @? e.at] }
-  | d=dec_nonvar
-    { [d] }
-  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
-    { (ExpD e @? e.at) :: ds }
-  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
-    { d::ds }
-  | d=dec_var semicolon ds=dec_list_unamb
-    { d::ds }
-
 func_body :
   | EQ e=exp(bl) { (false, e) }
   | e=exp_block { (true, e) }
@@ -779,6 +767,7 @@ class_body :
 
 
 (* Programs *)
+
 imp :
   | IMPORT xf=id_opt EQ? f=TEXT
     { let _, x = xf "import" $sloc in
@@ -800,5 +789,55 @@ import_list :
 
 parse_module_header :
   | start import_list EOF {}
+
+
+(* Deprecated object syntax *)
+
+(* Default {} to block or object, respectively *)
+bl : { fun ds at -> BlockE(ds) }
+ob :
+  { fun ds at ->
+    warn_deprecated_obj at;
+    ObjE(Type.Object @@ at,
+      List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
+
+deprecated_exp_nullary(B) :
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
+    { e ds (at $sloc) @? at $sloc }
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
+    { warn_deprecated_obj (at $sloc);
+      ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
+  | LCURLY ds=deprecated_dec_list_unamb RCURLY
+    { BlockE(ds) @? at $sloc }
+
+deprecated_exp_field_unamb :
+  | x=id EQ e=exp(ob)
+    { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
+      {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
+
+deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
+  | ef=deprecated_exp_field_unamb
+    { [ef] }
+  | ef=deprecated_exp_field_unamb semicolon efs=seplist(exp_field, semicolon)
+    { ef::efs }
+  | d=dec_var semicolon efs=deprecated_exp_field_list_unamb
+    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
+
+deprecated_dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
+  | e=exp_nondec(ob)
+    { [ExpD e @? e.at] }
+  | d=dec_nonvar
+    { [d] }
+  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
+    { (ExpD e @? e.at) :: ds }
+  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
+    { d::ds }
+  | d=dec_var semicolon ds=deprecated_dec_list_unamb
+    { d::ds }
+
+deprecated_pat_nullary :
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { warn_deprecated_obj (at $sloc);
+      ObjP(fps) @! at $sloc }
 
 %%

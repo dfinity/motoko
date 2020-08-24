@@ -1,4 +1,4 @@
-pat-inconsistent.mo:6.31-6.44: warning, this pattern is never matched
+pat-inconsistent.mo:6.32-6.46: warning, this pattern is never matched
 pat-inconsistent.mo:7.34-7.50: warning, this pattern is never matched
 pat-inconsistent.mo:9.20-9.22: warning, this pattern is never matched
 pat-inconsistent.mo:10.20-10.24: warning, this pattern is never matched
@@ -41,7 +41,7 @@ left consumes
   Nat
 right consumes
   ()
-pat-inconsistent.mo:20.16-20.23: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:20.16-20.24: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
@@ -51,7 +51,7 @@ left consumes
   Nat
 right consumes
   Text
-pat-inconsistent.mo:22.16-22.46: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:22.16-22.48: type error, pattern branches have incompatible types,
 left consumes
   {a : Int}
 right consumes

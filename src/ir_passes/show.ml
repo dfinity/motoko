@@ -203,7 +203,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.Obj (T.Object, fs) ->
     define_show t (
       cat_list (list_build
-        (textE "{") (fun () -> textE "; ") (textE "}")
+        (textE ".{") (fun () -> textE "; ") (textE "}")
         (List.map (fun f ->
           let t' = T.as_immut (T.normalize f.Type.typ) in
           catE

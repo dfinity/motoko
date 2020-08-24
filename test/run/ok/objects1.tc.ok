@@ -1,5 +1,5 @@
-objects1.mo:23.3-23.26: warning, this case is never reached
-objects1.mo:24.3-24.14: warning, this case is never reached
+objects1.mo:23.3-23.27: warning, this case is never reached
+objects1.mo:24.3-24.15: warning, this case is never reached
 objects1.mo:33.23-36.2: warning, the cases in this switch over type
   {a : Int; b : Nat}
 do not cover value

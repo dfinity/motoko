@@ -12,6 +12,7 @@ type token =
   | RBRACKET
   | LCURLY
   | RCURLY
+  | DOT_LCURLY
   | AWAIT
   | ASYNC
   | BREAK
@@ -122,6 +123,7 @@ let to_parser_token :
   | RBRACKET -> Ok Parser.RBRACKET
   | LCURLY -> Ok Parser.LCURLY
   | RCURLY -> Ok Parser.RCURLY
+  | DOT_LCURLY -> Ok Parser.DOT_LCURLY
   | AWAIT -> Ok Parser.AWAIT
   | ASYNC -> Ok Parser.ASYNC
   | BREAK -> Ok Parser.BREAK
@@ -231,6 +233,7 @@ let string_of_parser_token = function
   | Parser.RBRACKET -> "RBRACKET"
   | Parser.LCURLY -> "LCURLY"
   | Parser.RCURLY -> "RCURLY"
+  | Parser.DOT_LCURLY -> "DOT_LCURLY"
   | Parser.AWAIT -> "AWAIT"
   | Parser.ASYNC -> "ASYNC"
   | Parser.BREAK -> "BREAK"

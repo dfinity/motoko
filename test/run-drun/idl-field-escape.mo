@@ -8,14 +8,14 @@ actor {
   };
 
   public query func out() : async R {
-    { _0_ = 0xFFFF;
+    .{ _0_ = 0xFFFF;
       _1_ = 0x1000;
       async_ = "XXX"
     }
   };
 
-  public query func foo1() : async {foo_ : ()} { { foo_ = () } };
-  public query func foo2() : async {foo : ()} { { foo = () } };
+  public query func foo1() : async {foo_ : ()} { .{ foo_ = () } };
+  public query func foo2() : async {foo : ()} { .{ foo = () } };
 
   public query func input(r : R) : async () {
   };

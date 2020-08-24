@@ -100,7 +100,7 @@ module {
   };
 
   func keyChar(char : Char) : Trie.Key<Char> {
-    { key = char; hash = Prim.charToWord32(char) };
+    .{ key = char; hash = Prim.charToWord32(char) };
   };
 
   func eqChar(a : Char, b : Char) : Bool {
