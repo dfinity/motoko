@@ -9,10 +9,7 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let dfinity-src =
-  let env = builtins.getEnv "DFINITY_SRC"; in
-  if env != "" then env else nixpkgs.sources.dfinity; in
-let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
+let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
 let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in

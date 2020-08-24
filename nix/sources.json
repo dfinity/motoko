@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "e4bf8183427cb47ddf7296629395d76491ce9ba7",
+        "rev": "8946146ccb69d95c1fc9bff137a70c591c947edf",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "a408ca38fbe0f5dbe70f2144d7bbf1dfb07ee3ee",
+        "rev": "7885cd5df3cdb7ba626fd3fdd0cbfa74c15d14b9",
         "type": "git"
     },
     "esm": {

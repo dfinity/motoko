@@ -188,6 +188,7 @@ type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
+  has_poly_eq : bool; (* Polymorphic equality *)
   serialized : bool; (* Shared function arguments are serialized *)
 }
 
@@ -195,6 +196,7 @@ let full_flavor : flavor = {
   has_await = true;
   has_async_typ = true;
   has_show = true;
+  has_poly_eq = true;
   serialized = false;
 }
 

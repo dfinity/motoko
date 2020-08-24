@@ -423,7 +423,11 @@ and dec' at n d = match d with
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local ->
+        if s.it = T.Actor then (* HACK: work around for issue #1847 *)
+          Some { it = S.WildP; at = no_region; note = T.ctxt }
+        else
+          None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -649,12 +653,7 @@ and comp_unit ds : Ir.comp_unit =
   find_last_expr (block false ds)
 
 let transform_prog (p : Syntax.prog) : Ir.prog  =
-  comp_unit p.it
-  , { I.has_await = true
-    ; I.has_async_typ = true
-    ; I.has_show = true
-    ; I.serialized = false
-    }
+  comp_unit p.it, I.full_flavor
 
 type import_declaration = Ir.dec list
 

@@ -3475,15 +3475,9 @@ module Dfinity = struct
 
   (* Actor reference on the stack *)
   let actor_public_field env name =
-    match E.mode env with
-    | Flags.(ICMode | RefMode) ->
-      (* simply tuple canister name and function name *)
-      Blob.lit env name ^^
-      Tuple.from_stack env 2
-    | Flags.WasmMode ->
-      E.trap_with env (Printf.sprintf "cannot access actor with -no-system-api")
-    | Flags.WASIMode ->
-      E.trap_with env (Printf.sprintf "cannot access actor with -wasi-system-api")
+    (* simply tuple canister name and function name *)
+    Blob.lit env name ^^
+    Tuple.from_stack env 2
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
@@ -5165,6 +5159,8 @@ module StackRep = struct
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
     | Prim (Text | Blob | Principal) -> Vanilla
     | Prim Float -> UnboxedFloat64
+    | Obj (Actor, _) -> Vanilla
+    | Func (Shared _, _, _, _, _) -> Vanilla
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -5805,6 +5801,23 @@ module FuncDec = struct
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
+
+let equate_msgref env =
+      let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
+      let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
+      set_meth_pair2 ^^ set_meth_pair1 ^^
+      get_meth_pair1 ^^ Arr.load_field 0l ^^
+      get_meth_pair2 ^^ Arr.load_field 0l ^^
+      Blob.compare env Operator.EqOp ^^
+      G.if_ [I32Type]
+      begin
+        get_meth_pair1 ^^ Arr.load_field 1l ^^
+        get_meth_pair2 ^^ Arr.load_field 1l ^^
+        Blob.compare env Operator.EqOp
+      end
+      begin
+        Bool.lit false
+      end
 
   let export_async_method env =
     let name = Dfinity.async_method_name in
@@ -6677,17 +6690,20 @@ let compile_binop env t op =
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
-let compile_eq env = function
-  | Type.(Prim Text) -> Text.compare env Operator.EqOp
-  | Type.(Prim (Blob|Principal)) -> Blob.compare env Operator.EqOp
-  | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
-  | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
+let compile_eq env =
+  let open Type in
+  function
+  | Prim Text -> Text.compare env Operator.EqOp
+  | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env Operator.EqOp
+  | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
+  | Prim Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Prim (Nat | Int) -> BigNum.compile_eq env
+  | Prim (Int64 | Nat64 | Word64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.Non -> G.i Unreachable
-  | Type.(Prim Float) -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
-  | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
+  | Non -> G.i Unreachable
+  | Prim Float -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
+  | t -> todo_trap env "compile_eq" (Arrange_type.typ t)
 
 let get_relops = Operator.(function
   | GeOp -> Ge, I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
