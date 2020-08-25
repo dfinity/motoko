@@ -97,8 +97,8 @@ let encode (em : extended_module) =
 
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
   let statement_positions = ref Instrs.empty in
-  let module Sequ = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
-  let sequence_bounds = ref Sequ.empty in
+  let module DW_Sequence = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
+  let sequence_bounds = ref DW_Sequence.empty in
 
   let code_section_start = ref 0 in
 
@@ -662,6 +662,8 @@ let encode (em : extended_module) =
       let p = pos s in
       f g; dw_patch_gap32 g (pos s - p)
 
+    (* Debug strings for line machine section *)
+
     let debug_line_str_section () =
       let debug_line_strings_section_body (dirs, sources) =
         let start = pos s in
@@ -674,6 +676,8 @@ let encode (em : extended_module) =
         strings dirs;
         strings sources in
       custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
+
+    (* Debug line machine section *)
 
     let debug_line_section fs =
       let debug_line_section_body () =
@@ -689,21 +693,8 @@ let encode (em : extended_module) =
                 u8 0; (* line_base *)
                 u8 12; (* line_range *)
                 u8 13; (* opcode_base *)
-                (*
-standard_opcode_lengths[DW_LNS_copy] = 0
-standard_opcode_lengths[DW_LNS_advance_pc] = 1
-standard_opcode_lengths[DW_LNS_advance_line] = 1
-standard_opcode_lengths[DW_LNS_set_file] = 1
-standard_opcode_lengths[DW_LNS_set_column] = 1
-standard_opcode_lengths[DW_LNS_negate_stmt] = 0
-standard_opcode_lengths[DW_LNS_set_basic_block] = 0
-standard_opcode_lengths[DW_LNS_const_add_pc] = 0
-standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
-standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
-standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
-standard_opcode_lengths[DW_LNS_set_isa] = 1
-                 *)
                 let open List in
+                (* DW_LNS_copy .. DW_LNS_set_isa usage *)
                 iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
 
                 let format (l, f) = uleb128 l; uleb128 f in
@@ -753,9 +744,6 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
-              (* Printf.printf "LINES::::  SEQUENCE start/END    ADDR: 0x%x - 0x%x\n" start ending;
-              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s(=%d):%d:%d)    %s\n" (rel addr) file List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
-               *)
               let notes_seq = Instrs.to_seq notes in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* an instruction) *)
               let start_state = let _, loc, d, (_, bb, pe, eb) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, pe, eb) in
@@ -771,13 +759,13 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
               let prg, (addr, _, _, (stm, _, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (dw_LNS_set_prologue_end :: prg (* FIXME: prologue_end should be after the locals *)
+                        (dw_LNS_set_prologue_end :: prg (* FIXME: prologue_end should come after the locals *)
                              @ [dw_LNS_advance_pc; ending - addr - 1]
                              @ (if stm then [] else [dw_LNS_negate_stmt])
                              @ [dw_LNS_set_epilogue_begin; dw_LNS_copy;
                                 dw_LNS_advance_pc; 1; dw_LNS_negate_stmt; - dw_LNE_end_sequence]))
             in
-            Sequ.iter sequence !sequence_bounds
+            DW_Sequence.iter sequence !sequence_bounds
         )
       in
       custom_section ".debug_line" debug_line_section_body () (fs <> [])
