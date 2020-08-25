@@ -566,7 +566,8 @@ let encode (em : extended_module) =
 
     let (here_dir, asset_dir) = (0, 1) (* reversed indices in dir_names, below *)
     let source_names =
-      ref [ "prim", (Promise.make (), asset_dir)
+      ref [ "prelude", (Promise.make (), asset_dir)
+          ; "prim", (Promise.make (), asset_dir)
           ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
     let dir_names = (* dito, but reversed: 6.2.4.1 Standard Content Descriptions *)
       ref [ "<moc-asset>", (Promise.make (), asset_dir)
