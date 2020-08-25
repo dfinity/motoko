@@ -643,11 +643,11 @@ let encode (em : extended_module) =
         (!Mo_config.Flags.debug_info &&
            (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> []))
 
-
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
     let write16 = Buffer.add_int16_le s.buf
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
+    let zero_terminated str = put_string s str; u8 0
     let vec_uleb128 el = vec_by uleb128 el
 
     let unit f =
@@ -662,6 +662,18 @@ let encode (em : extended_module) =
       let p = pos s in
       f g; dw_patch_gap32 g (pos s - p)
 
+    let debug_line_str_section () =
+      let debug_line_strings_section_body (dirs, sources) =
+        let start = pos s in
+        let rec strings = function
+          | [] -> ()
+          | (h, (p, _)) :: t ->
+            Promise.fulfill p (pos s - start);
+            zero_terminated h;
+            strings t in
+        strings dirs;
+        strings sources in
+      custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
 
     let debug_line_section fs =
       let debug_line_section_body () =
@@ -768,9 +780,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             Sequ.iter sequence !sequence_bounds
         )
       in
-      custom_section ".debug_line" debug_line_section_body ()
-        (fs <> []
-        && List.for_all (fun (_, p) -> Promise.is_fulfilled (fst p)) !source_names)
+      custom_section ".debug_line" debug_line_section_body () (fs <> [])
 
     (* Module *)
 
@@ -796,6 +806,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       name_section em.name;
       if !Mo_config.Flags.debug_info then
         begin
+          debug_line_str_section ();
           debug_line_section m.funcs;
         end
   end
