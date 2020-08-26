@@ -350,6 +350,7 @@ let rec dw_tag_open : dw_TAG -> t =
   let loc slot = function
     | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
     | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
+    | Type.(Prim Text) -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
     | Type.(Prim Int8) -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
     | Type.(Prim (Word8|Nat8)) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
     | Type.(Prim Int16) -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
@@ -367,7 +368,7 @@ let rec dw_tag_open : dw_TAG -> t =
     let base_types =
       dw_prim_type Type.Bool ^^
       dw_prim_type Type.Char ^^
-        (*dw_prim_type Type.Text ^^*)
+      dw_prim_type Type.Text ^^
       dw_prim_type Type.Word8 ^^
       dw_prim_type Type.Nat8 ^^
       dw_prim_type Type.Int8 ^^
@@ -488,6 +489,9 @@ and dw_prim_type_ref (prim : Type.prim) =
         dw_tag_close ^^ (* closing dw_TAG_variant_part *)
         dw_tag_close,  (* closing dw_TAG_structure_type *)
         struct_ref
+      | Type.Text ->
+        referencable_meta_tag dw_TAG_base_type
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
       | Type.(Int8|Int16|Int32) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
