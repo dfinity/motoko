@@ -82,7 +82,7 @@ class Grid((#v1 state) : State) {
 
 actor Life {
 
-  stable var state : State =
+  /* stable*/ var state : State =
     { let n = 32;
       #v1 (
       	 P.Array_tabulate<[Cell]>(n,
@@ -96,6 +96,8 @@ actor Life {
   func update(c : Nat) {
     var i = c;
     while (i > 0) {
+      P.debugPrint("update "# debug_show i);
+      P.debugPrint(src.toText());
       src.next(dst);
       let temp = src;
       src := dst;
@@ -113,6 +115,7 @@ actor Life {
   };
 
   public func advance(n : Nat) : async () {
+    P.debugPrint("advance "# debug_show n);
     update(n);
   };
 

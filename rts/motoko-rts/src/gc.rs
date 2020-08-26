@@ -408,12 +408,13 @@ pub unsafe extern "C" fn collect() {
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp);
 
+/*
     // Reset scratch space (for debugging purposes)
     memset(
         new_hp,
         bytes_to_words(Bytes((end_to_space - new_hp) as u32)),
         0,
     );
-
-    crate::debug::dump_heap(); // TODO (osa): The test 'life' fails if I remove this line?!?!?!
+*/
+//    crate::debug::dump_heap(); // TODO (osa): The test 'life' fails if I remove this line?!?!?!
 }
