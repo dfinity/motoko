@@ -550,40 +550,6 @@ let default_flags = default_is_stmt, false, false, false
 (* Table 6.4: Line number program initial state *)
 let start_state = 0, default_loc, 0, default_flags
 
-let interpret (out : state -> unit) : int list -> state -> state =
-  function
-  | c :: t when dw_LNS_copy = c ->
-    fun ((op, loc, disc, (s, _, _, _)) as st) ->
-    out st; (op, loc, 0, (s, false, false, false))
-  | c :: offs :: t when dw_LNS_advance_pc = c ->
-    fun (op, loc, disc, flags) -> (op + offs, loc, disc, flags)
-  | c :: offs :: t when dw_LNS_advance_line = c ->
-    fun (op, (line, col, file), disc, flags) -> (op, (line + offs, col, file), disc, flags)
-  | c :: file :: t when dw_LNS_set_file = c ->
-    fun (op, (line, col, _), disc, flags) -> (op, (line, col, file), disc, flags)
-  | c :: col :: t when dw_LNS_set_column = c ->
-    fun (op, (line, _, file), disc, flags) -> (op, (line, col, file), disc, flags)
-  | c :: t when dw_LNS_negate_stmt = c ->
-    fun (op, loc, disc, (s, bb, pe, eb)) -> (op, loc, disc, (not s, bb, pe, eb))
-  | c :: t when dw_LNS_set_basic_block = c ->
-    fun (op, loc, disc, (s, _, pe, eb)) -> (op, loc, disc, (s, true, pe, eb))
-(* dw_LNS_const_add_pc, dw_LNS_fixed_advance_pc NOT YET *)
-  | c :: t when dw_LNS_set_prologue_end = c ->
-    fun (op, loc, disc, (s, bb, _, eb)) -> (op, loc, disc, (s, bb, true, eb))
-  | c :: t when dw_LNS_set_epilogue_begin = c ->
-    fun (op, loc, disc, (s, bb, pe, _)) -> (op, loc, disc, (s, bb, pe, true))
-
-  | [c] when dw_LNE_end_sequence = c -> (* FIXME: model end_sequence *)
-    fun ((op, _, disc, _) as st) ->
-    out st; start_state
-
-  | c :: op :: t when - dw_LNE_set_address = c ->
-    fun (_, loc, disc, flags) -> (op, loc, disc, flags)
-  | c :: disc :: t when - dw_LNE_set_discriminator = c ->
-    fun (op, loc, _, flags) -> (op, loc, disc, flags)
-
-  | prg -> failwith "invalid program"
-
 
 
 
