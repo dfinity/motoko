@@ -579,7 +579,12 @@ let rec infer from toward = match from, toward with
   | _ -> failwith "not covered"
 
 
-let moves u8 uleb sleb u32 =
+(* Given a few formatted outputter functions, dump the contents
+   of a line program (essentially a list of `DW_LNS_*` opcodes with
+   arguments). The bottleneck functions are expected to close over
+   the output buffer/stream.
+*)
+let moves u8 uleb sleb u32 : int list -> unit =
   let standard lns = u8 lns in
   let extended1 lne = u8 0; u8 1; u8 (- lne) in
   let extended5 lne = u8 0; u8 5; u8 (- lne) in
