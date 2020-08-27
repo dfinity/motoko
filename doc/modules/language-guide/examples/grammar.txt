@@ -130,20 +130,19 @@
     '<>>='
     '@='
 
-<text_like> ::= 
-    <text>
-    '(' <exp> ')'
-
 <exp_block> ::= 
     '{' <list(<dec>, ';')> '}'
 
+<exp_plain> ::= 
+    <lit>
+    '(' <list(<exp>, ',')> ')'
+
 <exp_nullary> ::= 
+    <exp_plain>
     '{' <list(<dec_var>, ';')> '}'
     '{' <exp_field_list_unamb> '}'
     '{' <dec_list_unamb> '}'
     <id>
-    <lit>
-    '(' <list(<exp>, ',')> ')'
 
 <exp_post> ::= 
     <exp_nullary>
@@ -160,7 +159,7 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    'actor' <text_like>
+    'actor' <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
 

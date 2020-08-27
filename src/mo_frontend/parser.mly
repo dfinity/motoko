@@ -193,7 +193,7 @@ let rec normalize_let p e =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) text_like
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -477,15 +477,19 @@ ob : { fun ds at ->
          ) ds ([], [])
        in obj ds' ds at }
 
-text_like :
-  | t=TEXT { LitE (ref (PreLit (t, Type.Text))) @? at $sloc }
-  | LPAR e=exp(bl) RPAR { e }
-
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
+exp_plain :
+  | l=lit
+    { LitE(ref l) @? at $sloc }
+  | LPAR es=seplist(exp(ob), COMMA) RPAR
+    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+
 exp_nullary(B) :
+  | e=exp_plain
+    { e }
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
     { e ds (at $sloc) @? at $sloc }
   | LCURLY efs=exp_field_list_unamb RCURLY
@@ -494,10 +498,6 @@ exp_nullary(B) :
     { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
-  | l=lit
-    { LitE(ref l) @? at $sloc }
-  | LPAR es=seplist(exp(ob), COMMA) RPAR
-    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
 
@@ -533,7 +533,7 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | ACTOR e=text_like
+  | ACTOR e=exp_plain
     { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
