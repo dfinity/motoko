@@ -544,7 +544,29 @@ let line_range = 7
 let opcode_base = dw_LNS_set_isa
 
 type state = int * (int * int * int) * int * (bool * bool * bool * bool)
-(*                file, line, col *)
+(*           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                line machine state
+             ^^^    ^^^^^^^^^^^^^^^    ^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^
+             ip         loc        discriminator       flags
+                    ^^^   ^^^   ^^^           ^^^^   ^^^^   ^^^^   ^^^^
+                    file  line  col           stmt    bb    prolog epilog
+                                              begin  begin   end   begin
+Legend:
+-------
+ip: instruction pointer (Wasm bytecode offset in CODE section)
+loc: source location, file encoded as an index
+discriminator: instance of inlined code fragment (not relevant yet)
+flags: actionable (by debugger) bits of information (regarding stopping)
+stmt: statement
+bb: basic block
+
+See "6.2 Line Number Information" for details.
+
+We choose a compact (nested tuple as opposed to named fields in record)
+representation of machine state, to minimise the verbosity in the algorithms
+that dispatch on them. Instead we rely on the naming of the components (where
+relevant).
+*)
 let default_loc = 1, 1, 0
 let default_flags = default_is_stmt, false, false, false
 (* Table 6.4: Line number program initial state *)
