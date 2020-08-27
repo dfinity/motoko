@@ -551,8 +551,12 @@ let default_flags = default_is_stmt, false, false, false
 let start_state = 0, default_loc, 0, default_flags
 
 
-
-
+(* Infers a list of opcodes for the line number program
+   ("6.2.5 The Line Number Program") that, when run, would
+   transition the machine from a certain intermediate state
+   to a following state. This is intended to be used in a loop
+   (fold) to obtain all the opcodes for a list of states.
+*)
 let rec infer from toward = match from, toward with
   | (f, _, _, _), (t, _, _, _) when t < f -> failwith "can't go backwards"
   | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
