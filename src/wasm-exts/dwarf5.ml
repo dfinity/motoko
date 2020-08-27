@@ -608,7 +608,10 @@ end
 
 module Location =
 struct
-(*
+(* Wasm extensions for DWARF expressions are currently defined
+
+in https://yurydelendik.github.io/webassembly-dwarf/#DWARF-expressions-and-location-descriptions
+
 DW_OP_WASM_location := 0xED ;; available DWARF extension code
 
 wasm-op := wasm-local | wasm-global | wasm-operand-stack
@@ -616,23 +619,27 @@ wasm-op := wasm-local | wasm-global | wasm-operand-stack
 wasm-local := 0x00 i:uleb128
 wasm-global := 0x01 i:uleb128
 wasm-operand-stack := 0x02
- *)
+*)
 
-(* Difference-lists-based builder *)
+(* Difference-lists-based builder for location programs
+   ("2.5 DWARF Expressions") consisting from `DW_OP_*` opcodes
+   and their arguments. Since the final output is bytecode
+   (i.e. list of 0..255), we use the convention that negative
+   integers (`-i`) in the list externalise as ULEB128-encoded
+   bytes  of `i`.
+*)
 
-type t = int list -> int list
-
-let local slot rest =
+let local slot (rest : int list) : int list =
   dw_OP_WASM_location :: 0x00 :: -slot :: rest
-(*
+
+(* below two expressions are not supported yet *)
+
 let global slot rest =
-  let dw_OP_WASM_global = dw_OP_WASM_location lor (0x01 lsl 8) in
-  dw_OP_WASM_global slot :: rest
+  dw_OP_WASM_location :: 0x01 :: -slot :: rest
 
 let operand_stack slot rest =
-  let dw_OP_WASM_stack = dw_OP_WASM_location lor (0x02 lsl 8) in
-  dw_OP_WASM_stack slot :: rest
- *)
+  dw_OP_WASM_location :: 0x02 :: -slot :: rest
+
 end
 
 
