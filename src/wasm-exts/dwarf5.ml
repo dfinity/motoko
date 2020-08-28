@@ -597,9 +597,15 @@ let rec infer from toward = match from, toward with
   | (_, _, _, (s, bb, im)), (t, loc, disc, (s', bb', im')) when s <> s' ->
     dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, im)) (t, loc, disc, (s', bb', im'))
   | (_, _, _, (_, bb, im)), (t, loc, disc, (s', bb', im')) when bb <> bb' -> failwith "cannot do bb yet"
+
+  | state, state' when state = state' -> [dw_LNS_copy]
+
   | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Regular)) ->
     dw_LNS_set_prologue_end :: infer (t, loc, disc, (s', bb', Regular)) (t, loc, disc, (s', bb', Regular))
-  | state, state' when state = state' -> [dw_LNS_copy]
+  | (_, _, _, (_, _, Regular)), (t, loc, disc, (s', bb', Epilogue)) ->
+    dw_LNS_set_epilogue_begin :: infer (t, loc, disc, (s', bb', Epilogue)) (t, loc, disc, (s', bb', Epilogue))
+  | (_, _, _, (_, _, im)), (t, loc, disc, (s', bb', Epilogue)) -> failwith "DOUBLE JUMP";
+    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer (t, loc, disc, (s', bb', Epilogue)) (t, loc, disc, (s', bb', Epilogue))
   | _ -> failwith "not covered"
 
 
