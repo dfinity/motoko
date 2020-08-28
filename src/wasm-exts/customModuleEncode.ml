@@ -137,8 +137,8 @@ let encode (em : extended_module) =
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
   let statement_positions = ref Instrs.empty in
 
-  let module Sequ = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
-  let sequence_bounds = ref Sequ.empty in
+  let module DW_Sequence = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
+  let sequence_bounds = ref DW_Sequence.empty in
 
   let dwarf_tags = ref [Tag (None, 0, [])] in
 
@@ -702,7 +702,8 @@ let encode (em : extended_module) =
 
     let (here_dir, asset_dir) = (0, 1) (* reversed indices in dir_names, below *)
     let source_names =
-      ref [ "prim", (Promise.make (), asset_dir)
+      ref [ "prelude", (Promise.make (), asset_dir)
+          ; "prim", (Promise.make (), asset_dir)
           ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
     let dir_names = (* dito, but reversed: 6.2.4.1 Standard Content Descriptions *)
       ref [ "<moc-asset>", (Promise.make (), asset_dir)
@@ -736,11 +737,13 @@ let encode (em : extended_module) =
            ignore (add_source_name i.at.left.file)
           ) in
       list (instr note) body;
+      modif instr_notes (Instrs.add (pos s, f.at.right));
+      ignore (add_source_name f.at.right.file);
       end_ ();
       sequence_number := 1 + !sequence_number;
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
-      modif sequence_bounds (Sequ.add (p, !instr_notes, sequence_end))
+      modif sequence_bounds (DW_Sequence.add (p, !instr_notes, sequence_end))
 
     let code_section fs =
       section 10 (fun fs -> code_section_start := pos s; vec code fs) fs (fs <> [])
@@ -963,10 +966,10 @@ let encode (em : extended_module) =
               let rel addr = addr - !code_section_start in
               write32 (rel st)
             in
-            Sequ.iter write_addr seqs;
+            DW_Sequence.iter write_addr seqs;
         )
       in
-      custom_section ".debug_addr" debug_addr_section_body seqs (not (Sequ.is_empty seqs))
+      custom_section ".debug_addr" debug_addr_section_body seqs (not (DW_Sequence.is_empty seqs))
 
 
     (* 7.28 Range List Table *)
@@ -980,7 +983,7 @@ let encode (em : extended_module) =
             write32 0; (* offset_entry_count *)
 
             Promise.fulfill rangelists (pos s - start);
-            Sequ.iter (fun (st, _, en) ->
+            DW_Sequence.iter (fun (st, _, en) ->
                 u8 Dwarf5.dw_RLE_startx_length;
                 uleb128 !index;
                 index := !index + 1;
@@ -989,11 +992,13 @@ let encode (em : extended_module) =
             u8 Dwarf5.dw_RLE_end_of_list;
 
             (* extract the subprogram sizes to an array *)
-            Promise.fulfill subprogram_sizes (Array.of_seq (Seq.map (fun (st, _, en) -> en - st) (Sequ.to_seq sequence_bounds)))
+            Promise.fulfill subprogram_sizes (Array.of_seq (Seq.map (fun (st, _, en) -> en - st) (DW_Sequence.to_seq sequence_bounds)))
         );
 
         in
       custom_section ".debug_rnglists" debug_rnglists_section_body () true
+
+    (* Debug strings for line machine section *)
 
     let debug_line_str_section () =
       let debug_line_strings_section_body (dirs, sources) =
@@ -1007,6 +1012,8 @@ let encode (em : extended_module) =
         strings dirs;
         strings sources in
       custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
+
+    (* Debug line machine section *)
 
     let debug_line_section fs =
       let debug_line_section_body () =
@@ -1022,21 +1029,8 @@ let encode (em : extended_module) =
                 u8 0; (* line_base *)
                 u8 12; (* line_range *)
                 u8 13; (* opcode_base *)
-                (*
-standard_opcode_lengths[DW_LNS_copy] = 0
-standard_opcode_lengths[DW_LNS_advance_pc] = 1
-standard_opcode_lengths[DW_LNS_advance_line] = 1
-standard_opcode_lengths[DW_LNS_set_file] = 1
-standard_opcode_lengths[DW_LNS_set_column] = 1
-standard_opcode_lengths[DW_LNS_negate_stmt] = 0
-standard_opcode_lengths[DW_LNS_set_basic_block] = 0
-standard_opcode_lengths[DW_LNS_const_add_pc] = 0
-standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
-standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
-standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
-standard_opcode_lengths[DW_LNS_set_isa] = 1
-                 *)
                 let open List in
+                (* DW_LNS_copy .. DW_LNS_set_isa usage *)
                 iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
 
                 let format (l, f) = uleb128 l; uleb128 f in
@@ -1074,10 +1068,12 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let rel addr = addr - code_start in
             let source_indices = !source_path_indices in
 
-            let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
+            let mapping epi (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
-              rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
+              let addr' = rel addr in
+              addr', (file', line, column + 1), 0, Dwarf5.Machine.(stmt, false, if addr' = epi then Epilogue else Regular)
+            in
 
             let joining (prg, state) state' : int list * Dwarf5.Machine.state =
               (* FIXME: quadratic *)
@@ -1086,31 +1082,29 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
-              (* Printf.printf "LINES::::  SEQUENCE start/END    ADDR: 0x%x - 0x%x\n" start ending;
-              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s(=%d):%d:%d)    %s\n" (rel addr) file List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
-               *)
               let notes_seq = Instrs.to_seq notes in
-              (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* an instruction) *)
-              let start_state = let _, loc, d, (_, bb, pe, eb) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, pe, eb) in
+              (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* a statement) *)
+              let start_state = let _, loc, d, (_, bb, im) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, im) in
               let states_seq () =
                 let open Seq in
-                match map mapping notes_seq () with
+                match map (mapping (ending - 1)) notes_seq () with
+                | Nil -> failwith "there should be an 'end' instruction!"
                 | Cons ((a, _, _, _), _) when a = start -> failwith "at start already an instruction?"
-                | Cons ((a, l, d, (stm, bb, _, epi)), t) ->
-                  let start_state' = let a, _, d, f  = start_state in a, l, d, f in
-                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, false, epi)), t))
-                | Nil -> Cons (start_state, fun () -> Nil)
+                | Cons ((a, l, d, (stm, bb, im)), t) ->
+                  (* override default location from `start_state` *)
+                  let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  (* FIXME (4.11) use `cons` *)
+                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, im)), t))
               in
 
-              let prg, (addr, _, _, (stm, _, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
+              let prg, (addr, _, _, (stm, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (dw_LNS_set_prologue_end :: prg (* FIXME: prologue_end should be after the locals *)
-                             @ [dw_LNS_advance_pc; ending - addr - 1]
-                             @ (if stm then [] else [dw_LNS_negate_stmt])
-                             @ [dw_LNS_set_epilogue_begin; dw_LNS_copy;
-                                dw_LNS_advance_pc; 1; dw_LNS_negate_stmt; - dw_LNE_end_sequence]))
+                        (prg
+                         @ [dw_LNS_advance_pc; 1]
+                         @ (if stm then [dw_LNS_negate_stmt] else [])
+                         @ [- dw_LNE_end_sequence]))
             in
-            Sequ.iter sequence !sequence_bounds
+            DW_Sequence.iter sequence !sequence_bounds
         )
       in
       custom_section ".debug_line" debug_line_section_body () (fs <> [])

@@ -543,50 +543,44 @@ let line_base = 0
 let line_range = 7
 let opcode_base = dw_LNS_set_isa
 
-type state = int * (int * int * int) * int * (bool * bool * bool * bool)
-(*                file, line, col *)
+type instr_mode = Regular | Prologue | Epilogue
+
+type state = int * (int * int * int) * int * (bool * bool * instr_mode)
+(*           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                line machine state
+             ^^^    ^^^^^^^^^^^^^^^    ^^^    ^^^^^^^^^^^^^^^^^^^^^^^^
+             ip         loc        discriminator       flags
+                    ^^^   ^^^   ^^^           ^^^^   ^^^^   ^^^^^^^^^^
+                    file  line  col           stmt    bb    prolog/epilog/regular
+                                              begin  begin
+Legend:
+-------
+ip: instruction pointer (Wasm bytecode offset in CODE section)
+loc: source location, file encoded as an index
+discriminator: instance of inlined code fragment (not relevant yet)
+flags: actionable (by debugger) bits of information (regarding stopping)
+stmt: statement
+bb: basic block
+
+See "6.2 Line Number Information" for details.
+
+We choose a compact (nested tuple as opposed to named fields in record)
+representation of machine state, to minimise the verbosity in the algorithms
+that dispatch on them. Instead we rely on the naming of the components (where
+relevant).
+*)
 let default_loc = 1, 1, 0
-let default_flags = default_is_stmt, false, false, false
+let default_flags = default_is_stmt, false, Prologue
 (* Table 6.4: Line number program initial state *)
 let start_state = 0, default_loc, 0, default_flags
 
-let interpret (out : state -> unit) : int list -> state -> state =
-  function
-  | c :: t when dw_LNS_copy = c ->
-    fun ((op, loc, disc, (s, _, _, _)) as st) ->
-    out st; (op, loc, 0, (s, false, false, false))
-  | c :: offs :: t when dw_LNS_advance_pc = c ->
-    fun (op, loc, disc, flags) -> (op + offs, loc, disc, flags)
-  | c :: offs :: t when dw_LNS_advance_line = c ->
-    fun (op, (line, col, file), disc, flags) -> (op, (line + offs, col, file), disc, flags)
-  | c :: file :: t when dw_LNS_set_file = c ->
-    fun (op, (line, col, _), disc, flags) -> (op, (line, col, file), disc, flags)
-  | c :: col :: t when dw_LNS_set_column = c ->
-    fun (op, (line, _, file), disc, flags) -> (op, (line, col, file), disc, flags)
-  | c :: t when dw_LNS_negate_stmt = c ->
-    fun (op, loc, disc, (s, bb, pe, eb)) -> (op, loc, disc, (not s, bb, pe, eb))
-  | c :: t when dw_LNS_set_basic_block = c ->
-    fun (op, loc, disc, (s, _, pe, eb)) -> (op, loc, disc, (s, true, pe, eb))
-(* dw_LNS_const_add_pc, dw_LNS_fixed_advance_pc NOT YET *)
-  | c :: t when dw_LNS_set_prologue_end = c ->
-    fun (op, loc, disc, (s, bb, _, eb)) -> (op, loc, disc, (s, bb, true, eb))
-  | c :: t when dw_LNS_set_epilogue_begin = c ->
-    fun (op, loc, disc, (s, bb, pe, _)) -> (op, loc, disc, (s, bb, pe, true))
 
-  | [c] when dw_LNE_end_sequence = c -> (* FIXME: model end_sequence *)
-    fun ((op, _, disc, _) as st) ->
-    out st; start_state
-
-  | c :: op :: t when - dw_LNE_set_address = c ->
-    fun (_, loc, disc, flags) -> (op, loc, disc, flags)
-  | c :: disc :: t when - dw_LNE_set_discriminator = c ->
-    fun (op, loc, _, flags) -> (op, loc, disc, flags)
-
-  | prg -> failwith "invalid program"
-
-
-
-
+(* Infers a list of opcodes for the line number program
+   ("6.2.5 The Line Number Program") that, when run, would
+   transition the machine from a certain intermediate state
+   to a following state. This is intended to be used in a loop
+   (fold) to obtain all the opcodes for a list of states.
+*)
 let rec infer from toward = match from, toward with
   | (f, _, _, _), (t, _, _, _) when t < f -> failwith "can't go backwards"
   | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
@@ -600,16 +594,27 @@ let rec infer from toward = match from, toward with
   | (_, (_, _, col), disc, flags), (t, (file', line', col'), disc', flags') when col <> col' ->
     dw_LNS_set_column :: col' :: infer (t, (file', line', col'), disc, flags) (t, (file', line', col'), disc', flags')
   | (_, _, disc, flags), (t, loc, disc', flags') when disc <> disc' -> failwith "cannot do disc yet"
-  | (_, _, _, (s, bb, ep, be)), (t, loc, disc, (s', bb', ep', be')) when s <> s' ->
-    dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, ep, be)) (t, loc, disc, (s', bb', ep', be'))
-  | (_, _, _, (_, bb, ep, be)), (t, loc, disc, (s', bb', ep', be')) when bb <> bb' -> failwith "cannot do bb yet"
-  | (_, _, _, (_, _, true, be)), (t, loc, disc, (s', bb', false, be')) ->
-    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s', bb', false, be)) (t, loc, disc, (s', bb', false, be'))
+  | (_, _, _, (s, bb, im)), (t, loc, disc, (s', bb', im')) when s <> s' ->
+    dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, im)) (t, loc, disc, (s', bb', im'))
+  | (_, _, _, (_, bb, im)), (t, loc, disc, (s', bb', im')) when bb <> bb' -> failwith "cannot do bb yet"
+
   | state, state' when state = state' -> [dw_LNS_copy]
+
+  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Regular)) ->
+    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s', bb', Regular)) (t, loc, disc, (s', bb', Regular))
+  | (_, _, _, (_, _, Regular)), (t, loc, disc, (s', bb', Epilogue) as cont) ->
+    dw_LNS_set_epilogue_begin :: infer cont cont
+  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Epilogue) as cont) ->
+    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer cont cont
   | _ -> failwith "not covered"
 
 
-let moves u8 uleb sleb u32 =
+(* Given a few formatted outputter functions, dump the contents
+   of a line program (essentially a list of `DW_LNS_*` opcodes with
+   arguments). The bottleneck functions are expected to close over
+   the output buffer/stream.
+*)
+let moves u8 uleb sleb u32 : int list -> unit =
   let standard lns = u8 lns in
   let extended1 lne = u8 0; u8 1; u8 (- lne) in
   let extended5 lne = u8 0; u8 5; u8 (- lne) in
@@ -633,7 +638,10 @@ end
 
 module Location =
 struct
-(*
+(* Wasm extensions for DWARF expressions are currently defined
+
+in https://yurydelendik.github.io/webassembly-dwarf/#DWARF-expressions-and-location-descriptions
+
 DW_OP_WASM_location := 0xED ;; available DWARF extension code
 
 wasm-op := wasm-local | wasm-global | wasm-operand-stack
@@ -641,23 +649,27 @@ wasm-op := wasm-local | wasm-global | wasm-operand-stack
 wasm-local := 0x00 i:uleb128
 wasm-global := 0x01 i:uleb128
 wasm-operand-stack := 0x02
- *)
+*)
 
-(* Difference-lists-based builder *)
+(* Difference-lists-based builder for location programs
+   ("2.5 DWARF Expressions") consisting from `DW_OP_*` opcodes
+   and their arguments. Since the final output is bytecode
+   (i.e. list of 0..255), we use the convention that negative
+   integers (`-i`) in the list externalise as ULEB128-encoded
+   bytes  of `i`.
+*)
 
-type t = int list -> int list
-
-let local slot rest =
+let local slot (rest : int list) : int list =
   dw_OP_WASM_location :: 0x00 :: -slot :: rest
-(*
+
+(* below two expressions are not supported yet *)
+
 let global slot rest =
-  let dw_OP_WASM_global = dw_OP_WASM_location lor (0x01 lsl 8) in
-  dw_OP_WASM_global slot :: rest
+  dw_OP_WASM_location :: 0x01 :: -slot :: rest
 
 let operand_stack slot rest =
-  let dw_OP_WASM_stack = dw_OP_WASM_location lor (0x02 lsl 8) in
-  dw_OP_WASM_stack slot :: rest
- *)
+  dw_OP_WASM_location :: 0x02 :: -slot :: rest
+
 end
 
 
