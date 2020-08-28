@@ -602,7 +602,9 @@ let encode (em : extended_module) =
           ) in
       list (instr note) body;
       end_ ();
-      patch_gap32 g (pos s - p)
+      let sequence_end = pos s in
+      patch_gap32 g (sequence_end - p);
+      modif sequence_bounds (DW_Sequence.add (p, !instr_notes, sequence_end))
 
     let code_section fs =
       section 10 (fun fs -> code_section_start := pos s; vec code fs) fs (fs <> [])
