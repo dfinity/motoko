@@ -746,7 +746,7 @@ let encode (em : extended_module) =
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
               let notes_seq = Instrs.to_seq notes in
-              (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* an instruction) *)
+              (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* a statement) *)
               let start_state = let _, loc, d, (_, bb, pe, eb) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, pe, eb) in
               let states_seq () =
                 let open Seq in
