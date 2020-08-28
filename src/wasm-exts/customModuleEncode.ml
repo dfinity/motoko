@@ -738,7 +738,7 @@ let encode (em : extended_module) =
             let mapping (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
-              rel addr, (file', line, column + 1), 0, (stmt, false, false, false) in
+              rel addr, (file', line, column + 1), 0, (stmt, false, Dwarf5.Machine.Regular) in
 
             let joining (prg, state) state' : int list * Dwarf5.Machine.state =
               (* FIXME: quadratic *)
@@ -749,24 +749,24 @@ let encode (em : extended_module) =
               let start, ending = rel sta, rel en in
               let notes_seq = Instrs.to_seq notes in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* a statement) *)
-              let start_state = let _, loc, d, (_, bb, pe, eb) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, pe, eb) in
+              let start_state = let _, loc, d, (_, bb, im) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, im) in
               let states_seq () =
                 let open Seq in
                 match map mapping notes_seq () with
                 | Cons ((a, _, _, _), _) when a = start -> failwith "at start already an instruction?"
-                | Cons ((a, l, d, (stm, bb, _, epi)), t) ->
-                  let start_state' = let a, _, d, f  = start_state in a, l, d, f in
-                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, false, epi)), t))
+                | Cons ((a, l, d, (stm, bb, _)), t) ->
+                  (* drop default location from `start_state` *)
+                  let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, Dwarf5.Machine.Regular)), t))
                 | Nil -> Cons (start_state, fun () -> Nil)
               in
 
-              let prg, (addr, _, _, (stm, _, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
+              let prg, (addr, _, _, (stm, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (dw_LNS_set_prologue_end :: prg (* FIXME: prologue_end should come after the locals *)
-                             @ [dw_LNS_advance_pc; ending - addr - 1]
-                             @ (if stm then [] else [dw_LNS_negate_stmt])
-                             @ [dw_LNS_set_epilogue_begin; dw_LNS_copy;
-                                dw_LNS_advance_pc; 1; dw_LNS_negate_stmt; - dw_LNE_end_sequence]))
+                        (prg
+                         @ (if stm then [] else [dw_LNS_negate_stmt])
+                         @ [dw_LNS_set_epilogue_begin; dw_LNS_copy;
+                            dw_LNS_advance_pc; 1; dw_LNS_negate_stmt; - dw_LNE_end_sequence]))
             in
             DW_Sequence.iter sequence !sequence_bounds
         )
