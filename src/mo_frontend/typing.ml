@@ -2262,8 +2262,7 @@ let check_class scope lib : Scope.t Diag.result =
             Scope.lib lib.note typ'
           | _ ->
            error env lib.at
-             "expected class constructor, but library produces type\n  %s"
+             "expected actor class, but library produces type\n  %s"
              (T.string_of_typ_expand typ);
           ) lib
     )
-
