@@ -2257,8 +2257,8 @@ let check_class scope lib : Scope.t Diag.result =
           let env = env_of_scope msgs scope in
           let typ = infer_exp env lib.it in
           match T.normalize typ with
-          | T.Func(sort, control, [], ts1, [t2]) ->
-            let typ' = T.Func(sort, control, [T.scope_bind], ts1, [T.Async (T.Var(T.default_scope_var,0), t2)]) in
+          | T.Func (sort, control, [], ts1, [t2]) ->
+            let typ' = T.Func (sort, control, [T.scope_bind], ts1, [T.Async (T.Var (T.default_scope_var, 0), t2)]) in
             Scope.lib lib.note typ'
           | _ ->
            error env lib.at
@@ -2266,5 +2266,4 @@ let check_class scope lib : Scope.t Diag.result =
              (T.string_of_typ_expand typ);
           ) lib
     )
-
 
