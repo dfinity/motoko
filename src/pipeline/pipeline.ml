@@ -390,7 +390,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
       let* () = go_set more_imports in
       let lib = lib_of_prog f prog in
-      let* sscope  = check_lib !senv lib in
+      let* sscope = check_lib !senv lib in
       libs := lib :: !libs; (* NB: Conceptually an append *)
       senv := Scope.adjoin !senv sscope;
       pending := remove ri.Source.it !pending;
@@ -622,7 +622,7 @@ let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
   | _ -> assert false
   )
 
-(* Desguaring *)
+(* Desugaring *)
 
 let desugar_unit classes_are_separate imports u name : Ir.prog =
   phase "Desugaring" name;
