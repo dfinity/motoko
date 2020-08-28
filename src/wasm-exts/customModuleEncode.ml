@@ -569,7 +569,7 @@ let encode (em : extended_module) =
       ref [ "prelude", (Promise.make (), asset_dir)
           ; "prim", (Promise.make (), asset_dir)
           ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
-    let dir_names = (* dito, but reversed: 6.2.4.1 Standard Content Descriptions *)
+    let dir_names = (* ditto, but reversed: 6.2.4.1 Standard Content Descriptions *)
       ref [ "<moc-asset>", (Promise.make (), asset_dir)
           ; Filename.dirname "", (Promise.make (), here_dir) ]
     let source_path_indices = ref (List.map (fun (p, (_, i)) -> p, i) !source_names)
