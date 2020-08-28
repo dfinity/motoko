@@ -602,10 +602,10 @@ let rec infer from toward = match from, toward with
 
   | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Regular)) ->
     dw_LNS_set_prologue_end :: infer (t, loc, disc, (s', bb', Regular)) (t, loc, disc, (s', bb', Regular))
-  | (_, _, _, (_, _, Regular)), (t, loc, disc, (s', bb', Epilogue)) ->
-    dw_LNS_set_epilogue_begin :: infer (t, loc, disc, (s', bb', Epilogue)) (t, loc, disc, (s', bb', Epilogue))
-  | (_, _, _, (_, _, im)), (t, loc, disc, (s', bb', Epilogue)) -> failwith "DOUBLE JUMP";
-    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer (t, loc, disc, (s', bb', Epilogue)) (t, loc, disc, (s', bb', Epilogue))
+  | (_, _, _, (_, _, Regular)), (t, loc, disc, (s', bb', Epilogue) as cont) ->
+    dw_LNS_set_epilogue_begin :: infer cont cont
+  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Epilogue) as cont) ->
+    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer cont cont
   | _ -> failwith "not covered"
 
 

@@ -759,11 +759,11 @@ let encode (em : extended_module) =
                 match map (mapping (ending - 1)) notes_seq () with
                 | Nil -> failwith "there should be an 'end' instruction!"
                 | Cons ((a, _, _, _), _) when a = start -> failwith "at start already an instruction?"
-                | Cons ((a, l, d, (stm, bb, _)), t) ->
+                | Cons ((a, l, d, (stm, bb, im)), t) ->
                   (* override default location from `start_state` *)
                   let start_state' = let a, _, d, f = start_state in a, l, d, f in
                   (* FIXME (4.11) use `cons` *)
-                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, Dwarf5.Machine.Regular)), t))
+                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, im)), t))
               in
 
               let prg, (addr, _, _, (stm, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
