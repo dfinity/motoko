@@ -762,6 +762,7 @@ let encode (em : extended_module) =
                 | Cons ((a, l, d, (stm, bb, _)), t) ->
                   (* override default location from `start_state` *)
                   let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  (* FIXME (4.11) use `cons` *)
                   Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, Dwarf5.Machine.Regular)), t))
               in
 
