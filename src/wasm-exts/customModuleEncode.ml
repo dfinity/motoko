@@ -30,7 +30,16 @@ the blog post http://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serial
 
 (* Note [bubbling up types in the tag hierarchy]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TBW
+Certain DIEs (precisely `DW_TAG_*`s) can be referenced from attributes
+by means of position in the `.debug_info` section. E.g. types are referenced
+from a variety of DIEs. But since we generate DIEs for types on the fly,
+they end up at the same hierarchy level as the referencing DIE. Such references
+are allocated serially by extending a mapping to promises. The promise gets
+fulfilled when the prerequisite DIE is externalised into the section.
+To have every referencable tag a fulfilled section position, on the tag closing
+trigger we move every referencable DIE out of it and into the parent, effectively
+bubbling all up to toplevel. Then, immediately before externalising the DIE tree,
+we perform a stable sort by serial number, with non-referencable DIEs trailing.
 
  *)
 
