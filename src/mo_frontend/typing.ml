@@ -2219,7 +2219,11 @@ let check_lib scope lib : Scope.t Diag.result =
       recover_opt
         (fun lib ->
           let env = env_of_scope msgs scope in
-          let typ = infer_exp env lib.it in
+          (* TODO: simplify next 3 lines *)
+          let typ = infer_exp env (Syntax.exp_of_lib lib) in
+          let (_,cub) = lib.it in
+          cub.note <- {note_typ = typ; note_eff = T.Triv};
+          (* *)
           Scope.lib lib.note typ
         ) lib
     )
@@ -2255,7 +2259,11 @@ let check_class scope lib : Scope.t Diag.result =
       recover_opt
         (fun lib ->
           let env = env_of_scope msgs scope in
-          let typ = infer_exp env lib.it in
+          (* TODO: simplify next 3 lines *)
+          let typ = infer_exp env (Syntax.exp_of_lib lib) in
+          let (_,cub) = lib.it in
+          cub.note <- {note_typ = typ; note_eff = T.Triv};
+          (* *)
           match T.normalize typ with
           | T.Func (sort, control, [], ts1, [t2]) ->
             let typ' = T.Func (sort, control, [T.scope_bind], ts1, [T.Async (T.Var (T.default_scope_var, 0), t2)]) in

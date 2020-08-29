@@ -222,6 +222,23 @@ let check_prog prog =
 
 let check_lib lib =
   Diag.with_message_store (fun msgs ->
-    ignore (exp msgs lib.it);
+    let (imports, cub) = lib.it in
+    let _ =  match cub.it with
+      | ProgU ds ->
+        ignore (group msgs (decs msgs ds))
+      | ModuleU efs->
+        ignore (group msgs (exp_fields msgs efs))
+      | ActorClassU (csp, i, p, t, self_opt, efs) ->
+        begin
+        match self_opt with
+        | None -> assert false
+        | Some i' ->
+        ignore (
+        (M.empty, S.singleton i.it) +++ delayify (
+          group msgs (exp_fields msgs efs @ class_self lib.at i') /// pat msgs p /// shared_pat msgs csp
+        )) end
+      | ActorU _ -> assert false;
+    in
     Some ()
-  )
+    )
+

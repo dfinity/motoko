@@ -16,6 +16,64 @@ type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
+(* Compilation unit detection *)
+
+(* Currently happening after type checking, before desugaring.
+   This maybe ought to move further up (into or after parsing) *)
+
+let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
+  let open Source in
+  let open Syntax in
+  let f = prog.note in
+
+  let rec go imports : Syntax.dec list -> Syntax.comp_unit =
+    let finish u = { it = (imports, u); note = f; at = no_region } in
+    let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
+    function
+    (* imports *)
+    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
+    let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
+    go (imports @ [i]) ds
+
+    (* terminal expressions *)
+
+    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
+    finish { it = ModuleU fields; note = e.note; at = e.at }
+    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
+    finish { it = ActorU (None, fields); note = e.note; at = e.at }
+    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
+    assert (tbs = []);
+    finish { it = ActorClassU (sp, tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
+    (* let-bound terminal expressions *)
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
+    (* Note: Loosing the module name here! *)
+    finish { it = ModuleU fields; note = e.note; at = e.at }
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
+    finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
+
+    (* Everything else is a program *)
+    | ds ->
+    if as_lib
+    then
+      (* when importing files, we really expect to find a module or an actor *)
+      raise (Invalid_argument(Printf.sprintf "Not some importable source:\n%s"
+        (Wasm.Sexpr.to_string 80 (Arrange.prog prog))))
+    else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
+  in
+  (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
+  go [] prog.it
+
+(* Undo lib_of_prog, should go away when we use comp_unit earlier *)
+let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit = lib
+
+(*  let open Source in
+  let open Syntax in
+  comp_unit_of_prog true (match lib.it.it with
+  | BlockE ds -> { it = ds; at = lib.at; note = lib.note }
+  | _ -> assert false
+  )
+ *)
+
 (* Diagnostics *)
 
 let phase heading name =
@@ -221,6 +279,7 @@ let is_module dec =
     (match e.it with ObjE (s, _) -> s.it = Type.Module | _ -> false)
   | _ -> false
 
+(* TODO: Delete me *)
 let rec lib_of_prog' imps at = function
   | [d] when is_module d -> imps, d
   | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
@@ -231,10 +290,11 @@ let rec lib_of_prog' imps at = function
     imps, {it = ExpD obj; at; note = empty_typ_note}
 
 let lib_of_prog f prog : Syntax.lib  =
-  let open Source in let open Syntax in
+ { (comp_unit_of_prog true prog) with Source.note = f }
+(*   let open Source in let open Syntax in
   let imps, dec = lib_of_prog' [] prog.at prog.it in
   let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
-  {it = exp; at = prog.at; note = f}
+  {it = exp; at = prog.at; note = f} *)
 
 let is_actor dec =
   let open Source in let open Syntax in
@@ -255,11 +315,13 @@ let rec class_of_prog' imps at = function
     imps, {it = ExpD obj; at; note = empty_typ_note}
 
 let class_of_prog f prog : Syntax.lib =
+  comp_unit_of_prog true prog
+(*
   let open Source in let open Syntax in
   let imps, dec = class_of_prog' [] prog.at prog.it in
   let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
   {it = exp; at = prog.at; note = f}
-
+ *)
 
 (* Prelude *)
 
@@ -300,8 +362,12 @@ let check_prim () : Syntax.lib * stat_env =
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error e -> prim_error "parsing" [e]
   | Ok prog ->
+    let open Syntax in
+    let open Source in
     let senv0 = initial_stat_env in
-    let lib = lib_of_prog "@prim" prog in
+    let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    let cub = {it = ModuleU fs; at = no_region; note = empty_typ_note} in
+    let lib = {it = ([],cub); at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, msgs) ->
@@ -566,61 +632,6 @@ let run_files_and_stdin files =
       Some ()
   )
 
-(* Compilation unit detection *)
-
-(* Currently happening after type checking, before desugaring.
-   This maybe ought to move further up (into or after parsing) *)
-
-let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
-  let open Source in
-  let open Syntax in
-  let f = prog.note in
-
-  let rec go imports : Syntax.dec list -> Syntax.comp_unit =
-    let finish u = { it = (imports, u); note = f; at = no_region } in
-    let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-    function
-    (* imports *)
-    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
-    let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
-    go (imports @ [i]) ds
-
-    (* terminal expressions *)
-
-    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
-    finish { it = ModuleU fields; note = e.note; at = e.at }
-    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
-    finish { it = ActorU (None, fields); note = e.note; at = e.at }
-    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-    assert (tbs = []);
-    finish { it = ActorClassU (sp, tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
-    (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
-    (* Note: Loosing the module name here! *)
-    finish { it = ModuleU fields; note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
-    finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
-
-    (* Everything else is a program *)
-    | ds ->
-    if as_lib
-    then
-      (* when importing files, we really expect to find a module or an actor *)
-      raise (Invalid_argument(Printf.sprintf "Not some importable source:\n%s"
-        (Wasm.Sexpr.to_string 80 (Arrange.prog prog))))
-    else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
-  in
-  (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
-  go [] prog.it
-
-(* Undo lib_of_prog, should go away when we use comp_unit earlier *)
-let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
-  let open Source in
-  let open Syntax in
-  comp_unit_of_prog true (match lib.it.it with
-  | BlockE ds -> { it = ds; at = lib.at; note = lib.note }
-  | _ -> assert false
-  )
 
 (* Desugaring *)
 

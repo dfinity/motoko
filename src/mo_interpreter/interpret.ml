@@ -944,7 +944,7 @@ let interpret_lib flags scope lib : scope =
   trace_depth := 0;
   let vo = ref None in
   Scheduler.queue (fun () ->
-    interpret_exp env lib.it (fun v -> vo := Some v)
+    interpret_exp env (Syntax.exp_of_lib lib) (fun v -> vo := Some v)
   );
   Scheduler.run ();
   lib_scope lib.note (Option.get !vo) scope

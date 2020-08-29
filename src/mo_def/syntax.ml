@@ -210,9 +210,6 @@ and dec' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
-(* Libraries (pre unit detection) *)
-
-type lib = (exp, string) Source.annotated_phrase
 
 (* Imports *)
 
@@ -230,6 +227,50 @@ and comp_unit_body' =
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase
 and comp_unit' = (import list * comp_unit_body)
+
+type lib = comp_unit
+
+let exp_of_lib (lib : lib) =
+  let open Source in
+  let (imports, cub) = lib.it in
+  let decs = List.map (fun { it = (id, fp, ri); at; note}  ->
+    { it = LetD ({ it = VarP id;
+                   at;
+                   note = Type.Pre;
+                 },
+                 { it = ImportE (fp, ri);
+                   at;
+                   note = empty_typ_note;
+                 });
+      at;
+      note = empty_typ_note;}) imports
+  in
+  match cub.it with
+  | ProgU ds  ->
+    { it = BlockE ds;
+      at = cub.at;
+      note = empty_typ_note;
+    }
+  | ModuleU fields ->
+    { it =
+      BlockE (decs @
+        [{ it = ExpD { it = ObjE ({ it = Type.Module; at = no_region; note = ()}, fields);
+                       at = cub.at;
+                       note = empty_typ_note;};
+           at = cub.at;
+           note = empty_typ_note; }]);
+      at = cub.at;
+      note = empty_typ_note};
+  | ActorClassU (csp, i, p, t, Some i', efs) ->
+    { it =
+      BlockE (decs @
+        [{ it = ClassD (csp, i, [], p, t, { it = Type.Module; at = no_region; note = ()}, i', efs);
+           at = cub.at;
+           note = empty_typ_note;}]);
+      at = cub.at;
+      note = empty_typ_note;
+    }
+  | ActorU _ -> assert false
 
 
 (* n-ary arguments/result sequences *)
