@@ -2221,7 +2221,10 @@ let check_lib scope lib : Scope.t Diag.result =
           let env = env_of_scope msgs scope in
           (* TODO: simplify next 3 lines *)
           let typ = infer_exp env (Syntax.exp_of_lib lib) in
-          let (_,cub) = lib.it in
+          let (imports,cub) = lib.it in
+          List.iter (fun  import ->
+              let (_, f, ri) = import.it in
+              import.note <- check_import env no_region f ri) imports;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           (* *)
           Scope.lib lib.note typ
@@ -2261,7 +2264,10 @@ let check_class scope lib : Scope.t Diag.result =
           let env = env_of_scope msgs scope in
           (* TODO: simplify next 3 lines *)
           let typ = infer_exp env (Syntax.exp_of_lib lib) in
-          let (_,cub) = lib.it in
+          let (imports, cub) = lib.it in
+          List.iter (fun  import ->
+              let (_, f, ri) = import.it in
+              import.note <- check_import env no_region f ri) imports;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           (* *)
           match T.normalize typ with
@@ -2274,3 +2280,27 @@ let check_class scope lib : Scope.t Diag.result =
              (T.string_of_typ_expand typ);
           ) lib
     )
+
+(*
+let check_imports env at i imports =
+  match imports with
+  let t = check_import env.at
+
+let check_lib scope lib : Scope.t Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun lib ->
+          let env = env_of_scope msgs scope in
+          (* TODO: simplify next 3 lines *)
+          let (imports, cub) = lib.it with
+          match cub.it with
+          | ModuleU fs ->
+            let exp = {it = ObjE( T.Module @@ no_region, fs } in
+            let typ = infer_exp env exp in
+            cub.note <- {note_typ = typ; note_eff = T.Triv}
+            Scope.lib lib.note typ
+        ) lib
+    )
+
+*)

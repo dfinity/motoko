@@ -680,6 +680,7 @@ MASTER *)
 let transform_import classes_are_separate (i : S.import) : import_declaration =
   let (id, f, ir) = i.it in
   let t = i.note in
+  assert (t <> T.Pre);
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp ->
@@ -781,6 +782,7 @@ let import_unit classes_are_separate (u : S.comp_unit) : import_declaration =
   let (imports, body) = u.it in
   let f = u.note in
   let t = body.note.S.note_typ in
+  assert (t <> T.Pre);
   let imports' = Lib.List.concat_map (transform_import classes_are_separate) imports in
   let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in

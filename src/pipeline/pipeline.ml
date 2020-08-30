@@ -55,9 +55,13 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     | ds ->
     if as_lib
     then
-      (* when importing files, we really expect to find a module or an actor *)
+      let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds in
+      finish {it = ModuleU fs; at = no_region; note = empty_typ_note} 
+(* DELETE ME
+        (* when importing files, we really expect to find a module or an actor *)
       raise (Invalid_argument(Printf.sprintf "Not some importable source:\n%s"
         (Wasm.Sexpr.to_string 80 (Arrange.prog prog))))
+ *)
     else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
   (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
@@ -359,6 +363,7 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string Prelude.prim_module in
   let parse = Parser.Incremental.parse_prog in
+
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error e -> prim_error "parsing" [e]
   | Ok prog ->
@@ -717,7 +722,8 @@ let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
     | l :: libs ->
       let u = comp_unit_of_lib l in
       match (snd u.Source.it).Source.it with
-      | Syntax.ActorU _ | Syntax.ActorClassU _ ->
+      | Syntax.ActorU _ (*TODO reject me *)
+      | Syntax.ActorClassU _ ->
         let wasm = compile_unit_to_wasm mode imports u in
         go (imports @ Lowering.Desugar.import_class u.Source.note wasm) libs
       | _ ->

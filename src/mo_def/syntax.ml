@@ -236,39 +236,39 @@ let exp_of_lib (lib : lib) =
   let decs = List.map (fun { it = (id, fp, ri); at; note}  ->
     { it = LetD ({ it = VarP id;
                    at;
-                   note = Type.Pre;
+                   note = note;
                  },
                  { it = ImportE (fp, ri);
                    at;
-                   note = empty_typ_note;
+                   note = { note_typ = note; note_eff = Type.Triv};
                  });
       at;
-      note = empty_typ_note;}) imports
+      note = { note_typ = note; note_eff = Type.Triv } }) imports
   in
   match cub.it with
   | ProgU ds  ->
     { it = BlockE ds;
       at = cub.at;
-      note = empty_typ_note;
+      note = cub.note;
     }
   | ModuleU fields ->
     { it =
       BlockE (decs @
         [{ it = ExpD { it = ObjE ({ it = Type.Module; at = no_region; note = ()}, fields);
                        at = cub.at;
-                       note = empty_typ_note;};
+                       note = cub.note;};
            at = cub.at;
-           note = empty_typ_note; }]);
+           note = cub.note; }]);
       at = cub.at;
-      note = empty_typ_note};
+      note = cub.note};
   | ActorClassU (csp, i, p, t, Some i', efs) ->
     { it =
       BlockE (decs @
-        [{ it = ClassD (csp, i, [], p, t, { it = Type.Module; at = no_region; note = ()}, i', efs);
+        [{ it = ClassD (csp, i, [], p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
            at = cub.at;
-           note = empty_typ_note;}]);
+           note = cub.note;}]);
       at = cub.at;
-      note = empty_typ_note;
+      note = cub.note;
     }
   | ActorU _ -> assert false
 
