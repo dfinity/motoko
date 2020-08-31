@@ -344,13 +344,27 @@ let any_type = ref None
 
 let pointer_key = ref None
 
+let obvious_prim_of_con ty : Type.prim option =
+  let open Type in
+  match ty with
+  | Con (c, _) ->
+    let norm = normalize ty in
+    begin
+      match norm with
+      | Prim p ->
+        if Arrange_type.(prim p = con c) then Some p else None
+        | _ -> None
+    end
+  | _ -> None
+
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
   let unskew, past_tag = 1, 4 in
-  let loc slot = function
-    | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-    | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
-    | Type.(Prim Text) -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
+  let open Type in
+  let rec loc slot = function
+    | Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+    | Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
+    | Prim Text -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
     | Type.(Prim Int8) -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
     | Type.(Prim (Word8|Nat8)) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
     | Type.(Prim Int16) -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
@@ -362,6 +376,11 @@ let rec dw_tag_open : dw_TAG -> t =
     | Type.(Prim Int64) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Type.(Prim (Word64|Nat64)) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Type.Tup _ -> Location.local slot []
+    | Type.Con _ as ty ->
+      begin match obvious_prim_of_con ty with
+      | Some p -> loc slot (Prim p)
+      | _ -> Location.local slot [ dw_OP_stack_value ]
+      end
     | _ -> Location.local slot [ dw_OP_stack_value ] in
   function
   | Compile_unit (dir, file) ->
