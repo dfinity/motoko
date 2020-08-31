@@ -184,7 +184,7 @@ let encode (em : extended_module) =
        see Note [bubbling up types in the tag hierarchy] *)
     begin match !dwarf_tags with
     | Tag (refi, t, viscera) :: Tag (refi', t', viscera') :: tail
-        when genuine && Dwarf5.(dw_TAG_subprogram = t || dw_TAG_lexical_block = t) ->
+        when genuine && Dwarf5.(dw_TAG_subprogram = t land 0xFF || dw_TAG_lexical_block = t land 0xFF) ->
       let hoist, stay = hoistables viscera in
       dwarf_tags := Tag (refi, t, stay) :: Tag (refi', t', hoist @ viscera') :: tail
     | _ -> ()
@@ -223,9 +223,9 @@ let encode (em : extended_module) =
     let extract = function
       | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_compile_unit ->
         add_dwarf_attribute (IntAttribute (at, 0))
-      | OffsetAttribute at when at = dw_AT_low_pc && tag = dw_TAG_subprogram ->
+      | OffsetAttribute at when at = dw_AT_low_pc && tag land 0xFF = dw_TAG_subprogram ->
         add_dwarf_attribute (IntAttribute (at, !sequence_number))
-      | OffsetAttribute at when at = dw_AT_high_pc && tag = dw_TAG_subprogram ->
+      | OffsetAttribute at when at = dw_AT_high_pc && tag land 0xFF = dw_TAG_subprogram ->
         let s = !sequence_number in
         let resolve () = IntAttribute (at, Array.get (Promise.value subprogram_sizes) s) in
         add_dwarf_attribute (FutureAttribute resolve)

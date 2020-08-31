@@ -249,7 +249,7 @@ type dw_AT = Producer of string
 
 type dw_TAG =
   | Compile_unit of string * string (* compilation directory, file name *)
-  | Subprogram of string * Source.pos
+  | Subprogram of string * Type.typ list * Source.pos
   | LexicalBlock of Source.pos
   | Formal_parameter of (string * Source.pos * Type.typ * int)
   | Variable of (string * Source.pos * Type.typ * int)
@@ -406,7 +406,11 @@ let rec dw_tag_open : dw_TAG -> t =
            Comp_dir dir; Use_UTF8 true; Low_pc; Addr_base 8; Ranges ]) ^^
       base_types ^^
       builtin_types
-  | Subprogram (name, pos) ->
+  | Subprogram (name, [retty], pos) ->
+    let dw, ref_ret = dw_type_ref retty in
+    meta_tag dw_TAG_subprogram_Ret
+      (dw_attrs [Low_pc; High_pc; Name name; TypeRef ref_ret; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
+  | Subprogram (name, _, pos) ->
     meta_tag dw_TAG_subprogram
       (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->

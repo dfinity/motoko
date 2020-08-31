@@ -27,6 +27,10 @@ let dw_TAG_base_type_Unsigned_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 2
 let dw_TAG_base_type_Unsigned_Bytes_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 3
 
 let dw_TAG_variant_Named = pseudo_tag Dwarf5.dw_TAG_variant 1
+
+let dw_TAG_subprogram_Ret = pseudo_tag Dwarf5.dw_TAG_subprogram 1
+
+
 let abbreviations =
   let open Dwarf5 in
   [ ( dw_TAG_compile_unit, dw_CHILDREN_yes,
@@ -44,12 +48,24 @@ let abbreviations =
       [ dw_AT_low_pc, dw_FORM_addrx;
         dw_AT_high_pc, dw_FORM_data4(*FIXME*);
          (* dw_AT_GNU_all_call_sites, dw_FORM_flag_present; *)
-      dw_AT_name, dw_FORM_strp;
-      dw_AT_decl_file, dw_FORM_data1(*FIXME*);
-      dw_AT_decl_line, dw_FORM_data1(*FIXME*);
-      dw_AT_decl_column, dw_FORM_data1(*FIXME*);
-      dw_AT_prototyped, dw_FORM_flag_present;
-      dw_AT_external, dw_FORM_flag(*_present*)
+        dw_AT_name, dw_FORM_strp;
+        dw_AT_decl_file, dw_FORM_data1(*FIXME*);
+        dw_AT_decl_line, dw_FORM_data1(*FIXME*);
+        dw_AT_decl_column, dw_FORM_data1(*FIXME*);
+        dw_AT_prototyped, dw_FORM_flag_present;
+        dw_AT_external, dw_FORM_flag(*_present*)
+      ] );
+    ( dw_TAG_subprogram_Ret, dw_CHILDREN_yes,
+      [ dw_AT_low_pc, dw_FORM_addrx;
+        dw_AT_high_pc, dw_FORM_data4(*FIXME*);
+         (* dw_AT_GNU_all_call_sites, dw_FORM_flag_present; *)
+        dw_AT_name, dw_FORM_strp;
+        dw_AT_type, dw_FORM_ref_udata;
+        dw_AT_decl_file, dw_FORM_data1(*FIXME*);
+        dw_AT_decl_line, dw_FORM_data1(*FIXME*);
+        dw_AT_decl_column, dw_FORM_data1(*FIXME*);
+        dw_AT_prototyped, dw_FORM_flag_present;
+        dw_AT_external, dw_FORM_flag(*_present*)
       ] );
     ( dw_TAG_formal_parameter, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
