@@ -614,7 +614,7 @@ let rec infer from toward = match from, toward with
    arguments). The bottleneck functions are expected to close over
    the output buffer/stream.
 *)
-let moves u8 uleb sleb u32 : int list -> unit =
+let write_opcodes u8 uleb sleb u32 : int list -> unit =
   let standard lns = u8 lns in
   let extended1 lne = u8 0; u8 1; u8 (- lne) in
   let extended5 lne = u8 0; u8 5; u8 (- lne) in
@@ -630,7 +630,7 @@ let moves u8 uleb sleb u32 : int list -> unit =
   | op :: tail when dw_LNS_set_epilogue_begin = op -> standard op; chase tail
   | op :: tail when - dw_LNE_end_sequence = op -> extended1 op; chase tail
   | op :: addr :: tail when - dw_LNE_set_address = op -> extended5 op; u32 addr; chase tail
-  | op :: _ -> failwith "move not covered"
+  | op :: _ -> failwith (Printf.sprintf "opcode not covered: %d" op)
   in chase
 
 end

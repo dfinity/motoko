@@ -772,7 +772,7 @@ let encode (em : extended_module) =
               in
 
               let prg, (addr, _, _, (stm, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
-              Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
+              Dwarf5.(Machine.write_opcodes u8 uleb128 sleb128 write32
                         (prg
                          @ [dw_LNS_advance_pc; 1]
                          @ (if stm then [dw_LNS_negate_stmt] else [])
