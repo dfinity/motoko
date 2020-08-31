@@ -7,17 +7,22 @@ The changes are:
  * Support for additional custom sections
 
 The code is otherwise as untouched as possible, so that we can relatively
-easily apply diffs froim the original code (possibly manually).
+easily apply diffs from the original code (possibly manually).
 *)
 
 open Dwarf5.Meta
 
 (* Utility predicates *)
 
+(* is_dwarf_like answers the question whether a Wasm.Ast meta instruction
+   must be kept from being dead-code eliminated. Eliminating is forbidden,
+   when it the instruction contributes to a DIE, i.e. establishing, augmenting
+   or closing a DWARF Tag.
+ *)
 let rec is_dwarf_like' = function
   | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
   | Grouped parts -> List.exists is_dwarf_like' parts
-  | _ -> false
+  | StatementDelimiter _ | FutureAttribute _ -> false
 let is_dwarf_like = function
   | Ast.Meta m -> is_dwarf_like' m
   | _ -> false
