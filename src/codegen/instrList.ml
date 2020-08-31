@@ -344,17 +344,10 @@ let any_type = ref None
 
 let pointer_key = ref None
 
-let obvious_prim_of_con ty : Type.prim option =
-  let open Type in
-  match ty with
-  | Con (c, _) ->
-    let norm = normalize ty in
-    begin
-      match norm with
-      | Prim p ->
-        if Arrange_type.(prim p = con c) then Some p else None
-        | _ -> None
-    end
+let obvious_prim_of_con c ty : Type.prim option =
+  match Type.normalize ty with
+  | Type.Prim p ->
+    if Arrange_type.(prim p = con c) then Some p else None
   | _ -> None
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
@@ -362,22 +355,22 @@ let rec dw_tag_open : dw_TAG -> t =
   let unskew, past_tag = 1, 4 in
   let open Type in
   let rec loc slot = function
-    | Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-    | Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
+    | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+    | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
     | Prim Text -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
-    | Type.(Prim Int8) -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
-    | Type.(Prim (Word8|Nat8)) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
-    | Type.(Prim Int16) -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
-    | Type.(Prim (Word16|Nat16)) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
-    | Type.(Prim Int32) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
-    | Type.(Prim (Word32|Nat32)) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
+    | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
+    | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
+    | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
+    | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
+    | Prim Int32 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
+    | Prim (Word32|Nat32) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
                                                           dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
                                                           dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-    | Type.(Prim Int64) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
-    | Type.(Prim (Word64|Nat64)) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
-    | Type.Tup _ -> Location.local slot []
-    | Type.Con _ as ty ->
-      begin match obvious_prim_of_con ty with
+    | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Prim (Word64|Nat64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Tup _ -> Location.local slot []
+    | Con (c, _) as ty ->
+      begin match obvious_prim_of_con c ty with
       | Some p -> loc slot (Prim p)
       | _ -> Location.local slot [ dw_OP_stack_value ]
       end
@@ -385,26 +378,26 @@ let rec dw_tag_open : dw_TAG -> t =
   function
   | Compile_unit (dir, file) ->
     let base_types =
-      dw_prim_type Type.Bool ^^
-      dw_prim_type Type.Char ^^
-      dw_prim_type Type.Text ^^
-      dw_prim_type Type.Word8 ^^
-      dw_prim_type Type.Nat8 ^^
-      dw_prim_type Type.Int8 ^^
-      dw_prim_type Type.Word16 ^^
-      dw_prim_type Type.Nat16 ^^
-      dw_prim_type Type.Int16 ^^
-      dw_prim_type Type.Word32 ^^
-      dw_prim_type Type.Nat32 ^^
-      dw_prim_type Type.Int32 ^^
-      dw_prim_type Type.Word64 ^^
-      dw_prim_type Type.Nat64 ^^
-      dw_prim_type Type.Int64
+      dw_prim_type Bool ^^
+      dw_prim_type Char ^^
+      dw_prim_type Text ^^
+      dw_prim_type Word8 ^^
+      dw_prim_type Nat8 ^^
+      dw_prim_type Int8 ^^
+      dw_prim_type Word16 ^^
+      dw_prim_type Nat16 ^^
+      dw_prim_type Int16 ^^
+      dw_prim_type Word32 ^^
+      dw_prim_type Nat32 ^^
+      dw_prim_type Int32 ^^
+      dw_prim_type Word64 ^^
+      dw_prim_type Nat64 ^^
+      dw_prim_type Int64
     in
     let builtin_types =
-      dw_type Type.Any ^^
-      dw_prim_type Type.Nat ^^
-      dw_prim_type Type.Int
+      dw_type Any ^^
+      dw_prim_type Nat ^^
+      dw_prim_type Int
     in
     meta_tag dw_TAG_compile_unit
       (dw_attrs
