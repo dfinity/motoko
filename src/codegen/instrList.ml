@@ -332,6 +332,8 @@ let dw_tag_close : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
+module TypedefRefs = Map.Make (struct type t = string let compare = compare end)
+let dw_typedefs = ref TypedefRefs.empty
 module VariantRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_variants = ref VariantRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
@@ -443,6 +445,17 @@ and referencable_meta_tag tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
+and dw_typedef_ref c ty =
+  let Atom name = Arrange_type.con c in
+  match TypedefRefs.find_opt name !dw_typedefs with
+  | Some r -> nop, r
+  | None ->
+    let dw, ref = dw_type_ref (Type.normalize ty) in
+    let d, r =
+      dw ^^<
+      referencable_meta_tag dw_TAG_typedef (dw_attrs [Name name; TypeRef ref]) in
+    dw_typedefs := TypedefRefs.add name r !dw_typedefs;
+    d, r
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function
@@ -461,8 +474,11 @@ and dw_type_ref =
   | Type.Variant vs -> dw_variant vs
   | Type.(Obj (Object, fs)) -> dw_object fs
   | Type.(Tup cs) -> dw_tuple cs
-  | Type.(Con _) as ty -> dw_type_ref (Type.normalize ty)
-
+  | Type.Con (c, _) as ty ->
+    begin match obvious_prim_of_con c ty with
+    | Some p -> dw_type_ref (Type.Prim p)
+    | None -> dw_typedef_ref c ty
+    end
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
