@@ -618,20 +618,19 @@ let moves u8 uleb sleb u32 : int list -> unit =
   let standard lns = u8 lns in
   let extended1 lne = u8 0; u8 1; u8 (- lne) in
   let extended5 lne = u8 0; u8 5; u8 (- lne) in
-  let noisy = false in
   let rec chase = function
-  | [] -> if noisy then Printf.printf "DONE\n"
-  | op :: tail when dw_LNS_copy = op -> if noisy then Printf.printf "COPY\n"; standard op; chase tail
-  | op :: offs :: tail when dw_LNS_advance_pc = op -> if noisy then Printf.printf "+PC\n"; standard op; uleb offs; chase tail
-  | op :: delta :: tail when dw_LNS_advance_line = op -> if noisy then Printf.printf "+LINE %d\n" delta; standard op; sleb delta; chase tail
-  | op :: file :: tail when dw_LNS_set_file = op -> if noisy then Printf.printf ":=FILE\n"; standard op; uleb file; chase tail
-  | op :: col :: tail when dw_LNS_set_column = op -> if noisy then Printf.printf ":=COLUMN\n"; standard op; uleb col; chase tail
-  | op :: tail when dw_LNS_negate_stmt = op -> if noisy then Printf.printf "~STMT\n"; standard op; chase tail
-  | op :: tail when dw_LNS_set_prologue_end = op -> if noisy then Printf.printf "<PRO\n"; standard op; chase tail
-  | op :: tail when dw_LNS_set_epilogue_begin = op -> if noisy then Printf.printf ">EPI\n"; standard op; chase tail
-  | op :: tail when - dw_LNE_end_sequence = op -> if noisy then Printf.printf "FIN\n"; extended1 op; chase tail
-  | op :: addr :: tail when - dw_LNE_set_address = op -> if noisy then Printf.printf "NEW ADDR\n"; extended5 op; u32 addr; chase tail
-  | op :: _ -> if noisy then Printf.printf "MoVE 0x%x\n" op; failwith "move not covered"
+  | [] -> ()
+  | op :: tail when dw_LNS_copy = op -> standard op; chase tail
+  | op :: offs :: tail when dw_LNS_advance_pc = op -> standard op; uleb offs; chase tail
+  | op :: delta :: tail when dw_LNS_advance_line = op -> standard op; sleb delta; chase tail
+  | op :: file :: tail when dw_LNS_set_file = op -> standard op; uleb file; chase tail
+  | op :: col :: tail when dw_LNS_set_column = op -> standard op; uleb col; chase tail
+  | op :: tail when dw_LNS_negate_stmt = op -> standard op; chase tail
+  | op :: tail when dw_LNS_set_prologue_end = op -> standard op; chase tail
+  | op :: tail when dw_LNS_set_epilogue_begin = op -> standard op; chase tail
+  | op :: tail when - dw_LNE_end_sequence = op -> extended1 op; chase tail
+  | op :: addr :: tail when - dw_LNE_set_address = op -> extended5 op; u32 addr; chase tail
+  | op :: _ -> failwith "move not covered"
   in chase
 
 end
