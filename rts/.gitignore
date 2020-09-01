@@ -3,3 +3,5 @@ test_rts
 test_leb128
 afl_leb128_out
 _build
+motoko-rts/xargo-home
+motoko-rts/cargo-home
