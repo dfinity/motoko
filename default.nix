@@ -137,7 +137,7 @@ rec {
       name = "moc-rts";
 
       src = subpath ./rts;
-      nativeBuildInputs = [ nixpkgs.makeWrapper ];
+      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo ];
 
       buildInputs = rtsBuildInputs;
 
@@ -173,6 +173,13 @@ rec {
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
       '';
+
+      # this needs to be self-contained. Remove mention of
+      # nix path in debug message
+      preFixup = ''
+        remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts.wasm
+      '';
+      allowedRequisites = [];
     };
 
   moc = ocaml_exe "moc" "moc" rts;
