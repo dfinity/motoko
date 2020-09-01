@@ -1,6 +1,6 @@
 → update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
 → query len2("Hi", "World")
 ← completed: (+2, +5)
@@ -8,9 +8,9 @@
 ← completed: (+5, +5, +67305985)
 → query len3a(record {"Hello"; (67305985 : int32); null}, "World")
 ← completed: (+5, +5, +67305985)
-→ query len3(record {0 = "Hello"; 0 = (-21026 : int16); 1 = (67305985 : int32)}, "World")
+→ query len3(record {0 = "Hello"; 0 = (-21026 : int16); 1 = (67305985 : …
 ← completed: (+5, +5, +67305985)
-→ query len3(record {"Hello"; (67305985 : int32); (-21026 : int16)}, "World")
+→ query len3(record {"Hello"; (67305985 : int32); (-21026 : int16)}, "Wo…
 ← completed: (+5, +5, +67305985)
 → query len3a(record {"Hello"; (67305985 : int32); null}, "World")
 ← completed: (+5, +5, +67305985)
