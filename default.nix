@@ -128,6 +128,7 @@ rec {
       rustDeps = nixpkgs.rustPlatform-nightly.fetchcargo {
         name = "motoko-rts-deps";
         src = subpath rts/motoko-rts;
+        sourceRoot = null;
         sha256 = "0axxn4g6wf4v3ah7parjzfzzc98w816kpipp905y5srx0fvws637";
         copyLockfile = true;
       };
