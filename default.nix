@@ -152,7 +152,6 @@ rec {
           [source."vendored-sources"]
           "directory" = "${rustDeps}"
         __END__
-        cat motoko-rts/cargo-home/config
 
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
