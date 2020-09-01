@@ -230,6 +230,7 @@ and comp_unit' = (import list * comp_unit_body)
 
 type lib = comp_unit
 
+(* temporary hack until typing and interpretation of comp_unit implemented *)
 let exp_of_lib (lib : lib) =
   let open Source in
   let (imports, cub) = lib.it in
