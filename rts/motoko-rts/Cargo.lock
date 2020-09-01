@@ -3,8 +3,6 @@
 [[package]]
 name = "libc"
 version = "0.2.76"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "755456fae044e6fa1ebbbd1b3e902ae19e73097ed4ed87bb79934a867c007bc3"
 
 [[package]]
 name = "motoko-rts"
