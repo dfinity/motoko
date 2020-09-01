@@ -1,0 +1,21 @@
+[package]
+name = "motoko-rts"
+version = "0.1.0"
+authors = ["Ömer Sinan Ağacan <omeragacan@gmail.com>"]
+edition = "2018"
+
+[dependencies.libc]
+version = "0.2.73"
+
+# added here so that it ends up in Cargo.lock, so that nix will pre-fetch it
+[dependencies.compiler_builtins]
+version = "0.1.32"
+
+[lib]
+crate-type = ["staticlib"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
