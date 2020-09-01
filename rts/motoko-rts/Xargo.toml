@@ -5,7 +5,3 @@ stage = 0
 stage = 1
 features = [ "mem" ]
 version = "0.1.32"
-
-[dependencies.libc]
-stage = 2
-version = "0.2.74"
