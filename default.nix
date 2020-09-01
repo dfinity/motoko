@@ -123,32 +123,53 @@ let ocaml_exe = name: bin: rts:
 in
 
 rec {
-  rts = stdenv.mkDerivation {
-    name = "moc-rts";
+  rts =
+    let
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchcargo {
+        src = subpath rts/motoko-rts;
+        sourceRoot = subpath rts/motoko-rts;
+        sha256 = "0axxn4g6wf4v3ah7parjzfzzc98w816kpipp905y5srx0fvws637";
+        copyLockfile = true;
+      };
+    in
+    stdenv.mkDerivation {
+      name = "moc-rts";
 
-    src = subpath ./rts;
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+      src = subpath ./rts;
+      nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = rtsBuildInputs;
+      buildInputs = rtsBuildInputs;
 
-    preBuild = ''
-      ${llvmEnv}
-      export TOMMATHSRC=${nixpkgs.sources.libtommath}
-      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-    '';
+      preBuild = ''
+        # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+        mkdir -p motoko-rts/cargo-home
+        echo "Using vendored sources from ${rustDeps}"
+        cat > motoko-rts/cargo-home/config <<__END__
+          [source."crates-io"]
+          "replace-with" = "vendored-sources"
 
-    doCheck = true;
+          [source."vendored-sources"]
+          "directory" = "${rustDeps}"
+        __END__
+        cat motoko-rts/cargo-home/config
 
-    checkPhase = ''
-      ./test_rts
-    '';
+        ${llvmEnv}
+        export TOMMATHSRC=${nixpkgs.sources.libtommath}
+        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
+      '';
 
-    installPhase = ''
-      mkdir -p $out/rts
-      cp mo-rts.wasm $out/rts
-    '';
-  };
+      doCheck = true;
+
+      checkPhase = ''
+        ./test_rts
+      '';
+
+      installPhase = ''
+        mkdir -p $out/rts
+        cp mo-rts.wasm $out/rts
+      '';
+    };
 
   moc = ocaml_exe "moc" "moc" rts;
   mo-ld = ocaml_exe "mo-ld" "mo-ld" null;

@@ -6,7 +6,10 @@ edition = "2018"
 
 [dependencies.libc]
 version = "0.2.73"
-path = "vendor/libc-0.2.76"
+
+# added here so that it ends up in Cargo.lock, so that nix will pre-fetch it
+[dependencies.compiler_builtins]
+version = "0.1.32"
 
 [lib]
 crate-type = ["staticlib"]

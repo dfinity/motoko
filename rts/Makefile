@@ -161,7 +161,7 @@ _build/wasm/libmotoko_rts.a: | _build/wasm
 	# NB. codegen-units=1 is to make debugging easier, not strictly
 	# necessary
 	cd motoko-rts && \
-	    XARGO_HOME=$$PWD/xargo-home CARGO_HOME=$$PWD/cargo-home xargo rustc --target=wasm32-unknown-emscripten --release -- \
+	    XARGO_HOME=$$PWD/xargo-home CARGO_HOME=$$PWD/cargo-home xargo -v rustc --target=wasm32-unknown-emscripten --release -- \
 		-Crelocation-model=pic -Ccodegen-units=1
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 

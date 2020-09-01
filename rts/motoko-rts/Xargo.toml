@@ -5,4 +5,3 @@ stage = 0
 stage = 1
 features = [ "mem" ]
 version = "0.1.32"
-path = "vendor/compiler_builtins-0.1.32"
