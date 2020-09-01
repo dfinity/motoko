@@ -18,13 +18,7 @@ rustPlatform-nightly.buildRustPackage rec {
 
   cargoSha256 = "0zzksgi2prgw01m6r4bqjjz902h5g5ich0h3xvb60w4sshlss891";
 
-  # nativeBuildInputs = [ python cmake clang ];
-  # buildInputs = [ llvmPackages.libclang ] ++
-  #  lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security ];
-  # LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
-
   doCheck = false;
-  # error: couldn't lock thumbv6m-panic_abort-eabi's sysroot as read-only
   USER = "nobody"; # for xargo tests (if we would run them)
 
   meta = with lib; {
