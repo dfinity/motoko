@@ -142,10 +142,13 @@ rec {
       buildInputs = rtsBuildInputs;
 
       preBuild = ''
+        export XARGO_HOME=$PWD/xargo-home
+        export CARGO_HOME=$PWD/cargo-home
+
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
-        mkdir -p motoko-rts/cargo-home
+        mkdir -p $CARGO_HOME
         echo "Using vendored sources from ${rustDeps}"
-        cat > motoko-rts/cargo-home/config <<__END__
+        cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
 
@@ -157,6 +160,7 @@ rec {
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
         export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
+
       '';
 
       doCheck = true;
@@ -498,11 +502,11 @@ rec {
         overview-slides.buildInputs ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
-	  nixpkgs.ocamlPackages.merlin
-	  nixpkgs.ocamlformat
-	  nixpkgs.ocamlPackages.utop
-	  nixpkgs.niv
-	]
+          nixpkgs.ocamlPackages.merlin
+          nixpkgs.ocamlformat
+          nixpkgs.ocamlPackages.utop
+          nixpkgs.niv
+        ]
       ));
 
     shellHook = llvmEnv + ''
