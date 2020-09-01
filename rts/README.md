@@ -1,4 +1,4 @@
-The Motoko RTS (C and rust parts)
+The Motoko RTS (C and Rust parts)
 =================================
 
 This directory contains the parts of the Motoko runtime implemented in C and
@@ -101,6 +101,5 @@ make clean
 CLANG=afl-gcc make test_leb128
 ./run-afl-leb128.sh
 ```
-
 
 
