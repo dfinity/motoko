@@ -49,4 +49,4 @@ function build_ref_to {
 build_ref_to "$old" old
 build_ref_to "$new" new
 
-$(dirname $0)/diff-stats.pl old-perf new-perf
+$(dirname $0)/diff-stats.pl old-perf/stats.csv new-perf/stats.csv
