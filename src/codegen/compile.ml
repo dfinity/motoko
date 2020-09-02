@@ -834,13 +834,7 @@ module Heap = struct
 
   let register_globals env =
     (* end-of-heap pointer, we set this to __heap_base upon start *)
-    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
-
-    (* counter for total reclaimed bytes *)
-    E.add_global64 env "reclaimed" Mutable 0L;
-
-    (* counter for max live bytes *)
-    E.add_global64 env "max_live" Mutable 0L
+    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl
 
   let get_total_allocation env =
     E.call_import env "rts" "get_total_allocations"
