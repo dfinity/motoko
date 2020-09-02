@@ -352,27 +352,27 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
     | Syntax.Unresolved -> assert false
     | Syntax.ClassPath f  (* DELETE ME*)
     | Syntax.LibPath f ->
-    if Type.Env.mem f !senv.Scope.lib_env then
-      Diag.return ()
-    else if mem ri.Source.it !pending then
-      Error [{
-        Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
-        text = Printf.sprintf "file %s must not depend on itself" f
-      }]
-    else begin
-      pending := add ri.Source.it !pending;
-      let open Diag.Syntax in
-      let* prog, base = parsefn ri.Source.at f in
-      let* () = Static.prog prog in
-      let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-      let* () = go_set more_imports in
-      let lib = lib_of_prog f prog in
-      let* sscope = check_lib !senv lib in
-      libs := lib :: !libs; (* NB: Conceptually an append *)
-      senv := Scope.adjoin !senv sscope;
-      pending := remove ri.Source.it !pending;
-      Diag.return ()
-    end
+      if Type.Env.mem f !senv.Scope.lib_env then
+        Diag.return ()
+      else if mem ri.Source.it !pending then
+        Error [{
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s must not depend on itself" f
+        }]
+      else begin
+        pending := add ri.Source.it !pending;
+        let open Diag.Syntax in
+        let* prog, base = parsefn ri.Source.at f in
+        let* () = Static.prog prog in
+        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
+        let* () = go_set more_imports in
+        let lib = lib_of_prog f prog in
+        let* sscope = check_lib !senv lib in
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        pending := remove ri.Source.it !pending;
+        Diag.return ()
+      end
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
