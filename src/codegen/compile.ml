@@ -920,6 +920,45 @@ module Heap = struct
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "as_memcmp"
 
+  let register env =
+
+    let get_hp_fn = E.add_fun env "get_hp" (Func.of_body env [] [I32Type] (fun env ->
+      get_heap_ptr env
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_hp";
+      edesc = nr (FuncExport (nr get_hp_fn))
+    });
+
+    let set_hp_fn = E.add_fun env "set_hp" (Func.of_body env [("new_hp", I32Type)] [] (fun env ->
+      G.i (LocalGet (nr (Int32.of_int 0))) ^^
+      set_heap_ptr env
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "set_hp";
+      edesc = nr (FuncExport (nr set_hp_fn))
+    });
+
+    let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
+      get_heap_base env
+    )) in
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_heap_base";
+      edesc = nr (FuncExport (nr get_heap_base_fn))
+    });
+
+    Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
+      get_heap_ptr env ^^
+      get_heap_base env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    )
+
+  let get_heap_size env =
+    G.i (Call (nr (E.built_in env "get_heap_size")))
+
 end (* Heap *)
 
 module Stack = struct
@@ -4679,44 +4718,7 @@ module GC = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "get_static_roots";
       edesc = nr (FuncExport (nr get_static_roots))
-    });
-
-    let get_hp = E.add_fun env "get_hp" (Func.of_body env [] [I32Type] (fun env ->
-      Heap.get_heap_ptr env
-    )) in
-
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_hp";
-      edesc = nr (FuncExport (nr get_hp))
-    });
-
-    let set_hp = E.add_fun env "set_hp" (Func.of_body env [("new_hp", I32Type)] [] (fun env ->
-      G.i (LocalGet (nr (Int32.of_int 0))) ^^
-      Heap.set_heap_ptr env
-    )) in
-
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "set_hp";
-      edesc = nr (FuncExport (nr set_hp))
-    });
-
-    let get_heap_base = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
-      Heap.get_heap_base env
-    )) in
-
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_heap_base";
-      edesc = nr (FuncExport (nr get_heap_base))
-    });
-
-    Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
-      Heap.get_heap_ptr env ^^
-      Heap.get_heap_base env ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-    )
-
-  let get_heap_size env =
-    G.i (Call (nr (E.built_in env "get_heap_size")))
+    })
 
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
@@ -6771,7 +6773,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_heap_size", [] ->
       SR.Vanilla,
-      GC.get_heap_size env ^^ Prim.prim_word32toNat env
+      Heap.get_heap_size env ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_memory_size", [] ->
       SR.Vanilla,
@@ -7612,6 +7614,7 @@ and conclude_module env start_fi_o =
   let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
 
+  Heap.register env;
   GC.register env static_roots;
 
   set_heap_base (E.get_end_of_static_memory env);
