@@ -756,7 +756,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       | _ -> assert false
     in
     let e = wrap {
-       it = build_actor u.at self_id fields obj_typ;
+       it = build_actor u.at (Some self_id) fields obj_typ;
        at = no_region;
        note = Note.{ def with typ = obj_typ } }
     in

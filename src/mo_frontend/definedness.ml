@@ -228,11 +228,8 @@ let check_lib lib =
         ignore (group msgs (decs msgs ds))
       | ModuleU efs->
         ignore (group msgs (exp_fields msgs efs))
-      | ActorClassU (csp, i, p, t, self_opt, efs) ->
+      | ActorClassU (csp, i, p, t, i', efs) ->
         begin
-        match self_opt with
-        | None -> assert false
-        | Some i' ->
         ignore (
         (M.empty, S.singleton i.it) +++ delayify (
           group msgs (exp_fields msgs efs @ class_self lib.at i') /// pat msgs p /// shared_pat msgs csp

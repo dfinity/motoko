@@ -43,7 +43,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     finish { it = ActorU (None, fields); note = e.note; at = e.at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
     assert (tbs = []);
-    finish { it = ActorClassU (sp, tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
+    finish { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
     (* Note: Loosing the module name here! *)
@@ -57,11 +57,6 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     then
       let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds in
       finish {it = ModuleU fs; at = no_region; note = empty_typ_note} 
-(* DELETE ME
-        (* when importing files, we really expect to find a module or an actor *)
-      raise (Invalid_argument(Printf.sprintf "Not some importable source:\n%s"
-        (Wasm.Sexpr.to_string 80 (Arrange.prog prog))))
- *)
     else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
   (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
@@ -70,13 +65,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
 (* Undo lib_of_prog, should go away when we use comp_unit earlier *)
 let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit = lib
 
-(*  let open Source in
-  let open Syntax in
-  comp_unit_of_prog true (match lib.it.it with
-  | BlockE ds -> { it = ds; at = lib.at; note = lib.note }
-  | _ -> assert false
-  )
- *)
+
 
 (* Diagnostics *)
 
@@ -261,79 +250,9 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
-(*
-let check_class senv lib : Scope.scope Diag.result =
-  phase "Checking" (Filename.basename lib.Source.note);
-  Diag.bind (Typing.check_class senv lib) (fun sscope ->
-    phase "Definedness" (Filename.basename lib.Source.note);
-    Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
-  )
-*)
-(* Parsing libraries *)
-
-(* TBD 
-let is_import dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ExpD e | LetD (_, e) -> (match e.it with ImportE _ -> true | _ -> false)
-  | _ -> false
-
-let is_module dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ExpD e | LetD (_, e) ->
-    (match e.it with ObjE (s, _) -> s.it = Type.Module | _ -> false)
-  | _ -> false
- *)
-(* TBD
-let rec lib_of_prog' imps at = function
-  | [d] when is_module d -> imps, d
-  | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
-  | ds ->
-    let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
-    let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
-    imps, {it = ExpD obj; at; note = empty_typ_note}
-*)
 
 let lib_of_prog f prog : Syntax.lib  =
  { (comp_unit_of_prog true prog) with Source.note = f }
-(*   let open Source in let open Syntax in
-  let imps, dec = lib_of_prog' [] prog.at prog.it in
-  let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
-  {it = exp; at = prog.at; note = f} *)
-
-(*
-let is_actor dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ClassD (_, _, _, _, _, s, _, _) -> s.it = Type.Actor
-  | ExpD e | LetD (_, e) ->
-    (match e.it with ObjE (s, _) -> s.it = Type.Actor | _ -> false)
-  | _ -> false
-*)
-(* TBD
-let rec class_of_prog' imps at = function
-  | [d] when is_actor d -> imps, d
-  | d::ds when is_import d -> class_of_prog' (d::imps) at ds
-  | ds ->
-    (* TODO: We probably just want to fail here, intead of implicitly wrapping in actor {…} *)
-    let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
-    let obj = {it = ObjE (Type.Actor @@ at, fs); at; note = empty_typ_note} in
-    imps, {it = ExpD obj; at; note = empty_typ_note}
- *)
-
-(* TBD
-let class_of_prog f prog : Syntax.lib =
-  comp_unit_of_prog true prog
-(*
-  let open Source in let open Syntax in
-  let imps, dec = class_of_prog' [] prog.at prog.it in
-  let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
-  {it = exp; at = prog.at; note = f}
- *)
-*)
 
 (* Prelude *)
 
