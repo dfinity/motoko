@@ -3,6 +3,7 @@
 _out
 _output
 _build
+target
 
 **/*~
 /result*

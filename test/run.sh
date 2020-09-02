@@ -82,6 +82,7 @@ function normalize () {
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
+    sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
