@@ -18,9 +18,6 @@ extern "C" {
     /// Get pointer to the static memory with an array to the static roots. Provided by the
     /// generated code.
     pub(crate) fn get_static_roots() -> SkewedPtr;
-
-    /// Provided by the C RTS, in `rts.c`.
-    pub(crate) fn as_memcpy(to: usize, from: usize, n: Bytes<u32>);
 }
 
 /// Maximum live data retained in a GC.
@@ -114,11 +111,11 @@ pub(crate) fn is_tagged_scalar(p: SkewedPtr) -> bool {
 }
 
 unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
-    as_memcpy(to, from, words_to_bytes(n))
+    libc::memcpy(to as *mut _, from as *const _, words_to_bytes(n).0 as usize);
 }
 
 unsafe fn memcpy_bytes(to: usize, from: usize, n: Bytes<u32>) {
-    as_memcpy(to, from, n)
+    libc::memcpy(to as *mut _, from as *const _, n.0 as usize);
 }
 
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
