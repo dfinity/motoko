@@ -3274,7 +3274,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      E.call_import env "rts" "collect" env
+      E.call_import env "rts" "collect"
     )) in
 
     E.add_export env (nr {
