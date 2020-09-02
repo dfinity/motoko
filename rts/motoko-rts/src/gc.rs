@@ -128,8 +128,8 @@ unsafe fn memset(s: usize, c: Words<u32>, b: u32) {
     }
 }
 
-/// Evacuate (copy) an object in from-space to to-space, return updated end_to_space.
-/// If the object was already evacuated, it returns end_to_space unchanged.
+/// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
+/// already evacuated end_to_space is not changed.
 ///
 /// Arguments:
 ///
@@ -151,19 +151,19 @@ unsafe fn memset(s: usize, c: Words<u32>, b: u32) {
 unsafe fn evac(
     begin_from_space: usize,
     begin_to_space: usize,
-    end_to_space: usize,
+    end_to_space: &mut usize,
     ptr_loc: usize,
-) -> usize {
+) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
     if is_tagged_scalar(*ptr_loc) {
-        return end_to_space;
+        return;
     }
 
     // Ignore static objects, they can't point to dynamic heap
     if (*ptr_loc).unskew() < begin_from_space {
-        return end_to_space;
+        return;
     }
 
     let obj = (*ptr_loc).unskew() as *mut Obj;
@@ -172,20 +172,20 @@ unsafe fn evac(
     if (*obj).tag == TAG_INDIRECTION {
         let fwd = (*(obj as *const Indirection)).fwd;
         *ptr_loc = fwd;
-        return end_to_space;
+        return;
     }
 
     let obj_size = object_size(obj as usize);
     let obj_size_bytes = words_to_bytes(obj_size);
 
     // Grow memory if needed
-    alloc::grow_memory(end_to_space + obj_size_bytes.0 as usize);
+    alloc::grow_memory(*end_to_space + obj_size_bytes.0 as usize);
 
     // Copy object to to-space
-    memcpy_words(end_to_space, obj as usize, obj_size);
+    memcpy_words(*end_to_space, obj as usize, obj_size);
 
     // Final location of the object after copying to-space back to from-space
-    let obj_loc = (end_to_space - begin_to_space) + begin_from_space;
+    let obj_loc = (*end_to_space - begin_to_space) + begin_from_space;
 
     // Set forwarding pointer
     let fwd = obj as *mut Indirection;
@@ -195,8 +195,8 @@ unsafe fn evac(
     // Update evacuated field
     *ptr_loc = skew(obj_loc);
 
-    // Return new end of to-space
-    end_to_space + obj_size_bytes.0 as usize
+    // Update end of to-space
+    *end_to_space += obj_size_bytes.0 as usize
 }
 
 /// Evacuate a blob payload pointed by a bigint. bigints are special in that a bigint's first field
@@ -207,9 +207,9 @@ unsafe fn evac(
 unsafe fn evac_bigint_blob(
     begin_from_space: usize,
     begin_to_space: usize,
-    end_to_space: usize,
+    end_to_space: &mut usize,
     ptr_loc: *mut usize, // address of field with a pointer to a blob payload
-) -> usize {
+) {
     let blob_payload_addr = *ptr_loc;
 
     // Get blob object from the payload
@@ -218,7 +218,7 @@ unsafe fn evac_bigint_blob(
     let blob_obj_addr_field = &mut blob_obj_addr;
     let blob_obj_addr_field_ptr = blob_obj_addr_field as *mut _;
 
-    let ret = evac(
+    evac(
         begin_from_space,
         begin_to_space,
         end_to_space,
@@ -231,16 +231,14 @@ unsafe fn evac_bigint_blob(
 
     // Update evacuated field
     *ptr_loc = blob_new_payload_addr; // not skewed!
-
-    ret
 }
 
 unsafe fn scav(
     begin_from_space: usize,
     begin_to_space: usize,
-    mut end_to_space: usize,
+    end_to_space: &mut usize,
     obj: usize,
-) -> usize {
+) {
     let obj = obj as *const Obj;
 
     match (*obj).tag {
@@ -248,7 +246,7 @@ unsafe fn scav(
             let obj = obj as *mut Object;
             let obj_payload = obj.offset(1) as *mut SkewedPtr;
             for i in 0..(*obj).size as isize {
-                end_to_space = evac(
+                evac(
                     begin_from_space,
                     begin_to_space,
                     end_to_space,
@@ -261,7 +259,7 @@ unsafe fn scav(
             let array = obj as *mut Array;
             let array_payload = array.offset(1) as *mut SkewedPtr;
             for i in 0..(*array).len as isize {
-                end_to_space = evac(
+                evac(
                     begin_from_space,
                     begin_to_space,
                     end_to_space,
@@ -273,14 +271,14 @@ unsafe fn scav(
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = ((&mut (*mutbox).field) as *mut _) as usize;
-            end_to_space = evac(begin_from_space, begin_to_space, end_to_space, field_addr);
+            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
             let closure_payload = closure.offset(1) as *mut SkewedPtr;
             for i in 0..(*closure).size as isize {
-                end_to_space = evac(
+                evac(
                     begin_from_space,
                     begin_to_space,
                     end_to_space,
@@ -292,20 +290,20 @@ unsafe fn scav(
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = ((&mut (*some).field) as *mut _) as usize;
-            end_to_space = evac(begin_from_space, begin_to_space, end_to_space, field_addr);
+            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = ((&mut (*variant).field) as *mut _) as usize;
-            end_to_space = evac(begin_from_space, begin_to_space, end_to_space, field_addr);
+            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
         TAG_BIGINT => {
             let bigint = obj as *mut BigInt;
             let data_ptr_addr = (&mut (*bigint).data_ptr) as *mut _;
 
-            end_to_space = evac_bigint_blob(
+            evac_bigint_blob(
                 begin_from_space,
                 begin_to_space,
                 end_to_space,
@@ -316,15 +314,15 @@ unsafe fn scav(
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = ((&mut (*concat).text1) as *mut _) as usize;
-            end_to_space = evac(begin_from_space, begin_to_space, end_to_space, field1_addr);
+            evac(begin_from_space, begin_to_space, end_to_space, field1_addr);
             let field2_addr = ((&mut (*concat).text2) as *mut _) as usize;
-            end_to_space = evac(begin_from_space, begin_to_space, end_to_space, field2_addr);
+            evac(begin_from_space, begin_to_space, end_to_space, field2_addr);
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = ((&mut (*obj_ind).field) as *mut _) as usize;
-            end_to_space = evac(begin_from_space, begin_to_space, end_to_space, field_addr);
+            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
@@ -336,8 +334,6 @@ unsafe fn scav(
             rts_trap_with("invalid object tag in scav\0".as_ptr());
         }
     }
-
-    end_to_space
 }
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
@@ -345,15 +341,14 @@ unsafe fn scav(
 unsafe fn evac_static_roots(
     begin_from_space: usize,
     begin_to_space: usize,
-    mut end_to_space: usize,
+    end_to_space: &mut usize,
     roots: *const Array,
-) -> usize {
+) {
     // Roots are in a static array which we don't evacuate. Only evacuate elements.
     for i in 0..(*roots).len {
         let obj = SkewedPtr(array_get(roots, i) as usize);
-        end_to_space = scav(begin_from_space, begin_to_space, end_to_space, obj.unskew());
+        scav(begin_from_space, begin_to_space, end_to_space, obj.unskew());
     }
-    end_to_space
 }
 
 /// The entry point. Called by the generated code.
@@ -367,19 +362,25 @@ pub unsafe extern "C" fn collect() {
     let static_roots = get_static_roots().unskew() as *const Array;
 
     // Evacuate roots
-    end_to_space = evac_static_roots(begin_from_space, begin_to_space, end_to_space, static_roots);
-
-    end_to_space = evac(
+    evac_static_roots(
         begin_from_space,
         begin_to_space,
-        end_to_space,
+        &mut end_to_space,
+        static_roots,
+    );
+
+    evac(
+        begin_from_space,
+        begin_to_space,
+        &mut end_to_space,
         closure_table_loc().unskew(),
     );
 
     // Scavenge to-space
     let mut p = begin_to_space;
-    while p < end_to_space { // NB: end_to_space keeps changing within this loop
-        end_to_space = scav(begin_from_space, begin_to_space, end_to_space, p);
+    while p < end_to_space {
+        // NB: end_to_space keeps changing within this loop
+        scav(begin_from_space, begin_to_space, &mut end_to_space, p);
         p += words_to_bytes(object_size(p)).0 as usize;
     }
 
