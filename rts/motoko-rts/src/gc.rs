@@ -331,12 +331,7 @@ unsafe fn scav(
             // These don't include pointers, skip
         }
 
-        TAG_INDIRECTION => {
-            // These are ignored in the original code for some reason
-            // TODO (osa): I think this branch should panic
-        }
-
-        _ => {
+        TAG_INDIRECTION | _ => {
             // Any other tag is a bug
             rts_trap_with("invalid object tag in scav\0".as_ptr());
         }
