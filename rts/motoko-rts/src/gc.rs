@@ -121,13 +121,6 @@ unsafe fn memcpy_bytes(to: usize, from: usize, n: Bytes<u32>) {
     as_memcpy(to, from, n)
 }
 
-unsafe fn memset(s: usize, c: Words<u32>, b: u32) {
-    let s_ptr = s as *mut u32;
-    for i in 0..c.0 {
-        *s_ptr.offset(i as isize) = b;
-    }
-}
-
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
 /// already evacuated end_to_space is not changed.
 ///
@@ -401,11 +394,4 @@ pub unsafe extern "C" fn collect() {
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp);
-
-    // Reset scratch space (for debugging purposes)
-    memset(
-        new_hp,
-        bytes_to_words(Bytes((end_to_space - new_hp) as u32)),
-        0,
-    );
 }
