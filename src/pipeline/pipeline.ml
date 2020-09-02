@@ -46,7 +46,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
     finish { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
-    (* Note: Loosing the module name here! *)
+    (* Note: Loosing the module name here! FIXME*)
     finish { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
     finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
@@ -61,10 +61,6 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
   in
   (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
   go [] prog.it
-
-(* Undo lib_of_prog, should go away when we use comp_unit earlier *)
-let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit = lib
-
 
 
 (* Diagnostics *)
@@ -643,14 +639,13 @@ let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
   let rec go imports = function
     | [] -> imports
     | l :: libs ->
-      let u = comp_unit_of_lib l in
-      match (snd u.Source.it).Source.it with
+      match (snd l.Source.it).Source.it with
       | Syntax.ActorU _ (*TODO reject me *)
       | Syntax.ActorClassU _ ->
-        let wasm = compile_unit_to_wasm mode imports u in
-        go (imports @ Lowering.Desugar.import_class u.Source.note wasm) libs
+        let wasm = compile_unit_to_wasm mode imports l in
+        go (imports @ Lowering.Desugar.import_class l.Source.note wasm) libs
       | _ ->
-        go (imports @ Lowering.Desugar.import_unit true u) libs
+        go (imports @ Lowering.Desugar.import_unit true l) libs
   in go [] libs
 
 and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
@@ -688,7 +683,7 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let dont_compile_classes libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit false (comp_unit_of_lib l)) libs
+  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit false l) libs
 
 let interpret_ir_progs libs progs =
   let prog = combine_progs progs in
