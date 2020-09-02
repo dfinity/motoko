@@ -341,12 +341,6 @@ module E = struct
   let add_global32 (env : t) name mut init =
     add_global32_delayed env name mut init
 
-  let add_global64 (env : t) name mut init =
-    add_global env name (Lib.Promise.make_fulfilled (
-      nr { gtype = GlobalType (I64Type, mut);
-        value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
-      }))
-
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
     | Some gi -> gi
