@@ -2829,7 +2829,7 @@ module Arr = struct
      No difference between mutable and immutable arrays.
   *)
 
-  let header_size = Int32.add Tagged.header_size 1l (* 2 *)
+  let header_size = Int32.add Tagged.header_size 1l
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
@@ -3099,9 +3099,6 @@ module Lifecycle = struct
 
 end (* Lifecycle *)
 
-let collect_garbage env =
-  E.call_import env "rts" "collect"
-
 
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
@@ -3240,7 +3237,7 @@ module Dfinity = struct
 
       G.i (Call (nr (E.built_in env "init"))) ^^
       (* Collect garbage *)
-      collect_garbage env ^^
+      E.call_import env "rts" "collect" ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3277,7 +3274,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      collect_garbage env
+      E.call_import env "rts" "collect" env
     )) in
 
     E.add_export env (nr {
@@ -5130,7 +5127,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        collect_garbage env ^^
+        E.call_import env "rts" "collect" ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery

@@ -114,8 +114,10 @@ pub struct Indirection {
 #[repr(C)]
 pub struct BigInt {
     pub header: Obj,
+    // the data following now must describe the `mp_int` struct
+    // (https://github.com/libtom/libtommath/blob/44ee82cd34d0524c171ffd0da70f83bba919aa38/tommath.h#L174-L179)
     pub size: u32,
-    pub alloc: u32, // TODO: Not sure what this is
+    pub alloc: u32,
     // Unskewed pointer to a blob payload. data_ptr - 2 (words) gives us the blob header.
     pub data_ptr: usize,
 }

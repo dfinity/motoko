@@ -3,10 +3,10 @@ use crate::rts_trap_with;
 use crate::types::*;
 
 extern "C" {
-    /// Get end_of_heap. Implemented by the compiler.
+    /// Get end_of_heap. Provided by the code generator (src/codegen/compile.ml)
     pub(crate) fn get_hp() -> usize;
 
-    /// Set end_of_heap. Implemented by the compiler.
+    /// Set end_of_heap. Provided by the code generator (src/codegen/compile.ml)
     pub(crate) fn set_hp(hp: usize);
 
     /// Get __heap_base
@@ -25,16 +25,12 @@ extern "C" {
 
 /// Maximum live data retained in a GC.
 //
-// NOTE (osa): In the original code (compile.ml) this variable was 64-bit, but I'm not sure why
-// that is necessary. Pointers in wasm32 are 32-bits so if the entire address space is live you
-// you max u32::MAX here, no need for 64-bits.
-//
 static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 
 /// Amount of garbage collected so far.
 static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
-/// Counter for total allocations done by `alloc::alloc_words` (called by the generated code).
+/// Counter for total allocations
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
 
 unsafe fn note_live_size(live: Bytes<u32>) {
@@ -132,8 +128,8 @@ unsafe fn memset(s: usize, c: Words<u32>, b: u32) {
     }
 }
 
-/// Evacuate (copy) an object in from-space to to-space, return new end of to-space. Returns the
-/// original to-space if the object is already evacuated.
+/// Evacuate (copy) an object in from-space to to-space, return updated end_to_space.
+/// If the object was already evacuated, it returns end_to_space unchanged.
 ///
 /// Arguments:
 ///
@@ -143,7 +139,7 @@ unsafe fn memset(s: usize, c: Words<u32>, b: u32) {
 ///     dynamic heap so we skip those.
 ///
 ///   - After all objects are evacuated we move to-space to from-space, to be able to do that the
-///     pointers need to point to their locations in from-space, which is calculated with
+///     pointers need to point to their (eventual) locations in from-space, which is calculated with
 ///     `end_to_space - begin_to_space + begin_from_space`.
 ///
 /// - begin_to_space: Where to-space starts. See above for how this is used.
@@ -204,7 +200,7 @@ unsafe fn evac(
 }
 
 /// Evacuate a blob payload pointed by a bigint. bigints are special in that a bigint's first field
-/// is an internal pointer: it points to payload of a blob object, instead of to the header.
+/// is an internal pointer: it points to the _payload_ of a blob object, instead of skewedly pointing to the object start
 ///
 /// - `ptr_loc`: Address of a `data_ptr` field of a BigInt (see types.rs). Points to payload of a
 ///   blob. See types.rs for blob layout.
@@ -368,7 +364,6 @@ unsafe fn evac_static_roots(
 /// The entry point. Called by the generated code.
 #[no_mangle]
 pub unsafe extern "C" fn collect() {
-    // Beginning of tospace = end of fromspace
     let begin_from_space = get_heap_base();
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
@@ -388,7 +383,7 @@ pub unsafe extern "C" fn collect() {
 
     // Scavenge to-space
     let mut p = begin_to_space;
-    while p < end_to_space {
+    while p < end_to_space { // NB: end_to_space keeps changing within this loop
         end_to_space = scav(begin_from_space, begin_to_space, end_to_space, p);
         p += words_to_bytes(object_size(p)).0 as usize;
     }
