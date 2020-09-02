@@ -2213,24 +2213,6 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
         ) prog
     )
 
-let check_lib scope lib : Scope.t Diag.result =
-  Diag.with_message_store
-    (fun msgs ->
-      recover_opt
-        (fun lib ->
-          let env = env_of_scope msgs scope in
-          (* TODO: simplify next 3 lines *)
-          let typ = infer_exp env (Syntax.exp_of_lib lib) in
-          let (imports,cub) = lib.it in
-          List.iter (fun  import ->
-              let (_, f, ri) = import.it in
-              import.note <- check_import env no_region f ri) imports;
-          cub.note <- {note_typ = typ; note_eff = T.Triv};
-          (* *)
-          Scope.lib lib.note typ
-        ) lib
-    )
-
 let is_actor_dec d =
   match d.it with
   | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
@@ -2255,67 +2237,31 @@ let check_actors scope progs : unit Diag.result =
       ) progs
     )
 
-let check_class scope lib : Scope.t Diag.result =
-  (* TODO: Check that this ends with a actor class*)
+let check_lib scope lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun lib ->
           let env = env_of_scope msgs scope in
-          (* TODO: simplify next 3 lines *)
-          let typ = infer_exp env (Syntax.exp_of_lib lib) in
           let (imports, cub) = lib.it in
-          List.iter (fun  import ->
-              let (_, f, ri) = import.it in
-              import.note <- check_import env no_region f ri) imports;
+          let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+          let typ, _ = infer_block env (imp_ds @ ds) lib.at in
+          List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
-          (* *)
-          match T.normalize typ with
-          | T.Func (sort, control, [], ts1, [t2]) ->
-            let typ' = T.Func (sort, control, [T.scope_bind], ts1, [T.Async (T.Var (T.default_scope_var, 0), t2)]) in
-            Scope.lib lib.note typ'
-          | _ ->
-           error env lib.at
-             "expected actor class, but library produces type\n  %s"
-             (T.string_of_typ_expand typ);
-          ) lib
-    )
-
-(*
-let rec check_imports env imports =
-  match imports with
-  | [] -> env
-  | import::imports' ->
-    let (id, f, ri) = import.it in
-    let t = check_import env import.at f ri in
-    let env' = adjoin_vals env (T.Env.singleton id t) in
-    import.note <- t;
-    check_imports env' imports
-
-
-let check_unit scope lib : Scope.t Diag.result =
-  Diag.with_message_store
-    (fun msgs ->
-      recover_opt
-        (fun lib ->
-          let env = env_of_scope msgs scope in
-          (* TODO: simplify next 3 lines *)
-          let (imports, cub) = lib.it in
-          let env' = check_imports env imports in
-          match cub.it with
-          | ModuleU fs ->
-            let exp = {it = ObjE( T.Module @@ no_region, fs); at = cub.at ; note = cub.note } in
-            let typ = infer_exp env' exp in
-            cub.note <- {note_typ = typ; note_eff = T.Triv};
-            Scope.lib lib.note typ
-          | ActorU (id_opt, fs) ->
-            let exp =
-              {it = ActorE( T.Module @@ no_region, fs); at = cub.at ; note = cub.note } in
-            let typ = infer_exp env' exp in
-            cub.note <- {note_typ = typ; note_eff = T.Triv};
-            Scope.lib lib.note typ
-
+          let imp_typ = match cub.it with
+            | ModuleU _ -> typ
+            | ActorClassU _ ->
+              begin
+              match T.normalize typ with
+              | T.Func (sort, control, [], ts1, [t2]) ->
+                T.Func (sort, control, [T.scope_bind],
+                        ts1,
+                        [T.Async (T.Var (T.default_scope_var, 0), t2)])
+              | _ -> assert false
+              end
+            | _ -> assert false
+          in
+          Scope.lib lib.note imp_typ
         ) lib
     )
 
- *)

@@ -943,8 +943,10 @@ let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
+  let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_exp env (Syntax.exp_of_lib lib) (fun v -> vo := Some v)
+    let (imp_decs, decs) = Syntax.decs_of_comp_unit lib in
+    interpret_block env (imp_decs @ decs) (Some ve) (fun v -> vo := Some v)
   );
   Scheduler.run ();
   lib_scope lib.note (Option.get !vo) scope

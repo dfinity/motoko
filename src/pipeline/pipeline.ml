@@ -261,15 +261,17 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
+(*
 let check_class senv lib : Scope.scope Diag.result =
   phase "Checking" (Filename.basename lib.Source.note);
   Diag.bind (Typing.check_class senv lib) (fun sscope ->
     phase "Definedness" (Filename.basename lib.Source.note);
     Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
   )
-
+*)
 (* Parsing libraries *)
 
+(* TBD 
 let is_import dec =
   let open Source in let open Syntax in
   match dec.it with
@@ -282,8 +284,8 @@ let is_module dec =
   | ExpD e | LetD (_, e) ->
     (match e.it with ObjE (s, _) -> s.it = Type.Module | _ -> false)
   | _ -> false
-
-(* TODO: Delete me *)
+ *)
+(* TBD
 let rec lib_of_prog' imps at = function
   | [d] when is_module d -> imps, d
   | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
@@ -292,6 +294,7 @@ let rec lib_of_prog' imps at = function
     let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
     let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
     imps, {it = ExpD obj; at; note = empty_typ_note}
+*)
 
 let lib_of_prog f prog : Syntax.lib  =
  { (comp_unit_of_prog true prog) with Source.note = f }
@@ -300,6 +303,7 @@ let lib_of_prog f prog : Syntax.lib  =
   let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
   {it = exp; at = prog.at; note = f} *)
 
+(*
 let is_actor dec =
   let open Source in let open Syntax in
   match dec.it with
@@ -307,7 +311,8 @@ let is_actor dec =
   | ExpD e | LetD (_, e) ->
     (match e.it with ObjE (s, _) -> s.it = Type.Actor | _ -> false)
   | _ -> false
-
+*)
+(* TBD
 let rec class_of_prog' imps at = function
   | [d] when is_actor d -> imps, d
   | d::ds when is_import d -> class_of_prog' (d::imps) at ds
@@ -317,7 +322,9 @@ let rec class_of_prog' imps at = function
     let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
     let obj = {it = ObjE (Type.Actor @@ at, fs); at; note = empty_typ_note} in
     imps, {it = ExpD obj; at; note = empty_typ_note}
+ *)
 
+(* TBD
 let class_of_prog f prog : Syntax.lib =
   comp_unit_of_prog true prog
 (*
@@ -326,6 +333,7 @@ let class_of_prog f prog : Syntax.lib =
   let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
   {it = exp; at = prog.at; note = f}
  *)
+*)
 
 (* Prelude *)
 
@@ -427,25 +435,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
     | Syntax.Unresolved -> assert false
+    | Syntax.ClassPath f  (* DELETE ME*)
     | Syntax.LibPath f ->
-      go_lib ri f lib_of_prog check_lib
-    | Syntax.ClassPath f ->
-      go_lib ri f class_of_prog check_class
-    | Syntax.IDLPath (f, _) ->
-      let open Diag.Syntax in
-      let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
-      if actor_opt = None then
-        Error [Diag.{
-          sev = Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s does not define a service" f
-        }]
-      else
-        let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
-        let sscope = Scope.lib f actor in
-        senv := Scope.adjoin !senv sscope;
-        Diag.return ()
-  (* used for both classes and modules *)
-  and go_lib ri f lib_of_prog check_lib =
     if Type.Env.mem f !senv.Scope.lib_env then
       Diag.return ()
     else if mem ri.Source.it !pending then
@@ -467,6 +458,19 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       pending := remove ri.Source.it !pending;
       Diag.return ()
     end
+    | Syntax.IDLPath (f, _) ->
+      let open Diag.Syntax in
+      let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
+      if actor_opt = None then
+        Error [Diag.{
+          sev = Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s does not define a service" f
+        }]
+      else
+        let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
+        let sscope = Scope.lib f actor in
+        senv := Scope.adjoin !senv sscope;
+        Diag.return ()
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)

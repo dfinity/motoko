@@ -230,48 +230,63 @@ and comp_unit' = (import list * comp_unit_body)
 
 type lib = comp_unit
 
-(* temporary hack until typing and interpretation of comp_unit implemented *)
-let exp_of_lib (lib : lib) =
+(* Lib as pair of import decs and body decs *)
+let decs_of_comp_unit (lib : lib) =
   let open Source in
   let (imports, cub) = lib.it in
-  let decs = List.map (fun { it = (id, fp, ri); at; note}  ->
-    { it = LetD ({ it = VarP id;
-                   at;
-                   note = note;
-                 },
-                 { it = ImportE (fp, ri);
-                   at;
-                   note = { note_typ = note; note_eff = Type.Triv};
-                 });
+  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
+     { it = LetD (
+       { it = VarP id;
+         at;
+         note = note;
+       },
+       { it = ImportE (fp, ri);
+         at;
+         note = { note_typ = note; note_eff = Type.Triv};
+       });
       at;
       note = { note_typ = note; note_eff = Type.Triv } }) imports
   in
+  import_decs,
   match cub.it with
   | ProgU ds  ->
-    { it = BlockE ds;
-      at = cub.at;
-      note = cub.note;
-    }
+    ds
   | ModuleU fields ->
-    { it =
-      BlockE (decs @
-        [{ it = ExpD { it = ObjE ({ it = Type.Module; at = no_region; note = ()}, fields);
-                       at = cub.at;
-                       note = cub.note;};
-           at = cub.at;
-           note = cub.note; }]);
-      at = cub.at;
-      note = cub.note};
+    [ { it = ExpD {
+          it = ObjE ({ it = Type.Module; at = no_region; note = ()}, fields);
+          at = cub.at;
+          note = cub.note };
+        at = cub.at;
+        note = cub.note }]
+  | ActorClassU (csp, i, p, t, None, efs) -> assert false
   | ActorClassU (csp, i, p, t, Some i', efs) ->
-    { it =
-      BlockE (decs @
-        [{ it = ClassD (csp, i, [], p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
-           at = cub.at;
-           note = cub.note;}]);
-      at = cub.at;
-      note = cub.note;
-    }
-  | ActorU _ -> assert false
+    [{ it = ClassD (csp, i, [], p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
+       at = cub.at;
+       note = cub.note;}];
+  | ActorU (None, fields) ->
+    [ { it = ExpD {
+          it = ObjE ({ it = Type.Actor; at = no_region; note = ()}, fields);
+          at = cub.at;
+          note = cub.note};
+        at = cub.at;
+        note = cub.note;} ]
+  | ActorU (Some id, fields) ->
+    [ { it = LetD (
+        { it = VarP id;
+          at = cub.at;
+          note = cub.note.note_typ;
+        },
+        { it = ObjE ({ it = Type.Actor; at = no_region; note = ()}, fields);
+          at = cub.at;
+          note = cub.note});
+        at = cub.at;
+       note = cub.note;
+      };
+      { it = ExpD { it = VarE id; at = cub.at; note = cub.note };
+        at = cub.at;
+        note = cub.note }
+    ]
+
 
 
 (* n-ary arguments/result sequences *)
