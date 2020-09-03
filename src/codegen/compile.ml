@@ -341,12 +341,6 @@ module E = struct
   let add_global32 (env : t) name mut init =
     add_global32_delayed env name mut init
 
-  let add_global64 (env : t) name mut init =
-    add_global env name (Lib.Promise.make_fulfilled (
-      nr { gtype = GlobalType (I64Type, mut);
-        value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
-      }))
-
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
     | Some gi -> gi
@@ -718,7 +712,7 @@ end (* Func *)
 module RTS = struct
   (* The connection to the C parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "as_memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type] [];
@@ -768,7 +762,6 @@ module RTS = struct
     E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "closure_count" [] [I32Type];
-    E.add_func_import env "rts" "closure_table_loc" [] [I32Type];
     E.add_func_import env "rts" "closure_table_size" [] [I32Type];
     E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_compare" [I32Type; I32Type] [I32Type];
@@ -805,6 +798,14 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
+    E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
+    E.add_func_import env "rts" "collect" [] [];
+    E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
+    E.add_func_import env "rts" "get_heap_size" [] [I32Type];
+    E.add_func_import env "rts" "init" [] [];
     ()
 
 end (* RTS *)
@@ -820,123 +821,27 @@ module Heap = struct
   let get_heap_base env =
     G.i (GlobalGet (nr (E.get_global env "__heap_base")))
 
-  (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff. This is the actual memory offset, not-skewed yet *)
-  let get_heap_ptr env =
-    G.i (GlobalGet (nr (E.get_global env "end_of_heap")))
-  let set_heap_ptr env =
-    G.i (GlobalSet (nr (E.get_global env "end_of_heap")))
-  let get_skewed_heap_ptr env = get_heap_ptr env ^^ compile_add_const ptr_skew
-
   let register_globals env =
     (* end-of-heap pointer, we set this to __heap_base upon start *)
-    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
-
-    (* counter for total allocations *)
-    E.add_global64 env "allocations" Mutable 0L;
-
-    (* counter for total reclaimed bytes *)
-    E.add_global64 env "reclaimed" Mutable 0L;
-
-    (* counter for max live bytes *)
-    E.add_global64 env "max_live" Mutable 0L
-
-  let count_allocations env =
-    (* assumes number of allocated bytes on the stack *)
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "allocations"))) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-    G.i (GlobalSet (nr (E.get_global env "allocations")))
+    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl
 
   let get_total_allocation env =
-    G.i (GlobalGet (nr (E.get_global env "allocations")))
-
-  let add_reclaimed env =
-    (* assumes number of reclaimed bytes on the stack *)
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "reclaimed"))) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-    G.i (GlobalSet (nr (E.get_global env "reclaimed")))
+    E.call_import env "rts" "get_total_allocations"
 
   let get_reclaimed env =
-    G.i (GlobalGet (nr (E.get_global env "reclaimed")))
+    E.call_import env "rts" "get_reclaimed"
 
   let get_memory_size =
     G.i MemorySize ^^
     compile_mul_const page_size
 
-  let note_live_size env =
-    (* assumes size of live set on the stack *)
-    let (set_live_size, get_live_size) = new_local env "live_size" in
-    set_live_size ^^
-    get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "max_live"))) ^^
-    G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-    G.if_ [] G.nop begin
-      get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-      G.i (GlobalSet (nr (E.get_global env "max_live")))
-    end
-
   let get_max_live_size env =
-    G.i (GlobalGet (nr (E.get_global env "max_live")))
+    E.call_import env "rts" "get_max_live_size"
 
-
-  (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
-  let grow_memory env =
-    Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      get_ptr ^^ compile_divU_const page_size ^^
-      compile_add_const 1l ^^
-      G.i MemorySize ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
-
-      (* Check that the new heap pointer is within the memory *)
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          G.i MemoryGrow ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow memory."
-        ) G.nop
-      )
-
-  let dyn_alloc_words env = G.i (Call (nr (E.built_in env "alloc_words")))
-  let dyn_alloc_bytes env = G.i (Call (nr (E.built_in env "alloc_bytes")))
-
-  let declare_alloc_functions env =
-    (* Dynamic allocation *)
-    Func.define_built_in env "alloc_words" [("n", I32Type)] [I32Type] (fun env ->
-      (* expects the size (in words), returns the skewed pointer *)
-      let get_n = G.i (LocalGet (nr 0l)) in
-      (* return the current pointer (skewed) *)
-      get_skewed_heap_ptr env ^^
-
-      (* Count allocated bytes *)
-      get_n ^^ compile_mul_const word_size ^^
-      count_allocations env ^^
-
-      (* Update heap pointer *)
-      get_heap_ptr env ^^
-      get_n ^^ compile_mul_const word_size ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      set_heap_ptr env ^^
-
-      (* grow memory if needed *)
-      get_heap_ptr env ^^ grow_memory env
-    );
-    Func.define_built_in env "alloc_bytes" [("n", I32Type)] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
-      (* Round up to next multiple of the word size and convert to words *)
-      get_n ^^
-      compile_add_const 3l ^^
-      compile_divU_const word_size ^^
-      dyn_alloc_words env
-    )
+  let dyn_alloc_words env =
+    E.call_import env "rts" "alloc_words"
+  let dyn_alloc_bytes env =
+    E.call_import env "rts" "alloc_bytes"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -994,27 +899,22 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = E.call_import env "rts" "as_memcpy"
+  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "as_memcmp"
 
-  (* Copying words (works on skewed memory addresses) *)
-  let memcpy_words_skewed env =
-    Func.share_code3 env "memcpy_words_skewed" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^ compile_mul_const word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+  let register env =
+    let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
+      get_heap_base env
+    )) in
 
-          get_from ^^
-          get_i ^^ compile_mul_const word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          load_ptr ^^
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_heap_base";
+      edesc = nr (FuncExport (nr get_heap_base_fn))
+    })
 
-          store_ptr
-      )
-    )
+  let get_heap_size env =
+    E.call_import env "rts" "get_heap_size"
 
 end (* Heap *)
 
@@ -1068,7 +968,6 @@ module ClosureTable = struct
   let recall env : G.t = E.call_import env "rts" "recall_closure"
   let count env : G.t = E.call_import env "rts" "closure_count"
   let size env : G.t = E.call_import env "rts" "closure_table_size"
-  let root env : G.t = E.call_import env "rts" "closure_table_loc"
 end (* ClosureTable *)
 
 module Bool = struct
@@ -1227,10 +1126,10 @@ module Tagged = struct
     | Some (* For opt *)
     | Variant
     | Blob
-    | Indirection
+    (* | FwdPtr -- Only used by the GC *)
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
-    | Concat (* String concatenation, used by rts/text.c *)
+    (* | Concat -- String concatenation, used by rts/text.c *)
     | StableSeen (* Marker that we have seen this thing before *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
@@ -1244,10 +1143,8 @@ module Tagged = struct
     | Some -> 8l
     | Variant -> 9l
     | Blob -> 10l
-    | Indirection -> 11l
     | Bits32 -> 12l
     | BigInt -> 13l
-    | Concat -> 14l
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
@@ -1277,12 +1174,6 @@ module Tagged = struct
     load ^^
     set_tag ^^
     go cases
-
-  (* like branch_default but the tag is known statically *)
-  let branch env retty = function
-    | [] -> G.i Unreachable
-    | [_, code] -> G.i Drop ^^ code
-    | (_, code) :: cases -> branch_default env retty code cases
 
   (* like branch_default but also pushes the scrutinee on the stack for the
    * branch's consumption *)
@@ -2878,9 +2769,6 @@ module Text = struct
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
 
-  let concat_field1 = Int32.add Tagged.header_size 1l
-  let concat_field2 = Int32.add Tagged.header_size 2l
-
   let of_ptr_size env =
     E.call_import env "rts" "text_of_ptr_size"
   let concat env =
@@ -3345,7 +3233,7 @@ module Dfinity = struct
 
       G.i (Call (nr (E.built_in env "init"))) ^^
       (* Collect garbage *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
+      E.call_import env "rts" "collect" ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3382,7 +3270,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      G.i (Call (nr (E.built_in env "collect")))
+      E.call_import env "rts" "collect"
     )) in
 
     E.add_export env (nr {
@@ -3511,15 +3399,6 @@ end (* Dfinity *)
 
 module RTS_Exports = struct
   let system_exports env =
-    Heap.declare_alloc_functions env;
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_bytes";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
-    });
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_words";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_words")))
-    });
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -3542,157 +3421,6 @@ module RTS_Exports = struct
     })
 
 end (* RTS_Exports *)
-
-
-module HeapTraversal = struct
-  (* Returns the object size (in words) *)
-  let object_size env =
-    Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^
-      Tagged.branch env [I32Type]
-        [ Tagged.Bits64,
-          compile_unboxed_const 3l
-        ; Tagged.Bits32,
-          compile_unboxed_const 2l
-        ; Tagged.BigInt,
-          compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
-        ; Tagged.Some,
-          compile_unboxed_const 2l
-        ; Tagged.Variant,
-          compile_unboxed_const 3l
-        ; Tagged.ObjInd,
-          compile_unboxed_const 2l
-        ; Tagged.MutBox,
-          compile_unboxed_const 2l
-        ; Tagged.Array,
-          get_x ^^
-          Heap.load_field Arr.len_field ^^
-          compile_add_const Arr.header_size
-        ; Tagged.Blob,
-          get_x ^^
-          Heap.load_field Blob.len_field ^^
-          compile_add_const 3l ^^
-          compile_divU_const Heap.word_size ^^
-          compile_add_const Blob.header_size
-        ; Tagged.Object,
-          get_x ^^
-          Heap.load_field Object.size_field ^^
-          compile_add_const Object.header_size
-        ; Tagged.Closure,
-          get_x ^^
-          Heap.load_field Closure.len_field ^^
-          compile_add_const Closure.header_size
-        ; Tagged.Concat,
-          compile_unboxed_const 4l
-        ]
-        (* Indirections have unknown size. *)
-    )
-
-  let walk_heap_from_to env compile_from compile_to mk_code =
-      let (set_x, get_x) = new_local env "x" in
-      compile_from ^^ set_x ^^
-      compile_while
-        (* While we have not reached the end of the area *)
-        ( get_x ^^
-          compile_to ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtU))
-        )
-        ( mk_code get_x ^^
-          get_x ^^
-          get_x ^^ object_size env ^^ compile_mul_const Heap.word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_x
-        )
-
-  let for_each_array_elem env get_array mk_code =
-      get_array ^^
-      Heap.load_field Arr.len_field ^^
-      from_0_to_n env (fun get_i ->
-        mk_code (
-          get_array ^^
-          get_i ^^
-          Arr.idx env
-        )
-      )
-
-  (* Calls mk_code for each pointer in the object pointed to by get_x,
-     passing code get the address of the pointer,
-     and code to get the offset of the pointer (for the BigInt payload field). *)
-  let for_each_pointer env get_x mk_code mk_code_offset =
-    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
-    let code = mk_code get_ptr_loc in
-    let code_offset = mk_code_offset get_ptr_loc in
-    get_x ^^
-    Tagged.branch_default env [] G.nop
-      [ Tagged.MutBox,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size MutBox.field) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.BigInt,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size 4l) ^^
-        set_ptr_loc ^^
-        code_offset Blob.unskewed_payload_offset
-      ; Tagged.Some,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.Variant,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Variant.payload_field) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.ObjInd,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size 1l) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.Array,
-        for_each_array_elem env get_x (fun get_elem_ptr ->
-          get_elem_ptr ^^
-          set_ptr_loc ^^
-          code
-        )
-      ; Tagged.Object,
-        get_x ^^
-        Heap.load_field Object.size_field ^^
-
-        from_0_to_n env (fun get_i ->
-          get_i ^^
-          compile_add_const Object.header_size ^^
-          compile_mul_const Heap.word_size ^^
-          get_x ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_ptr_loc ^^
-          code
-        )
-      ; Tagged.Closure,
-        get_x ^^
-        Heap.load_field Closure.len_field ^^
-
-        from_0_to_n env (fun get_i ->
-          get_i ^^
-          compile_add_const Closure.header_size ^^
-          compile_mul_const Heap.word_size ^^
-          get_x ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_ptr_loc ^^
-          code
-        )
-      ; Tagged.Concat,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Text.concat_field1) ^^
-        set_ptr_loc ^^
-        code ^^
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Text.concat_field2) ^^
-        set_ptr_loc ^^
-        code
-      ]
-
-end (* HeapTraversal *)
 
 module Serialization = struct
   (*
@@ -4937,195 +4665,17 @@ module Stabilization = struct
 end
 
 module GC = struct
-  (* This is a very simple GC:
-     It copies everything live to the to-space beyond the bump pointer,
-     then it memcpies it back, over the from-space (so that we still neatly use
-     the beginning of memory).
-
-     Roots are:
-     * All objects in the static part of the memory.
-     * the closure_table (see module ClosureTable)
-  *)
-
-  let gc_enabled = true
-
-  (* If the pointer at ptr_loc points after begin_from_space, copy
-     to after end_to_space, and replace it with a pointer, adjusted for where
-     the object will be finally. *)
-  (* Returns the new end of to_space *)
-  (* Invariant: Must not be called on the same pointer twice. *)
-  (* All pointers, including ptr_loc and space end markers, are skewed *)
-
-  let evacuate_common env
-        get_obj update_ptr
-        get_begin_from_space get_begin_to_space get_end_to_space
-        =
-
-    let (set_len, get_len) = new_local env "len" in
-
-    (* If this is static, ignore it *)
-    get_obj ^^
-    get_begin_from_space ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    G.if_ [] (get_end_to_space ^^ G.i Return) G.nop ^^
-
-    (* If this is an indirection, just use that value *)
-    get_obj ^^
-    Tagged.branch_default env [] G.nop [
-      Tagged.Indirection,
-      update_ptr (get_obj ^^ Heap.load_field 1l) ^^
-      get_end_to_space ^^ G.i Return
-    ] ^^
-
-    (* Get object size *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    (* Grow memory if needed *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.grow_memory env ^^
-
-    (* Copy the referenced object to to space *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
-
-    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
-
-    (* Calculate new pointer *)
-    get_end_to_space ^^
-    get_begin_to_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    get_begin_from_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    set_new_ptr ^^
-
-    (* Set indirection *)
-    get_obj ^^
-    Tagged.(store Indirection) ^^
-    get_obj ^^
-    get_new_ptr ^^
-    Heap.store_field 1l ^^
-
-    (* Update pointer *)
-    update_ptr get_new_ptr ^^
-
-    (* Calculate new end of to space *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add))
-
-  (* Used for normal skewed pointers *)
-  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
-
-    let get_obj = get_ptr_loc ^^ load_ptr in
-
-    (* If this is an unboxed scalar, ignore it *)
-    get_obj ^^
-    BitTagged.if_tagged_scalar env [] (get_end_to_space ^^ G.i Return) G.nop ^^
-
-    let update_ptr new_val_code =
-      get_ptr_loc ^^ new_val_code ^^ store_ptr in
-
-    evacuate_common env
-        get_obj update_ptr
-        get_begin_from_space get_begin_to_space get_end_to_space
-  )
-
-  (* A variant for pointers that point into the payload (used for the bignum objects).
-     These are never scalars. *)
-  let evacuate_offset env offset =
-    let name = Printf.sprintf "evacuate_offset_%d" (Int32.to_int offset) in
-    Func.share_code4 env name (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
-    let get_obj = get_ptr_loc ^^ load_ptr ^^ compile_sub_const offset in
-
-    let update_ptr new_val_code =
-      get_ptr_loc ^^ new_val_code ^^ compile_add_const offset ^^ store_ptr in
-
-    evacuate_common env
-        get_obj update_ptr
-        get_begin_from_space get_begin_to_space get_end_to_space
-  )
 
   let register env static_roots =
-    Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
-      Heap.get_heap_ptr env ^^
-      Heap.get_heap_base env ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-    );
 
-    Func.define_built_in env "collect" [] [] (fun env ->
-      if not gc_enabled then G.nop else
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env -> 
+      compile_unboxed_const static_roots
+    )) in
 
-      (* Copy all roots. *)
-      let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
-      let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
-      let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
-
-      Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
-      let get_end_from_space = get_begin_to_space in
-      Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
-      Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
-
-
-      (* Common arguments for evacuate *)
-      let evac get_ptr_loc =
-          get_begin_from_space ^^
-          get_begin_to_space ^^
-          get_end_to_space ^^
-          get_ptr_loc ^^
-          evacuate env ^^
-          set_end_to_space in
-
-      let evac_offset get_ptr_loc offset =
-          get_begin_from_space ^^
-          get_begin_to_space ^^
-          get_end_to_space ^^
-          get_ptr_loc ^^
-          evacuate_offset env offset ^^
-          set_end_to_space in
-
-      (* Go through the roots, and evacuate them *)
-      HeapTraversal.for_each_array_elem env (compile_unboxed_const static_roots) (fun get_elem_ptr ->
-        let (set_static, get_static) = new_local env "static_obj" in
-        get_elem_ptr ^^ load_ptr ^^ set_static ^^
-        HeapTraversal.for_each_pointer env get_static evac evac_offset
-      ) ^^
-      evac (ClosureTable.root env) ^^
-
-      (* Go through the to-space, and evacuate that.
-         Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
-       *)
-      HeapTraversal.walk_heap_from_to env
-        get_begin_to_space
-        get_end_to_space
-        (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
-
-      (* Note some stats *)
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      Heap.note_live_size env ^^
-
-      get_end_from_space ^^ get_begin_from_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      Heap.add_reclaimed env ^^
-
-      (* Copy the to-space to the beginning of memory. *)
-      get_begin_from_space ^^ compile_add_const ptr_unskew ^^
-      get_begin_to_space ^^ compile_add_const ptr_unskew ^^
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      Heap.memcpy env ^^
-
-      (* Reset the heap pointer *)
-      get_begin_from_space ^^ compile_add_const ptr_unskew ^^
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.set_heap_ptr env
-  )
-
-  let get_heap_size env =
-    G.i (Call (nr (E.built_in env "get_heap_size")))
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_static_roots";
+      edesc = nr (FuncExport (nr get_static_roots))
+    })
 
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
@@ -5536,7 +5086,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        G.i (Call (nr (E.built_in env "collect"))) ^^
+        E.call_import env "rts" "collect" ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
@@ -7180,7 +6730,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_heap_size", [] ->
       SR.Vanilla,
-      GC.get_heap_size env ^^ Prim.prim_word32toNat env
+      Heap.get_heap_size env ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_memory_size", [] ->
       SR.Vanilla,
@@ -7196,7 +6746,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_max_live_size", [] ->
       SR.Vanilla,
-      Heap.get_max_live_size env ^^ BigNum.from_word64 env
+      Heap.get_max_live_size env ^^ BigNum.from_word32 env
 
     | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
@@ -8021,13 +7571,14 @@ and conclude_module env start_fi_o =
   let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
 
+  Heap.register env;
   GC.register env static_roots;
 
   set_heap_base (E.get_end_of_static_memory env);
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Heap.get_heap_base env ^^ Heap.set_heap_ptr env ^^
+    E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)

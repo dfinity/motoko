@@ -2,6 +2,11 @@
 //! utilities.
 
 #![no_std]
+#![feature(arbitrary_self_types)]
+
+mod alloc;
+mod gc;
+mod types;
 
 extern "C" {
     pub(crate) fn rts_trap_with(msg: *const u8) -> !;

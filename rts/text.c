@@ -54,7 +54,7 @@ static blob_t alloc_text_blob(size_t n) {
 // Create
 export text_t text_of_ptr_size(const char *buf, size_t n) {
   as_ptr r = alloc_text_blob(n);
-  as_memcpy(BLOB_PAYLOAD(r), buf, n);
+  memcpy(BLOB_PAYLOAD(r), buf, n);
   return r;
 }
 
@@ -75,8 +75,8 @@ export text_t text_concat(text_t s1, text_t s2) {
   // short texts are copied into a single blob
   if (n < MIN_CONCAT_SIZE) {
     as_ptr r = alloc_text_blob(n1 + n2);
-    as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
-    as_memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
+    memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
+    memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
     return r;
   }
   // Check max size
@@ -106,7 +106,7 @@ export void text_to_buf(text_t s, char *buf) {
   crumb *next_crumb = NULL; // what do do after we are done with s
   while (true) {
     if (TAG(s) == TAG_BLOB) {
-      as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
+      memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
 
       // return if we are done
       if (next_crumb == NULL) return;

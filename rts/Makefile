@@ -177,6 +177,7 @@ mo-rts.wasm: $(RTS_RUST_WASM_O) $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
+		--export=memcpy \
 		--whole-archive \
 		$+
 
