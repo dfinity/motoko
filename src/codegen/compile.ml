@@ -804,6 +804,8 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
+    E.add_func_import env "rts" "get_heap_size" [] [I32Type];
+    E.add_func_import env "rts" "init" [] [];
     ()
 
 end (* RTS *)
@@ -818,13 +820,6 @@ module Heap = struct
      and GHC.register *)
   let get_heap_base env =
     G.i (GlobalGet (nr (E.get_global env "__heap_base")))
-
-  (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff. This is the actual memory offset, not-skewed yet *)
-  let get_heap_ptr env =
-    G.i (GlobalGet (nr (E.get_global env "end_of_heap")))
-  let set_heap_ptr env =
-    G.i (GlobalSet (nr (E.get_global env "end_of_heap")))
 
   let register_globals env =
     (* end-of-heap pointer, we set this to __heap_base upon start *)
@@ -909,26 +904,6 @@ module Heap = struct
   let memcmp env = E.call_import env "rts" "as_memcmp"
 
   let register env =
-
-    let get_hp_fn = E.add_fun env "get_hp" (Func.of_body env [] [I32Type] (fun env ->
-      get_heap_ptr env
-    )) in
-
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_hp";
-      edesc = nr (FuncExport (nr get_hp_fn))
-    });
-
-    let set_hp_fn = E.add_fun env "set_hp" (Func.of_body env [("new_hp", I32Type)] [] (fun env ->
-      G.i (LocalGet (nr (Int32.of_int 0))) ^^
-      set_heap_ptr env
-    )) in
-
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "set_hp";
-      edesc = nr (FuncExport (nr set_hp_fn))
-    });
-
     let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
       get_heap_base env
     )) in
@@ -936,16 +911,10 @@ module Heap = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "get_heap_base";
       edesc = nr (FuncExport (nr get_heap_base_fn))
-    });
-
-    Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
-      get_heap_ptr env ^^
-      get_heap_base env ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-    )
+    })
 
   let get_heap_size env =
-    G.i (Call (nr (E.built_in env "get_heap_size")))
+    E.call_import env "rts" "get_heap_size"
 
 end (* Heap *)
 
@@ -7609,7 +7578,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Heap.get_heap_base env ^^ Heap.set_heap_ptr env ^^
+    E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)

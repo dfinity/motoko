@@ -3,14 +3,8 @@ use crate::rts_trap_with;
 use crate::types::*;
 
 extern "C" {
-    /// Get end_of_heap. Provided by the code generator (src/codegen/compile.ml)
-    pub(crate) fn get_hp() -> usize;
-
-    /// Set end_of_heap. Provided by the code generator (src/codegen/compile.ml)
-    pub(crate) fn set_hp(hp: usize);
-
-    /// Get __heap_base
-    fn get_heap_base() -> usize;
+    /// Get __heap_base. Provided by the code generator (src/codegen/compile.ml).
+    fn get_heap_base() -> u32;
 
     /// Skewed pointer to a skewed pointer to an array. See closure-table.c for details.
     fn closure_table_loc() -> SkewedPtr;
@@ -28,6 +22,14 @@ static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 /// Counter for total allocations
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
+
+/// Heap pointer
+pub(crate) static mut HP: u32 = 0;
+
+#[no_mangle]
+unsafe extern "C" fn init() {
+    HP = get_heap_base() as u32;
+}
 
 unsafe fn note_live_size(live: Bytes<u32>) {
     MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
@@ -50,6 +52,11 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 #[no_mangle]
 unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
     ALLOCATED
+}
+
+#[no_mangle]
+unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+    Bytes(HP - get_heap_base())
 }
 
 /// Returns object size in words
@@ -343,8 +350,8 @@ unsafe fn evac_static_roots(
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
-    let begin_from_space = get_heap_base();
-    let end_from_space = get_hp();
+    let begin_from_space = get_heap_base() as usize;
+    let end_from_space = HP as usize;
     let begin_to_space = end_from_space;
     let mut end_to_space = begin_to_space;
 
@@ -389,5 +396,5 @@ unsafe extern "C" fn collect() {
 
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    set_hp(new_hp);
+    HP = new_hp as u32;
 }

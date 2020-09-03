@@ -18,14 +18,14 @@ unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
     gc::ALLOCATED += Bytes(bytes.0 as u64);
 
     // Update heap pointer
-    let old_hp = gc::get_hp();
-    let new_hp = old_hp + bytes.0 as usize;
-    gc::set_hp(new_hp);
+    let old_hp = gc::HP;
+    let new_hp = old_hp + bytes.0;
+    gc::HP = new_hp;
 
     // Grow memory if needed
-    grow_memory(new_hp);
+    grow_memory(new_hp as usize);
 
-    skew(old_hp)
+    skew(old_hp as usize)
 }
 
 /// Page allocation. Ensures that the memory up to the given pointer is allocated.
