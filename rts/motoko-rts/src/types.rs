@@ -135,8 +135,8 @@ impl Array {
 pub struct Object {
     pub header: Obj,
     pub size: u32,
-    pub hash_ptr: u32, // TODO: Not sure how this is used, we don't scavenge this field in GC
-                       // other stuff follows, but we don't need them currently
+    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important
+                       // for GC (does not contain pointers).
 }
 
 impl Object {
