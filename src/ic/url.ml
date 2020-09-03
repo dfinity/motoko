@@ -81,9 +81,11 @@ let parse (f: string) : (parsed, string) result =
       match Lib.String.chop_prefix "canister:" f with
       | Some suffix -> Ok (IcAlias suffix)
       | None ->
+(*
         match Lib.String.chop_prefix "class:" f with
         | Some suffix -> Ok (Class suffix)
         | None ->
+*)
           begin match Stdlib.String.index_opt f ':' with
           | Some _ -> Error "Unrecognized URL"
           | None -> Ok (Relative (Lib.FilePath.normalise f))
