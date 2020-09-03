@@ -59,7 +59,7 @@ export text_t text_of_ptr_size(const char *buf, size_t n) {
 }
 
 text_t text_of_cstr(const char * const s) {
-  size_t l = as_strlen(s);
+  size_t l = strlen(s);
   return text_of_ptr_size(s, l);
 }
 
@@ -155,7 +155,7 @@ export int blob_compare(text_t s1, text_t s2) {
   uint32_t n1 = BLOB_LEN(s1);
   uint32_t n2 = BLOB_LEN(s2);
   uint32_t n = n1 < n2 ? n1 : n2;
-  uint32_t r = as_memcmp(BLOB_PAYLOAD(s1), BLOB_PAYLOAD(s2), n);
+  uint32_t r = memcmp(BLOB_PAYLOAD(s1), BLOB_PAYLOAD(s2), n);
   if (r == 0) {
     if (n1 < n2) { return -1; }
     else if (n1 > n2) { return 1; }
@@ -196,7 +196,7 @@ static int text_compare_range(text_t s1, size_t offset1, text_t s2, size_t offse
     else return text_compare_range(s1, offset1 + n1, CONCAT_ARG2(s2), 0, n - n1);
   }
   // now both are blobs
-  return as_memcmp(BLOB_PAYLOAD(s1) + offset1, BLOB_PAYLOAD(s2) + offset2, n);
+  return memcmp(BLOB_PAYLOAD(s1) + offset1, BLOB_PAYLOAD(s2) + offset2, n);
 }
 
 export int text_compare(text_t s1, text_t s2) {
