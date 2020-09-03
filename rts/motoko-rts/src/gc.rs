@@ -21,7 +21,6 @@ extern "C" {
 }
 
 /// Maximum live data retained in a GC.
-//
 static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 
 /// Amount of garbage collected so far.
@@ -31,7 +30,7 @@ static mut RECLAIMED: Bytes<u64> = Bytes(0);
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
 
 unsafe fn note_live_size(live: Bytes<u32>) {
-    MAX_LIVE = Bytes(::core::cmp::max(MAX_LIVE.0, live.0));
+    MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
 }
 
 #[no_mangle]
@@ -40,7 +39,7 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
 }
 
 unsafe fn note_reclaimed(reclaimed: Bytes<u32>) {
-    RECLAIMED.0 += reclaimed.0 as u64;
+    RECLAIMED += Bytes(reclaimed.0 as u64);
 }
 
 #[no_mangle]
@@ -55,12 +54,19 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 /// Returns object size in words
 pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
+
+    // NB. Constants below are header sizes of objects and should be in sync with sizes of structs
+    // in types.rs. TODO: Some ideas to make sure they're in sync:
+    //
+    // - Define constants, use static_assertions to chec size_of and the constant values agree.
+    // - Use size_of directly
+
     let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
             let object = obj as *const Object;
             let size = (*object).size;
-            Words(size + 3) // TODO: document what "3" includes
+            Words(size + 3)
         }
 
         TAG_OBJ_IND => Words(2),
@@ -68,7 +74,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_ARRAY => {
             let array = obj as *const Array;
             let size = (*array).len;
-            Words(size + 2) // TODO: document what "2" includes
+            Words(size + 2)
         }
 
         TAG_BITS64 => Words(3),
@@ -78,7 +84,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_CLOSURE => {
             let closure = obj as *const Closure;
             let size = (*closure).size;
-            Words(size + 3) // TODO: document what "3" includes
+            Words(size + 3)
         }
 
         TAG_SOME => Words(2),
@@ -87,7 +93,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_BLOB => {
             let blob = obj as *const Blob;
-            Words(bytes_to_words((*blob).len).0 + 2) // TODO: document this
+            Words((*blob).len.to_words().0 + 2)
         }
 
         TAG_INDIRECTION => {
@@ -111,7 +117,7 @@ pub(crate) fn is_tagged_scalar(p: SkewedPtr) -> bool {
 }
 
 unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
-    libc::memcpy(to as *mut _, from as *const _, words_to_bytes(n).0 as usize);
+    libc::memcpy(to as *mut _, from as *const _, n.to_bytes().0 as usize);
 }
 
 unsafe fn memcpy_bytes(to: usize, from: usize, n: Bytes<u32>) {
@@ -166,7 +172,7 @@ unsafe fn evac(
     }
 
     let obj_size = object_size(obj as usize);
-    let obj_size_bytes = words_to_bytes(obj_size);
+    let obj_size_bytes = obj_size.to_bytes();
 
     // Grow memory if needed
     alloc::grow_memory(*end_to_space + obj_size_bytes.0 as usize);
@@ -371,7 +377,7 @@ pub unsafe extern "C" fn collect() {
     while p < end_to_space {
         // NB: end_to_space keeps changing within this loop
         scav(begin_from_space, begin_to_space, &mut end_to_space, p);
-        p += words_to_bytes(object_size(p)).0 as usize;
+        p += object_size(p).to_bytes().0 as usize;
     }
 
     // Note the stats

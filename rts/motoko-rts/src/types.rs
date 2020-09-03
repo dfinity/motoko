@@ -1,24 +1,70 @@
+use core::ops::{Add, AddAssign};
+
 pub const WORD_SIZE: u32 = 4;
-
-pub fn words_to_bytes(words: Words<u32>) -> Bytes<u32> {
-    Bytes(words.0 * WORD_SIZE)
-}
-
-// Rounds up
-pub fn bytes_to_words(bytes: Bytes<u32>) -> Words<u32> {
-    // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
-    Words((bytes.0 + WORD_SIZE - 1) / WORD_SIZE)
-}
 
 /// The unit "words": `Words(123u32)` means 123 words.
 #[repr(C)]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Words<A>(pub A);
+
+impl Words<u32> {
+    pub fn to_bytes(self) -> Bytes<u32> {
+        Bytes(self.0 * WORD_SIZE)
+    }
+}
+
+impl<A: Add<Output = A>> Add for Words<A> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Words(self.0 + rhs.0)
+    }
+}
+
+impl<A: AddAssign> AddAssign for Words<A> {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+    }
+}
+
+impl From<Bytes<u32>> for Words<u32> {
+    fn from(bytes: Bytes<u32>) -> Words<u32> {
+        bytes.to_words()
+    }
+}
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
 #[repr(C)]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
+
+impl Bytes<u32> {
+    // Rounds up
+    pub fn to_words(self) -> Words<u32> {
+        // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
+        Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
+    }
+}
+
+impl<A: Add<Output = A>> Add for Bytes<A> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Bytes(self.0 + rhs.0)
+    }
+}
+
+impl<A: AddAssign> AddAssign for Bytes<A> {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+    }
+}
+
+impl From<Words<u32>> for Bytes<u32> {
+    fn from(words: Words<u32>) -> Bytes<u32> {
+        words.to_bytes()
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]

@@ -4,18 +4,18 @@ use core::arch::wasm32;
 
 use crate::gc;
 use crate::rts_trap_with;
-use crate::types::{bytes_to_words, skew, words_to_bytes, Bytes, SkewedPtr, Words};
+use crate::types::{skew, Bytes, SkewedPtr, Words};
 
 #[no_mangle]
 pub unsafe extern "C" fn alloc_bytes(n: Bytes<u32>) -> SkewedPtr {
-    alloc_words(bytes_to_words(n))
+    alloc_words(n.to_words())
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
-    let bytes = words_to_bytes(n);
+    let bytes = n.to_bytes();
     // Update ALLOCATED
-    gc::ALLOCATED.0 += bytes.0 as u64;
+    gc::ALLOCATED += Bytes(bytes.0 as u64);
 
     // Update heap pointer
     let old_hp = gc::get_hp();
