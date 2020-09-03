@@ -131,8 +131,9 @@ unsafe fn memcpy_bytes(to: usize, from: usize, n: Bytes<u32>) {
 ///
 /// - begin_from_space: Where the dynamic heap starts. Used for two things:
 ///
-///   - An object is static if its address is below this value. These objects don't point to
-///     dynamic heap so we skip those.
+///   - An object is static if its address is below this value. These objects either don't point to
+///     dynamic heap, or listed in static_roots array. Objects in static_roots are scavenged
+///     separately in `evac_static_roots` below. So we skip these objects here.
 ///
 ///   - After all objects are evacuated we move to-space to from-space, to be able to do that the
 ///     pointers need to point to their (eventual) locations in from-space, which is calculated with
@@ -340,7 +341,8 @@ unsafe fn evac_static_roots(
     end_to_space: &mut usize,
     roots: *const Array,
 ) {
-    // Roots are in a static array which we don't evacuate. Only evacuate elements.
+    // The array and the objects pointed by the array are all static so we don't evacuate them. We
+    // only evacuate fields of objects in the array.
     for i in 0..(*roots).len {
         let obj = roots.get(i);
         scav(begin_from_space, begin_to_space, end_to_space, obj.unskew());
