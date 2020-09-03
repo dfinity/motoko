@@ -7,12 +7,12 @@ use crate::rts_trap_with;
 use crate::types::{skew, Bytes, SkewedPtr, Words};
 
 #[no_mangle]
-pub unsafe extern "C" fn alloc_bytes(n: Bytes<u32>) -> SkewedPtr {
+unsafe extern "C" fn alloc_bytes(n: Bytes<u32>) -> SkewedPtr {
     alloc_words(n.to_words())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
+unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
     let bytes = n.to_bytes();
     // Update ALLOCATED
     gc::ALLOCATED += Bytes(bytes.0 as u64);

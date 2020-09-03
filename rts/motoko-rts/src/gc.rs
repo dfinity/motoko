@@ -10,14 +10,14 @@ extern "C" {
     pub(crate) fn set_hp(hp: usize);
 
     /// Get __heap_base
-    pub(crate) fn get_heap_base() -> usize;
+    fn get_heap_base() -> usize;
 
     /// Skewed pointer to a skewed pointer to an array. See closure-table.c for details.
-    pub(crate) fn closure_table_loc() -> SkewedPtr;
+    fn closure_table_loc() -> SkewedPtr;
 
     /// Get pointer to the static memory with an array to the static roots. Provided by the
     /// generated code.
-    pub(crate) fn get_static_roots() -> SkewedPtr;
+    fn get_static_roots() -> SkewedPtr;
 }
 
 /// Maximum live data retained in a GC.
@@ -53,8 +53,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 }
 
 /// Returns object size in words
-pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
-
+unsafe fn object_size(obj: usize) -> Words<u32> {
     // NB. Constants below are header sizes of objects and should be in sync with sizes of structs
     // in types.rs. TODO: Some ideas to make sure they're in sync:
     //
@@ -112,7 +111,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     }
 }
 
-pub(crate) fn is_tagged_scalar(p: SkewedPtr) -> bool {
+fn is_tagged_scalar(p: SkewedPtr) -> bool {
     p.0 & 0b1 == 0
 }
 
@@ -349,7 +348,7 @@ unsafe fn evac_static_roots(
 
 /// The entry point. Called by the generated code.
 #[no_mangle]
-pub unsafe extern "C" fn collect() {
+unsafe extern "C" fn collect() {
     let begin_from_space = get_heap_base();
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
