@@ -234,7 +234,7 @@ unsafe fn scav(
     match (*obj).tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
-            let obj_payload = obj.offset(1) as *mut SkewedPtr;
+            let obj_payload = Object::payload_addr(obj);
             for i in 0..(*obj).size as isize {
                 evac(
                     begin_from_space,
@@ -247,7 +247,7 @@ unsafe fn scav(
 
         TAG_ARRAY => {
             let array = obj as *mut Array;
-            let array_payload = array.offset(1) as *mut SkewedPtr;
+            let array_payload = Array::payload_addr(array);
             for i in 0..(*array).len as isize {
                 evac(
                     begin_from_space,
@@ -266,7 +266,7 @@ unsafe fn scav(
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
-            let closure_payload = closure.offset(1) as *mut SkewedPtr;
+            let closure_payload = Closure::payload_addr(closure);
             for i in 0..(*closure).size as isize {
                 evac(
                     begin_from_space,

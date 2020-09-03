@@ -70,6 +70,12 @@ pub struct Array {
     // https://doc.rust-lang.org/nomicon/exotic-sizes.html
 }
 
+impl Array {
+    pub unsafe fn payload_addr(arr: *mut Array) -> *mut SkewedPtr {
+        arr.offset(1) as *mut SkewedPtr // skip array header
+    }
+}
+
 pub(crate) unsafe fn array_get(array: *const Array, idx: u32) -> u32 {
     let slot_addr = array.offset(1) as usize + (idx * WORD_SIZE) as usize;
     *(slot_addr as *const u32)
@@ -81,6 +87,12 @@ pub struct Object {
     pub size: u32,
     pub hash_ptr: u32, // TODO: Not sure how this is used, we don't scavenge this field in GC
                        // other stuff follows, but we don't need them currently
+}
+
+impl Object {
+    pub unsafe fn payload_addr(obj: *mut Object) -> *mut SkewedPtr {
+        obj.offset(1) as *mut SkewedPtr // skip object header
+    }
 }
 
 #[repr(C)]
@@ -95,6 +107,12 @@ pub struct Closure {
     pub funid: u32,
     pub size: u32, // number of elements
                    // other stuff follows ...
+}
+
+impl Closure {
+    pub unsafe fn payload_addr(clo: *mut Closure) -> *mut SkewedPtr {
+        clo.offset(1) as *mut SkewedPtr // skip closure header
+    }
 }
 
 #[repr(C)]
