@@ -677,6 +677,51 @@ let initial_flavor : Ir.flavor =
   find_last_expr (block false ds)
 MASTER *)
 
+let transform_class_import classes_are_separate fp t : I.exp =
+  if not classes_are_separate then
+    varE (var (id_of_full_path fp) t)
+  else
+    (* compiled class import *)
+    let s, cntrl, tbs, ts1, ts2 = T.as_func t in
+    let cs = T.open_binds tbs in
+    let c, _ = T.as_con (List.hd cs) in
+    let ts1' = List.map (T.open_ cs) ts1 in
+    let ts2' = List.map (T.open_ cs) ts2 in
+    let vs = fresh_vars "param" ts1' in
+    let arg_blob = fresh_var "arg_blob" T.blob in
+    let principal = fresh_var "principal" T.principal in
+    let t_async = T.codom cntrl (fun () -> assert false) ts2' in
+    let _, t_actor = T.as_async (T.normalize t_async) in
+    let wasm_blob = var (id_of_full_path fp) T.blob in
+    let create_actor_helper = var "@create_actor_helper"
+                                (T.Func (T.Local, T.Returns, [T.scope_bind],
+                                         [T.blob; T.blob],
+                                         [T.Async(T.Var (T.default_scope_var, 0), T.principal)]))
+    in
+    let cs' = T.open_binds tbs in
+    let c', _ = T.as_con (List.hd cs') in
+    let body =
+      asyncE
+        (typ_arg c' T.Scope T.scope_bound)
+        (blockE [
+             letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
+             letD principal
+               (awaitE T.principal
+               (callE (varE create_actor_helper) cs'
+                  (tupE [varE wasm_blob;  varE arg_blob])))
+           ]
+           (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
+        (List.hd cs);
+    in
+    { it = Ir.FuncE("", T.Local, T.Returns,
+                    [typ_arg c T.Scope T.scope_bound],
+                    List.map arg_of_var vs,
+                    ts2',
+                    body);
+      at = no_region;
+      note = Note.{ def with typ = t; eff = T.Triv };
+    }
+
 let transform_import classes_are_separate (i : S.import) : import_declaration =
   let (id, f, ir) = i.it in
   let t = i.note in
@@ -684,49 +729,16 @@ let transform_import classes_are_separate (i : S.import) : import_declaration =
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp ->
-      varE (var (id_of_full_path fp) t)
-    | S.ClassPath fp when classes_are_separate ->
-      let s, cntrl, tbs, ts1, ts2 = T.as_func t in
-      let cs = T.open_binds tbs in
-      let c, _ = T.as_con (List.hd cs) in
-      let ts1' = List.map (T.open_ cs) ts1 in
-      let ts2' = List.map (T.open_ cs) ts2 in
-      let vs = fresh_vars "param" ts1' in
-      let arg_blob = fresh_var "arg_blob" T.blob in
-      let principal = fresh_var "principal" T.principal in
-      let t_async = T.codom cntrl (fun () -> assert false) ts2' in
-      let _, t_actor = T.as_async (T.normalize t_async) in
-      let wasm_blob = var (id_of_full_path fp) T.blob in
-      let create_actor_helper = var "@create_actor_helper"
-        (T.Func (T.Local, T.Returns, [T.scope_bind],
-          [T.blob; T.blob],
-          [T.Async(T.Var (T.default_scope_var, 0), T.principal)]))
-      in
-      let cs' = T.open_binds tbs in
-      let c', _ = T.as_con (List.hd cs') in
-      let body =
-        asyncE
-            (typ_arg c' T.Scope T.scope_bound)
-            (blockE [
-              letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
-              letD principal
-                (awaitE T.principal
-                  (callE (varE create_actor_helper) cs'
-                     (tupE [varE wasm_blob;  varE arg_blob])))
-              ]
-              (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
-            (List.hd cs);
-      in
-      { it = Ir.FuncE("", T.Local, T.Returns,
-          [typ_arg c T.Scope T.scope_bound],
-          List.map arg_of_var vs,
-          ts2',
-          body);
-        at = no_region;
-        note = Note.{ def with typ = t; eff = T.Triv };
-      }
-    | S.ClassPath fp ->
-      varE (var (id_of_full_path fp) t)
+      begin
+        match T.normalize t with
+        | T.Obj(T.Module, _) ->
+          varE (var (id_of_full_path fp) t)
+        | T.Func _ ->
+          (* class import *)
+          transform_class_import classes_are_separate fp t
+        | _ -> assert false
+      end
+    | S.ClassPath fp -> assert false
     | S.PrimPath ->
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, blob_id) ->

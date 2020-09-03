@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Node "class:distributor/node";
+import Node "distributor/node";
 
 // A naive, distributed map from Nat to Text.
 // Illustrates dynamic installation of imported actor classes.
@@ -10,8 +10,8 @@ actor a {
   type Value = Text;
 
   // Number of Nodes
-  let n = 8; 
-  
+  let n = 8;
+
   // Would be nice if class import defined a type too
   type Node = actor {
     lookup : Key -> async ?Value;

@@ -1,8 +1,8 @@
 import Prim "mo:prim";
-import C "class:class-import/empty";
-import One "class:class-import/one";
-import Two "class:class-import/two";
-import Trap "class:class-import/trap";
+import C "class-import/empty";
+import One "class-import/one";
+import Two "class-import/two";
+import Trap "class-import/trap";
 
 actor a {
  public func go() : async () {
