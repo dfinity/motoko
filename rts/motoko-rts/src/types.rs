@@ -98,7 +98,7 @@ pub const TAG_CLOSURE: Tag = 7;
 pub const TAG_SOME: Tag = 8;
 pub const TAG_VARIANT: Tag = 9;
 pub const TAG_BLOB: Tag = 10;
-pub const TAG_INDIRECTION: Tag = 11;
+pub const TAG_FWD_PTR: Tag = 11;
 pub const TAG_BITS32: Tag = 12;
 pub const TAG_BIGINT: Tag = 13;
 pub const TAG_CONCAT: Tag = 14;
@@ -172,9 +172,9 @@ pub struct Blob {
     // data follows ..
 }
 
-// aka. a forwarding pointer
+/// A forwarding pointer placed by the GC in place of an evacuated object.
 #[repr(C)]
-pub struct Indirection {
+pub struct FwdPtr {
     pub header: Obj,
     pub fwd: SkewedPtr,
 }

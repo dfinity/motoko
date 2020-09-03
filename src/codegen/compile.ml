@@ -1126,7 +1126,7 @@ module Tagged = struct
     | Some (* For opt *)
     | Variant
     | Blob
-    (* | Indirection -- commented out, only used by the GC *)
+    (* | FwdPtr -- Only used by the GC *)
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
     (* | Concat -- String concatenation, used by rts/text.c *)

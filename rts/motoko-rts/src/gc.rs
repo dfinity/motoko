@@ -96,8 +96,8 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
             size_of::<Blob>() + (*blob).len.to_words()
         }
 
-        TAG_INDIRECTION => {
-            rts_trap_with("object_size of indirection\0".as_ptr());
+        TAG_FWD_PTR => {
+            rts_trap_with("object_size: forwarding pointer\0".as_ptr());
         }
 
         TAG_BITS32 => Words(2),
@@ -107,7 +107,7 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_CONCAT => size_of::<Concat>(),
 
         _ => {
-            rts_trap_with("Invalid object tag in object size\0".as_ptr());
+            rts_trap_with("object_size: invalid object tag\0".as_ptr());
         }
     }
 }
@@ -166,8 +166,8 @@ unsafe fn evac(
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
     // Update the field if the object is already evacauted
-    if (*obj).tag == TAG_INDIRECTION {
-        let fwd = (*(obj as *const Indirection)).fwd;
+    if (*obj).tag == TAG_FWD_PTR {
+        let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;
     }
@@ -185,8 +185,8 @@ unsafe fn evac(
     let obj_loc = (*end_to_space - begin_to_space) + begin_from_space;
 
     // Set forwarding pointer
-    let fwd = obj as *mut Indirection;
-    (*fwd).header.tag = TAG_INDIRECTION;
+    let fwd = obj as *mut FwdPtr;
+    (*fwd).header.tag = TAG_FWD_PTR;
     (*fwd).fwd = skew(obj_loc);
 
     // Update evacuated field
@@ -326,7 +326,7 @@ unsafe fn scav(
             // These don't include pointers, skip
         }
 
-        TAG_INDIRECTION | _ => {
+        TAG_FWD_PTR | _ => {
             // Any other tag is a bug
             rts_trap_with("invalid object tag in scav\0".as_ptr());
         }
