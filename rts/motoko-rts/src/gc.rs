@@ -59,7 +59,7 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_OBJECT => {
             let object = obj as *const Object;
             let size = (*object).size;
-            Words(size + 3)
+            size_of::<Object>() + Words(size)
         }
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
