@@ -1,5 +1,9 @@
 use core::ops::{Add, AddAssign};
 
+pub fn size_of<T>() -> Words<u32> {
+    Bytes(::core::mem::size_of::<T>() as u32).to_words()
+}
+
 pub const WORD_SIZE: u32 = 4;
 
 /// The unit "words": `Words(123u32)` means 123 words.
@@ -117,14 +121,14 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn payload_addr(arr: *mut Array) -> *mut SkewedPtr {
-        arr.offset(1) as *mut SkewedPtr // skip array header
+    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
+        self.offset(1) as *const SkewedPtr // skip array header
     }
-}
 
-pub(crate) unsafe fn array_get(array: *const Array, idx: u32) -> u32 {
-    let slot_addr = array.offset(1) as usize + (idx * WORD_SIZE) as usize;
-    *(slot_addr as *const u32)
+    pub unsafe fn get(self: *const Self, idx: u32) -> SkewedPtr {
+        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        *(slot_addr as *const SkewedPtr)
+    }
 }
 
 #[repr(C)]
@@ -136,8 +140,8 @@ pub struct Object {
 }
 
 impl Object {
-    pub unsafe fn payload_addr(obj: *mut Object) -> *mut SkewedPtr {
-        obj.offset(1) as *mut SkewedPtr // skip object header
+    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
+        self.offset(1) as *const SkewedPtr // skip object header
     }
 }
 
@@ -156,8 +160,8 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr(clo: *mut Closure) -> *mut SkewedPtr {
-        clo.offset(1) as *mut SkewedPtr // skip closure header
+    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
+        self.offset(1) as *const SkewedPtr // skip closure header
     }
 }
 
@@ -182,6 +186,7 @@ pub struct BigInt {
     // (https://github.com/libtom/libtommath/blob/44ee82cd34d0524c171ffd0da70f83bba919aa38/tommath.h#L174-L179)
     pub size: u32,
     pub alloc: u32,
+    pub sign: u32,
     // Unskewed pointer to a blob payload. data_ptr - 2 (words) gives us the blob header.
     pub data_ptr: usize,
 }

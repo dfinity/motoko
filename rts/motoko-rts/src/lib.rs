@@ -2,6 +2,7 @@
 //! utilities.
 
 #![no_std]
+#![feature(arbitrary_self_types)]
 
 mod alloc;
 mod gc;

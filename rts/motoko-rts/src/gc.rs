@@ -54,12 +54,6 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 /// Returns object size in words
 unsafe fn object_size(obj: usize) -> Words<u32> {
-    // NB. Constants below are header sizes of objects and should be in sync with sizes of structs
-    // in types.rs. TODO: Some ideas to make sure they're in sync:
-    //
-    // - Define constants, use static_assertions to chec size_of and the constant values agree.
-    // - Use size_of directly
-
     let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
@@ -68,31 +62,31 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
             Words(size + 3)
         }
 
-        TAG_OBJ_IND => Words(2),
+        TAG_OBJ_IND => size_of::<ObjInd>(),
 
         TAG_ARRAY => {
             let array = obj as *const Array;
             let size = (*array).len;
-            Words(size + 2)
+            size_of::<Array>() + Words(size)
         }
 
         TAG_BITS64 => Words(3),
 
-        TAG_MUTBOX => Words(2),
+        TAG_MUTBOX => size_of::<MutBox>(),
 
         TAG_CLOSURE => {
             let closure = obj as *const Closure;
             let size = (*closure).size;
-            Words(size + 3)
+            size_of::<Closure>() + Words(size)
         }
 
-        TAG_SOME => Words(2),
+        TAG_SOME => size_of::<Some>(),
 
-        TAG_VARIANT => Words(3),
+        TAG_VARIANT => size_of::<Variant>(),
 
         TAG_BLOB => {
             let blob = obj as *const Blob;
-            Words((*blob).len.to_words().0 + 2)
+            size_of::<Blob>() + (*blob).len.to_words()
         }
 
         TAG_INDIRECTION => {
@@ -101,9 +95,9 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_BITS32 => Words(2),
 
-        TAG_BIGINT => Words(5),
+        TAG_BIGINT => size_of::<BigInt>(),
 
-        TAG_CONCAT => Words(4),
+        TAG_CONCAT => size_of::<Concat>(),
 
         _ => {
             rts_trap_with("Invalid object tag in object size\0".as_ptr());
@@ -238,8 +232,8 @@ unsafe fn scav(
 
     match (*obj).tag {
         TAG_OBJECT => {
-            let obj = obj as *mut Object;
-            let obj_payload = Object::payload_addr(obj);
+            let obj = obj as *const Object;
+            let obj_payload = obj.payload_addr();
             for i in 0..(*obj).size as isize {
                 evac(
                     begin_from_space,
@@ -251,8 +245,8 @@ unsafe fn scav(
         }
 
         TAG_ARRAY => {
-            let array = obj as *mut Array;
-            let array_payload = Array::payload_addr(array);
+            let array = obj as *const Array;
+            let array_payload = array.payload_addr();
             for i in 0..(*array).len as isize {
                 evac(
                     begin_from_space,
@@ -270,8 +264,8 @@ unsafe fn scav(
         }
 
         TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
-            let closure_payload = Closure::payload_addr(closure);
+            let closure = obj as *const Closure;
+            let closure_payload = closure.payload_addr();
             for i in 0..(*closure).size as isize {
                 evac(
                     begin_from_space,
@@ -341,7 +335,7 @@ unsafe fn evac_static_roots(
 ) {
     // Roots are in a static array which we don't evacuate. Only evacuate elements.
     for i in 0..(*roots).len {
-        let obj = SkewedPtr(array_get(roots, i) as usize);
+        let obj = roots.get(i);
         scav(begin_from_space, begin_to_space, end_to_space, obj.unskew());
     }
 }
