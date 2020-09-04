@@ -654,10 +654,10 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   in
   let func =
     { it = Ir.FuncE("", T.Local, T.Returns,
-                  [typ_arg c T.Scope T.scope_bound],
-                  List.map arg_of_var vs,
-                  ts2',
-                  body);
+        [typ_arg c T.Scope T.scope_bound],
+        List.map arg_of_var vs,
+        ts2',
+        body);
       at = no_region;
       note = Note.{ def with typ = t; eff = T.Triv };
     }
@@ -682,10 +682,6 @@ let inject_decs extra_ds u =
       Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
     | _ -> assert false
 
-
-(* TODO avoid capture *)
-
-
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
@@ -696,46 +692,6 @@ let initial_flavor : Ir.flavor =
   ; I.has_poly_eq = true
   ; I.serialized = false
   }
-
-(*  TBD MASTER
-  let find_last_expr (ds, e) =
-    let find_last_actor (ds1, free, e1) =
-      (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
-      let e1' = match (ds1, e1.it) with
-        | _ :: _ , ActorE _
-        | _ :: _, FuncE (_, _, _, [], _, _, {it = ActorE _;_}) ->
-          Rename.exp Rename.Renaming.empty e1
-        | _ -> e1
-      in
-      match e1'.it with
-      | ActorE (ds2, fs, up, t) ->
-        ActorU (None, ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, [], args, _, {it = ActorE (ds2, fs, up, t);_}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
-        ActorU (Some args, ds1 @ ds2, fs, up, t)
-      | _ ->
-        ProgU (ds @ [ expD e ]) in
-
-    if ds = [] then find_last_actor ([], true, e) else
-    match Lib.List.split_last ds, e with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
-      let (_,fd) = Freevars.decs ds1' in
-      let fe = Freevars.exp e' in
-      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
-      find_last_actor (ds1', free, e')
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
-      let (_,fd) = Freevars.decs ds1' in
-      let fe = Freevars.exp e' in
-      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
-      find_last_actor (ds1', free, e')
-    | _ ->
-      find_last_actor (ds, false, e) in
-
-
-    (* find the last actor. This hack can hopefully go away
-     after Claudios improvements to the source *)
-  if ds = [] then ProgU [] else
-  find_last_expr (block false ds)
-MASTER *)
 
 let transform_import (i : S.import) : import_declaration =
   let (id, f, ir) = i.it in
