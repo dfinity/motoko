@@ -713,7 +713,7 @@ module RTS = struct
   (* The connection to the C parts of the RTS *)
   let system_imports env =
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
-    E.add_func_import env "rts" "as_memcmp" [I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
@@ -901,7 +901,7 @@ module Heap = struct
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
   (* Comparing bytes (works on unskewed memory addresses) *)
-  let memcmp env = E.call_import env "rts" "as_memcmp"
+  let memcmp env = E.call_import env "rts" "memcmp"
 
   let register env =
     let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->

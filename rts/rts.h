@@ -83,10 +83,6 @@ from_rts as_ptr alloc_words(size_t n);
 from_rts __attribute__ ((noreturn)) void rts_trap(const char* str, size_t n);
 from_rts __attribute__ ((noreturn)) void bigint_trap();
 
-/** Functions used in multiple modules of the RTS */
-export int as_memcmp(const char *str1, const char *str2, size_t n);
-export size_t as_strlen(const char *str1);
-
 typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
