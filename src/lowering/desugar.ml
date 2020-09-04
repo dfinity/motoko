@@ -737,7 +737,7 @@ let initial_flavor : Ir.flavor =
   find_last_expr (block false ds)
 MASTER *)
 
-let transform_import classes_are_separate (i : S.import) : import_declaration =
+let transform_import (i : S.import) : import_declaration =
   let (id, f, ir) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
@@ -789,20 +789,20 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     | _ -> assert false
     end
 
-let transform_unit classes_are_separate (u : S.comp_unit) : Ir.prog  =
+let transform_unit (u : S.comp_unit) : Ir.prog  =
   let (imports, body) = u.it in
-  let imports' = Lib.List.concat_map (transform_import classes_are_separate) imports in
+  let imports' = Lib.List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   inject_decs imports' body', initial_flavor
 
 
 (* Import a unit by substitution *)
-let import_unit classes_are_separate (u : S.comp_unit) : import_declaration =
+let import_unit (u : S.comp_unit) : import_declaration =
   let (imports, body) = u.it in
   let f = u.note in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
-  let imports' = Lib.List.concat_map (transform_import classes_are_separate) imports in
+  let imports' = Lib.List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in
   let exp = match prog with

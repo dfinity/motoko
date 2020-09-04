@@ -559,12 +559,12 @@ let run_files_and_stdin files =
 
 (* Desugaring *)
 
-let desugar_unit classes_are_separate imports u name : Ir.prog =
+let desugar_unit imports u name : Ir.prog =
   phase "Desugaring" name;
   let open Lowering.Desugar in
   let prog_ir' : Ir.prog = link_declarations
     (import_prelude prelude @ imports)
-    (transform_unit classes_are_separate u) in
+    (transform_unit u) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
@@ -646,12 +646,12 @@ let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
         let wasm = compile_unit_to_wasm mode imports l in
         go (imports @ Lowering.Desugar.import_class l wasm) libs
       | _ ->
-        go (imports @ Lowering.Desugar.import_unit true l) libs
+        go (imports @ Lowering.Desugar.import_unit l) libs
   in go [] libs
 
 and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
   let name = u.Source.note in
-  let prog_ir = desugar_unit true imports u name in
+  let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
@@ -684,14 +684,14 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let dont_compile_classes libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit false l) libs
+  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit l) libs
 
 let interpret_ir_progs libs progs =
   let prog = combine_progs progs in
   let name = prog.Source.note in
   let imports = dont_compile_classes libs in
   let u = comp_unit_of_prog false prog in
-  let prog_ir = desugar_unit false imports u name in
+  let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;
   let open Interpret_ir in
