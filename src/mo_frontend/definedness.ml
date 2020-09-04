@@ -222,20 +222,8 @@ let check_prog prog =
 
 let check_lib lib =
   Diag.with_message_store (fun msgs ->
-    let (imports, cub) = lib.it in
-    let _ =  match cub.it with
-      | ProgU ds ->
-        ignore (group msgs (decs msgs ds))
-      | ModuleU efs->
-        ignore (group msgs (exp_fields msgs efs))
-      | ActorClassU (csp, i, p, t, i', efs) ->
-        begin
-        ignore (
-        (M.empty, S.singleton i.it) +++ delayify (
-          group msgs (exp_fields msgs efs @ class_self lib.at i') /// pat msgs p /// shared_pat msgs csp
-        )) end
-      | ActorU _ -> assert false;
-    in
+    let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+    ignore (group msgs (decs msgs (imp_ds @ ds)));
     Some ()
-    )
+  )
 
