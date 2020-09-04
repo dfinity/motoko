@@ -289,12 +289,7 @@ and build_actor at self_id es obj_typ =
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
   let candid_interface =
-    let open Idllib.Syntax in
-    Idllib.Arrange_idl.string_of_prog
-      { it = { decs = []; actor = Some (Mo_idl.Mo_to_idl.typ obj_typ) }
-      ; at = no_region
-      ; note = ""
-      } in
+    Idllib.Arrange_idl.string_of_prog (Mo_idl.Mo_to_idl.of_actor_type obj_typ) in
   let (interface_d, interface_f) = export_interface candid_interface in
   I.ActorE (interface_d @ ds', interface_f @ fs,
     { I.pre =

@@ -1,5 +1,7 @@
+type Foo = Text;
+type Rec = { foo : Rec };
 actor {
-  public func hello(x : Nat) : async Text {
+  public func hello(x : Rec) : async Foo {
     "Hello!"
   };
 };

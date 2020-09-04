@@ -3,4 +3,4 @@
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
 → query __get_candid_interface_tmp_hack()
-← completed: ("service : {\n  hello: (nat) -> (text);\n}\n")
+← completed: ("type Rec = record {foo: Rec;};\ntype Foo = text;\nservice : {\n  hello: (Rec) -> (Foo);\n}\n")
