@@ -397,6 +397,20 @@ rec {
     '';
   };
 
+  check-rts-formatting =
+    let common = import (nixpkgs.sources.common) {}; in
+    stdenv.mkDerivation {
+      name = "check-rts-formatting";
+      buildInputs = [ nixpkgs.cargo-nightly common.top-level.rustfmt ];
+      src = subpath ./rts/motoko-rts;
+      doCheck = true;
+      phases = "unpackPhase checkPhase installPhase";
+      installPhase = "touch $out";
+      checkPhase = ''
+        cargo fmt -- --check
+      '';
+    };
+
   base-src = stdenv.mkDerivation {
     name = "base-src";
     phases = "unpackPhase installPhase";
@@ -485,6 +499,7 @@ rec {
       ic-ref
       shell
       check-formatting
+      check-rts-formatting
       check-generated
       check-grammar
     ] ++
