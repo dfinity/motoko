@@ -6,7 +6,7 @@ open Ir_def
 type import_declaration = Ir.dec list
 
 val import_unit : bool -> Syntax.comp_unit -> import_declaration
-val import_class : string -> string -> import_declaration
+val import_class : Syntax.comp_unit -> (* wasm *) string  -> import_declaration
 val import_prelude : Syntax.prog -> import_declaration
 
 val transform_unit : bool -> Syntax.comp_unit -> Ir.prog

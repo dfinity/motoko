@@ -636,13 +636,15 @@ let combine_progs progs : Syntax.prog =
 (* This turns the flat list of libs (some of which are classes)
    into a list of classes and libs *)
 let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
+  let open Source in
   let rec go imports = function
     | [] -> imports
     | l :: libs ->
-      match (snd l.Source.it).Source.it with
+      let (_, cub) = l.it in
+      match cub.it with
       | Syntax.ActorClassU _ ->
         let wasm = compile_unit_to_wasm mode imports l in
-        go (imports @ Lowering.Desugar.import_class l.Source.note wasm) libs
+        go (imports @ Lowering.Desugar.import_class l wasm) libs
       | _ ->
         go (imports @ Lowering.Desugar.import_unit true l) libs
   in go [] libs
