@@ -398,7 +398,7 @@ rec {
   };
 
   check-rts-formatting =
-    let common = import (nixpkgs.sources.common) {}; in
+    let common = import (nixpkgs.sources.common) { system = builtins.currentSystem; }; in
     stdenv.mkDerivation {
       name = "check-rts-formatting";
       buildInputs = [ nixpkgs.cargo-nightly common.top-level.rustfmt ];
