@@ -197,7 +197,7 @@ let rec check_typ env typ : unit =
           (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
         check env no_region (binds <> [])
-          "promising function has no fake type argument";
+          "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env no_region (sort <> T.Local)

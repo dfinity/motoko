@@ -239,13 +239,13 @@ and export_interface txt =
   let open T in
   let name = "__get_candid_interface_tmp_hack" in
   let v = "$__get_candid_interface_tmp_hack"  in
-  let binds = [{ var = "T"; sort=T.Scope; bound = T.Any }] in
+  let binds = [T.scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con = Con.fresh "T" (Abs ([], Any)) in
+  let scope_con = Con.fresh "T" (Abs ([], T.scope_bound)) in
   let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
-  let bind = { I.con = scope_con; sort=T.Scope; bound = T.Any } @@ no_region in
-  let bind2 = { I.con = scope_con2; sort=T.Scope; bound = T.Any } @@ no_region in
+  let bind = { I.con = scope_con; sort = T.Scope; bound = T.scope_bound } @@ no_region in
+  let bind2 = { I.con = scope_con2; sort = T.Scope; bound = T.scope_bound } @@ no_region in
   ([ letD (var v typ) {
     it = I.FuncE (v, Shared Query, Promises, [bind], [], [text], {
       it = I.AsyncE (bind2, textE txt, T.Con (scope_con, []));
