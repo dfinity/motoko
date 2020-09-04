@@ -234,6 +234,29 @@ and call_system_func_opt name es =
       -> Some (callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
+and export_interface txt =
+  (* This is probably a temporary hack. *)
+  let open T in
+  let name = "__get_candid_interface_tmp_hack" in
+  let v = "$__get_candid_interface_tmp_hack"  in
+  let binds = [{ var = "T"; sort=T.Scope; bound = T.Any }] in
+  let typ = Func (Shared Query, Promises, binds, [], [text]) in
+
+  let scope_con = Con.fresh "T" (Abs ([], Any)) in
+  let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
+  let bind = { I.con = scope_con; sort=T.Scope; bound = T.Any } @@ no_region in
+  let bind2 = { I.con = scope_con2; sort=T.Scope; bound = T.Any } @@ no_region in
+  ([ letD (var v typ) {
+    it = I.FuncE (v, Shared Query, Promises, [bind], [], [text], {
+      it = I.AsyncE (bind2, textE txt, T.Con (scope_con, []));
+      at = no_region;
+      note = Note.{ def with typ = Async (T.Con (scope_con, []), text) };
+    });
+    at = no_region;
+    note = Note.{ def with typ }
+  }],
+  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
@@ -265,7 +288,15 @@ and build_actor at self_id es obj_typ =
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  I.ActorE (ds', fs,
+  let candid_interface =
+    let open Idllib.Syntax in
+    Idllib.Arrange_idl.string_of_prog
+      { it = { decs = []; actor = Some (Mo_idl.Mo_to_idl.typ obj_typ) }
+      ; at = no_region
+      ; note = ""
+      } in
+  let (interface_d, interface_f) = export_interface candid_interface in
+  I.ActorE (interface_d @ ds', interface_f @ fs,
     { I.pre =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE
