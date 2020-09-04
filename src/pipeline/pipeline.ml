@@ -633,9 +633,9 @@ let combine_progs progs : Syntax.prog =
        }
 
 
-(* This turns the flat list of libs (some of which are classes)
-   into a list of classes and libs *)
-let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
+(* This transforms the flat list of libs (some of which are classes)
+   into a list of imported libs and (compiled) classes *)
+let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
   let open Source in
   let rec go imports = function
     | [] -> imports
@@ -644,7 +644,7 @@ let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
       match cub.it with
       | Syntax.ActorClassU _ ->
         let wasm = compile_unit_to_wasm mode imports l in
-        go (imports @ Lowering.Desugar.import_class l wasm) libs
+        go (imports @ Lowering.Desugar.import_compiled_class l wasm) libs
       | _ ->
         go (imports @ Lowering.Desugar.import_unit l) libs
   in go [] libs
@@ -663,7 +663,7 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   wasm
 
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
-  let imports = compile_classes mode libs in
+  let imports = compile_libs mode libs in
   let prog = combine_progs progs in
   let u = comp_unit_of_prog false prog in
   compile_unit mode do_link imports u
@@ -683,13 +683,15 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
-let dont_compile_classes libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit l) libs
+(* This transforms the flat list of libs into a list of imported units,
+   Unlike, `compile_libs`, classes are imported as Ir for interpretation, not compiled to wasm *)
+let import_libs libs : Lowering.Desugar.import_declaration =
+  Lib.List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
   let prog = combine_progs progs in
   let name = prog.Source.note in
-  let imports = dont_compile_classes libs in
+  let imports = import_libs libs in
   let u = comp_unit_of_prog false prog in
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in

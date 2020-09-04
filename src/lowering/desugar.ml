@@ -611,7 +611,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
-let import_class (lib : S.comp_unit)  wasm : import_declaration =
+let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note in
   let (_, cub) = lib.it in
   let t = match T.normalize cub.note.S.note_typ with
@@ -796,7 +796,7 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
   inject_decs imports' body', initial_flavor
 
 
-(* Import a unit by substitution *)
+(* Import a unit by composing Ir *)
 let import_unit (u : S.comp_unit) : import_declaration =
   let (imports, body) = u.it in
   let f = u.note in
