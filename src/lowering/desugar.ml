@@ -618,12 +618,22 @@ let import_class f wasm : import_declaration =
 let import_prelude prelude : import_declaration =
   decs (prelude.it)
 
-let inject_decs extra_ds =
+let inject_decs extra_ds u =
   let open Ir in
-  function
+  match u with
   | LibU (ds, exp) -> LibU (extra_ds @ ds, exp)
   | ProgU ds -> ProgU (extra_ds @ ds)
-  | ActorU (as_opt, ds, fs, up, t) -> Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t) (* TODO avoid capture *)
+  | ActorU (None, ds, fs, up, t) ->
+    Ir.ActorU (None, extra_ds @ ds, fs, up, t)
+  | ActorU (Some _, _, _, _, _) ->
+    let u'= Rename.comp_unit Rename.Renaming.empty u in
+    match u' with
+    | ActorU (as_opt, ds, fs, up, t) ->
+      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
+    | _ -> assert false
+
+
+(* TODO avoid capture *)
 
 
 let link_declarations imports (cu, flavor) =
