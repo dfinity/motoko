@@ -18,48 +18,45 @@ type env = stat_env * dyn_env
 
 (* Compilation unit detection *)
 
-(* Currently happening after type checking, before desugaring.
-   This maybe ought to move further up (into or after parsing) *)
-
+(* Happens after parsing, before type checking *)
 let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
   let open Source in
   let open Syntax in
   let f = prog.note in
 
-  let rec go imports : Syntax.dec list -> Syntax.comp_unit =
-    let finish u = { it = (imports, u); note = f; at = no_region } in
-    let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-    function
+  let finish imports u = { it = (imports, u); note = f; at = no_region } in
+  let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
+
+  let rec go imports ds : Syntax.comp_unit =
+    match ds with
     (* imports *)
-    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
-    let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
-    go (imports @ [i]) ds
+    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
+      let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
+      go (imports @ [i]) ds'
 
     (* terminal expressions *)
-
     | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
-    finish { it = ModuleU fields; note = e.note; at = e.at }
+      finish imports { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
-    finish { it = ActorU (None, fields); note = e.note; at = e.at }
+      finish imports { it = ActorU (None, fields); note = e.note; at = e.at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-    assert (tbs = []);
-    finish { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
+      assert (tbs = []);
+      finish imports { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
     (* Note: Loosing the module name here! FIXME*)
-    finish { it = ModuleU fields; note = e.note; at = e.at }
+      finish imports { it = ModuleU fields; note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
-    finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
+      finish imports { it = ActorU (Some i1, fields); note = e.note; at = e.at }
 
     (* Everything else is a program *)
-    | ds ->
-    if as_lib
-    then
-      let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds in
-      finish {it = ModuleU fs; at = no_region; note = empty_typ_note} 
-    else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
+    | ds' ->
+      if as_lib
+      then
+        let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
+        finish imports {it = ModuleU fs; at = no_region; note = empty_typ_note}
+      else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
-  (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
   go [] prog.it
 
 
