@@ -16,6 +16,53 @@ type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
+(* Compilation unit detection *)
+
+(* Currently happening after type checking, before desugaring.
+   This maybe ought to move further up (into or after parsing) *)
+
+let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
+  let open Source in
+  let open Syntax in
+  let f = prog.note in
+
+  let rec go imports : Syntax.dec list -> Syntax.comp_unit =
+    let finish u = { it = (imports, u); note = f; at = no_region } in
+    let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
+    function
+    (* imports *)
+    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
+    let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
+    go (imports @ [i]) ds
+
+    (* terminal expressions *)
+
+    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
+    finish { it = ModuleU fields; note = e.note; at = e.at }
+    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
+    finish { it = ActorU (None, fields); note = e.note; at = e.at }
+    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
+    assert (tbs = []);
+    finish { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
+    (* let-bound terminal expressions *)
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
+    (* Note: Loosing the module name here! FIXME*)
+    finish { it = ModuleU fields; note = e.note; at = e.at }
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
+    finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
+
+    (* Everything else is a program *)
+    | ds ->
+    if as_lib
+    then
+      let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds in
+      finish {it = ModuleU fs; at = no_region; note = empty_typ_note} 
+    else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
+  in
+  (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
+  go [] prog.it
+
+
 (* Diagnostics *)
 
 let phase heading name =
@@ -199,67 +246,9 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
-let check_class senv lib : Scope.scope Diag.result =
-  phase "Checking" (Filename.basename lib.Source.note);
-  Diag.bind (Typing.check_class senv lib) (fun sscope ->
-    phase "Definedness" (Filename.basename lib.Source.note);
-    Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
-  )
-
-(* Parsing libraries *)
-
-let is_import dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ExpD e | LetD (_, e) -> (match e.it with ImportE _ -> true | _ -> false)
-  | _ -> false
-
-let is_module dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ExpD e | LetD (_, e) ->
-    (match e.it with ObjE (s, _) -> s.it = Type.Module | _ -> false)
-  | _ -> false
-
-let rec lib_of_prog' imps at = function
-  | [d] when is_module d -> imps, d
-  | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
-  | ds ->
-    let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
-    let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
-    imps, {it = ExpD obj; at; note = empty_typ_note}
 
 let lib_of_prog f prog : Syntax.lib  =
-  let open Source in let open Syntax in
-  let imps, dec = lib_of_prog' [] prog.at prog.it in
-  let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
-  {it = exp; at = prog.at; note = f}
-
-let is_actor dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ClassD (_, _, _, _, _, s, _, _) -> s.it = Type.Actor
-  | ExpD e | LetD (_, e) ->
-    (match e.it with ObjE (s, _) -> s.it = Type.Actor | _ -> false)
-  | _ -> false
-
-let rec class_of_prog' imps at = function
-  | [d] when is_actor d -> imps, d
-  | d::ds when is_import d -> class_of_prog' (d::imps) at ds
-  | ds ->
-    (* TODO: We probably just want to fail here, intead of implicitly wrapping in actor {…} *)
-    let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
-    let obj = {it = ObjE (Type.Actor @@ at, fs); at; note = empty_typ_note} in
-    imps, {it = ExpD obj; at; note = empty_typ_note}
-
-let class_of_prog f prog : Syntax.lib =
-  let open Source in let open Syntax in
-  let imps, dec = class_of_prog' [] prog.at prog.it in
-  let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
-  {it = exp; at = prog.at; note = f}
-
+ { (comp_unit_of_prog true prog) with Source.note = f }
 
 (* Prelude *)
 
@@ -297,11 +286,16 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string Prelude.prim_module in
   let parse = Parser.Incremental.parse_prog in
+
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error e -> prim_error "parsing" [e]
   | Ok prog ->
+    let open Syntax in
+    let open Source in
     let senv0 = initial_stat_env in
-    let lib = lib_of_prog "@prim" prog in
+    let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    let cub = {it = ModuleU fs; at = no_region; note = empty_typ_note} in
+    let lib = {it = ([],cub); at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, msgs) ->
@@ -357,9 +351,28 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
     | Syntax.Unresolved -> assert false
     | Syntax.LibPath f ->
-      go_lib ri f lib_of_prog check_lib
-    | Syntax.ClassPath f ->
-      go_lib ri f class_of_prog check_class
+      if Type.Env.mem f !senv.Scope.lib_env then
+        Diag.return ()
+      else if mem ri.Source.it !pending then
+        Error [{
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s must not depend on itself" f
+        }]
+      else begin
+        pending := add ri.Source.it !pending;
+        let open Diag.Syntax in
+        let* prog, base = parsefn ri.Source.at f in
+        let* () = Static.prog prog in
+        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
+        let* () = go_set more_imports in
+        let lib = lib_of_prog f prog in
+        let* sscope = check_lib !senv lib in
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        pending := remove ri.Source.it !pending;
+        Diag.return ()
+      end
+    | Syntax.ClassPath f -> assert false
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
@@ -373,29 +386,6 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let sscope = Scope.lib f actor in
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
-  (* used for both classes and modules *)
-  and go_lib ri f lib_of_prog check_lib =
-    if Type.Env.mem f !senv.Scope.lib_env then
-      Diag.return ()
-    else if mem ri.Source.it !pending then
-      Error [{
-        Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
-        text = Printf.sprintf "file %s must not depend on itself" f
-      }]
-    else begin
-      pending := add ri.Source.it !pending;
-      let open Diag.Syntax in
-      let* prog, base = parsefn ri.Source.at f in
-      let* () = Static.prog prog in
-      let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-      let* () = go_set more_imports in
-      let lib = lib_of_prog f prog in
-      let* sscope = check_lib !senv lib in
-      libs := lib :: !libs; (* NB: Conceptually an append *)
-      senv := Scope.adjoin !senv sscope;
-      pending := remove ri.Source.it !pending;
-      Diag.return ()
-    end
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
@@ -566,70 +556,15 @@ let run_files_and_stdin files =
       Some ()
   )
 
-(* Compilation unit detection *)
-
-(* Currently happening after type checking, before desugaring.
-   This maybe ought to move further up (into or after parsing) *)
-
-let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
-  let open Source in
-  let open Syntax in
-  let f = prog.note in
-
-  let rec go imports : Syntax.dec list -> Syntax.comp_unit =
-    let finish u = { it = (imports, u); note = f; at = no_region } in
-    let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-    function
-    (* imports *)
-    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds ->
-    let i : Syntax.import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
-    go (imports @ [i]) ds
-
-    (* terminal expressions *)
-
-    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
-    finish { it = ModuleU fields; note = e.note; at = e.at }
-    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
-    finish { it = ActorU (None, fields); note = e.note; at = e.at }
-    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-    assert (tbs = []);
-    finish { it = ActorClassU (sp, tid, p, typ_ann, Some self_id, fields); note = d.note; at = d.at }
-    (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
-    (* Note: Loosing the module name here! *)
-    finish { it = ModuleU fields; note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
-    finish { it = ActorU (Some i1, fields); note = e.note; at = e.at }
-
-    (* Everything else is a program *)
-    | ds ->
-    if as_lib
-    then
-      (* when importing files, we really expect to find a module or an actor *)
-      raise (Invalid_argument(Printf.sprintf "Not some importable source:\n%s"
-        (Wasm.Sexpr.to_string 80 (Arrange.prog prog))))
-    else finish { it = ProgU ds; note = prog_typ_note; at = no_region }
-  in
-  (* Wasm.Sexpr.print 80 (Arrange.prog prog); *)
-  go [] prog.it
-
-(* Undo lib_of_prog, should go away when we use comp_unit earlier *)
-let comp_unit_of_lib (lib : Syntax.lib) : Syntax.comp_unit =
-  let open Source in
-  let open Syntax in
-  comp_unit_of_prog true (match lib.it.it with
-  | BlockE ds -> { it = ds; at = lib.at; note = lib.note }
-  | _ -> assert false
-  )
 
 (* Desugaring *)
 
-let desugar_unit classes_are_separate imports u name : Ir.prog =
+let desugar_unit imports u name : Ir.prog =
   phase "Desugaring" name;
   let open Lowering.Desugar in
   let prog_ir' : Ir.prog = link_declarations
     (import_prelude prelude @ imports)
-    (transform_unit classes_are_separate u) in
+    (transform_unit u) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
@@ -698,24 +633,25 @@ let combine_progs progs : Syntax.prog =
        }
 
 
-(* This turns the flat list of libs (some of which are classes)
-   into a list of classes and libs *)
-let rec compile_classes mode libs : Lowering.Desugar.import_declaration =
+(* This transforms the flat list of libs (some of which are classes)
+   into a list of imported libs and (compiled) classes *)
+let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
+  let open Source in
   let rec go imports = function
     | [] -> imports
     | l :: libs ->
-      let u = comp_unit_of_lib l in
-      match (snd u.Source.it).Source.it with
-      | Syntax.ActorU _ | Syntax.ActorClassU _ ->
-        let wasm = compile_unit_to_wasm mode imports u in
-        go (imports @ Lowering.Desugar.import_class u.Source.note wasm) libs
+      let (_, cub) = l.it in
+      match cub.it with
+      | Syntax.ActorClassU _ ->
+        let wasm = compile_unit_to_wasm mode imports l in
+        go (imports @ Lowering.Desugar.import_compiled_class l wasm) libs
       | _ ->
-        go (imports @ Lowering.Desugar.import_unit true u) libs
+        go (imports @ Lowering.Desugar.import_unit l) libs
   in go [] libs
 
 and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
   let name = u.Source.note in
-  let prog_ir = desugar_unit true imports u name in
+  let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
@@ -727,7 +663,7 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   wasm
 
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
-  let imports = compile_classes mode libs in
+  let imports = compile_libs mode libs in
   let prog = combine_progs progs in
   let u = comp_unit_of_prog false prog in
   compile_unit mode do_link imports u
@@ -747,15 +683,17 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
-let dont_compile_classes libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map (fun l -> Lowering.Desugar.import_unit false (comp_unit_of_lib l)) libs
+(* This transforms the flat list of libs into a list of imported units,
+   Unlike, `compile_libs`, classes are imported as Ir for interpretation, not compiled to wasm *)
+let import_libs libs : Lowering.Desugar.import_declaration =
+  Lib.List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
   let prog = combine_progs progs in
   let name = prog.Source.note in
-  let imports = dont_compile_classes libs in
+  let imports = import_libs libs in
   let u = comp_unit_of_prog false prog in
-  let prog_ir = desugar_unit false imports u name in
+  let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;
   let open Interpret_ir in

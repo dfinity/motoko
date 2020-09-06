@@ -392,14 +392,23 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
-    | LibPath fp -> k (find fp env.libs)
-    | ClassPath fp ->
+    | LibPath fp ->
       let v = find fp env.libs in
-      let call_conv, f = V.as_func v in
-      let f' = V.local_func call_conv.Call_conv.n_args 1
-        (fun c v k -> async env exp.at (fun k' _r -> f c v k') k)
-      in
-      k f'
+      begin
+        match v with
+        | V.Obj _ ->
+          (* module import *)
+          k v
+        | V.Func _ ->
+          (* class import *)
+          let call_conv, f = V.as_func v in
+          let f' = V.local_func call_conv.Call_conv.n_args 1
+            (fun c v k -> async env exp.at (fun k' _r -> f c v k') k)
+          in
+          k f'
+        | _ -> trap exp.at "lib import"
+      end
+    | ClassPath _ -> trap exp.at "class import"
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -943,8 +952,10 @@ let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
+  let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_exp env lib.it (fun v -> vo := Some v)
+    let (imp_decs, decs) = Syntax.decs_of_comp_unit lib in
+    interpret_block env (imp_decs @ decs) (Some ve) (fun v -> vo := Some v)
   );
   Scheduler.run ();
   lib_scope lib.note (Option.get !vo) scope

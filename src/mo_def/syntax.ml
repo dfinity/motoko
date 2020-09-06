@@ -210,9 +210,6 @@ and dec' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
-(* Libraries (pre unit detection) *)
-
-type lib = (exp, string) Source.annotated_phrase
 
 (* Imports *)
 
@@ -225,11 +222,70 @@ type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list              (* programs *)
  | ModuleU of exp_field list      (* modules *)
- | ActorClassU of sort_pat * typ_id * pat * typ option * id option * exp_field list (* IC actor class *)
+ | ActorClassU of sort_pat * typ_id * pat * typ option * id * exp_field list (* IC actor class *)
  | ActorU of id option * exp_field list  (* IC actor *)
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase
 and comp_unit' = (import list * comp_unit_body)
+
+type lib = comp_unit
+
+(* Lib as pair of import decs and body decs *)
+let decs_of_comp_unit (lib : lib) =
+  let open Source in
+  let (imports, cub) = lib.it in
+  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
+     { it = LetD (
+       { it = VarP id;
+         at;
+         note = note;
+       },
+       { it = ImportE (fp, ri);
+         at;
+         note = { note_typ = note; note_eff = Type.Triv};
+       });
+      at;
+      note = { note_typ = note; note_eff = Type.Triv } }) imports
+  in
+  import_decs,
+  match cub.it with
+  | ProgU ds  ->
+    ds
+  | ModuleU fields ->
+    [ { it = ExpD {
+          it = ObjE ({ it = Type.Module; at = no_region; note = ()}, fields);
+          at = cub.at;
+          note = cub.note };
+        at = cub.at;
+        note = cub.note }]
+  | ActorClassU (csp, i, p, t, i', efs) ->
+    [{ it = ClassD (csp, i, [], p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
+       at = cub.at;
+       note = cub.note;}];
+  | ActorU (None, fields) ->
+    [ { it = ExpD {
+          it = ObjE ({ it = Type.Actor; at = no_region; note = ()}, fields);
+          at = cub.at;
+          note = cub.note};
+        at = cub.at;
+        note = cub.note;} ]
+  | ActorU (Some id, fields) ->
+    [ { it = LetD (
+        { it = VarP id;
+          at = cub.at;
+          note = cub.note.note_typ;
+        },
+        { it = ObjE ({ it = Type.Actor; at = no_region; note = ()}, fields);
+          at = cub.at;
+          note = cub.note});
+        at = cub.at;
+       note = cub.note;
+      };
+      { it = ExpD { it = VarE id; at = cub.at; note = cub.note };
+        at = cub.at;
+        note = cub.note }
+    ]
+
 
 
 (* n-ary arguments/result sequences *)

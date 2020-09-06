@@ -391,6 +391,7 @@ through Array.tabulate.
 *)
 let prim_module =
 {|
+
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
