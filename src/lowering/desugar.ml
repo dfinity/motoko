@@ -383,10 +383,6 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (decs prefix, exp e)
-  | false, S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es)
-    when Lib.String.chop_prefix "anon" id.it != None ->
-    let e = match (dec last).it with I.LetD (_, e) -> e | _ -> assert false in
-    (decs prefix, e)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
     (decs ds, varE (var x.it e.note.S.note_typ))
   | false, S.LetD (p', e') ->
