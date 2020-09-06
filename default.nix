@@ -505,7 +505,7 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell {
+  shell = nixpkgs.mkShell rec {
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
@@ -540,10 +540,19 @@ rec {
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell
+    # Also mention the dependencies in the output, so that after `nix-build -A
+    # shell` (or just `nix-build`) they are guaranteed to be present in the
+    # local nix cache.
     phases = ["dummyBuildPhase"];
     dummyBuildPhase = ''
       touch $out
-    '';
+    '' + builtins.concatStringsSep "" (
+      map (pkg:
+        ''
+          echo ${pkg} >> $out
+        ''
+      ) buildInputs
+    );
     preferLocalBuild = true;
     allowSubstitutes = true;
   };
