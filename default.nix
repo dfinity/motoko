@@ -505,7 +505,7 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell {
+  shell = nixpkgs.mkShell rec {
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
@@ -513,7 +513,7 @@ rec {
     # both, while not actually building `moc`
     #
 
-    buildInputs =
+    propagatedBuildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
@@ -540,9 +540,12 @@ rec {
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell
-    phases = ["dummyBuildPhase"];
-    dummyBuildPhase = ''
-      touch $out
+    # Also mention the dependencies in the output, so that after `nix-build -A
+    # shell` (or just `nix-build`) they are guaranteed to be present in the
+    # local nix store.
+    phases = ["installPhase" "fixupPhase"];
+    installPhase = ''
+      mkdir $out
     '';
     preferLocalBuild = true;
     allowSubstitutes = true;
