@@ -513,7 +513,7 @@ rec {
     # both, while not actually building `moc`
     #
 
-    buildInputs =
+    propagatedBuildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
@@ -543,16 +543,10 @@ rec {
     # Also mention the dependencies in the output, so that after `nix-build -A
     # shell` (or just `nix-build`) they are guaranteed to be present in the
     # local nix store.
-    phases = ["dummyBuildPhase"];
-    dummyBuildPhase = ''
-      touch $out
-    '' + builtins.concatStringsSep "" (
-      map (pkg:
-        ''
-          echo ${pkg} >> $out
-        ''
-      ) buildInputs
-    );
+    phases = ["installPhase" "fixupPhase"];
+    installPhase = ''
+      mkdir $out
+    '';
     preferLocalBuild = true;
     allowSubstitutes = true;
   };
