@@ -1,6 +1,6 @@
 → update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
 → query pair(record {"Hey!"; +42})
 debug.print: ok: +42
@@ -8,11 +8,10 @@ debug.print: ok: +42
 → query record(record {427265337 = "Hey!"; 834174833 = +42})
 debug.print: ok: Hey!
 ← completed: ()
-→ query record1(record {427265337 = "Hey!"; 834174833 = +42; 1092820744 = (25 : int8)})
+→ query record1(record {427265337 = "Hey!"; 834174833 = +42; 1092820744 = (…
 debug.print: ok: +25
 ← completed: ()
-→ query record2(record {427265337 = "Hey!"; 834174833 = +42; 1092820744 = (24 : int8)}
-, (25 : int8))
+→ query record2(record {427265337 = "Hey!"; 834174833 = +42; 1092820744 = (…
 debug.print: ok:  Hey! +25
 ← completed: ((25 : int8))
 → query record3(record {427265337 = "Hey!"; 834174833 = +42})

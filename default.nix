@@ -19,16 +19,19 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  llvmBuildInputs = [
+  rtsBuildInputs = [
     nixpkgs.clang_10 # for native/wasm building
     nixpkgs.lld_10 # for wasm building
+    nixpkgs.rustc-nightly
+    nixpkgs.cargo-nightly
+    nixpkgs.xargo
   ];
 
-  # When compiling natively, we want to use `clang` (which is a nixpkgs
-  # provided wrapper that sets various include paths etc).
-  # But for some reason it does not handle building for Wasm well, so
-  # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
+    # When compiling natively, we want to use `clang` (which is a nixpkgs
+    # provided wrapper that sets various include paths etc).
+    # But for some reason it does not handle building for Wasm well, so
+    # there we use plain clang-10. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_10}/bin/clang"
     export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
@@ -120,32 +123,64 @@ let ocaml_exe = name: bin: rts:
 in
 
 rec {
-  rts = stdenv.mkDerivation {
-    name = "moc-rts";
+  rts =
+    let
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchcargo {
+        name = "motoko-rts-deps";
+        src = subpath rts/motoko-rts;
+        sourceRoot = null;
+        sha256 = "0axxn4g6wf4v3ah7parjzfzzc98w816kpipp905y5srx0fvws637";
+        copyLockfile = true;
+      };
+    in
+    stdenv.mkDerivation {
+      name = "moc-rts";
 
-    src = subpath ./rts;
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+      src = subpath ./rts;
+      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo ];
 
-    buildInputs = llvmBuildInputs;
+      buildInputs = rtsBuildInputs;
 
-    preBuild = ''
-      ${llvmEnv}
-      export TOMMATHSRC=${nixpkgs.sources.libtommath}
-      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-    '';
+      preBuild = ''
+        export XARGO_HOME=$PWD/xargo-home
+        export CARGO_HOME=$PWD/cargo-home
 
-    doCheck = true;
+        # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+        mkdir -p $CARGO_HOME
+        echo "Using vendored sources from ${rustDeps}"
+        cat > $CARGO_HOME/config <<__END__
+          [source."crates-io"]
+          "replace-with" = "vendored-sources"
 
-    checkPhase = ''
-      ./test_rts
-    '';
+          [source."vendored-sources"]
+          "directory" = "${rustDeps}"
+        __END__
 
-    installPhase = ''
-      mkdir -p $out/rts
-      cp mo-rts.wasm $out/rts
-    '';
-  };
+        ${llvmEnv}
+        export TOMMATHSRC=${nixpkgs.sources.libtommath}
+        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
+
+      '';
+
+      doCheck = true;
+
+      checkPhase = ''
+        ./test_rts
+      '';
+
+      installPhase = ''
+        mkdir -p $out/rts
+        cp mo-rts.wasm $out/rts
+      '';
+
+      # this needs to be self-contained. Remove mention of
+      # nix path in debug message
+      preFixup = ''
+        remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts.wasm
+      '';
+      allowedRequisites = [];
+    };
 
   moc = ocaml_exe "moc" "moc" rts;
   mo-ld = ocaml_exe "mo-ld" "mo-ld" null;
@@ -200,7 +235,7 @@ rec {
             wasmtime
             nixpkgs.sources.esm
           ] ++
-          llvmBuildInputs;
+          rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .
@@ -329,6 +364,7 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
+  xargo = nixpkgs.xargo;
   wasm = nixpkgs.wasm;
 
   overview-slides = stdenv.mkDerivation {
@@ -358,6 +394,18 @@ rec {
     installPhase = "touch $out";
     checkPhase = ''
       ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
+    '';
+  };
+
+  check-rts-formatting = stdenv.mkDerivation {
+    name = "check-rts-formatting";
+    buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
+    src = subpath ./rts/motoko-rts;
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      cargo fmt -- --check
     '';
   };
 
@@ -449,6 +497,7 @@ rec {
       ic-ref
       shell
       check-formatting
+      check-rts-formatting
       check-generated
       check-grammar
     ] ++
@@ -473,11 +522,11 @@ rec {
         overview-slides.buildInputs ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
-	  nixpkgs.ocamlPackages.merlin
-	  nixpkgs.ocamlformat
-	  nixpkgs.ocamlPackages.utop
-	  nixpkgs.niv
-	]
+          nixpkgs.ocamlPackages.merlin
+          nixpkgs.ocamlformat
+          nixpkgs.ocamlPackages.utop
+          nixpkgs.niv
+        ]
       ));
 
     shellHook = llvmEnv + ''

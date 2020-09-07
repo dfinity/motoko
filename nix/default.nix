@@ -10,7 +10,11 @@ let
     import nixpkgs_src {
       inherit system;
       overlays = [
-        (self: super: { sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; }; })
+        # add nix/sources.json
+        (self: super: {
+           sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
+        })
+
         # Selecting the ocaml version
         # (self: super: { ocamlPackages = super.ocamlPackages; })
         (
@@ -30,10 +34,30 @@ let
                 inherit (self) ocamlPackages;
               };
             };
-            # wasmtime
             wasmtime = self.callPackage ./wasmtime.nix {};
+            xargo = self.callPackage ./xargo.nix {};
           }
         )
+
+        # Rust nightly
+        (self: super: let
+          moz_overlay = import (self.fetchzip {
+            url = https://github.com/mozilla/nixpkgs-mozilla/archive/efda5b357451dbb0431f983cca679ae3cd9b9829.tar.gz;
+            sha256 = "11wqrg86g3qva67vnk81ynvqyfj0zxk83cbrf0p9hsvxiwxs8469";
+          }) self super;
+          rust-channel = moz_overlay.rustChannelOf { date = "2020-07-22"; channel = "nightly"; };
+        in rec {
+          rustc-nightly = rust-channel.rust.override {
+            targets = [ "wasm32-unknown-unknown" "wasm32-unknown-emscripten" ];
+            extensions = ["rust-src"];
+          };
+          cargo-nightly = rustc-nightly;
+          rustPlatform-nightly = pkgs.makeRustPlatform {
+            rustc = rustc-nightly;
+            cargo = cargo-nightly;
+          };
+        })
+
       ];
     };
 in
