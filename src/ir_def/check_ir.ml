@@ -12,8 +12,6 @@ module E = Ir_effect
    consider making it explicit as part of desugaring.
 *)
 
-(* TODO: enforce second-class nature of T.Mut? in check_typ *)
-
 (* TODO: check escape of free mutables via actors *)
 
 (* Helpers *)
@@ -67,10 +65,10 @@ type env =
     seen : con_env ref;
   }
 
-let env_of_scope scope flavor : env =
+let initial_env flavor : env =
   { flavor;
     lvl = TopLvl;
-    vals = T.Env.map (fun typ -> { typ; loc_known = true; const = true }) scope.Scope.val_env;
+    vals = T.Env.empty;
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
@@ -132,6 +130,19 @@ let check_concrete env at t =
   check env at (T.concrete t)
     "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
+let has_prim_eq t =
+  (* Which types have primitive equality implemented in the backend? *)
+  (* Keep in sync with Compile.compileq_eq *)
+  let open T in
+  match normalize t with
+  | Prim Null -> false (* Ir_passes.Eq handles singleton types *)
+  | Prim Error -> false (* should be desugared away *)
+  | Prim _ -> true (* all other prims are fine *)
+  | Non -> true
+  (* references are handled in the back-end: *)
+  | Obj (Actor, _) | Func (Shared _, _, _, _, _) -> true
+  | _ -> false
+
 let check_field_hashes env what at =
   Lib.List.iter_pairs
     (fun x y ->
@@ -164,7 +175,7 @@ let rec check_typ env typ : unit =
   | T.Non -> ()
   | T.Prim _ -> ()
   | T.Array typ ->
-    check_typ env typ
+    check_mut_typ env typ
   | T.Tup typs ->
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
@@ -221,9 +232,13 @@ let rec check_typ env typ : unit =
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
-    check_typ env typ
+    error env no_region "unexpected T.Mut"
   | T.Typ c ->
-    check_con env c
+    error env no_region "unexpected T.Typ"
+
+and check_mut_typ env = function
+  | T.Mut t -> check_typ env t
+  | t -> check_typ env t
 
 and check_con env c =
   if T.ConSet.mem c !(env.seen) then ()
@@ -239,14 +254,13 @@ and check_con env c =
     check_typ env' (T.open_ ts typ)
   end
 
-and check_typ_field env s typ_field : unit =
-  let T.{lab; typ} = typ_field in
-  check_typ env typ;
-  if not (T.is_typ typ) then begin
-    check env no_region
-      (s <> Some T.Actor || T.is_shared_func typ)
-      "actor field must have shared function type"
-  end
+and check_typ_field env s tf : unit =
+  match tf.T.typ, s with
+  | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
+  | T.Typ c, Some _ -> check_con env c
+  | t, Some T.Actor when not (T.is_shared_func t) ->
+    error env no_region "actor field %s must have shared function type" tf.T.lab
+  | t, _ -> check_typ env t
 
 and check_typ_binds_acyclic env cs ts  =
   let n = List.length cs in
@@ -335,7 +349,7 @@ let isAsyncE exp =
 let store_typ t  =
   T.stable t &&
   match t with
-  | T.Obj(T.Object, fts) ->
+  | T.Obj(T.Memory, fts) ->
     List.for_all (fun f -> T.is_opt f.T.typ) fts
   | _ -> false
 
@@ -343,7 +357,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
-  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;
@@ -357,7 +370,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
-    typ <~ t
+    T.as_immut typ <: t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -388,6 +401,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       ot <: t
+    | RelPrim (ot,  Operator.NeqOp), _ ->
+      check false "negation operator should be desugared away in IR"
+    | RelPrim (ot,  Operator.EqOp), [exp1; exp2] when (not env.flavor.has_poly_eq) ->
+      check (has_prim_eq ot) "primitive equality is not defined for operand type";
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      T.bool <: t
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
       typ exp1 <: ot;
@@ -423,7 +443,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
                | ActorDotPrim _ -> sort = T.Actor
                | DotPrim _ -> sort <> T.Actor
                | _ -> false) "sort mismatch";
-        try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
+        try T.as_immut (T.lookup_val_field n tfs) <: t with Invalid_argument _ ->
           error env exp1.at "field name %s does not exist in type\n  %s"
             n (T.string_of_typ_expand t1)
       end
@@ -439,7 +459,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
                                          (T.string_of_typ_expand t1)
       in
       typ exp2 <: T.nat;
-      t2 <~ t
+      T.as_immut t2 <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -480,6 +500,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
       T.text <: t
+    | SerializePrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
+      typ exp1 <: T.seq ots;
+      T.blob <: t
+    | DeserializePrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
+      typ exp1 <: T.blob;
+      T.seq ots <: t
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
@@ -516,9 +544,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (T.string_of_typ_expand t1)
       end
     | ICStableRead t1, [] ->
+      check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
       t1 <: t
     | ICStableWrite t1, [exp1] ->
+      check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableWrite";
       typ exp1 <: t1;
       T.unit <: t
@@ -548,6 +578,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* We could additionally keep track of the type of the current actor in
          the environment and see if this lines up. *)
       t1 <: t;
+    | SystemTimePrim, [] ->
+      T.(Prim Nat64) <: t;
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -611,11 +643,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1' <: T.Any; (* vacuous *)
     T.Async (t0, t1') <: t
   | DeclareE (id, t0, exp1) ->
-    check_typ env t0;
+    check_mut_typ env t0;
     let val_info = { typ = t0; loc_known = false; const = false } in
     let env' = adjoin_vals env (T.Env.singleton id val_info) in
     check_exp env' exp1;
-    (typ exp1) <: t
+    typ exp1 <: t
   | DefineE (id, mut, exp1) ->
     check_exp env exp1;
     begin
@@ -740,7 +772,9 @@ and check_lexp env (lexp:Ir.lexp) : unit =
   let (<:) t1 t2 = check_sub env lexp.at t1 t2 in
   (* check type annotation *)
   let t = lexp.note in
-  check_typ env t;
+  (match t with
+  | T.Mut t -> check_typ env t
+  | t -> error env lexp.at "lexp with non-mutable type");
   (* check typing *)
   match lexp.it with
   | VarLE id ->
@@ -752,6 +786,7 @@ and check_lexp env (lexp:Ir.lexp) : unit =
     t0 <: t
   | DotLE (exp1, n) ->
     begin
+      check_exp env exp1;
       let t1 = typ exp1 in
       let sort, tfs =
         try T.as_obj_sub [n] t1 with Invalid_argument _ ->
@@ -967,13 +1002,37 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
-  let env = env_of_scope scope flavor in
-  try
+let check_comp_unit env = function
+  | ProgU ds ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
-    check_decs env' ds;
-    check_exp env' exp;
+    check_decs env' ds
+  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
+    let check p = check env no_region p in
+    let (<:) t1 t2 = check_sub env no_region t1 t2 in
+    let env' = match as_opt with
+      | None -> { env with async = None }
+      | Some as_ ->
+        let ve = check_args env as_ in
+        List.iter (fun a -> check_shared env no_region a.note) as_;
+        adjoin_vals { env with async = None } ve
+    in
+    let scope1 = gather_block_decs env' ds in
+    let env'' = adjoin env' scope1 in
+    check_decs env'' ds;
+    check_exp env'' pre;
+    check_exp env'' post;
+    typ pre <: T.unit;
+    typ post <: T.unit;
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    let (s0, tfs0) = T.as_obj t0 in
+    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    type_obj env'' T.Actor fs <: T.Obj (s0, val_tfs0);
+    () (* t0 <: t *)
+
+let check_prog verbose phase ((cu, flavor) as prog) : unit =
+  let env = initial_env flavor in
+  try check_comp_unit env cu
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
     if verbose

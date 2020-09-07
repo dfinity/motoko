@@ -6,24 +6,7 @@ open Source
 open Ir
 module T = Type
 open Construct
-
-(* A type identifier *)
-
-(* This needs to map types to some identifier with the following properties:
-
- - Its domain are normalized types that do not mention any type parameters
- - It needs to be injective wrt. type equality
- - It needs to terminate, even for recursive types
- - It may fail upon type parameters (i.e. no polymorphism)
-
-We can use string_of_typ here for now, it seems.
-
-Same things is needed Compile.Serialization, so a better solution should be
-used there as well!
-*)
-
-let typ_id : T.typ -> string =
-  T.string_of_typ
+open Typ_hash
 
 (* Environment *)
 
@@ -41,7 +24,7 @@ let empty_env () : env = {
   }
 
 let add_type env t : unit =
-  env.params := M.add (typ_id t) t !(env.params)
+  env.params := M.add (typ_hash t) t !(env.params)
 
 (* Function names *)
 
@@ -51,7 +34,7 @@ let add_type env t : unit =
 *)
 
 let show_name_for t =
-  "@show<" ^ typ_id t ^ ">"
+  "@show<" ^ typ_hash t ^ ">"
 
 let show_fun_typ_for t =
   T.Func (T.Local, T.Returns, [], [t], [T.text])
@@ -175,6 +158,9 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Char) ->
     define_show t (invoke_prelude_show "@text_of_Char" t (argE t)),
     []
+  | T.(Prim Blob) ->
+    define_show t (invoke_prelude_show "@text_of_Blob" t (argE t)),
+    []
   | T.(Prim Principal) ->
     define_show t (primE IcUrlOfBlob [primE T.(CastPrim (Prim Principal, Prim Blob)) [argE t]]),
     []
@@ -253,10 +239,10 @@ let show_decls : T.typ M.t -> Ir.dec list = fun roots ->
 
   let rec go = function
     | [] -> []
-    | t::todo when M.mem (typ_id t) !seen ->
+    | t::todo when M.mem (typ_hash t) !seen ->
       go todo
     | t::todo ->
-      seen := M.add (typ_id t) () !seen;
+      seen := M.add (typ_hash t) () !seen;
       let (decl, deps) = show_for t in
       decl :: go (deps @ todo)
   in go (List.map snd (M.bindings roots))
@@ -319,13 +305,14 @@ and t_exp' env = function
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
   | ActorE (ds, fields, {pre; post}, typ) ->
-    (* compare with transform below *)
+    (* Until Actor expressions become their own units,
+       we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
+    let pre' = t_exp env1 pre in
+    let post' = t_exp env1 post in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields,
-      {pre = t_exp env1 pre; post = t_exp env1 post},
-      typ)
+    ActorE (decls @ ds', fields, {pre = pre'; post = post'}, typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -346,17 +333,21 @@ and t_decs env decs = List.map (t_dec env) decs
 
 and t_block env (ds, exp) = (t_decs env ds, t_exp env exp)
 
-and t_prog env (prog, flavor) = (t_block env prog, flavor)
-
+and t_comp_unit = function
+  | ProgU ds ->
+    let env = empty_env () in
+    let ds' = t_decs env ds in
+    let decls = show_decls !(env.params) in
+    ProgU (decls @ ds')
+  | ActorU (as_opt, ds, fields, {pre; post}, typ) ->
+    let env = empty_env () in
+    let ds' = t_decs env ds in
+    let pre' = t_exp env pre in
+    let post' = t_exp env post in
+    let decls = show_decls !(env.params) in
+    ActorU (as_opt, decls @ ds', fields, {pre = pre'; post = post'}, typ)
 
 (* Entry point for the program transformation *)
 
-let transform scope prog =
-  let env = empty_env () in
-  (* Find all parameters to show in the program *)
-  let prog = t_prog env prog in
-  (* Create declarations for them *)
-  let decls = show_decls !(env.params) in
-  (* Add them to the program *)
-  let prog' = let ((d,e),f) = prog in ((decls @ d,e), { f with has_show = false }) in
-  prog';
+let transform (cu, flavor) =
+  (t_comp_unit cu, {flavor with has_show = false})

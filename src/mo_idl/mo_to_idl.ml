@@ -57,7 +57,7 @@ let prim p =
   | Float -> I.PrimT I.Float64
   | Char -> I.PrimT I.Nat32
   | Text -> I.PrimT I.Text
-  | Blob -> I.VecT (I.PrimT I.Nat8 @@ no_region)
+  | Blob -> I.BlobT
   | Principal -> I.PrincipalT
   | Error -> assert false
 

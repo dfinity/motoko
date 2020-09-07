@@ -1,0 +1,27 @@
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ update tie(1)
+← completed: ()
+→ query checkArray(1)
+← completed: ()
+→ query checkRecord(1)
+← completed: ()
+→ query checkCycle(1)
+← completed: ()
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ query checkArray(1)
+← completed: ()
+→ query checkRecord(1)
+← completed: ()
+→ query checkCycle(1)
+← completed: ()
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ query checkArray2(1)
+← completed: ()
+→ query checkRecord2(1)
+debug.print: hello
+← completed: ()

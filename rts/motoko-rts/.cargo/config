@@ -1,0 +1,4 @@
+# NB. codegen-units=1 is not necessary, but it generates less .o files for core,
+# std, and compiler_builtins and makes it easier to find symbols.
+[build]
+rustflags = ["-Crelocation-model=pic", "-Ccodegen-units=1"]

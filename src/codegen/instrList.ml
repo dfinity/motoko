@@ -7,7 +7,7 @@ features are
  * Some simple peephole optimizations.
 *)
 
-open Wasm.Ast
+open Wasm_exts.Ast
 open Wasm.Source
 open Wasm.Values
 open Wasm.Types
@@ -38,6 +38,26 @@ let optimize : instr list -> instr list = fun is ->
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
       List.rev (i::l)
+    (* Equals zero has an dedicated operation (and works well with leg swapping) *)
+    | ({it = Compare (I32 I32Op.Eq); _} as i) :: {it = Const {it = I32 0l; _}; _} :: l', r' ->
+      go l' ({ i with it = Test (I32 I32Op.Eqz)}  :: r')
+    (* eqz after eq/ne becomes ne/eq *)
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Eq); _} :: l', r' ->
+      go l' ({ i with it = Compare (I32 I32Op.Ne)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Ne); _} :: l', r' ->
+      go l' ({ i with it = Compare (I32 I32Op.Eq)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I64 I64Op.Eq); _} :: l', r' ->
+      go l' ({ i with it = Compare (I64 I64Op.Ne)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I64 I64Op.Ne); _} :: l', r' ->
+      go l' ({ i with it = Compare (I64 I64Op.Eq)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F32 F32Op.Eq); _} :: l', r' ->
+      go l' ({ i with it = Compare (F32 F32Op.Ne)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F32 F32Op.Ne); _} :: l', r' ->
+      go l' ({ i with it = Compare (F32 F32Op.Eq)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Eq); _} :: l', r' ->
+      go l' ({ i with it = Compare (F64 F64Op.Ne)}  :: r')
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Ne); _} :: l', r' ->
+      go l' ({ i with it = Compare (F64 F64Op.Eq)}  :: r')
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -141,7 +161,7 @@ let branch_to_ (p : depth) : t =
   fun d pos rest ->
     (Br (Int32.(sub d (Lib.Promise.value p)) @@ pos) @@ pos) :: rest
 
-(* Convenience combinations *)
+(* Convenience combinators *)
 
 let labeled_block_ (ty : stack_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)

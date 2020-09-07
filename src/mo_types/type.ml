@@ -602,7 +602,8 @@ let concrete t =
     end
   in go t
 
-let shared t =
+(* stable or shared *)
+let serializable allow_mut t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -612,7 +613,8 @@ let shared t =
       | Var _ | Pre -> assert false
       | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
-      | Async _ | Mut _ -> false
+      | Async _ -> false
+      | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -624,8 +626,7 @@ let shared t =
         (match s with
          | Actor -> true
          | Module -> false (* TODO(1452) make modules sharable *)
-         | Object -> List.for_all (fun f -> go f.typ) fs
-         | Memory -> assert false)
+         | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
@@ -670,8 +671,8 @@ let is_shared_func t =
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
-(* stable types : TODO extend to mutable *)
-let stable t = shared t
+let shared t = serializable false t
+let stable t = serializable true t
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
@@ -937,6 +938,29 @@ let rec inhabited_typ co t =
 and inhabited_field co tf = inhabited_typ co tf.typ
 
 and inhabited t : bool = inhabited_typ (ref S.empty) t
+
+let rec singleton_typ co t =
+  S.mem t !co || begin
+  co := S.add t !co;
+  match normalize t with
+  | Pre -> assert false
+  | Prim Null | Any -> true
+  | Tup ts -> List.for_all (singleton_typ co) ts
+  | Obj ((Object|Memory|Module), fs) -> List.for_all (singleton_field co) fs
+  | Variant [f] -> singleton_field co f
+
+  | Non -> false
+  | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
+  | Mut t' -> false
+  | Obj (_, _) -> false
+  | Variant _ -> false
+  | Var _ -> false
+  | Con _ -> false
+  end
+
+and singleton_field co tf = singleton_typ co tf.typ
+
+and singleton t : bool = singleton_typ (ref S.empty) t
 
 
 (* Least upper bound and greatest lower bound *)

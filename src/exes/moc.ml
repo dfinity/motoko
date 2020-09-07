@@ -4,8 +4,7 @@ open Mo_config
 open Printf
 
 let name = "moc"
-let version = "0.1"
-let banner = "Motoko " ^ version ^ " interpreter"
+let banner = "Motoko compiler (revision " ^ Source_id.id ^ ")"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -30,6 +29,7 @@ let gen_source_map = ref false
 
 let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
+  "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";

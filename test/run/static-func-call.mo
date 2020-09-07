@@ -1,6 +1,6 @@
 (func() = ()) ()
 
-// CHECK: func $start
+// CHECK: func $init
 // CHECK-NOT: call_indirect
 // CHECK: call $anon-func-
 

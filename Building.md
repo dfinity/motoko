@@ -33,6 +33,29 @@ $ nix-build --no-out-link
 ```
 
 
+## Making releases
+
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.4.2) are:
+
+ * Make sure that the top section of `Changelog.md` has a title like
+
+        == 0.4.2 (2020-04-01)
+
+   with today’s date.
+
+ * Look at `git log 0.4.1..HEAD` and check that everything relevant is mentioned
+   in the changelog section, and possibly clean it up.
+
+ * `git commit -a -m "Releasing 0.4.2"`
+ * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
+   merge it into master without additional approval, within 2 or 3 minutes.
+ * Switch to master. The release commit should be your `HEAD`
+ * `git tag 0.4.2 -m "Motoko 0.4.2"`
+ * `git branch -f release 0.4.2`
+ * `git push origin release 0.4.2`
+
+The `release` branch should thus always reference the latest release commit.
+
 ## Development without nix-shell
 
 You can get a development environment without having to use `nix-shell`
@@ -42,7 +65,7 @@ You can get a development environment without having to use `nix-shell`
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages:
    ```
-   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test atdgen wasm obelisk
    ```
  * Install into your `PATH` various command line tools used by, in particular,
    the test suite:
@@ -58,12 +81,8 @@ You can get a development environment without having to use `nix-shell`
    nix-shell --run 'make -C rts'
    ```
    to get `rts/mo-rts.wasm`.
-
-
-## Create a coverage report
-
-The coverage report support got dropped when switching to `dune`. Please monitor
-https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable again.
+ * Add `./bin` to your `$PATH` so that the testsuite will find the build
+   products (see `./bin/wrapper.sh` for details).
 
 ## Profile the compiler
 
@@ -74,7 +93,7 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    ```
 2. Run `moc` as normal, e.g.
    ```
-   ./src/moc -c foo.mo -o foo.wasm
+   moc -g -c foo.mo -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using

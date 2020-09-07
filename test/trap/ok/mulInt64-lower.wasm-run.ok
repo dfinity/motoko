@@ -1,5 +1,4 @@
 arithmetic overflow
-
 Error: failed to run main module `_out/mulInt64-lower.wasm`
 
 Caused by:
@@ -7,6 +6,6 @@ Caused by:
     1: wasm trap: unreachable, source location: @___:
        wasm backtrace:
          0: <unknown>!mul<Int64>
-         1: <unknown>!start
+         1: <unknown>!init
          2: <unknown>!_start
        

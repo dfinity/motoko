@@ -37,7 +37,7 @@ exchange (names, parameter and result formats of service methods)
 
 #### Why not Protocol Buffers or others?
 
-Vanilla protocol buffers are not sufficient or well-suited for describing Dfinity canisters:
+Vanilla protocol buffers are not sufficient or well-suited for describing canisters on the Internet Computer:
 
 * They are primarily a *data description language*, not an IDL. There is syntax for defining "services", but it assumes RPCs not messaging and requires a developing a plugin (replacing the gRPC a.k.a. Stubby one) to provide a semantics.
 
@@ -353,7 +353,7 @@ The purpose of identifying fields by unique (numeric or textual) ids is to suppo
 
 The hash function is specified as
 ```
-hash(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
+hash(id) = ( Sum_(i=0..k) utf8(id)[i] * 223^(k-i) ) mod 2^32 where k = |utf8(id)|-1
 ```
 
 This expansion implies that a hash collision between field names within a single record is disallowed.

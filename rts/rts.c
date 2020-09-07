@@ -12,32 +12,12 @@ char *alloc(size_t n) {
   return (char *)&FIELD(r,2);
 }
 
-export void as_memcpy(char *str1, const char *str2, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    str1[i] = str2[i];
-  }
-}
-
-export int as_memcmp(const char *str1, const char *str2, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    if (str1[i] != str2[i])
-      return ((uint8_t*)str1)[i]-((uint8_t*)str2)[i];
-  }
-  return 0;
-}
-
-size_t as_strlen(const char* p) {
-  size_t i = 0;
-  while (p[i]) i++;
-  return i;
-}
-
 void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {
-  int len1 = as_strlen(prefix);
-  int len2 = as_strlen(str);
+  int len1 = strlen(prefix);
+  int len2 = strlen(str);
   char msg[len1 + len2];
-  as_memcpy(msg, prefix, len1);
-  as_memcpy(msg + len1, str, len2);
+  memcpy(msg, prefix, len1);
+  memcpy(msg + len1, str, len2);
   rts_trap(msg, len1 + len2);
 }
 

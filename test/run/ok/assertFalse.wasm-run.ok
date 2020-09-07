@@ -1,11 +1,10 @@
 assertion failed at assertFalse.mo:1.1-1.14
-
 Error: failed to run main module `_out/assertFalse.wasm`
 
 Caused by:
     0: failed to invoke `_start`
     1: wasm trap: unreachable, source location: @___:
        wasm backtrace:
-         0: <unknown>!start
+         0: <unknown>!init
          1: <unknown>!_start
        

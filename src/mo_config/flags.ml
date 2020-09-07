@@ -10,6 +10,7 @@ let print_warnings = ref true
 let print_depth = ref 2
 let release_mode = ref false
 let compile_mode = ref ICMode
+let debug_info = ref true
 let multi_value = ref true
 let await_lowering = ref true
 let async_lowering = ref true

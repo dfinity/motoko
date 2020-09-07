@@ -1,4 +1,4 @@
-{ src ? { rev = null; } }:
+{ src ? { rev = null; }, labels ? {}, ... }:
 let
   nixpkgs = import ./nix { };
 
@@ -72,8 +72,14 @@ let
       echo "comment manifest $out/comment" >> $out/nix-support/hydra-build-products
     '';
 
+  jobs = import ./ci.nix { inherit src; inherit labels; } //
+    nixpkgs.lib.optionalAttrs (src ? mergeBase) {
+      inherit perf-delta;
+    };
 in
-import ./ci.nix { inherit src; } //
-nixpkgs.lib.optionalAttrs (src ? mergeBase) {
-  inherit perf-delta;
+jobs // {
+  all-jobs = nixpkgs.releaseTools.aggregate {
+    name = "all-jobs";
+    constituents = nixpkgs.lib.collect (drv: nixpkgs.lib.isDerivation drv) jobs;
+  };
 }

@@ -1,5 +1,4 @@
 losing precision
-
 Error: failed to run main module `_out/outrange-int64-upper.wasm`
 
 Caused by:
@@ -8,6 +7,6 @@ Caused by:
        wasm backtrace:
          0: <unknown>!Int->Int64
          1: <unknown>!intToInt64
-         2: <unknown>!start
+         2: <unknown>!init
          3: <unknown>!_start
        

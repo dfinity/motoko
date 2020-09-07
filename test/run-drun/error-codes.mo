@@ -5,7 +5,7 @@ import P = "mo:prim";
 
 actor a {
 
-  flexible let invalid = actor "IC:C0FEFED00D41" : actor { request() : async () };
+  flexible let invalid = actor "bfozs-kwa73-7nadi" : actor { request() : async () };
 
   public func trap() : async () { assert false; };
 

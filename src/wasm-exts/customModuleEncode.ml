@@ -171,7 +171,7 @@ let encode (em : extended_module) =
     (* Expressions *)
 
     open Wasm.Source
-    open Wasm.Ast
+    open Ast
     open Wasm.Values
 
     let op n = u8 n
@@ -561,17 +561,18 @@ let encode (em : extended_module) =
       vec (fun (li, x) -> vu32 li; f x)
           (List.sort (fun (i1,_) (i2,_) -> compare i1 i2) xs)
 
-    let name_section_body (ns : name_section) =
-      (* module name section *)
-      section 0 (opt string) ns.module_ (ns.module_ <> None);
-      (* function names section *)
-      section 1 (assoc_list string) ns.function_names  (ns.function_names <> []);
-      (* locals names section *)
-      section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> [])
-
     let name_section ns =
+      let name_section_body (ns : name_section) =
+        (* module name section *)
+        section 0 (opt string) ns.module_ (ns.module_ <> None);
+        (* function names section *)
+        section 1 (assoc_list string) ns.function_names  (ns.function_names <> []);
+        (* locals names section *)
+        section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> []) in
+
       custom_section "name" name_section_body ns
-        (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
+        (!Mo_config.Flags.debug_info &&
+           (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> []))
 
     (* Module *)
 

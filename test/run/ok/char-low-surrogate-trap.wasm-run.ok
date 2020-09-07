@@ -1,5 +1,4 @@
 codepoint out of range
-
 Error: failed to run main module `_out/char-low-surrogate-trap.wasm`
 
 Caused by:
@@ -8,6 +7,6 @@ Caused by:
        wasm backtrace:
          0: <unknown>!Word32->Char
          1: <unknown>!word32ToChar
-         2: <unknown>!start
+         2: <unknown>!init
          3: <unknown>!_start
        

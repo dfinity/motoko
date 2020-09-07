@@ -1,0 +1,168 @@
+= Actors and async data
+:proglang: Motoko
+:company-id: DFINITY
+
+{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the Internet Computer.
+
+An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
+
+Each {proglang} actor represents a service that one might want to deploy on the Internet Computer.
+
+The interface of each actor introduces `async` data whenever it returns information to its caller.
+This programming abstraction serves a key role in {proglang}, as it coordinates with the transformations of the {proglang} compiler pipeline and eventual execution behavior of {proglang} actors on the Internet Computer.
+
+This abstraction represents a _promise_ from the system to the caller, on behalf of the callee:
+
+ - Either the `async` value, when ``await``ed, will yield a value from the callee of the expected type,
+
+ - or, an error --- system-level or callee-level --- will eventually arise.
+
+In general, the caller may not _immediately_ `await` each call.  But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: To maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
+
+*Technical aside.* In reality, the underlying message-passing of the system forces the program's logic into another form.
+Specifically, control flow around each actor method call involves the program loosing control to a system-level message-processing loop, which forces the program's logic into a so-called
+_"continuation-passing-style"_ (CPS) to expose event-handling
+_"callback functions"_.
+This program structure is complex for humans to read and maintain, and stands in stark contrast to the direct style most prefer for most program logic.
+
+We note that {proglang} programs may avoid callbacks for many cases, but not _all_ cases where they are used in other asynchronous, message-passing settings.
+Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
+
+'''
+
+To start, we consider the simplest stateful service: A counter with
+a single "current count" value.
+
+== Example: a Counter service
+
+Consider the following actor object (a value form):
+
+....
+actor Counter {
+  var count : Nat = 0;
+
+  public func increment() : async () {
+    count += 1;
+  };
+
+  public query func get_current() : async Nat {
+    count
+  };
+
+  public func set_current(n: Nat) : async () {
+    count := n;
+  };
+}
+....
+
+////
+TODO: discuss counter example
+////
+== Using async to await values
+
+To get the underlying content of an `async` value, such as a return value from `get_current` above, the caller uses `await`:
+
+....
+let a : async Nat = counter.get_current()
+let c : Nat = await(counter.get_current())
+....
+
+The first line gets _a promise of the current value_ (the variable `a`), but does not wait for it, and thus cannot use it as a natural number.
+
+The second line immediately inspects this promise and gets the natural number, or waits until it is ready.
+
+NOTE: For now, the {proglang} compiler gives an error for calls that
+do not follow this second form, which is currently required to ensure
+that certain program resources will always be reclaimed.
+
+== Actor classes generalize an actor's initial state
+
+An actor class defines a constructor function that produces objects of a predetermined type, with a predetermined interface and behavior.
+
+For example, we can generalize `Counter` given above to `CounterInit`
+below, by introducing a constructor parameter, variable `init` of type `Nat`:
+
+....
+actor class CounterInit(init: Nat) {
+  var count : Nat = init;
+
+  public func increment() : async () {
+    count += 1;
+  };
+
+  public query func get_current() : async Nat {
+    count
+  };
+
+  public func set_current(n: Nat) : async () {
+    count := n;
+  };
+}
+....
+
+To use this class, we can create several actors with different initial values:
+
+....
+let c1 = CounterInit(1);
+let c2 = CounterInit(2);
+....
+
+The two lines above _instantiate_ the actor class twice, once per line.
+The first invocation uses the initial value `1`, where the second uses initial value `2`.
+Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
+
+NOTE: For now, the {proglang} compiler gives an error when compiling
+programs that do not consist of a single actor.
+The interpreter accommodates the examples above.
+
+== Stable and flexible variables
+
+To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
+
+In an actor, you can identify a variable that must be preserved by using the _stable_ modifier as part of the variable's declaration.
+
+More precisely, every `+let+` and `+var+` variable declaration in an actor must specify whether the variable is a `+stable+` variable or a `+flexible+` variable. If you don't include a modifier in the declaration, the variable is treated as a `+flexible+` variable by default.
+
+Concretely, you use the following syntax to declare stable or flexible variables in an actor:
+
+```
+<dec-field> ::=
+  (public|private)? (stable|flexible)? dec
+```
+
+Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
+Note that you should only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
+You should not use the `+stable+` or `+flexible+` modifier anywhere else in your program.
+
+The representation for stable variable signatures looks like a {proglang} actor type:
+
+[source,motoko]
+----
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+----
+
+=== Typing
+
+Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
+
+* A `+stable+` declaration must have a _stable_ type. 
+* Stable types are a superset of _shared_ types.
+* Stable types allow objects or arrays with mutable components.
+
+The key point to note is that stable types extend shared types to include **mutable arrays and fields**. 
+Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
+This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
+
+NOTE: In general, object types are not stable because they can contain local functions. 
+However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
+Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
+
+=== How stable variables are upgraded
+
+When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
+When deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
+After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
