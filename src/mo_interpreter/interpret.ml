@@ -408,7 +408,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           k f'
         | _ -> trap exp.at "lib import"
       end
-    | ClassPath _ -> trap exp.at "class import"
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )

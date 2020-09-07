@@ -79,10 +79,6 @@ let lookup_module (project_root : string) (path : string) (index : t) :
       let path = Pipeline.ResolveImport.append_extension Sys.file_exists path in
       Index.find_opt (make_absolute path) index.modules
       |> Option.map (fun decls -> (path, decls))
-  | Ok (Class path) ->
-      let path = Pipeline.ResolveImport.append_extension Sys.file_exists path in
-      Index.find_opt (make_absolute path) index.modules
-      |> Option.map (fun decls -> (path, decls))
   | Ok (Package (pkg, path)) ->
       Option.bind (Flags.M.find_opt pkg index.package_map) (fun pkg_path ->
           let path =

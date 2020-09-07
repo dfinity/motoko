@@ -186,7 +186,6 @@ let check_import env at f ri =
     match !ri with
     | Unresolved -> error env at "unresolved import %s" f
     | LibPath fp -> fp
-    | ClassPath fp -> fp
     | IDLPath (fp, _) -> fp
     | PrimPath -> "@prim"
   in

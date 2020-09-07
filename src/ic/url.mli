@@ -1,7 +1,6 @@
 type parsed =
   | Package of (string * string)
   | Relative of string
-  | Class of string
   | Ic of string
   | IcAlias of string
   | Prim

@@ -40,7 +40,6 @@ let decode_principal principal : (string, string) result =
 type parsed =
   | Package of (string * string)
   | Relative of string
-  | Class of string
   | Ic of string
   | IcAlias of string
   | Prim
@@ -48,7 +47,6 @@ type parsed =
 let string_of_parsed = function
   | Package (x, y) -> Printf.sprintf "Package (%s, %s)" x y
   | Relative x -> Printf.sprintf "Relative %s" x
-  | Class x -> Printf.sprintf "Class %s" x
   | Ic x -> Printf.sprintf "Ic %s" x
   | IcAlias x -> Printf.sprintf "IcAlias %s" x
   | Prim -> "Prim"
@@ -81,15 +79,10 @@ let parse (f: string) : (parsed, string) result =
       match Lib.String.chop_prefix "canister:" f with
       | Some suffix -> Ok (IcAlias suffix)
       | None ->
-(*
-        match Lib.String.chop_prefix "class:" f with
-        | Some suffix -> Ok (Class suffix)
-        | None ->
-*)
-          begin match Stdlib.String.index_opt f ':' with
-          | Some _ -> Error "Unrecognized URL"
-          | None -> Ok (Relative (Lib.FilePath.normalise f))
-          end
+        begin match Stdlib.String.index_opt f ':' with
+        | Some _ -> Error "Unrecognized URL"
+        | None -> Ok (Relative (Lib.FilePath.normalise f))
+        end
 
 
 (* Basename of the IDL file searched (see DFX-Interface.md) *)

@@ -369,7 +369,6 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         pending := remove ri.Source.it !pending;
         Diag.return ()
       end
-    | Syntax.ClassPath f -> assert false
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in

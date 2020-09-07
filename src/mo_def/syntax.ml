@@ -15,7 +15,6 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 type resolved_import =
   | Unresolved
   | LibPath of string
-  | ClassPath of string
   | IDLPath of (string * string) (* filepath * bytes *)
   | PrimPath (* the built-in prim module *)
 

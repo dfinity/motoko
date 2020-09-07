@@ -697,7 +697,6 @@ let transform_import (i : S.import) : import_declaration =
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp ->
       varE (var (id_of_full_path fp) t)
-    | S.ClassPath fp -> assert false
     | S.PrimPath ->
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
