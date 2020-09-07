@@ -225,7 +225,7 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
 
 let unwrap_module_ast (lib : Syntax.lib) : Syntax.exp_field list option =
   match lib.it with
-  | _, { it = Syntax.ModuleU fields; _ } -> Some fields
+  | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
 let populate_definitions (project_root : string) (libs : Syntax.lib list)

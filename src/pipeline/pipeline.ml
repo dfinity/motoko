@@ -36,7 +36,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
 
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
-      finish imports { it = ModuleU fields; note = e.note; at = e.at }
+      finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
     | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
       finish imports { it = ActorU (None, fields); note = e.note; at = e.at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
@@ -44,8 +44,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
       finish imports { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
-    (* Note: Loosing the module name here! FIXME*)
-      finish imports { it = ModuleU fields; note = e.note; at = e.at }
+      finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
       finish imports { it = ActorU (Some i1, fields); note = e.note; at = e.at }
 
@@ -54,7 +53,7 @@ let comp_unit_of_prog as_lib (prog : Syntax.prog) : Syntax.comp_unit =
       if as_lib
       then
         let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
-        finish imports {it = ModuleU fs; at = no_region; note = empty_typ_note}
+        finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
   go [] prog.it
@@ -291,7 +290,7 @@ let check_prim () : Syntax.lib * stat_env =
     let open Source in
     let senv0 = initial_stat_env in
     let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
-    let cub = {it = ModuleU fs; at = no_region; note = empty_typ_note} in
+    let cub = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {it = ([],cub); at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es

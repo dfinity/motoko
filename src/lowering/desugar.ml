@@ -706,9 +706,9 @@ let transform_import (i : S.import) : import_declaration =
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
   | S.ProgU ds -> I.ProgU (decs ds)
-  | S.ModuleU fields -> (* compiling a module as program *)
+  | S.ModuleU (self_id, fields) -> (* compiling a module as a library *)
     I.LibU ([], {
-      it = build_obj u.at T.Module None fields u.note.S.note_typ;
+      it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
   | S.ActorClassU (sp, typ_id, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
