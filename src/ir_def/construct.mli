@@ -69,6 +69,9 @@ val unitE : exp
 val boolE : bool -> exp
 val nullE : unit -> exp
 
+val funcE : string -> func_sort -> control ->
+  typ_bind list -> arg list -> typ list -> exp ->
+  exp
 val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp

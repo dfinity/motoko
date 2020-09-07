@@ -639,24 +639,20 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     asyncE
       (typ_arg c' T.Scope T.scope_bound)
       (blockE [
-           letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
-           letD principal
-             (awaitE T.principal
-             (callE (varE create_actor_helper) cs'
-                (tupE [wasm_blob;  varE arg_blob])))
-         ]
-         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
+          letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
+          letD principal
+            (awaitE T.principal
+               (callE (varE create_actor_helper) cs'
+                  (tupE [wasm_blob;  varE arg_blob])))
+        ]
+        (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
   in
-  let func =
-    { it = Ir.FuncE("", T.Local, T.Returns,
-        [typ_arg c T.Scope T.scope_bound],
-        List.map arg_of_var vs,
-        ts2',
-        body);
-      at = no_region;
-      note = Note.{ def with typ = t; eff = T.Triv };
-    }
+  let func = funcE "" T.Local T.Returns
+    [typ_arg c T.Scope T.scope_bound]
+    (List.map arg_of_var vs)
+    ts2'
+    body
   in
   [ letD (var (id_of_full_path f) t) func ]
 
@@ -763,7 +759,8 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let prog = inject_decs imports' body' in
   let exp = match prog with
     | I.LibU (ds, e) -> blockE ds e
-    | I.ActorU (None, ds, fs, up, t) -> assert false
+    | I.ActorU (None, ds, fs, up, t) ->
+      raise (Invalid_argument "Desugar: Cannot import actor")
     | I.ActorU (Some as_, ds, fs, up, actor_t) ->
       let s, cntrl, tbs, ts1, ts2 = T.as_func t in
       assert (tbs = []);
@@ -777,20 +774,13 @@ let import_unit (u : S.comp_unit) : import_declaration =
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
-      let func_t =
-        T.Func(T.Local, T.Returns, [T.scope_bind],
-               ts1,
-               [T.Async (T.Var (T.default_scope_var, 0), actor_t)])
-      in
-      { it = Ir.FuncE("", T.Local, T.Returns,
-          [typ_arg c T.Scope T.scope_bound],
-          as_,
-          [T.Async (List.hd cs, actor_t)],
-          body);
-        at = no_region;
-        note = Note.{ def with typ = func_t; eff = T.Triv };
-      }
-    | I.ProgU ds -> raise (Invalid_argument "Desugar: Cannot import program")
+      funcE "" T.Local T.Returns
+        [typ_arg c T.Scope T.scope_bound]
+        as_
+        [T.Async (List.hd cs, actor_t)]
+        body
+    | I.ProgU ds ->
+      raise (Invalid_argument "Desugar: Cannot import program")
   in
   [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
 
