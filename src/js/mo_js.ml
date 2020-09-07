@@ -43,14 +43,15 @@ let js_run source =
   let result = String.concat "\n" results in
   Js.string result
   
-let js_compile_with mode_string source convert =
+let js_compile_with mode_string do_link source convert =
   let mode =
     match Js.to_string mode_string with
     | "wasm" -> Flags.WasmMode
     | "dfinity" -> Flags.ICMode
+    | "icref" -> Flags.RefMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
-  match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with
+  match Pipeline.compile_string mode (Js.to_bool do_link) (Js.to_string source) Filename.current_dir_name with
   | Ok (module_, msgs) ->
     let (code, map) = convert module_ in
     object%js
@@ -65,14 +66,17 @@ let js_compile_with mode_string source convert =
       val map = Js.null
     end
 
-let js_compile_wasm mode s =
-  js_compile_with mode s
-    (fun m -> let (map, wasm) = CustomModuleEncode.encode m in Js.bytestring wasm, Js.string map)
-  
+let js_compile_wasm mode do_link s =
+  js_compile_with mode do_link s
+    (fun m ->
+      let (map, wasm) = CustomModuleEncode.encode m in
+      Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstring.of_string wasm), Js.string map
+    )
+
 let () =
   Js.export "Motoko"
     (object%js
       method check s = js_check s
-      method compileWasm mode s = js_compile_wasm mode s
+      method compileWasm mode do_link s = js_compile_wasm mode do_link s
       method run s = js_run s
     end);

@@ -15,6 +15,15 @@ func fac(n: Nat) : Nat {
 };
 fac(5);
 `;
+      function downloadCode(code, name) {
+        const blob = new Blob([code]);
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', name);
+        document.body.appendChild(link);
+        link.click();
+      }
       const memory = new WebAssembly.Memory({initial: 256, maximum: 256});
       let exports = null;
       async function init(code) {
@@ -28,10 +37,9 @@ fac(5);
           'STACK_MAX': memory.buffer.byteLength,
         };
         const importObject = {env};
-        const bytes = await new Blob([code]).arrayBuffer();
-        const wa = await WebAssembly.instantiate(bytes, importObject);
+        const wa = await WebAssembly.instantiate(code, importObject);
         exports = wa.instance.exports;
-        console.info(exports);
+        console.log(wa);
       }
       
       const code = document.getElementById('prog');
@@ -48,10 +56,11 @@ fac(5);
       const compile = document.getElementById('compile');
       compile.addEventListener('click', () => {
         output.value = 'Compiling...';
-        const result = Motoko.compileWasm("dfinity", code.value);
+        const result = Motoko.compileWasm("wasm", true, code.value);
         if (result.code === null) {
           output.value = JSON.stringify(result.diagnostics);
         } else {
+          //downloadCode(result.code, 'a.wasm');
           init(result.code);
           //output.value = JSON.stringify(result.code);
         }

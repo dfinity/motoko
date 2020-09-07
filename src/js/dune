@@ -1,7 +1,7 @@
 (executable
  (name mo_js)
  (modules mo_js)
- (libraries mo_config pipeline)
+ (libraries mo_config pipeline bigstring)
  (preprocess (pps js_of_ocaml-ppx))
 )
 
