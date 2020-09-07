@@ -2,6 +2,10 @@ unsupported.mo:4.14-4.50: type error, a shared function cannot be private
   (This is a limitation of the current version.)
 unsupported.mo:36.26-36.29: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)
+unsupported.mo:50.3-50.35: type error, inner actor classes are not supported yet; any actor class must come last in your program
+  (This is a limitation of the current version.)
+unsupported.mo:54.3-54.42: type error, inner actor classes are not supported yet; any actor class must come last in your program
+  (This is a limitation of the current version.)
 unsupported.mo:58.45-58.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
 unsupported.mo:62.37-62.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
