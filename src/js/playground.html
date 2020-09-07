@@ -1,0 +1,61 @@
+<html>
+  <head>
+    <script src="../moc.js"></script>
+  </head>
+  <body>
+    <textarea id="prog" rows=20 cols=80></textarea><br>
+    <textarea id="output" rows=5 cols=80></textarea><br>
+    <input type="submit" id="run" value="Run">
+    <input type="submit" id="compile" value="Compile">
+    <script>
+      const prog = `
+func fac(n: Nat) : Nat {
+  if (n == 0) return 1;
+  n * fac(n-1);
+};
+fac(5);
+`;
+      const memory = new WebAssembly.Memory({initial: 256, maximum: 256});
+      let exports = null;
+      async function init(code) {
+        const env = {
+          'abortStackOverflow': _ => { throw new Error('overflow'); },
+          'table': new WebAssembly.Table({initial: 0, maximum: 0, element: 'anyfunc'}),
+          'tableBase': 0,
+          'memory': memory,
+          'memoryBase': 1024,
+          'STACKTOP': 0,
+          'STACK_MAX': memory.buffer.byteLength,
+        };
+        const importObject = {env};
+        const bytes = await new Blob([code]).arrayBuffer();
+        const wa = await WebAssembly.instantiate(bytes, importObject);
+        exports = wa.instance.exports;
+        console.info(exports);
+      }
+      
+      const code = document.getElementById('prog');
+      code.value = prog;
+      const output = document.getElementById('output');
+
+      const run = document.getElementById('run');
+      run.addEventListener('click', () => {
+        output.value = 'Running...';
+        const result = Motoko.run(code.value);
+        output.value = result;
+      });
+
+      const compile = document.getElementById('compile');
+      compile.addEventListener('click', () => {
+        output.value = 'Compiling...';
+        const result = Motoko.compileWasm("dfinity", code.value);
+        if (result.code === null) {
+          output.value = JSON.stringify(result.diagnostics);
+        } else {
+          init(result.code);
+          //output.value = JSON.stringify(result.code);
+        }
+      });
+    </script>
+  </body>
+</html>

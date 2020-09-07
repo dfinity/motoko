@@ -38,6 +38,11 @@ let js_check source =
     val code = Js.null
   end
 
+let js_run source =
+  let results = Pipeline.run_string (Js.to_string source) in
+  let result = String.concat "\n" results in
+  Js.string result
+  
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
@@ -63,10 +68,11 @@ let js_compile_with mode_string source convert =
 let js_compile_wasm mode s =
   js_compile_with mode s
     (fun m -> let (map, wasm) = CustomModuleEncode.encode m in Js.bytestring wasm, Js.string map)
-
+  
 let () =
   Js.export "Motoko"
     (object%js
       method check s = js_check s
       method compileWasm mode s = js_compile_wasm mode s
+      method run s = js_run s
     end);

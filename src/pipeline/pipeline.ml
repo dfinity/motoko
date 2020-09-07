@@ -428,7 +428,6 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | Some denv2 -> Some (senv1, denv2)
     )
 
-
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with
   | None -> prelude_error "initializing" []
@@ -524,6 +523,19 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
+let run_string (senv, denv) s : string list =
+  match load_decl (parse_string "interpret" s) senv with
+  | Error msgs -> List.map Diag.string_of_message msgs
+  | Ok ((libs, prog, senv', t, sscope), msgs) ->
+     let msgs = List.map Diag.string_of_message msgs in
+     let denv' = interpret_libs denv libs in
+     match interpret_prog denv' prog with
+     | None -> msgs
+     | Some (v, dscope) ->
+        let string_of_val = sprintf "%s : %s" (Value.string_of_val 10 v) (Type.string_of_typ t) in
+        string_of_val :: msgs
+let run_string s = run_string initial_env s
+        
 let run_files_and_stdin files =
   let lexer = Lexing.from_function lexer_stdin in
   Option.bind (interpret_files initial_env files) (fun env ->
