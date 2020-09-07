@@ -748,7 +748,12 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
   inject_decs imports' body', initial_flavor
 
 
-(* Import a unit by composing Ir *)
+(* Import a unit by composing IR.
+
+   When used for IR interpretation only, this includes
+   any class that would have been separately handled by
+   import_compiled_class (above) for compilation.
+*)
 let import_unit (u : S.comp_unit) : import_declaration =
   let (imports, body) = u.it in
   let f = u.note in

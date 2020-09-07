@@ -680,8 +680,11 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
-(* This transforms the flat list of libs into a list of imported units,
-   Unlike, `compile_libs`, classes are imported as Ir for interpretation, not compiled to wasm *)
+(*
+   This transforms the flat list of libs into a list of imported units,
+   Unlike, `compile_libs`, classes are imported as IR for interpretation,
+   not compiled to wasm
+*)
 let import_libs libs : Lowering.Desugar.import_declaration =
   Lib.List.concat_map Lowering.Desugar.import_unit libs
 
