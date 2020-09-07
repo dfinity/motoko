@@ -700,8 +700,8 @@ let transform_import (i : S.import) : import_declaration =
     | S.ClassPath fp -> assert false
     | S.PrimPath ->
       varE (var (id_of_full_path "@prim") t)
-    | S.IDLPath (fp, blob_id) ->
-      primE (I.ActorOfIdBlob t) [blobE blob_id]
+    | S.IDLPath (fp, canister_id) ->
+      primE (I.ActorOfIdBlob t) [blobE canister_id]
   in [ letD (var id.it t) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
