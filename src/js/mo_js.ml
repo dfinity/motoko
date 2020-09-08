@@ -47,6 +47,7 @@ let js_compile_with mode_string do_link source convert =
   let mode =
     match Js.to_string mode_string with
     | "wasm" -> Flags.WasmMode
+    | "wasi" -> Flags.WASIMode
     | "dfinity" -> Flags.ICMode
     | "icref" -> Flags.RefMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")

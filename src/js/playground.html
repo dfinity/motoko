@@ -3,18 +3,179 @@
     <script src="../moc.js"></script>
   </head>
   <body>
-    <textarea id="prog" rows=20 cols=80></textarea><br>
-    <textarea id="output" rows=5 cols=80></textarea><br>
+    <textarea id="prog" rows=12 cols=80></textarea><br>
+    <textarea id="output" rows=6 cols=80></textarea><br>
     <input type="submit" id="run" value="Run">
     <input type="submit" id="compile" value="Compile">
     <script>
       const prog = `
+import Prim "mo:prim";
 func fac(n: Nat) : Nat {
   if (n == 0) return 1;
   n * fac(n-1);
 };
-fac(5);
+let x = fac(5);
+Prim.debugPrint (debug_show x)
 `;
+        var barebonesWASI = function() {
+                var moduleInstanceExports = null;
+
+                var WASI_ESUCCESS = 0;
+                var WASI_EBADF = 8;
+                var WASI_EINVAL = 28;
+                var WASI_ENOSYS = 52;
+
+                var WASI_STDOUT_FILENO = 1;
+
+                function setModuleInstance(instance) {
+                    moduleInstanceExports = instance.exports;
+                }
+
+                function getModuleMemoryDataView() {
+                    // call this any time you'll be reading or writing to a module's memory 
+                    // the returned DataView tends to be dissaociated with the module's memory buffer at the will of the WebAssembly engine 
+                    // cache the returned DataView at your own peril!!
+                    return new DataView(moduleInstanceExports.memory.buffer);
+                }
+
+                function fd_prestat_get(fd, bufPtr) {
+                    return WASI_EBADF;
+                }
+
+                function fd_prestat_dir_name(fd, pathPtr, pathLen) {
+                     return WASI_EINVAL;
+                }
+
+                function environ_sizes_get(environCount, environBufSize) {
+                    var view = getModuleMemoryDataView();
+                    view.setUint32(environCount, 0, !0);
+                    view.setUint32(environBufSize, 0, !0);
+                    return WASI_ESUCCESS;
+                }
+
+                function environ_get(environ, environBuf) {
+                    return WASI_ESUCCESS;
+                }
+
+                function args_sizes_get(argc, argvBufSize) {
+                    var view = getModuleMemoryDataView();
+                    view.setUint32(argc, 0, !0);
+                    view.setUint32(argvBufSize, 0, !0);
+                    return WASI_ESUCCESS;
+                }
+
+                 function args_get(argv, argvBuf) {
+                    return WASI_ESUCCESS;
+                }
+
+                function fd_fdstat_get(fd, bufPtr) {
+                    var view = getModuleMemoryDataView();
+                    view.setUint8(bufPtr, fd);
+                    view.setUint16(bufPtr + 2, 0, !0);
+                    view.setUint16(bufPtr + 4, 0, !0);
+
+                    function setBigUint64(byteOffset, value, littleEndian) {
+                        var lowWord = value;
+                        var highWord = 0;
+                        view.setUint32(littleEndian ? 0 : 4, lowWord, littleEndian);
+                        view.setUint32(littleEndian ? 4 : 0, highWord, littleEndian);
+                   }
+                    setBigUint64(bufPtr + 8, 0, !0);
+                    setBigUint64(bufPtr + 8 + 8, 0, !0);
+                    return WASI_ESUCCESS;
+                }
+
+                function fd_write(fd, iovs, iovsLen, nwritten) {
+                    var view = getModuleMemoryDataView();
+
+                    var written = 0;
+                    var bufferBytes = [];                   
+                    function getiovs(iovs, iovsLen) {
+                        // iovs* -> [iov, iov, ...]
+                        // __wasi_ciovec_t {
+                        //   void* buf,
+                        //   size_t buf_len,
+                        // }
+                        var buffers = Array.from({ length: iovsLen }, function (_, i) {
+                               var ptr = iovs + i * 8;
+                               var buf = view.getUint32(ptr, !0);
+                               var bufLen = view.getUint32(ptr + 4, !0);
+                               return new Uint8Array(moduleInstanceExports.memory.buffer, buf, bufLen);
+                            });
+                        return buffers;
+                    }
+
+                    var buffers = getiovs(iovs, iovsLen);
+                    function writev(iov) {
+                        for (var b = 0; b < iov.byteLength; b++) {
+                           bufferBytes.push(iov[b]);
+                        }
+                        written += b;
+                    }
+                    buffers.forEach(writev);
+                    if (fd === WASI_STDOUT_FILENO) {
+                      const content = String.fromCharCode.apply(null, bufferBytes);
+                      //console.log(content);
+                      output.value += content;
+                    }
+                    view.setUint32(nwritten, written, !0);
+                    return WASI_ESUCCESS;
+                }
+
+                function poll_oneoff(sin, sout, nsubscriptions, nevents) {
+                    return WASI_ENOSYS;
+                }
+
+                function proc_exit(rval) {
+                    return WASI_ENOSYS;
+                }
+
+                function fd_close(fd) {
+                    return WASI_ENOSYS;
+                }
+
+                function fd_seek(fd, offset, whence, newOffsetPtr) {
+                }
+
+                function fd_close(fd) {
+                    return WASI_ENOSYS;
+                }
+
+                return {
+                    setModuleInstance : setModuleInstance,
+                    environ_sizes_get : environ_sizes_get,
+                    args_sizes_get : args_sizes_get,
+                    fd_prestat_get : fd_prestat_get,
+                    fd_fdstat_get : fd_fdstat_get,
+                    fd_write : fd_write,
+                    fd_prestat_dir_name : fd_prestat_dir_name,
+                    environ_get : environ_get,
+                    args_get : args_get,
+                    poll_oneoff : poll_oneoff,
+                    proc_exit : proc_exit,
+                    fd_close : fd_close,
+                    fd_seek : fd_seek
+                }               
+            }
+
+            function importWasmModule(code, wasiPolyfill) {
+                var memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
+                const moduleImports = { wasi_unstable: wasiPolyfill, env : {}, js: { mem: memory } };
+
+                (async () => {
+                  let tStart = Date.now();
+                  const wa = await WebAssembly.instantiate(code, moduleImports);
+                  const instance = wa.instance;
+                  wasiPolyfill.setModuleInstance(instance);
+                  let duration = (Date.now() - tStart) / 1000;
+                  output.value += `(load time: ${duration}s)\n`;
+                  tStart = Date.now();
+                  instance.exports._start();
+                  duration = (Date.now() - tStart) / 1000;
+                  output.value += `(run time: ${duration}s)\n`;
+                })();
+            }
+      
       function downloadCode(code, name) {
         const blob = new Blob([code]);
         const link = document.createElement('a');
@@ -24,23 +185,6 @@ fac(5);
         document.body.appendChild(link);
         link.click();
       }
-      const memory = new WebAssembly.Memory({initial: 256, maximum: 256});
-      let exports = null;
-      async function init(code) {
-        const env = {
-          'abortStackOverflow': _ => { throw new Error('overflow'); },
-          'table': new WebAssembly.Table({initial: 0, maximum: 0, element: 'anyfunc'}),
-          'tableBase': 0,
-          'memory': memory,
-          'memoryBase': 1024,
-          'STACKTOP': 0,
-          'STACK_MAX': memory.buffer.byteLength,
-        };
-        const importObject = {env};
-        const wa = await WebAssembly.instantiate(code, importObject);
-        exports = wa.instance.exports;
-        console.log(wa);
-      }
       
       const code = document.getElementById('prog');
       code.value = prog;
@@ -49,20 +193,26 @@ fac(5);
       const run = document.getElementById('run');
       run.addEventListener('click', () => {
         output.value = 'Running...';
+        const tStart = Date.now();
         const result = Motoko.run(code.value);
+        const duration = (Date.now() - tStart) / 1000;
         output.value = result;
+        output.value += `\n(run time: ${duration}s)\n`;
       });
 
       const compile = document.getElementById('compile');
       compile.addEventListener('click', () => {
         output.value = 'Compiling...';
-        const result = Motoko.compileWasm("wasm", true, code.value);
+        const tStart = Date.now();
+        const result = Motoko.compileWasm("wasi", true, code.value);
+        const duration = (Date.now() - tStart) / 1000;
         if (result.code === null) {
           output.value = JSON.stringify(result.diagnostics);
         } else {
           //downloadCode(result.code, 'a.wasm');
-          init(result.code);
-          //output.value = JSON.stringify(result.code);
+          output.value = `(compile time: ${duration}s)\n`;
+          const wasiPolyfill = new barebonesWASI();
+          importWasmModule(result.code, wasiPolyfill);
         }
       });
     </script>
