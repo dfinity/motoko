@@ -2,6 +2,8 @@
 
 * Preliminary support for actor class import and dynamic canister installation.
   Surface syntax may change in future.
+* BREAKING CHANGE:
+  A compilation unit/file defining an actor or actor class may only have leading `import` declarations; other leading declaration (e.g. `let` or `type`) are no longer supported.
 
 == 0.4.2 (2020-08-18)
 
@@ -11,7 +13,7 @@
 
 * Switching to bumping the third component of the version number
 * Bugfix: clashing declarations via function and class caught (#1756)
-* Bugfix: Candid bool decoding rejects invalid input (#1783)
+* Bugfix: Candid `bool` decoding rejects invalid input (#1783)
 * Canisters can take installation arguments (#1809)
   NB: Communicating the type of the canister installation methods is still
   missing.
@@ -33,7 +35,7 @@
 * Allow actor classes to know the caller of their constructor (#1737)
 * Internals: `Prim.time()` provided (#1747)
 * Performance: More dead code removal (#1752)
-* Performance: More efficient alrithmetic with unboxed values (#1693, #1757)
+* Performance: More efficient arithmetic with unboxed values (#1693, #1757)
 * Canister references are now parsed and printed according to the new
   base32-based textual format (#1732).
 * The runtime is now embedded into `moc` and need not be distributed separately
