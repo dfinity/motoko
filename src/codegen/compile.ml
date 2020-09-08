@@ -7482,6 +7482,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
 
 and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
   match cu with
+  | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in

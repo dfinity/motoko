@@ -1,5 +1,8 @@
 = Motoko compiler changelog
 
+* Preliminary support for actor class import and dynamic canister installation.
+  Surface syntax may change in future.
+
 == 0.4.2 (2020-08-18)
 
 * Polymorphic equality.  `==` and `!=` now work on all shareable types.
@@ -10,7 +13,7 @@
 * Bugfix: clashing declarations via function and class caught (#1756)
 * Bugfix: Candid bool decoding rejects invalid input (#1783)
 * Canisters can take installation arguments (#1809)
-  NB: Communicatig the type of the canister installation methods is still
+  NB: Communicating the type of the canister installation methods is still
   missing.
 * Optimization: Handling of `Bool` in the backend.
 

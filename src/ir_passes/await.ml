@@ -509,6 +509,7 @@ and define_pats patenv (pats : pat list) : dec list =
   Lib.List.concat_map (define_pat patenv) pats
 
 and t_comp_unit context = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (t_decs context ds)
   | ActorU (as_opt, ds, ids, { pre; post }, t) ->
     ActorU (as_opt, t_decs context ds, ids,

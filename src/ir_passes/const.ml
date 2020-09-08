@@ -266,6 +266,7 @@ and block lvl env (ds, body) =
   all [decs_const; exp_const]
 
 and comp_unit = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> decs_ TopLvl M.empty ds
   | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
     let env = match as_opt with
