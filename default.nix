@@ -98,7 +98,7 @@ let ocaml_exe = name: bin: rts:
       '' + nixpkgs.lib.optionalString (rts != null)''
         ./rts/gen.sh ${rts}/rts/mo-rts.wasm
       '' + ''
-        make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
+        make DUNE_OPTS="--display=short --profile=${profile}" ${bin}
       '';
 
       installPhase = ''
