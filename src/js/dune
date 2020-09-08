@@ -2,7 +2,6 @@
  (name mo_js)
  (modules mo_js)
  (libraries checkseum.ocaml mo_config pipeline bigstringaf)
- (js_of_ocaml (flags (--opt=3 --no-sourcemap --disable=debugger --setenv FORCE_DROP_INLINE_TEST=true)))
  (preprocess (pps js_of_ocaml-ppx))
 )
 
