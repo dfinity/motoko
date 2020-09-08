@@ -3136,12 +3136,15 @@ module Dfinity = struct
 
   let system_call env modname funcname = E.call_import env modname funcname
 
-  let print_ptr_len env =
-    match E.mode env with
-    | Flags.WasmMode -> G.i Drop ^^ G.i Drop
-    | Flags.ICMode | Flags.RefMode -> system_call env "ic0" "debug_print"
-    | Flags.WASIMode ->
-      Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
+  let register env =
+
+    if E.mode env = Flags.WASIMode then begin
+      let print_ptr_fn = E.built_in env "print_ptr" in
+
+      Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
+        let get_ptr = G.i (LocalGet (nr 0l)) in
+        let get_len = G.i (LocalGet (nr 1l)) in
+
         Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
           (* We use the iovec functionality to append a newline *)
           get_iovec_ptr ^^
@@ -3181,8 +3184,19 @@ module Dfinity = struct
           get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop
-        )
-      )
+      ));
+
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode "print_ptr";
+        edesc = nr (FuncExport (nr print_ptr_fn))
+      })
+    end
+
+  let print_ptr_len env =
+    match E.mode env with
+    | Flags.WasmMode -> G.i Drop ^^ G.i Drop
+    | Flags.ICMode | Flags.RefMode -> system_call env "ic0" "debug_print"
+    | Flags.WASIMode -> G.i (Call (nr (E.built_in env "print_ptr")))
 
   let print_text env =
     Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
@@ -7573,6 +7587,7 @@ and conclude_module env start_fi_o =
 
   Heap.register env;
   GC.register env static_roots;
+  Dfinity.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
 
