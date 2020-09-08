@@ -1,7 +1,6 @@
-type Foo = Text;
-type Rec = { foo : Rec };
+import T "self-describe/types";
 actor {
-  public func hello(x : Rec) : async Foo {
+  public func hello(x : T.Rec) : async T.Foo {
     "Hello!"
   };
 };
