@@ -81,6 +81,12 @@ end
 
 module Option :
 sig
+  module Syntax :
+  sig
+    val (let*) : 'a option -> ('a -> 'b option) -> 'b option
+    val (let+) : 'a option -> ('a -> 'b) -> 'b option
+    val (and+) : 'a option -> 'b option -> ('a * 'b) option
+  end
   val get : 'a option -> 'a -> 'a
 end
 
