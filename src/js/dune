@@ -1,7 +1,7 @@
 (executable
  (name mo_js)
  (modules mo_js)
- (libraries checkseum.ocaml mo_config pipeline bigstring)
+ (libraries checkseum.ocaml mo_config pipeline bigstringaf)
  (preprocess (pps js_of_ocaml-ppx))
 )
 

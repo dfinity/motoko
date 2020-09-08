@@ -71,7 +71,8 @@ let js_compile_wasm mode do_link s =
   js_compile_with mode do_link s
     (fun m ->
       let (map, wasm) = CustomModuleEncode.encode m in
-      Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstring.of_string wasm), Js.string map
+      let len = String.length wasm in
+      Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstringaf.of_string ~off:0 ~len:len wasm), Js.string map
     )
 
 let () =
