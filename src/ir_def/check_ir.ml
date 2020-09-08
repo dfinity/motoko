@@ -1005,6 +1005,11 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_comp_unit env = function
+  | LibU (ds, e) ->
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds;
+    check_exp env' e;
   | ProgU ds ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in

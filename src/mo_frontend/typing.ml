@@ -2210,17 +2210,6 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
         ) prog
     )
 
-let check_lib scope lib : Scope.t Diag.result =
-  Diag.with_message_store
-    (fun msgs ->
-      recover_opt
-        (fun lib ->
-          let env = env_of_scope msgs scope in
-          let typ = infer_exp env lib.it in
-          Scope.lib lib.note typ
-        ) lib
-    )
-
 let is_actor_dec d =
   match d.it with
   | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
@@ -2244,3 +2233,32 @@ let check_actors scope progs : unit Diag.result =
         go prog
       ) progs
     )
+
+let check_lib scope lib : Scope.t Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun lib ->
+          let env = env_of_scope msgs scope in
+          let (imports, cub) = lib.it in
+          let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+          let typ, _ = infer_block env (imp_ds @ ds) lib.at in
+          List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
+          cub.note <- {note_typ = typ; note_eff = T.Triv};
+          let imp_typ = match cub.it with
+            | ModuleU _ -> typ
+            | ActorClassU _ ->
+              begin
+              match T.normalize typ with
+              | T.Func (sort, control, [], ts1, [t2]) ->
+                T.Func (sort, control, [T.scope_bind],
+                        ts1,
+                        [T.Async (T.Var (T.default_scope_var, 0), t2)])
+              | _ -> assert false
+              end
+            | _ -> assert false
+          in
+          Scope.lib lib.note imp_typ
+        ) lib
+    )
+
