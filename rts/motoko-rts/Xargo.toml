@@ -3,5 +3,4 @@ stage = 0
 
 [dependencies.compiler_builtins]
 stage = 1
-features = [ "mem" ]
 version = "0.1.32"

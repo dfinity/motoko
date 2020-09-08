@@ -156,7 +156,6 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
   end else
     err_file_does_not_exist msgs at full_path
 
-
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
   imported := RIM.add PrimPath at !imported
@@ -175,23 +174,23 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     in
   match Url.parse f with
   | Ok (Url.Relative path) ->
-     (* TODO support importing local .did file *)
-     add_lib_import msgs imported ri_ref at (in_base base path)
+    (* TODO support importing local .did file *)
+    add_lib_import msgs imported ri_ref at (in_base base path)
   | Ok (Url.Package (pkg,path)) ->
-     begin match M.find_opt pkg packages with
-     | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
-     | None -> err_package_not_defined msgs at pkg
-     end
+    begin match M.find_opt pkg packages with
+    | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
+    | None -> err_package_not_defined msgs at pkg
+    end
   | Ok (Url.Ic bytes) -> resolve_ic bytes
   | Ok (Url.IcAlias alias) ->
-     begin match M.find_opt alias aliases with
-     | Some bytes -> resolve_ic bytes
-     | None -> err_alias_not_defined msgs at alias
-     end
+    begin match M.find_opt alias aliases with
+    | Some bytes -> resolve_ic bytes
+    | None -> err_alias_not_defined msgs at alias
+    end
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->
-     err_unrecognized_url msgs at f msg
+    err_unrecognized_url msgs at f msg
 
 (* Resolve the argument to --package. *)
 let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath =

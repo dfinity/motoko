@@ -39,7 +39,7 @@ let
           }
         )
 
-        # rust nightly
+        # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
           rust-channel = moz_overlay.rustChannelOf { date = "2020-07-22"; channel = "nightly"; };

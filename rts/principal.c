@@ -186,7 +186,7 @@ export blob_t blob_of_principal(text_t t) {
     rts_trap_with("blob_of_principal: principal too short");
   }
   blob_t stripped = alloc_blob(BLOB_LEN(bytes) - 4);
-  as_memcpy(BLOB_PAYLOAD(stripped), BLOB_PAYLOAD(bytes) + 4, BLOB_LEN(bytes) - 4);
+  memcpy(BLOB_PAYLOAD(stripped), BLOB_PAYLOAD(bytes) + 4, BLOB_LEN(bytes) - 4);
   // check encoding
   blob_t expected = principal_of_blob(stripped);
   if (blob_compare(b0, expected) != 0) {
