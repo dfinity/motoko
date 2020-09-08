@@ -545,43 +545,30 @@ let opcode_base = dw_LNS_set_isa
 
 type instr_mode = Regular | Prologue | Epilogue
 
-type state' = { ip : int
-              ; loc : int * int * int
-              ; disc : int
-              ; stmt : bool
-              ; bb : bool
-              ; mode : instr_mode }
+type state = { ip : int
+             ; loc : int * int * int
+             ; disc : int
+             ; stmt : bool
+             ; bb : bool
+             ; mode : instr_mode }
 
-
-type state = int * (int * int * int) * int * (bool * bool * instr_mode)
-(*           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                line machine state
-             ^^^    ^^^^^^^^^^^^^^^    ^^^    ^^^^^^^^^^^^^^^^^^^^^^^^
-             ip         loc        discriminator       flags
-                    ^^^   ^^^   ^^^           ^^^^   ^^^^   ^^^^^^^^^^
-                    file  line  col           stmt    bb    prolog/epilog/regular
-                                              begin  begin
+(*
 Legend:
 -------
 ip: instruction pointer (Wasm bytecode offset in CODE section)
 loc: source location, file encoded as an index
-discriminator: instance of inlined code fragment (not relevant yet)
-flags: actionable (by debugger) bits of information (regarding stopping)
+disc(riminator): instance of inlined code fragment (not relevant yet)
+--flags actionable (by debugger) bits of information (regarding stopping)
 stmt: statement
 bb: basic block
+mode: how the instruction should be treated
 
 See "6.2 Line Number Information" for details.
-
-We choose a compact (nested tuple as opposed to named fields in record)
-representation of machine state, to minimise the verbosity in the algorithms
-that dispatch on them. Instead we rely on the naming of the components (where
-relevant).
 *)
 let default_loc = 1, 1, 0
 let default_flags = default_is_stmt, false, Prologue
 (* Table 6.4: Line number program initial state *)
-let start_state = 0, default_loc, 0, default_flags
-let start_state' = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt; bb = false; mode = Prologue }
+let start_state = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt; bb = false; mode = Prologue }
 
 
 (* Infers a list of opcodes for the line number program
@@ -590,59 +577,30 @@ let start_state' = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt
    to a following state. This is intended to be used in a loop
    (fold) to obtain all the opcodes for a list of states.
 *)
-let rec infer' from toward = match from, toward with
+let rec infer from toward = match from, toward with
   | f, {ip; _} when ip < f.ip -> failwith "can't go backwards"
   | {ip=0; _}, t when t.ip > 0 ->
-    - dw_LNE_set_address :: t.ip :: infer' {from with ip = t.ip} t
+    - dw_LNE_set_address :: t.ip :: infer {from with ip = t.ip} t
   | {ip; _}, t when t.ip > ip ->
-    dw_LNS_advance_pc :: t.ip - ip :: infer' {from with ip = t.ip} t
+    dw_LNS_advance_pc :: t.ip - ip :: infer {from with ip = t.ip} t
   | {loc = file, line, col; _}, {loc = file', _, _; _} when file <> file' ->
-    dw_LNS_set_file :: file' :: infer' {from with loc = file', line, col} toward
+    dw_LNS_set_file :: file' :: infer {from with loc = file', line, col} toward
   | {loc = file, line, col; _}, {loc = _, line', _; _} when line <> line' ->
-    dw_LNS_advance_line :: line' - line :: infer' {from with loc = file, line', col} toward
+    dw_LNS_advance_line :: line' - line :: infer {from with loc = file, line', col} toward
   | {loc = file, line, col; _}, {loc = _, _, col'; _}  when col <> col' ->
-    dw_LNS_set_column :: col' :: infer' {from with loc = file, line, col'} toward
+    dw_LNS_set_column :: col' :: infer {from with loc = file, line, col'} toward
   | {disc; _}, _ when disc <> toward.disc -> failwith "cannot do disc yet"
   | {stmt; _}, _ when stmt <> toward.stmt ->
-    dw_LNS_negate_stmt :: infer' {from with stmt = toward.stmt} toward
+    dw_LNS_negate_stmt :: infer {from with stmt = toward.stmt} toward
   | {bb; _}, _ when bb <> toward.bb -> failwith "cannot do bb yet"
   | {mode = Prologue; _}, {mode = Regular; _} ->
-    dw_LNS_set_prologue_end :: infer' toward toward
-  | {mode = Regular; _}, {mode = Epilogue; _} ->
-    dw_LNS_set_epilogue_begin :: infer' toward toward
-  | {mode = Prologue; _}, {mode = Epilogue; _} ->
-    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer' toward toward
-  | state, state' when state = state' -> [dw_LNS_copy]
-  | _ -> failwith "not covered"
-
-
-let rec infer from toward = match from, toward with
-  | (f, _, _, _), (t, _, _, _) when t < f -> failwith "can't go backwards"
-  | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
-    - dw_LNE_set_address :: t :: infer (t, loc, disc, flags) (t, loc', disc', flags')
-  | (f, loc, disc, flags), (t, loc', disc', flags') when t > f ->
-    dw_LNS_advance_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
-  | (_, (file, line, col), disc, flags), (t, (file', line', col'), disc', flags') when file <> file' ->
-    dw_LNS_set_file :: file' :: infer (t, (file', line, col), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, (_, line, col), disc, flags), (t, (file', line', col'), disc', flags') when line <> line' ->
-    dw_LNS_advance_line :: line' - line :: infer (t, (file', line', col), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, (_, _, col), disc, flags), (t, (file', line', col'), disc', flags') when col <> col' ->
-    dw_LNS_set_column :: col' :: infer (t, (file', line', col'), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, _, disc, flags), (t, loc, disc', flags') when disc <> disc' -> failwith "cannot do disc yet"
-  | (_, _, _, (s, bb, im)), (t, loc, disc, (s', bb', im')) when s <> s' ->
-    dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, im)) (t, loc, disc, (s', bb', im'))
-  | (_, _, _, (_, bb, im)), (t, loc, disc, (s', bb', im')) when bb <> bb' -> failwith "cannot do bb yet"
-
-  | state, state' when state = state' -> [dw_LNS_copy]
-
-  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Regular)) ->
     dw_LNS_set_prologue_end :: infer toward toward
-  | (_, _, _, (_, _, Regular)), (t, loc, disc, (s', bb', Epilogue)) ->
+  | {mode = Regular; _}, {mode = Epilogue; _} ->
     dw_LNS_set_epilogue_begin :: infer toward toward
-  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Epilogue)) ->
+  | {mode = Prologue; _}, {mode = Epilogue; _} ->
     dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer toward toward
+  | state, state' when state = state' -> [dw_LNS_copy]
   | _ -> failwith "not covered"
-
 
 (* Given a few formatted outputter functions, dump the contents
    of a line program (essentially a list of `DW_LNS_*` opcodes with

@@ -747,7 +747,7 @@ let encode (em : extended_module) =
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               let addr' = rel addr in
-              addr', (file', line, column + 1), 0, Dwarf5.Machine.(stmt, false, if addr' = epi then Epilogue else Regular)
+              Dwarf5.Machine.{ ip = addr'; loc = file', line, column + 1; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
             in
 
             let joining (prg, state) state' : int list * Dwarf5.Machine.state =
@@ -758,25 +758,26 @@ let encode (em : extended_module) =
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
               let notes_seq = Instrs.to_seq notes in
+              let open Dwarf5.Machine in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* a statement) *)
-              let start_state = let _, loc, d, (_, bb, im) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, im) in
+              let start_state = { start_state with ip = start; stmt = false } in
               let states_seq () =
                 let open Seq in
                 match map (mapping (ending - 1)) notes_seq () with
                 | Nil -> failwith "there should be an 'end' instruction!"
-                | Cons ((a, _, _, _), _) when a = start -> failwith "at start already an instruction?"
-                | Cons ((a, l, d, (stm, bb, im)), t) ->
+                | Cons ({ip; _}, _) when ip = start -> failwith "at start already an instruction?"
+                | Cons (state, _) as front ->
                   (* override default location from `start_state` *)
-                  let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  let start_state' = { start_state with loc = state.loc } in
                   (* FIXME (4.11) use `cons` *)
-                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, im)), t))
+                  Cons (start_state', fun () -> front)
               in
 
-              let prg, (addr, _, _, (stm, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
-              Dwarf5.(Machine.write_opcodes u8 uleb128 sleb128 write32
-                        (prg
+              let prg, { stmt; _ } = Seq.fold_left joining ([], start_state) states_seq in
+              (write_opcodes u8 uleb128 sleb128 write32
+                 Dwarf5.(prg
                          @ [dw_LNS_advance_pc; 1]
-                         @ (if stm then [dw_LNS_negate_stmt] else [])
+                         @ (if stmt then [dw_LNS_negate_stmt] else []) (* FIXME: actually irrelevant *)
                          @ [- dw_LNE_end_sequence]))
             in
             DW_Sequence.iter sequence !sequence_bounds
