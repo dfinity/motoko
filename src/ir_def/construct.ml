@@ -122,10 +122,10 @@ let asyncE typ_bind e typ1 =
     note = Note.{ def with typ = T.Async (typ1, typ e); eff = T.Triv }
   }
 
-let awaitE typ e =
+let awaitE e =
   { it = PrimE (AwaitPrim, [e]);
     at = no_region;
-    note = Note.{ def with typ; eff = T.Await }
+    note = Note.{ def with typ = snd (T.as_async (T.normalize (typ e))) ; eff = T.Await }
   }
 
 let cps_asyncE typ1 typ2 e =
