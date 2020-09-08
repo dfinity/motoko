@@ -672,7 +672,7 @@ let encode (em : extended_module) =
       let p = pos s in
       f g; dw_patch_gap32 g (pos s - p)
 
-    (* Debug strings for line machine section *)
+    (* Debug strings for line machine section, used by DWARF5: "6.2.4 The Line Number Program Header" *)
 
     let debug_line_str_section () =
       let debug_line_strings_section_body (dirs, sources) =
@@ -687,12 +687,13 @@ let encode (em : extended_module) =
         strings sources in
       custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
 
-    (* Debug line machine section *)
+    (* Debug line machine section, see DWARF5: "6.2 Line Number Information" *)
 
     let debug_line_section fs =
       let debug_line_section_body () =
 
         unit(fun start ->
+            (* see "6.2.4 The Line Number Program Header" *)
             write16 0x0005;
             u8 4;
             u8 0; (* segment_selector_size *)
