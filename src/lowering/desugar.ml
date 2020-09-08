@@ -647,7 +647,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
   in
-  let func = funcE "" T.Local T.Returns
+  let func = funcE "actor_class_constructor" T.Local T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
@@ -773,7 +773,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
-      funcE "" T.Local T.Returns
+      funcE "actor_class_constructor" T.Local T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (List.hd cs, actor_t)]
@@ -782,4 +782,3 @@ let import_unit (u : S.comp_unit) : import_declaration =
       raise (Invalid_argument "Desugar: Cannot import program")
   in
   [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
-
