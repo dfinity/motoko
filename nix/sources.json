@@ -83,6 +83,7 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
+        "builtin": false,
         "branch": "master",
         "description": "mozilla related nixpkgs (extends nixos/nixpkgs repo)",
         "homepage": null,
