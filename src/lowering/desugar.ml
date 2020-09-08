@@ -641,9 +641,8 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
       (blockE [
           letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
           letD principal
-            (awaitE T.principal
-               (callE (varE create_actor_helper) cs'
-                  (tupE [wasm_blob;  varE arg_blob])))
+            (awaitE (callE (varE create_actor_helper) cs'
+                (tupE [wasm_blob;  varE arg_blob])))
         ]
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
