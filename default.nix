@@ -67,7 +67,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
-    pkgs.ocamlPackages.bigstring
+    pkgs.ocamlPackages.bigstringaf
     pkgs.perl
   ]; in
 
