@@ -50,13 +50,14 @@ mo-doc: $(SOURCE_ID)
 	@ln -fs $(MO_DOC_TARGET) mo-doc
 
 moc.js: $(SOURCE_ID)
-	-dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
+	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
 	@ln -fs $(MOC_JS_TARGET) moc.js
 	ls -al $(MOC_JS_TARGET)
 
 didc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_JS_TARGET)
 	@ln -fs $(DIDC_JS_TARGET) didc.js
+	ls -al $(MOC_JS_TARGET)
 
 didc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_TARGET)
