@@ -2,8 +2,7 @@
 
 * Preliminary support for actor class import and dynamic canister installation.
   Surface syntax may change in future.
-* BREAKING CHANGE:
-  A compilation unit/file defining an actor or actor class may only have leading `import` declarations; other leading declaration (e.g. `let` or `type`) are no longer supported.
+* BREAKING CHANGE: a compilation unit/file defining an actor or actor class may *only* have leading `import` declarations; other leading declarations (e.g. `let` or `type`) are no longer supported.
 
 == 0.4.2 (2020-08-18)
 
