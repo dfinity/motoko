@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "4cc01d21c5ea4835da56753c8414930c33bd6ce3",
+        "rev": "8195a4fee9f61e6a551e3bd4bdcda9545b088add",
         "type": "git"
     },
     "dfinity": {
@@ -83,8 +83,8 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
-        "builtin": false,
         "branch": "master",
+        "builtin": false,
         "description": "mozilla related nixpkgs (extends nixos/nixpkgs repo)",
         "homepage": null,
         "owner": "mozilla",
