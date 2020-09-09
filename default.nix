@@ -96,7 +96,7 @@ let ocaml_exe = name: bin: rts:
       buildPhase = ''
         patchShebangs .
       '' + nixpkgs.lib.optionalString (rts != null)''
-        ./rts/gen.sh ${rts}/rts/mo-rts.wasm
+        ./rts/gen.sh ${rts}/rts
       '' + ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
@@ -172,12 +172,14 @@ rec {
       installPhase = ''
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
+        cp mo-rts-debug.wasm $out/rts
       '';
 
-      # this needs to be self-contained. Remove mention of
-      # nix path in debug message
+      # This needs to be self-contained. Remove mention of
+      # nix path in debug message.
       preFixup = ''
         remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts.wasm
+        remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts-debug.wasm
       '';
       allowedRequisites = [];
     };

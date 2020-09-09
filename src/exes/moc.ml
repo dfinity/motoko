@@ -92,6 +92,10 @@ let argspec = Arg.align [
   Arg.Unit
     (fun () -> Flags.release_mode := false),
       " respect debug expressions in source (the default)";
+  "-dbg",
+  Arg.Unit
+    (fun () -> Flags.sanity := true),
+    " enable sanity checking in the RTS and generated code";
 ]
 
 
