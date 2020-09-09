@@ -1,9 +1,9 @@
-open Wasm_exts
+(*open Wasm_exts
 open Source
 open Mo_config
-
+ *)
 module Js = Js_of_ocaml.Js
-
+(*
 let position_of_pos pos =
   object%js
     (* The LSP spec requires zero-based positions *)
@@ -37,12 +37,12 @@ let js_check source =
     val diagnostics = Js.array (diagnostics_of_msgs msgs)
     val code = Js.null
   end
-
+ *)
 let js_run source =
   let results = Pipeline.run_string (Js.to_string source) in
   let result = String.concat "\n" results in
   Js.string result
-  
+  (*
 let js_compile_with mode_string do_link source convert =
   let mode =
     match Js.to_string mode_string with
@@ -74,11 +74,11 @@ let js_compile_wasm mode do_link s =
       let len = String.length wasm in
       Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstringaf.of_string ~off:0 ~len:len wasm), Js.string map
     )
-
+   *)
 let () =
   Js.export "Motoko"
     (object%js
-      method check s = js_check s
-      method compileWasm mode do_link s = js_compile_wasm mode do_link s
+      (*method check s = js_check s
+      method compileWasm mode do_link s = js_compile_wasm mode do_link s*)
       method run s = js_run s
     end);
