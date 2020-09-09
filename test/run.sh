@@ -83,6 +83,7 @@ function normalize () {
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    sed 's/_out-dbg/_out/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
