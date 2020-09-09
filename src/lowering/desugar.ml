@@ -228,6 +228,25 @@ and call_system_func_opt name es =
       -> Some (callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
+and export_interface txt =
+  (* This is probably a temporary hack. *)
+  let open T in
+  let name = "__get_candid_interface_tmp_hack" in
+  let v = "$__get_candid_interface_tmp_hack"  in
+  let binds = [T.scope_bind] in
+  let typ = Func (Shared Query, Promises, binds, [], [text]) in
+
+  let scope_con = Con.fresh "T" (Abs ([], T.scope_bound)) in
+  let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
+  let bind  = typ_arg scope_con T.Scope T.scope_bound in
+  let bind2 = typ_arg scope_con2 T.Scope T.scope_bound in
+  ([ letD (var v typ) (
+    funcE v (Shared Query) Promises [bind] [] [text] (
+      asyncE bind2 (textE txt) (T.Con (scope_con, []))
+    )
+  )],
+  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
@@ -259,7 +278,10 @@ and build_actor at self_id es obj_typ =
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
-  I.ActorE (ds', fs,
+  let candid_interface =
+    Idllib.Arrange_idl.string_of_prog (Mo_idl.Mo_to_idl.of_actor_type obj_typ) in
+  let (interface_d, interface_f) = export_interface candid_interface in
+  I.ActorE (interface_d @ ds', interface_f @ fs,
     { I.pre =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE

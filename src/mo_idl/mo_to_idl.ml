@@ -209,3 +209,10 @@ let prog (progs, senv) : I.prog =
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = ""}
+
+let of_actor_type t : I.prog =
+  env := Env.empty;
+  let actor = Some (typ t) in
+  let decs = gather_decs () in
+  let prog = I.{decs = decs; actor = actor} in
+  {it = prog; at = no_region; note = ""}
