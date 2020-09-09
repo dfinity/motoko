@@ -43,7 +43,7 @@ export void* mp_calloc(size_t n, size_t size) {
 }
 
 export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
-  as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
+  as_ptr r = (as_ptr)(((char *)ptr) - (3 * sizeof(void*) + 1));
 
   if (TAG(r) != TAG_BLOB) bigint_trap(); // assert block type
 
@@ -69,7 +69,7 @@ export void mp_free(void *ptr, size_t size) {
 /* Wrapper functions for libtommath */
 
 #include <tommath.h>
-#define BIGINT_PAYLOAD(p) ((mp_int *)(&FIELD(p,1)))
+#define BIGINT_PAYLOAD(p) ((mp_int *)(&FIELD(p,2)))
 
 /*
 Note on libtommath error handling
@@ -91,7 +91,7 @@ we call a trap function provided by the Wasm part of the runtime.
 #define CHECK(e) ((e == 0)?0:bigint_trap())
 
 as_ptr bigint_alloc() {
-  as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
+  as_ptr r = alloc_bytes (2*sizeof(void*) + sizeof(mp_int));
   TAG(r) = TAG_BIGINT;
   CHECK(mp_init(BIGINT_PAYLOAD(r)));
   return r;

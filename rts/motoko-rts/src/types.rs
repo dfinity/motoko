@@ -107,6 +107,7 @@ pub const TAG_CONCAT: Tag = 14;
 #[repr(C)]
 pub struct Obj {
     pub tag: Tag,
+    pub link: usize, // Used to link object together in a mark queue
 }
 
 #[repr(C)]

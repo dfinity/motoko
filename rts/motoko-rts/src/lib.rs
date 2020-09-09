@@ -4,7 +4,11 @@
 #![no_std]
 #![feature(arbitrary_self_types)]
 
+#[macro_use]
+mod print;
+
 mod alloc;
+mod debug;
 mod gc;
 mod types;
 

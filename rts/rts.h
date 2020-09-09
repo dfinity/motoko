@@ -26,16 +26,16 @@ typedef intptr_t as_ptr;
 #define TAG(p) FIELD(p,0)
 
 typedef as_ptr blob_t;
-#define BLOB_HEADER_SIZE 2
-#define BLOB_LEN(p) (FIELD(p,1))
-#define BLOB_PAYLOAD(p) ((char *)(&FIELD(p,2)))
+#define BLOB_HEADER_SIZE 3
+#define BLOB_LEN(p) (FIELD(p,2))
+#define BLOB_PAYLOAD(p) ((char *)(&FIELD(p,3)))
 
-#define ARRAY_HEADER_SIZE 2
-#define ARRAY_LEN(p) (FIELD(p,1))
+#define ARRAY_HEADER_SIZE 3
+#define ARRAY_LEN(p) (FIELD(p,2))
 #define ARRAY_FIELD(p,n) (FIELD(p,ARRAY_HEADER_SIZE+n))
 
-#define TUPLE_HEADER_SIZE 2
-#define TUPLE_LEN(p) (FIELD(p,1))
+#define TUPLE_HEADER_SIZE 3
+#define TUPLE_LEN(p) (FIELD(p,2))
 #define TUPLE_FIELD(p,n,t) (*(t *)(&FIELD(p,TUPLE_HEADER_SIZE+n)))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
