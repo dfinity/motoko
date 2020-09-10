@@ -364,7 +364,7 @@ let @ic00 = actor "aaaaa-aa" : actor {
   } -> async ()
 };
 
-// It would be desireable if create_actor_helper can be defined
+// It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
   let { canister_id = canister_id_ } = await @ic00.create_canister();
