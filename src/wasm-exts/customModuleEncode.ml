@@ -773,12 +773,9 @@ let encode (em : extended_module) =
                   Cons (start_state', fun () -> front)
               in
 
-              let prg, { stmt; _ } = Seq.fold_left joining ([], start_state) states_seq in
+              let prg, _ = Seq.fold_left joining ([], start_state) states_seq in
               (write_opcodes u8 uleb128 sleb128 write32
-                 Dwarf5.(prg
-                         @ [dw_LNS_advance_pc; 1]
-                         @ (if stmt then [dw_LNS_negate_stmt] else []) (* FIXME: actually irrelevant *)
-                         @ [- dw_LNE_end_sequence]))
+                 Dwarf5.(prg @ [dw_LNS_advance_pc; 1; - dw_LNE_end_sequence]))
             in
             DW_Sequence.iter sequence !sequence_bounds
         )
