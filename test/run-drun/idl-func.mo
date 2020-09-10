@@ -1,8 +1,8 @@
-type Func = shared Int -> async Func;
-type Query = shared query () -> async ?Func;
-type Oneway = shared () -> ();
-
 actor {
+  public type Func = shared Int -> async Func;
+  public type Query = shared query () -> async ?Func;
+  public type Oneway = shared () -> ();
+
   public func oneway() {};
   public query func fun() : async ?Func { null };
   public query func fun2(arg : ?Func) : async () { };

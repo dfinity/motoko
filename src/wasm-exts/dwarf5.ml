@@ -350,11 +350,14 @@ let dw_LNS_set_prologue_end = 0x0a
 let dw_LNS_set_epilogue_begin = 0x0b
 let dw_LNS_set_isa = 0x0c
 
-(* Line number extended opcode encodings *)
-let dw_LNE_end_sequence = 0x01
-let dw_LNE_set_address = 0x02
+(* Line number extended opcode encodings
+   Note: these are negative, so they don't overlap
+         with the `dw_LNS_*` above
+ *)
+let dw_LNE_end_sequence = -0x01
+let dw_LNE_set_address = -0x02
 (* let Reserved 0x03 *)
-let dw_LNE_set_discriminator = 0x04
+let dw_LNE_set_discriminator = -0x04
 let dw_LNE_lo_user = 0x80
 let dw_LNE_hi_user = 0xff
 
@@ -544,35 +547,32 @@ let line_range = 7
 let opcode_base = dw_LNS_set_isa
 
 type instr_mode = Regular | Prologue | Epilogue
+type loc = { file : int; line : int; col : int }
 
-type state = int * (int * int * int) * int * (bool * bool * instr_mode)
-(*           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                line machine state
-             ^^^    ^^^^^^^^^^^^^^^    ^^^    ^^^^^^^^^^^^^^^^^^^^^^^^
-             ip         loc        discriminator       flags
-                    ^^^   ^^^   ^^^           ^^^^   ^^^^   ^^^^^^^^^^
-                    file  line  col           stmt    bb    prolog/epilog/regular
-                                              begin  begin
+type state = { ip : int
+             ; loc : loc
+             ; disc : int
+             ; stmt : bool
+             ; bb : bool
+             ; mode : instr_mode }
+
+(*
 Legend:
 -------
 ip: instruction pointer (Wasm bytecode offset in CODE section)
 loc: source location, file encoded as an index
-discriminator: instance of inlined code fragment (not relevant yet)
-flags: actionable (by debugger) bits of information (regarding stopping)
+disc(riminator): instance of inlined code fragment (not relevant yet)
+--flags actionable (by debugger) bits of information (regarding stopping)
 stmt: statement
 bb: basic block
+mode: how the instruction should be treated
 
 See "6.2 Line Number Information" for details.
-
-We choose a compact (nested tuple as opposed to named fields in record)
-representation of machine state, to minimise the verbosity in the algorithms
-that dispatch on them. Instead we rely on the naming of the components (where
-relevant).
 *)
-let default_loc = 1, 1, 0
+let default_loc = { file = 1; line = 1; col = 0 }
 let default_flags = default_is_stmt, false, Prologue
 (* Table 6.4: Line number program initial state *)
-let start_state = 0, default_loc, 0, default_flags
+let start_state = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt; bb = false; mode = Prologue }
 
 
 (* Infers a list of opcodes for the line number program
@@ -582,56 +582,52 @@ let start_state = 0, default_loc, 0, default_flags
    (fold) to obtain all the opcodes for a list of states.
 *)
 let rec infer from toward = match from, toward with
-  | (f, _, _, _), (t, _, _, _) when t < f -> failwith "can't go backwards"
-  | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
-    - dw_LNE_set_address :: t :: infer (t, loc, disc, flags) (t, loc', disc', flags')
-  | (f, loc, disc, flags), (t, loc', disc', flags') when t > f ->
-    dw_LNS_advance_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
-  | (_, (file, line, col), disc, flags), (t, (file', line', col'), disc', flags') when file <> file' ->
-    dw_LNS_set_file :: file' :: infer (t, (file', line, col), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, (_, line, col), disc, flags), (t, (file', line', col'), disc', flags') when line <> line' ->
-    dw_LNS_advance_line :: line' - line :: infer (t, (file', line', col), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, (_, _, col), disc, flags), (t, (file', line', col'), disc', flags') when col <> col' ->
-    dw_LNS_set_column :: col' :: infer (t, (file', line', col'), disc, flags) (t, (file', line', col'), disc', flags')
-  | (_, _, disc, flags), (t, loc, disc', flags') when disc <> disc' -> failwith "cannot do disc yet"
-  | (_, _, _, (s, bb, im)), (t, loc, disc, (s', bb', im')) when s <> s' ->
-    dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, im)) (t, loc, disc, (s', bb', im'))
-  | (_, _, _, (_, bb, im)), (t, loc, disc, (s', bb', im')) when bb <> bb' -> failwith "cannot do bb yet"
-
+  | f, {ip; _} when ip < f.ip -> failwith "can't go backwards"
+  | {ip=0; _}, t when t.ip > 0 ->
+    dw_LNE_set_address :: t.ip :: infer {from with ip = t.ip} t
+  | {ip; _}, t when t.ip > ip ->
+    dw_LNS_advance_pc :: t.ip - ip :: infer {from with ip = t.ip} t
+  | {loc; _}, {loc = {file; _}; _} when file <> loc.file ->
+    dw_LNS_set_file :: file :: infer {from with loc = {loc with file}} toward
+  | {loc; _}, {loc = {line; _}; _} when line <> loc.line ->
+    dw_LNS_advance_line :: line - line :: infer {from with loc = {loc with line}} toward
+  | {loc; _}, {loc = {col; _}; _} when col <> loc.col ->
+    dw_LNS_set_column :: col :: infer {from with loc = {loc with col}} toward
+  | {disc; _}, _ when disc <> toward.disc -> failwith "cannot do disc yet"
+  | {stmt; _}, _ when stmt <> toward.stmt ->
+    dw_LNS_negate_stmt :: infer {from with stmt = toward.stmt} toward
+  | {bb; _}, _ when bb <> toward.bb -> failwith "cannot do bb yet"
+  | {mode = Prologue; _}, {mode = Regular; _} ->
+    dw_LNS_set_prologue_end :: infer toward toward
+  | {mode = Regular; _}, {mode = Epilogue; _} ->
+    dw_LNS_set_epilogue_begin :: infer toward toward
+  | {mode = Prologue; _}, {mode = Epilogue; _} ->
+    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer toward toward
   | state, state' when state = state' -> [dw_LNS_copy]
-
-  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Regular)) ->
-    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s', bb', Regular)) (t, loc, disc, (s', bb', Regular))
-  | (_, _, _, (_, _, Regular)), (t, loc, disc, (s', bb', Epilogue) as cont) ->
-    dw_LNS_set_epilogue_begin :: infer cont cont
-  | (_, _, _, (_, _, Prologue)), (t, loc, disc, (s', bb', Epilogue) as cont) ->
-    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer cont cont
   | _ -> failwith "not covered"
 
-
 (* Given a few formatted outputter functions, dump the contents
-   of a line program (essentially a list of `DW_LNS_*` opcodes with
+   of a line program (essentially a list of `DW_LNS/E_*` opcodes with
    arguments). The bottleneck functions are expected to close over
    the output buffer/stream.
 *)
-let moves u8 uleb sleb u32 : int list -> unit =
+let write_opcodes u8 uleb sleb u32 : int list -> unit =
   let standard lns = u8 lns in
   let extended1 lne = u8 0; u8 1; u8 (- lne) in
   let extended5 lne = u8 0; u8 5; u8 (- lne) in
-  let noisy = false in
   let rec chase = function
-  | [] -> if noisy then Printf.printf "DONE\n"
-  | op :: tail when dw_LNS_copy = op -> if noisy then Printf.printf "COPY\n"; standard op; chase tail
-  | op :: offs :: tail when dw_LNS_advance_pc = op -> if noisy then Printf.printf "+PC\n"; standard op; uleb offs; chase tail
-  | op :: delta :: tail when dw_LNS_advance_line = op -> if noisy then Printf.printf "+LINE %d\n" delta; standard op; sleb delta; chase tail
-  | op :: file :: tail when dw_LNS_set_file = op -> if noisy then Printf.printf ":=FILE\n"; standard op; uleb file; chase tail
-  | op :: col :: tail when dw_LNS_set_column = op -> if noisy then Printf.printf ":=COLUMN\n"; standard op; uleb col; chase tail
-  | op :: tail when dw_LNS_negate_stmt = op -> if noisy then Printf.printf "~STMT\n"; standard op; chase tail
-  | op :: tail when dw_LNS_set_prologue_end = op -> if noisy then Printf.printf "<PRO\n"; standard op; chase tail
-  | op :: tail when dw_LNS_set_epilogue_begin = op -> if noisy then Printf.printf ">EPI\n"; standard op; chase tail
-  | op :: tail when - dw_LNE_end_sequence = op -> if noisy then Printf.printf "FIN\n"; extended1 op; chase tail
-  | op :: addr :: tail when - dw_LNE_set_address = op -> if noisy then Printf.printf "NEW ADDR\n"; extended5 op; u32 addr; chase tail
-  | op :: _ -> if noisy then Printf.printf "MoVE 0x%x\n" op; failwith "move not covered"
+  | [] -> ()
+  | op :: tail when dw_LNS_copy = op -> standard op; chase tail
+  | op :: offs :: tail when dw_LNS_advance_pc = op -> standard op; uleb offs; chase tail
+  | op :: delta :: tail when dw_LNS_advance_line = op -> standard op; sleb delta; chase tail
+  | op :: file :: tail when dw_LNS_set_file = op -> standard op; uleb file; chase tail
+  | op :: col :: tail when dw_LNS_set_column = op -> standard op; uleb col; chase tail
+  | op :: tail when dw_LNS_negate_stmt = op -> standard op; chase tail
+  | op :: tail when dw_LNS_set_prologue_end = op -> standard op; chase tail
+  | op :: tail when dw_LNS_set_epilogue_begin = op -> standard op; chase tail
+  | op :: tail when dw_LNE_end_sequence = op -> extended1 op; chase tail
+  | op :: addr :: tail when dw_LNE_set_address = op -> extended5 op; u32 addr; chase tail
+  | op :: _ -> failwith (Printf.sprintf "opcode not covered: %d" op)
   in chase
 
 end

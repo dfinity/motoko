@@ -82,6 +82,7 @@ function normalize () {
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
+    sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -230,7 +231,7 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc="env $moc_extra_env moc $moc_extra_flags"
+    moc="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
 
     # Typecheck
     run tc $moc --check $base.mo

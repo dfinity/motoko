@@ -43,15 +43,19 @@ we perform a stable sort by serial number, with non-referencable DIEs trailing.
 
  *)
 
-
 open Dwarf5.Meta
 
 (* Utility predicates *)
 
+(* is_dwarf_like indicates whether a Wasm.Ast meta instruction
+   prevents dead-code elimination. Elimination is forbidden,
+   if the instruction contributes to a DIE, i.e. establishes, augments
+   or closes a DWARF Tag.
+ *)
 let rec is_dwarf_like' = function
   | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
   | Grouped parts -> List.exists is_dwarf_like' parts
-  | _ -> false
+  | StatementDelimiter _ | FutureAttribute _ -> false
 let is_dwarf_like = function
   | Ast.Meta m -> is_dwarf_like' m
   | _ -> false
@@ -714,7 +718,7 @@ let encode (em : extended_module) =
       ref [ "prelude", (Promise.make (), asset_dir)
           ; "prim", (Promise.make (), asset_dir)
           ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
-    let dir_names = (* dito, but reversed: 6.2.4.1 Standard Content Descriptions *)
+    let dir_names = (* ditto, but reversed: 6.2.4.1 Standard Content Descriptions *)
       ref [ "<moc-asset>", (Promise.make (), asset_dir)
           ; Filename.dirname "", (Promise.make (), here_dir) ]
     let source_path_indices = ref (List.map (fun (p, (_, i)) -> p, i) !source_names)
@@ -1007,7 +1011,7 @@ let encode (em : extended_module) =
         in
       custom_section ".debug_rnglists" debug_rnglists_section_body () true
 
-    (* Debug strings for line machine section *)
+    (* Debug strings for line machine section, used by DWARF5: "6.2.4 The Line Number Program Header" *)
 
     let debug_line_str_section () =
       let debug_line_strings_section_body (dirs, sources) =
@@ -1022,12 +1026,13 @@ let encode (em : extended_module) =
         strings sources in
       custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
 
-    (* Debug line machine section *)
+    (* Debug line machine section, see DWARF5: "6.2 Line Number Information" *)
 
     let debug_line_section fs =
       let debug_line_section_body () =
 
         unit(fun start ->
+            (* see "6.2.4 The Line Number Program Header" *)
             write16 0x0005;
             u8 4;
             u8 0; (* segment_selector_size *)
@@ -1081,37 +1086,36 @@ let encode (em : extended_module) =
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               let addr' = rel addr in
-              addr', (file', line, column + 1), 0, Dwarf5.Machine.(stmt, false, if addr' = epi then Epilogue else Regular)
+              Dwarf5.Machine.{ ip = addr'; loc = { file = file'; line; col = column + 1 }; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
             in
 
-            let joining (prg, state) state' : int list * Dwarf5.Machine.state =
-              (* FIXME: quadratic *)
-              prg @ Dwarf5.Machine.infer state state', state'
+            let joining (prg, state) state' : int list list * Dwarf5.Machine.state =
+              (* to avoid quadratic runtime, just collect (cons up) the partial lists here;
+                 later we'll bring it in the right order and flatten *)
+              Dwarf5.Machine.infer state state' :: prg, state'
             in
 
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
               let notes_seq = Instrs.to_seq notes in
+              let open Dwarf5.Machine in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* a statement) *)
-              let start_state = let _, loc, d, (_, bb, im) = Dwarf5.Machine.start_state in start, loc, d, (false, bb, im) in
+              let seq_start_state = { start_state with ip = start; stmt = false } in
               let states_seq () =
                 let open Seq in
                 match map (mapping (ending - 1)) notes_seq () with
                 | Nil -> failwith "there should be an 'end' instruction!"
-                | Cons ((a, _, _, _), _) when a = start -> failwith "at start already an instruction?"
-                | Cons ((a, l, d, (stm, bb, im)), t) ->
+                | Cons ({ip; _}, _) when ip = start -> failwith "at start already an instruction?"
+                | Cons (state, _) as front ->
                   (* override default location from `start_state` *)
-                  let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  let start_state' = { seq_start_state with loc = state.loc } in
                   (* FIXME (4.11) use `cons` *)
-                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, im)), t))
+                  Cons (start_state', fun () -> front)
               in
 
-              let prg, (addr, _, _, (stm, _, _)) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states_seq in
-              Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (prg
-                         @ [dw_LNS_advance_pc; 1]
-                         @ (if stm then [dw_LNS_negate_stmt] else [])
-                         @ [- dw_LNE_end_sequence]))
+              let prg0, _ = Seq.fold_left joining ([], start_state) states_seq in
+              let prg = List.fold_left (Fun.flip (@)) Dwarf5.[dw_LNS_advance_pc; 1; dw_LNE_end_sequence] prg0 in
+              write_opcodes u8 uleb128 sleb128 write32 prg
             in
             DW_Sequence.iter sequence !sequence_bounds
         )

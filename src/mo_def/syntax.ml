@@ -204,16 +204,80 @@ and dec' =
       sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 
-(* Program *)
+(* Program (pre unit detection) *)
 
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
 
-(* Libraries *)
+(* Imports *)
 
-type lib = (exp, string) Source.annotated_phrase
+type import = (import', Type.typ) Source.annotated_phrase
+and import' = id * string * resolved_import ref
 
+(* Compilation units *)
+
+type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
+and comp_unit_body' =
+ | ProgU of dec list                         (* main programs *)
+ | ActorU of id option * exp_field list      (* main IC actor *)
+ | ModuleU of id option * exp_field list     (* module library *)
+ | ActorClassU of                            (* IC actor class, main or library *)
+     sort_pat * typ_id * pat * typ option * id * exp_field list
+
+
+type comp_unit = (comp_unit', string) Source.annotated_phrase
+and comp_unit' = (import list * comp_unit_body)
+
+type lib = comp_unit
+
+(* Lib as pair of import decs and body decs *)
+let obj_decs obj_sort at note id_opt fields =
+  let open Source in
+  match id_opt with
+  | None -> [
+    { it = ExpD {
+        it = ObjE ({ it = obj_sort; at = no_region; note = ()}, fields);
+        at;
+        note };
+      at; note }]
+  | Some id -> [
+    { it = LetD (
+        { it = VarP id; at; note = note.note_typ },
+        { it = ObjE ({ it = obj_sort; at = no_region; note = ()}, fields);
+          at; note; });
+      at; note
+    };
+    { it = ExpD { it = VarE id; at; note };
+      at; note }
+    ]
+
+(* To enable uniform definedness checking, typechecking and interpretation,
+   present the unit as a list of declarations.   
+*)
+let decs_of_comp_unit (cu : comp_unit) =
+  let open Source in
+  let (imports, cub) = cu.it in
+  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
+    { it = LetD (
+      { it = VarP id; at; note; },
+      { it = ImportE (fp, ri);
+        at;
+        note = { note_typ = note; note_eff = Type.Triv} });
+      at;
+      note = { note_typ = note; note_eff = Type.Triv } }) imports
+  in
+  import_decs,
+  match cub.it with
+  | ProgU ds -> ds
+  | ModuleU (id_opt, fields) ->
+    obj_decs Type.Module cub.at cub.note id_opt fields
+  | ActorClassU (csp, i, p, t, i', efs) ->
+    [{ it = ClassD (csp, i, [], p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
+       at = cub.at;
+       note = cub.note;}];
+  | ActorU (id_opt, fields) ->
+    obj_decs Type.Actor cub.at cub.note id_opt fields
 
 (* n-ary arguments/result sequences *)
 
