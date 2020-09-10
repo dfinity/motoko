@@ -775,7 +775,7 @@ let encode (em : extended_module) =
               in
 
               let prg0, _ = Seq.fold_left joining ([], start_state) states_seq in
-              let prg = List.fold_left (Fun.flip (@)) Dwarf5.[dw_LNS_advance_pc; 1; - dw_LNE_end_sequence] prg0 in
+              let prg = List.fold_left (Fun.flip (@)) Dwarf5.[dw_LNS_advance_pc; 1; dw_LNE_end_sequence] prg0 in
               write_opcodes u8 uleb128 sleb128 write32 prg
             in
             DW_Sequence.iter sequence !sequence_bounds

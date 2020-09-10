@@ -350,11 +350,14 @@ let dw_LNS_set_prologue_end = 0x0a
 let dw_LNS_set_epilogue_begin = 0x0b
 let dw_LNS_set_isa = 0x0c
 
-(* Line number extended opcode encodings *)
-let dw_LNE_end_sequence = 0x01
-let dw_LNE_set_address = 0x02
+(* Line number extended opcode encodings
+   Note: these are negative, so they don't overlap
+         with the `dw_LNS_*` above
+ *)
+let dw_LNE_end_sequence = -0x01
+let dw_LNE_set_address = -0x02
 (* let Reserved 0x03 *)
-let dw_LNE_set_discriminator = 0x04
+let dw_LNE_set_discriminator = -0x04
 let dw_LNE_lo_user = 0x80
 let dw_LNE_hi_user = 0xff
 
@@ -580,7 +583,7 @@ let start_state = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt;
 let rec infer from toward = match from, toward with
   | f, {ip; _} when ip < f.ip -> failwith "can't go backwards"
   | {ip=0; _}, t when t.ip > 0 ->
-    - dw_LNE_set_address :: t.ip :: infer {from with ip = t.ip} t
+    dw_LNE_set_address :: t.ip :: infer {from with ip = t.ip} t
   | {ip; _}, t when t.ip > ip ->
     dw_LNS_advance_pc :: t.ip - ip :: infer {from with ip = t.ip} t
   | {loc = file, line, col; _}, {loc = file', _, _; _} when file <> file' ->
@@ -621,8 +624,8 @@ let write_opcodes u8 uleb sleb u32 : int list -> unit =
   | op :: tail when dw_LNS_negate_stmt = op -> standard op; chase tail
   | op :: tail when dw_LNS_set_prologue_end = op -> standard op; chase tail
   | op :: tail when dw_LNS_set_epilogue_begin = op -> standard op; chase tail
-  | op :: tail when - dw_LNE_end_sequence = op -> extended1 op; chase tail
-  | op :: addr :: tail when - dw_LNE_set_address = op -> extended5 op; u32 addr; chase tail
+  | op :: tail when dw_LNE_end_sequence = op -> extended1 op; chase tail
+  | op :: addr :: tail when dw_LNE_set_address = op -> extended5 op; u32 addr; chase tail
   | op :: _ -> failwith (Printf.sprintf "opcode not covered: %d" op)
   in chase
 
