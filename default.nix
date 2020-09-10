@@ -178,8 +178,7 @@ rec {
       # This needs to be self-contained. Remove mention of
       # nix path in debug message.
       preFixup = ''
-        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm
-        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts-debug.wasm
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
       allowedRequisites = [];
     };
@@ -246,7 +245,7 @@ rec {
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
-            EXTRA_MOC_ARGS=${extra_moc_args} make -C ${dir}
+            EXTRA_MOC_ARGS="${extra_moc_args}" make -C ${dir}
           '';
       }; in
 
