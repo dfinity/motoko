@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "8946146ccb69d95c1fc9bff137a70c591c947edf",
+        "rev": "d8396f46fac5dc59a657a17e6e52898d9bf0797f",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "7885cd5df3cdb7ba626fd3fdd0cbfa74c15d14b9",
+        "rev": "87cd793e05ef1920cd8c2ca7fe6373abddba12e5",
         "type": "git"
     },
     "esm": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.9",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "493f0862ddd9970b8fb09e4e97f95fab1764b18e",
+        "rev": "61f6a8699dad9cc081abf5eb145cf4498b698644",
         "type": "git"
     },
     "libtommath": {
@@ -80,6 +80,19 @@
         "sha256": "0sxkpacyzpmc5n658pj287j6bd7sc2d6r1azyrpmd5fyx8q1ihvs",
         "type": "tarball",
         "url": "https://github.com/NixOS/nixpkgs/archive/b50d55871fb7de1e5791bbd56738ff20f4d15f2c.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs-mozilla": {
+        "branch": "master",
+        "builtin": false,
+        "description": "mozilla related nixpkgs (extends nixos/nixpkgs repo)",
+        "homepage": null,
+        "owner": "mozilla",
+        "repo": "nixpkgs-mozilla",
+        "rev": "efda5b357451dbb0431f983cca679ae3cd9b9829",
+        "sha256": "11wqrg86g3qva67vnk81ynvqyfj0zxk83cbrf0p9hsvxiwxs8469",
+        "type": "tarball",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/efda5b357451dbb0431f983cca679ae3cd9b9829.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

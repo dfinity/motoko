@@ -1,7 +1,7 @@
 (executable
  (name mo_js)
  (modules mo_js)
- (libraries mo_config pipeline)
+ (libraries checkseum.ocaml mo_config pipeline)
  (preprocess (pps js_of_ocaml-ppx))
 )
 

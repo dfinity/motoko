@@ -851,6 +851,7 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 (* Programs *)
 
 and interpret_comp_unit env cu k = match cu with
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds ->
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in

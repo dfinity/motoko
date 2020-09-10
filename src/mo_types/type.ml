@@ -106,6 +106,7 @@ let text = Prim Text
 let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
+let principal = Prim Principal
 
 let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit }
@@ -347,6 +348,7 @@ let rec promote = function
 let is_non = function Non -> true | _ -> false
 let is_prim p = function Prim p' -> p = p' | _ -> false
 let is_obj = function Obj _ -> true | _ -> false
+let is_module = function Obj (Module, _) -> true | _ -> false
 let is_variant = function Variant _ -> true | _ -> false
 let is_array = function Array _ -> true | _ -> false
 let is_opt = function Opt _ -> true | _ -> false
