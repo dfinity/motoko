@@ -307,7 +307,7 @@ rec {
       drun       = test_subdir ""     "run-drun"   [ moc drun ];
       drun-dbg   = test_subdir "-dbg" "run-drun"   [ moc drun ];
       ic-ref-run = test_subdir ""     "run-drun"   [ moc ic-ref ];
-      perf       = perf_subdir        "perf"          [ moc drun ];
+      perf       = perf_subdir        "perf"       [ moc drun ];
       fail       = test_subdir ""     "fail"       [ moc ];
       repl       = test_subdir ""     "repl"       [ moc ];
       ld         = test_subdir ""     "ld"         [ mo-ld ];
