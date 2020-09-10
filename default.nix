@@ -301,19 +301,19 @@ rec {
     ); in
 
     fix_names {
-      run        = test_subdir ""     "run"        [ moc ] ;
-      run-dbg    = test_subdir "-dbg" "run"        [ moc ] ;
-      drun       = test_subdir ""     "run-drun"   [ moc drun ];
-      drun-dbg   = test_subdir "-dbg" "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir ""     "run-drun"   [ moc ic-ref ];
-      perf       = perf_subdir        "perf"       [ moc drun ];
-      fail       = test_subdir ""     "fail"       [ moc ];
-      repl       = test_subdir ""     "repl"       [ moc ];
-      ld         = test_subdir ""     "ld"         [ mo-ld ];
-      idl        = test_subdir ""     "idl"        [ didc ];
-      mo-idl     = test_subdir ""     "mo-idl"     [ moc didc ];
-      trap       = test_subdir ""     "trap"       [ moc ];
-      run-deser  = test_subdir ""     "run-deser"  [ deser ];
+      run        = test_subdir ""                "run"        [ moc ] ;
+      run-dbg    = test_subdir "--sanity-checks" "run"        [ moc ] ;
+      drun       = test_subdir ""                "run-drun"   [ moc drun ];
+      drun-dbg   = test_subdir "--sanity-checks" "run-drun"   [ moc drun ];
+      ic-ref-run = test_subdir ""                "run-drun"   [ moc ic-ref ];
+      perf       = perf_subdir                   "perf"       [ moc drun ];
+      fail       = test_subdir ""                "fail"       [ moc ];
+      repl       = test_subdir ""                "repl"       [ moc ];
+      ld         = test_subdir ""                "ld"         [ mo-ld ];
+      idl        = test_subdir ""                "idl"        [ didc ];
+      mo-idl     = test_subdir ""                "mo-idl"     [ moc didc ];
+      trap       = test_subdir ""                "trap"       [ moc ];
+      run-deser  = test_subdir ""                "run-deser"  [ deser ];
       inherit qc lsp unit;
     };
 
