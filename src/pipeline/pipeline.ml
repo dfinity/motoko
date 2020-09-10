@@ -613,7 +613,8 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force Rts.wasm)
+  let rts = if !Flags.sanity then Rts.wasm_debug else Rts.wasm in
+  Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 

@@ -18,7 +18,7 @@ declare -A envs # list of expected environment variables with paths to products
 # Define build products here
 real[moc]=src/moc
 hint[moc]="make -C $rel_root/src moc"
-envs[moc]="MOC_RTS"
+envs[moc]="MOC_RTS MOC_DEBUG_RTS"
 real[mo-ld]=src/mo-ld
 hint[mo-ld]="make -C $rel_root/src mo-ld"
 real[didc]=src/didc
@@ -28,6 +28,9 @@ hint[deser]="make -C $rel_root/src deser"
 
 real[MOC_RTS]=rts/mo-rts.wasm
 hint[MOC_RTS]="make -C $rel_root/rts"
+
+real[MOC_DEBUG_RTS]=rts/mo-rts-debug.wasm
+hint[MOC_DEBUG_RTS]="make -C $rel_root/rts"
 
 # This is the command we want to run
 exe=$(basename "$0")

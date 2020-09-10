@@ -96,7 +96,7 @@ let ocaml_exe = name: bin: rts:
       buildPhase = ''
         patchShebangs .
       '' + nixpkgs.lib.optionalString (rts != null)''
-        ./rts/gen.sh ${rts}/rts/mo-rts.wasm
+        ./rts/gen.sh ${rts}/rts
       '' + ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
@@ -172,12 +172,13 @@ rec {
       installPhase = ''
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
+        cp mo-rts-debug.wasm $out/rts
       '';
 
-      # this needs to be self-contained. Remove mention of
-      # nix path in debug message
+      # This needs to be self-contained. Remove mention of
+      # nix path in debug message.
       preFixup = ''
-        remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts.wasm
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
       allowedRequisites = [];
     };
@@ -211,7 +212,7 @@ rec {
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
     # And test/run-drun is actually run twice (once with drun and once with ic-ref-run)
-    let test_subdir = dir: deps:
+    let test_subdir = extra_moc_args: dir: deps:
       testDerivation {
         # include from test/ only the common files, plus everything in test/${dir}/
         src =
@@ -244,12 +245,12 @@ rec {
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
-            make -C ${dir}
+            EXTRA_MOC_ARGS="${extra_moc_args}" make -C ${dir}
           '';
       }; in
 
     let perf_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir "" dir deps).overrideAttrs (args: {
         checkPhase = ''
           mkdir -p $out
           export PERF_OUT=$out/stats.csv
@@ -300,17 +301,19 @@ rec {
     ); in
 
     fix_names {
-      run        = test_subdir "run"        [ moc ] ;
-      drun       = test_subdir "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
-      perf       = perf_subdir "perf"       [ moc drun ];
-      fail       = test_subdir "fail"       [ moc ];
-      repl       = test_subdir "repl"       [ moc ];
-      ld         = test_subdir "ld"         [ mo-ld ];
-      idl        = test_subdir "idl"        [ didc ];
-      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
-      trap       = test_subdir "trap"       [ moc ];
-      run-deser  = test_subdir "run-deser"  [ deser ];
+      run        = test_subdir ""                "run"        [ moc ] ;
+      run-dbg    = test_subdir "--sanity-checks" "run"        [ moc ] ;
+      drun       = test_subdir ""                "run-drun"   [ moc drun ];
+      drun-dbg   = test_subdir "--sanity-checks" "run-drun"   [ moc drun ];
+      ic-ref-run = test_subdir ""                "run-drun"   [ moc ic-ref ];
+      perf       = perf_subdir                   "perf"       [ moc drun ];
+      fail       = test_subdir ""                "fail"       [ moc ];
+      repl       = test_subdir ""                "repl"       [ moc ];
+      ld         = test_subdir ""                "ld"         [ mo-ld ];
+      idl        = test_subdir ""                "idl"        [ didc ];
+      mo-idl     = test_subdir ""                "mo-idl"     [ moc didc ];
+      trap       = test_subdir ""                "trap"       [ moc ];
+      run-deser  = test_subdir ""                "run-deser"  [ deser ];
       inherit qc lsp unit;
     };
 
