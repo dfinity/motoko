@@ -750,9 +750,10 @@ let encode (em : extended_module) =
               Dwarf5.Machine.{ ip = addr'; loc = file', line, column + 1; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
             in
 
-            let joining (prg, state) state' : int list * Dwarf5.Machine.state =
-              (* FIXME: quadratic *)
-              prg @ Dwarf5.Machine.infer state state', state'
+            let joining (prg, state) state' : int list list * Dwarf5.Machine.state =
+              (* to avoid quadratic runtime, just collect (cons up) the partial lists here;
+                 later we'll bring it in the right order and flatten *)
+              Dwarf5.Machine.infer state state' :: prg, state'
             in
 
             let sequence (sta, notes, en) =
@@ -760,7 +761,7 @@ let encode (em : extended_module) =
               let notes_seq = Instrs.to_seq notes in
               let open Dwarf5.Machine in
               (* Decorate first instr, and prepend start address, non-statement (FIXME: clang says it *is* a statement) *)
-              let start_state = { start_state with ip = start; stmt = false } in
+              let seq_start_state = { start_state with ip = start; stmt = false } in
               let states_seq () =
                 let open Seq in
                 match map (mapping (ending - 1)) notes_seq () with
@@ -768,14 +769,14 @@ let encode (em : extended_module) =
                 | Cons ({ip; _}, _) when ip = start -> failwith "at start already an instruction?"
                 | Cons (state, _) as front ->
                   (* override default location from `start_state` *)
-                  let start_state' = { start_state with loc = state.loc } in
+                  let start_state' = { seq_start_state with loc = state.loc } in
                   (* FIXME (4.11) use `cons` *)
                   Cons (start_state', fun () -> front)
               in
 
-              let prg, _ = Seq.fold_left joining ([], start_state) states_seq in
-              (write_opcodes u8 uleb128 sleb128 write32
-                 Dwarf5.(prg @ [dw_LNS_advance_pc; 1; - dw_LNE_end_sequence]))
+              let prg0, _ = Seq.fold_left joining ([], start_state) states_seq in
+              let prg = List.fold_left (Fun.flip (@)) Dwarf5.[dw_LNS_advance_pc; 1; - dw_LNE_end_sequence] prg0 in
+              write_opcodes u8 uleb128 sleb128 write32 prg
             in
             DW_Sequence.iter sequence !sequence_bounds
         )

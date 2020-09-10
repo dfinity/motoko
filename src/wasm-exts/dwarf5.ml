@@ -603,7 +603,7 @@ let rec infer from toward = match from, toward with
   | _ -> failwith "not covered"
 
 (* Given a few formatted outputter functions, dump the contents
-   of a line program (essentially a list of `DW_LNS_*` opcodes with
+   of a line program (essentially a list of `DW_LNS/E_*` opcodes with
    arguments). The bottleneck functions are expected to close over
    the output buffer/stream.
 *)
