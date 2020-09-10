@@ -546,7 +546,7 @@ let opcode_base = dw_LNS_set_isa
 type instr_mode = Regular | Prologue | Epilogue
 
 type state = { ip : int
-             ; loc : int * int * int
+             ; loc : int * int * int (* file, line, col *)
              ; disc : int
              ; stmt : bool
              ; bb : bool
