@@ -14,10 +14,10 @@ open Dwarf5.Meta
 
 (* Utility predicates *)
 
-(* is_dwarf_like answers the question whether a Wasm.Ast meta instruction
-   must be kept from being dead-code eliminated. Eliminating is forbidden,
-   when it the instruction contributes to a DIE, i.e. establishing, augmenting
-   or closing a DWARF Tag.
+(* is_dwarf_like indicates whether a Wasm.Ast meta instruction
+   prevents dead-code elimination. Elimination is forbidden,
+   if the instruction contributes to a DIE, i.e. establishes, augments
+   or closes a DWARF Tag.
  *)
 let rec is_dwarf_like' = function
   | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
