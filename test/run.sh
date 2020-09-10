@@ -31,7 +31,7 @@ SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "adpstirf" o; do
+while getopts "adpstir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -83,7 +83,6 @@ function normalize () {
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
-    sed 's/_out-dbg/_out/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -92,7 +91,7 @@ function normalize () {
 function run () {
   # first argument: extension of the output file
   # remaining argument: command line
-  # uses from scope: $out, $file, $base, $diff_files, $moc_debug_flags
+  # uses from scope: $out, $file, $base, $diff_files
 
   local ext="$1"
   shift
@@ -105,7 +104,7 @@ function run () {
     exit 1
   fi
 
-  $ECHO -n " [$ext$moc_debug_flags]"
+  $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext
   local ret=$?
 
@@ -219,10 +218,10 @@ do
   ok=ok
 
   $ECHO -n "$base:"
-  mkdir -p $out{,-dbg}
+  [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -rf $out{,-dbg}/$base $out{,-dbg}/$base.*
+  rm -rf $out/$base $out/$base.*
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -232,7 +231,7 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc="env $moc_extra_env moc $moc_extra_flags $FLAGS_SANITY"
+    moc="env $moc_extra_env moc $moc_extra_flags"
 
     # Typecheck
     run tc $moc --check $base.mo
@@ -255,117 +254,116 @@ do
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
-          for moc_debug_flags in '' '-dbg'; do
-            out="${out}${moc_debug_flags}"
-            # Interpret
-            run run $moc --hide-warnings -r $base.mo
+          # Interpret
+          run run $moc --hide-warnings -r $base.mo
 
-            # Interpret IR without lowering
-            run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
+          # Interpret IR without lowering
+          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
 
-            # Diff interpretations without/with lowering
-            if [ -e $out/$base.run -a -e $out/$base.run-ir ]
-            then
-              diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
-              diff_files="$diff_files $base.diff-ir"
-            fi
+          # Diff interpretations without/with lowering
+          if [ -e $out/$base.run -a -e $out/$base.run-ir ]
+          then
+            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+            diff_files="$diff_files $base.diff-ir"
+          fi
 
-            # Interpret IR with lowering
-            run run-low $moc --hide-warnings -r -iR $base.mo
+          # Interpret IR with lowering
+          run run-low $moc --hide-warnings -r -iR $base.mo
 
-            # Diff interpretations without/with lowering
-            if [ -e $out/$base.run -a -e $out/$base.run-low ]
-            then
-              diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-              diff_files="$diff_files $base.diff-low"
-            fi
+          # Diff interpretations without/with lowering
+          if [ -e $out/$base.run -a -e $out/$base.run-low ]
+          then
+            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+            diff_files="$diff_files $base.diff-low"
+          fi
 
-            # Mangle for compilation:
-            # The compilation targets do not support self-calls during canister
-            # installation, so this replaces
-            #
-            #     actor a { … }
-            #     a.go(); //CALL …
-            #
-            # with
-            #
-            #     actor a { … }
-            #     //CALL …
-            #
-            # which actually works on the IC platform
-
-            # needs to be in the same directory to preserve relative paths :-(
-            mangled=$base.mo.mangled
-            sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
-
-            # Compile
-            if [ $DTESTS = yes ]
-            then
-              run comp $moc $moc_debug_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-              run comp-ref $moc $moc_debug_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
-            elif [ $PERF = yes ]
-            then
-              run comp $moc $moc_debug_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-            else
-              run comp $moc $moc_debug_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-            fi
-
-            run_if wasm valid wasm-validate $out/$base.wasm
-            run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
-
-            if [ -e $out/$base.wasm ]
-            then
-              # Check filecheck
-              if [ "$SKIP_RUNNING" != yes ]
-              then
-                if grep -F -q CHECK $mangled
-                then
-                  $ECHO -n " [FileCheck]"
-                  wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-                  cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
-                  diff_files="$diff_files $base.filecheck"
-                fi
-              fi
-            fi
-
-            # Run compiled program
-            if [ "$SKIP_RUNNING" != yes ]
-            then
-              if [ $DTESTS = yes ]
-              then
-                if [ $HAVE_drun = yes ]; then
-                  run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
-                fi
-                if [ $HAVE_ic_ref_run = yes ]; then
-                  run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
-                fi
-              elif [ $PERF = yes ]
-              then
-                if [ $HAVE_drun = yes ]; then
-                  run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
-                  if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
-                  then
-                    LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
-                  fi
-                fi
-              else
-                run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
-              fi
-            fi
-
-            # collect size stats
-            if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
-            then
-               if [ -n "$PERF_OUT" ]
-               then
-                 wasm-strip $out/$base.wasm
-                 echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
-               fi
-            fi
-
-          done
         fi
-        rm -f $mangled
+
+        # Mangle for compilation:
+        # The compilation targets do not support self-calls during canister
+        # installation, so this replaces
+        #
+        #     actor a { … }
+        #     a.go(); //CALL …
+        #
+        # with
+        #
+        #     actor a { … }
+        #     //CALL …
+        #
+        # which actually works on the IC platform
+
+	# needs to be in the same directory to preserve relative paths :-(
+        mangled=$base.mo.mangled
+        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
+
+
+        # Compile
+        if [ $DTESTS = yes ]
+        then
+          run comp $moc $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+	elif [ $PERF = yes ]
+	then
+          run comp $moc --hide-warnings --map -c $mangled -o $out/$base.wasm
+	else
+          run comp $moc -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+        fi
+
+        run_if wasm valid wasm-validate $out/$base.wasm
+        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+
+        if [ -e $out/$base.wasm ]
+        then
+          # Check filecheck
+          if [ "$SKIP_RUNNING" != yes ]
+          then
+            if grep -F -q CHECK $mangled
+            then
+              $ECHO -n " [FileCheck]"
+              wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+              cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
+              diff_files="$diff_files $base.filecheck"
+            fi
+          fi
+        fi
+
+        # Run compiled program
+        if [ "$SKIP_RUNNING" != yes ]
+        then
+          if [ $DTESTS = yes ]
+          then
+            if [ $HAVE_drun = yes ]; then
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+            fi
+            if [ $HAVE_ic_ref_run = yes ]; then
+              run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
+            fi
+          elif [ $PERF = yes ]
+          then
+            if [ $HAVE_drun = yes ]; then
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
+              if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              then
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+              fi
+            fi
+          else
+            run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
+          fi
+        fi
+
+        # collect size stats
+        if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
+        then
+	   if [ -n "$PERF_OUT" ]
+           then
+             wasm-strip $out/$base.wasm
+             echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+           fi
+        fi
+
+	rm -f $mangled
       fi
     fi
   ;;
@@ -377,51 +375,46 @@ do
       continue
     fi
 
-    for moc_debug_flags in '' '-dbg'; do
-      out="${out}${moc_debug_flags}"
+    # The file is a drun script, so a multi-canister project
+    mkdir -p $out/$base
 
-      # The file is a drun script, so a multi-canister project
-      mkdir -p $out/$base
+    for runner in ic-ref-run drun
+    do
+      if grep -q "# *SKIP $runner" $(basename $file)
+      then
+        continue
+      fi
 
-      for runner in ic-ref-run drun
+      have_var_name="HAVE_${runner//-/_}"
+      if [ ${!have_var_name} != yes ]
+      then
+        $ECHO "skipped (no drun)";
+        continue
+      fi
+
+      # collect all .mo files referenced from the file
+      mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
+
+      for mo_file in $mo_files
       do
-        if grep -q "# *SKIP $runner" $(basename $file)
+        mo_base=$(basename $mo_file .mo)
+        if [ "$(dirname $mo_file)" != "$base" ];
         then
-          continue
+          $ECHO ""
+          echo "$base.drun references $mo_file which is not in directory $base"
+          exit 1
         fi
 
-        have_var_name="HAVE_${runner//-/_}"
-        if [ ${!have_var_name} != yes ]
-        then
-          $ECHO "skipped (no drun)";
-          continue
-        fi
-
-        # collect all .mo files referenced from the file
-        mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
-
-        for mo_file in $mo_files
-        do
-          mo_base=$(basename $mo_file .mo)
-          if [ "$(dirname $mo_file)" != "$base" ];
-          then
-            $ECHO ""
-            echo "$base.drun references $mo_file which is not in directory $base"
-            exit 1
-          fi
-
-          flags_var_name="FLAGS_${runner//-/_}"
-          run $mo_base.$runner.comp moc $moc_debug_flags \
-            $FLAGS_SANITY ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
-        done
-
-        # mangle drun script
-        LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
-
-        # run wrapper
-        wrap_var_name="WRAP_${runner//-/_}"
-        run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
+        flags_var_name="FLAGS_${runner//-/_}"
+        run $mo_base.$runner.comp moc ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
+
+      # mangle drun script
+      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
+
+      # run wrapper
+      wrap_var_name="WRAP_${runner//-/_}"
+      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
     done
 
   ;;
