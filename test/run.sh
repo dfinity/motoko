@@ -255,119 +255,116 @@ do
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
-          # Interpret
-          run run $moc --hide-warnings -r $base.mo
+          for moc_debug_flags in '' '-dbg'; do
+            out="${out}${moc_debug_flags}"
+            # Interpret
+            run run $moc --hide-warnings -r $base.mo
 
-          # Interpret IR without lowering
-          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
+            # Interpret IR without lowering
+            run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
 
-          # Diff interpretations without/with lowering
-          if [ -e $out/$base.run -a -e $out/$base.run-ir ]
-          then
-            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
-            diff_files="$diff_files $base.diff-ir"
-          fi
-
-          # Interpret IR with lowering
-          run run-low $moc --hide-warnings -r -iR $base.mo
-
-          # Diff interpretations without/with lowering
-          if [ -e $out/$base.run -a -e $out/$base.run-low ]
-          then
-            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-            diff_files="$diff_files $base.diff-low"
-          fi
-
-        fi
-
-        # Mangle for compilation:
-        # The compilation targets do not support self-calls during canister
-        # installation, so this replaces
-        #
-        #     actor a { … }
-        #     a.go(); //CALL …
-        #
-        # with
-        #
-        #     actor a { … }
-        #     //CALL …
-        #
-        # which actually works on the IC platform
-
-	# needs to be in the same directory to preserve relative paths :-(
-        mangled=$base.mo.mangled
-        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
-
-        for moc_debug_flags in '' '-dbg'; do
-          out="${out}${moc_debug_flags}"
-
-          # Compile
-          if [ $DTESTS = yes ]
-          then
-            run comp $moc $moc_debug_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-            run comp-ref $moc $moc_debug_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
-          elif [ $PERF = yes ]
-          then
-            run comp $moc $moc_debug_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-          else
-            run comp $moc $moc_debug_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-          fi
-
-          run_if wasm valid wasm-validate $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
-
-          if [ -e $out/$base.wasm ]
-          then
-            # Check filecheck
-            if [ "$SKIP_RUNNING" != yes ]
+            # Diff interpretations without/with lowering
+            if [ -e $out/$base.run -a -e $out/$base.run-ir ]
             then
-              if grep -F -q CHECK $mangled
-              then
-                $ECHO -n " [FileCheck]"
-                wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-                cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
-                diff_files="$diff_files $base.filecheck"
-              fi
+              diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+              diff_files="$diff_files $base.diff-ir"
             fi
-          fi
 
-          # Run compiled program
-          if [ "$SKIP_RUNNING" != yes ]
-          then
+            # Interpret IR with lowering
+            run run-low $moc --hide-warnings -r -iR $base.mo
+
+            # Diff interpretations without/with lowering
+            if [ -e $out/$base.run -a -e $out/$base.run-low ]
+            then
+              diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+              diff_files="$diff_files $base.diff-low"
+            fi
+
+            # Mangle for compilation:
+            # The compilation targets do not support self-calls during canister
+            # installation, so this replaces
+            #
+            #     actor a { … }
+            #     a.go(); //CALL …
+            #
+            # with
+            #
+            #     actor a { … }
+            #     //CALL …
+            #
+            # which actually works on the IC platform
+
+            # needs to be in the same directory to preserve relative paths :-(
+            mangled=$base.mo.mangled
+            sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
+
+            # Compile
             if [ $DTESTS = yes ]
             then
-              if [ $HAVE_drun = yes ]; then
-                run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
-              fi
-              if [ $HAVE_ic_ref_run = yes ]; then
-                run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
-              fi
+              run comp $moc $moc_debug_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+              run comp-ref $moc $moc_debug_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
             elif [ $PERF = yes ]
             then
-              if [ $HAVE_drun = yes ]; then
-                run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
-                if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              run comp $moc $moc_debug_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+            else
+              run comp $moc $moc_debug_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+            fi
+
+            run_if wasm valid wasm-validate $out/$base.wasm
+            run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+
+            if [ -e $out/$base.wasm ]
+            then
+              # Check filecheck
+              if [ "$SKIP_RUNNING" != yes ]
+              then
+                if grep -F -q CHECK $mangled
                 then
-                  LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                  $ECHO -n " [FileCheck]"
+                  wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+                  cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
+                  diff_files="$diff_files $base.filecheck"
                 fi
               fi
-            else
-              run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
             fi
-          fi
 
-          # collect size stats
-          if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
-          then
-             if [ -n "$PERF_OUT" ]
-             then
-               wasm-strip $out/$base.wasm
-               echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
-             fi
-          fi
+            # Run compiled program
+            if [ "$SKIP_RUNNING" != yes ]
+            then
+              if [ $DTESTS = yes ]
+              then
+                if [ $HAVE_drun = yes ]; then
+                  run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+                fi
+                if [ $HAVE_ic_ref_run = yes ]; then
+                  run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
+                fi
+              elif [ $PERF = yes ]
+              then
+                if [ $HAVE_drun = yes ]; then
+                  run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
+                  if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+                  then
+                    LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                  fi
+                fi
+              else
+                run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
+              fi
+            fi
 
-        done
+            # collect size stats
+            if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
+            then
+               if [ -n "$PERF_OUT" ]
+               then
+                 wasm-strip $out/$base.wasm
+                 echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+               fi
+            fi
 
+          done
+        fi
         rm -f $mangled
       fi
     fi
