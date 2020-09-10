@@ -195,24 +195,25 @@ rec {
 
   inherit ic-ref;
 
-  tests =
-    let testDerivationArgs = {
+  tests = let
+    testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
       src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
       phases = "unpackPhase checkPhase installPhase";
       doCheck = true;
       installPhase = "touch $out";
-    }; in
-    let testDerivation = args:
-      stdenv.mkDerivation (testDerivationArgs // args); in
-    let ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
+    };
+
+    testDerivation = args:
+      stdenv.mkDerivation (testDerivationArgs // args);
+
+    ocamlTestDerivation = args:
+      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
 
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
-    # And test/run-drun is actually run twice (once with drun and once with ic-ref-run)
-    let test_subdir = extra_moc_args: dir: deps:
+    test_subdir = dir: deps:
       testDerivation {
         # include from test/ only the common files, plus everything in test/${dir}/
         src =
@@ -245,12 +246,18 @@ rec {
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
-            EXTRA_MOC_ARGS="${extra_moc_args}" make -C ${dir}
+            make -C ${dir}
           '';
-      }; in
+      };
 
-    let perf_subdir = dir: deps:
-      (test_subdir "" dir deps).overrideAttrs (args: {
+    # Run a variant with sanity checking on
+    snty_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks";
+      });
+
+    perf_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
           mkdir -p $out
           export PERF_OUT=$out/stats.csv
@@ -266,26 +273,26 @@ rec {
             exit 1
           fi
         '';
-      }); in
+      });
 
-    let qc = testDerivation {
+    qc = testDerivation {
       buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
-    }; in
+    };
 
-    let lsp = testDerivation {
+    lsp = testDerivation {
       src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
         lsp-int ${mo-ide}/bin/mo-ide .
       '';
-    }; in
+    };
 
-    let unit = ocamlTestDerivation {
+    unit = ocamlTestDerivation {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
@@ -294,26 +301,26 @@ rec {
       installPhase = ''
         touch $out
       '';
-    }; in
+    };
 
-    let fix_names = builtins.mapAttrs (name: deriv:
+    fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
-    ); in
+    );
 
-    fix_names {
-      run        = test_subdir ""                "run"        [ moc ] ;
-      run-dbg    = test_subdir "--sanity-checks" "run"        [ moc ] ;
-      drun       = test_subdir ""                "run-drun"   [ moc drun ];
-      drun-dbg   = test_subdir "--sanity-checks" "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir ""                "run-drun"   [ moc ic-ref ];
-      perf       = perf_subdir                   "perf"       [ moc drun ];
-      fail       = test_subdir ""                "fail"       [ moc ];
-      repl       = test_subdir ""                "repl"       [ moc ];
-      ld         = test_subdir ""                "ld"         [ mo-ld ];
-      idl        = test_subdir ""                "idl"        [ didc ];
-      mo-idl     = test_subdir ""                "mo-idl"     [ moc didc ];
-      trap       = test_subdir ""                "trap"       [ moc ];
-      run-deser  = test_subdir ""                "run-deser"  [ deser ];
+  in fix_names {
+      run        = test_subdir "run"        [ moc ] ;
+      run-dbg    = snty_subdir "run"        [ moc ] ;
+      drun       = test_subdir "run-drun"   [ moc drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
+      perf       = perf_subdir "perf"       [ moc drun ];
+      fail       = test_subdir "fail"       [ moc ];
+      repl       = test_subdir "repl"       [ moc ];
+      ld         = test_subdir "ld"         [ mo-ld ];
+      idl        = test_subdir "idl"        [ didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      trap       = test_subdir "trap"       [ moc ];
+      run-deser  = test_subdir "run-deser"  [ deser ];
       inherit qc lsp unit;
     };
 
