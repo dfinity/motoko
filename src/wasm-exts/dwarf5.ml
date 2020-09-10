@@ -547,9 +547,10 @@ let line_range = 7
 let opcode_base = dw_LNS_set_isa
 
 type instr_mode = Regular | Prologue | Epilogue
+type loc = { file : int; line : int; col : int }
 
 type state = { ip : int
-             ; loc : int * int * int (* file, line, col *)
+             ; loc : loc
              ; disc : int
              ; stmt : bool
              ; bb : bool
@@ -568,7 +569,7 @@ mode: how the instruction should be treated
 
 See "6.2 Line Number Information" for details.
 *)
-let default_loc = 1, 1, 0
+let default_loc = { file = 1; line = 1; col = 0 }
 let default_flags = default_is_stmt, false, Prologue
 (* Table 6.4: Line number program initial state *)
 let start_state = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt; bb = false; mode = Prologue }
@@ -586,12 +587,12 @@ let rec infer from toward = match from, toward with
     dw_LNE_set_address :: t.ip :: infer {from with ip = t.ip} t
   | {ip; _}, t when t.ip > ip ->
     dw_LNS_advance_pc :: t.ip - ip :: infer {from with ip = t.ip} t
-  | {loc = file, line, col; _}, {loc = file', _, _; _} when file <> file' ->
-    dw_LNS_set_file :: file' :: infer {from with loc = file', line, col} toward
-  | {loc = file, line, col; _}, {loc = _, line', _; _} when line <> line' ->
-    dw_LNS_advance_line :: line' - line :: infer {from with loc = file, line', col} toward
-  | {loc = file, line, col; _}, {loc = _, _, col'; _}  when col <> col' ->
-    dw_LNS_set_column :: col' :: infer {from with loc = file, line, col'} toward
+  | {loc; _}, {loc = {file; _}; _} when file <> loc.file ->
+    dw_LNS_set_file :: file :: infer {from with loc = {loc with file}} toward
+  | {loc; _}, {loc = {line; _}; _} when line <> loc.line ->
+    dw_LNS_advance_line :: line - line :: infer {from with loc = {loc with line}} toward
+  | {loc; _}, {loc = {col; _}; _} when col <> loc.col ->
+    dw_LNS_set_column :: col :: infer {from with loc = {loc with col}} toward
   | {disc; _}, _ when disc <> toward.disc -> failwith "cannot do disc yet"
   | {stmt; _}, _ when stmt <> toward.stmt ->
     dw_LNS_negate_stmt :: infer {from with stmt = toward.stmt} toward

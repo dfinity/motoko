@@ -747,7 +747,7 @@ let encode (em : extended_module) =
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               let addr' = rel addr in
-              Dwarf5.Machine.{ ip = addr'; loc = file', line, column + 1; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
+              Dwarf5.Machine.{ ip = addr'; loc = { file = file'; line; col = column + 1 }; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
             in
 
             let joining (prg, state) state' : int list list * Dwarf5.Machine.state =
