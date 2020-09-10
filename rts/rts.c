@@ -9,7 +9,7 @@ as_ptr alloc_blob(size_t n) {
 
 char *alloc(size_t n) {
   as_ptr r = alloc_blob(n);
-  return (char *)&FIELD(r,2);
+  return BLOB_PAYLOAD(r);
 }
 
 void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {

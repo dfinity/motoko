@@ -36,7 +36,7 @@ typedef as_ptr blob_t;
 
 #define TUPLE_HEADER_SIZE 2
 #define TUPLE_LEN(p) (FIELD(p,1))
-#define TUPLE_FIELD(p,n,t) (*(t *)(&(FIELD(p,TUPLE_HEADER_SIZE+n))))
+#define TUPLE_FIELD(p,n,t) (*(t *)(&FIELD(p,TUPLE_HEADER_SIZE+n)))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
 enum as_heap_tag {
