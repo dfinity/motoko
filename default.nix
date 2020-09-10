@@ -178,8 +178,8 @@ rec {
       # This needs to be self-contained. Remove mention of
       # nix path in debug message.
       preFixup = ''
-        remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts.wasm
-        remove-references-to -t ${nixpkgs.rustc-nightly} $out/rts/mo-rts-debug.wasm
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts-debug.wasm
       '';
       allowedRequisites = [];
     };
