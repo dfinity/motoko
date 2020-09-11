@@ -3,7 +3,6 @@ open Source
 open Mo_config
 
 module Js = Js_of_ocaml.Js
-module Dom_html = Js_of_ocaml.Dom_html          
 
 let position_of_pos pos =
   object%js
@@ -72,20 +71,27 @@ let js_compile_wasm mode s =
       Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstringaf.of_string ~off:0 ~len:len wasm)
     )
 
-let redirect_channel channel id =
-  Js_of_ocaml.Sys_js.set_channel_flusher channel
-    (fun s ->
-      match Dom_html.getElementById_coerce id Dom_html.CoerceTo.textarea with
-      | None -> Js_of_ocaml.Firebug.console##log s;
-      | Some output -> output##.value := Js.string (Js.to_string (output##.value) ^ s);
-    )
+let stdout_buffer = Buffer.create(100)
+let stderr_buffer = Buffer.create(100)                  
+
+let wrap_output f =
+  let result = f() in
+  let stdout_result = Buffer.contents stdout_buffer in
+  let stderr_result = Buffer.contents stderr_buffer in
+  Buffer.clear stdout_buffer;
+  Buffer.clear stderr_buffer;
+  object%js
+    val stdout = Js.bytestring stdout_result
+    val stderr = Js.bytestring stderr_result
+    val result = result
+  end
 
 let () =
-  redirect_channel stdout "output";
-  redirect_channel stderr "output";  
+  Js_of_ocaml.Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
+  Js_of_ocaml.Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
   Js.export "Motoko"
     (object%js
-      method check s = js_check s
-      method compileWasm mode s = js_compile_wasm mode s
-      method run s = js_run s
+      method check s = wrap_output (fun _ -> js_check s)
+      method compileWasm mode s = wrap_output (fun _ -> js_compile_wasm mode s)
+      method run s = wrap_output (fun _ -> js_run s)
     end);

@@ -192,11 +192,11 @@ Prim.debugPrint (debug_show x)
 
       const run = document.getElementById('run');
       run.addEventListener('click', () => {
-        output.value = '';
+        output.value = 'Running';
         const tStart = Date.now();
-        const result = Motoko.run(code.value);
+        const out = Motoko.run(code.value);
         const duration = (Date.now() - tStart) / 1000;
-        output.value += result;
+        output.value = out.stderr + out.stdout + out.result;
         output.value += `\n(run time: ${duration}s)\n`;
       });
 
@@ -204,15 +204,15 @@ Prim.debugPrint (debug_show x)
       compile.addEventListener('click', () => {
         output.value = 'Compiling...';
         const tStart = Date.now();
-        const result = Motoko.compileWasm("wasi", code.value);
+        const out = Motoko.compileWasm("wasi", code.value);
         const duration = (Date.now() - tStart) / 1000;
-        if (result.code === null) {
-          output.value = JSON.stringify(result.diagnostics);
+        if (out.result.code === null) {
+          output.value = JSON.stringify(out.result.diagnostics);
         } else {
           //downloadCode(result.code, 'a.wasm');
           output.value = `(compile time: ${duration}s)\n`;
           const wasiPolyfill = new barebonesWASI();
-          importWasmModule(result.code, wasiPolyfill);
+          importWasmModule(out.result.code, wasiPolyfill);
         }
       });
     </script>
