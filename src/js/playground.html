@@ -192,11 +192,11 @@ Prim.debugPrint (debug_show x)
 
       const run = document.getElementById('run');
       run.addEventListener('click', () => {
-        output.value = 'Running...';
+        output.value = '';
         const tStart = Date.now();
         const result = Motoko.run(code.value);
         const duration = (Date.now() - tStart) / 1000;
-        output.value = result;
+        output.value += result;
         output.value += `\n(run time: ${duration}s)\n`;
       });
 

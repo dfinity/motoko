@@ -3,6 +3,7 @@ open Source
 open Mo_config
 
 module Js = Js_of_ocaml.Js
+module Dom_html = Js_of_ocaml.Dom_html          
 
 let position_of_pos pos =
   object%js
@@ -71,7 +72,17 @@ let js_compile_wasm mode s =
       Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstringaf.of_string ~off:0 ~len:len wasm)
     )
 
+let redirect_channel channel id =
+  Js_of_ocaml.Sys_js.set_channel_flusher channel
+    (fun s ->
+      match Dom_html.getElementById_coerce id Dom_html.CoerceTo.textarea with
+      | None -> Js_of_ocaml.Firebug.console##log s;
+      | Some output -> output##.value := Js.string (Js.to_string (output##.value) ^ s);
+    )
+
 let () =
+  redirect_channel stdout "output";
+  redirect_channel stderr "output";  
   Js.export "Motoko"
     (object%js
       method check s = js_check s
