@@ -31,7 +31,7 @@ val run_files_and_stdin : string list -> unit option
 
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
-val compile_string : Flags.compile_mode -> bool -> string -> string -> compile_result
+val compile_string : Flags.compile_mode -> string -> string -> compile_result
 val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 
 (* For use in the IDE server *)

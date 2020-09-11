@@ -682,12 +682,13 @@ let compile_files mode do_link files : compile_result =
   let* () = Typing.check_actors senv progs in
   Diag.return (compile_progs mode do_link libs progs)
 
-let compile_string mode do_link s name : compile_result =
+let compile_string mode s name : compile_result =
+  let _ = Flags.check_ir := false in
   let open Diag.Syntax in
   let* libs, prog, senv, _t, _sscope =
     load_decl (parse_string name s) initial_stat_env
   in
-  Diag.return (compile_progs mode do_link libs [prog])
+  Diag.return (compile_progs mode true libs [prog])
 
 (* Interpretation (IR) *)
 

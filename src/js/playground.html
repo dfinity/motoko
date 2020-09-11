@@ -204,7 +204,7 @@ Prim.debugPrint (debug_show x)
       compile.addEventListener('click', () => {
         output.value = 'Compiling...';
         const tStart = Date.now();
-        const result = Motoko.compileWasm("wasi", true, code.value);
+        const result = Motoko.compileWasm("wasi", code.value);
         const duration = (Date.now() - tStart) / 1000;
         if (result.code === null) {
           output.value = JSON.stringify(result.diagnostics);
