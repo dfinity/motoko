@@ -2,7 +2,7 @@
  (name mo_js)
  (modules mo_js)
  (libraries checkseum.ocaml mo_config pipeline bigstringaf)
- (js_of_ocaml (flags --no-source-map --source-map-no-source))
+ (js_of_ocaml (flags --no-extern-fs --no-source-map))
  (preprocess (pps js_of_ocaml-ppx))
 )
 

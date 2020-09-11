@@ -351,7 +351,7 @@ rec {
         buildPhase = ''
           patchShebangs .
           '' + nixpkgs.lib.optionalString (rts != null)''
-          ./rts/gen.sh ${rts}/rts/mo-rts.wasm
+          ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
         '';
