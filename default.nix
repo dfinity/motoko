@@ -345,7 +345,6 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.ocamlPackages.bigstringaf
           nixpkgs.nodejs-10_x
         ];
         buildPhase = ''

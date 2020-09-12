@@ -67,8 +67,10 @@ let js_compile_wasm mode s =
   js_compile_with mode s
     (fun m ->
       let (_, wasm) = CustomModuleEncode.encode m in
-      let len = String.length wasm in
-      Js_of_ocaml.Typed_array.Bigstring.to_arrayBuffer (Bigstringaf.of_string ~off:0 ~len:len wasm)
+      let constructor = Js.Unsafe.global##._Uint8Array in
+      constructor##from
+        (object%js val length = String.length wasm end)
+        (Js.wrap_callback (fun _v k -> Char.code wasm.[k]))
     )
 
 let stdout_buffer = Buffer.create(100)
