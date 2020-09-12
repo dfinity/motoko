@@ -190,6 +190,8 @@ Prim.debugPrint (debug_show x)
       code.value = prog;
       const output = document.getElementById('output');
 
+      Motoko.loadFile("List.mo", "fdgf");
+
       const run = document.getElementById('run');
       run.addEventListener('click', () => {
         output.value = 'Running';

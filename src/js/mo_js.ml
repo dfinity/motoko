@@ -3,6 +3,7 @@ open Source
 open Mo_config
 
 module Js = Js_of_ocaml.Js
+module Sys_js = Js_of_ocaml.Sys_js          
 
 let position_of_pos pos =
   object%js
@@ -74,7 +75,7 @@ let js_compile_wasm mode s =
     )
 
 let stdout_buffer = Buffer.create(100)
-let stderr_buffer = Buffer.create(100)                  
+let stderr_buffer = Buffer.create(100)
 
 let wrap_output f =
   let result = f() in
@@ -89,10 +90,15 @@ let wrap_output f =
   end
 
 let () =
-  Js_of_ocaml.Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
-  Js_of_ocaml.Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
+  Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
+  Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
+  Sys_js.mount ~path:"base/" (fun ~prefix ~path -> Some (Sys_js.read_file ~name:path));
+  let libs = Flags.package_urls in
+  libs := Flags.M.add "base" "base/" !libs;
+  Flags.check_ir := false;
   Js.export "Motoko"
     (object%js
+      method loadFile name content = Sys_js.create_file ~name:(Js.to_string name) ~content:(Js.to_string content)
       method check s = wrap_output (fun _ -> js_check s)
       method compileWasm mode s = wrap_output (fun _ -> js_compile_wasm mode s)
       method run s = wrap_output (fun _ -> js_run s)
