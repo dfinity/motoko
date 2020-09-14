@@ -1,14 +1,14 @@
-ingress Canister Id: ic:0100000000000000000000000000000000012D
-ingress System
-ingress Completed: Canister: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
-ingress System
+ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
-ingress System
+ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 debug.print: hello
 Ok: Reply: 0x4449444c0000

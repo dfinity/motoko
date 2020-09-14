@@ -1,31 +1,22 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update go(0x4449444c0000)
-debug.print: "ic:C0FEFED00D41":
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ update go()
+debug.print: "bfozs-kwa73-7nadi":
 debug.print: "":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL"
-debug.print: "CI":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL"
-debug.print: "https://cern.ch":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Wrong URL scheme (not 'ic:')"
-debug.print: "ic:":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: too short for an ic: URL"
-debug.print: "ic:c0fefed00d41":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
-debug.print: "ic:ABCDEFGH":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not all uppercase hex digit"
-debug.print: "ic:C0FEFED00DE":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an even number of hex digits"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: Not an even number of hex digits"
-debug.print: "ic:C0FEFED00D42":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: CRC-8 mismatch"
-debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: ic_url_decode: CRC-8 mismatch"
-← completed: 0x4449444c0000
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
+debug.print: "BFOZS-KWA73-7NADI":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: "bfozskwa737nadi":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: "vpgq":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
+debug.print: "5h74t-uga73-7nadi":
+Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+← completed: ()

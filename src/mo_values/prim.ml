@@ -294,15 +294,16 @@ let prim =
   | "rts_heap_size" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
+  | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Value.Nat64.of_int 42))
   | "idlHash" -> fun _ v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
-  | "crc32Hash" -> fun _ v k -> let s = as_text v in
+  | "crc32Hash" -> fun _ v k -> let s = as_blob v in
     k (Word32 Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
-    k (Int (Nat.of_int (String.length (Value.as_text v))))
+    k (Int (Nat.of_int (String.length (Value.as_blob v))))
   | "blob_iter" -> fun _ v k ->
-    let s = String.to_seq (Value.as_text v) in
+    let s = String.to_seq (Value.as_blob v) in
     let valuation b = Word8 (Word8.of_int_u (Char.code b)) in
     k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" | "text_iter_done" -> fun _ v k ->

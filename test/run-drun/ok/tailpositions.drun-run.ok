@@ -1,4 +1,4 @@
-ingress Canister Id: ic:0100000000000000000000000000000000012D
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
 debug.print: done 1
 debug.print: done 2
 debug.print: done 3
@@ -6,4 +6,4 @@ debug.print: done 4
 debug.print: done 5
 debug.print: done 6
 debug.print: done 7
-ingress System
+ingress Completed: Reply: 0x4449444c0000

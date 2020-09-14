@@ -1,27 +1,27 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update tie(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ query checkArray(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ query checkRecord(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ query checkCycle(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ upgrade
-← completed
-→ query checkArray(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ query checkRecord(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ query checkCycle(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ upgrade
-← completed
-→ query checkArray2(0x4449444c00017d01)
-← completed: 0x4449444c0000
-→ query checkRecord2(0x4449444c00017d01)
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ update tie(1)
+← completed: ()
+→ query checkArray(1)
+← completed: ()
+→ query checkRecord(1)
+← completed: ()
+→ query checkCycle(1)
+← completed: ()
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ query checkArray(1)
+← completed: ()
+→ query checkRecord(1)
+← completed: ()
+→ query checkCycle(1)
+← completed: ()
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ query checkArray2(1)
+← completed: ()
+→ query checkRecord2(1)
 debug.print: hello
-← completed: 0x4449444c0000
+← completed: ()

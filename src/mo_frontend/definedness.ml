@@ -222,6 +222,8 @@ let check_prog prog =
 
 let check_lib lib =
   Diag.with_message_store (fun msgs ->
-    ignore (exp msgs lib.it);
+    let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+    ignore (group msgs (decs msgs (imp_ds @ ds)));
     Some ()
   )
+

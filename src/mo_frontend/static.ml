@@ -37,7 +37,13 @@ let rec exp m e = match e.it with
   (* Plain values *)
   | (PrimE _ | LitE _ | ActorUrlE _ | FuncE _) -> ()
   | (TagE (_, exp1) | OptE exp1) -> exp m exp1
-  | (TupE es | ArrayE (_, es)) -> List.iter (exp m) es
+  | TupE es -> List.iter (exp m) es
+  | ArrayE (mut, es) ->
+    begin
+      match mut.it with
+      | Const ->  List.iter (exp m) es
+      | Var -> err m e.at
+    end
   | ObjE (_, efs) -> fields m efs
 
   (* Variable access. Dangerous, due to loops. *)

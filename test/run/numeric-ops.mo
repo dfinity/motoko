@@ -71,8 +71,12 @@ func testIntAbs(a : Int) : [Int] {
   [abs1, abs2, abs3, abs4]
 };
 
+verify<Int>([0, 0], testIntAbs(0), intCompare);
+verify<Int>([1, 1], testIntAbs(1), intCompare);
 verify<Int>([4567, 4567], testIntAbs(-4567), intCompare);
-verify<Int>([1073741824, 1073741824], testIntAbs(-1073741824), intCompare);
+verify<Int>([0x40000000, 0x40000000], testIntAbs(-0x40000000), intCompare);
+verify<Int>([0x40000001, 0x40000001], testIntAbs(-0x40000001), intCompare);
+verify<Int>([0x80000000, 0x80000000], testIntAbs(-0x80000000), intCompare);
 
 func testIntNegation(a : Int) : [Int] {
   let neg1 = -a;

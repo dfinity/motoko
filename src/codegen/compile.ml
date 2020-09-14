@@ -94,6 +94,7 @@ module Const = struct
   type lit =
     | Vanilla of int32 (* small words, no static data, already in vanilla format *)
     | BigInt of Big_int.big_int
+    | Bool of bool
     | Word32 of int32
     | Word64 of int64
     | Float64 of Value.Float.t
@@ -111,7 +112,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of int32
+    | Fun of (unit -> int32) (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
@@ -140,6 +141,7 @@ module SR = struct
    *)
   type t =
     | Vanilla
+    | UnboxedBool (* 0 or 1 *)
     | UnboxedTuple of int
     | UnboxedWord64
     | UnboxedWord32
@@ -149,7 +151,7 @@ module SR = struct
 
   let unit = UnboxedTuple 0
 
-  let bool = Vanilla
+  let bool = UnboxedBool
 
   (* Because t contains Const.t, and that contains Const.v, and that contains
      Const.lit, and that contains Big_int, we cannot just use normal `=`. So we
@@ -220,10 +222,7 @@ module E = struct
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
-  type lazy_built_in =
-    | Declared of int32 * (func_with_names -> unit)
-    | Defined of int32
-    | Pending of (unit -> func_with_names)
+  type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
   type t = {
     (* Global fields *)
     (* Static *)
@@ -242,9 +241,10 @@ module E = struct
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
-    globals : (global * string) list ref;
+    globals : (global Lib.Promise.t * string) list ref;
     global_names : int32 NameEnv.t ref;
-    built_in_funcs : lazy_built_in NameEnv.t ref;
+    named_imports : int32 NameEnv.t ref;
+    built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
@@ -278,6 +278,7 @@ module E = struct
     end_of_table = ref 0l;
     globals = ref [];
     global_names = ref NameEnv.empty;
+    named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
@@ -327,17 +328,18 @@ module E = struct
     let gi = reg env.globals (g, name) in
     env.global_names := NameEnv.add name gi !(env.global_names)
 
-  let add_global32 (env : t) name mut init =
-    add_global env name (
-      nr { gtype = GlobalType (I32Type, mut);
+  let add_global32_delayed (env : t) name mut : int32 -> unit =
+    let p = Lib.Promise.make () in
+    add_global env name p;
+    (fun init ->
+      Lib.Promise.fulfill p (nr {
+        gtype = GlobalType (I32Type, mut);
         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I32 init)))))
       })
+    )
 
-  let add_global64 (env : t) name mut init =
-    add_global env name (
-      nr { gtype = GlobalType (I64Type, mut);
-        value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
-      })
+  let add_global32 (env : t) name mut init =
+    add_global32_delayed env name mut init
 
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
@@ -355,7 +357,7 @@ module E = struct
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
-  let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
+  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) !(env.globals)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -369,29 +371,22 @@ module E = struct
     fill (f, local_names);
     fi
 
-  let built_in (env : t) name : int32 =
+  let make_lazy_function env name : lazy_function =
+    Lib.AllocOnUse.make (fun () -> reserve_fun env name)
+
+  let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
-        let (fi, fill) = reserve_fun env name in
-        env.built_in_funcs := NameEnv.add name (Declared (fi, fill)) !(env.built_in_funcs);
-        fi
-    | Some (Declared (fi, _)) -> fi
-    | Some (Defined fi) -> fi
-    | Some (Pending mk_fun) ->
-        let (fi, fill) = reserve_fun env name in
-        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
-        fill (mk_fun ());
-        fi
+      let lf = make_lazy_function env name in
+      env.built_in_funcs := NameEnv.add name lf !(env.built_in_funcs);
+      lf
+    | Some lf -> lf
+
+  let built_in (env : t) name : int32 =
+    Lib.AllocOnUse.use (lookup_built_in env name)
 
   let define_built_in (env : t) name mk_fun : unit =
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-    | None ->
-        env.built_in_funcs := NameEnv.add name (Pending mk_fun) !(env.built_in_funcs);
-    | Some (Declared (fi, fill)) ->
-        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
-        fill (mk_fun ());
-    | Some (Defined fi) ->  ()
-    | Some (Pending mk_fun) -> ()
+    Lib.AllocOnUse.def  (lookup_built_in env name) mk_fun
 
   let get_return_arity (env : t) = env.return_arity
 
@@ -411,26 +406,25 @@ module E = struct
   let get_types (env : t) = !(env.func_types)
 
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if !(env.funcs) = []
-    then
-      let i = {
-        module_name = Wasm.Utf8.decode modname;
-        item_name = Wasm.Utf8.decode funcname;
-        idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
-      } in
-      let fi = reg env.func_imports (nr i) in
-      let name = modname ^ "." ^ funcname in
-      assert (not (NameEnv.mem name !(env.built_in_funcs)));
-      env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
-    else assert false (* "add all imports before all functions!" *)
+    if !(env.funcs) <> [] then
+      raise (CodegenError "Add all imports before all functions!");
+
+    let i = {
+      module_name = Wasm.Utf8.decode modname;
+      item_name = Wasm.Utf8.decode funcname;
+      idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
+    } in
+    let fi = reg env.func_imports (nr i) in
+    let name = modname ^ "." ^ funcname in
+    assert (not (NameEnv.mem name !(env.named_imports)));
+    env.named_imports := NameEnv.add name fi !(env.named_imports)
 
   let call_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-      | Some (Defined fi) -> G.i (Call (nr fi))
+    match NameEnv.find_opt name !(env.named_imports) with
+      | Some fi -> G.i (Call (nr fi))
       | _ ->
-        Printf.eprintf "Function import not declared: %s\n" name;
-        G.i Unreachable
+        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
 
   let get_rts (env : t) = env.rts
 
@@ -439,7 +433,7 @@ module E = struct
   let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
 
   let reserve_static_memory (env : t) size : int32 =
-    if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
+    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -515,7 +509,6 @@ let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
 let compile_rotr_const = compile_op_const I32Op.Rotr
-let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
@@ -677,7 +670,7 @@ module Func = struct
     , E.get_local_names env1)
 
   let define_built_in env name params retty mk_body =
-    E.define_built_in env name (fun () -> of_body env params retty mk_body)
+    E.define_built_in env name (lazy (of_body env params retty mk_body))
 
   (* (Almost) transparently lift code into a function and call this function. *)
   (* Also add a hack to support multiple return values *)
@@ -718,8 +711,8 @@ end (* Func *)
 module RTS = struct
   (* The connection to the C parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "as_memcmp" [I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
+    E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
@@ -736,7 +729,6 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_ne" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_2complement_bits" [I32Type] [I32Type];
@@ -769,7 +761,6 @@ module RTS = struct
     E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "closure_count" [] [I32Type];
-    E.add_func_import env "rts" "closure_table_loc" [] [I32Type];
     E.add_func_import env "rts" "closure_table_size" [] [I32Type];
     E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_compare" [I32Type; I32Type] [I32Type];
@@ -782,8 +773,8 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
-    E.add_func_import env "rts" "ic_url_of_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
+    E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
@@ -806,6 +797,14 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
+    E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
+    E.add_func_import env "rts" "collect" [] [];
+    E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
+    E.add_func_import env "rts" "get_heap_size" [] [I32Type];
+    E.add_func_import env "rts" "init" [] [];
     ()
 
 end (* RTS *)
@@ -821,123 +820,27 @@ module Heap = struct
   let get_heap_base env =
     G.i (GlobalGet (nr (E.get_global env "__heap_base")))
 
-  (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff. This is the actual memory offset, not-skewed yet *)
-  let get_heap_ptr env =
-    G.i (GlobalGet (nr (E.get_global env "end_of_heap")))
-  let set_heap_ptr env =
-    G.i (GlobalSet (nr (E.get_global env "end_of_heap")))
-  let get_skewed_heap_ptr env = get_heap_ptr env ^^ compile_add_const ptr_skew
-
   let register_globals env =
     (* end-of-heap pointer, we set this to __heap_base upon start *)
-    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
-
-    (* counter for total allocations *)
-    E.add_global64 env "allocations" Mutable 0L;
-
-    (* counter for total reclaimed bytes *)
-    E.add_global64 env "reclaimed" Mutable 0L;
-
-    (* counter for max live bytes *)
-    E.add_global64 env "max_live" Mutable 0L
-
-  let count_allocations env =
-    (* assumes number of allocated bytes on the stack *)
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "allocations"))) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-    G.i (GlobalSet (nr (E.get_global env "allocations")))
+    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl
 
   let get_total_allocation env =
-    G.i (GlobalGet (nr (E.get_global env "allocations")))
-
-  let add_reclaimed env =
-    (* assumes number of reclaimed bytes on the stack *)
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "reclaimed"))) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-    G.i (GlobalSet (nr (E.get_global env "reclaimed")))
+    E.call_import env "rts" "get_total_allocations"
 
   let get_reclaimed env =
-    G.i (GlobalGet (nr (E.get_global env "reclaimed")))
+    E.call_import env "rts" "get_reclaimed"
 
   let get_memory_size =
     G.i MemorySize ^^
     compile_mul_const page_size
 
-  let note_live_size env =
-    (* assumes size of live set on the stack *)
-    let (set_live_size, get_live_size) = new_local env "live_size" in
-    set_live_size ^^
-    get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    G.i (GlobalGet (nr (E.get_global env "max_live"))) ^^
-    G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-    G.if_ [] G.nop begin
-      get_live_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-      G.i (GlobalSet (nr (E.get_global env "max_live")))
-    end
-
   let get_max_live_size env =
-    G.i (GlobalGet (nr (E.get_global env "max_live")))
+    E.call_import env "rts" "get_max_live_size"
 
-
-  (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
-  let grow_memory env =
-    Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      get_ptr ^^ compile_divU_const page_size ^^
-      compile_add_const 1l ^^
-      G.i MemorySize ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
-
-      (* Check that the new heap pointer is within the memory *)
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          G.i MemoryGrow ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow memory."
-        ) G.nop
-      )
-
-  let dyn_alloc_words env = G.i (Call (nr (E.built_in env "alloc_words")))
-  let dyn_alloc_bytes env = G.i (Call (nr (E.built_in env "alloc_bytes")))
-
-  let declare_alloc_functions env =
-    (* Dynamic allocation *)
-    Func.define_built_in env "alloc_words" [("n", I32Type)] [I32Type] (fun env ->
-      (* expects the size (in words), returns the skewed pointer *)
-      let get_n = G.i (LocalGet (nr 0l)) in
-      (* return the current pointer (skewed) *)
-      get_skewed_heap_ptr env ^^
-
-      (* Count allocated bytes *)
-      get_n ^^ compile_mul_const word_size ^^
-      count_allocations env ^^
-
-      (* Update heap pointer *)
-      get_heap_ptr env ^^
-      get_n ^^ compile_mul_const word_size ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      set_heap_ptr env ^^
-
-      (* grow memory if needed *)
-      get_heap_ptr env ^^ grow_memory env
-    );
-    Func.define_built_in env "alloc_bytes" [("n", I32Type)] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
-      (* Round up to next multiple of the word size and convert to words *)
-      get_n ^^
-      compile_add_const 3l ^^
-      compile_divU_const word_size ^^
-      dyn_alloc_words env
-    )
+  let dyn_alloc_words env =
+    E.call_import env "rts" "alloc_words"
+  let dyn_alloc_bytes env =
+    E.call_import env "rts" "alloc_bytes"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -995,27 +898,22 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = E.call_import env "rts" "as_memcpy"
+  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
   (* Comparing bytes (works on unskewed memory addresses) *)
-  let memcmp env = E.call_import env "rts" "as_memcmp"
+  let memcmp env = E.call_import env "rts" "memcmp"
 
-  (* Copying words (works on skewed memory addresses) *)
-  let memcpy_words_skewed env =
-    Func.share_code3 env "memcpy_words_skewed" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^ compile_mul_const word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+  let register env =
+    let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
+      get_heap_base env
+    )) in
 
-          get_from ^^
-          get_i ^^ compile_mul_const word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          load_ptr ^^
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_heap_base";
+      edesc = nr (FuncExport (nr get_heap_base_fn))
+    })
 
-          store_ptr
-      )
-    )
+  let get_heap_size env =
+    E.call_import env "rts" "get_heap_size"
 
 end (* Heap *)
 
@@ -1069,66 +967,76 @@ module ClosureTable = struct
   let recall env : G.t = E.call_import env "rts" "recall_closure"
   let count env : G.t = E.call_import env "rts" "closure_count"
   let size env : G.t = E.call_import env "rts" "closure_table_size"
-  let root env : G.t = E.call_import env "rts" "closure_table_loc"
 end (* ClosureTable *)
 
 module Bool = struct
-  (* Boolean literals are either 0 or 1
-     Both are recognized as unboxed scalars anyways,
-     This allows us to use the result of the WebAssembly comparison operators
-     directly, and to use the booleans directly with WebAssembly’s If.
+  (* Boolean literals are either 0 or 1,
+     at StackRep UnboxedWord32
+     They need to be shifted before put in the heap
   *)
+
+  (* in SR.Bool *)
+  let lit = function
+    | false -> compile_unboxed_const 0l
+    | true -> compile_unboxed_const 1l
+
   let vanilla_lit = function
     | false -> 0l
-    | true -> 1l
-
-  let lit b =
-    compile_unboxed_const (vanilla_lit b)
+    | true -> 2l
 
   let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
 end (* Bool *)
-
 
 module BitTagged = struct
 
   (* This module takes care of pointer tagging:
 
      A pointer to an object at offset `i` on the heap is represented as
-     `i-1`, so the low two bits of the pointer are always set. We call
-     `i-1` a *skewed* pointer, in a feeble attempt to avoid the term shifted,
-     which may sound like a logical shift.
+     `i-1`, so the low two bits of the pointer are always set (0b…11).
+     We call `i-1` a *skewed* pointer, in a feeble attempt to avoid the term
+     shifted, which may sound like a logical shift.
 
      We use the constants ptr_skew and ptr_unskew to change a pointer as a
      signpost where we switch between raw pointers to skewed ones.
 
-     This means we can store a small unboxed scalar x as (x `rotl` 2), and still
-     tell it apart from a pointer.
+     This means we can store a small unboxed scalar x as (x `lsl` 1), and still
+     tell it apart from a pointer by looking at the last bits: if set, it is a
+     pointer.
 
-     We actually use the *second* lowest bit to tell a pointer apart from a
-     scalar.
+     Small here means -2^30 ≤ x < 2^30, and untagging needs to happen with an
+     _arithmetic_ right shift. This is the right thing to do for signed
+     numbers, and because we want to apply a consistent logic for all types,
+     especially as there is only one wasm type, we use the same range for
+     signed numbers as well.
 
-     It means that 0 and 1 are also recognized as non-pointers, and we can use
-     these for false and true, matching the result of WebAssembly’s comparison
-     operators.
+     Boolean false is a non-pointer by construction.
+     Boolean true (1) needs to be shifted to be a non-pointer.
+     No unshifting necessary before a branch.
+
+     Summary:
+
+       0b…11: A pointer
+       0b…x0: A shifted scalar
+       0b000: `false`
+       0b010: `true`
+
+     Summary:
+
+       0b…11: A pointer
+       0b…x0: A shifted scalar
+       0b00: `false`
+       0b01: `true`
 
      Note that Word16 and Word8 do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
-     thus the second lowest bit is 0.
+     thus lowest two bits are always 0.
      All arithmetic is implemented directly on that representation, see
-     TaggedSmallWord.
+     module TaggedSmallWord.
   *)
-  let scalar_shift = 2l
-
   let if_tagged_scalar env retty is1 is2 =
-    Func.share_code1 env "is_tagged_scalar" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* Get bit *)
-      get_x ^^
-      compile_bitand_const 0x2l ^^
-      (* Check bit *)
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-    ) ^^
-    G.if_ retty is1 is2
+    compile_bitand_const 0x1l ^^
+    G.if_ retty is2 is1
 
   (* With two bit-tagged pointers on the stack, decide
      whether both are scalars and invoke is1 (the fast path)
@@ -1136,25 +1044,61 @@ module BitTagged = struct
   *)
   let if_both_tagged_scalar env retty is1 is2 =
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    if_tagged_scalar env retty is1 is2
+    compile_bitand_const 0x1l ^^
+    G.if_ retty is2 is1
 
-  let can_untag_scalar (n : int64) =
-    let lower_bound = 0L in (* TBR *)
+  (* 64 bit numbers *)
+
+  (* static *)
+  let can_tag_const (n : int64) =
+    let lower_bound = Int64.(neg (shift_left 1L 30)) in
     let upper_bound = Int64.shift_left 1L 30 in
     lower_bound <= n && n < upper_bound
 
-  (* The untag_scalar and tag functions expect 64 bit numbers *)
-  let untag_scalar env =
-    compile_shrU_const scalar_shift ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+  let tag_const i = Int32.shift_left (Int64.to_int32 i) 1
+
+
+  (* dynamic *)
+  let if_can_tag_i64 env retty is1 is2 =
+    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
+      (* checks that all but the low 30 bits are either all 0 or all 1 *)
+      get_x ^^ compile_shl64_const 1L ^^
+      get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
+      compile_shrU64_const 31L ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+    ) ^^
+    G.if_ retty is1 is2
+
+  let if_can_tag_u64 env retty is1 is2 =
+    compile_shrU64_const 30L ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    G.if_ retty is1 is2
 
   let tag =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_shl_const scalar_shift
+    compile_shl_const 1l
 
-  (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
-  let untag_i32 env = compile_shrU_const scalar_shift
-  let tag_i32 = compile_shl_const scalar_shift
+  let untag env =
+    compile_shrS_const 1l ^^
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+
+  (* 32 bit numbers, dynamic *)
+
+  let if_can_tag_i32 env retty is1 is2 =
+    Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
+      (* checks that all but the low 30 bits are either all 0 or all 1 *)
+      get_x ^^ compile_shl_const 1l ^^
+      get_x ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+      compile_shrU_const 31l
+    ) ^^
+    G.if_ retty is2 is1 (* NB: swapped branches *)
+
+  let if_can_tag_u32 env retty is1 is2 =
+    compile_shrU_const 30l ^^
+    G.if_ retty is2 is1 (* NB: swapped branches *)
+
+  let tag_i32 = compile_shl_const 1l
+  let untag_i32 = compile_shrS_const 1l
 
 end (* BitTagged *)
 
@@ -1181,10 +1125,10 @@ module Tagged = struct
     | Some (* For opt *)
     | Variant
     | Blob
-    | Indirection
+    (* | FwdPtr -- Only used by the GC *)
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
-    | Concat (* String concatenation, used by rts/text.c *)
+    (* | Concat -- String concatenation, used by rts/text.c *)
     | StableSeen (* Marker that we have seen this thing before *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
@@ -1198,10 +1142,8 @@ module Tagged = struct
     | Some -> 8l
     | Variant -> 9l
     | Blob -> 10l
-    | Indirection -> 11l
     | Bits32 -> 12l
     | BigInt -> 13l
-    | Concat -> 14l
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
@@ -1231,12 +1173,6 @@ module Tagged = struct
     load ^^
     set_tag ^^
     go cases
-
-  (* like branch_default but the tag is known statically *)
-  let branch env retty = function
-    | [] -> G.i Unreachable
-    | [_, code] -> G.i Drop ^^ code
-    | (_, code) :: cases -> branch_default env retty code cases
 
   (* like branch_default but also pushes the scrutinee on the stack for the
    * branch's consumption *)
@@ -1408,8 +1344,8 @@ end (* Closure *)
 module BoxedWord64 = struct
   (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
 
-     Small values (just <2^5 for now, so that both code paths are well-tested)
-     are stored unboxed, tagged, see BitTagged.
+     Small values are stored unboxed, tagged, see BitTagged. The bit-tagging logic is
+     contained in BitTagged; here we just do the boxing.
 
      The heap layout of a BoxedWord64 is:
 
@@ -1422,8 +1358,8 @@ module BoxedWord64 = struct
   let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
-    if BitTagged.can_untag_scalar i
-    then Int32.(logor (shift_left (Int64.to_int32 i) 2) (shift_right_logical (Int64.to_int32 i) 31))
+    if BitTagged.can_tag_const i
+    then BitTagged.tag_const i
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits64);
@@ -1439,9 +1375,7 @@ module BoxedWord64 = struct
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-      G.if_ [I32Type]
+      get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
         (get_n ^^ BitTagged.tag)
         (compile_box env get_n)
     )
@@ -1449,14 +1383,12 @@ module BoxedWord64 = struct
   let unbox env = Func.share_code1 env "unbox_i64" ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag_scalar env)
+        ( get_n ^^ BitTagged.untag env)
         ( get_n ^^ Heap.load_field64 payload_field)
     )
+end (* BoxedWord64 *)
 
-  let _box32 env =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ box env
-
-  let _lit env n = compile_const_64 n ^^ box env
+module Word64 = struct
 
   let compile_add env = G.i (Binary (Wasm.Values.I64 I64Op.Add))
   let compile_signed_sub env = G.i (Binary (Wasm.Values.I64 I64Op.Sub))
@@ -1515,8 +1447,8 @@ module BoxedSmallWord = struct
   let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
-    if BitTagged.can_untag_scalar (Int64.of_int (Int32.to_int i))
-    then Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
+    then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits32);
@@ -1532,7 +1464,7 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ [I32Type]
         (get_n ^^ BitTagged.tag_i32)
@@ -1542,7 +1474,7 @@ module BoxedSmallWord = struct
   let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        ( get_n ^^ BitTagged.untag_i32 env)
+        ( get_n ^^ BitTagged.untag_i32)
         ( get_n ^^ Heap.load_field payload_field)
     )
 
@@ -1809,7 +1741,7 @@ module ReadBuf = struct
 end (* Buf *)
 
 
-type comparator = Lt | Le | Ge | Gt | Ne
+type comparator = Lt | Le | Ge | Gt
 
 module type BigNumType =
 sig
@@ -1892,14 +1824,12 @@ let i64op_from_relop = function
   | Le -> I64Op.LeS
   | Ge -> I64Op.GeS
   | Gt -> I64Op.GtS
-  | Ne -> I64Op.Ne
 
 let name_from_relop = function
   | Lt -> "B_lt"
   | Le -> "B_le"
   | Ge -> "B_ge"
   | Gt -> "B_gt"
-  | Ne -> "B_ne"
 
 (* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits) *)
 let unsigned_dynamics get_x =
@@ -1940,36 +1870,30 @@ end
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* Compact BigNums are a representation of signed 31-bit bignums (of the
-     underlying boxed representation `Num`), that fit into an i32.
-     The bits are encoded as
+     underlying boxed representation `Num`), that fit into an i32 as per the
+     BitTagged representation.
 
-       ┌──────────┬───┬──────┐
-       │ mantissa │ 0 │ sign │  = i32
-       └──────────┴───┴──────┘
-     The 2nd LSBit makes unboxed bignums distinguishable from boxed ones,
-     the latter always being skewed pointers.
-
-     By a right rotation one obtains the signed (right-zero-padded) representation,
-     which is usable for arithmetic (e.g. addition-like operators). For some
-     operations (e.g. multiplication) the second argument needs to be furthermore
-     right-shifted. Similarly, for division the result must be left-shifted.
+     Many arithmetic operations can be be performed on this right-zero-padded
+     representation directly. For some operations (e.g. multiplication) the
+     second argument needs to be furthermore right-shifted to avoid overflow.
+     Similarly, for division the result must be left-shifted.
 
      Generally all operations begin with checking whether both arguments are
-     already in unboxed form. If so, the arithmetic can be performed in machine
+     already tagged scalars. If so, the arithmetic can be performed in machine
      registers (fast path). Otherwise one or both arguments need boxing and the
-     arithmetic needs to be carried out on the underlying boxed representation
-     (slow path).
+     arithmetic needs to be carried out on the underlying boxed bignum
+     representation (slow path).
 
      The result appears as a boxed number in the latter case, so a check is
-     performed for possible compactification of the result. Conversely in the
-     former case the 64-bit result is either compactable or needs to be boxed.
+     performed if it can be a tagged scalar. Conversely in the former case the
+     64-bit result can either be a tagged scalar or needs to be boxed.
 
      Manipulation of the result is unnecessary for the comparison predicates.
 
-     For the `pow` operation the check that both arguments are unboxed is not
-     sufficient. Here we count and multiply effective bitwidths to figure out
-     whether the operation will overflow 64 bits, and if so, we fall back to the
-     slow path.
+     For the `pow` operation the check that both arguments are tagged scalars
+     is not sufficient. Here we count and multiply effective bitwidths to
+     figure out whether the operation will overflow 64 bits, and if so, we fall
+     back to the slow path.
    *)
 
   (* TODO: There is some unnecessary result shifting when the div result needs
@@ -1980,55 +1904,24 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
 
-  (* input right-padded with 0 *)
-  let extend =
-    compile_rotr_const 1l
+  (* Tagged scalar to right-0-padded signed i64 *)
+  let extend64 = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* input right-padded with 0 *)
-  let extend64 =
-    extend ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+  (* A variant of BitTagged.can_tag that works on right-0-tagged 64 bit numbers *)
+  let if_can_tag_padded env retty is1 is2 =
+    compile_shrS64_const 1L ^^ BitTagged.if_can_tag_i64 env retty is1 is2
 
-  (* predicate for i64 signed value, checking whether
-     the compact representation is viable;
-     bits should be 31 for right-aligned
-     and 32 for right-0-padded values *)
-  let speculate_compact64 bits =
-    compile_shl64_const 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 Int64.(shift_left minus_one bits) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
-
-  (* input is right-padded with 0 *)
-  let compress32 = compile_rotl_const 1l
-
-  (* input is right-padded with 0
-     precondition: upper 32 bits must be same as 32-bit sign,
-     i.e. speculate_compact64 is valid
-   *)
-  let compress64 =
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compress32
-
-  let speculate_compact =
-    compile_shl_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-    compile_unboxed_const Int32.(shift_left minus_one 31) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-
-  let compress =
-    compile_shl_const 1l ^^ compress32
+  (* right-0-padded signed i64 to tagged scalar *)
+  let tag_padded = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
   (* creates a boxed bignum from a right-0-padded signed i64 *)
   let box64 env = compile_shrS64_const 1L ^^ Num.from_signed_word64 env
 
-  (* creates a boxed bignum from an unboxed 31-bit signed (and rotated) value *)
+  (* creates a boxed bignum from an right-0-padded signed i32 *)
   let extend_and_box64 env = extend64 ^^ box64 env
 
   (* check if both arguments are tagged scalars,
-     if so, promote to signed i64 (with right bit (i.e. LSB) zero) and perform the fast path.
+     if so, promote to right-0-padded, signed i64 and perform the fast path.
      Otherwise make sure that both arguments are in heap representation,
      and run the slow path on them.
      In both cases bring the results into normal form.
@@ -2044,9 +1937,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_a ^^ extend64 ^^
             get_b ^^ extend64 ^^
             fast env ^^ set_res64 ^^
-            get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
-            G.if_ [I32Type]
-              (get_res64 ^^ compress64)
+            get_res64 ^^
+            if_can_tag_padded env [I32Type]
+              (get_res64 ^^ tag_padded)
               (get_res64 ^^ box64 env)
           end
           begin
@@ -2059,60 +1952,57 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             slow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
             G.if_ [I32Type]
-              (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+              (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
               get_res
           end)
 
-  let compile_add = try_unbox2 "B_add" BoxedWord64.compile_add Num.compile_add
+  let compile_add = try_unbox2 "B_add" Word64.compile_add Num.compile_add
 
   let adjust_arg2 code env = compile_shrS64_const 1L ^^ code env
   let adjust_result code env = code env ^^ compile_shl64_const 1L
 
-  let compile_mul = try_unbox2 "B_mul" (adjust_arg2 BoxedWord64.compile_mul) Num.compile_mul
-  let compile_signed_sub = try_unbox2 "B+sub" BoxedWord64.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 "B+div" (adjust_result BoxedWord64.compile_signed_div) Num.compile_signed_div
-  let compile_signed_mod = try_unbox2 "B_mod" BoxedWord64.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 "B_div" (adjust_result BoxedWord64.compile_unsigned_div) Num.compile_unsigned_div
-  let compile_unsigned_rem = try_unbox2 "B_rem" BoxedWord64.compile_unsigned_rem Num.compile_unsigned_rem
-  let compile_unsigned_sub = try_unbox2 "B_sub" BoxedWord64.compile_unsigned_sub Num.compile_unsigned_sub
+  let compile_mul = try_unbox2 "B_mul" (adjust_arg2 Word64.compile_mul) Num.compile_mul
+  let compile_signed_sub = try_unbox2 "B+sub" Word64.compile_signed_sub Num.compile_signed_sub
+  let compile_signed_div = try_unbox2 "B+div" (adjust_result Word64.compile_signed_div) Num.compile_signed_div
+  let compile_signed_mod = try_unbox2 "B_mod" Word64.compile_signed_mod Num.compile_signed_mod
+  let compile_unsigned_div = try_unbox2 "B_div" (adjust_result Word64.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_rem = try_unbox2 "B_rem" Word64.compile_unsigned_rem Num.compile_unsigned_rem
+  let compile_unsigned_sub = try_unbox2 "B_sub" Word64.compile_unsigned_sub Num.compile_unsigned_sub
 
   let compile_unsigned_pow env =
     Func.share_code2 env "B_pow" (("a", I32Type), ("b", I32Type)) [I32Type]
     (fun env get_a get_b ->
     let set_res, get_res = new_local env "res" in
-    let set_a64, get_a64 = new_local64 env "a64" in
-    let set_b64, get_b64 = new_local64 env "b64" in
     let set_res64, get_res64 = new_local64 env "res64" in
     get_a ^^ get_b ^^
     BitTagged.if_both_tagged_scalar env [I32Type]
       begin
-        (* estimate bitcount of result: `bits(a) * b <= 65` guarantees
+        let set_a64, get_a64 = new_local64 env "a64" in
+        let set_b64, get_b64 = new_local64 env "b64" in
+        (* Convert to plain Word64 *)
+        get_a ^^ extend64 ^^ compile_shrS64_const 1L ^^ set_a64 ^^
+        get_b ^^ extend64 ^^ compile_shrS64_const 1L ^^ set_b64 ^^
+
+        (* estimate bitcount of result: `bits(a) * b <= 64` guarantees
            the absence of overflow in 64-bit arithmetic *)
-        get_a ^^ extend64 ^^ set_a64 ^^ compile_const_64 64L ^^
-        get_a64 ^^ get_a64 ^^ compile_shrS64_const 1L ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-        G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        get_b ^^ extend64 ^^ set_b64 ^^ get_b64 ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        compile_const_64 130L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+        compile_const_64 64L ^^
+        get_a64 ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+        get_b64 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
+        compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
         G.if_ [I32Type]
           begin
-            get_a64 ^^ compile_shrS64_const 1L ^^
-            get_b64 ^^ compile_shrS64_const 1L ^^
-            BoxedWord64.compile_unsigned_pow env ^^
-            compile_shl64_const 1L ^^ set_res64 ^^
-            get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
-            G.if_ [I32Type]
-              (get_res64 ^^ compress64)
-              (get_res64 ^^ box64 env)
+            get_a64 ^^ get_b64 ^^ Word64.compile_unsigned_pow env ^^ set_res64 ^^
+            get_res64 ^^ BitTagged.if_can_tag_i64 env [I32Type]
+              (get_res64 ^^ BitTagged.tag)
+              (get_res64 ^^ Num.from_word64 env)
           end
           begin
-            get_a64 ^^ box64 env ^^
-            get_b64 ^^ box64 env ^^
-            Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
-            fits_in_vanilla env ^^
+            get_a64 ^^ Num.from_signed_word64 env ^^
+            get_b64 ^^ Num.from_signed_word64 env ^^
+            Num.compile_unsigned_pow env ^^ set_res ^^
+            get_res ^^ fits_in_vanilla env ^^
             G.if_ [I32Type]
-              (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+              (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
               get_res
           end
       end
@@ -2123,10 +2013,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_b ^^ BitTagged.if_tagged_scalar env [I32Type]
           (get_b ^^ extend_and_box64 env)
           get_b ^^
-        Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
-        fits_in_vanilla env ^^
+        Num.compile_unsigned_pow env ^^ set_res ^^
+        get_res ^^ fits_in_vanilla env ^^
         G.if_ [I32Type]
-          (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+          (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
           get_res
       end)
 
@@ -2134,35 +2024,25 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_n ^^ compile_bitand_const 1l)
+      (get_n ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
-  let can_unbox (n : int) =
-    (* NB: This code is only correct on 64 bit build architectures *)
-    let open Int32 in
-    let lower_bound = to_int (shift_left 3l 30) in (* actually a negative number *)
-    let upper_bound = to_int (shift_right_logical minus_one 2) in
-    lower_bound <= n && n <= upper_bound
-
   let vanilla_lit env = function
-    | n when Big_int.is_int_big_int n && can_unbox (Big_int.int_of_big_int n) ->
-      let i = Int32.of_int (Big_int.int_of_big_int n) in
-      Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    | n when Big_int.is_int_big_int n && BitTagged.can_tag_const (Big_int.int64_of_big_int n) ->
+      BitTagged.tag_const (Big_int.int64_of_big_int n)
     | n -> Num.vanilla_lit env n
 
   let compile_neg env =
     Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_tagged_scalar env [I32Type]
         begin
-          get_n ^^ compile_unboxed_one ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          get_n ^^ compile_eq_const 0x80000000l ^^ (* -2^30 shifted *)
           G.if_ [I32Type]
-            (compile_unboxed_const (vanilla_lit env (Big_int.big_int_of_int 0x40000000)))
+            (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env)
             begin
-              compile_unboxed_zero ^^
-              get_n ^^ extend ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-              compress32
+              compile_unboxed_const 0l ^^
+              get_n ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Sub))
             end
         end
         (get_n ^^ Num.compile_neg env)
@@ -2188,10 +2068,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             slow env
           end)
 
-  let compile_eq = try_comp_unbox2 "B_eq" BoxedWord64.compile_eq Num.compile_eq
+  let compile_eq = try_comp_unbox2 "B_eq" Word64.compile_eq Num.compile_eq
   let compile_relop env bigintop =
     try_comp_unbox2 (name_from_relop bigintop)
-      (fun env' -> BoxedWord64.compile_relop env' (i64op_from_relop bigintop))
+      (fun env' -> Word64.compile_relop env' (i64op_from_relop bigintop))
       (fun env' -> Num.compile_relop env' bigintop)
       env
 
@@ -2203,33 +2083,29 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ slow env)
 
   let fits_unsigned_bits env n =
-    try_unbox I32Type
-      (fun _ -> match n with
-                | _ when n >= 31 -> G.i Drop ^^ Bool.lit true
-                | 30 -> compile_bitand_const 1l ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-                | _ ->
-                  compile_bitand_const
-                    Int32.(logor 1l (shift_left minus_one (n + 2))) ^^
-                  G.i (Test (Wasm.Values.I32 I32Op.Eqz)))
+    try_unbox I32Type (fun _ -> match n with
+        | 32 | 64 -> G.i Drop ^^ Bool.lit true
+        | 8 | 16 ->
+          compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + 1))) ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+        | _ -> assert false
+      )
       (fun env -> Num.fits_unsigned_bits env n)
       env
 
   let fits_signed_bits env n =
     let set_a, get_a = new_local env "a" in
-    try_unbox I32Type
-      (fun _ -> match n with
-                | _ when n >= 31 -> G.i Drop ^^ Bool.lit true
-                | 30 ->
-                  set_a ^^ get_a ^^ compile_shrU_const 31l ^^
-                    get_a ^^ compile_bitand_const 1l ^^
-                    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-                | _ -> set_a ^^ get_a ^^ compile_rotr_const 1l ^^ set_a ^^
-                       get_a ^^ get_a ^^ compile_shrS_const 1l ^^
-                       G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-                       compile_bitand_const
-                         Int32.(shift_left minus_one n) ^^
-                       G.i (Test (Wasm.Values.I32 I32Op.Eqz)))
+    try_unbox I32Type (fun _ -> match n with
+        | 32 | 64 -> G.i Drop ^^ Bool.lit true
+        | 8 | 16 ->
+           set_a ^^
+           get_a ^^ get_a ^^ compile_shrS_const 1l ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+           compile_bitand_const
+             Int32.(shift_left minus_one n) ^^
+           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+        | _ -> assert false
+      )
       (fun env -> Num.fits_signed_bits env n)
       env
 
@@ -2238,19 +2114,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       begin
         fun _ ->
         let set_a, get_a = new_local env "a" in
-        set_a ^^ get_a ^^
-        compile_bitand_const 1l ^^
+        set_a ^^
+        get_a ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
         G.if_ [I32Type]
           begin
             get_a ^^
-            compile_unboxed_one ^^ (* i.e. -(2**30) == -1073741824 *)
-            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            (* -2^30 is small enough for compact representation, but 2^30 isn't *)
+            compile_eq_const 0x80000000l ^^ (* i.e. -2^30 shifted *)
             G.if_ [I32Type]
-              (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env) (* is non-representable *)
+              (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env)
               begin
+                (* absolute value works directly on shifted representation *)
+                compile_unboxed_const 0l ^^
                 get_a ^^
-                compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-                compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
+                G.i (Binary (Wasm.Values.I32 I32Op.Sub))
               end
           end
           get_a
@@ -2264,7 +2141,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_res ^^
     get_res ^^ fits_in_vanilla env ^^
     G.if_ [I32Type]
-      (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+      (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
       get_res
 
   let compile_store_to_data_buf_unsigned env =
@@ -2274,7 +2151,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
       (fun env ->
@@ -2289,7 +2166,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
       (fun env ->
@@ -2301,7 +2178,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun _ ->
         let set_x, get_x = new_local env "x" in
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 ^^ set_x ^^
         I32Leb.compile_leb128_size get_x
       )
       (fun env -> Num.compile_data_size_unsigned env)
@@ -2311,7 +2188,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun _ ->
         let set_x, get_x = new_local env "x" in
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        BitTagged.untag_i32 ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
       (fun env -> Num.compile_data_size_signed env)
@@ -2319,76 +2196,67 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let from_signed_word32 env =
     let set_a, get_a = new_local env "a" in
-    set_a ^^ get_a ^^ get_a ^^
-    speculate_compact ^^
-    G.if_ [I32Type]
-      (get_a ^^ compress)
+    set_a ^^
+    get_a ^^ BitTagged.if_can_tag_i32 env  [I32Type]
+      (get_a ^^ BitTagged.tag_i32)
       (get_a ^^ Num.from_signed_word32 env)
 
   let from_signed_word64 env =
     let set_a, get_a = new_local64 env "a" in
-    set_a ^^ get_a ^^ get_a ^^
-    speculate_compact64 31 ^^
-    G.if_ [I32Type]
-      (get_a ^^ compile_shl64_const 1L ^^ compress64)
+    set_a ^^
+    get_a ^^ BitTagged.if_can_tag_i64 env [I32Type]
+      (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_signed_word64 env)
 
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
-    set_a ^^ get_a ^^
-    compile_unboxed_const Int32.(shift_left minus_one 30) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    G.if_ [I32Type]
-      (get_a ^^ compile_rotl_const 2l)
+    set_a ^^
+    get_a ^^ BitTagged.if_can_tag_u32 env [I32Type]
+      (get_a ^^ BitTagged.tag_i32)
       (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
   let from_word64 env =
     let set_a, get_a = new_local64 env "a" in
-    set_a ^^ get_a ^^
-    compile_const_64 Int64.(shift_left minus_one 30) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if_ [I32Type]
-      (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_rotl_const 2l)
+    set_a ^^
+    get_a ^^ BitTagged.if_can_tag_u64 env [I32Type]
+      (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_word64 env)
 
   let truncate_to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      begin
-        get_a ^^ extend ^^ compile_unboxed_one ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-      end
+      (get_a ^^ BitTagged.untag env)
       (get_a ^^ Num.truncate_to_word64 env)
+
   let truncate_to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ BitTagged.untag_i32)
       (get_a ^^ Num.truncate_to_word32 env)
 
   let to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ extend64 ^^ compile_shrS64_const 1L)
+      (get_a ^^ BitTagged.untag env)
       (get_a ^^ Num.to_word64 env)
+
   let to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ BitTagged.untag_i32)
       (get_a ^^ Num.to_word32 env)
+
   let to_word32_with env =
     let set_a, get_a = new_local env "a" in
     let set_err_msg, get_err_msg = new_local env "err_msg" in
     set_err_msg ^^ set_a ^^
     get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ BitTagged.untag_i32)
       (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
 end
 
@@ -2494,7 +2362,6 @@ module BigNumLibtommath : BigNumType = struct
       | Le -> E.call_import env "rts" "bigint_le"
       | Ge -> E.call_import env "rts" "bigint_ge"
       | Gt -> E.call_import env "rts" "bigint_gt"
-      | Ne -> E.call_import env "rts" "bigint_ne"
 
   let fits_signed_bits env bits =
     E.call_import env "rts" "bigint_2complement_bits" ^^
@@ -2767,6 +2634,17 @@ module Blob = struct
       get_x ^^ Heap.load_field len_field
     )
 
+  let of_ptr_size env = Func.share_code2 env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
+    fun env get_ptr get_size ->
+      let (set_x, get_x) = new_local env "x" in
+      get_size ^^ alloc env ^^ set_x ^^
+      get_x ^^ payload_ptr_unskewed ^^
+      get_ptr ^^
+      get_size ^^
+      Heap.memcpy env ^^
+      get_x
+    )
+
   let of_size_copy env get_size_fun copy_fun offset =
     let (set_len, get_len) = new_local env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
@@ -2790,13 +2668,13 @@ module Blob = struct
         | GeOp -> "Blob.compare_ge"
         | GtOp -> "Blob.compare_gt"
         | EqOp -> "Blob.compare_eq"
-        | NeqOp -> "Blob.compare_ne" in
+        | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       match op with
         (* Some operators can be reduced to the negation of other operators *)
         | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
         | GtOp ->  get_x ^^ get_y ^^ compare env LeOp ^^ Bool.neg
-        | NeqOp -> get_x ^^ get_y ^^ compare env EqOp ^^ Bool.neg
+        | NeqOp -> assert false
         | _ ->
       begin
         let (set_len1, get_len1) = new_local env "len1" in
@@ -2890,9 +2768,6 @@ module Text = struct
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
 
-  let concat_field1 = Int32.add Tagged.header_size 1l
-  let concat_field2 = Int32.add Tagged.header_size 2l
-
   let of_ptr_size env =
     E.call_import env "rts" "text_of_ptr_size"
   let concat env =
@@ -2923,7 +2798,7 @@ module Text = struct
         | GeOp -> "Text.compare_ge"
         | GtOp -> "Text.compare_gt"
         | EqOp -> "Text.compare_eq"
-        | NeqOp -> "Text.compare_ne" in
+        | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
@@ -2933,7 +2808,7 @@ module Text = struct
         | GtOp -> G.i (Compare (Wasm.Values.I32 I32Op.GtS))
         | GeOp -> G.i (Compare (Wasm.Values.I32 I32Op.GeS))
         | EqOp -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-        | NeqOp -> G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^ Bool.neg
+        | NeqOp -> assert false
     )
 
 
@@ -3245,6 +3120,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
+      E.add_func_import env "ic0" "time" [] [I64Type];
       ()
 
   let system_imports env =
@@ -3259,53 +3135,66 @@ module Dfinity = struct
 
   let system_call env modname funcname = E.call_import env modname funcname
 
-  let print_ptr_len env =
-    match E.mode env with
-    | Flags.WasmMode -> G.i Drop ^^ G.i Drop
-    | Flags.ICMode | Flags.RefMode -> system_call env "ic0" "debug_print"
-    | Flags.WASIMode ->
-      Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
-        Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
-          (* We use the iovec functionality to append a newline *)
-          get_iovec_ptr ^^
-          get_ptr ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+  let register env =
 
-          get_iovec_ptr ^^
-          get_len ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 4l; sz = None}) ^^
+      Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
+        match E.mode env with
+        | Flags.WasmMode -> G.i Nop
+        | Flags.ICMode | Flags.RefMode ->
+            G.i (LocalGet (nr 0l)) ^^
+            G.i (LocalGet (nr 1l)) ^^
+            E.call_import env "ic0" "debug_print"
+        | Flags.WASIMode -> begin
+          let get_ptr = G.i (LocalGet (nr 0l)) in
+          let get_len = G.i (LocalGet (nr 1l)) in
 
-          get_iovec_ptr ^^
-          get_iovec_ptr ^^ compile_add_const 16l ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
+          Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
+            (* We use the iovec functionality to append a newline *)
+            get_iovec_ptr ^^
+            get_ptr ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
 
-          get_iovec_ptr ^^
-          compile_unboxed_const 1l ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
+            get_iovec_ptr ^^
+            get_len ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 4l; sz = None}) ^^
 
-          get_iovec_ptr ^^
-          compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
-          G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Types.Pack8}) ^^
+            get_iovec_ptr ^^
+            get_iovec_ptr ^^ compile_add_const 16l ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
 
-          (* Call fd_write twice to work around
-             https://github.com/bytecodealliance/wasmtime/issues/629
-          *)
+            get_iovec_ptr ^^
+            compile_unboxed_const 1l ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
 
-          compile_unboxed_const 1l (* stdout *) ^^
-          get_iovec_ptr ^^
-          compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-          get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-          E.call_import env "wasi_unstable" "fd_write" ^^
-          G.i Drop ^^
+            get_iovec_ptr ^^
+            compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
+            G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Types.Pack8}) ^^
 
-          compile_unboxed_const 1l (* stdout *) ^^
-          get_iovec_ptr ^^ compile_add_const 8l ^^
-          compile_unboxed_const 1l (* one string segment *) ^^
-          get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-          E.call_import env "wasi_unstable" "fd_write" ^^
-          G.i Drop
-        )
-      )
+            (* Call fd_write twice to work around
+               https://github.com/bytecodealliance/wasmtime/issues/629
+            *)
+
+            compile_unboxed_const 1l (* stdout *) ^^
+            get_iovec_ptr ^^
+            compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
+            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            E.call_import env "wasi_unstable" "fd_write" ^^
+            G.i Drop ^^
+
+            compile_unboxed_const 1l (* stdout *) ^^
+            get_iovec_ptr ^^ compile_add_const 8l ^^
+            compile_unboxed_const 1l (* one string segment *) ^^
+            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            E.call_import env "wasi_unstable" "fd_write" ^^
+            G.i Drop)
+          end);
+
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode "print_ptr";
+        edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
+      })
+
+  let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
   let print_text env =
     Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
@@ -3356,7 +3245,7 @@ module Dfinity = struct
 
       G.i (Call (nr (E.built_in env "init"))) ^^
       (* Collect garbage *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
+      E.call_import env "rts" "collect" ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3393,7 +3282,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      G.i (Call (nr (E.built_in env "collect")))
+      E.call_import env "rts" "collect"
     )) in
 
     E.add_export env (nr {
@@ -3416,7 +3305,14 @@ module Dfinity = struct
           (fun env -> system_call env "ic0" "canister_self_copy") 0l
       )
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get self-actor-reference when running locally")
+      E.trap_with env "cannot get self-actor-reference when running locally"
+
+  let get_system_time env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      system_call env "ic0" "time"
+    | _ ->
+      E.trap_with env "cannot get system time when running locally"
 
   let caller env =
     SR.Vanilla,
@@ -3479,15 +3375,9 @@ module Dfinity = struct
 
   (* Actor reference on the stack *)
   let actor_public_field env name =
-    match E.mode env with
-    | Flags.(ICMode | RefMode) ->
-      (* simply tuple canister name and function name *)
-      Blob.lit env name ^^
-      Tuple.from_stack env 2
-    | Flags.WasmMode ->
-      E.trap_with env (Printf.sprintf "cannot access actor with -no-system-api")
-    | Flags.WASIMode ->
-      E.trap_with env (Printf.sprintf "cannot access actor with -wasi-system-api")
+    (* simply tuple canister name and function name *)
+    Blob.lit env name ^^
+    Tuple.from_stack env 2
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
@@ -3521,15 +3411,6 @@ end (* Dfinity *)
 
 module RTS_Exports = struct
   let system_exports env =
-    Heap.declare_alloc_functions env;
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_bytes";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
-    });
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_words";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_words")))
-    });
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -3552,157 +3433,6 @@ module RTS_Exports = struct
     })
 
 end (* RTS_Exports *)
-
-
-module HeapTraversal = struct
-  (* Returns the object size (in words) *)
-  let object_size env =
-    Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^
-      Tagged.branch env [I32Type]
-        [ Tagged.Bits64,
-          compile_unboxed_const 3l
-        ; Tagged.Bits32,
-          compile_unboxed_const 2l
-        ; Tagged.BigInt,
-          compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
-        ; Tagged.Some,
-          compile_unboxed_const 2l
-        ; Tagged.Variant,
-          compile_unboxed_const 3l
-        ; Tagged.ObjInd,
-          compile_unboxed_const 2l
-        ; Tagged.MutBox,
-          compile_unboxed_const 2l
-        ; Tagged.Array,
-          get_x ^^
-          Heap.load_field Arr.len_field ^^
-          compile_add_const Arr.header_size
-        ; Tagged.Blob,
-          get_x ^^
-          Heap.load_field Blob.len_field ^^
-          compile_add_const 3l ^^
-          compile_divU_const Heap.word_size ^^
-          compile_add_const Blob.header_size
-        ; Tagged.Object,
-          get_x ^^
-          Heap.load_field Object.size_field ^^
-          compile_add_const Object.header_size
-        ; Tagged.Closure,
-          get_x ^^
-          Heap.load_field Closure.len_field ^^
-          compile_add_const Closure.header_size
-        ; Tagged.Concat,
-          compile_unboxed_const 4l
-        ]
-        (* Indirections have unknown size. *)
-    )
-
-  let walk_heap_from_to env compile_from compile_to mk_code =
-      let (set_x, get_x) = new_local env "x" in
-      compile_from ^^ set_x ^^
-      compile_while
-        (* While we have not reached the end of the area *)
-        ( get_x ^^
-          compile_to ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtU))
-        )
-        ( mk_code get_x ^^
-          get_x ^^
-          get_x ^^ object_size env ^^ compile_mul_const Heap.word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_x
-        )
-
-  let for_each_array_elem env get_array mk_code =
-      get_array ^^
-      Heap.load_field Arr.len_field ^^
-      from_0_to_n env (fun get_i ->
-        mk_code (
-          get_array ^^
-          get_i ^^
-          Arr.idx env
-        )
-      )
-
-  (* Calls mk_code for each pointer in the object pointed to by get_x,
-     passing code get the address of the pointer,
-     and code to get the offset of the pointer (for the BigInt payload field). *)
-  let for_each_pointer env get_x mk_code mk_code_offset =
-    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
-    let code = mk_code get_ptr_loc in
-    let code_offset = mk_code_offset get_ptr_loc in
-    get_x ^^
-    Tagged.branch_default env [] G.nop
-      [ Tagged.MutBox,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size MutBox.field) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.BigInt,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size 4l) ^^
-        set_ptr_loc ^^
-        code_offset Blob.unskewed_payload_offset
-      ; Tagged.Some,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.Variant,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Variant.payload_field) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.ObjInd,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size 1l) ^^
-        set_ptr_loc ^^
-        code
-      ; Tagged.Array,
-        for_each_array_elem env get_x (fun get_elem_ptr ->
-          get_elem_ptr ^^
-          set_ptr_loc ^^
-          code
-        )
-      ; Tagged.Object,
-        get_x ^^
-        Heap.load_field Object.size_field ^^
-
-        from_0_to_n env (fun get_i ->
-          get_i ^^
-          compile_add_const Object.header_size ^^
-          compile_mul_const Heap.word_size ^^
-          get_x ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_ptr_loc ^^
-          code
-        )
-      ; Tagged.Closure,
-        get_x ^^
-        Heap.load_field Closure.len_field ^^
-
-        from_0_to_n env (fun get_i ->
-          get_i ^^
-          compile_add_const Closure.header_size ^^
-          compile_mul_const Heap.word_size ^^
-          get_x ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_ptr_loc ^^
-          code
-        )
-      ; Tagged.Concat,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Text.concat_field1) ^^
-        set_ptr_loc ^^
-        code ^^
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Text.concat_field2) ^^
-        set_ptr_loc ^^
-        code
-      ]
-
-end (* HeapTraversal *)
 
 module Serialization = struct
   (*
@@ -4183,6 +3913,7 @@ module Serialization = struct
       | Prim Bool ->
         get_data_buf ^^
         get_x ^^
+        BoxedSmallWord.unbox env (* essentially SR.adjust SR.Vanilla SR.bool *) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Tup [] -> (* e(()) = null *)
@@ -4495,7 +4226,11 @@ module Serialization = struct
         TaggedSmallWord.msb_adjust Word8
       | Prim Bool ->
         assert_prim_typ t ^^
-        ReadBuf.read_byte env get_data_buf
+        read_byte_tagged
+          [ Bool.lit false
+          ; Bool.lit true
+          ] ^^
+        BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
       | Prim Null ->
         assert_prim_typ t ^^
         Opt.null_lit
@@ -4942,195 +4677,17 @@ module Stabilization = struct
 end
 
 module GC = struct
-  (* This is a very simple GC:
-     It copies everything live to the to-space beyond the bump pointer,
-     then it memcpies it back, over the from-space (so that we still neatly use
-     the beginning of memory).
 
-     Roots are:
-     * All objects in the static part of the memory.
-     * the closure_table (see module ClosureTable)
-  *)
+  let register env static_roots =
 
-  let gc_enabled = true
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env -> 
+      compile_unboxed_const static_roots
+    )) in
 
-  (* If the pointer at ptr_loc points after begin_from_space, copy
-     to after end_to_space, and replace it with a pointer, adjusted for where
-     the object will be finally. *)
-  (* Returns the new end of to_space *)
-  (* Invariant: Must not be called on the same pointer twice. *)
-  (* All pointers, including ptr_loc and space end markers, are skewed *)
-
-  let evacuate_common env
-        get_obj update_ptr
-        get_begin_from_space get_begin_to_space get_end_to_space
-        =
-
-    let (set_len, get_len) = new_local env "len" in
-
-    (* If this is static, ignore it *)
-    get_obj ^^
-    get_begin_from_space ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    G.if_ [] (get_end_to_space ^^ G.i Return) G.nop ^^
-
-    (* If this is an indirection, just use that value *)
-    get_obj ^^
-    Tagged.branch_default env [] G.nop [
-      Tagged.Indirection,
-      update_ptr (get_obj ^^ Heap.load_field 1l) ^^
-      get_end_to_space ^^ G.i Return
-    ] ^^
-
-    (* Get object size *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    (* Grow memory if needed *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.grow_memory env ^^
-
-    (* Copy the referenced object to to space *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
-
-    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
-
-    (* Calculate new pointer *)
-    get_end_to_space ^^
-    get_begin_to_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    get_begin_from_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    set_new_ptr ^^
-
-    (* Set indirection *)
-    get_obj ^^
-    Tagged.(store Indirection) ^^
-    get_obj ^^
-    get_new_ptr ^^
-    Heap.store_field 1l ^^
-
-    (* Update pointer *)
-    update_ptr get_new_ptr ^^
-
-    (* Calculate new end of to space *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add))
-
-  (* Used for normal skewed pointers *)
-  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
-
-    let get_obj = get_ptr_loc ^^ load_ptr in
-
-    (* If this is an unboxed scalar, ignore it *)
-    get_obj ^^
-    BitTagged.if_tagged_scalar env [] (get_end_to_space ^^ G.i Return) G.nop ^^
-
-    let update_ptr new_val_code =
-      get_ptr_loc ^^ new_val_code ^^ store_ptr in
-
-    evacuate_common env
-        get_obj update_ptr
-        get_begin_from_space get_begin_to_space get_end_to_space
-  )
-
-  (* A variant for pointers that point into the payload (used for the bignum objects).
-     These are never scalars. *)
-  let evacuate_offset env offset =
-    let name = Printf.sprintf "evacuate_offset_%d" (Int32.to_int offset) in
-    Func.share_code4 env name (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
-    let get_obj = get_ptr_loc ^^ load_ptr ^^ compile_sub_const offset in
-
-    let update_ptr new_val_code =
-      get_ptr_loc ^^ new_val_code ^^ compile_add_const offset ^^ store_ptr in
-
-    evacuate_common env
-        get_obj update_ptr
-        get_begin_from_space get_begin_to_space get_end_to_space
-  )
-
-  let register env static_roots (end_of_static_space : int32) =
-    Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
-      Heap.get_heap_ptr env ^^
-      Heap.get_heap_base env ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-    );
-
-    Func.define_built_in env "collect" [] [] (fun env ->
-      if not gc_enabled then G.nop else
-
-      (* Copy all roots. *)
-      let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
-      let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
-      let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
-
-      Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
-      let get_end_from_space = get_begin_to_space in
-      Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
-      Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
-
-
-      (* Common arguments for evacuate *)
-      let evac get_ptr_loc =
-          get_begin_from_space ^^
-          get_begin_to_space ^^
-          get_end_to_space ^^
-          get_ptr_loc ^^
-          evacuate env ^^
-          set_end_to_space in
-
-      let evac_offset get_ptr_loc offset =
-          get_begin_from_space ^^
-          get_begin_to_space ^^
-          get_end_to_space ^^
-          get_ptr_loc ^^
-          evacuate_offset env offset ^^
-          set_end_to_space in
-
-      (* Go through the roots, and evacuate them *)
-      HeapTraversal.for_each_array_elem env (compile_unboxed_const static_roots) (fun get_elem_ptr ->
-        let (set_static, get_static) = new_local env "static_obj" in
-        get_elem_ptr ^^ load_ptr ^^ set_static ^^
-        HeapTraversal.for_each_pointer env get_static evac evac_offset
-      ) ^^
-      evac (ClosureTable.root env) ^^
-
-      (* Go through the to-space, and evacuate that.
-         Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
-       *)
-      HeapTraversal.walk_heap_from_to env
-        get_begin_to_space
-        get_end_to_space
-        (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
-
-      (* Note some stats *)
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      Heap.note_live_size env ^^
-
-      get_end_from_space ^^ get_begin_from_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      Heap.add_reclaimed env ^^
-
-      (* Copy the to-space to the beginning of memory. *)
-      get_begin_from_space ^^ compile_add_const ptr_unskew ^^
-      get_begin_to_space ^^ compile_add_const ptr_unskew ^^
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      Heap.memcpy env ^^
-
-      (* Reset the heap pointer *)
-      get_begin_from_space ^^ compile_add_const ptr_unskew ^^
-      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.set_heap_ptr env
-  )
-
-  let get_heap_size env =
-    G.i (Call (nr (E.built_in env "get_heap_size")))
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "get_static_roots";
+      edesc = nr (FuncExport (nr get_static_roots))
+    })
 
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
@@ -5164,10 +4721,13 @@ module StackRep = struct
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
     | Prim (Text | Blob | Principal) -> Vanilla
     | Prim Float -> UnboxedFloat64
+    | Obj (Actor, _) -> Vanilla
+    | Func (Shared _, _, _, _, _) -> Vanilla
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> [I32Type]
+    | UnboxedBool -> [I32Type]
     | UnboxedWord64 -> [I64Type]
     | UnboxedWord32 -> [I32Type]
     | UnboxedFloat64 -> [F64Type]
@@ -5180,6 +4740,7 @@ module StackRep = struct
 
   let to_string = function
     | Vanilla -> "Vanilla"
+    | UnboxedBool -> "UnboxedBool"
     | UnboxedWord64 -> "UnboxedWord64"
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedFloat64 -> "UnboxedFloat64"
@@ -5197,6 +4758,8 @@ module StackRep = struct
     | Vanilla, _ -> Vanilla
     | Const _, Const _ -> Vanilla
 
+    | Const _, UnboxedBool -> UnboxedBool
+    | UnboxedBool, Const _ -> UnboxedBool
     | Const _, UnboxedWord32 -> UnboxedWord32
     | UnboxedWord32, Const _ -> UnboxedWord32
     | Const _, UnboxedWord64 -> UnboxedWord64
@@ -5221,7 +4784,7 @@ module StackRep = struct
 
   let drop env (sr_in : t) =
     match sr_in with
-    | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
+    | Vanilla | UnboxedBool | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
@@ -5230,8 +4793,8 @@ module StackRep = struct
   *)
   let materialize_lit env (lit : Const.lit) : int32 =
     match lit with
-      (* Booleans are directly in Vanilla representation *)
       | Const.Vanilla n  -> n
+      | Const.Bool n     -> Bool.vanilla_lit n
       | Const.BigInt n   -> BigNum.vanilla_lit env n
       | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
       | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
@@ -5242,7 +4805,7 @@ module StackRep = struct
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
   and materialize_const_v env = function
-    | Const.Fun fi -> Closure.static_closure env fi
+    | Const.Fun get_fi -> Closure.static_closure env (get_fi ())
     | Const.Message fi -> assert false
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
@@ -5263,6 +4826,9 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
+    | UnboxedBool, Vanilla -> BitTagged.tag_i32
+    | Vanilla, UnboxedBool -> BitTagged.untag_i32
+
     | UnboxedWord64, Vanilla -> BoxedWord64.box env
     | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env
 
@@ -5273,6 +4839,7 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
+    | Const (_, Const.Lit (Const.Bool b)), UnboxedBool -> Bool.lit b
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
@@ -5401,7 +4968,7 @@ module VarEnv = struct
   let get_label_depth (ae : t) name : G.depth  =
     match NameEnv.find_opt name ae.labels with
       | Some d -> d
-      | None   -> Printf.eprintf "Could not find %s\n" name; raise Not_found
+      | None   -> raise (CodegenError (Printf.sprintf "Could not find %s\n" name))
 
 end (* VarEnv *)
 
@@ -5531,7 +5098,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        G.i (Call (nr (E.built_in env "collect"))) ^^
+        E.call_import env "rts" "collect" ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
@@ -5560,17 +5127,18 @@ module FuncDec = struct
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
-    let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
+      let (fi, fill) = E.reserve_fun pre_env name in
       ( Const.t_of_v (Const.Message fi), fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( Const.t_of_v (Const.Fun fi), fun env ae ->
+      let lf = E.make_lazy_function pre_env name in
+      ( Const.t_of_v (Const.Fun (fun () -> Lib.AllocOnUse.use lf)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
-        fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
+        Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
     end
 
@@ -5776,6 +5344,23 @@ module FuncDec = struct
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
+
+let equate_msgref env =
+      let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
+      let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
+      set_meth_pair2 ^^ set_meth_pair1 ^^
+      get_meth_pair1 ^^ Arr.load_field 0l ^^
+      get_meth_pair2 ^^ Arr.load_field 0l ^^
+      Blob.compare env Operator.EqOp ^^
+      G.if_ [I32Type]
+      begin
+        get_meth_pair1 ^^ Arr.load_field 1l ^^
+        get_meth_pair2 ^^ Arr.load_field 1l ^^
+        Blob.compare env Operator.EqOp
+      end
+      begin
+        Bool.lit false
+      end
 
   let export_async_method env =
     let name = Dfinity.async_method_name in
@@ -6040,9 +5625,7 @@ let nat64_to_int64 n =
   if sign_big_int q = 0 then r else sub_big_int r twoRaised63
 
 let const_lit_of_lit : Ir.lit -> Const.lit = function
-  (* Booleans are directly in Vanilla representation *)
-  | BoolLit false -> Const.Vanilla (Bool.vanilla_lit false)
-  | BoolLit true  -> Const.Vanilla (Bool.vanilla_lit true)
+  | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt n
   | Word8Lit n    -> Const.Vanilla (Value.Word8.to_bits n) (* already Msb-aligned *)
@@ -6505,7 +6088,7 @@ let compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
                 get_exp ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-                BoxedWord64.compile_unsigned_pow env ^^
+                Word64.compile_unsigned_pow env ^^
                 set_res ^^ get_res ^^ enforce_32_unsigned_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
@@ -6575,7 +6158,7 @@ let compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
                 get_exp ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-                BoxedWord64.compile_unsigned_pow env ^^
+                Word64.compile_unsigned_pow env ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_32_signed_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
@@ -6589,7 +6172,7 @@ let compile_binop env t op =
     get_exp ^^ BigNum.compile_is_negative env ^^
     E.then_trap_with env "negative power" ^^
     get_n ^^ get_exp ^^ pow
-  | Type.(Prim Word64),                       PowOp -> BoxedWord64.compile_unsigned_pow env
+  | Type.(Prim Word64),                       PowOp -> Word64.compile_unsigned_pow env
   | Type.(Prim Int64),                        PowOp ->
     let (set_exp, get_exp) = new_local64 env "exp" in
     set_exp ^^ get_exp ^^
@@ -6599,11 +6182,11 @@ let compile_binop env t op =
     get_exp ^^
     compile_Int64_kernel
       env "pow" BigNum.compile_unsigned_pow
-      (powInt64_shortcut (BoxedWord64.compile_unsigned_pow env))
+      (powInt64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat64),                        PowOp ->
     compile_Nat64_kernel env "pow"
       BigNum.compile_unsigned_pow
-      (powNat64_shortcut (BoxedWord64.compile_unsigned_pow env))
+      (powNat64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "float_pow"
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
@@ -6649,24 +6232,27 @@ let compile_binop env t op =
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
-let compile_eq env = function
-  | Type.(Prim Text) -> Text.compare env Operator.EqOp
-  | Type.(Prim (Blob|Principal)) -> Blob.compare env Operator.EqOp
-  | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
-  | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
+let compile_eq env =
+  let open Type in
+  function
+  | Prim Text -> Text.compare env Operator.EqOp
+  | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env Operator.EqOp
+  | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
+  | Prim Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Prim (Nat | Int) -> BigNum.compile_eq env
+  | Prim (Int64 | Nat64 | Word64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.Non -> G.i Unreachable
-  | Type.(Prim Float) -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
-  | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
+  | Non -> G.i Unreachable
+  | Prim Float -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
+  | t -> todo_trap env "compile_eq" (Arrange_type.typ t)
 
 let get_relops = Operator.(function
   | GeOp -> Ge, I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
   | GtOp -> Gt, I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
   | LeOp -> Le, I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
   | LtOp -> Lt, I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
-  | NeqOp -> Ne, I64Op.Ne, I64Op.Ne, I32Op.Ne, I32Op.Ne
+  | NeqOp -> assert false
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
@@ -6688,10 +6274,8 @@ let compile_relop env t op =
   | Type.(Prim Text), _ -> Text.compare env op
   | Type.(Prim (Blob|Principal)), _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
-  | Type.(Prim Float), NeqOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ne))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
-  | _, NeqOp -> compile_eq env t ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | Type.(Prim Float), GtOp -> G.i (Compare (Wasm.Values.F64 F64Op.Gt))
   | Type.(Prim Float), GeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ge))
   | Type.(Prim Float), LeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Le))
@@ -6750,11 +6334,11 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity return_arity,
       let fun_sr, code1 = compile_exp env ae e1 in
       begin match fun_sr, sort with
-       | SR.Const (_, Const.Fun fi), _ ->
+       | SR.Const (_, Const.Fun mk_fi), _ ->
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-          G.i (Call (nr fi)) ^^
+          G.i (Call (nr (mk_fi ()))) ^^
           FakeMultiVal.load env (Lib.List.make return_arity I32Type)
        | _, Type.Local ->
           let (set_clos, get_clos) = new_local env "clos" in
@@ -6791,6 +6375,11 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae sr_in e1 ^^
       compile_exp_as env ae sr_in e2 ^^
       code
+    (* special case: recognize negation *)
+    | RelPrim (Type.(Prim Bool), Operator.EqOp), [e1; {it = LitE (BoolLit false); _}] ->
+      SR.bool,
+      compile_exp_as_test env ae e1 ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
     | RelPrim (t, op), [e1;e2] ->
       let sr, code = compile_relop env t op in
       SR.bool,
@@ -6993,6 +6582,16 @@ and compile_exp (env : E.t) ae exp =
       end
 
     (* Other prims, unary *)
+    | SerializePrim ts, [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.serialize env ts ^^
+      Blob.of_ptr_size env
+
+    | DeserializePrim ts, [e] ->
+      StackRep.of_arity (List.length ts),
+      compile_exp_as env ae SR.Vanilla e ^^
+      Serialization.deserialize_from_blob false env ts
 
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
@@ -7005,7 +6604,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "text_iter", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
     | OtherPrim "text_iter_done", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_done env
+      SR.bool, compile_exp_vanilla env ae e ^^ Text.iter_done env
     | OtherPrim "text_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
 
@@ -7014,7 +6613,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "blob_iter", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
     | OtherPrim "blob_iter_done", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_done env
+      SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
     | OtherPrim "blob_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
 
@@ -7131,13 +6730,19 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_log"
 
+    (* Other prims, nullary *)
+
+    | SystemTimePrim, [] ->
+      SR.UnboxedWord64,
+      Dfinity.get_system_time env
+
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
       E.call_import env "rts" "version"
 
     | OtherPrim "rts_heap_size", [] ->
       SR.Vanilla,
-      GC.get_heap_size env ^^ Prim.prim_word32toNat env
+      Heap.get_heap_size env ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_memory_size", [] ->
       SR.Vanilla,
@@ -7153,7 +6758,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_max_live_size", [] ->
       SR.Vanilla,
-      Heap.get_max_live_size env ^^ BigNum.from_word64 env
+      Heap.get_max_live_size env ^^ BigNum.from_word32 env
 
     | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
@@ -7234,6 +6839,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "Array.tabulate", [_;_] ->
       const_sr SR.Vanilla (Arr.tabulate env)
     | OtherPrim "btst8", [_;_] ->
+      (* TODO: btstN returns Bool, not a small value *)
       const_sr SR.Vanilla (TaggedSmallWord.btst_kernel env Type.Word8)
     | OtherPrim "btst16", [_;_] ->
       const_sr SR.Vanilla (TaggedSmallWord.btst_kernel env Type.Word16)
@@ -7250,12 +6856,12 @@ and compile_exp (env : E.t) ae exp =
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
-    (* CRC-check and strip "ic:" and checksum *)
+    (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_ic_url")
+      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_principal")
     (* The other direction *)
     | IcUrlOfBlob, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "ic_url_of_blob")
+      const_sr SR.Vanilla (E.call_import env "rts" "principal_of_blob")
 
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->
@@ -7337,12 +6943,13 @@ and compile_exp (env : E.t) ae exp =
   | LitE l ->
     compile_lit env l
   | IfE (scrut, e1, e2) ->
-    let code_scrut = compile_exp_as env ae SR.bool scrut in
+    let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
     let sr = StackRep.relax (StackRep.join sr1 sr2) in
     sr,
-    code_scrut ^^ G.if_
+    code_scrut ^^
+    G.if_
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
@@ -7477,6 +7084,14 @@ and compile_exp_vanilla (env : E.t) ae exp =
 and compile_exp_unit (env : E.t) ae exp =
   compile_exp_as env ae SR.unit exp
 
+(* compiles to something that works with IfE or Eqz
+   (SR.UnboxedWord32 or SR.Vanilla are _both_ ok)
+*)
+and compile_exp_as_test env ae e =
+  let sr, code = compile_exp env ae e in
+  code ^^
+  (if sr != SR.bool then StackRep.adjust env sr SR.Vanilla else G.nop)
+
 (* Compile a prim of type Char -> Char to a RTS call. *)
 and compile_char_to_char_rts env ae exp rts_fn =
   SR.Vanilla,
@@ -7489,7 +7104,7 @@ and compile_char_to_char_rts env ae exp rts_fn =
    have type int32_t -> int32_t where the return value is 0 for 'false' and 1
    for 'true'. *)
 and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
-  SR.Vanilla,
+  SR.bool,
   compile_exp_as env ae SR.Vanilla exp ^^
   TaggedSmallWord.untag_codepoint ^^
   (* The RTS function returns Motoko True/False values (which are represented as
@@ -7879,13 +7494,14 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
 
 and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
   match cu with
+  | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
-  | ActorU (ds, fs, up, _t) ->
-    main_actor mod_env ds fs up
+  | ActorU (as_opt, ds, fs, up, _t) ->
+    main_actor as_opt mod_env ds fs up
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -7909,9 +7525,15 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor mod_env ds fs up =
+and main_actor as_opt mod_env ds fs up =
   Func.define_built_in mod_env "init" [] [] (fun env ->
-    let ae1 = VarEnv.empty_ae in
+    let ae0 = VarEnv.empty_ae in
+
+    (* Add any params to the environment *)
+    let args = match as_opt with None -> [] | Some as_ -> as_ in
+    let arg_names = List.map (fun a -> a.it) args in
+    let arg_tys = List.map (fun a -> a.note) args in
+    let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
 
     (* Reverse the fs, to a map from variable to exported name *)
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7931,6 +7553,22 @@ and main_actor mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.post);
     Dfinity.export_upgrade_methods env;
 
+    (* Deserialize any arguments *)
+    (match as_opt with
+     | Some [] ->
+       (* Liberally accept empty as well as unit argument *)
+       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       G.if_ [] (Serialization.deserialize env arg_tys) G.nop
+     | Some (_ :: _) ->
+       Serialization.deserialize env arg_tys ^^
+       G.concat (List.rev setters)
+     | None ->
+       (* Reject unexpected argument *)
+       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       E.then_trap_with env "unexpected installation argument" ^^
+       G.nop) ^^
+
+    (* Continue with decls *)
     decls_codeW G.nop
   )
 
@@ -7939,15 +7577,22 @@ and conclude_module env start_fi_o =
   FuncDec.export_async_method env;
 
   let static_roots = GC.store_static_roots env in
+  (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
-  E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
+  let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
+
+  Heap.register env;
+  GC.register env static_roots;
+  Dfinity.register env;
+
+  set_heap_base (E.get_end_of_static_memory env);
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Heap.get_heap_base env ^^ Heap.set_heap_ptr env ^^
+    E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
@@ -7956,9 +7601,6 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
-
-
-  GC.register env static_roots (E.get_end_of_static_memory env);
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in

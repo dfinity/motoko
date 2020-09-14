@@ -117,11 +117,11 @@ The interpreter accommodates the examples above.
 
 == Stable and flexible variables
 
-To enable {proglang} to persist the state of variables when a canister is upgraded, you must identify the variables that contain data that must be preserved.
+To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
 
-You identify the variables with data that must be preserved by using the _stable_ modifier as part of the variable declarations in an actor.
+In an actor, you can identify a variable that must be preserved by using the _stable_ modifier as part of the variable's declaration.
 
-Essentially, for every `+let+` and `+var+` variable declaration you define in an actor, you should specify whether the variable is a `+stable+` variable or a `+flexible+` variable. An omitted modifier defaults to `flexible`.
+More precisely, every `+let+` and `+var+` variable declaration in an actor must specify whether the variable is a `+stable+` variable or a `+flexible+` variable. If you don't include a modifier in the declaration, the variable is treated as a `+flexible+` variable by default.
 
 Concretely, you use the following syntax to declare stable or flexible variables in an actor:
 

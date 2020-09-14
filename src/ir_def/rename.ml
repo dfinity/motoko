@@ -143,3 +143,21 @@ and decs rho ds =
   let mk_ds, rho' = decs_aux rho ds in
   let ds' = List.map (fun mk_d -> { mk_d with it = mk_d.it rho' } ) mk_ds in
   (ds', rho')
+
+let comp_unit rho cu = match cu with
+  | ProgU ds ->
+    let ds', _ = decs rho ds in
+    ProgU ds'
+  | LibU (ds, e) ->
+    let ds', rho' = decs rho ds
+    in LibU (ds', exp rho' e)
+  | ActorU (as_opt, ds, fs, { pre; post }, t) ->
+    let as_opt', rho' = match as_opt with
+      | None -> None, rho
+      | Some as_ ->
+        let as_', rho' = args rho as_ in
+        Some as_', rho'
+    in
+    let ds', rho'' = decs rho' ds in
+    ActorU (as_opt', ds', fields rho'' fs,
+      { pre = exp rho'' pre; post = exp rho'' post }, t)

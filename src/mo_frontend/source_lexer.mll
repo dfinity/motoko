@@ -89,14 +89,14 @@ let utf8enc =
 let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
+let byte = '\\'hexdigit hexdigit
 let escape = ['n''r''t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
+  | byte
   | '\\'escape
   | "\\u{" hexnum '}'
-let byte =
-    '\\'hexdigit hexdigit
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -107,7 +107,7 @@ let float =
   | "0x" hexnum '.' hexfrac?
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' (character | byte+) '\''
-let text = '"' (character|byte)* '"'
+let text = '"' character* '"'
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
 
@@ -229,9 +229,9 @@ rule token mode = parse
   | "var" { VAR }
   | "while" { WHILE }
 
-  | "prim" as s { if mode = Privileged then PRIM else ID s }
+  | "prim" as s { if mode.privileged then PRIM else ID s }
   | id as s { ID s }
-  | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
+  | privileged_id as s { if mode.privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl* as s { COMMENT s }
   | "/*" as s {

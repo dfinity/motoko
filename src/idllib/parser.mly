@@ -30,9 +30,6 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
                  "null", Null; "reserved", Reserved; "empty", Empty]
 let is_prim_typs t = List.assoc_opt t prim_typs
 
-let func_modes = ["oneway", Oneway; "query", Query]
-let get_func_mode m = List.assoc_opt m func_modes               
-
 let hash = IdlHash.idl_hash
 let record_fields fs =
   let open Uint32 in
@@ -56,7 +53,7 @@ let record_fields fs =
 %token ARROW
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
 %token SEMICOLON COMMA COLON EQ
-%token OPT VEC RECORD VARIANT BLOB
+%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
@@ -74,12 +71,18 @@ seplist(X, SEP) :
 
 (* Basics *)
 
+%inline text :
+ | s=TEXT
+   { try ignore (Wasm.Utf8.decode s); s
+     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
+   }
+
 %inline id :
   | id=ID { id @@ at $sloc }
 
 %inline name :
   | id=ID { id @@ at $sloc }
-  | text=TEXT { text @@ at $sloc }
+  | text=text { text @@ at $sloc }
 
 (* Types *)
 
@@ -140,11 +143,8 @@ param_typ :
   | name COLON t=data_typ { t }
 
 func_mode :
-  | m=id
-    { match get_func_mode m.it with
-        Some m -> m @@ at $sloc
-      | None -> $syntaxerror
-    }
+  | ONEWAY { Oneway @@ at $sloc }
+  | QUERY { Query @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -170,7 +170,7 @@ def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
   (* TODO enforce all imports to go first in the type definitions  *)
-  | IMPORT file=TEXT
+  | IMPORT file=text
     { ImportD (file, ref "") @@ at $sloc }
 
 id_opt :

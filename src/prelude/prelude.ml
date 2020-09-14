@@ -284,6 +284,20 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   text # "]"
 };
 
+func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
+  if (a.size() != b.size()) {
+    return false;
+  };
+  var i = 0;
+  let s = a.size();
+  while (i < s) {
+    if (not eq(a[i],b[i])) {
+      return false;
+    };
+    i += 1;
+  };
+  return true;
+};
 
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();
@@ -338,6 +352,32 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 
   (enqueue, fulfill, fail)
 };
+
+let @ic00 = actor "aaaaa-aa" : actor {
+  create_canister : () -> async { canister_id : Principal };
+  install_code : {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : Blob;
+    arg : Blob;
+    compute_allocation : ?Nat;
+  } -> async ()
+};
+
+// It would be desirable if create_actor_helper can be defined
+// without paying the extra self-remote-call-cost
+func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let { canister_id = canister_id_ } = await @ic00.create_canister();
+  await @ic00.install_code({
+    mode = #install;
+    canister_id = canister_id_;
+    wasm_module = wasm_module_;
+    arg = arg_;
+    compute_allocation = null
+  });
+  return canister_id_;
+};
+
 |}
 
 (*
@@ -351,6 +391,7 @@ through Array.tabulate.
 *)
 let prim_module =
 {|
+
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
@@ -520,29 +561,28 @@ type ErrorCode = {
 };
 
 // creation and inspection of abstract error
-func error(message : Text) : Error = {
+func error(message : Text) : Error {
   let e = (#canister_reject, message);
-  ((prim "cast" : (ErrorCode, Text) -> Error) e)
+  (prim "cast" : (ErrorCode, Text) -> Error) e
 };
-func errorCode(e : Error) : ErrorCode = {
+func errorCode(e : Error) : ErrorCode =
   ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
-};
-func errorMessage(e : Error) : Text = {
+func errorMessage(e : Error) : Text =
   ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
-};
+
+// Time
+
+func time() : Nat64 = (prim "time" : () -> Nat64) ();
 
 // Principal
 
-func blobOfPrincipal(id : Principal) : Blob = {
-  ((prim "cast" : Principal -> Blob) id)
-};
+func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
 
-func principalOfActor(act : actor {}) : Principal = {
-  ((prim "cast" : (actor {}) -> Principal) act)
-};
+func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
-func caller() : Principal = {
-  ((prim "caller" : () -> Principal) ())
-};
+func caller() : Principal = (prim "caller" : () -> Principal) ();
+
+// Untyped dynamic actor creation from blobs
+let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
 |}

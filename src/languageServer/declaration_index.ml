@@ -224,18 +224,8 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   | _ -> None
 
 let unwrap_module_ast (lib : Syntax.lib) : Syntax.exp_field list option =
-  match lib.it.it with
-  | Syntax.BlockE [] -> None
-  | Syntax.BlockE decs -> (
-      match Lib.List.last decs with
-      | { it = Syntax.ExpD { it = Syntax.ObjE (_, fields); _ }; _ } ->
-          Some fields
-      | { it = Syntax.LetD (_, { it = Syntax.ObjE (_, fields); _ }); _ } ->
-          Some fields
-      | d ->
-          Debug.log "unwrap_module_ast"
-            (Wasm.Sexpr.to_string 80 (Arrange.dec d));
-          None )
+  match lib.it with
+  | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
 let populate_definitions (project_root : string) (libs : Syntax.lib list)

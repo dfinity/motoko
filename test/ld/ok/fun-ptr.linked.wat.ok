@@ -1,0 +1,30 @@
+(module
+  (type (;0;) (func (result i32)))
+  (type (;1;) (func (param i32 i32) (result i32)))
+  (type (;2;) (func))
+  (func $call_imported (type 0) (result i32)
+    call $f2
+    call_indirect (type 0)
+    i32.const 3
+    i32.const 5
+    call_indirect (type 1))
+  (func $__wasm_call_ctors (type 2)
+    call $__wasm_apply_relocs)
+  (func $__wasm_apply_relocs (type 2))
+  (func $f0 (type 1) (param i32 i32) (result i32)
+    local.get 1
+    local.get 0
+    i32.add)
+  (func $f1 (type 0) (result i32)
+    global.get 0)
+  (func $f2 (type 0) (result i32)
+    global.get 1)
+  (func $link_start (type 2)
+    call $__wasm_call_ctors)
+  (table (;0;) 3 3 funcref)
+  (memory (;0;) 2)
+  (global (;0;) i32 (i32.const 1))
+  (global (;1;) i32 (i32.const 2))
+  (global (;2;) i32 (i32.const 65536))
+  (start $link_start)
+  (elem (;0;) (i32.const 1) func $f0 $f1))

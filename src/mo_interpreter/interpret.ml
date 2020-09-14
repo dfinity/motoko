@@ -61,7 +61,7 @@ let env_of_scope flags scope =
     async = false;
   }
 
-let context env = V.Text env.self
+let context env = V.Blob env.self
 
 (* Error handling *)
 
@@ -244,7 +244,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | BlobLit s -> V.Text s (* refine in #1611 *)
+  | BlobLit b -> V.Blob b
   | PreLit _ -> assert false
 
 
@@ -392,7 +392,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
-    | LibPath fp -> k (find fp env.libs)
+    | LibPath fp ->
+      k (find fp env.libs)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -400,10 +401,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_lit env lit)
   | ActorUrlE url ->
     interpret_exp env url (fun v1 ->
-      let open Ic.Url in
-      match parse (V.as_text v1) with
-        | Ok (Ic bytes) -> k (V.Text bytes)
-        | _ -> trap exp.at "could not parse %S as an actor reference"  (V.as_text v1)
+      match Ic.Url.decode_principal (V.as_text v1) with
+      | Ok bytes -> k (V.Blob bytes)
+      | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
@@ -453,13 +453,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
-          | "size" when T.eq exp1.note.note_typ T.text ->
-            text_len (* TODO: remove this hack with Blob value; https://github.com/dfinity-lab/motoko/issues/1611 *)
+          | "size" -> text_len
           | "chars" -> text_chars
+          | _ -> assert false
+        in k (f s exp.at)
+      | V.Blob b ->
+        let f = match id.it with
           | "size" -> blob_size
           | "bytes" -> blob_bytes
           | _ -> assert false
-        in k (f s exp.at)
+        in k (f b exp.at)
       | _ -> assert false
     )
   | AssignE (exp1, exp2) ->
@@ -724,6 +727,7 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
+  | BlobLit b, V.Blob b' -> b = b'
   | PreLit _, _ -> assert false
   | _ -> false
 
@@ -929,12 +933,31 @@ let interpret_prog flags scope p : (V.value * scope) option =
 
 (* Libraries *)
 
+(* Import a module unchanged, and a class constructor as an asynchronous function.
+   The conversion will be unnecessary once we declare classes as asynchronous. *)
+let import_lib env lib =
+  let (_, cub) = lib.it in
+  match cub.it with
+  | Syntax.ModuleU _ ->
+    fun v -> v
+  | Syntax.ActorClassU _ ->
+    fun v ->
+      let call_conv, f = V.as_func v in
+      V.local_func call_conv.Call_conv.n_args 1
+        (fun c v k -> async env lib.at (fun k' _r -> f c v k') k)
+  | _ -> assert false
+
+
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
+  let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_exp env lib.it (fun v -> vo := Some v)
+    let import = import_lib env lib in
+    let (imp_decs, decs) = Syntax.decs_of_comp_unit lib in
+    interpret_block env (imp_decs @ decs) (Some ve) (fun v ->
+      vo := Some (import v))
   );
   Scheduler.run ();
   lib_scope lib.note (Option.get !vo) scope

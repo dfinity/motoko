@@ -57,13 +57,13 @@ let err_unrecognized_url msgs at url msg =
       text = Printf.sprintf "cannot parse import URL \"%s\": %s" url msg
     }
 
-let err_unrecognized_alias_url msgs alias url msg =
+let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
   add_msg msgs {
       sev = Error;
       at = no_region;
       cat = "actor-alias";
-      text = Printf.sprintf "cannot parse URL \"%s\" for actor alias \"%s\": %s" url alias msg
+      text = Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg
     }
 
 let err_actor_import_without_idl_path msgs at =
@@ -103,16 +103,6 @@ let err_alias_not_defined msgs at alias =
     cat = "import";
     text = Printf.sprintf "canister alias \"%s\" not defined" alias
   }
-
-let err_alias_wrong_scheme msgs at alias url =
-  let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at;
-    cat = "import";
-    text = Printf.sprintf "canister alias \"%s\" target \"%s\" is not \"ic:\" url" alias url
-  }
-
 
 let err_package_file_does_not_exist msgs f pname =
   let open Diag in
@@ -166,7 +156,6 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
   end else
     err_file_does_not_exist msgs at full_path
 
-
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
   imported := RIM.add PrimPath at !imported
@@ -185,23 +174,23 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     in
   match Url.parse f with
   | Ok (Url.Relative path) ->
-     (* TODO support importing local .did file *)
-     add_lib_import msgs imported ri_ref at (in_base base path)
+    (* TODO support importing local .did file *)
+    add_lib_import msgs imported ri_ref at (in_base base path)
   | Ok (Url.Package (pkg,path)) ->
-     begin match M.find_opt pkg packages with
-     | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
-     | None -> err_package_not_defined msgs at pkg
-     end
+    begin match M.find_opt pkg packages with
+    | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
+    | None -> err_package_not_defined msgs at pkg
+    end
   | Ok (Url.Ic bytes) -> resolve_ic bytes
   | Ok (Url.IcAlias alias) ->
-     begin match M.find_opt alias aliases with
-     | Some bytes -> resolve_ic bytes
-     | None -> err_alias_not_defined msgs at alias
-     end
+    begin match M.find_opt alias aliases with
+    | Some bytes -> resolve_ic bytes
+    | None -> err_alias_not_defined msgs at alias
+    end
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->
-     err_unrecognized_url msgs at f msg
+    err_unrecognized_url msgs at f msg
 
 (* Resolve the argument to --package. *)
 let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath =
@@ -212,11 +201,10 @@ let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath 
   else (err_package_file_does_not_exist msgs f pname;"")
 
 (* Resolve the argument to --actor-alias. Check eagerly for well-formedness *)
-let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
-  match Url.parse f with
-  | Ok (Url.Ic bytes) -> bytes
-  | Ok _ -> err_alias_wrong_scheme msgs no_region alias f; ""
-  | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
+let resolve_alias_principal (msgs:Diag.msg_store) (alias:string) (f:string) : blob =
+  match Url.decode_principal f with
+  | Ok bytes -> bytes
+  | Error msg -> err_unrecognized_alias msgs alias f msg; ""
 
 
 let prog_imports (p : prog): (url * resolved_import ref * region) list =
@@ -236,8 +224,8 @@ type aliases = blob M.t
 let resolve_packages : package_urls -> package_map Diag.result = fun purls ->
   Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs) purls))
 
-let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_urls ->
-  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_url msgs) alias_urls))
+let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_principals ->
+  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_principal msgs) alias_principals))
 
 type flags = {
   package_urls : package_urls;
