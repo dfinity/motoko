@@ -108,12 +108,10 @@ let print_val _senv v t =
 let dump_prog flag prog =
     if !flag then
       Wasm.Sexpr.print 80 (Arrange.prog prog)
-    else ()
 
 let dump_ir flag prog_ir =
     if !flag then
       Wasm.Sexpr.print 80 (Arrange_ir.prog prog_ir)
-    else ()
 
 (* Parsing *)
 
