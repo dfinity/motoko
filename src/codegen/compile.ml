@@ -3138,8 +3138,6 @@ module Dfinity = struct
 
   let register env =
 
-      let print_ptr_fn = E.built_in env "print_ptr" in
-
       Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
@@ -3194,7 +3192,7 @@ module Dfinity = struct
 
       E.add_export env (nr {
         name = Wasm.Utf8.decode "print_ptr";
-        edesc = nr (FuncExport (nr print_ptr_fn))
+        edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
       })
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
