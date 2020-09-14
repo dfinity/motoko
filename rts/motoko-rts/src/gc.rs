@@ -399,4 +399,13 @@ unsafe extern "C" fn collect() {
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     HP = new_hp as u32;
+
+    // Reset scratch space (for debugging purposes)
+    if cfg!(debug_assertions) {
+        libc::memset(
+            new_hp as *mut _,
+            Bytes((end_to_space - new_hp) as u32).to_words().0 as i32,
+            0,
+        );
+    }
 }
