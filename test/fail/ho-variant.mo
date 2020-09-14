@@ -1,3 +1,4 @@
+
 type Term = {
  #id : Text;
  #lit : Int;
@@ -45,10 +46,3 @@ func eval (env : Text -> Val, e:Term) : Val {
  };
 };
 
-let ? ? x = ? ? 1; // ok
-
-let #outer #middle #inner = loop {}; // ok
-//let _ = #middle #inner; // reject, unbound variable #inner
-let _ = #middle (#inner); // ok
-//let _ = #outer #middle (#inner); // reject unbound variable middle
-let _ = #outer (#middle (#inner)); // ok

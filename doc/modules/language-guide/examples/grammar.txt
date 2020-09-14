@@ -156,7 +156,7 @@
 <exp_un> ::= 
     <exp_post>
     <tag>
-    <tag> <exp_post>
+    <tag> <exp_nullary>
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
@@ -248,7 +248,7 @@
 <pat_un> ::= 
     <pat_nullary>
     <tag>
-    <tag> <pat_un>
+    <tag> <pat_nullary>
     '?' <pat_un>
     <unop> <lit>
 
