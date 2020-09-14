@@ -805,7 +805,8 @@ module RTS = struct
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [] [];
-    E.add_func_import env "rts" "print_closure" [I32Type] [];
+    if !Flags.sanity then
+      E.add_func_import env "rts" "print_closure" [I32Type] [];
     ()
 
 end (* RTS *)
