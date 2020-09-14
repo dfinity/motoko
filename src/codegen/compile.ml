@@ -406,26 +406,25 @@ module E = struct
   let get_types (env : t) = !(env.func_types)
 
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if !(env.funcs) = []
-    then
-      let i = {
-        module_name = Wasm.Utf8.decode modname;
-        item_name = Wasm.Utf8.decode funcname;
-        idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
-      } in
-      let fi = reg env.func_imports (nr i) in
-      let name = modname ^ "." ^ funcname in
-      assert (not (NameEnv.mem name !(env.named_imports)));
-      env.named_imports := NameEnv.add name fi !(env.named_imports);
-    else assert false (* "add all imports before all functions!" *)
+    if !(env.funcs) <> [] then
+      raise (CodegenError "Add all imports before all functions!");
+
+    let i = {
+      module_name = Wasm.Utf8.decode modname;
+      item_name = Wasm.Utf8.decode funcname;
+      idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
+    } in
+    let fi = reg env.func_imports (nr i) in
+    let name = modname ^ "." ^ funcname in
+    assert (not (NameEnv.mem name !(env.named_imports)));
+    env.named_imports := NameEnv.add name fi !(env.named_imports)
 
   let call_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
     match NameEnv.find_opt name !(env.named_imports) with
       | Some fi -> G.i (Call (nr fi))
       | _ ->
-        Printf.eprintf "Function import not declared: %s\n" name;
-        G.i Unreachable
+        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
 
   let get_rts (env : t) = env.rts
 
@@ -4969,7 +4968,7 @@ module VarEnv = struct
   let get_label_depth (ae : t) name : G.depth  =
     match NameEnv.find_opt name ae.labels with
       | Some d -> d
-      | None   -> Printf.eprintf "Could not find %s\n" name; raise Not_found
+      | None   -> raise (CodegenError (Printf.sprintf "Could not find %s\n" name))
 
 end (* VarEnv *)
 
