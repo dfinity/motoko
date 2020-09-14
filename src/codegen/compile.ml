@@ -805,6 +805,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "print_closure" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -4680,7 +4681,7 @@ module GC = struct
 
   let register env static_roots =
 
-    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env -> 
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
       compile_unboxed_const static_roots
     )) in
 
@@ -6851,6 +6852,14 @@ and compile_exp (env : E.t) ae exp =
         set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
+
+    | OtherPrim "printObject", [arg] ->
+        SR.unit,
+        if !Flags.sanity then
+          G.i (LocalGet (nr 1l)) ^^
+          E.call_import env "rts" "print_closure"
+        else
+          G.i Nop
 
     (* Coercions for abstract types *)
     | CastPrim (_,_), [e] ->

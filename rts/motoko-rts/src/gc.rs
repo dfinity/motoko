@@ -4,14 +4,14 @@ use crate::types::*;
 
 extern "C" {
     /// Get __heap_base. Provided by the code generator (src/codegen/compile.ml).
-    fn get_heap_base() -> u32;
+    pub(crate) fn get_heap_base() -> u32;
 
     /// Skewed pointer to a skewed pointer to an array. See closure-table.c for details.
-    fn closure_table_loc() -> SkewedPtr;
+    pub(crate) fn closure_table_loc() -> SkewedPtr;
 
     /// Get pointer to the static memory with an array to the static roots. Provided by the
     /// generated code.
-    fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
 /// Maximum live data retained in a GC.
@@ -60,7 +60,7 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 }
 
 /// Returns object size in words
-unsafe fn object_size(obj: usize) -> Words<u32> {
+pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
@@ -112,8 +112,8 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
     }
 }
 
-fn is_tagged_scalar(p: SkewedPtr) -> bool {
-    p.0 & 0b1 == 0
+pub(crate) fn is_tagged_scalar(p: usize) -> bool {
+    p & 0b1 == 0
 }
 
 unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
@@ -154,7 +154,7 @@ unsafe fn evac(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
-    if is_tagged_scalar(*ptr_loc) {
+    if is_tagged_scalar((*ptr_loc).0) {
         return;
     }
 
