@@ -156,7 +156,8 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, ">");
         }
         TAG_BITS64 => {
-            let _ = write!(buf, "<Bits64>");
+            let bits64 = obj as *const Bits64;
+            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
@@ -188,7 +189,8 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.0);
         }
         TAG_BITS32 => {
-            let _ = write!(buf, "<Bits32>");
+            let bits32 = obj as *const Bits32;
+            let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
         }
         TAG_BIGINT => {
             let bigint = obj as *const BigInt;

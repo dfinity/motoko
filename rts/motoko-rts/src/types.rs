@@ -217,3 +217,15 @@ pub struct Concat {
     pub text1: SkewedPtr,
     pub text2: SkewedPtr,
 }
+
+#[repr(C)]
+pub struct Bits64 {
+    pub header: Obj,
+    pub bits: u64,
+}
+
+#[repr(C)]
+pub struct Bits32 {
+    pub header: Obj,
+    pub bits: u32,
+}
