@@ -3102,7 +3102,11 @@ module Dfinity = struct
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
-      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
+      (match E.mode env with
+       | Flags.RefMode  ->
+         E.add_func_import env "ic0" "call_simple" ((i32s 10) @ [I64Type; I64Type]) [I32Type]
+       | _ ->
+         E.add_func_import env "ic0" "call_simple" ((i32s 10)) [I32Type]);
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
@@ -3115,7 +3119,11 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
-      E.add_func_import env "ic0" "msg_reply" [] [];
+      (match E.mode env with
+       | Flags.RefMode  ->
+         E.add_func_import env "ic0" "msg_reply" [I64Type; I64Type] []
+       | _ ->
+         E.add_func_import env "ic0" "msg_reply" [] []);
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable_write" (i32s 3) [];
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
@@ -3358,8 +3366,13 @@ module Dfinity = struct
         get_data_start ^^
         get_data_size ^^
         system_call env "ic0" "msg_reply_data_append" ^^
+        (match E.mode env with
+         | Flags.RefMode  ->
+           compile_const_64 0L (* cycles *) ^^
+           compile_const_64 0L (* icpts *)
+         | _ -> G.nop) ^^
         system_call env "ic0" "msg_reply"
-    )
+   )
 
   (* Actor reference on the stack *)
   let actor_public_field env name =
@@ -5302,7 +5315,14 @@ module FuncDec = struct
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
-      get_arg ^^ Serialization.serialize env ts1 ^^
+        get_arg ^^ Serialization.serialize env ts1 ^^
+      (* the funds *)
+      (match E.mode env with
+       | Flags.RefMode  ->
+         compile_const_64 0L (* cycles *) ^^
+         compile_const_64 0L (* icpts *)
+       | _ ->
+         G.nop) ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
       (* Check error code *)
@@ -5327,6 +5347,13 @@ module FuncDec = struct
       compile_unboxed_zero ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
+      (* the funds *)
+      (match E.mode env with
+       | Flags.RefMode  ->
+         compile_const_64 0L (* cycles *) ^^
+         compile_const_64 0L (* icpts *)
+       | _ ->
+         G.nop) ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
       (* This is a one-shot function: Ignore error code *)
