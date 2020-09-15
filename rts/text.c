@@ -32,10 +32,10 @@ Note that CONCAT_LEN and BLOB_LEN are identical, so no need to check the
 tag to know the size of the text.
 */
 
-#define CONCAT_WORDS 4
-#define CONCAT_LEN(p) (FIELD(p,1))
-#define CONCAT_ARG1(p) (FIELD(p,2))
-#define CONCAT_ARG2(p) (FIELD(p,3))
+#define CONCAT_WORDS 5
+#define CONCAT_LEN(p) (FIELD(p,2))
+#define CONCAT_ARG1(p) (FIELD(p,3))
+#define CONCAT_ARG2(p) (FIELD(p,4))
 
 
 #define MAX_STR_SIZE ((1<<30)-1)
