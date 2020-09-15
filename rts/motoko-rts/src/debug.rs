@@ -35,14 +35,11 @@ pub(crate) unsafe fn print_closure_table() {
         return;
     }
 
-    let len = (*((*closure_tbl).unskew() as *const Array)).len;
-
-    if len == 0 {
+    let arr = (*closure_tbl).unskew() as *const Array;
+    if arr.len == 0 {
         println!(50, "Closure table empty");
         return;
     }
-
-    let arr = (*closure_tbl).unskew() as *const Array;
 
     println!(50, "Closure table: {}", len);
 
