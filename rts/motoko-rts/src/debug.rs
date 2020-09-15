@@ -153,7 +153,11 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 let _ = write!(buf, " {:#x}", array.get(i).0);
             }
 
-            let _ = write!(buf, ">");
+            if (*array).len > 10 {
+                let _ = write!(buf, " …>");
+            } else {
+                let _ = write!(buf, ">");
+            }
         }
         TAG_BITS64 => {
             let bits64 = obj as *const Bits64;
