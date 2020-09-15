@@ -4,13 +4,16 @@
 #![no_std]
 #![feature(arbitrary_self_types)]
 
+#[cfg(debug_assertions)]
 #[macro_use]
 mod print;
 
 mod alloc;
-mod debug;
 mod gc;
 mod types;
+
+#[cfg(debug_assertions)]
+mod debug;
 
 extern "C" {
     pub(crate) fn rts_trap_with(msg: *const u8) -> !;

@@ -1,8 +1,12 @@
 //! Implements non-allocating printing utilities. All allocations are done on stack.
-//!
-//! TODO: native versions of the macros/functions currently don't do anything.
 
 use core::fmt;
+
+extern "C" {
+    // `print_ptr` is implemented by the code generator and has different implementations depending
+    // on the target platform (WASI or IC).
+    fn print_ptr(ptr: usize, len: u32);
+}
 
 /*
 NB (osa): Implementation below uses const_generics and non-inlined function, which is probably
@@ -52,8 +56,8 @@ macro_rules! format {
     })
 }
 
-/// A stack-allocated buffer that implements `core::fmt::Write`. `Write` methods will write to the
-/// buffer until it's filled and then ignore the rest, without failing.
+/// A buffer that implements `core::fmt::Write`. `Write` methods will write to the buffer until
+/// it's filled and then ignore the rest, without failing.
 pub(crate) struct WriteBuf<'a> {
     buf: &'a mut [u8],
     offset: usize,
@@ -69,6 +73,10 @@ impl<'a> WriteBuf<'a> {
 
     pub(crate) fn reset(&mut self) {
         self.offset = 0;
+    }
+
+    pub(crate) unsafe fn print(&self) {
+        print_ptr(self.buf.as_ptr() as usize, self.offset as u32)
     }
 }
 
@@ -88,28 +96,10 @@ impl<'a> fmt::Write for WriteBuf<'a> {
     }
 }
 
-// TODO (osa): ic0 is only available when compiling to the IC, so the commented-out code below only
-// compiles when using IC.
-//
-// I think we can have another RTS library for emulating some of the IC functions (e.g.
-// debug_print) and link that in the final program when compiling to WASI, but that probably
-// requires some work on mo-ld.
-
-pub(crate) mod ic0 {
-    // NB: The #[link(...)] line below really needs to be before `extern "C"` part, we can't move
-    // it inside the extern block, it doesn't work.
-    // #[link(wasm_import_module = "ic0")]
-    // extern "C" {
-    //     #[no_mangle]
-    //     pub(crate) fn debug_print(msg: *const u8, len: u32);
-    // }
-
-    extern "C" {
-        pub(crate) fn print_ptr(ptr: usize, len: u32);
-    }
+pub(crate) unsafe fn print(buf: &WriteBuf) {
+    buf.print()
 }
 
-pub(crate) unsafe fn print(buf: &WriteBuf) {
-    // ic0::debug_print(buf.buf.as_ptr(), buf.offset as u32);
-    ic0::print_ptr(buf.buf.as_ptr() as usize, buf.offset as u32);
+pub(crate) unsafe fn print_str(str: &str) {
+    print_ptr(str.as_ptr() as usize, str.len() as u32)
 }

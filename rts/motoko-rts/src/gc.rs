@@ -112,8 +112,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     }
 }
 
-pub(crate) fn is_tagged_scalar(p: SkewedPtr) -> bool {
-    p.0 & 0b1 == 0
+pub(crate) fn is_tagged_scalar(p: usize) -> bool {
+    p & 0b1 == 0
 }
 
 unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
@@ -154,7 +154,7 @@ unsafe fn evac(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
-    if is_tagged_scalar(*ptr_loc) {
+    if is_tagged_scalar((*ptr_loc).0) {
         return;
     }
 

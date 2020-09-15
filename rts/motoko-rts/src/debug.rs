@@ -6,6 +6,21 @@ use crate::types::*;
 
 use core::fmt::Write;
 
+/// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
+#[no_mangle]
+unsafe extern "C" fn print_closure(p: usize) {
+    let mut buf = [0u8; 1000];
+    let mut write_buf = WriteBuf::new(&mut buf);
+
+    if gc::is_tagged_scalar(p) {
+        print_tagged_scalar(&mut write_buf, p);
+    } else {
+        print_boxed_object(&mut write_buf, SkewedPtr(p).unskew());
+    }
+
+    print(&write_buf);
+}
+
 pub(crate) unsafe fn dump_heap() {
     print_closure_table();
     print_static_roots();
@@ -20,14 +35,13 @@ pub(crate) unsafe fn print_closure_table() {
         return;
     }
 
-    let len = (*((*closure_tbl).unskew() as *const Array)).len;
+    let arr = (*closure_tbl).unskew() as *const Array;
+    let len = (*arr).len;
 
     if len == 0 {
         println!(50, "Closure table empty");
         return;
     }
-
-    let arr = (*closure_tbl).unskew() as *const Array;
 
     println!(50, "Closure table: {}", len);
 
@@ -36,9 +50,9 @@ pub(crate) unsafe fn print_closure_table() {
 
     for i in 0..len {
         let elem = arr.get(i);
-        if !gc::is_tagged_scalar(elem) {
+        if !gc::is_tagged_scalar(elem.0) {
             let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, elem.unskew());
-            print_closure(&mut write_buf, elem.unskew());
+            print_boxed_object(&mut write_buf, elem.unskew());
             print(&write_buf);
             write_buf.reset();
         }
@@ -63,7 +77,7 @@ pub(crate) unsafe fn print_static_roots() {
     for i in 0..len {
         let obj = static_roots.get(i);
         let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, obj.unskew());
-        print_closure(&mut write_buf, obj.unskew());
+        print_boxed_object(&mut write_buf, obj.unskew());
         print(&write_buf);
         write_buf.reset();
     }
@@ -89,7 +103,7 @@ unsafe fn print_heap() {
     let mut p = heap_begin;
     while p < heap_end {
         let _ = write!(&mut write_buf, "{:#x}: ", p);
-        print_closure(&mut write_buf, p as usize);
+        print_boxed_object(&mut write_buf, p as usize);
         print(&write_buf);
         write_buf.reset();
 
@@ -97,18 +111,14 @@ unsafe fn print_heap() {
     }
 }
 
-#[no_mangle]
-unsafe extern "C" fn print_closure_(p: SkewedPtr) {
-    let mut buf = [0u8; 1000];
-    let mut write_buf = WriteBuf::new(&mut buf);
-
-    print_closure(&mut write_buf, p.unskew());
-
-    print(&write_buf);
+unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: usize) {
+    let _ = write!(buf, "<Scalar {:#x}>", p);
 }
 
 /// Print boxed object at address `p`.
-unsafe fn print_closure(buf: &mut WriteBuf, p: usize) {
+unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
+    let _ = write!(buf, "{:#x}: ", p);
+
     let obj = p as *const Obj;
     let tag = (*obj).tag;
 
@@ -117,10 +127,18 @@ unsafe fn print_closure(buf: &mut WriteBuf, p: usize) {
             let object = obj as *const Object;
             let _ = write!(
                 buf,
-                "<Object size={:#x} hash_ptr={:#x}>",
+                "<Object size={:#x} hash_ptr={:#x} field=[",
                 (*object).size,
                 (*object).hash_ptr
             );
+            let payload_addr = object.payload_addr();
+            for i in 0..(*object).size {
+                let _ = write!(buf, "{:#x}", (*payload_addr.offset(i as isize)).0);
+                if i != (*object).size - 1 {
+                    let _ = write!(buf, ",");
+                }
+            }
+            let _ = write!(buf, "]>");
         }
         TAG_OBJ_IND => {
             let obj_ind = obj as *const ObjInd;
@@ -134,10 +152,15 @@ unsafe fn print_closure(buf: &mut WriteBuf, p: usize) {
                 let _ = write!(buf, " {:#x}", array.get(i).0);
             }
 
-            let _ = write!(buf, ">");
+            if (*array).len > 10 {
+                let _ = write!(buf, " …>");
+            } else {
+                let _ = write!(buf, ">");
+            }
         }
         TAG_BITS64 => {
-            let _ = write!(buf, "<Bits64>");
+            let bits64 = obj as *const Bits64;
+            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
@@ -169,7 +192,8 @@ unsafe fn print_closure(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.0);
         }
         TAG_BITS32 => {
-            let _ = write!(buf, "<Bits32>");
+            let bits32 = obj as *const Bits32;
+            let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
         }
         TAG_BIGINT => {
             let bigint = obj as *const BigInt;
