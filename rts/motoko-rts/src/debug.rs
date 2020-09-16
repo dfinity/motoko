@@ -133,7 +133,16 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             );
             let payload_addr = object.payload_addr();
             for i in 0..(*object).size {
-                let _ = write!(buf, "{:#x}", (*payload_addr.offset(i as isize)).0);
+                let val = (*payload_addr.offset(i as isize)).0;
+                let _ = write!(buf, "{:#x}", val);
+
+                if !gc::is_tagged_scalar(val) {
+                    let indirectee_ptr = SkewedPtr(val).unskew();
+                    let _ = write!(buf, " (indirectee=");
+                    print_boxed_object(buf, indirectee_ptr);
+                    let _ = write!(buf, ")");
+                }
+
                 if i != (*object).size - 1 {
                     let _ = write!(buf, ",");
                 }
