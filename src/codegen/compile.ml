@@ -3121,6 +3121,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       (match E.mode env with
        | Flags.RefMode  ->
+         (* reverting soon *)
          E.add_func_import env "ic0" "msg_reply" [I64Type; I64Type] []
        | _ ->
          E.add_func_import env "ic0" "msg_reply" [] []);
@@ -3130,6 +3131,17 @@ module Dfinity = struct
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
+      (match E.mode env with
+       | Flags.RefMode  ->
+         E.add_func_import env "ic0" "canister_balance" [I64Type] [I64Type];
+         (* coming soon
+         E.add_func_import env "ic0" "msg_funds_available" [I64Type] [I64Type]);
+         E.add_func_import env "ic0" "msg_funds_accepted" [I64Type] [I64Type]);
+         E.add_func_import env "ic0" "msg_funds_accept" [I64Type;I64Type] [I64Type]);                       *)
+         (* disappearing soon *)
+         E.add_func_import env "ic0" "msg_funds_received" [I64Type] [I64Type]
+       | _ ->
+         ());
       ()
 
   let system_imports env =
