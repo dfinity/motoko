@@ -1,0 +1,1 @@
+Fatal error: exception Codegen.Compile.CodegenError("Local actors not supported by backend")
