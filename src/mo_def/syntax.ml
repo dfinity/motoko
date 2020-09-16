@@ -320,6 +320,16 @@ let decs_of_comp_unit (cu : comp_unit) =
   | ActorU (id_opt, fields) ->
     obj_decs Type.Actor cub.at cub.note id_opt fields
 
+(* a hack to support compiling multiple files *)
+let combine_progs progs : prog =
+  let open Source in
+  if progs = []
+  then { it = []; at = no_region; note = "empty" }
+  else { it = Lib.List.concat_map (fun p -> p.it) progs
+       ; at = (Lib.List.last progs).at
+       ; note = (Lib.List.last progs).note
+       }
+
 (* n-ary arguments/result sequences *)
 
 let arity t =

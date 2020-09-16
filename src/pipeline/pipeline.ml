@@ -573,17 +573,6 @@ let load_as_rts () =
 
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
-(* a hack to support compiling multiple files *)
-let combine_progs progs : Syntax.prog =
-  let open Source in
-  if progs = []
-  then { it = []; at = no_region; note = "empty" }
-  else { it = Lib.List.concat_map (fun p -> p.it) progs
-       ; at = (Lib.List.last progs).at
-       ; note = (Lib.List.last progs).note
-       }
-
-
 (* This transforms the flat list of libs (some of which are classes)
    into a list of imported libs and (compiled) classes *)
 let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
@@ -615,7 +604,7 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
 
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let imports = compile_libs mode libs in
-  let prog = combine_progs progs in
+  let prog = Syntax.combine_progs progs in
   let u = Syntax.comp_unit_of_prog false prog in
   compile_unit mode do_link imports u
 
@@ -643,7 +632,7 @@ let import_libs libs : Lowering.Desugar.import_declaration =
   Lib.List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
-  let prog = combine_progs progs in
+  let prog = Syntax.combine_progs progs in
   let name = prog.Source.note in
   let imports = import_libs libs in
   let u = Syntax.comp_unit_of_prog false prog in
