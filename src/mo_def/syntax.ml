@@ -253,7 +253,7 @@ let obj_decs obj_sort at note id_opt fields =
     ]
 
 (* To enable uniform definedness checking, typechecking and interpretation,
-   present the unit as a list of declarations.   
+   present the unit as a list of declarations.
 *)
 let decs_of_comp_unit (cu : comp_unit) =
   let open Source in
