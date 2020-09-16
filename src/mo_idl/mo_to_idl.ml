@@ -177,7 +177,12 @@ let actor progs =
   match cub.it with
   | ProgU _ | ModuleU _ -> None
   | ActorU _ -> Some (typ cub.note.note_typ)
-  | ActorClassU _ -> Some (typ cub.note.note_typ)
+  | ActorClassU _ ->
+     (match cub.note.note_typ with
+      | Func (Local, Returns, [], args, [actor]) ->
+         Some (typ actor)
+      | _ -> assert false
+     )
 
 let prog (progs, senv) : I.prog =
   env := Env.empty;
