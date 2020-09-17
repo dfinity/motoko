@@ -32,4 +32,4 @@ type Car =
    model: text;
    plate: text;
  };
-
+service : (DMV) -> PACars

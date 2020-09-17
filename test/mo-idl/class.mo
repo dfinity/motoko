@@ -1,4 +1,4 @@
-import L "List";
+import L "import/List";
 actor class (init : L.List<Nat>) {
     var list = init;
     public func get() : async L.List<Int> { list };
