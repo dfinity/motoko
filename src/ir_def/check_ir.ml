@@ -196,6 +196,8 @@ let rec check_typ env typ : unit =
           "one-shot function cannot have non-unit return types:\n  %s"
           (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
+        check env no_region (binds <> [])
+          "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env no_region (sort <> T.Local)
@@ -1003,6 +1005,11 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_comp_unit env = function
+  | LibU (ds, e) ->
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds;
+    check_exp env' e;
   | ProgU ds ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in

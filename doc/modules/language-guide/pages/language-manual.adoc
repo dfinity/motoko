@@ -1,6 +1,7 @@
 = Language quick reference
 :proglang: Motoko
 :candid: Candid
+:sdk-short-name: DFINITY Canister SDK
 :company-id: DFINITY
 ////
 * targetting release 0.5.4

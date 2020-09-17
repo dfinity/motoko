@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 
-let t = "wrong"; // test capture avoidance
+// let t = "wrong"; // test capture avoidance
 
 shared actor class (t : Text) {
 

@@ -110,7 +110,7 @@ WASM_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm test_rts test_leb128
+all: mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128
 
 _build/wasm _build/native:
 	mkdir -p $@
@@ -144,6 +144,9 @@ RTSFILES=rts idl bigint float char buf utf8_valid closure-table text blob princi
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
 
+_build/wasm/%_debug.o: %.c rts.h buf.h | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
+
 _build/native/%.o: %.c rts.h buf.h | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
 
@@ -165,15 +168,35 @@ _build/wasm/libmotoko_rts.a: | _build/wasm
 		-Crelocation-model=pic -Ccodegen-units=1
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
+.PHONY: _build/wasm/libmotoko_rts_debug.a
+_build/wasm/libmotoko_rts_debug.a: | _build/wasm
+	# NB. codegen-units=1 is to make debugging easier, not strictly
+	# necessary
+	cd motoko-rts && \
+	    xargo -v rustc --target=wasm32-unknown-emscripten -- \
+		-Crelocation-model=pic -Ccodegen-units=1
+	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
+
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
+RTS_DEBUG_WASM_O=$(RTSFILES:%=_build/wasm/%_debug.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
 
 #
 # The actual RTS, as we ship it with the compiler
 #
 
 mo-rts.wasm: $(RTS_RUST_WASM_O) $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+	$(WASM_LD) -o $@ \
+		--import-memory --shared --no-entry --gc-sections \
+		--export=__wasm_call_ctors \
+		--export=memcpy \
+		--export=memcmp \
+		--whole-archive \
+		$+
+
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(RTS_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
@@ -193,4 +216,4 @@ test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ $+
 
 clean:
-	rm -rf _build mo-rts.wasm test_rts test_leb128 motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home
+	rm -rf _build mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128 motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home

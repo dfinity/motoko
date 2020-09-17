@@ -1,5 +1,5 @@
-type Pair = (Int,Int);
 actor {
+  public type Pair = (Int,Int);
   public query func len2(x:Text, y:Text) : async Pair {
     (x.size(), y.size())
   }

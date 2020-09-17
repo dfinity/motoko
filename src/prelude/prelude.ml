@@ -352,6 +352,34 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 
   (enqueue, fulfill, fail)
 };
+
+let @ic00 = actor "aaaaa-aa" : actor {
+  create_canister : () -> async { canister_id : Principal };
+  install_code : {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : Blob;
+    arg : Blob;
+    compute_allocation : ?Nat;
+    memory_allocation : ?Nat;
+  } -> async ()
+};
+
+// It would be desirable if create_actor_helper can be defined
+// without paying the extra self-remote-call-cost
+func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let { canister_id = canister_id_ } = await @ic00.create_canister();
+  await @ic00.install_code({
+    mode = #install;
+    canister_id = canister_id_;
+    wasm_module = wasm_module_;
+    arg = arg_;
+    compute_allocation = null;
+    memory_allocation = null;
+  });
+  return canister_id_;
+};
+
 |}
 
 (*
@@ -365,6 +393,7 @@ through Array.tabulate.
 *)
 let prim_module =
 {|
+
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
@@ -554,5 +583,8 @@ func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
 func caller() : Principal = (prim "caller" : () -> Principal) ();
+
+// Untyped dynamic actor creation from blobs
+let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
 |}

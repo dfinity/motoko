@@ -31,6 +31,9 @@ val fresh_id : string -> unit -> id
 val fresh_var : string -> typ -> var
 val fresh_vars : string -> typ list -> var list
 
+(* type arguments *)
+
+val typ_arg : con -> bind_sort -> typ -> typ_bind
 
 (* Patterns *)
 
@@ -45,9 +48,11 @@ val seqP : pat list -> pat
 val varE : var -> exp
 val primE : Ir.prim -> exp list -> exp
 val selfRefE : typ -> exp
-val asyncE : typ -> typ -> exp -> exp
 val assertE : exp -> exp
-val awaitE : typ -> exp -> exp -> exp
+val asyncE : typ_bind -> exp -> typ -> exp
+val awaitE : exp -> exp
+val cps_asyncE : typ -> typ -> exp -> exp
+val cps_awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
@@ -64,6 +69,9 @@ val unitE : exp
 val boolE : bool -> exp
 val nullE : unit -> exp
 
+val funcE : string -> func_sort -> control ->
+  typ_bind list -> arg list -> typ list -> exp ->
+  exp
 val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
@@ -101,7 +109,7 @@ val letD : var -> exp -> dec
 val varD : id -> typ -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
-val nary_funcD : var  -> var list -> exp -> dec
+val nary_funcD : var -> var list -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 
