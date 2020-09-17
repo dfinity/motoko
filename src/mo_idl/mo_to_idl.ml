@@ -184,7 +184,7 @@ let actor progs =
   | ProgU _ | ModuleU _ -> None
   | ActorU _ -> Some (typ cub.note.note_typ)
   | ActorClassU _ ->
-     (match cub.note.note_typ with
+     (match normalize cub.note.note_typ with
       | Func (Local, Returns, [], args, [actor]) ->
          let args = List.map typ args in
          let actor = typ actor in

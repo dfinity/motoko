@@ -1,7 +1,8 @@
-import Car "import/car";
+import T "import/car";
 
-actor class (dmv : Car.DMV) {
-  public func verifyCarInformation(user : User, car : Car.Car) : async ?(shared (Location, TimeSpan) -> async Result) {
+actor class Car(dmv : T.DMV) {
+  /* Higher order function is supported for now.
+  public func verifyCarInformation(user : User, car : T.Car) : async ?(shared (Location, TimeSpan) -> async Result) {
     let carInfo = await dmv.check(car);
     if (carInfo.isValid and not carInfo.wasStolen) {
       return ?(shared func (location:Location, time:TimeSpan) : async Result {
@@ -11,8 +12,8 @@ actor class (dmv : Car.DMV) {
       return null;
     }
   };
-
-  flexible func reserveSpot(user : User, carInfo : Car.CarInfo, location : Location, timeSpan : TimeSpan) : Result {
+  */
+  public func reserveSpot(user : User, carInfo : T.CarInfo, location : Location, timeSpan : TimeSpan) : async Result {
     // Do the actual work of registering the parking spot for the
     // given car in the given time span
     return null;

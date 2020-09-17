@@ -1,5 +1,5 @@
 import L "import/List";
-actor class (init : L.List<Nat>) {
+actor class A(init : L.List<Nat>) {
     var list = init;
     public func get() : async L.List<Int> { list };
 };

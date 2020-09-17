@@ -431,8 +431,6 @@ let check_string s name : check_result =
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  (* Enable compiled flag to report warnings for actor class *)
-  let _ = Flags.(compiled := true) in
   let* () = Typing.check_actors senv progs in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
