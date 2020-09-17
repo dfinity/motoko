@@ -2241,7 +2241,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
             if ds <> [] || ds' <> []  then
-              recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
+              recover (error env d.at)
                 "an actor or actor class must be the only non-imported declaration in a program"
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
