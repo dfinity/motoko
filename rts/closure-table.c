@@ -36,13 +36,6 @@ static uint32_t n_closures = 0;
 // next free
 static uint32_t free_slot = FULL;
 
-static as_ptr alloc_array(uint32_t len) {
-  as_ptr a = alloc_words(ARRAY_HEADER_SIZE + len);
-  TAG(a) = TAG_ARRAY;
-  ARRAY_LEN(a) = len;
-  return a;
-}
-
 static void create_closure_table() {
   table = alloc_array(INITIAL_SIZE);
   free_slot = 0;
