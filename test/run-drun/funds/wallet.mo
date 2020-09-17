@@ -8,7 +8,7 @@ shared {caller}  actor class () {
   let owner = caller;
 
   print("wallet created");
-  
+
   public func balance(u : Funds.Unit) : async Nat64 {
     return Funds.balance(u);
   };
