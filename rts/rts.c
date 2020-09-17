@@ -14,7 +14,7 @@ char *alloc(size_t n) {
 
 export as_ptr alloc_array(uint32_t len) {
   // Array payload should not be larger than half of the memory.
-  if (len > 2 << (32 - 2 - 1)) { // 2 for word size, 1 to divide by two
+  if (len > 1 << (32 - 2 - 1)) { // 2 for word size, 1 to divide by two
     rts_trap_with("Array allocation too large");
   }
 
