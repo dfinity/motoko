@@ -1,4 +1,4 @@
-type anon-class-2.1 = 
+type anon_class_2_1 = 
  service {
    get: () -> (List);
  };
@@ -7,4 +7,4 @@ type List =
        head: int;
        tail: List;
      };
-service : (List) -> anon-class-2.1
+service : (List) -> anon_class_2_1
