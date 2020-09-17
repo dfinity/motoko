@@ -1,5 +1,5 @@
 {
-    "common": {
+   "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
         "rev": "d8396f46fac5dc59a657a17e6e52898d9bf0797f",
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "joachim/impl-funds",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "40c0c55782afd4026179ab796f8904d97ee09131",
+        "rev": "4557e7fd4d7f193e61dd89bb89d64d1b49df8705",
         "type": "git"
     },
     "libtommath": {
