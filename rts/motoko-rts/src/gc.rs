@@ -210,7 +210,7 @@ unsafe fn evac_bigint_blob(
     let blob_payload_addr = *ptr_loc;
 
     // Get blob object from the payload
-    let mut blob_obj_addr = skew(blob_payload_addr - size_of::<Blob>().0 as usize);
+    let mut blob_obj_addr = skew(blob_payload_addr - size_of::<Blob>().to_bytes().0 as usize);
     // Create a temporary field to the blob object, to be passed to `evac`.
     let blob_obj_addr_field = &mut blob_obj_addr;
     let blob_obj_addr_field_ptr = blob_obj_addr_field as *mut _;
