@@ -800,11 +800,11 @@ module RTS = struct
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "collect" [] [];
-    E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -839,8 +839,6 @@ module Heap = struct
 
   let dyn_alloc_words env =
     E.call_import env "rts" "alloc_words"
-  let dyn_alloc_bytes env =
-    E.call_import env "rts" "alloc_bytes"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -2612,18 +2610,7 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
-      let (set_x, get_x) = new_local env "x" in
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      get_len ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.dyn_alloc_bytes env ^^
-      set_x ^^
-
-      get_x ^^ Tagged.(store Blob) ^^
-      get_x ^^ get_len ^^ Heap.store_field len_field ^^
-      get_x
-   )
+  let alloc env = E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
