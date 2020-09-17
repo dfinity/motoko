@@ -608,9 +608,8 @@ func fundsAvailable(u : Unit) : Nat64 {
   (prim "fundsAvailable" : Nat64 -> Nat64) (unitToNat64 u);
 };
 
-
 func fundsRefunded(u : Unit) : Nat64 {
-  (prim "fundsAvailable" : Nat64 -> Nat64) (unitToNat64 u);
+  (prim "fundsRefunded" : Nat64 -> Nat64) (unitToNat64 u);
 };
 
 func fundsAccept(u : Unit, amount: Nat64) : () {
