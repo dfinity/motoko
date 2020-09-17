@@ -8,7 +8,7 @@
     "dfinity": {
         "ref": "joachim/multi-value",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "efad48f0412c006f8718c6a94ae4fc082b7385f8",
+        "rev": "1c00dc3701bc169cda7dca6a34fde485540d20cd",
         "type": "git"
     },
     "esm": {
