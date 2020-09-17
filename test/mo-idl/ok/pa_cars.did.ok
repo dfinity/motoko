@@ -1,3 +1,8 @@
+type anon_class_3_1 = 
+ service {
+   verifyCarInformation: (User, Car) ->
+    (opt func (Location, TimeSpan) -> (Result));
+ };
 type User = record {name: text;};
 type TimeSpan = 
  record {
@@ -5,11 +10,6 @@ type TimeSpan =
    start: int;
  };
 type Result = opt record {reservationId: text;};
-type PACars = 
- service {
-   verifyCarInformation: (User, Car) ->
-    (opt func (Location, TimeSpan) -> (Result));
- };
 type Location = 
  record {
    lat: float64;
@@ -32,4 +32,4 @@ type Car =
    model: text;
    plate: text;
  };
-service : (DMV) -> PACars
+service : (DMV) -> anon_class_3_1

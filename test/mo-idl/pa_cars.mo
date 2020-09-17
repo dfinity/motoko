@@ -1,6 +1,6 @@
 import Car "import/car";
 
-actor class PACars(dmv : Car.DMV) {
+actor class (dmv : Car.DMV) {
   public func verifyCarInformation(user : User, car : Car.Car) : async ?(shared (Location, TimeSpan) -> async Result) {
     let carInfo = await dmv.check(car);
     if (carInfo.isValid and not carInfo.wasStolen) {

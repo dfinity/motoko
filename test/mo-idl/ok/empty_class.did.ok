@@ -1,5 +1,5 @@
-type Counter = 
+type anon_class_1_1 = 
  service {
    dec: () -> () oneway;
  };
-service : () -> Counter
+service : () -> anon_class_1_1
