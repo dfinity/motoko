@@ -172,35 +172,17 @@ let gather_decs () =
 
 let actor progs =
   let open E in
-  let find_last_actor (prog : prog) =
-    let check_dec d t def =
-      let rec check_pat p =
-        match p.it with
-        | WildP -> Some t
-        | VarP id -> Some t
-        | ParP p -> check_pat p
-        | _ -> def
-      in
-      match d.it with
-      | ExpD _ -> Some t
-      | LetD (pat, _) -> check_pat pat
-      | _ -> def
-    in
-    List.fold_left
-      (fun actor (d : dec) ->
-        match d.note.note_typ with
-        | Obj (Actor, _) as t -> check_dec d t actor
-        | Con (c, []) as t when is_actor_con c -> check_dec d t actor
-        | _ -> actor
-      ) None prog.it in
-
-  match progs with
-  | [] -> None
-  | _ ->
-     let prog = Lib.List.last progs in
-     match find_last_actor prog with
-     | None -> None
-     | Some t -> Some (typ t)
+  let prog = combine_progs progs in
+  let (_, cub) = (comp_unit_of_prog false prog).it in
+  match cub.it with
+  | ProgU _ | ModuleU _ -> None
+  | ActorU _ -> Some (typ cub.note.note_typ)
+  | ActorClassU _ ->
+     (match cub.note.note_typ with
+      | Func (Local, Returns, [], args, [actor]) ->
+         Some (typ actor)
+      | _ -> assert false
+     )
 
 let prog (progs, senv) : I.prog =
   env := Env.empty;

@@ -1,6 +1,6 @@
 #include "rts.h"
 
-as_ptr alloc_blob(size_t n) {
+export as_ptr alloc_blob(size_t n) {
   as_ptr r = alloc_bytes (BLOB_HEADER_SIZE*sizeof(void*) + n);
   TAG(r) = TAG_BLOB;
   BLOB_LEN(r) = n;
