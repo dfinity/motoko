@@ -604,7 +604,7 @@ func fundsBalance(u : Unit) : Nat64 {
   (prim "fundsBalance" : Nat64 -> Nat64) (unitToNat64 u);
 };
 
-func fundAvailable(u : Unit) : Nat64 {
+func fundsAvailable(u : Unit) : Nat64 {
   (prim "fundsAvailable" : Nat64 -> Nat64) (unitToNat64 u);
 };
 
