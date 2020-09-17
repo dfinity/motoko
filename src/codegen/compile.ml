@@ -3119,12 +3119,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
-      (match E.mode env with
-       | Flags.RefMode  ->
-         (* reverting soon *)
-         E.add_func_import env "ic0" "msg_reply" [I64Type; I64Type] []
-       | _ ->
-         E.add_func_import env "ic0" "msg_reply" [] []);
+      E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable_write" (i32s 3) [];
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
@@ -3134,12 +3129,9 @@ module Dfinity = struct
       (match E.mode env with
        | Flags.RefMode  ->
          E.add_func_import env "ic0" "canister_balance" [I64Type] [I64Type];
-         (* coming soon
-         E.add_func_import env "ic0" "msg_funds_available" [I64Type] [I64Type]);
-         E.add_func_import env "ic0" "msg_funds_accepted" [I64Type] [I64Type]);
-         E.add_func_import env "ic0" "msg_funds_accept" [I64Type;I64Type] [I64Type]);                       *)
-         (* disappearing soon *)
-         E.add_func_import env "ic0" "msg_funds_received" [I64Type] [I64Type]
+         E.add_func_import env "ic0" "msg_funds_available" [I64Type] [I64Type];
+         E.add_func_import env "ic0" "msg_funds_refunded" [I64Type] [I64Type];
+         E.add_func_import env "ic0" "msg_funds_accept" [I64Type; I64Type] []
        | _ ->
          ());
       ()
@@ -3378,11 +3370,6 @@ module Dfinity = struct
         get_data_start ^^
         get_data_size ^^
         system_call env "ic0" "msg_reply_data_append" ^^
-        (match E.mode env with
-         | Flags.RefMode  ->
-           compile_const_64 0L (* cycles *) ^^
-           compile_const_64 0L (* icpts *)
-         | _ -> G.nop) ^^
         system_call env "ic0" "msg_reply"
    )
 
