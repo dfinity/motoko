@@ -582,6 +582,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t1 <: t;
     | SystemTimePrim, [] ->
       T.(Prim Nat64) <: t;
+    (* Funds *)
+    | (SystemFundsBalancePrim | SystemFundsAvailablePrim | SystemFundsRefundedPrim), [e] ->
+      typ e <: T.nat64;
+      T.nat64 <: t
+    | SystemFundsAcceptPrim, [e1; e2] ->
+      typ e1 <: T.nat64;
+      typ e2 <: T.nat64;
+      T.nat64 <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

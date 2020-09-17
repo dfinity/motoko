@@ -77,6 +77,10 @@ and prim = function
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
+  | SystemFundsAcceptPrim -> Atom "SystemFundsAcceptPrim"
+  | SystemFundsAvailablePrim -> Atom "SystemFundsAvailablePrim"
+  | SystemFundsBalancePrim -> Atom "SystemFundsBalancePrim"
+  | SystemFundsRefundedPrim -> Atom "SystemFundsRefundedPrim"
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync t        -> "CPSAsync" $$ [typ t]

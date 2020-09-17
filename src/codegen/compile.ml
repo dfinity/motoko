@@ -3406,6 +3406,38 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
+  (* Funds *)
+
+  (* TODO: enable for ICMode once supported *)
+
+  let funds_balance env =
+    match E.mode env with
+    | Flags.RefMode ->
+      system_call env "ic0" "canister_balance"
+    | _ ->
+      E.trap_with env "cannot read balance when running locally"
+
+  let funds_accept env =
+    match E.mode env with
+    | Flags.RefMode ->
+      system_call env "ic0" "msg_funds_accept"
+    | _ ->
+      E.trap_with env "cannot accept funds when running locally"
+
+  let funds_available env =
+    match E.mode env with
+    | Flags.RefMode ->
+      system_call env "ic0" "msg_funds_available"
+    | _ ->
+      E.trap_with env "cannot get funds available when running locally"
+
+  let funds_refunded env =
+    match E.mode env with
+    | Flags.RefMode ->
+      system_call env "ic0" "msg_funds_refunded"
+    | _ ->
+      E.trap_with env "cannot get funds refunded when running locally"
+
 end (* Dfinity *)
 
 module RTS_Exports = struct
@@ -6916,7 +6948,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
-        end
+      end
 
     | ICStableRead ty, [] ->
 (*
@@ -6942,6 +6974,24 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla e ^^
       Stabilization.stabilize env ty
 
+    (* Funds *)
+    | SystemFundsBalancePrim, [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      Dfinity.funds_balance env
+    | SystemFundsAcceptPrim, [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+      compile_exp_as env ae SR.UnboxedWord64 e2 ^^
+      Dfinity.funds_accept env
+    | SystemFundsAvailablePrim, [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      Dfinity.funds_available env
+    | SystemFundsRefundedPrim, [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      Dfinity.funds_refunded env
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
