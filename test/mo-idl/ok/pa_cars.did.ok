@@ -1,8 +1,3 @@
-type anon_class_3_1 = 
- service {
-   verifyCarInformation: (User, Car) ->
-    (opt func (Location, TimeSpan) -> (Result));
- };
 type User = record {name: text;};
 type TimeSpan = 
  record {
@@ -19,6 +14,10 @@ type DMV =
  service {
    check: (Car) -> (CarInfo);
  };
+type Car_2 = 
+ service {
+   reserveSpot: (User, CarInfo, Location, TimeSpan) -> (Result);
+ };
 type CarInfo = 
  record {
    expires: nat;
@@ -32,4 +31,4 @@ type Car =
    model: text;
    plate: text;
  };
-service : (DMV) -> anon_class_3_1
+service : (DMV) -> Car_2

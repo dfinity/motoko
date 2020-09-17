@@ -1,7 +1,3 @@
-type anon_class_2_1 = 
- service {
-   get: () -> (List_2);
- };
 type List_2 = 
  opt record {
        int;
@@ -12,4 +8,8 @@ type List =
        nat;
        List;
      };
-service : (List) -> anon_class_2_1
+type A = 
+ service {
+   get: () -> (List_2);
+ };
+service : (List) -> A

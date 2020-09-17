@@ -1,0 +1,2 @@
+pa_cars.mo:3.1-26.2: warning, actor classes should be anonymous: the constructor of this class will not be available to compiled code
+  (This is a limitation of the current version.)
