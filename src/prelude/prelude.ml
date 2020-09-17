@@ -587,4 +587,34 @@ func caller() : Principal = (prim "caller" : () -> Principal) ();
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
+// Funds
+type Unit = {
+ #cycle;
+ #icpt;
+};
+
+func unitToNat64(u: Unit) : Nat64 {
+  switch u {
+    case (#cycle) 0;
+    case (#icpt) 1;
+  }
+};
+
+func fundsBalance(u : Unit) : Nat64 {
+  (prim "fundsBalance" : Nat64 -> Nat64) (unitToNat64 u);
+};
+
+func fundAvailable(u : Unit) : Nat64 {
+  (prim "fundsAvailable" : Nat64 -> Nat64) (unitToNat64 u);
+};
+
+
+func fundsRefunded(u : Unit) : Nat64 {
+  (prim "fundsAvailable" : Nat64 -> Nat64) (unitToNat64 u);
+};
+
+func fundsAccept(u : Unit, amount: Nat64) : () {
+  (prim "fundsAccept" : (Nat64, Nat64) -> ()) (unitToNat64 u, amount);
+};
+
 |}

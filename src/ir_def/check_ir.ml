@@ -589,7 +589,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemFundsAcceptPrim, [e1; e2] ->
       typ e1 <: T.nat64;
       typ e2 <: T.nat64;
-      T.nat64 <: t
+      T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
