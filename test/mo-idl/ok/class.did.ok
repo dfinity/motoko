@@ -1,0 +1,10 @@
+type anon-class-2.1 = 
+ service {
+   get: () -> (List);
+ };
+type List = 
+ opt record {
+       head: int;
+       tail: List;
+     };
+

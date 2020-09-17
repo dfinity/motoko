@@ -133,7 +133,8 @@ let rec check_typ env t =
   | ServT meths ->
      let ms' = check_meths env meths in
      ServT (List.sort compare_meth ms') @@ t.at
-  | ClassT _ -> assert false
+  | ClassT _ ->
+     error env t.at "service constructor not supported"
   | PreT -> assert false
 
 and check_fields env fs =

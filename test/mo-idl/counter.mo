@@ -1,5 +1,4 @@
 // A simple Counter actor.
-
 actor class Counter(i : Int, step : Nat) {
   flexible var c = i;
   func show(note : Text, c : Int) {};
