@@ -3,4 +3,4 @@ type Counter =
    dec: () -> () oneway;
    read: () -> (int);
  };
-service : Counter
+service : (int, nat) -> Counter

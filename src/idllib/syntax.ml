@@ -41,6 +41,7 @@ and typ' =
   | RecordT of typ_field list  (* record *)
   | VariantT of typ_field list (* variant *)
   | ServT of typ_meth list (* service reference *)
+  | ClassT of typ list * typ (* service constructor *)
   | PrincipalT
   | PreT   (* pre-type *)
 

@@ -180,7 +180,9 @@ let actor progs =
   | ActorClassU _ ->
      (match cub.note.note_typ with
       | Func (Local, Returns, [], args, [actor]) ->
-         Some (typ actor)
+         let args = List.map typ args in
+         let actor = typ actor in
+         Some (I.ClassT (args, actor) @@ cub.at)
       | _ -> assert false
      )
 
