@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "joachim/impl-funds",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "986f086002af2bdd617e24bd62c6847de8ed61d0",
+        "rev": "40c0c55782afd4026179ab796f8904d97ee09131",
         "type": "git"
     },
     "libtommath": {
