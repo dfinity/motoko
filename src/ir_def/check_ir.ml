@@ -590,6 +590,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ e1 <: T.nat64;
       typ e2 <: T.nat64;
       T.unit <: t
+    | (SystemFundsSetTxCyclesPrim | SystemFundsSetTxIcptsPrim), [e] ->
+      typ e <: T.nat64;
+      T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

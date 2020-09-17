@@ -617,4 +617,12 @@ func fundsAccept(u : Unit, amount: Nat64) : () {
   (prim "fundsAccept" : (Nat64, Nat64) -> ()) (unitToNat64 u, amount);
 };
 
+func fundsTransfer(u : Unit, amount: Nat64) : () {
+  switch u {
+    case (#cycle) ((prim "fundsSetTxCycles" : (Nat64) -> ()) amount);
+    case (#icpt) ((prim "fundsSetTxIcpts" : (Nat64) -> ()) amount);
+  }
+};
+
+
 |}

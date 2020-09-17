@@ -134,6 +134,8 @@ and prim =
   | SystemFundsAvailablePrim
   | SystemFundsBalancePrim
   | SystemFundsRefundedPrim
+  | SystemFundsSetTxCyclesPrim
+  | SystemFundsSetTxIcptsPrim
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)

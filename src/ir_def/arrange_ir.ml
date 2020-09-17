@@ -81,6 +81,8 @@ and prim = function
   | SystemFundsAvailablePrim -> Atom "SystemFundsAvailablePrim"
   | SystemFundsBalancePrim -> Atom "SystemFundsBalancePrim"
   | SystemFundsRefundedPrim -> Atom "SystemFundsRefundedPrim"
+  | SystemFundsSetTxCyclesPrim -> Atom "SystemFundsSetTxCyclesPrim"
+  | SystemFundsSetTxIcptsPrim -> Atom "SystemFundsSetTxIctpsPrim"
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync t        -> "CPSAsync" $$ [typ t]

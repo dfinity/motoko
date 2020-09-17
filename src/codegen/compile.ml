@@ -341,6 +341,19 @@ module E = struct
   let add_global32 (env : t) name mut init =
     add_global32_delayed env name mut init
 
+  let add_global64_delayed (env : t) name mut : int64 -> unit =
+    let p = Lib.Promise.make () in
+    add_global env name p;
+    (fun init ->
+      Lib.Promise.fulfill p (nr {
+         gtype = GlobalType (I64Type, mut);
+         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
+        })
+    )
+
+  let add_global64 (env : t) name mut init =
+    add_global64_delayed env name mut init
+
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
     | Some gi -> gi
@@ -3085,6 +3098,27 @@ end (* Lifecycle *)
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
+  let register_globals env =
+    (* end-of-heap pointer, we set this to __heap_base upon start *)
+    E.add_global64 env "txCycles" Mutable 0x0L;
+    E.add_global64 env "txIcpts" Mutable 0x0L
+
+  let set_tx_cycles env =
+    G.i (GlobalSet (nr (E.get_global env "txCycles")))
+
+  let move_tx_cycles env =
+    G.i (GlobalGet (nr (E.get_global env "txCycles"))) ^^
+    compile_const_64 0L ^^
+    set_tx_cycles env
+
+  let set_tx_icpts env =
+    G.i (GlobalSet (nr (E.get_global env "txIcpts")))
+
+  let move_tx_icpts env =
+    G.i (GlobalGet (nr (E.get_global env "txIcpts"))) ^^
+    compile_const_64 0L ^^
+    set_tx_icpts env
+
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
@@ -5349,8 +5383,8 @@ module FuncDec = struct
       (* the funds *)
       (match E.mode env with
        | Flags.RefMode  ->
-         compile_const_64 0L (* cycles *) ^^
-         compile_const_64 0L (* icpts *)
+         Dfinity.move_tx_cycles env ^^
+         Dfinity.move_tx_icpts env
        | _ ->
          G.nop) ^^
       (* done! *)
@@ -5380,8 +5414,8 @@ module FuncDec = struct
       (* the funds *)
       (match E.mode env with
        | Flags.RefMode  ->
-         compile_const_64 0L (* cycles *) ^^
-         compile_const_64 0L (* icpts *)
+         Dfinity.move_tx_cycles env ^^
+         Dfinity.move_tx_icpts env
        | _ ->
          G.nop) ^^
       (* done! *)
@@ -6991,7 +7025,15 @@ and compile_exp (env : E.t) ae exp =
     | SystemFundsRefundedPrim, [e] ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord64 e ^^
-      Dfinity.funds_refunded env
+        Dfinity.funds_refunded env
+    | SystemFundsSetTxCyclesPrim, [e] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      Dfinity.set_tx_cycles env
+    | SystemFundsSetTxIcptsPrim, [e] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      Dfinity.set_tx_icpts env
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -7724,6 +7766,7 @@ let compile mode module_name rts (prog : Ir.prog) : Wasm_exts.CustomModule.exten
 
   Heap.register_globals env;
   Stack.register_globals env;
+  Dfinity.register_globals env;
 
   Dfinity.system_imports env;
   RTS.system_imports env;
