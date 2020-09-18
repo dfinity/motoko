@@ -76,17 +76,13 @@ let optimize : instr list -> instr list = fun is ->
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
-
-
     (* Masking the topmost bit and testing against zero is shifting *)
     | {it = Test (I32 I32Op.Eqz); _} :: {it = Test (I32 I32Op.Eqz); _} :: ({it = Binary (I32 I32Op.And); _} as a) :: ({it = Const cr; at} as c) :: l', r'
       when cr.it = I32 0x80000000l ->
-      go ({a with it = Binary (I32 I32Op.ShrU)} :: {c with it = Const {at; it = I32 31l}} :: l') r'
-    | ({it = Test (I32 I32Op.Eqz); _} as not) :: ({it = Binary (I32 I32Op.And); _} as a) :: ({it = Const cr; at} as c) :: l', r'
+      failwith "HEH" (*go ({a with it = Binary (I32 I32Op.ShrU)} :: {c with it = Const {at; it = I32 31l}} :: l') r'*)
+    | ({it = Binary (I32 I32Op.And); _} as a) :: ({it = Const cr; at} as c) :: l', ({it = Test (I32 I32Op.Eqz); _} :: _ as r')
       when cr.it = I32 0x80000000l ->
-      go (not :: {a with it = Binary (I32 I32Op.ShrU)} :: {c with it = Const {at; it = I32 31l}} :: l') r'
-
-
+      go ({a with it = Binary (I32 I32Op.ShrU)} :: {c with it = Const {at; it = I32 31l}} :: l') r'
 
     (* Look further *)
     | _, i::r' -> go (i::l) r'
