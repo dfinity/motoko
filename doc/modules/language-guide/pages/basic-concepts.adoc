@@ -64,7 +64,6 @@ let z = {
   let y = x + 1;
   x * y + x
 };
-printNat(z)
 ....
 
 Before comparing declaration lists and expressions in more detail, we briefly digress to explain the `printNat` primitive, used in the final line above.
@@ -409,15 +408,15 @@ The link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a
 However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword.
-Give a local module name to introduce, in this example `P` for "`**P**relude`", and a URL where the `import` declaration may locate the imported module:
+Give a local module name to introduce, in this example `D` for "`**D**bug`", and a URL where the `import` declaration may locate the imported module:
 
 ....
-import P "mo:base/Prelude";
-P.printLn("hello world");
+import D "mo:base/Debug";
+D.print("hello world");
 ....
 
 In this case, we import {proglang} code (not some other module form) with the `mo:` prefix.
-We specify the `base/` path, followed by the module's file name `Prelude.mo` minus its extension.
+We specify the `base/` path, followed by the module's file name `Debug.mo` minus its extension.
 
 === Accommodating incomplete code
 
@@ -430,26 +429,26 @@ Each wraps a <<overview-traps,general trap mechanism>>, explained further below.
 
 Short-term holes are never committed to a source repository, and only ever exist in a single development session, for a developer that is still writing the program.
 
-Assuming that earlier, one has imported the prelude as follows:
+Assuming that earlier, one has imported the Debug module as follows:
 
 ....
-import P "mo:base/Prelude";
+import D "mo:base/Debug";
 ....
 
 The developer can fill _any missing expression_ with the following one:
 
 ....
-P.xxx()
+D.xxx()
 ....
 
 The result will _always_ type check at compile time, and _will always_ trap at run time, if and when this expression ever executes.
 
 === Document longer-term holes
 
-By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
+By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Debug module:
 
 ....
-P.nyi()
+D.nyi()
 ....
 
 === Document `unreachable` code paths
@@ -459,7 +458,7 @@ In contrast to the situations above, sometimes code will _never_ be filled, sinc
 To document a code path as logically impossible, or _unreachable_, use the base library function `unreachable`:
 
 ....
-P.unreachable()
+D.unreachable()
 ....
 
 As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
