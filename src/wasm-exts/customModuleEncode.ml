@@ -10,23 +10,6 @@ The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
 *)
 
-open Dwarf5.Meta
-
-(* Utility predicates *)
-
-(* is_dwarf_like indicates whether a Wasm.Ast meta instruction
-   prevents dead-code elimination. Elimination is forbidden,
-   if the instruction contributes to a DIE, i.e. establishes, augments
-   or closes a DWARF Tag.
- *)
-let rec is_dwarf_like' = function
-  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
-  | Grouped parts -> List.exists is_dwarf_like' parts
-  | StatementDelimiter _ | FutureAttribute _ -> false
-let is_dwarf_like = function
-  | Ast.Meta m -> is_dwarf_like' m
-  | _ -> false
-
 module Promise = Lib.Promise
 
 open CustomModule
@@ -39,7 +22,6 @@ let version = 1l
 (* Errors *)
 
 module Code = Wasm.Error.Make ()
-
 
 (* Encoding stream *)
 
@@ -60,6 +42,15 @@ let to_string s =
   List.iter (fun (pos, b) -> Bytes.set bs pos b) !(s.patches);
   Bytes.to_string bs
 
+module References = Map.Make (struct type t = int let compare = compare end)
+
+let dw_references = ref References.empty
+let num_dw_references = ref 1 (* 0 would mean: "this tag doesn't fulfill a reference" *)
+let allocate_reference_slot () =
+  let have = !num_dw_references in
+  dw_references := References.add have (Promise.make ()) !dw_references;
+  num_dw_references := 1 + have;
+  have
 
 (* Encoding *)
 
