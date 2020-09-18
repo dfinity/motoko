@@ -1,8 +1,11 @@
 = Motoko compiler changelog
 
+== 0.4.3 (2020-09-14)
+
 * Preliminary support for actor class import and dynamic canister installation.
   Surface syntax may change in future.
 * BREAKING CHANGE: a compilation unit/file defining an actor or actor class may *only* have leading `import` declarations; other leading declarations (e.g. `let` or `type`) are no longer supported.
+* Rust GC
 
 == 0.4.2 (2020-08-18)
 

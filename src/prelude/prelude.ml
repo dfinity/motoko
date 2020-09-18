@@ -361,10 +361,11 @@ let @ic00 = actor "aaaaa-aa" : actor {
     wasm_module : Blob;
     arg : Blob;
     compute_allocation : ?Nat;
+    memory_allocation : ?Nat;
   } -> async ()
 };
 
-// It would be desireable if create_actor_helper can be defined
+// It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
   let { canister_id = canister_id_ } = await @ic00.create_canister();
@@ -373,7 +374,8 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
     canister_id = canister_id_;
     wasm_module = wasm_module_;
     arg = arg_;
-    compute_allocation = null
+    compute_allocation = null;
+    memory_allocation = null;
   });
   return canister_id_;
 };

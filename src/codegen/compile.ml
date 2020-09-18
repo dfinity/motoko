@@ -406,26 +406,25 @@ module E = struct
   let get_types (env : t) = !(env.func_types)
 
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if !(env.funcs) = []
-    then
-      let i = {
-        module_name = Wasm.Utf8.decode modname;
-        item_name = Wasm.Utf8.decode funcname;
-        idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
-      } in
-      let fi = reg env.func_imports (nr i) in
-      let name = modname ^ "." ^ funcname in
-      assert (not (NameEnv.mem name !(env.named_imports)));
-      env.named_imports := NameEnv.add name fi !(env.named_imports);
-    else assert false (* "add all imports before all functions!" *)
+    if !(env.funcs) <> [] then
+      raise (CodegenError "Add all imports before all functions!");
+
+    let i = {
+      module_name = Wasm.Utf8.decode modname;
+      item_name = Wasm.Utf8.decode funcname;
+      idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
+    } in
+    let fi = reg env.func_imports (nr i) in
+    let name = modname ^ "." ^ funcname in
+    assert (not (NameEnv.mem name !(env.named_imports)));
+    env.named_imports := NameEnv.add name fi !(env.named_imports)
 
   let call_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
     match NameEnv.find_opt name !(env.named_imports) with
       | Some fi -> G.i (Call (nr fi))
       | _ ->
-        Printf.eprintf "Function import not declared: %s\n" name;
-        G.i Unreachable
+        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
 
   let get_rts (env : t) = env.rts
 
@@ -801,11 +800,12 @@ module RTS = struct
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "collect" [] [];
-    E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -840,8 +840,6 @@ module Heap = struct
 
   let dyn_alloc_words env =
     E.call_import env "rts" "alloc_words"
-  let dyn_alloc_bytes env =
-    E.call_import env "rts" "alloc_bytes"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -2613,18 +2611,7 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
-      let (set_x, get_x) = new_local env "x" in
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      get_len ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.dyn_alloc_bytes env ^^
-      set_x ^^
-
-      get_x ^^ Tagged.(store Blob) ^^
-      get_x ^^ get_len ^^ Heap.store_field len_field ^^
-      get_x
-   )
+  let alloc env = E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
@@ -2875,31 +2862,7 @@ module Arr = struct
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
-  let alloc env =
-    let (set_len, get_len) = new_local env "len" in
-    let (set_r, get_r) = new_local env "r" in
-    set_len ^^
-
-    (* Check size (should not be larger than half the memory space) *)
-    get_len ^^
-    compile_unboxed_const Int32.(shift_left 1l (32-2-1)) ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    E.else_trap_with env "Array allocation too large" ^^
-
-    (* Allocate *)
-    get_len ^^
-    compile_add_const header_size ^^
-    Heap.dyn_alloc_words env ^^
-    set_r ^^
-
-    (* Write header *)
-    get_r ^^
-    Tagged.(store Array) ^^
-    get_r ^^
-    get_len ^^
-    Heap.store_field len_field ^^
-
-    get_r
+  let alloc env = E.call_import env "rts" "alloc_array"
 
   (* The primitive operations *)
   (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
@@ -3136,53 +3099,66 @@ module Dfinity = struct
 
   let system_call env modname funcname = E.call_import env modname funcname
 
-  let print_ptr_len env =
-    match E.mode env with
-    | Flags.WasmMode -> G.i Drop ^^ G.i Drop
-    | Flags.ICMode | Flags.RefMode -> system_call env "ic0" "debug_print"
-    | Flags.WASIMode ->
-      Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
-        Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
-          (* We use the iovec functionality to append a newline *)
-          get_iovec_ptr ^^
-          get_ptr ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+  let register env =
 
-          get_iovec_ptr ^^
-          get_len ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 4l; sz = None}) ^^
+      Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
+        match E.mode env with
+        | Flags.WasmMode -> G.i Nop
+        | Flags.ICMode | Flags.RefMode ->
+            G.i (LocalGet (nr 0l)) ^^
+            G.i (LocalGet (nr 1l)) ^^
+            E.call_import env "ic0" "debug_print"
+        | Flags.WASIMode -> begin
+          let get_ptr = G.i (LocalGet (nr 0l)) in
+          let get_len = G.i (LocalGet (nr 1l)) in
 
-          get_iovec_ptr ^^
-          get_iovec_ptr ^^ compile_add_const 16l ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
+          Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
+            (* We use the iovec functionality to append a newline *)
+            get_iovec_ptr ^^
+            get_ptr ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
 
-          get_iovec_ptr ^^
-          compile_unboxed_const 1l ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
+            get_iovec_ptr ^^
+            get_len ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 4l; sz = None}) ^^
 
-          get_iovec_ptr ^^
-          compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
-          G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Types.Pack8}) ^^
+            get_iovec_ptr ^^
+            get_iovec_ptr ^^ compile_add_const 16l ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
 
-          (* Call fd_write twice to work around
-             https://github.com/bytecodealliance/wasmtime/issues/629
-          *)
+            get_iovec_ptr ^^
+            compile_unboxed_const 1l ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
 
-          compile_unboxed_const 1l (* stdout *) ^^
-          get_iovec_ptr ^^
-          compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-          get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-          E.call_import env "wasi_unstable" "fd_write" ^^
-          G.i Drop ^^
+            get_iovec_ptr ^^
+            compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
+            G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Types.Pack8}) ^^
 
-          compile_unboxed_const 1l (* stdout *) ^^
-          get_iovec_ptr ^^ compile_add_const 8l ^^
-          compile_unboxed_const 1l (* one string segment *) ^^
-          get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-          E.call_import env "wasi_unstable" "fd_write" ^^
-          G.i Drop
-        )
-      )
+            (* Call fd_write twice to work around
+               https://github.com/bytecodealliance/wasmtime/issues/629
+            *)
+
+            compile_unboxed_const 1l (* stdout *) ^^
+            get_iovec_ptr ^^
+            compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
+            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            E.call_import env "wasi_unstable" "fd_write" ^^
+            G.i Drop ^^
+
+            compile_unboxed_const 1l (* stdout *) ^^
+            get_iovec_ptr ^^ compile_add_const 8l ^^
+            compile_unboxed_const 1l (* one string segment *) ^^
+            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            E.call_import env "wasi_unstable" "fd_write" ^^
+            G.i Drop)
+          end);
+
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode "print_ptr";
+        edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
+      })
+
+  let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
   let print_text env =
     Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
@@ -4963,7 +4939,7 @@ module VarEnv = struct
   let get_label_depth (ae : t) name : G.depth  =
     match NameEnv.find_opt name ae.labels with
       | Some d -> d
-      | None   -> Printf.eprintf "Could not find %s\n" name; raise Not_found
+      | None   -> raise (CodegenError (Printf.sprintf "Could not find %s\n" name))
 
 end (* VarEnv *)
 
@@ -7613,6 +7589,7 @@ and conclude_module env start_fi_o =
 
   Heap.register env;
   GC.register env static_roots;
+  Dfinity.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
 
