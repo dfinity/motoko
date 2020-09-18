@@ -1,0 +1,2 @@
+class.mo:2.1-5.2: warning, actor classes should be anonymous: the constructor of this class will not be available to compiled code
+  (This is a limitation of the current version.)

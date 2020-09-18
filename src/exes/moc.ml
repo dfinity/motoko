@@ -73,7 +73,7 @@ let argspec = Arg.align [
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
-      " use the future DFINITY system API (ic-ref-run)";
+      " use the reference implementation of the DFINITY system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
@@ -171,6 +171,6 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
-  Flags.compiled := (!mode = Compile);
+  Flags.compiled := (!mode = Compile || !mode = Idl);
   process_profiler_flags () ;
   process_files !args
