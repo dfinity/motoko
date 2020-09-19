@@ -40,7 +40,7 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "cc57fd99802f155a4225f292aa11e35e7ea342ef",
+        "rev": "7cdbb04f92b9ddbf3763e2346983c89780ba2a4c",
         "type": "git"
     },
     "motoko-matchers": {
