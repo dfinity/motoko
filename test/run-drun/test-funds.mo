@@ -46,7 +46,6 @@ actor a {
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
   Funds.transfer(#icpt, amount/4);
-  print("credit");
   await wallet.credit(#icpt);
   print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
@@ -56,11 +55,24 @@ actor a {
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
   Funds.transfer(#icpt, amount/2);
-  print("credit");
   await wallet.refund(#icpt, amount/4);
   print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
 
+
+  // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
+  func testRefunds(n : Nat64) : async () {
+     if (n == (0 : Nat64)) return;
+     Funds.transfer(#icpt, n);
+     print("refund(" # debug_show(n) # ")");
+     let a = wallet.refund(#icpt, n);
+     await testRefunds( n - (1 : Nat64));
+     await a;
+     print("refunded: " # debug_show(Funds.refunded(#icpt)));
+     assert (Funds.refunded(#icpt) == n);
+  };
+
+  await testRefunds(5);
 
   // try to accept funds that aren't available
   // this should trap
@@ -79,6 +91,7 @@ actor a {
      assert (Funds.balance(u) == b + a);
    };
  };
+
 
 };
 
