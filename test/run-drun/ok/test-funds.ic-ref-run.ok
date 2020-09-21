@@ -25,13 +25,19 @@ debug.print: refunded: 0
 debug.print: 950
 debug.print: refund
 debug.print: 950
+debug.print: refunding: 25
 debug.print: refunded: 25
 debug.print: 975
 debug.print: refund(5)
+debug.print: refunding: 5
 debug.print: refund(4)
+debug.print: refunding: 4
 debug.print: refund(3)
+debug.print: refunding: 3
 debug.print: refund(2)
+debug.print: refunding: 2
 debug.print: refund(1)
+debug.print: refunding: 1
 debug.print: refunded: 1
 debug.print: refunded: 2
 debug.print: refunded: 3

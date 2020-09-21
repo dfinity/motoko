@@ -35,6 +35,7 @@ shared {caller}  actor class () {
     amount : Nat64)
     : async () {
     Funds.accept(u, Funds.available(u) - amount);
+    print("refunding: " #  debug_show(amount));
   };
 
 
