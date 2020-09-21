@@ -216,7 +216,7 @@ about the Wasm bytecode's layout in the emitted Code section for the
 compilation unit. The information is not available here, so these
 attributes have no payload at this side. Instead it is filled in
 in a tag-dependent manner by the emitting module. For LexicalBlock
-the Low_pc and High_pc attributed are managed entirely by the emitter.
+the Low_pc and High_pc attributes are managed entirely by the emitter.
  *)
 
 type dw_AT = Producer of string
@@ -236,7 +236,6 @@ type dw_AT = Producer of string
            | Bit_size of int
            | Data_bit_offset of int
            | Discr of int (* reference *)
-           | Discr_list
            | Const_value of int
            | Discr_value of int
            | Artificial of bool
@@ -248,16 +247,14 @@ type dw_AT = Producer of string
 (* DWARF tags *)
 
 type dw_TAG =
-  | Compile_unit of string * string (* compilation directory, file name *)
-  | Subprogram of string * Type.typ list * Source.pos
+  | Compile_unit of string * string                            (* compilation directory, file name *)
+  | Subprogram of string * Type.typ list * Source.pos          (* name, return types, location *)
   | LexicalBlock of Source.pos
-  | Formal_parameter of (string * Source.pos * Type.typ * int)
-  | Variable of (string * Source.pos * Type.typ * int)
+  | Formal_parameter of (string * Source.pos * Type.typ * int) (* name, location, type, Wasm slot *)
+  | Variable of (string * Source.pos * Type.typ * int)         (* name, location, type, Wasm slot *)
   | Type of Type.typ
   | Typedef of string * Type.typ
-  | Pointer_type of int (* needed? *)
-  | Structure_type of int (* needed? *)
-  | Member
+  (*| Member*)
   | Variant_part
   | Variant
 
@@ -305,7 +302,6 @@ let dw_attr' : dw_AT -> die =
       List.iter stash ops;
       contents buf in
     StringAttribute (dw_AT_location, string_of_ops ops)
-  | Discr_list -> assert false (* not yet *)
 
 let dw_attr at : die list = [dw_attr' at]
 
@@ -346,6 +342,32 @@ let any_type = ref None
 
 let pointer_key = ref None
 
+
+(* Note [locations for types]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Motoko uses a variety of formats to store data depending on its type
+   and even the actual value. Location  expressions are necessary to teach
+   the debugger where the data can be found.
+   - For short numeric types we have a location expression that LSB-aligns
+     and leaves the value on the expression stack. This is a workaround for
+     `lldb`'s insufficiency to understand basic types that are bitfields
+     (http://lists.llvm.org/pipermail/lldb-dev/2020-August/016393.html).
+   - 32/64 bit-sized integrals may be stored on the heap, we use `DW_OP_bra`
+     to guide the debugger after examining the indirection bit.
+     We can't use the pointer key to be a discriminator for DW_TAG_variant_part
+     because of lldb (link above), and probably displaying issues.
+   - For arbitrary-precision integrals, we cannot inspect the multi-precision
+     heap representation yet
+   - Variants with no payload map to C-like `enum`s, the location expression
+     takes care of focussing on the hash value
+   - Variants map to `DW_TAG_variant_*` directly
+   - Tuples may use Rust-like decoding
+   - Objects need field search for members (when encoded as structure members)
+   - The `Any` type will need fully dynamic resolution by `lldb`
+   - Parameter types for polymorphic types/functions will be treated as `Any`.
+
+ *)
+
 let obvious_prim_of_con c ty : Type.prim option =
   match Type.normalize ty with
   | Type.Prim p ->
@@ -356,18 +378,19 @@ let obvious_prim_of_con c ty : Type.prim option =
 let rec dw_tag_open : dw_TAG -> t =
   let unskew, past_tag = 1, 4 in
   let open Type in
-  let rec loc slot = function
+  let rec loc slot = function (* See Note [locations for types] *)
     | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
     | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
     | Prim Text -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
+    | Prim Char -> Location.local slot [ dw_OP_lit8; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
     | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
     | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int32 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
     | Prim (Word32|Nat32) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
-                                                          dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
-                                                          dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+                                                   dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
+                                                   dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
     | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Prim (Word64|Nat64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Tup _ -> Location.local slot []
