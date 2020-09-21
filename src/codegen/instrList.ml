@@ -24,7 +24,6 @@ let combine_shifts const op = function
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
 let optimize : instr list -> instr list = fun is ->
-  let open Wasm_exts.CustomModuleEncode in
   let rec go l r = match l, r with
     (* Combine adjacent Metas *)
     | {it = Meta m2; _} as n2 :: {it = Meta m1; _} :: l', r' ->
