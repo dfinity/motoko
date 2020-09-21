@@ -7519,19 +7519,15 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Deserialize any arguments *)
     (match as_opt with
+     | None
      | Some [] ->
        (* Liberally accept empty as well as unit argument *)
+       assert (arg_tys = []);
        Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
      | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
-       G.concat (List.rev setters)
-     | None ->
-       (* Reject unexpected argument *)
-       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
-       E.then_trap_with env "unexpected installation argument" ^^
-       G.nop) ^^
-
+       G.concat (List.rev setters)) ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
