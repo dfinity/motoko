@@ -352,6 +352,7 @@ let pointer_key = ref None
      and leaves the value on the expression stack. This is a workaround for
      `lldb`'s insufficiency to understand basic types that are bitfields
      (http://lists.llvm.org/pipermail/lldb-dev/2020-August/016393.html).
+     This also implies that setting of such variables in `lldb` won't work.
    - 32/64 bit-sized integrals may be stored on the heap, we use `DW_OP_bra`
      to guide the debugger after examining the indirection bit.
      We can't use the pointer key to be a discriminator for DW_TAG_variant_part
@@ -365,6 +366,8 @@ let pointer_key = ref None
    - Objects need field search for members (when encoded as structure members)
    - The `Any` type will need fully dynamic resolution by `lldb`
    - Parameter types for polymorphic types/functions will be treated as `Any`.
+   - `Text` will be treated as `Any` as it needs pretty-printing is the presence
+     of concatenation nodes
 
  *)
 
@@ -388,19 +391,24 @@ let rec dw_tag_open : dw_TAG -> t =
     | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
     | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
-    | Prim Int32 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
+    | Prim Int32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
+                                          dw_OP_lit1; dw_OP_shra; dw_OP_skip; 3; 0;
+                                          dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
     | Prim (Word32|Nat32) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
                                                    dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
                                                    dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+    (* FIXME: for Int64|Word64|Nat64|Nat|Int the heap check is ignored for now *)
     | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
     | Prim (Word64|Nat64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Prim (Nat|Int) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
+
     | Tup _ -> Location.local slot []
     | Con (c, _) as ty ->
       begin match obvious_prim_of_con c ty with
       | Some p -> loc slot (Prim p)
-      | _ -> Location.local slot [ dw_OP_stack_value ]
+      | _ -> Location.local slot [ dw_OP_stack_value ] (* FIXME: locate real type *)
       end
-    | _ -> Location.local slot [ dw_OP_stack_value ] in
+    | _ -> Location.local slot [ dw_OP_stack_value ] in (* FIXME: objects, options *)
   function
   | Compile_unit (dir, file) ->
     let base_types =
@@ -522,32 +530,12 @@ and dw_prim_type_ref (prim : Type.prim) =
       | Type.Char ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 29; Data_bit_offset 8; Encoding dw_ATE_UTF])
-(*    These don't work yet, as LLDB doesn't support bitfield simple types
-      http://lists.llvm.org/pipermail/lldb-dev/2020-August/016393.html
-      | Type.(Word8 | Nat8 | Int8) ->
-        referencable_meta_tag dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 24; Encoding dw_ATE_unsigned])
-      | Type.(Word16 | Nat16 | Int16) ->
-        referencable_meta_tag dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 16; Encoding dw_ATE_unsigned])
- *)
       | Type.(Int | Nat) ->
-        let pointer_key_dw, pointer_key = lookup_pointer_key () in
-        let struct_dw, struct_ref = referencable_meta_tag dw_TAG_structure_type
-          (dw_attrs [name; Byte_size 4]) in
-        let mark_dw, mark = referencable_meta_tag dw_TAG_member_Pointer_mark
-          (dw_attrs [Name "@pointer_mark"; TypeRef pointer_key; Artificial true; Bit_size 1; Data_bit_offset 1]) in
-        pointer_key_dw ^^
-        struct_dw ^^
-        mark_dw ^^
-        meta_tag dw_TAG_variant_part
-          (dw_attr (Discr mark)) ^^
-        dw_tag_close ^^ (* closing dw_TAG_variant_part *)
-        dw_tag_close,  (* closing dw_TAG_structure_type *)
-        struct_ref
-      | Type.Text ->
         referencable_meta_tag dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
+      | Type.Text -> (* FIXME: should be dynamic, like Any *)
+        referencable_meta_tag dw_TAG_base_type
+          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_UTF])
       | Type.(Int8|Int16|Int32) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
@@ -560,72 +548,6 @@ and dw_prim_type_ref (prim : Type.prim) =
       | Type.(Word64|Nat64) ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
-      | Type.Word32 ->
-        let internalU30 =
-          referencable_meta_tag dw_TAG_base_type_Unsigned_Anon
-            (dw_attrs [Bit_size 30; Data_bit_offset 2; Encoding dw_ATE_unsigned]) in
-        let internalU32_dw, internalU32 =
-          referencable_meta_tag dw_TAG_base_type_Unsigned_Bytes_Anon
-            (dw_attrs [Byte_size 4; Encoding dw_ATE_unsigned]) in
-        let pointedU32 =
-          internalU32_dw ^^<
-          referencable_meta_tag dw_TAG_pointer_type
-            (dw_attr (TypeRef internalU32)) in
-        let pointer_key_dw, pointer_key = lookup_pointer_key () in
-        let flag_member_dw, flag_member =
-          pointer_key_dw ^^<
-          referencable_meta_tag dw_TAG_member_Pointer_mark
-            (dw_attrs [Name "@pointer_mark"; TypeRef pointer_key; Artificial true; Bit_size 1; Data_bit_offset 1]) in
-        let variant_part =
-          flag_member_dw ^^
-          meta_tag dw_TAG_variant_part
-            (dw_attr (Discr flag_member)) ^^
-          meta_tag dw_TAG_variant
-            (dw_attr (Discr_value 0)) ^^
-          meta_tag dw_TAG_member_Pointer_mark (* FIXME *)
-            (dw_attrs [Name "@non-pointer"; TypeRef (snd internalU30); Artificial true; Bit_size 30; Data_bit_offset 2]) ^^
-          dw_tag_close ^^ (* variant 0 *)
-          meta_tag dw_TAG_variant
-            (dw_attr (Discr_value 1)) ^^
-          meta_tag dw_TAG_member_Pointer_mark (* FIXME *)
-            (dw_attrs [Name "@pointer"; TypeRef (snd pointedU32); Artificial true; Bit_size 32; Data_bit_offset 0]) ^^
-          dw_tag_close ^^ (* variant 1 *)
-          dw_tag_close (* variant part *)
-        in
-
-(*
-<3><444>: Abbrev Number: 6 (DW_TAG_structure_type)
-   <445>   DW_AT_name        : (indirect string, offset: 0xa7f7f): Option<&u8>
-   <449>   DW_AT_byte_size   : 8
-   <44a>   DW_AT_alignment   : 8
-      <4><44b>: Abbrev Number: 9 (DW_TAG_member)
-         <44c>   DW_AT_type        : <0x509>
-         <450>   DW_AT_alignment   : 8
-         <451>   DW_AT_data_member_location: 0
-         <452>   DW_AT_artificial  : 1
-      <4><452>: Abbrev Number: 10 (DW_TAG_variant_part)
-         <453>   DW_AT_discr       : <0x44b>
-            <5><457>: Abbrev Number: 11 (DW_TAG_variant)
-               <458>   DW_AT_discr_value : 0
-                  <6><459>: Abbrev Number: 12 (DW_TAG_member)
-                     <45a>   DW_AT_type        : <0x46b>
-                     <45e>   DW_AT_alignment   : 8
-                     <45f>   DW_AT_data_member_location: 0
-                  <6><460>: Abbrev Number: 0
-            <5><461>: Abbrev Number: 13 (DW_TAG_variant)
-                  <6><462>: Abbrev Number: 12 (DW_TAG_member)
-                     <463>   DW_AT_type        : <0x472>
-                     <467>   DW_AT_alignment   : 8
-                     <468>   DW_AT_data_member_location: 0
-
- *)
-
-        (fst pointedU32 ^^ fst internalU30) ^^<
-        referencable_meta_tag dw_TAG_structure_type
-          (dw_attrs [name; Byte_size 4]) ^<^
-          variant_part ^^
-          dw_tag_close
-      (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
       | ty -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim));*) dw_type_ref Type.Any (* FIXME, this is "Any" for now *)
 (* | _ -> assert false (* TODO *)*)
     in
