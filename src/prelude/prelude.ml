@@ -302,23 +302,36 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();
 
-type @Result<T> = {#ok : T; #error : Error};
+type @Refund = { cycles : Nat64; icpts : Nat64 };
+type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
+
+type @Waiter<T> = (@Refund,T) -> () ;
+
+var @refund : @Refund = { cycles = 0: Nat64; icpts = 0 : Nat64 };
+
+func @getSystemRefund() : @Refund {
+  return {
+    cycles = (prim "fundsRefunded" : Nat64 -> Nat64) 0;
+    icpts =  (prim "fundsRefunded" : Nat64 -> Nat64) 1;
+  };
+};
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
-  let k_null = func(_ : T) {};
+  let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
-  var ks : @Cont<T> = k_null;
+  var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        result := ?(#ok t);
-        let ks_ = ks;
-        ks := k_null;
+        let refund = @getSystemRefund();
+        result := ?(#ok (refund, t));
+        let ws_ = ws;
+        ws := w_null;
         rs := r_null;
-        ks_(t);
+        ws_(refund, t);
       };
       case (? _) { assert false };
     };
@@ -329,7 +342,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
       case null {
         result := ?(#error e);
         let rs_ = rs;
-        ks := k_null;
+        ws := w_null;
         rs := r_null;
         rs_(e);
       };
@@ -340,12 +353,16 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   func enqueue(k : @Cont<T>, r : @Cont<Error>) {
     switch result {
       case null {
-        let ks_ = ks;
-        ks := func(t : T) { ks_(t); k(t) };
+        let ws_ = ws;
+        ws := func(r : @Refund, t : T) {
+          ws_(r, t);
+          @refund := r;
+          k(t);
+        };
         let rs_ = rs;
         rs := func(e : Error) { rs_(e); r(e) };
       };
-      case (? (#ok t)) { k(t) };
+      case (? (#ok (r,t))) { @refund := r; k(t) };
       case (? (#error e)) { r(e) };
     };
   };
@@ -629,7 +646,10 @@ func fundsAvailable(u : Unit) : Nat64 {
 };
 
 func fundsRefunded(u : Unit) : Nat64 {
-  (prim "fundsRefunded" : Nat64 -> Nat64) (unitToNat64 u);
+  switch u {
+    case (#cycle) @refund.cycles;
+    case (#icpt) @refund.icpts;
+  }
 };
 
 func fundsAccept(u : Unit, amount: Nat64) : () {

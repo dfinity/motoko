@@ -30,4 +30,12 @@ shared {caller}  actor class () {
     await credit(u);
   };
 
+  public shared {caller} func refund(
+    u : Funds.Unit,
+    amount : Nat64)
+    : async () {
+    Funds.accept(u, Funds.available(u) - amount);
+  };
+
+
 }

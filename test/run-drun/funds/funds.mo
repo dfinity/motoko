@@ -12,4 +12,6 @@ module {
 
   public let transfer : (u : Unit, amount : Nat64) -> () = Prim.fundsTransfer;
 
+  public let refunded : (u: Unit) -> Nat64 = Prim.fundsRefunded;
+
 }

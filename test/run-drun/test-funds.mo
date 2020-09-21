@@ -36,17 +36,29 @@ actor a {
   print("credit-1");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
-  Funds.transfer(#icpt, amount/2);
+  Funds.transfer(#icpt, amount/4);
   await wallet.credit(#icpt);
+  print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
 
 
   print("credit-2");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
-  Funds.transfer(#icpt, amount/2);
+  Funds.transfer(#icpt, amount/4);
   print("credit");
   await wallet.credit(#icpt);
+  print("refunded: " # debug_show(Funds.refunded(#icpt)));
+  print(debug_show(await wallet.balance(#icpt)));
+
+
+  print("refund");
+  // transfer half the amount back to the wallet
+  print(debug_show(await wallet.balance(#icpt)));
+  Funds.transfer(#icpt, amount/2);
+  print("credit");
+  await wallet.refund(#icpt, amount/4);
+  print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
 
 

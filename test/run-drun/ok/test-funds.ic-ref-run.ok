@@ -17,10 +17,17 @@ debug.print: credit:balance 100
 debug.print: balance100
 debug.print: credit-1
 debug.print: 900
-debug.print: 950
+debug.print: refunded: 0
+debug.print: 925
 debug.print: credit-2
+debug.print: 925
+debug.print: credit
+debug.print: refunded: 0
+debug.print: 950
+debug.print: refund
 debug.print: 950
 debug.print: credit
-debug.print: 1_000
+debug.print: refunded: 25
+debug.print: 975
 Trap: EvalTrapError :0.1 "insufficient funds to accept"
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "insufficient funds to accept"
