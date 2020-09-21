@@ -82,7 +82,7 @@ let argspec = Arg.align [
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation";
   "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--release",
   Arg.Unit
@@ -172,5 +172,11 @@ let () =
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
-  process_profiler_flags () ;
-  process_files !args
+  try begin
+    process_profiler_flags ();
+    process_files !args
+  end with
+  | Sys_error msg ->
+    (* IO error *)
+    eprintf "%s\n" msg;
+    exit 1
