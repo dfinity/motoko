@@ -172,10 +172,10 @@ let () =
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
-  try begin
-    process_profiler_flags ();
+  process_profiler_flags ();
+  try
     process_files !args
-  end with
+  with
   | Sys_error msg ->
     (* IO error *)
     eprintf "%s\n" msg;
