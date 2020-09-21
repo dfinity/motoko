@@ -1,0 +1,26 @@
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ update go()
+debug.print: 0
+debug.print: 0
+debug.print: 0
+debug.print: 0
+debug.print: ()
+debug.print: ()
+debug.print: wallet created
+debug.print: debit
+debug.print: balance0
+debug.print: credit:balance 0
+debug.print: credit:balance 100
+debug.print: balance100
+debug.print: credit-1
+debug.print: 900
+debug.print: 950
+debug.print: credit-2
+debug.print: 950
+debug.print: credit
+debug.print: 1_000
+Trap: EvalTrapError :0.1 "insufficient funds to accept"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "insufficient funds to accept"
