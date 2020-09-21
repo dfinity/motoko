@@ -383,6 +383,7 @@ let rec dw_tag_open : dw_TAG -> t =
     | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
     | Prim Text -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
     | Prim Char -> Location.local slot [ dw_OP_lit8; dw_OP_shr; dw_OP_stack_value ]
+    | Prim Bool -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
     | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
@@ -517,7 +518,7 @@ and dw_prim_type_ref (prim : Type.prim) =
       match prim with
       | Type.Bool ->
         referencable_meta_tag dw_TAG_base_type
-          (dw_attrs [name; Bit_size 1; Data_bit_offset 0; Encoding dw_ATE_boolean])
+          (dw_attrs [name; Bit_size 1; Data_bit_offset 1; Encoding dw_ATE_boolean])
       | Type.Char ->
         referencable_meta_tag dw_TAG_base_type
           (dw_attrs [name; Bit_size 29; Data_bit_offset 8; Encoding dw_ATE_UTF])
