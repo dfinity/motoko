@@ -473,7 +473,10 @@ and lookup_pointer_key () : t * int =
 and meta_tag tag attrs =
   i (Meta (Tag (None, tag, attrs)))
 and referencable_meta_tag tag attrs : t * int =
+  with_referencable_meta_tag ignore tag attrs
+and with_referencable_meta_tag f tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
+  f refslot;
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
 and dw_typedef_ref c ty =
@@ -482,23 +485,19 @@ and dw_typedef_ref c ty =
   | Some r -> nop, r
   | None ->
     let dw, ref = dw_type_ref (Type.normalize ty) in
-    let d, r =
-      dw ^^<
-      referencable_meta_tag dw_TAG_typedef (dw_attrs [Name name; TypeRef ref]) in
-    dw_typedefs := TypedefRefs.add name r !dw_typedefs;
-    d, r
+    let add r = dw_typedefs := TypedefRefs.add name r !dw_typedefs in
+    dw ^^<
+    with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypeRef ref])
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function
   | Type.Any ->
     begin match !any_type with
-    | Some reference -> nop, reference
+    | Some r -> nop, r
     | None ->
-      let dw, reference =
-        referencable_meta_tag dw_TAG_base_type
-          (dw_attrs [Name "Any"; Bit_size 0; Data_bit_offset 0; Encoding dw_ATE_address]) in
-      any_type := Some reference;
-      dw, reference
+      let add r = any_type := Some r in
+      with_referencable_meta_tag add dw_TAG_base_type
+        (dw_attrs [Name "Any"; Bit_size 0; Data_bit_offset 0; Encoding dw_ATE_address])
     end
   | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> dw_enum vs
@@ -574,11 +573,12 @@ and dw_enum vnts =
          dw_tag_close (* enumeration_type *)) in
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
-and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
+and dw_variant vnts =
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
   match VariantRefs.find_opt (List.map fst selectors) !dw_variants with
   | Some r -> nop, r
   | None ->
+    let add r = dw_variants := VariantRefs.add (List.map fst selectors) r !dw_variants in
     let prereq (name, typ) =
       let dw_payload_pre, dw_payload_mem =
         match typ with
@@ -601,7 +601,7 @@ and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
     let variant =
       (* struct_type, assumes location points at heap tag *)
       let internal_struct =
-        referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "VARIANT"; Byte_size 8]) in
+        with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "VARIANT"; Byte_size 8]) in
       let summand (name, mem) =
         let hash = Int32.to_int (Mo_types.Hash.hash name) in
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
@@ -616,13 +616,13 @@ and dw_variant vnts = (* FIXME: (mutually?) recursive variants *)
          concat_map summand (List.map2 (fun (name, _) (_, mem) -> name, mem) selectors overlays) ^^
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
-    dw_variants := VariantRefs.add (List.map fst selectors) (snd variant) !dw_variants;
     variant
 and dw_object fs =
   let selectors = List.map (fun Type.{lab; _} -> lab) fs in
   match ObjectRefs.find_opt selectors !dw_objects with
   | Some r -> nop, r
   | None ->
+    let add r = dw_objects := ObjectRefs.add selectors r !dw_objects in
     let struct_ref =
       (* reference to structure_type *)
       let internal_struct =
@@ -633,22 +633,21 @@ and dw_object fs =
       (fst internal_struct ^^
        concat_map field selectors ^^
        dw_tag_close (* structure_type *)) ^^<
-      referencable_meta_tag dw_TAG_reference_type
+      with_referencable_meta_tag add dw_TAG_reference_type
         (dw_attr (TypeRef (snd internal_struct))) in
-    dw_objects := ObjectRefs.add selectors (snd struct_ref) !dw_objects;
     struct_ref
-and dw_tuple ts = (* FIXME: (mutually?) recursive tuples *)
+and dw_tuple ts =
   let field_dw_refs = List.map dw_type_ref ts in
   let field_refs = List.map snd field_dw_refs in
   match TupleRefs.find_opt field_refs !dw_tuples with
   | Some r -> nop, r
   | None ->
+    let add r = dw_tuples := TupleRefs.add field_refs r !dw_tuples in
     let tuple_type =
       let field index (_, r) =
         meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
-      referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "@tup"; Byte_size 4]) ^<^
+      with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "@tup"; Byte_size 4]) ^<^
       (concat_mapi field field_dw_refs ^^ dw_tag_close (* structure_type *)) in
-    dw_tuples := TupleRefs.add field_refs (snd tuple_type) !dw_tuples;
     concat_map fst field_dw_refs ^^<
     tuple_type
 
