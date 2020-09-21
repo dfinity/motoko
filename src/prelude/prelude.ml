@@ -353,8 +353,13 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
+// HACK used for testing - remove from release
+var @initialFunds = { num_cycles = 0 : Nat; num_icpt = 0 : Nat }; //HACK remove me
+
 let @ic00 = actor "aaaaa-aa" : actor {
   create_canister : () -> async { canister_id : Principal };
+  dev_create_canister_with_funds :  //HACK used for testing - remove from release
+    { num_cycles : Nat; num_icpt : Nat } -> async { canister_id : Principal };
   install_code : {
     mode : { #install; #reinstall; #upgrade };
     canister_id : Principal;
@@ -368,7 +373,17 @@ let @ic00 = actor "aaaaa-aa" : actor {
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  let { canister_id = canister_id_ } = await @ic00.create_canister();
+  let { canister_id = canister_id_ } =
+    // await @ic00.create_canister();
+    // HACK remove before release
+    switch @initialFunds {
+      case {num_cycles = 0; num_icpt = 0}  {
+        await @ic00.create_canister();
+      };
+      case _  {
+        await @ic00.dev_create_canister_with_funds(@initialFunds);
+      };
+    };
   await @ic00.install_code({
     mode = #install;
     canister_id = canister_id_;
@@ -586,6 +601,11 @@ func caller() : Principal = (prim "caller" : () -> Principal) ();
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
+
+// HACK used for testing - remove from release
+func unsafeSetInitialFunds(funds: { num_cycles: Nat; num_icpt: Nat}) {
+  @initialFunds := funds;
+};
 
 // Funds
 type Unit = {
