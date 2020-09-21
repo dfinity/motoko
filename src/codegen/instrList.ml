@@ -477,7 +477,7 @@ and referencable_meta_tag tag attrs : t * int =
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
 and dw_typedef_ref c ty =
-  let Atom name = Arrange_type.con c in
+  let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
   match TypedefRefs.find_opt name !dw_typedefs with
   | Some r -> nop, r
   | None ->
