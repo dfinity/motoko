@@ -564,7 +564,8 @@ struct
        /path/tosomething is not a subpath of /path/to*)
     else List.is_prefix (=) (segments base) (segments path)
 
-  (* When opening is successful, but there is a case mismatch, warn *)
+  (* When opening is successful, but there is a case mismatch (because the file
+     system is case insensitive), generate a warning. *)
   let open_in path : in_channel * string list =
     let ic = Stdlib.open_in path in
     let dir, base = Filename.(dirname path, basename path) in
