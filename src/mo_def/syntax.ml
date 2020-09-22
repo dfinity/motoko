@@ -294,7 +294,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   go [] prog.it
 
 (* To enable uniform definedness checking, typechecking and interpretation,
-   present the unit as a list of declarations.   
+   present the unit as a list of declarations.
 *)
 let decs_of_comp_unit (cu : comp_unit) =
   let open Source in
