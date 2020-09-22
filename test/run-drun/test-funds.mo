@@ -20,9 +20,12 @@ actor a {
   print(debug_show(Funds.accept(#cycle, 0)));
 
   // set up a wallet with thin-air funds
-  Prim.unsafeSetInitialFunds({ num_cycles = 10000000; num_icpt = 1000});
+  Prim.unsafeSetInitialFunds({
+//   num_cycles = Prim.nat64ToNat(Funds.balance(#cycle)/2); // crashes compiler with GC Bug
+   num_cycles = 1_000_000_000_000_000;
+   num_icpt = 1000;
+  });
   let wallet = await W();
-
 
   // debit from the waller, crediting this actor via callback
   let amount : Nat64 = 100;
@@ -100,4 +103,4 @@ a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP drun
+

@@ -6,9 +6,9 @@
         "type": "git"
     },
     "dfinity": {
-        "ref": "master",
+        "ref": "dimitris/call-builder-pattern",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "87cd793e05ef1920cd8c2ca7fe6373abddba12e5",
+        "rev": "6be92a6a9fde2d4e9d58e6147d4bb5720105f23d",
         "type": "git"
     },
     "esm": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "joachim/impl-funds",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "d36f06688dce499ff5e2ff8bd6ce8c491de23980",
+        "rev": "bdf7e726a6d074416da9ead0f4f8493b1d30d476",
         "type": "git"
     },
     "libtommath": {

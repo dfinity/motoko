@@ -7,7 +7,10 @@ shared {caller}  actor class () {
 
   let owner = caller;
 
-  print("wallet created");
+  print("wallet: " # debug_show( {
+    icpt = Funds.balance(#icpt);
+    cycles = Funds.balance(#cycle)
+  }));
 
   public func balance(u : Funds.Unit) : async Nat64 {
     return Funds.balance(u);
