@@ -3148,6 +3148,7 @@ module Dfinity = struct
          E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
          E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
          E.add_func_import env "ic0" "call_new" (i32s 8) [];
+         E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       (* E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) []; *)
          E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
          E.add_func_import env "ic0" "call_perform" [] [I32Type];
@@ -3469,6 +3470,10 @@ module Dfinity = struct
     match E.mode env with
     | Flags.RefMode ->
       system_call env "ic0" "msg_funds_refunded"
+    | Flags.ICMode -> (* HACK: To be removed once msg_funds_refunded supported on IC *)
+      G.i Drop ^^
+      G.i Drop ^^
+      compile_const_64 0L
     | _ ->
       E.trap_with env "cannot get funds refunded when running locally"
 
@@ -5370,7 +5375,7 @@ module FuncDec = struct
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
+    | Flags.ICMode ->
 
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
@@ -5379,7 +5384,23 @@ module FuncDec = struct
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
-        get_arg ^^ Serialization.serialize env ts1 ^^
+      get_arg ^^ Serialization.serialize env ts1 ^^
+      (* done! *)
+      Dfinity.system_call env "ic0" "call_simple" ^^
+      (* Check error code *)
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+        E.else_trap_with env "could not perform call"
+    | Flags.RefMode ->
+      (* The callee *)
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      (* The method name *)
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      (* The reply and reject callback *)
+      closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
+      (* the data *)
+      Dfinity.system_call env "ic0" "call_new" ^^
+      get_arg ^^ Serialization.serialize env ts1 ^^
+      Dfinity.system_call env "ic0" "call_data_append" ^^
 (*      (* the funds *)
       (match E.mode env with
        | Flags.RefMode  ->
@@ -5389,7 +5410,7 @@ module FuncDec = struct
          G.nop) ^^
 *)
       (* done! *)
-      Dfinity.system_call env "ic0" "call_simple" ^^
+      Dfinity.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
@@ -5398,8 +5419,7 @@ module FuncDec = struct
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-
+    | Flags.ICMode ->
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
@@ -5412,15 +5432,35 @@ module FuncDec = struct
       compile_unboxed_zero ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
+      (* done! *)
+      Dfinity.system_call env "ic0" "call_simple" ^^
+      (* This is a one-shot function: Ignore error code *)
+      G.i Drop
+    | Flags.RefMode ->
+      (* The callee *)
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      (* The method name *)
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      (* The reply callback *)
+      ignoring_callback env ^^
+      compile_unboxed_zero ^^
+      (* The reject callback *)
+      ignoring_callback env ^^
+      compile_unboxed_zero ^^
+      Dfinity.system_call env "ic0" "call_new" ^^
+      (* the data *)
+      get_arg ^^ Serialization.serialize env ts ^^
+      Dfinity.system_call env "ic0" "call_data_append" ^^
       (* the funds *)
+(*
       (match E.mode env with
        | Flags.RefMode  ->
          Dfinity.move_tx_cycles env ^^
          Dfinity.move_tx_icpts env
        | _ ->
          G.nop) ^^
-      (* done! *)
-      Dfinity.system_call env "ic0" "call_simple" ^^
+*)
+      Dfinity.system_call env "ic0" "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
