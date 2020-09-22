@@ -3122,11 +3122,7 @@ module Dfinity = struct
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
-      (match E.mode env with
-       | Flags.RefMode  ->
-         E.add_func_import env "ic0" "call_simple" ((i32s 10) @ [I64Type; I64Type]) [I32Type]
-       | _ ->
-         E.add_func_import env "ic0" "call_simple" ((i32s 10)) [I32Type]);
+      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
@@ -3148,10 +3144,14 @@ module Dfinity = struct
       E.add_func_import env "ic0" "time" [] [I64Type];
       (match E.mode env with
        | Flags.RefMode  ->
-         E.add_func_import env "ic0" "canister_balance" [I64Type] [I64Type];
-         E.add_func_import env "ic0" "msg_funds_available" [I64Type] [I64Type];
-         E.add_func_import env "ic0" "msg_funds_refunded" [I64Type] [I64Type];
-         E.add_func_import env "ic0" "msg_funds_accept" [I64Type; I64Type] []
+         E.add_func_import env "ic0" "canister_balance" (i32s 2) [I64Type];
+         E.add_func_import env "ic0" "msg_funds_available" (i32s 2) [I64Type];
+         E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
+         E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
+         E.add_func_import env "ic0" "call_new" (i32s 8) [];
+         E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
+         E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
+         E.add_func_import env "ic0" "call_perform" [] [I32Type];
        | _ ->
          ());
       ()
