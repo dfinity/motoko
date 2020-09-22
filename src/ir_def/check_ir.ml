@@ -584,10 +584,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.(Prim Nat64) <: t;
     (* Funds *)
     | (SystemFundsBalancePrim | SystemFundsAvailablePrim | SystemFundsRefundedPrim), [e] ->
-      typ e <: T.nat64;
+      typ e <: T.blob;
       T.nat64 <: t
     | SystemFundsAcceptPrim, [e1; e2] ->
-      typ e1 <: T.nat64;
+      typ e1 <: T.blob;
       typ e2 <: T.nat64;
       T.unit <: t
     | (SystemFundsSetTxCyclesPrim | SystemFundsSetTxIcptsPrim), [e] ->

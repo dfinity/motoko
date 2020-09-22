@@ -3122,7 +3122,6 @@ module Dfinity = struct
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
-      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
@@ -3149,10 +3148,11 @@ module Dfinity = struct
          E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
          E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
          E.add_func_import env "ic0" "call_new" (i32s 8) [];
-         E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
+      (* E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) []; *)
          E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
          E.add_func_import env "ic0" "call_perform" [] [I32Type];
        | _ ->
+         E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
          ());
       ()
 
@@ -5380,13 +5380,14 @@ module FuncDec = struct
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
         get_arg ^^ Serialization.serialize env ts1 ^^
-      (* the funds *)
+(*      (* the funds *)
       (match E.mode env with
        | Flags.RefMode  ->
          Dfinity.move_tx_cycles env ^^
          Dfinity.move_tx_icpts env
        | _ ->
          G.nop) ^^
+*)
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
       (* Check error code *)
@@ -7011,21 +7012,25 @@ and compile_exp (env : E.t) ae exp =
     (* Funds *)
     | SystemFundsBalancePrim, [e] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      compile_exp_as env ae SR.Vanilla e ^^
+      Blob.as_ptr_len env ^^
       Dfinity.funds_balance env
     | SystemFundsAcceptPrim, [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+      compile_exp_as env ae SR.Vanilla e1 ^^
+      Blob.as_ptr_len env ^^
       compile_exp_as env ae SR.UnboxedWord64 e2 ^^
       Dfinity.funds_accept env
     | SystemFundsAvailablePrim, [e] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      compile_exp_as env ae SR.Vanilla e ^^
+      Blob.as_ptr_len env ^^
       Dfinity.funds_available env
     | SystemFundsRefundedPrim, [e] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
-        Dfinity.funds_refunded env
+      compile_exp_as env ae SR.Vanilla e ^^
+      Blob.as_ptr_len env ^^
+      Dfinity.funds_refunded env
     | SystemFundsSetTxCyclesPrim, [e] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord64 e ^^

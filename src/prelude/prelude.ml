@@ -33,6 +33,10 @@ type Principal = prim "Principal";
 
 type @Iter<T_> = {next : () -> ?T_};
 
+// Blobs identifying fund units
+let @cycleBlob : Blob = "\00";
+let @icptBlob : Blob = "\01";
+
 // The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 
@@ -311,8 +315,8 @@ var @refund : @Refund = { cycles = 0: Nat64; icpts = 0 : Nat64 };
 
 func @getSystemRefund() : @Refund {
   return {
-    cycles = (prim "fundsRefunded" : Nat64 -> Nat64) 0;
-    icpts =  (prim "fundsRefunded" : Nat64 -> Nat64) 1;
+    cycles = (prim "fundsRefunded" : Blob -> Nat64) @cycleBlob;
+    icpts =  (prim "fundsRefunded" : Blob -> Nat64) @icptBlob;
   };
 };
 
@@ -630,19 +634,19 @@ type Unit = {
  #icpt;
 };
 
-func unitToNat64(u: Unit) : Nat64 {
+func unitToBlob(u: Unit) : Blob {
   switch u {
-    case (#cycle) 0;
-    case (#icpt) 1;
+    case (#cycle) @cycleBlob;
+    case (#icpt) @icptBlob;
   }
 };
 
 func fundsBalance(u : Unit) : Nat64 {
-  (prim "fundsBalance" : Nat64 -> Nat64) (unitToNat64 u);
+  (prim "fundsBalance" : Blob -> Nat64) (unitToBlob u);
 };
 
 func fundsAvailable(u : Unit) : Nat64 {
-  (prim "fundsAvailable" : Nat64 -> Nat64) (unitToNat64 u);
+  (prim "fundsAvailable" : Blob -> Nat64) (unitToBlob u);
 };
 
 func fundsRefunded(u : Unit) : Nat64 {
@@ -653,7 +657,7 @@ func fundsRefunded(u : Unit) : Nat64 {
 };
 
 func fundsAccept(u : Unit, amount: Nat64) : () {
-  (prim "fundsAccept" : (Nat64, Nat64) -> ()) (unitToNat64 u, amount);
+  (prim "fundsAccept" : (Blob, Nat64) -> ()) (unitToBlob u, amount);
 };
 
 func fundsTransfer(u : Unit, amount: Nat64) : () {
