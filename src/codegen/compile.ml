@@ -3477,6 +3477,25 @@ module Dfinity = struct
     | _ ->
       E.trap_with env "cannot get funds refunded when running locally"
 
+  let add_funds env =
+    match E.mode env with
+    | Flags.RefMode ->
+      Blob.lit env "\000" ^^
+      Blob.as_ptr_len env ^^
+      move_tx_cycles env ^^
+      system_call env "ic0" "call_funds_add" ^^
+      Blob.lit env "\001" ^^
+      Blob.as_ptr_len env ^^
+      move_tx_icpts env ^^
+      system_call env "ic0" "call_funds_add"
+    | Flags.ICMode -> (* HACK: To be removed once msg_funds_refunded supported on IC *)
+      G.i Nop
+    | _ ->
+      E.trap_with env "cannot add funds refunded when running locally"
+
+
+
+
 end (* Dfinity *)
 
 module RTS_Exports = struct
@@ -5401,14 +5420,8 @@ module FuncDec = struct
       Dfinity.system_call env "ic0" "call_new" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
-(*      (* the funds *)
-      (match E.mode env with
-       | Flags.RefMode  ->
-         Dfinity.move_tx_cycles env ^^
-         Dfinity.move_tx_icpts env
-       | _ ->
-         G.nop) ^^
-*)
+      (* the funds *)
+      Dfinity.add_funds env ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
@@ -5452,14 +5465,7 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
       (* the funds *)
-(*
-      (match E.mode env with
-       | Flags.RefMode  ->
-         Dfinity.move_tx_cycles env ^^
-         Dfinity.move_tx_icpts env
-       | _ ->
-         G.nop) ^^
-*)
+      Dfinity.add_funds env ^^
       Dfinity.system_call env "ic0" "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
