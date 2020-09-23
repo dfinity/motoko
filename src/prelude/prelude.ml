@@ -37,6 +37,20 @@ type @Iter<T_> = {next : () -> ?T_};
 let @cycleBlob : Blob = "\00";
 let @icptBlob : Blob = "\01";
 
+var @cycleFunds : Nat64 = 0;
+var @icptFunds : Nat64 = 0;
+
+// Function called by backend to add funds to call.
+// DO NOT RENAME without modifying compilation.
+func @add_funds() {
+  let cycles = @cycleFunds;
+  let icpts = @icptFunds;
+  @cycleFunds := 0;
+  @icptFunds := 0;
+  (prim "fundsAdd" : (Blob, Nat64) -> ()) (@cycleBlob, cycles);
+  (prim "fundsAdd" : (Blob, Nat64) -> ()) (@icptBlob, icpts);
+};
+
 // The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 
@@ -641,10 +655,10 @@ func fundsAccept(u : Unit, amount: Nat64) : () {
   (prim "fundsAccept" : (Blob, Nat64) -> ()) (unitToBlob u, amount);
 };
 
-func fundsTransfer(u : Unit, amount: Nat64) : () {
+func fundsAdd(u : Unit, amount: Nat64) : () {
   switch u {
-    case (#cycle) ((prim "fundsSetTxCycles" : (Nat64) -> ()) amount);
-    case (#icpt) ((prim "fundsSetTxIcpts" : (Nat64) -> ()) amount);
+    case (#cycle) (@cycleFunds += amount);
+    case (#icpt) (@icptFunds += amount);
   }
 };
 

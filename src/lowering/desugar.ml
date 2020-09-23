@@ -143,10 +143,9 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsAccept";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (List.length es = 2);
     I.PrimE (I.SystemFundsAcceptPrim, exps es)
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsSetTxCycles";_},_);_}, _, e) ->
-    I.PrimE (I.SystemFundsSetTxCyclesPrim, [exp e])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsSetTxIcpts";_},_);_}, _, e) ->
-    I.PrimE (I.SystemFundsSetTxIcptsPrim, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsAdd";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (List.length es = 2);
+    I.PrimE (I.SystemFundsAddPrim, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->

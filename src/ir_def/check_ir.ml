@@ -586,12 +586,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | (SystemFundsBalancePrim | SystemFundsAvailablePrim | SystemFundsRefundedPrim), [e] ->
       typ e <: T.blob;
       T.nat64 <: t
-    | SystemFundsAcceptPrim, [e1; e2] ->
+    | (SystemFundsAddPrim | SystemFundsAcceptPrim), [e1; e2] ->
       typ e1 <: T.blob;
       typ e2 <: T.nat64;
-      T.unit <: t
-    | (SystemFundsSetTxCyclesPrim | SystemFundsSetTxIcptsPrim), [e] ->
-      typ e <: T.nat64;
       T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->

@@ -10,7 +10,7 @@ module {
 
   public let accept : (u : Unit, amount : Nat64) -> () = Prim.fundsAccept;
 
-  public let transfer : (u : Unit, amount : Nat64) -> () = Prim.fundsTransfer;
+  public let add : (u : Unit, amount : Nat64) -> () = Prim.fundsAdd;
 
   public let refunded : (u: Unit) -> Nat64 = Prim.fundsRefunded;
 

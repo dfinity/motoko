@@ -31,7 +31,7 @@ shared {caller}  actor class () {
     credit : shared Funds.Unit -> async ())
     : async () {
     if (caller != owner) assert false;
-    Funds.transfer(u, amount);
+    Funds.add(u, amount);
     await credit(u);
   };
 

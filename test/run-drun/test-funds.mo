@@ -36,7 +36,7 @@ actor a {
   print("credit-1");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
-  Funds.transfer(#icpt, amount/4);
+  Funds.add(#icpt, amount/4);
   await wallet.credit(#icpt);
   print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
@@ -45,7 +45,7 @@ actor a {
   print("credit-2");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
-  Funds.transfer(#icpt, amount/4);
+  Funds.add(#icpt, amount/4);
   await wallet.credit(#icpt);
   print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
@@ -54,7 +54,7 @@ actor a {
   print("refund");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance(#icpt)));
-  Funds.transfer(#icpt, amount/2);
+  Funds.add(#icpt, amount/2);
   await wallet.refund(#icpt, amount/4);
   print("refunded: " # debug_show(Funds.refunded(#icpt)));
   print(debug_show(await wallet.balance(#icpt)));
@@ -63,7 +63,7 @@ actor a {
   // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
   func testRefunds(n : Nat64) : async () {
      if (n == (0 : Nat64)) return;
-     Funds.transfer(#icpt, n);
+     Funds.add(#icpt, n);
      print("refund(" # debug_show(n) # ")");
      let a = wallet.refund(#icpt, n);
      await testRefunds( n - (1 : Nat64));

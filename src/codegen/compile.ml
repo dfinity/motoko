@@ -3103,22 +3103,6 @@ module Dfinity = struct
     E.add_global64 env "txCycles" Mutable 0x0L;
     E.add_global64 env "txIcpts" Mutable 0x0L
 
-  let set_tx_cycles env =
-    G.i (GlobalSet (nr (E.get_global env "txCycles")))
-
-  let move_tx_cycles env =
-    G.i (GlobalGet (nr (E.get_global env "txCycles"))) ^^
-    compile_const_64 0L ^^
-    set_tx_cycles env
-
-  let set_tx_icpts env =
-    G.i (GlobalSet (nr (E.get_global env "txIcpts")))
-
-  let move_tx_icpts env =
-    G.i (GlobalGet (nr (E.get_global env "txIcpts"))) ^^
-    compile_const_64 0L ^^
-    set_tx_icpts env
-
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
@@ -3448,6 +3432,14 @@ module Dfinity = struct
     | _ ->
       E.trap_with env "cannot read balance when running locally"
 
+  let funds_add env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "call_funds_add"
+    | _ ->
+      E.trap_with env "cannot accept funds when running locally"
+
   let funds_accept env =
     match E.mode env with
     | Flags.ICMode
@@ -3471,24 +3463,6 @@ module Dfinity = struct
       system_call env "ic0" "msg_funds_refunded"
     | _ ->
       E.trap_with env "cannot get funds refunded when running locally"
-
-  let add_funds env =
-    match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
-      Blob.lit env "\000" ^^
-      Blob.as_ptr_len env ^^
-      move_tx_cycles env ^^
-      system_call env "ic0" "call_funds_add" ^^
-      Blob.lit env "\001" ^^
-      Blob.as_ptr_len env ^^
-      move_tx_icpts env ^^
-      system_call env "ic0" "call_funds_add"
-    | _ ->
-      E.trap_with env "cannot add funds refunded when running locally"
-
-
-
 
 end (* Dfinity *)
 
@@ -5386,7 +5360,7 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5401,7 +5375,7 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts1 ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
       (* the funds *)
-      Dfinity.add_funds env ^^
+      add_funds ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
@@ -5410,7 +5384,7 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
-  let ic_call_one_shot env ts get_meth_pair get_arg =
+  let ic_call_one_shot env ts get_meth_pair get_arg add_funds =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5429,7 +5403,7 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
       (* the funds *)
-      Dfinity.add_funds env ^^
+      add_funds ^^
       Dfinity.system_call env "ic0" "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
@@ -5707,6 +5681,14 @@ module AllocHow = struct
 end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
+
+let compile_add_funds env ae =
+  match Var.get_val env ae "@add_funds" with
+  | (SR.Const(_, Const.Fun mk_fi), code) ->
+    code ^^
+      compile_unboxed_zero ^^ (* A dummy closure *)
+        G.i (Call (nr (mk_fi ())))
+  | _ -> assert false
 
 let nat64_to_int64 n =
   let open Big_int in
@@ -6445,11 +6427,12 @@ and compile_exp (env : E.t) ae exp =
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
           let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
+          let add_funds = compile_add_funds env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
+          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_funds
       end
 
     (* Operators *)
@@ -6988,11 +6971,12 @@ and compile_exp (env : E.t) ae exp =
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
+      let add_funds = compile_add_funds env ae in
       compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
-      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
+      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds
       end
 
     | ICStableRead ty, [] ->
@@ -7025,6 +7009,12 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla e ^^
       Blob.as_ptr_len env ^^
       Dfinity.funds_balance env
+    | SystemFundsAddPrim, [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e1 ^^
+      Blob.as_ptr_len env ^^
+      compile_exp_as env ae SR.UnboxedWord64 e2 ^^
+      Dfinity.funds_add env
     | SystemFundsAcceptPrim, [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.Vanilla e1 ^^
@@ -7041,14 +7031,6 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla e ^^
       Blob.as_ptr_len env ^^
       Dfinity.funds_refunded env
-    | SystemFundsSetTxCyclesPrim, [e] ->
-      SR.unit,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
-      Dfinity.set_tx_cycles env
-    | SystemFundsSetTxIcptsPrim, [e] ->
-      SR.unit,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
-      Dfinity.set_tx_icpts env
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -7141,6 +7123,7 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
+    let add_funds = compile_add_funds env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
@@ -7152,7 +7135,7 @@ and compile_exp (env : E.t) ae exp =
         Dfinity.actor_public_field env (Dfinity.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
-      get_r
+      get_r add_funds
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
