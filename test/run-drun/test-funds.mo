@@ -19,10 +19,10 @@ actor a {
   print(debug_show(Funds.accept(#cycle, 0)));
 
   let wallet = await Wallet();
-  await Wallet.show();
+  await wallet.show();
   print ("setting funds");
   await Funds.dev_set_funds(wallet, 1_000_000_000_000_000, 1000);
-  await Wallet.show();
+  await wallet.show();
 
   // debit from the waller, crediting this actor via callback
   let amount : Nat64 = 100;

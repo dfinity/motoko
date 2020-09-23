@@ -6,7 +6,9 @@ debug.print: 0
 debug.print: 0
 debug.print: ()
 debug.print: ()
-debug.print: wallet: {cycles = 1_000_000_000_000_000; icpt = 1_000}
+debug.print: wallet: {cycles = 998_947_570_675_612; icpt = 0}
+debug.print: setting funds
+debug.print: wallet: {cycles = 998_947_570_806_684; icpt = 1_000}
 debug.print: debit
 debug.print: balance0
 debug.print: credit:balance 0
