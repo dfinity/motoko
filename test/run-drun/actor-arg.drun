@@ -1,0 +1,8 @@
+# test (zero argument actor), passing unit (should succeed)
+install $ID actor-arg/actor-arg.mo "DIDL\x00\x00"
+
+# test zero argument class, passing empty for unit arg (should succeed)
+reinstall $ID actor-arg/actor-arg.mo ""
+
+# test zero argument class, passing unexpected for unit arg (should fail)
+reinstall $ID actor-arg/actor-arg.mo "NOTDIDL"

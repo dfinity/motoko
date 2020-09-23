@@ -821,8 +821,11 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | ObjE (obj_sort, fields) ->
-    if not in_prog && obj_sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+    if obj_sort.it = T.Actor then begin
+      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
+      if not in_prog then
+        error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
+    end;
     let env' = if obj_sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
     infer_obj env' obj_sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -875,8 +878,11 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
-    if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then
-      error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+    if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
+      error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "shared functions are not supported";
+      if not in_actor then
+        error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+    end;
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -1058,6 +1064,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE (typ_bind, exp1) ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1148,6 +1155,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then begin
       local_error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
@@ -2173,6 +2181,7 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
+      error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "actor classes are not supported";
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
@@ -2217,20 +2226,27 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
+let is_import d =
+  match d.it with
+  | LetD ({it = VarP n; _}, {it = ImportE _; _}) -> true
+  | _ -> false
+
 let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = Lib.List.concat_map (fun prog -> prog.Source.it) progs in
         let env = env_of_scope msgs scope in
-        let rec go = function
+        let rec go ds = function
           | [] -> ()
-          | [d] -> ()
-          | (d::ds) when is_actor_dec d ->
-            recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
-              "an actor or actor class must be the last declaration in a program"
-          | (d::ds) -> go ds in
-        go prog
+          | (d::ds') when is_actor_dec d ->
+            if ds <> [] || ds' <> []  then
+              recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
+                "an actor or actor class must be the only non-imported declaration in a program"
+          | (d::ds') when is_import d -> go ds ds'
+          | (d::ds') -> go (d::ds) ds'
+        in
+        go [] prog
       ) progs
     )
 

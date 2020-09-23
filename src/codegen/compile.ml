@@ -818,6 +818,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -2874,31 +2875,7 @@ module Arr = struct
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
-  let alloc env =
-    let (set_len, get_len) = new_local env "len" in
-    let (set_r, get_r) = new_local env "r" in
-    set_len ^^
-
-    (* Check size (should not be larger than half the memory space) *)
-    get_len ^^
-    compile_unboxed_const Int32.(shift_left 1l (32-2-1)) ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    E.else_trap_with env "Array allocation too large" ^^
-
-    (* Allocate *)
-    get_len ^^
-    compile_add_const header_size ^^
-    Heap.dyn_alloc_words env ^^
-    set_r ^^
-
-    (* Write header *)
-    get_r ^^
-    Tagged.(store Array) ^^
-    get_r ^^
-    get_len ^^
-    Heap.store_field len_field ^^
-
-    get_r
+  let alloc env = E.call_import env "rts" "alloc_array"
 
   (* The primitive operations *)
   (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
@@ -7658,19 +7635,15 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Deserialize any arguments *)
     (match as_opt with
+     | None
      | Some [] ->
        (* Liberally accept empty as well as unit argument *)
+       assert (arg_tys = []);
        Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
      | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
-       G.concat (List.rev setters)
-     | None ->
-       (* Reject unexpected argument *)
-       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
-       E.then_trap_with env "unexpected installation argument" ^^
-       G.nop) ^^
-
+       G.concat (List.rev setters)) ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
