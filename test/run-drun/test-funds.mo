@@ -1,6 +1,6 @@
 import Prim = "mo:prim";
 import Funds = "funds/funds";
-import W = "funds/wallet";
+import Wallet = "funds/wallet";
 
 actor a {
 
@@ -8,7 +8,6 @@ actor a {
 
 
  public func go() : async () {
-
 
   print(debug_show(Funds.balance(#icpt)));
   print(debug_show(Funds.balance(#cycle)));
@@ -19,13 +18,11 @@ actor a {
   print(debug_show(Funds.accept(#icpt, 0)));
   print(debug_show(Funds.accept(#cycle, 0)));
 
-  // set up a wallet with thin-air funds
-  Prim.unsafeSetInitialFunds({
-//   num_cycles = Prim.nat64ToNat(Funds.balance(#cycle)/2); // crashes compiler with GC Bug
-   num_cycles = 1_000_000_000_000_000;
-   num_icpt = 1000;
-  });
-  let wallet = await W();
+  let wallet = await Wallet();
+  await Wallet.show();
+  print ("setting funds");
+  await Funds.dev_set_funds(wallet, 1_000_000_000_000_000, 1000);
+  await Wallet.show();
 
   // debit from the waller, crediting this actor via callback
   let amount : Nat64 = 100;
