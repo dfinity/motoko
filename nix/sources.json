@@ -1,14 +1,14 @@
 {
-    "common": {
+   "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "86dcb57316afd19cd07cd7da8142e60e1713f4ee",
+        "rev": "129dcc07ccf90440e0ececf5e8cf1a5a0318f8fe",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "87cd793e05ef1920cd8c2ca7fe6373abddba12e5",
+        "rev": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
         "type": "git"
     },
     "esm": {
@@ -20,9 +20,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "release-0.10",
+        "ref": "release-0.11",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "ab1c15531b3e3e88018cea40f8a23000751e699f",
+        "rev": "deac92bcc3e7677ca282cf0374aa226f89990780",
         "type": "git"
     },
     "libtommath": {
@@ -40,7 +40,7 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "cc57fd99802f155a4225f292aa11e35e7ea342ef",
+        "rev": "7cdbb04f92b9ddbf3763e2346983c89780ba2a4c",
         "type": "git"
     },
     "motoko-matchers": {

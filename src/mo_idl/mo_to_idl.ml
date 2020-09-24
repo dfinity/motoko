@@ -13,8 +13,14 @@ let stamp = ref Stamp.empty
 module TypeMap = Map.Make (struct type t = con * typ list let compare = compare end)
 let type_map = ref TypeMap.empty
 
+let normalize_name name =
+  String.map (fun c ->
+      if c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+      then c else '_'
+    ) name
+
 let monomorphize_con vs c =
-  let name = Con.name c in
+  let name = normalize_name (Con.name c) in
   match Con.kind c with
   | Def _ ->
      let id = (c, vs) in
@@ -178,9 +184,11 @@ let actor progs =
   | ProgU _ | ModuleU _ -> None
   | ActorU _ -> Some (typ cub.note.note_typ)
   | ActorClassU _ ->
-     (match cub.note.note_typ with
+     (match normalize cub.note.note_typ with
       | Func (Local, Returns, [], args, [actor]) ->
-         Some (typ actor)
+         let args = List.map typ args in
+         let actor = typ actor in
+         Some (I.ClassT (args, actor) @@ cub.at)
       | _ -> assert false
      )
 
