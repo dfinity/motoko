@@ -1,0 +1,22 @@
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ update go()
+debug.print: wallet: {cycles = 0; icpt = 0}
+debug.print: setting funds
+debug.print: wallet: {cycles = 2_000_000_000_000_000; icpt = 2_000}
+debug.print: debit
+debug.print: balance0
+debug.print: credit:balance 0
+debug.print: credit:balance 1_000_000_000_000_000
+debug.print: credit:balance 0
+debug.print: credit:balance 1_000
+debug.print: 1_000_000_000_000_000
+debug.print: 1_000
+debug.print: available: (100, 10)
+debug.print: available: (0, 0)
+debug.print: available: (300, 30)
+debug.print: available: (50, 5)
+debug.print: available: (0, 0)
+← completed: ()

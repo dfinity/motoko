@@ -43,5 +43,12 @@ shared {caller}  actor class () {
     print("refunding: " #  debug_show(amount));
   };
 
+  public shared {caller} func available()
+    : async (Nat64, Nat64) {
+    let available = (Funds.available(#cycle), Funds.available(#icpt));
+    print("available: " #  debug_show(available));
+    return available;
+  };
+
 
 }

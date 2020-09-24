@@ -5258,8 +5258,6 @@ module FuncDec = struct
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
     let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
-    Prelude.reset_funds env ae ^^
-    Prelude.reset_refund env ae ^^
     code ^^
     StackRep.adjust env sr SR.Vanilla ^^
     ClosureTable.remember env
