@@ -5385,22 +5385,22 @@ module FuncDec = struct
       G.i Drop
     | _ -> assert false
 
-let equate_msgref env =
-      let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
-      let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
-      set_meth_pair2 ^^ set_meth_pair1 ^^
-      get_meth_pair1 ^^ Arr.load_field 0l ^^
-      get_meth_pair2 ^^ Arr.load_field 0l ^^
-      Blob.compare env Operator.EqOp ^^
-      G.if_ [I32Type]
-      begin
-        get_meth_pair1 ^^ Arr.load_field 1l ^^
-        get_meth_pair2 ^^ Arr.load_field 1l ^^
-        Blob.compare env Operator.EqOp
-      end
-      begin
-        Bool.lit false
-      end
+  let equate_msgref env =
+    let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
+    let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
+    set_meth_pair2 ^^ set_meth_pair1 ^^
+    get_meth_pair1 ^^ Arr.load_field 0l ^^
+    get_meth_pair2 ^^ Arr.load_field 0l ^^
+    Blob.compare env Operator.EqOp ^^
+    G.if_ [I32Type]
+    begin
+      get_meth_pair1 ^^ Arr.load_field 1l ^^
+      get_meth_pair2 ^^ Arr.load_field 1l ^^
+      Blob.compare env Operator.EqOp
+    end
+    begin
+      Bool.lit false
+    end
 
   let export_async_method env =
     let name = Dfinity.async_method_name in
