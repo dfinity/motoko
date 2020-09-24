@@ -10,7 +10,7 @@ shared {caller}  actor class () {
   public func show() : async () {
     print("wallet: " # debug_show({
       icpt = Funds.balance(#icpt);
-      cycles = Funds.balance(#cycle)
+      cycles = "<not_shown>";// Funds.balance(#cycle)
     }));
   };
 

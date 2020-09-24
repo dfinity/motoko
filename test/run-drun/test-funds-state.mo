@@ -20,12 +20,11 @@ actor a {
 
   // debit from the waller, crediting this actor via callback
   print ("debit");
-  print("balance" # debug_show(Funds.balance(#icpt)));
+  print("balance " # debug_show(Funds.balance(#icpt)));
   let b = Funds.balance(#icpt);
   await wallet.debit(#cycle, 1_000_000_000_000_000, credit);
   await wallet.debit(#icpt, 1000, credit);
 
-  print(debug_show(Funds.balance(#cycle)));
   print(debug_show(Funds.balance(#icpt)));
 
   { // check funds available
@@ -80,11 +79,9 @@ actor a {
 
  // callback for accepting funds from wallet.
  public func credit(u : Funds.Unit) : async () {
-   print("credit:balance " # debug_show(Funds.balance(u)));
    let b = Funds.balance(u);
    let a = Funds.available(u);
    Funds.accept(u, a);
-   print("credit:balance " # debug_show(Funds.balance(u)));
    if (u == #icpt) {
      assert (Funds.balance(u) == b + a);
    };
