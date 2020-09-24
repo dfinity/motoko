@@ -3083,6 +3083,11 @@ module Dfinity = struct
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
+      E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
+      E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
+      E.add_func_import env "ic0" "call_new" (i32s 8) [];
+      E.add_func_import env "ic0" "call_perform" [] [I32Type];
+      E.add_func_import env "ic0" "canister_balance" (i32s 2) [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
@@ -3090,6 +3095,9 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_funds_available" (i32s 2) [I64Type];
+      E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
+      E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3102,15 +3110,6 @@ module Dfinity = struct
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
-      E.add_func_import env "ic0" "canister_balance" (i32s 2) [I64Type];
-      E.add_func_import env "ic0" "msg_funds_available" (i32s 2) [I64Type];
-      E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
-      E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
-      E.add_func_import env "ic0" "call_new" (i32s 8) [];
-      E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
-     (* E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) []; *)
-      E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
-      E.add_func_import env "ic0" "call_perform" [] [I32Type];
       ()
 
   let system_imports env =
