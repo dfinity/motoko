@@ -807,6 +807,7 @@ and rel_binds rel eq tbs1 tbs2 =
   else None
 
 and rel_bind ts rel eq tb1 tb2 =
+  tb1.sort == tb2.sort &&
   rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
