@@ -5585,7 +5585,7 @@ module AllocHow = struct
     | StoreStatic ->
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
-      let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+      let ptr = E.add_mutable_static_bytes env (tag ^ zero ^ zero) in
       E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
