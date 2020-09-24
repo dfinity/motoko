@@ -1,0 +1,9 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Reply: 0x4449444c0000
+debug.print: A balance is {cycle = 2_001_052_428_512_095; icpt = 2_000}
+debug.print: B balance is {cycle = 1_999_999_999_171_421; icpt = 1_990}
+debug.print: available: (50, 5)
+debug.print: C balance is {cycle = 1_999_999_998_453_665; icpt = 1_990}
+debug.print: D balance is {cycle = 2_001_052_426_740_227; icpt = 1_990}
+debug.print: refunded {cycle = 100; icpt = 0}
+ingress Err: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: assertion failed at funds-bug.mo:45.3-45.49
