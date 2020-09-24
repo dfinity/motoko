@@ -172,4 +172,39 @@ array, options, variants and number type inter-relationships.
 
 == Object classes
 
-CAUTION: to do: examples and prose here
+Frequently one needs more than a single object to perform a task, but a family of them. When they exhibit similar behavior, it makes sense to fabricate them according to the same blueprint, but with customizable initial state. To this end {proglang} provides a syntactical construct, called a `class` definition, which simplifies building objects of the same type and implementation.
+
+Classes are defined by the keyword `class`, followed by an argument list and an optional typing annotation. A class body concludes the definition, with constituents marked `public` contributing to the resulting objects' type. For example imagine the task of walking the bits of a `Nat`ural number. We could define
+
+....
+class Bits(n : Nat) {
+  var state = n;
+  public func next() : ?Bool {
+    if (state == 0) { return null };
+    let prev = state;
+    state /= 2;
+    ?(state * 2 != prev)
+  }
+}
+....
+
+The above class definition amounts to the simultaneous definition of a structural type synonym and a factory function, both named the same:
+
+....
+type Bits = {next : () -> ?Bool}
+let Bits : Nat -> Bits = func ...
+....
+
+
+TIP: There is no concept of inheritance in {proglang}:
+Due to structural typing the names of the classes are for convenience only, all that matters is the fields in the resulting object type. When a typing annotation is supplied by the programmer, adherence is checked: the resulting object type must be a subtype of the annotation.
+
+Since the variable `state` is not declared `public`, it remains encapsulated (i.e. without being externally exposed), and can be accessed by the class' method (here: `next`) only.
+
+The type `Bits` serves as an _iterator_, and as such can be used with the {proglang} `for` construct
+
+....
+for (b in Bits(9764)) {
+  if b { ... }
+}
+....
