@@ -51,6 +51,14 @@ func @add_funds() {
   (prim "fundsAdd" : (Blob, Nat64) -> ()) (@icptBlob, icpts);
 };
 
+// Function called by backend to zero funds on context switch.
+// DO NOT RENAME without modifying compilation.
+func @reset_funds() {
+  @cycleFunds := 0;
+  @icptFunds := 0;
+};
+
+
 // The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 
@@ -327,6 +335,12 @@ type @Waiter<T> = (@Refund,T) -> () ;
 
 var @refund : @Refund = { cycles = 0: Nat64; icpts = 0 : Nat64 };
 
+// Function called by backend to zero refunds on context switch.
+// DO NOT RENAME without modifying compilation.
+func @reset_refund() {
+  @refund := { cycles = 0: Nat64; icpts = 0 : Nat64 };
+};
+
 func @getSystemRefund() : @Refund {
   return {
     cycles = (prim "fundsRefunded" : Blob -> Nat64) @cycleBlob;
@@ -374,14 +388,24 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
         let ws_ = ws;
         ws := func(r : @Refund, t : T) {
           ws_(r, t);
+          @reset_funds();
           @refund := r;
           k(t);
         };
         let rs_ = rs;
-        rs := func(e : Error) { rs_(e); r(e) };
+        rs := func(e : Error) {
+          rs_(e);
+          @reset_funds();
+          @reset_refund();
+          r(e) };
       };
-      case (? (#ok (r,t))) { @refund := r; k(t) };
-      case (? (#error e)) { r(e) };
+      case (? (#ok (r, t))) {
+        @refund := r;
+        k(t)
+      };
+      case (? (#error e)) {
+        r(e)
+      };
     };
   };
 

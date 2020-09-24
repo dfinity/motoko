@@ -5075,6 +5075,21 @@ module Var = struct
 
 end (* Var *)
 
+(* Calling well-known prelude functions *)
+module Prelude = struct
+  let call_prelude_function env ae var =
+    match Var.get_val env ae var with
+    | (SR.Const(_, Const.Fun mk_fi), code) ->
+      code ^^
+        compile_unboxed_zero ^^ (* A dummy closure *)
+          G.i (Call (nr (mk_fi ())))
+    | _ -> assert false
+
+  let add_funds env ae = call_prelude_function env ae "@add_funds"
+  let reset_funds env ae = call_prelude_function env ae "@reset_funds"
+  let reset_refund env ae = call_prelude_function env ae "@reset_refund"
+end
+
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
   let bind_args env ae0 first_arg args =
@@ -5123,6 +5138,9 @@ module FuncDec = struct
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       message_start env sort ^^
+      (* funds *)
+      Prelude.reset_funds env outer_ae ^^
+      Prelude.reset_refund env outer_ae ^^
       (* reply early for a oneway *)
       (if control = Type.Returns
        then
@@ -5240,6 +5258,8 @@ module FuncDec = struct
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
     let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
+    Prelude.reset_funds env ae ^^
+    Prelude.reset_refund env ae ^^
     code ^^
     StackRep.adjust env sr SR.Vanilla ^^
     ClosureTable.remember env
@@ -5639,14 +5659,6 @@ module AllocHow = struct
 end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
-
-let compile_add_funds env ae =
-  match Var.get_val env ae "@add_funds" with
-  | (SR.Const(_, Const.Fun mk_fi), code) ->
-    code ^^
-      compile_unboxed_zero ^^ (* A dummy closure *)
-        G.i (Call (nr (mk_fi ())))
-  | _ -> assert false
 
 let nat64_to_int64 n =
   let open Big_int in
@@ -6385,7 +6397,7 @@ and compile_exp (env : E.t) ae exp =
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
           let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
-          let add_funds = compile_add_funds env ae in
+          let add_funds = Prelude.add_funds env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
@@ -6929,7 +6941,7 @@ and compile_exp (env : E.t) ae exp =
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
-      let add_funds = compile_add_funds env ae in
+      let add_funds = Prelude.add_funds env ae in
       compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
@@ -7081,7 +7093,7 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-    let add_funds = compile_add_funds env ae in
+    let add_funds = Prelude.add_funds env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
