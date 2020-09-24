@@ -341,19 +341,6 @@ module E = struct
   let add_global32 (env : t) name mut init =
     add_global32_delayed env name mut init
 
-  let add_global64_delayed (env : t) name mut : int64 -> unit =
-    let p = Lib.Promise.make () in
-    add_global env name p;
-    (fun init ->
-      Lib.Promise.fulfill p (nr {
-         gtype = GlobalType (I64Type, mut);
-         value = nr (G.to_instr_list (G.i (Const (nr (Wasm.Values.I64 init)))))
-        })
-    )
-
-  let add_global64 (env : t) name mut init =
-    add_global64_delayed env name mut init
-
   let get_global (env : t) name : int32 =
     match NameEnv.find_opt name !(env.global_names) with
     | Some gi -> gi
@@ -3074,11 +3061,6 @@ end (* Lifecycle *)
 
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
-
-  let register_globals env =
-    (* end-of-heap pointer, we set this to __heap_base upon start *)
-    E.add_global64 env "txCycles" Mutable 0x0L;
-    E.add_global64 env "txIcpts" Mutable 0x0L
 
   let i32s n = Lib.List.make n I32Type
 
@@ -7736,7 +7718,6 @@ let compile mode module_name rts (prog : Ir.prog) : Wasm_exts.CustomModule.exten
 
   Heap.register_globals env;
   Stack.register_globals env;
-  Dfinity.register_globals env;
 
   Dfinity.system_imports env;
   RTS.system_imports env;
