@@ -43,7 +43,13 @@ let js_run source =
   let results = Pipeline.run_string (Js.to_string source) in
   let result = String.concat "\n" results in
   Js.string result
-  
+
+let js_candid source =
+  let _ = Flags.compiled := true in
+  let prog = Diag.run (Pipeline.generate_idl_string (Js.to_string source) Filename.current_dir_name) in
+  let code = Idllib.Arrange_idl.string_of_prog prog in
+  Js.string code
+
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
@@ -51,6 +57,7 @@ let js_compile_with mode_string source convert =
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
+  let _ = Flags.compiled := true in
   match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with
   | Ok (module_, msgs) ->
     let code = convert module_ in
@@ -100,6 +107,7 @@ let () =
     (object%js
       method loadFile name content = Sys_js.create_file ~name:(Js.to_string name) ~content:(Js.to_string content)
       method check s = wrap_output (fun _ -> js_check s)
+      method candid s = wrap_output (fun _ -> js_candid s)
       method compileWasm mode s = wrap_output (fun _ -> js_compile_wasm mode s)
       method run s = wrap_output (fun _ -> js_run s)
     end);

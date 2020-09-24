@@ -19,6 +19,7 @@ val check_files' : parse_fn -> string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
 val generate_idl : string list -> Idllib.Syntax.prog Diag.result
+val generate_idl_string : string -> string -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope
 val chase_imports : parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->

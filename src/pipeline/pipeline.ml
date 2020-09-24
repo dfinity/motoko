@@ -433,6 +433,12 @@ let generate_idl files : Idllib.Syntax.prog Diag.result =
   let* () = Typing.check_actors senv progs in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
+let generate_idl_string s name : Idllib.Syntax.prog Diag.result =
+  let open Diag.Syntax in
+  let* libs, prog, senv, _t, _sscope = load_decl (parse_string name s) initial_stat_env in
+  let* () = Typing.check_actors senv [prog] in
+  Diag.return (Mo_idl.Mo_to_idl.prog ([prog], senv))
+
 (* Running *)
 
 let run_files files : unit option =

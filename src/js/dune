@@ -1,7 +1,7 @@
 (executable
  (name mo_js)
  (modules mo_js)
- (libraries checkseum.ocaml mo_config pipeline bigstringaf)
+ (libraries checkseum.ocaml mo_config pipeline idllib)
  (js_of_ocaml (flags --no-extern-fs --no-source-map))
  (preprocess (pps js_of_ocaml-ppx))
 )
