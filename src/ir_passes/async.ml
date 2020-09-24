@@ -53,7 +53,7 @@ let new_asyncT =
   T.Func (
       T.Local,
       T.Returns,
-      [ { var = "T"; sort=T.Scope; bound = T.Any } ],
+      [ { var = "T"; sort = T.Type; bound = T.Any } ],
       [],
       new_async_ret unary (T.Var ("T", 0))
     )
