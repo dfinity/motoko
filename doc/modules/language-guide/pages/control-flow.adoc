@@ -11,13 +11,59 @@ Imperative control flow often goes hand-in-hand with destructive updates (value-
 
 Normally, the result of a function is the value of the last expression in its body. Sometimes the result is readily available at an earlier moment (usually due to some checked condition), and in such situations the `return <val>` construct can be used to abandon the regular control flow, and give the function a result immediately.
 
+
+[[loops-labels]]
+== Loops and labels
+
+{proglang} provides several kinds of repetition constructs
+- `for` expressions for iterationg over members of structured data
+- `loop` expressions for programmatic repetition (optionally with termination condition)
+- `while` loops for programmatic repetition with entry check.
+
+Any of these can be prefixed with a `label <name>` qualifier to give the loop a symbolic name. The naming of loops is useful for imperatively changing the control flow of the _innermost_ loop with the given name:
+- initiating a re-entry of the loop with `continue <name>`, or
+- abandoning the loop altogether with `break <name>`.
+
+In the following example the `for` expression loops over characters of some text and abandons iteration as soon as an exclamation sign is encountered
+
+....
+label letters for (c in someText.chars()) {
+  if (c == '!') { break letters };
+  ...
+}
+....
+
+[[repetition-loop]]
+== Repetition with `loop`
+
+The simplest way indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
+
+....
+loop { <expr1>; <expr2>; ... }
+....
+
+The loop can only be abandoned with a `return` or `break` construct. A re-entry condition can be affixed to allow a predicated remaining in the loop with `loop <body> while <remain-cond>`.
+
+[[while-loops]]
+== `while` loops
+
+Sometimes the entry condition is predicating the execution of the loop body. For this kind of repetition the `while <enter-cond> <body>`-flavor is available
+
+....
+while (earned < need) { earned += earn() }
+....
+
+[[while-loops]]
+== `for` loops for iteration
+
+
+
 to do:
 
- - discuss labels and labeled gotos
  - discuss use of `for` loops
  - discuss iterators; discuss examples of iterating an array and iterating a text value (`.keys`, `.vals`, `.chars`, `.size`, etc.)
  - discuss use of `while` loops
- - discuss use of `do` loops
+ - discuss use of `loop` (also w/ condition) loops
 
 [[intro-range]]
 == Using `range` with a `for` loop
