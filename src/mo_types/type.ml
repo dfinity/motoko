@@ -748,7 +748,7 @@ let rec rel_typ rel eq t1 t2 =
     rel_list rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     s1 = s2 && c1 = c2 &&
-    (match rel_binds rel eq tbs1 tbs2 with
+    (match rel_binds eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
