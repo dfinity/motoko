@@ -20,7 +20,7 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "release-0.11.0",
+        "ref": "release-0.11",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
         "rev": "deac92bcc3e7677ca282cf0374aa226f89990780",
         "type": "git"
