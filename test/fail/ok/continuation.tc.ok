@@ -1,0 +1,40 @@
+continuation.mo:4.26-4.56: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:5.26-5.51: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:6.26-6.66: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:9.29-9.43: type error, expression of type
+  Nat
+cannot produce expected type
+  ()
+continuation.mo:10.29-10.43: type error, expression of type
+  Nat
+cannot produce expected type
+  ()
+continuation.mo:10.24-10.54: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:11.35-11.49: type error, expression of type
+  Nat
+cannot produce expected type
+  ()
+continuation.mo:11.24-11.49: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:12.50-12.64: type error, expression of type
+  Nat
+cannot produce expected type
+  ()
+continuation.mo:12.24-12.64: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
