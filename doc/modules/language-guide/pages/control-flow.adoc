@@ -1,8 +1,18 @@
 = Imperative control flow
 
+Control flow comes in two flavors
+- _declarative_ when the value itself guides control and the selection of the resulting value, like in `if` and `switch` expressions
+- _imperative_ (or programmer designed), where control changes according to some manipulative syntax and the result value either doesn't exist or is uninteresting.
+
+Imperative control flow often goes hand-in-hand with destructive updates (value-changing assignments) or other types of side-effects like input/output.
+
+[[early-return]]
+== Early `return` from `func`
+
+Normally, the result of a function is the value of the last expression in its body. Sometimes the result is readily available at an earlier moment (usually due to some checked condition), and in such situations the `return <val>` construct can be used to abandon the regular control flow, and give the function a result immediately.
+
 to do:
 
- - discuss `return`
  - discuss labels and labeled gotos
  - discuss use of `for` loops
  - discuss iterators; discuss examples of iterating an array and iterating a text value (`.keys`, `.vals`, `.chars`, `.size`, etc.)
