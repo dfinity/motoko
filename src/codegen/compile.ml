@@ -3380,8 +3380,6 @@ module Dfinity = struct
 
   (* Funds *)
 
-  (* TODO: enable for ICMode once supported *)
-
   let funds_balance env =
     match E.mode env with
     | Flags.ICMode
