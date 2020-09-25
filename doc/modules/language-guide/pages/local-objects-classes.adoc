@@ -1,14 +1,23 @@
+TODO - Move examples into separate files (where?)
+
 = Local objects and classes
 :proglang: Motoko
 :company-id: DFINITY
 
-In addition to (remote) actor objects, {proglang} provides local objects that are similar in their syntax, typing and evaluation to ordinary (local) objects from object-oriented programming.
+In {proglang}, an `object` encapsulates local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
+
+{proglang} objects are _not shareable_, and this is a critical security-oriented design decision. (If they were shareable, that would mean conceptually moving a mobile object's code among actors and executing it remotely, a security risk.)
+
+To compensate for this necessary limitation, `actor` objects _are shareable_, but always execute remotely.
+They communicate with shareable {proglang} data only.
+Local objects interact in less restricted ways with themselves, and can pass any {proglang} data to each other's methods, including other objects.
+In most other ways, local objects (and classes) are non-shareable counterparts to actor objects (and classes).
 
 The link:mutable-state{outfilesuffix}[Mutable state] introduced declarations of private mutable state, in the form of `var`-bound variables and (mutable) array allocation.
 In this chapter, we use mutable state to implement simple objects, a la object-oriented programming.
 
 We illustrate this support via a running example, which continues in the next chapter.
-The following example illustrates a general evolution path for {proglang} programs. 
+The following example illustrates a general evolution path for {proglang} programs.
 Each _object_, if important enough, has the potential to be refactored into an Internet _service_, by refactoring this _(local) object_ into an _actor object_.
 
 == Example: The `counter` object
@@ -53,7 +62,7 @@ In the declaration of `object`, the variable `count` was explicitly declared nei
 By default, all declarations in an object block are `private`, as is `count` here.
 Consequently, the type for `count` does not appear in the type of the object, _and_ its name and presence are both inaccessible from the outside.
 
-The inaccessibility of this field comes with a powerful benefit: 
+The inaccessibility of this field comes with a powerful benefit:
 By not exposing this implementation detail, the object has a _more general_ type (fewer fields), and as a result, is interchangeable with objects that implement the same counter object type differently, without using such a field.
 
 == Example: The `byte_counter` object
@@ -172,4 +181,117 @@ array, options, variants and number type inter-relationships.
 
 == Object classes
 
-CAUTION: to do: examples and prose here
+In {proglang}, an object encapsulates state, and an object `class` is
+a package of two entities that share a common name.
+
+Consider this example `class` for counters that start at zero:
+
+```
+class Counter() {
+  var c = 0;
+  public func inc() : Nat {
+    c += 1;
+    c
+  }
+};
+```
+
+The value of this definition is that we can _construct_ new counters,
+each starting with their own unique state, initially at zero:
+
+```
+let c1 = Counter();
+let c2 = Counter();
+```
+Each is independent:
+
+```
+c1.inc();
+c2.inc()
+```
+
+We could accomplish the same effect by writing a function that returns an object:
+
+```
+func newCounter () : { inc : () -> Nat } =
+  object {
+    var c = 0;
+    public func inc() : Nat { c += 1; c }
+  };
+```
+
+Notice the return type of this _constructor function_ (an object type):
+
+```
+{ inc : () -> Nat }
+``
+
+We may want to name this type, e.g., `Counter`, as follows, for use in further type declarations:
+
+```
+type Counter = { inc : () -> Nat };
+```
+
+=== `class` keyword
+
+In {proglang}, the object-constructing function and the type definition for its returned objects can be declared using the `class` keyword.
+
+We can rephrase the definition for `Counter` given above as follows:
+
+```
+class Counter() {
+  var c = 0;
+  public func inc() : Nat { c += 1; c };
+};
+```
+
+=== Constructor arguments
+
+An object class may carry zero or more data arguments and zero or more type arguments.
+
+The `Counter` example above has zero of each.
+
+The type arguments, if any, parameterize both the type and the constructor function for the class.
+
+The data arguments, if any, parameterize (only) the constructor function for the class.
+
+==== Data arguments
+
+Suppose we want to initialize the counter with some non-zero value.  We can supply that value as a data argument to the `class` constructor:
+
+```
+class Counter(init : Nat) {
+  var c = init;
+  public func inc() : Nat { c += 1; c };
+};
+```
+
+This parameter is available to all methods.
+
+For instance, we can `reset` the `Counter` to its initial value, a parameter:
+
+```
+class Counter(init : Nat) {
+  var c = init;
+  public func inc() : Nat { c += 1; c };
+  public func reset() { c = init };
+};
+```
+
+==== Type arguments
+
+Suppose we want the counter to actually carry data that it counts (like a specialized `Buffer`).
+
+When classes use or contain data of arbitrary type, they carry a type
+parameter for that unknown type, just as with functions.
+
+The scope of this type parameter covers the entire `class`, just as with data parameters.
+As such, the methods of the class can use (and _need not re-introduce_) these type parameters.
+
+```
+class Counter<X>(init : Buffer<X>) {
+  var buffer = init;
+  public func add(x : X) : Nat { buffer.add(x); buffer.size() };
+  public func reset() { buffer = init };
+};
+```
