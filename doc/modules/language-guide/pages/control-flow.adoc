@@ -1,29 +1,32 @@
 = Imperative control flow
 
 Control flow comes in two flavors
-- _declarative_ when the value itself guides control and the selection of the resulting value, like in `if` and `switch` expressions
+
+- _declarative_, when the value itself guides control and the selection of the resulting value, like in `if` and `switch` expressions
 - _imperative_ (or programmer designed), where control changes according to some manipulative syntax and the result value either doesn't exist or is uninteresting.
 
-Imperative control flow often goes hand-in-hand with destructive updates (value-changing assignments) or other types of side-effects like input/output.
+Imperative control flow often goes hand-in-hand with destructive updates (value-changing assignments) or other flavors of side-effects, like input/output.
 
 [[early-return]]
 == Early `return` from `func`
 
-Normally, the result of a function is the value of the last expression in its body. Sometimes the result is readily available at an earlier moment (usually due to some checked condition), and in such situations the `return <val>` construct can be used to abandon the regular control flow, and give the function a result immediately.
+Normally, the result of a function is the value of the last expression in its body. Sometimes the result is readily available at an earlier moment (usually due to some checked condition), and in such situations the `return ⟨val⟩` construct can be used to abandon the regular control flow, and give the function a result immediately.
 
-A special shortcut is available when the function has unit result type, and the shorter `return` is available instead of the equivalent `return ()`.
+A special shortcut is available when the function has unit result type, and the shorthand `return` can be used instead of the equivalent `return ()`.
 
 [[loops-labels]]
 == Loops and labels
 
 {proglang} provides several kinds of repetition constructs
+
 - `for` expressions for iterationg over members of structured data
 - `loop` expressions for programmatic repetition (optionally with termination condition)
 - `while` loops for programmatic repetition with entry check.
 
-Any of these can be prefixed with a `label <name>` qualifier to give the loop a symbolic name. The naming of loops is useful for imperatively changing the control flow of the _innermost_ loop with the given name:
-- initiating a re-entry of the loop with `continue <name>`, or
-- abandoning the loop altogether with `break <name>`.
+Any of these can be prefixed with a `label ⟨name⟩` qualifier to give the loop a symbolic name. The naming of loops is useful for imperatively changing the control flow of the _innermost_ loop with the given name:
+
+- initiating a re-entry of the loop with `continue ⟨name⟩`, or
+- abandoning the loop altogether with `break ⟨name⟩`.
 
 In the following example the `for` expression loops over characters of some text and abandons iteration as soon as an exclamation sign is encountered
 
@@ -36,11 +39,12 @@ label letters for (c in someText.chars()) {
 
 === Labeled expressions
 
-There are two other facets to `label`\s that are less mainstream, but come very handy in certain situations:
-- `label`\s can be typed
+There are two other facets to `label`{zwsp}s that are less mainstream, but come very handy in certain situations:
+
+- `label`{zwsp}s can be typed
 - any expression can be affixed with a label and `break` allows to short circuit the expression's evaluation, providing a value.
 
-The syntax for type-annotated labels is `label <id> : <type> <expr>`, signifying that any expression can be exited using a `break <id> <alt-expr>` construct that short-circuits evaluation of `<expr>`, and results in a value by evaluating `<alt-expr>` instead.
+The syntax for type-annotated labels is `label ⟨name⟩ : ⟨type⟩ ⟨expr⟩`, signifying that any expression can be exited using a `break ⟨name⟩ ⟨alt-expr⟩` construct that short-circuits evaluation of `⟨expr⟩`, and results in a value by evaluating `⟨alt-expr⟩` instead.
 
 Judicious use of these constructs allows the programmer to focus on the primary program logic and handle exceptional case via `break`
 
@@ -60,15 +64,15 @@ let address = label exit : ?(Text, IPAddr) {
 The simplest way to indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
 
 ....
-loop { <expr1>; <expr2>; ... }
+loop { ⟨expr1⟩; ⟨expr2⟩; ... }
 ....
 
-The loop can only be abandoned with a `return` or `break` construct. A re-entry condition can be affixed to allow a predicated remaining in the loop with `loop <body> while <remain-cond>`.
+The loop can only be abandoned with a `return` or `break` construct. A re-entry condition can be affixed to allow a predicated remaining in the loop with `loop ⟨body⟩ while ⟨remain-cond⟩`.
 
 [[while-loops]]
 == `while` loops with precondition
 
-Sometimes the entry condition is predicating the execution of the loop body. For this kind of repetition the `while <enter-cond> <body>`-flavor is available
+Sometimes the entry condition is predicating the execution of the loop body. For this kind of repetition the `while ⟨enter-cond⟩ ⟨body⟩`-flavor is available
 
 ....
 while (earned < need) { earned += earn() };
@@ -80,6 +84,12 @@ while (earned < need) { earned += earn() };
 An iteration over elements of some homogeneous collection can be performed using a `for` loop. The values are drawn from an iterator and bound to the loop pattern in turn.
 
 ....
+let carsInStock = [
+  ("Buick", 2020, 23.000),
+  ("Toyota", 2019, 17.500),
+  ("Audi", 2020, 34.900)
+];
+var inventory : { var value : Float } = { var value = 0.0 };
 for ((model, year, price) in carsInStock.vals()) {
   inventory.value += price;
 }
@@ -146,25 +156,25 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 |Type |Name |Iterator |Elements |Element type
 
 |`[T]`
-|array of `T`s
+|array of `T`{zwsp}s
 |`vals`
 |the array's members
 |`T`
 
 |`[T]`
-|array of `T`s
+|array of `T`{zwsp}s
 |`keys`
 |the array's valid indices
 |`Nat`
 
 |`[var T]`
-|mutable array of `T`s
+|mutable array of `T`{zwsp}s
 |`vals`
 |the array's members
 |`T`
 
 |`[var T]`
-|mutable array of `T`s
+|mutable array of `T`{zwsp}s
 |`keys`
 |the array's valid indices
 |`Nat`
