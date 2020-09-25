@@ -213,7 +213,7 @@ c2.inc()
 We could accomplish the same effect by writing a function that returns an object:
 
 ```
-func newCounter () : { inc : () -> Nat } =
+func Counter() : { inc : () -> Nat } =
   object {
     var c = 0;
     public func inc() : Nat { c += 1; c }
