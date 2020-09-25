@@ -4,3 +4,6 @@
 ← completed: ()
 → update go()
 ← rejected (RC_CANISTER_REJECT): cvccv-qqaaq-aaaaa-aaaaa-c is not authorized to manage canister cvccv-qqaaq-aaaaa-aaaaa-c, only w7x7r-cok77-xa is
+→ update showBalance()
+debug.print: E balance is {cycle = "<omitted>"; icpt = 0}
+← completed: ()
