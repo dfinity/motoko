@@ -783,7 +783,7 @@ and infer_exp'' env exp : T.typ =
       if not (T.eq t t1 || T.eq t t2) then
         if T.eq t1 t2 && T.is_con t1 && T.is_abs (fst (T.as_con t1)) then
           error env exp.at
-            "comparing the abstract type %s to itself\n\n Hint: Maybe accept a function as an argument that does the comparison instead?"
+            "comparing the abstract type %s to itself\n\nHint: Maybe accept a function as an argument that does the comparison instead?"
             (T.string_of_typ_expand t1)
             (T.string_of_typ_expand t2)
         else
