@@ -3,7 +3,13 @@
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
 → update go()
-← rejected (RC_CANISTER_REJECT): cvccv-qqaaq-aaaaa-aaaaa-c is not authorized to manage canister cvccv-qqaaq-aaaaa-aaaaa-c, only w7x7r-cok77-xa is
+debug.print: A balance is {cycle = "<omitted>"; icpt = 2_000}
+debug.print: B balance is {cycle = "<omitted>"; icpt = 1_990}
+debug.print: available: (50, 5)
+debug.print: C balance is {cycle = "<omitted>"; icpt = 1_990}
+debug.print: D balance is {cycle = "<omitted>"; icpt = 2_000}
+debug.print: refunded {cycle = 100; icpt = 10}
+← completed: ()
 → update showBalance()
-debug.print: E balance is {cycle = "<omitted>"; icpt = 0}
+debug.print: E balance is {cycle = "<omitted>"; icpt = 2_000}
 ← completed: ()
