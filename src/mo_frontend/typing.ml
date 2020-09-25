@@ -776,16 +776,22 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_relop op t) then
-        error env exp.at
-          "operator not defined for operand types\n  %s\nand\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2);
+          error env exp.at
+            "operator not defined for operand types\n  %s\nand\n  %s"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t2);
       if not (T.eq t t1 || T.eq t t2) then
-        warn env exp.at
-          "comparing types\n  %s\nand\n  %s\nat supertype\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2)
-          (T.string_of_typ_expand t);
+        if T.eq t1 t2 && T.is_con t1 && T.is_abs (fst (T.as_con t1)) then
+          error env exp.at
+            "comparing the abstract type %s to itself\n\n Hint: Maybe accept a function as an argument that does the comparison instead?"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t2)
+        else
+          warn env exp.at
+            "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t2)
+            (T.string_of_typ_expand t);
       ot := t;
     end;
     T.bool
