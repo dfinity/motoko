@@ -42,7 +42,7 @@ label letters for (c in someText.chars()) {
 There are two other facets to `label`{zwsp}s that are less mainstream, but come very handy in certain situations:
 
 - `label`{zwsp}s can be typed
-- any expression can be affixed with a label and `break` allows to short circuit the expression's evaluation, providing a value.
+- any expression can be named by prefixing it with a label, and `break` allows to short circuit its evaluation, providing a value.
 
 The syntax for type-annotated labels is `label ⟨name⟩ : ⟨type⟩ ⟨expr⟩`, signifying that any expression can be exited using a `break ⟨name⟩ ⟨alt-expr⟩` construct that short-circuits evaluation of `⟨expr⟩`, and results in a value by evaluating `⟨alt-expr⟩` instead.
 
@@ -57,6 +57,8 @@ let address = label exit : ?(Text, IPAddr) {
   ...
 }
 ....
+
+Naturally, labeled common expressions don't allow `continue`. In terms of typing, both `⟨expr⟩` and `⟨alt-expr⟩`{zwsp}'s types must conform with the label's declared `⟨type⟩`. If a label is only given a `⟨name⟩`, then its `⟨type⟩` defaults to unit (`()`). Similarly a `break` without an `⟨alt-expr⟩` is shorthand for the value unit (`()`).
 
 [[repetition-loop]]
 == Repetition with `loop`
