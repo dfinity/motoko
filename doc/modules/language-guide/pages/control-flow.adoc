@@ -34,10 +34,30 @@ label letters for (c in someText.chars()) {
 }
 ....
 
+=== Labeled expressions
+
+There are two other facets to `label`\s that are less mainstream, but come very handy in certain situations:
+- `label`\s can be typed
+- any expression can be affixed with a label and `break` allows to short circuit the expression's evaluation, providing a value.
+
+The syntax for type-annotated labels is `label <id> : <type> <expr>`, signifying that any expression can be exited using a `break <id> <alt-expr>` construct that short-circuits evaluation of `<expr>`, and results in a value by evaluating `<alt-expr>` instead.
+
+Judicious use of these constructs allows the programmer to focus on the primary program logic and handle exceptional case via `break`
+
+....
+let address = label exit : ?(Text, IPAddr) {
+  let splitted = split('@', formInput);
+  if splitted == null { break exit(null) };
+  let ?(account, host) = splitted;
+  if (not (parseAccount(account))) { break exit(null) };
+  ...
+}
+....
+
 [[repetition-loop]]
 == Repetition with `loop`
 
-The simplest way indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
+The simplest way to indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
 
 ....
 loop { <expr1>; <expr2>; ... }
@@ -46,25 +66,24 @@ loop { <expr1>; <expr2>; ... }
 The loop can only be abandoned with a `return` or `break` construct. A re-entry condition can be affixed to allow a predicated remaining in the loop with `loop <body> while <remain-cond>`.
 
 [[while-loops]]
-== `while` loops
+== `while` loops with precondition
 
 Sometimes the entry condition is predicating the execution of the loop body. For this kind of repetition the `while <enter-cond> <body>`-flavor is available
 
 ....
-while (earned < need) { earned += earn() }
+while (earned < need) { earned += earn() };
 ....
 
-[[while-loops]]
+[[for-loops]]
 == `for` loops for iteration
 
+An iteration over elements of some homogeneous collection can be performed using a `for` loop. The values are drawn from an iterator and bound to the loop pattern in turn.
 
-
-to do:
-
- - discuss use of `for` loops
- - discuss iterators; discuss examples of iterating an array and iterating a text value (`.keys`, `.vals`, `.chars`, `.size`, etc.)
- - discuss use of `while` loops
- - discuss use of `loop` (also w/ condition) loops
+....
+for ((model, year, price) in carsInStock.vals()) {
+  inventory.value += price;
+}
+....
 
 [[intro-range]]
 == Using `range` with a `for` loop
@@ -112,7 +131,55 @@ Like `range`, the function `revrange` is a `class` that constructs iterators (ea
 As a constructor function, it has a function type:
 
 ....
-(upper:Nat, lower:Nat) -> Iter
+(upper:Nat, lower:Nat) -> Iter<Nat>
 ....
 
 Unlike `range`, the `revrange` function _descends_ in its iteration sequence, from an initial _upper_ bound to a final _lower_ bound.
+
+[[other-iterators]]
+== Using iterators of specific data structures
+
+Many built-in data structures come with pre-defined iterators. Below table lists them
+
+.Iterators for data structures
+|===
+|Type |Name |Iterator |Elements |Element type
+
+|`[T]`
+|array of `T`s
+|`vals`
+|the array's members
+|`T`
+
+|`[T]`
+|array of `T`s
+|`keys`
+|the array's valid indices
+|`Nat`
+
+|`[var T]`
+|mutable array of `T`s
+|`vals`
+|the array's members
+|`T`
+
+|`[var T]`
+|mutable array of `T`s
+|`keys`
+|the array's valid indices
+|`Nat`
+
+|`Text`
+|text
+|`chars`
+|the text's characters
+|`Char`
+
+|`Blob`
+|blob
+|`bytes`
+|the blob's bytes
+|`Word8`
+|===
+
+User-defined data structures can define their own iterators. As long they conform with the `Iter<T>` type for some element type `T`, these behave like the built-in ones.
