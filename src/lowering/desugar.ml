@@ -645,8 +645,9 @@ type import_declaration = Ir.dec list
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note in
   let (_, cub) = lib.it in
-  let t = match T.normalize cub.note.S.note_typ with
-    | T.Func (sort, control, [], ts1, [t2]) ->
+  let class_c, t = match T.normalize cub.note.S.note_typ with
+    | T.Func (sort, control, [], ts1, [T.Con(c,[]) as t2]) ->
+      c,
       T.Func (sort, control, [T.scope_bind],
               ts1,
               [T.Async (T.Var (T.default_scope_var, 0), t2)])
@@ -688,7 +689,22 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     ts2'
     body
   in
-  [ letD (var (id_of_full_path f) t) func ]
+  let func_typ = func.note.Note.typ in
+  let id = Con.name class_c in (* HACK *)
+  let v = fresh_var id func_typ in
+  let mod_exp =
+    blockE
+    [letD v func]
+    (newObjE T.Module
+      [{ it = {I.name = id; I.var = id_of_var v};
+         at = no_region;
+         note = func_typ }]
+      (T.Obj(T.Module, List.sort T.compare_field [
+        { T.lab = id; T.typ = T.Typ class_c };
+        { T.lab = id; T.typ = func_typ }])))
+  in
+  let mod_typ = mod_exp.note.Note.typ in
+  [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 
 let import_prelude prelude : import_declaration =
@@ -808,11 +824,28 @@ let import_unit (u : S.comp_unit) : import_declaration =
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
-      funcE "actor_class_constructor" T.Local T.Returns
+      let class_c = match ts2 with [T.Con(c,[])] -> c | _ -> assert false in (* HACK *)
+      let id = Con.name class_c in
+      let func = funcE "actor_class_constructor" T.Local T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (List.hd cs, actor_t)]
         body
+      in
+      let func_typ = func.note.Note.typ in
+      let v = fresh_var id func_typ in
+      blockE
+        [letD v func]
+        (newObjE T.Module
+           [
+             { it = {I.name = id; I.var = id_of_var v};
+               at = no_region;
+               note = func_typ }
+           ]
+           (T.Obj(T.Module, List.sort T.compare_field [
+                               { T.lab = id; T.typ = T.Typ class_c };
+                               { T.lab = id; T.typ = func_typ }
+           ])))
     | I.ProgU ds ->
       raise (Invalid_argument "Desugar: Cannot import program")
   in

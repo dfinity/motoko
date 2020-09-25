@@ -940,11 +940,13 @@ let import_lib env lib =
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
-  | Syntax.ActorClassU _ ->
+  | Syntax.ActorClassU(_sp, id, _p, _typ, _self_id, _fields) ->
     fun v ->
-      let call_conv, f = V.as_func v in
-      V.local_func call_conv.Call_conv.n_args 1
-        (fun c v k -> async env lib.at (fun k' _r -> f c v k') k)
+    let call_conv, f = V.as_func v in
+    let async_f = V.local_func call_conv.Call_conv.n_args 1
+               (fun c v k -> async env lib.at (fun k' _r -> f c v k') k)
+    in
+      V.Obj(V.Env.singleton id.it async_f)
   | _ -> assert false
 
 
