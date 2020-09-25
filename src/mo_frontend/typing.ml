@@ -776,10 +776,10 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_relop op t) then
-          error env exp.at
-            "operator not defined for operand types\n  %s\nand\n  %s"
-            (T.string_of_typ_expand t1)
-            (T.string_of_typ_expand t2);
+        error env exp.at
+          "operator not defined for operand types\n  %s\nand\n  %s"
+          (T.string_of_typ_expand t1)
+          (T.string_of_typ_expand t2);
       if not (T.eq t t1 || T.eq t t2) then
         if T.eq t1 t2 && T.is_con t1 && T.is_abs (fst (T.as_con t1)) then
           error env exp.at
