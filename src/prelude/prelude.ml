@@ -45,8 +45,7 @@ var @icptFunds : Nat64 = 0;
 func @add_funds() {
   let cycles = @cycleFunds;
   let icpts = @icptFunds;
-  @cycleFunds := 0;
-  @icptFunds := 0;
+  @reset_funds();
   (prim "fundsAdd" : (Blob, Nat64) -> ()) (@cycleBlob, cycles);
   (prim "fundsAdd" : (Blob, Nat64) -> ()) (@icptBlob, icpts);
 };
