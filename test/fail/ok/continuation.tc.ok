@@ -10,3 +10,21 @@ continuation.mo:12.24-12.64: type error, expression of type
   ()
 cannot produce expected type
   Nat
+continuation.mo:15.42-15.43: type error, unbound label c
+continuation.mo:16.42-16.43: type error, unbound label c
+continuation.mo:17.48-17.49: type error, unbound label c
+continuation.mo:18.63-18.64: type error, unbound label c
+continuation.mo:19.35-19.36: type error, unbound label c
+continuation.mo:22.24-22.54: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:23.24-23.49: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:24.24-24.64: type error, expression of type
+  ()
+cannot produce expected type
+  Nat
+continuation.mo:25.33-25.34: type error, unbound label c
