@@ -207,7 +207,7 @@ Each is independent:
 
 ```
 c1.inc();
-c2.inc()
+c2.inc();
 ```
 
 We could accomplish the same effect by writing a function that returns an object:
