@@ -422,9 +422,6 @@ let check_files' parsefn files : check_result =
 let check_files files : check_result =
   check_files' parse_file files
 
-let check_string s name : check_result =
-  Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
-
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
@@ -432,12 +429,6 @@ let generate_idl files : Idllib.Syntax.prog Diag.result =
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
-
-let generate_idl_string s name : Idllib.Syntax.prog Diag.result =
-  let open Diag.Syntax in
-  let* libs, prog, senv, _t, _sscope = load_decl (parse_string name s) initial_stat_env in
-  let* () = Typing.check_actors senv [prog] in
-  Diag.return (Mo_idl.Mo_to_idl.prog ([prog], senv))
 
 (* Running *)
 
@@ -632,13 +623,6 @@ let compile_files mode do_link files : compile_result =
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
   Diag.return (compile_progs mode do_link libs progs)
-
-let compile_string mode s name : compile_result =
-  let open Diag.Syntax in
-  let* libs, prog, senv, _t, _sscope =
-    load_decl (parse_string name s) initial_stat_env
-  in
-  Diag.return (compile_progs mode true libs [prog])
 
 (* Interpretation (IR) *)
 

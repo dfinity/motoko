@@ -31,7 +31,7 @@ let diagnostics_of_msgs (msgs : Diag.message list) =
 
 let js_check source =
   let msgs = match
-    Pipeline.check_string (Js.to_string source) Filename.current_dir_name with
+    Pipeline.check_files [Js.to_string source] with
     | Error msgs -> msgs
     | Ok (_,  msgs) -> msgs in
   object%js
@@ -40,13 +40,14 @@ let js_check source =
   end
 
 let js_run source =
+  let _ = Flags.compiled := false in
   let results = Pipeline.run_string (Js.to_string source) in
   let result = String.concat "\n" results in
+  let _ = Flags.compiled := true in
   Js.string result
 
 let js_candid source =
-  let _ = Flags.compiled := true in
-  let prog = Diag.run (Pipeline.generate_idl_string (Js.to_string source) Filename.current_dir_name) in
+  let prog = Diag.run (Pipeline.generate_idl [Js.to_string source]) in
   let code = Idllib.Arrange_idl.string_of_prog prog in
   Js.string code
 
@@ -57,8 +58,7 @@ let js_compile_with mode_string source convert =
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
-  let _ = Flags.compiled := true in
-  match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with
+  match Pipeline.compile_files mode true [Js.to_string source] with
   | Ok (module_, msgs) ->
     let code = convert module_ in
     object%js
@@ -81,6 +81,12 @@ let js_compile_wasm mode s =
         (Js.wrap_callback (fun _v k -> Char.code wasm.[k]))
     )
 
+let js_save_file filename content =
+  let filename = Js.to_string filename in
+  let content = Js.to_string content in
+  try Sys_js.create_file ~name:filename ~content:content
+  with _ -> Sys_js.update_file ~name:filename ~content:content
+
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
 
@@ -99,13 +105,14 @@ let wrap_output f =
 let () =
   Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
   Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
-  Sys_js.mount ~path:"base/" (fun ~prefix ~path -> Some (Sys_js.read_file ~name:path));
   let libs = Flags.package_urls in
   libs := Flags.M.add "base" "base/" !libs;
   Flags.check_ir := false;
+  Flags.compiled := true;
   Js.export "Motoko"
     (object%js
-      method loadFile name content = Sys_js.create_file ~name:(Js.to_string name) ~content:(Js.to_string content)
+      method saveFile name content = js_save_file name content
+      method loadFile name = Sys_js.read_file ~name:(Js.to_string name)
       method check s = wrap_output (fun _ -> js_check s)
       method candid s = wrap_output (fun _ -> js_candid s)
       method compileWasm mode s = wrap_output (fun _ -> js_compile_wasm mode s)
