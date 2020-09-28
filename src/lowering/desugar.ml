@@ -645,6 +645,10 @@ type import_declaration = Ir.dec list
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note in
   let (_, cub) = lib.it in
+  let id = match cub.it with
+    | S.ActorClassU (_, id, _, _, _, _) -> id.it
+    | _ -> assert false
+  in
   let class_c, t = match T.normalize cub.note.S.note_typ with
     | T.Func (sort, control, [], ts1, [T.Con(c,[]) as t2]) ->
       c,
@@ -683,14 +687,13 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
   in
-  let func = funcE "actor_class_constructor" T.Local T.Returns
+  let func = funcE id T.Local T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
     body
   in
   let func_typ = func.note.Note.typ in
-  let id = Con.name class_c in (* HACK *)
   let v = fresh_var id func_typ in
   let mod_exp =
     blockE
@@ -812,6 +815,10 @@ let import_unit (u : S.comp_unit) : import_declaration =
     | I.ActorU (None, ds, fs, up, t) ->
       raise (Invalid_argument "Desugar: Cannot import actor")
     | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+      let id = match body.it with
+        | S.ActorClassU (_, id, _, _, _, _) -> id.it
+        | _ -> assert false
+      in
       let s, cntrl, tbs, ts1, ts2 = T.as_func t in
       assert (tbs = []);
       let cs = T.open_binds [T.scope_bind] in
@@ -824,9 +831,8 @@ let import_unit (u : S.comp_unit) : import_declaration =
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
-      let class_c = match ts2 with [T.Con(c,[])] -> c | _ -> assert false in (* HACK *)
-      let id = Con.name class_c in
-      let func = funcE "actor_class_constructor" T.Local T.Returns
+      let class_c = match ts2 with [T.Con(c, [])] -> c | _ -> assert false in
+      let func = funcE id T.Local T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (List.hd cs, actor_t)]
