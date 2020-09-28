@@ -2272,18 +2272,20 @@ let check_lib scope lib : Scope.t Diag.result =
             | ActorClassU  (sp, id, p, _, self_id, fields) ->
               if Syntax.is_anonymous id then
                 error env cub.at "bad import: expected a named actor class but found an anonymous actor class: only named actor classes can be imported";
-              let con, fun_typ = begin
-                  match T.normalize typ with
-                  | T.Func (sort, control, [], ts1, [T.Con(con, []) as t2]) ->
-                    con, T.Func (sort, control, [T.scope_bind],
-                            ts1,
-                            [T.Async (T.Var (T.default_scope_var, 0), t2)])
-                  | _ -> assert false
+              let class_typ, fun_typ = begin
+                match T.normalize typ with
+                | T.Func (sort, control, [], ts1, [t2]) ->
+                  t2,
+                  T.Func (sort, control, [T.scope_bind],
+                    ts1,
+                    [T.Async (T.Var (T.default_scope_var, 0), t2)])
+                | _ -> assert false
                 end
               in
+              let con = Con.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
-                 { T.lab = id.it; T.typ = T.Typ con };
-                 { T.lab = id.it; T.typ = fun_typ }
+                { T.lab = id.it; T.typ = T.Typ con };
+                { T.lab = id.it; T.typ = fun_typ }
               ])
             | ActorU _ ->
               error env cub.at "bad import: expected a module or actor class but found an actor"
