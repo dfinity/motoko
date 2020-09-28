@@ -45,6 +45,8 @@ we perform a stable sort by serial number, with non-referencable DIEs trailing.
 
 module Promise = Lib.Promise
 
+open Dwarf5.Meta
+
 open CustomModule
 
 (* Version *)
