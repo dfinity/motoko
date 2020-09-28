@@ -2272,7 +2272,11 @@ let check_lib scope lib : Scope.t Diag.result =
                         [T.Async (T.Var (T.default_scope_var, 0), t2)])
               | _ -> assert false
               end
-            | _ -> assert false
+            | ActorU _ ->
+              error env cub.at "bad import: expected a module or actor class but found an actor"
+            | ProgU _ ->
+              (* this shouldn't really happen, as an imported program should be rewritten to a module *)
+              error env cub.at "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
           Scope.lib lib.note imp_typ
         ) lib
