@@ -43,23 +43,6 @@ we perform a stable sort by serial number, with non-referencable DIEs trailing.
 
  *)
 
-open Dwarf5.Meta
-
-(* Utility predicates *)
-
-(* is_dwarf_like indicates whether a Wasm.Ast meta instruction
-   prevents dead-code elimination. Elimination is forbidden,
-   if the instruction contributes to a DIE, i.e. establishes, augments
-   or closes a DWARF Tag.
- *)
-let rec is_dwarf_like' = function
-  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
-  | Grouped parts -> List.exists is_dwarf_like' parts
-  | StatementDelimiter _ | FutureAttribute _ -> false
-let is_dwarf_like = function
-  | Ast.Meta m -> is_dwarf_like' m
-  | _ -> false
-
 module Promise = Lib.Promise
 
 open CustomModule
@@ -72,7 +55,6 @@ let version = 1l
 (* Errors *)
 
 module Code = Wasm.Error.Make ()
-
 
 (* Encoding stream *)
 
