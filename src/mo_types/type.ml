@@ -101,6 +101,7 @@ let compare_field f1 f2 =
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
+let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text
 let blob = Prim Blob
@@ -680,6 +681,7 @@ let stable t = serializable true t
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
 
+
 (* Equivalence & Subtyping *)
 
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
@@ -748,7 +750,7 @@ let rec rel_typ rel eq t1 t2 =
     rel_list rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     s1 = s2 && c1 = c2 &&
-    (match rel_binds rel eq tbs1 tbs2 with
+    (match rel_binds eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
@@ -807,6 +809,7 @@ and rel_binds rel eq tbs1 tbs2 =
   else None
 
 and rel_bind ts rel eq tb1 tb2 =
+  tb1.sort == tb2.sort &&
   rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
@@ -816,6 +819,9 @@ and eq t1 t2 : bool =
 
 and sub t1 t2 : bool =
   rel_typ (ref SS.empty) (ref SS.empty) t1 t2
+
+and eq_binds tbs1 tbs2 =
+  let eq = ref SS.empty in rel_binds eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
@@ -841,6 +847,7 @@ and eq_con eq c1 c2 =
     )
 
 let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
+
 
 (* Compatibility *)
 
@@ -996,8 +1003,7 @@ let rec lub' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
-        List.for_all2 (fun b1 b2 -> b1.sort = b2.sort) bs1 bs2 &&
+        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1070,8 +1076,7 @@ and glb' lubs glbs t1 t2 =
       | Some fs -> Obj (s1, fs)
       )
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
-        List.for_all2 (fun b1 b2 -> b1.sort = b2.sort) bs1 bs2 &&
+        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1128,10 +1133,8 @@ and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
   let get_con = function | Con (c, []) -> c | _ -> assert false in
   let cs = map get_con ts1 in
   let cl = map (close cs) in
-  let combine_binds =
-    map2 (fun b1 b2 -> {b1 with bound = contra lubs glbs b1.bound b2.bound}) in
   Func (
-    s, c, combine_binds bs1 bs2,
+    s, c, bs1,
     cl (map2 (contra lubs glbs) (op args1) (op args2)),
     cl (map2 (co lubs glbs) (op res1) (op res2))
   )

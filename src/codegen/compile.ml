@@ -800,11 +800,12 @@ module RTS = struct
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "collect" [] [];
-    E.add_func_import env "rts" "alloc_bytes" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     if !Flags.sanity then
       E.add_func_import env "rts" "print_closure" [I32Type] [];
     ()
@@ -841,8 +842,6 @@ module Heap = struct
 
   let dyn_alloc_words env =
     E.call_import env "rts" "alloc_words"
-  let dyn_alloc_bytes env =
-    E.call_import env "rts" "alloc_bytes"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -2614,18 +2613,7 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
-      let (set_x, get_x) = new_local env "x" in
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      get_len ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.dyn_alloc_bytes env ^^
-      set_x ^^
-
-      get_x ^^ Tagged.(store Blob) ^^
-      get_x ^^ get_len ^^ Heap.store_field len_field ^^
-      get_x
-   )
+  let alloc env = E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
@@ -2876,31 +2864,7 @@ module Arr = struct
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
-  let alloc env =
-    let (set_len, get_len) = new_local env "len" in
-    let (set_r, get_r) = new_local env "r" in
-    set_len ^^
-
-    (* Check size (should not be larger than half the memory space) *)
-    get_len ^^
-    compile_unboxed_const Int32.(shift_left 1l (32-2-1)) ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    E.else_trap_with env "Array allocation too large" ^^
-
-    (* Allocate *)
-    get_len ^^
-    compile_add_const header_size ^^
-    Heap.dyn_alloc_words env ^^
-    set_r ^^
-
-    (* Write header *)
-    get_r ^^
-    Tagged.(store Array) ^^
-    get_r ^^
-    get_len ^^
-    Heap.store_field len_field ^^
-
-    get_r
+  let alloc env = E.call_import env "rts" "alloc_array"
 
   (* The primitive operations *)
   (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
@@ -3103,7 +3067,11 @@ module Dfinity = struct
   let i32s n = Lib.List.make n I32Type
 
   let import_ic0 env =
-      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
+      E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
+      E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
+      E.add_func_import env "ic0" "call_new" (i32s 8) [];
+      E.add_func_import env "ic0" "call_perform" [] [I32Type];
+      E.add_func_import env "ic0" "canister_balance" (i32s 2) [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
@@ -3111,6 +3079,9 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_funds_available" (i32s 2) [I64Type];
+      E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
+      E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3373,7 +3344,7 @@ module Dfinity = struct
         get_data_size ^^
         system_call env "ic0" "msg_reply_data_append" ^^
         system_call env "ic0" "msg_reply"
-    )
+   )
 
   (* Actor reference on the stack *)
   let actor_public_field env name =
@@ -3408,6 +3379,48 @@ module Dfinity = struct
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
+
+  (* Funds *)
+
+  let funds_balance env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "canister_balance"
+    | _ ->
+      E.trap_with env "cannot read balance when running locally"
+
+  let funds_add env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "call_funds_add"
+    | _ ->
+      E.trap_with env "cannot accept funds when running locally"
+
+  let funds_accept env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "msg_funds_accept"
+    | _ ->
+      E.trap_with env "cannot accept funds when running locally"
+
+  let funds_available env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "msg_funds_available"
+    | _ ->
+      E.trap_with env "cannot get funds available when running locally"
+
+  let funds_refunded env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "msg_funds_refunded"
+    | _ ->
+      E.trap_with env "cannot get funds refunded when running locally"
 
 end (* Dfinity *)
 
@@ -5062,6 +5075,21 @@ module Var = struct
 
 end (* Var *)
 
+(* Calling well-known prelude functions *)
+module Prelude = struct
+  let call_prelude_function env ae var =
+    match Var.get_val env ae var with
+    | (SR.Const(_, Const.Fun mk_fi), code) ->
+      code ^^
+        compile_unboxed_zero ^^ (* A dummy closure *)
+          G.i (Call (nr (mk_fi ())))
+    | _ -> assert false
+
+  let add_funds env ae = call_prelude_function env ae "@add_funds"
+  let reset_funds env ae = call_prelude_function env ae "@reset_funds"
+  let reset_refund env ae = call_prelude_function env ae "@reset_refund"
+end
+
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
   let bind_args env ae0 first_arg args =
@@ -5110,6 +5138,9 @@ module FuncDec = struct
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       message_start env sort ^^
+      (* funds *)
+      Prelude.reset_funds env outer_ae ^^
+      Prelude.reset_refund env outer_ae ^^
       (* reply early for a oneway *)
       (if control = Type.Returns
        then
@@ -5305,10 +5336,10 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-
+    | Flags.ICMode
+    | Flags.RefMode ->
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
@@ -5316,19 +5347,23 @@ module FuncDec = struct
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
+      Dfinity.system_call env "ic0" "call_new" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
+      Dfinity.system_call env "ic0" "call_data_append" ^^
+      (* the funds *)
+      add_funds ^^
       (* done! *)
-      Dfinity.system_call env "ic0" "call_simple" ^^
+      Dfinity.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
-  let ic_call_one_shot env ts get_meth_pair get_arg =
+  let ic_call_one_shot env ts get_meth_pair get_arg add_funds =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-
+    | Flags.ICMode
+    | Flags.RefMode ->
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
@@ -5339,30 +5374,33 @@ module FuncDec = struct
       (* The reject callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
+      Dfinity.system_call env "ic0" "call_new" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
-      (* done! *)
-      Dfinity.system_call env "ic0" "call_simple" ^^
+      Dfinity.system_call env "ic0" "call_data_append" ^^
+      (* the funds *)
+      add_funds ^^
+      Dfinity.system_call env "ic0" "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
 
-let equate_msgref env =
-      let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
-      let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
-      set_meth_pair2 ^^ set_meth_pair1 ^^
-      get_meth_pair1 ^^ Arr.load_field 0l ^^
-      get_meth_pair2 ^^ Arr.load_field 0l ^^
-      Blob.compare env Operator.EqOp ^^
-      G.if_ [I32Type]
-      begin
-        get_meth_pair1 ^^ Arr.load_field 1l ^^
-        get_meth_pair2 ^^ Arr.load_field 1l ^^
-        Blob.compare env Operator.EqOp
-      end
-      begin
-        Bool.lit false
-      end
+  let equate_msgref env =
+    let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
+    let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
+    set_meth_pair2 ^^ set_meth_pair1 ^^
+    get_meth_pair1 ^^ Arr.load_field 0l ^^
+    get_meth_pair2 ^^ Arr.load_field 0l ^^
+    Blob.compare env Operator.EqOp ^^
+    G.if_ [I32Type]
+    begin
+      get_meth_pair1 ^^ Arr.load_field 1l ^^
+      get_meth_pair2 ^^ Arr.load_field 1l ^^
+      Blob.compare env Operator.EqOp
+    end
+    begin
+      Bool.lit false
+    end
 
   let export_async_method env =
     let name = Dfinity.async_method_name in
@@ -6357,11 +6395,12 @@ and compile_exp (env : E.t) ae exp =
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
           let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
+          let add_funds = Prelude.add_funds env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
+          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_funds
       end
 
     (* Operators *)
@@ -6908,12 +6947,13 @@ and compile_exp (env : E.t) ae exp =
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
+      let add_funds = Prelude.add_funds env ae in
       compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
-      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
-        end
+      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds
+      end
 
     | ICStableRead ty, [] ->
 (*
@@ -6939,6 +6979,34 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla e ^^
       Stabilization.stabilize env ty
 
+    (* Funds *)
+    | SystemFundsBalancePrim, [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Blob.as_ptr_len env ^^
+      Dfinity.funds_balance env
+    | SystemFundsAddPrim, [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e1 ^^
+      Blob.as_ptr_len env ^^
+      compile_exp_as env ae SR.UnboxedWord64 e2 ^^
+      Dfinity.funds_add env
+    | SystemFundsAcceptPrim, [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e1 ^^
+      Blob.as_ptr_len env ^^
+      compile_exp_as env ae SR.UnboxedWord64 e2 ^^
+      Dfinity.funds_accept env
+    | SystemFundsAvailablePrim, [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Blob.as_ptr_len env ^^
+      Dfinity.funds_available env
+    | SystemFundsRefundedPrim, [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.Vanilla e ^^
+      Blob.as_ptr_len env ^^
+      Dfinity.funds_refunded env
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -7031,6 +7099,7 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
+    let add_funds = Prelude.add_funds env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
@@ -7042,7 +7111,7 @@ and compile_exp (env : E.t) ae exp =
         Dfinity.actor_public_field env (Dfinity.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
-      get_r
+      get_r add_funds
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
@@ -7565,19 +7634,15 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Deserialize any arguments *)
     (match as_opt with
+     | None
      | Some [] ->
        (* Liberally accept empty as well as unit argument *)
+       assert (arg_tys = []);
        Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
      | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
-       G.concat (List.rev setters)
-     | None ->
-       (* Reject unexpected argument *)
-       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
-       E.then_trap_with env "unexpected installation argument" ^^
-       G.nop) ^^
-
+       G.concat (List.rev setters)) ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
