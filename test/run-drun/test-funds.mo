@@ -21,8 +21,7 @@ actor a {
 
   // set up a wallet with thin-air funds
   Prim.unsafeSetInitialFunds({
-//   num_cycles = Prim.nat64ToNat(Funds.balance(#cycle)/2); // crashes compiler with GC Bug
-   num_cycles = 1_000_000_000_000_000;
+   num_cycles = Prim.nat64ToNat(Funds.balance(#cycle)/2); // crashes with GC Bug
    num_icpt = 1000;
   });
   let wallet = await W();
