@@ -328,7 +328,7 @@ let dw_tag_close : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
-module TypedefRefs = Map.Make (struct type t = string let compare = compare end)
+module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = compare end)
 let dw_typedefs = ref TypedefRefs.empty
 module VariantRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_variants = ref VariantRefs.empty
@@ -481,14 +481,14 @@ and with_referencable_meta_tag f tag attrs : t * int =
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
 and dw_typedef_ref c ty =
-  let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
-  match TypedefRefs.find_opt name !dw_typedefs with
+  match TypedefRefs.find_opt c !dw_typedefs with
   | Some r -> nop, r
   | None ->
-    let dw, ref = dw_type_ref (Type.normalize ty) in
-    let add r = dw_typedefs := TypedefRefs.add name r !dw_typedefs in
+    let dw, reference = dw_type_ref (Type.normalize ty) in
+    let add r = dw_typedefs := TypedefRefs.add c r !dw_typedefs in
+    let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
     dw ^^<
-    with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypeRef ref])
+    with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypeRef reference])
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function
