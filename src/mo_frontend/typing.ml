@@ -783,7 +783,7 @@ and infer_exp'' env exp : T.typ =
       if not (T.eq t t1 || T.eq t t2) then
         if T.eq t1 t2 then
           warn env exp.at
-            "comparing the abstract type\n  %s\nto itself at type\n  %s"
+            "comparing abstract type\n  %s\nto itself at supertype\n  %s"
             (T.string_of_typ_expand t1)
             (T.string_of_typ_expand t)
         else
@@ -2283,4 +2283,3 @@ let check_lib scope lib : Scope.t Diag.result =
           Scope.lib lib.note imp_typ
         ) lib
     )
-
