@@ -20,9 +20,9 @@ structural_equality.mo:10.8-10.18: warning, comparing incompatible types
 and
   Text
   Any
-structural_equality.mo:12.37-12.43: warning, comparing the abstract type
+structural_equality.mo:12.37-12.43: warning, comparing abstract type
   A/10
-to itself at type
+to itself at supertype
   Any
 structural_equality.mo:13.41-13.47: warning, comparing incompatible types
   A/11
