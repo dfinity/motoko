@@ -1,9 +1,0 @@
-dwarf-typedef.mo.mangled:3:11: error: DWARF: expected string not found in input
-// DWARF: DW_TAG_typedef
-          ^
-<stdin>:1:1: note: scanning from here
-_out/dwarf-typedef.wasm: file format WASM
-^
-<stdin>:6:13: note: possible intended match here
-0x0000000c: DW_TAG_compile_unit
-            ^

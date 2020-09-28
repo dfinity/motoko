@@ -1,7 +1,5 @@
 // RUN: llvm-dwarfdump %.wasm -debug-info | FileCheck %.mo -check-prefix=DWARF
 
-// DWARF:  DW_TAG_typedef
-
 type List = ?(Int, List);
 
 func head(l : List) : ?Int = switch l {
@@ -20,4 +18,13 @@ func headV(l : ListV) : ?Int = switch l {
   case (#empty) null
 };
 
+// argument types get normalised, so have one typedef returned too
+// DWARF:  DW_TAG_typedef
+
+func tailV(l : ListV) : ListV = switch l {
+  case (#cons { tl }) tl;
+  case (#empty) #empty
+};
+
 assert ?42 == headV (#cons { hd = 42; tl = #cons { hd = 25; tl = #empty } });
+assert #empty == tailV (#cons { hd = 42; tl = #empty });
