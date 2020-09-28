@@ -1,0 +1,52 @@
+Cannot type typ: (Obj
+  Actor
+  (create_canister
+    (Func
+      Shared
+      Replies
+      ($ Any)
+      ()
+      ( (Obj Object (canister_id (Con Principal))))
+    )
+  )
+  (install_code
+    (Func
+      Shared
+      Replies
+      ($ Any)
+      (
+        (Obj
+          Object
+          (arg (Con Blob))
+          (canister_id (Con Principal))
+          (compute_allocation (Opt (Con Nat)))
+          (memory_allocation (Opt (Con Nat)))
+          (mode (Variant (install (Tup)) (reinstall (Tup)) (upgrade (Tup))))
+          (wasm_module (Con Blob))
+        )
+      )
+      ()
+    )
+  )
+)
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Tup (Con Int) (Con List/1)))
+
+Cannot type typ: (Opt (Tup (Con Int) (Con List/1)))
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Con Int))
+
+Cannot type typ: (Opt (Con Int))
+
