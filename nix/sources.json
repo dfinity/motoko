@@ -1,5 +1,5 @@
 {
-   "common": {
+    "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
         "rev": "129dcc07ccf90440e0ececf5e8cf1a5a0318f8fe",
@@ -63,10 +63,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "215adc8ac9f91eb055311acc72683fd2eb1ae15a",
-        "sha256": "004hkwh2yy7ifnxm13igpvfz7pnn0wkh2bv2z2lw1qc28d33wq56",
+        "rev": "d2482b786a00c790f3b8d1bf13f0ca12b0364d9c",
+        "sha256": "16q4cdlw4qacf8p9zxzin27klc4vyy1zxwzi9b33pn4z1x688f59",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/215adc8ac9f91eb055311acc72683fd2eb1ae15a.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/d2482b786a00c790f3b8d1bf13f0ca12b0364d9c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
