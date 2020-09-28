@@ -1,5 +1,5 @@
 {
-   "common": {
+    "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
         "rev": "129dcc07ccf90440e0ececf5e8cf1a5a0318f8fe",
@@ -8,7 +8,7 @@
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
+        "rev": "8849766d3d65ce56c34129d6714344b18f4d3fdb",
         "type": "git"
     },
     "esm": {
