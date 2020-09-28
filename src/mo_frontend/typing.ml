@@ -770,9 +770,9 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = Operator.type_relop op (T.lub t1 t2) in
+    let t1 = T.normalize (infer_exp env exp1) in
+    let t2 = T.normalize (infer_exp env exp2) in
+    let t = Operator.type_relop op (T.lub (T.promote t1) (T.promote t2)) in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_relop op t) then
@@ -781,11 +781,17 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
           (T.string_of_typ_expand t2);
       if not (T.eq t t1 || T.eq t t2) then
-        warn env exp.at
-          "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2)
-          (T.string_of_typ_expand t);
+        if T.eq t1 t2 then
+          warn env exp.at
+            "comparing abstract type\n  %s\nto itself at supertype\n  %s"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t)
+        else
+          warn env exp.at
+            "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t2)
+            (T.string_of_typ_expand t);
       ot := t;
     end;
     T.bool
@@ -2281,4 +2287,3 @@ let check_lib scope lib : Scope.t Diag.result =
           Scope.lib lib.note imp_typ
         ) lib
     )
-
