@@ -268,16 +268,30 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
       let i : import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
       go (imports @ [i]) ds'
-
     (* terminal expressions *)
+    | [{ it = ExpD (
+         { it = ObjE ({it = Type.Module; _}, [
+            { it = {
+              vis = { it = Public; _};
+              dec = { it = ClassD(sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d;
+              _ };
+              _ }]);
+           _
+         })
+       ; _ } ] ->
+      finish imports { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
+
+    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
+      (* Note: we still don't allow module _X_ = { actor class ... } for a named module
+         because we can't compile references to X for actor classes
+         This will compile to an ordinary module and error on IC *)
+      assert false;
+      finish imports { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
+    (* let-bound terminal expressions *)
     | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
     | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
       finish imports { it = ActorU (None, fields); note = e.note; at = e.at }
-    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-      assert (tbs = []);
-      finish imports { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
-    (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
       finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->

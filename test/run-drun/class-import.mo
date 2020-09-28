@@ -2,7 +2,10 @@ import Prim "mo:prim";
 import M0 "class-import/empty";
 import M1 "class-import/one";
 import M2 "class-import/two";
-import M3 "class-import/trap";
+import M3 "class-import/explicit";
+import M4 "class-import/trap";
+
+
 
 actor a {
  public func go() : async () {
@@ -18,9 +21,14 @@ actor a {
    let two : M2.Two = await M2.Two("one","two");
    await two.test();
 
+
+   // test imported class in explicit anonymous module; named modules unsupported
+   let explicit: M3.C = await M3.C();
+   await explicit.test();
+
    // test non-trapping install
    try {
-     let trap : M3.Trap = await M3.Trap(false);
+     let trap : M4.Trap = await M4.Trap(false);
    }
    catch _ {
      assert false;
@@ -28,7 +36,7 @@ actor a {
 
    // test trapping install
    try {
-     let trap : M3.Trap = await M3.Trap(true);
+     let trap : M4.Trap = await M4.Trap(true);
      assert false;
    }
    catch _ {
