@@ -550,14 +550,16 @@ exp_nondec(B) :
     { AssertE(e) @? at $sloc }
   | LABEL x=id rt=return_typ_nullary? e=exp(bl)
     { let x' = ("continue " ^ x.it) @@ x.at in
-      let t = Lib.Option.get rt (TupT [] @! at $sloc) in
+      (* `unit` is a function, to avoid sharing of mutable AST nodes *)
+      let unit () = TupT [] @! at $sloc in
       let e' =
         match e.it with
-        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', t, e2) @? e2.at) @? e.at
-        | LoopE (e1, eo) -> LoopE (LabelE (x', t, e1) @? e1.at, eo) @? e.at
-        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', t, e2) @? e2.at) @? e.at
+        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
+        | LoopE (e1, eo) -> LoopE (LabelE (x', unit (), e1) @? e1.at, eo) @? e.at
+        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
         | _ -> e
-      in LabelE(x, t, e') @? at $sloc }
+      in
+      LabelE(x, Lib.Option.get rt (unit ()), e') @? at $sloc }
   | BREAK x=id eo=exp_nullary(ob)?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
