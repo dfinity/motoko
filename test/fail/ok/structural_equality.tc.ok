@@ -20,9 +20,10 @@ structural_equality.mo:10.8-10.18: warning, comparing incompatible types
 and
   Text
   Any
-structural_equality.mo:12.37-12.43: type error, comparing the abstract type A/10 to itself
-
-Hint: Maybe accept a function as an argument that does the comparison instead?
+structural_equality.mo:12.37-12.43: warning, comparing the abstract type
+  A/10
+to itself at type
+  Any
 structural_equality.mo:13.41-13.47: warning, comparing incompatible types
   A/11
 and

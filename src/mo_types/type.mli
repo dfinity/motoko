@@ -160,7 +160,6 @@ val compare_field : field -> field -> int
 (* Constructors *)
 
 val set_kind : con -> kind -> unit
-val is_abs : con -> bool
 
 module ConEnv : Env.S with type key = con
 module ConSet : Dom.S with type elt = con

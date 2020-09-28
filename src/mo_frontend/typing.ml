@@ -781,11 +781,11 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
           (T.string_of_typ_expand t2);
       if not (T.eq t t1 || T.eq t t2) then
-        if T.eq t1 t2 && T.is_con t1 && T.is_abs (fst (T.as_con t1)) then
-          error env exp.at
-            "comparing the abstract type %s to itself\n\nHint: Maybe accept a function as an argument that does the comparison instead?"
+        if T.eq t1 t2 then
+          warn env exp.at
+            "comparing the abstract type\n  %s\nto itself at type\n  %s"
             (T.string_of_typ_expand t1)
-            (T.string_of_typ_expand t2)
+            (T.string_of_typ_expand t)
         else
           warn env exp.at
             "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"

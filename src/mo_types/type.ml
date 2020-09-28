@@ -82,10 +82,6 @@ let set_kind c k =
   | Abs (_, Pre) -> Con.unsafe_set_kind c k
   | _ -> raise (Invalid_argument "set_kind")
 
-let is_abs c = match Con.kind c with
-  | Abs _ -> true
-  | _ -> false
-
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 module ConSet = ConEnv.Dom
 
