@@ -297,6 +297,7 @@ static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
     as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
     TAG(c) = TAG_ARRAY;
+    TUPLE_LEN(c) = 2;
     TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
     TEXT_CONT_NEXT(c) = *todo;
     *todo = c;
@@ -308,6 +309,7 @@ static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
 export text_iter_t text_iter(text_t s) {
   as_ptr i = alloc_words(TUPLE_HEADER_SIZE + 3);
   TAG(i) = TAG_ARRAY;
+  TUPLE_LEN(i) = 3;
   TEXT_ITER_POS(i) = 0;
   TEXT_ITER_TODO(i) = 0;
   TEXT_ITER_BLOB(i) = find_leaf(s, &TEXT_ITER_TODO(i));
