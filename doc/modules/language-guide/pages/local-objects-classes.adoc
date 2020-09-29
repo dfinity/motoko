@@ -240,9 +240,9 @@ type Counter = { inc : () -> Nat };
 
 In fact, the `class` keyword syntax shown above introduces these two definitions for `Counter`: a factory function `Counter` that constructs objects, each of type `Counter`.
 
-=== Constructor arguments
+=== Class constructor
 
-An object class may carry zero or more data arguments and zero or more type arguments.
+An object class defines a constructor function that may carry zero or more data arguments and zero or more type arguments.
 
 The `Counter` example above has zero of each.
 
@@ -278,18 +278,43 @@ class Counter(init : Nat) {
 Suppose we want the counter to actually carry data that it counts (like a specialized `Buffer`).
 
 When classes use or contain data of arbitrary type, they carry a type
-parameter for that unknown type, just as with functions.
+argument (or equivalently, _type parameter_) for that unknown type, just as with functions.
 
 The scope of this type parameter covers the entire `class`, just as with data parameters.
 As such, the methods of the class can use (and _need not re-introduce_) these type parameters.
 
-```
-class Counter<X>(init : Buffer<X>) {
-  var buffer = init;
+....
+import Buffer "mo:base/Buffer";
+
+class Counter<X>(init : Buffer.Buffer<X>) {
+  var buffer = init.clone();
   public func add(x : X) : Nat { buffer.add(x); buffer.size() };
-  public func reset() { buffer = init };
+  public func reset() { buffer := init.clone() };
 };
-```
+....
+
+==== Type annotation
+
+Optionally, the class constructor may also carry a type annotation for its "return type" (the type of objects that it produces).
+When supplied, {proglang} checks that this type annotation is compatible with the body of the class (an object definition).
+This check ensures that each object produced by the constructor meets the supplied specification.
+
+For example, we repeat the `Counter` as a buffer, and annotate it with
+a more general type `Accum<X>` that permits adding, but not reseting
+the counter.  This annotation ensures that the objects are compatible
+with the type `Accum<X>`.
+
+....
+import Buffer "mo:base/Buffer";
+
+type Accum<X> = { add : X -> Nat };
+
+class Counter<X>(init : Buffer.Buffer<X>) : Accum<X> {
+  var buffer = init.clone();
+  public func add(x : X) : Nat { buffer.add(x); buffer.size() };
+  public func reset() { buffer := init.clone() };
+};
+....
 
 ==== Full syntax
 
@@ -297,10 +322,12 @@ In full, classes are defined by the keyword `class`, followed by:
  - a name for the constructor and type being defined (e.g., `Counter`)
  - optional type arguments (e.g., omitted, or `<X>`, or `<X, Y>`, etc.)
  - an argument list (e.g., `()`, or `(init : Nat)`, etc.)
- - an optional typing annotation (see below),
+ - an optional type annotation for the constructed objects (e.g., omitted, or `Accum<X>`, etc.),
  - the class "body" is an object definition, parameterized by the type and value arguments (if any).
 
 The constituents of the body marked `public` contribute to the resulting objects' type and these types compared against the (optional) annotation, if given.
+
+=====  Another example: `Bits`
 
 For example imagine the task of walking the bits of a `Nat`ural number. We could define:
 
