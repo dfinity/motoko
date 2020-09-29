@@ -2271,7 +2271,7 @@ let check_lib scope lib : Scope.t Diag.result =
             | ModuleU _ -> typ
             | ActorClassU  (sp, id, p, _, self_id, fields) ->
               if Syntax.is_anonymous id then
-                error env cub.at "bad import: expected a named actor class but found an anonymous actor class: only named actor classes can be imported";
+                error env cub.at "bad import: imported actor class cannot be anonymous";
               let class_typ, fun_typ = begin
                 match T.normalize typ with
                 | T.Func (sort, control, [], ts1, [t2]) ->
