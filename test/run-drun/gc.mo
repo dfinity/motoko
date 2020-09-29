@@ -1,29 +1,26 @@
 import Prim "mo:prim";
-import Random "gc/Random";
-
+// check blob and text iterator objects survice gc correctly
 actor {
-    public shared func test() : async () {
-      let block = await Random.blob();
-      let fin = Random.Finite block;
-      func CRASHER () : async () {
-        let f : Random.Finite = fin; // uncomment, and the crash appears (because `fin` is closed over, thus retained in GC?)
-      };
-      await CRASHER();
-      await CRASHER();
+  public shared func testBytes() : async () {
+    let blob = "\00\01\02\03": Blob;
+    for (b in blob.bytes()) {
+      await async {};
+      Prim.debugPrint(debug_show b);
+      return ()
     };
+  };
 
-    public shared func go() : async () {
-      var i = 3;
-      while(i > 0) {
-        Prim.debugPrint(debug_show(i));
-        await test();
-        i -= 1;
-      }
+  public shared func testChars() : async () {
+    let text = "abcd" # "efgh" # "hijklmnopqrstuvwxyz";
+    for (c in text.chars()) {
+      await async {};
+      Prim.debugPrint(debug_show c);
+      return ()
     };
+  };
+
 }
 
-//CALL ingress go "DIDL\x00\x00"
+//CALL ingress testBytes "DIDL\x00\x00"
+///CALL ingress testChars "DIDL\x00\x00"
 
-//SKIP run
-//SKIP run-ir
-//SKIP run-low

@@ -2,7 +2,6 @@
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
-→ update go()
-debug.print: 3
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: object_size: invalid object tag"
-← rejected (RC_CANISTER_REJECT): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: object_size: invalid object tag"
+→ update testBytes()
+debug.print: 0x0
+← completed: ()
