@@ -642,17 +642,36 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
+let actor_class_mod_exp id class_typ func =
+  let fun_typ = func.note.Note.typ in
+  let class_con = Con.fresh id (T.Def([], class_typ)) in
+  let v = fresh_var id fun_typ in
+  blockE
+    [letD v func]
+    (newObjE T.Module
+       [{ it = {I.name = id; I.var = id_of_var v};
+          at = no_region;
+          note = fun_typ }]
+       (T.Obj(T.Module, List.sort T.compare_field [
+          { T.lab = id; T.typ = T.Typ class_con };
+          { T.lab = id; T.typ = fun_typ }])))
+
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note in
   let (_, cub) = lib.it in
-  let t = match T.normalize cub.note.S.note_typ with
+  let id = match cub.it with
+    | S.ActorClassU (_, id, _, _, _, _) -> id.it
+    | _ -> assert false
+  in
+  let class_typ, fun_typ = match T.normalize cub.note.S.note_typ with
     | T.Func (sort, control, [], ts1, [t2]) ->
+      t2,
       T.Func (sort, control, [T.scope_bind],
               ts1,
               [T.Async (T.Var (T.default_scope_var, 0), t2)])
     | _ -> assert false
   in
-  let s, cntrl, tbs, ts1, ts2 = T.as_func t in
+  let s, cntrl, tbs, ts1, ts2 = T.as_func fun_typ in
   let cs = T.open_binds tbs in
   let c, _ = T.as_con (List.hd cs) in
   let ts1' = List.map (T.open_ cs) ts1 in
@@ -682,13 +701,15 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
   in
-  let func = funcE "actor_class_constructor" T.Local T.Returns
+  let func = funcE id T.Local T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
     body
   in
-  [ letD (var (id_of_full_path f) t) func ]
+  let mod_exp = actor_class_mod_exp id class_typ func in
+  let mod_typ = mod_exp.note.Note.typ in
+  [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 
 let import_prelude prelude : import_declaration =
@@ -796,6 +817,10 @@ let import_unit (u : S.comp_unit) : import_declaration =
     | I.ActorU (None, ds, fs, up, t) ->
       raise (Invalid_argument "Desugar: Cannot import actor")
     | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+      let id = match body.it with
+        | S.ActorClassU (_, id, _, _, _, _) -> id.it
+        | _ -> assert false
+      in
       let s, cntrl, tbs, ts1, ts2 = T.as_func t in
       assert (tbs = []);
       let cs = T.open_binds [T.scope_bind] in
@@ -808,11 +833,14 @@ let import_unit (u : S.comp_unit) : import_declaration =
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
-      funcE "actor_class_constructor" T.Local T.Returns
+      let class_typ = match ts2 with [t2] -> t2 | _ -> assert false in
+      let func = funcE id T.Local T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (List.hd cs, actor_t)]
         body
+      in
+      actor_class_mod_exp id class_typ func
     | I.ProgU ds ->
       raise (Invalid_argument "Desugar: Cannot import program")
   in
