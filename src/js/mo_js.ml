@@ -102,9 +102,13 @@ let wrap_output f =
     val result = result
   end
 
+let fetchCode s =
+  Js.to_string (Js.Unsafe.fun_call (Js.Unsafe.global##.fetchCode) [|Js.Unsafe.inject s|])
+
 let () =
   Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
   Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
+  Sys_js.mount ~path:"src/" (fun ~prefix ~path -> Some (fetchCode (Js.string path)));
   let libs = Flags.package_urls in
   libs := Flags.M.add "base" "base/" !libs;
   Flags.check_ir := false;
