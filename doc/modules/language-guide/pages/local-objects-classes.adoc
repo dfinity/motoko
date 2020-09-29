@@ -4,9 +4,13 @@ TODO - Move examples into separate files (where?)
 :proglang: Motoko
 :company-id: DFINITY
 
-In {proglang}, an `object` encapsulates local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
+In {proglang}, an `object` may encapsulate local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
 
-{proglang} objects are _not shareable_, and this is a critical security-oriented design decision. (If they were shareable, that would mean conceptually moving a mobile object's code among actors and executing it remotely, a security risk.)
+As in other typed languages, {proglang} programs benefit from the ability to encapsulate state as objects with abstract types.
+
+However, {proglang} objects that include mutable state are _not shareable_, and this is a critical security-oriented design decision.
+
+If they were shareable, that would mean either conceptually moving a mobile object's code among actors and executing it remotely, a security risk, or sharing state with remote logic, another security risk.  (Notably, as a subcase, objects may be pure records and those _are_ shareable, since they are free from mutable state.)
 
 To compensate for this necessary limitation, `actor` objects _are shareable_, but always execute remotely.
 They communicate with shareable {proglang} data only.
@@ -19,6 +23,17 @@ In this chapter, we use mutable state to implement simple objects, a la object-o
 We illustrate this support via a running example, which continues in the next chapter.
 The following example illustrates a general evolution path for {proglang} programs.
 Each _object_, if important enough, has the potential to be refactored into an Internet _service_, by refactoring this _(local) object_ into an _actor object_.
+
+*Object classes*. Frequently, one needs _a family_ of related objects to perform a task.
+When objects exhibit similar behavior, it makes sense to fabricate them according to the same blueprint,
+but with customizable initial state.
+To this end {proglang} provides a syntactical construct, called a `class` definition,
+which simplifies building objects of the same type and implementation.
+We introduce these after discussing objects.
+
+*Actor classes*.
+When an object class exposes a _link:actors-async.adoc[service]_ (asynchronous behavior), the corresponding {proglang} construct is an link:actors-async.adoc[actor class], which follows a similar (but distinct) design.
+
 
 == Example: The `counter` object
 
@@ -170,15 +185,6 @@ If a function expects to receive an object of the first type (`{ bump: () -> Nat
 
 However, if a function expects to receive an object of the last, least general type, the other two will _not_ suffice, since they each lack the needed `write` operation, to which this function rightfully expects to have access.
 
-TIP: As aside for language theorists and advanced readers:
-Object subtyping in {proglang} uses _structural subtyping_, not _nominal subtyping_.  Recall that in nominal typing, the question of two types equality depends on choosing consistent, globally-unique type names (across projects and time).
-In {proglang}, the question of two types' equality is based on their _structure_, not their names.
-
-**Subtyping in general.** Formally, subtyping relationships in {proglang} extend to all types, not just object types.
-Most cases are standard, and follow conventional programming language theory (for _structural_ subtyping, specifically).
-Other notable cases in {proglang} for new programmers include
-array, options, variants and number type inter-relationships.
-
 == Object classes
 
 In {proglang}, an object encapsulates state, and an object `class` is
@@ -232,18 +238,7 @@ We may want to name this type, e.g., `Counter`, as follows, for use in further t
 type Counter = { inc : () -> Nat };
 ```
 
-=== `class` keyword
-
-In {proglang}, the object-constructing function and the type definition for its returned objects can be declared using the `class` keyword.
-
-We can rephrase the definition for `Counter` given above as follows:
-
-```
-class Counter() {
-  var c = 0;
-  public func inc() : Nat { c += 1; c };
-};
-```
+In fact, the `class` keyword syntax shown above introduces these two definitions for `Counter`: a factory function `Counter` that constructs objects, each of type `Counter`.
 
 === Constructor arguments
 
@@ -295,3 +290,59 @@ class Counter<X>(init : Buffer<X>) {
   public func reset() { buffer = init };
 };
 ```
+
+==== Full syntax
+
+In full, classes are defined by the keyword `class`, followed by:
+ - a name for the constructor and type being defined (e.g., `Counter`)
+ - optional type arguments (e.g., omitted, or `<X>`, or `<X, Y>`, etc.)
+ - an argument list (e.g., `()`, or `(init : Nat)`, etc.)
+ - an optional typing annotation (see below),
+ - the class "body" is an object definition, parameterized by the type and value arguments (if any).
+
+The constituents of the body marked `public` contribute to the resulting objects' type and these types compared against the (optional) annotation, if given.
+
+For example imagine the task of walking the bits of a `Nat`ural number. We could define:
+
+....
+class Bits(n : Nat) {
+  var state = n;
+  public func next() : ?Bool {
+    if (state == 0) { return null };
+    let prev = state;
+    state /= 2;
+    ?(state * 2 != prev)
+  }
+}
+....
+
+The above class definition amounts to the simultaneous definition of a structural type synonym and a factory function, both named `Bits`:
+
+....
+type Bits = {next : () -> ?Bool}
+let Bits : Nat -> Bits =
+func Bits(n : Nat) : Bits = object {
+  // class body
+};
+....
+
+== Structural subtyping
+
+Object subtyping in {proglang} uses _structural subtyping_, not _nominal subtyping_.
+
+Recall that in nominal typing, the question of two types equality depends on choosing consistent, globally-unique type names (across projects and time).
+
+In {proglang}, the question of two types' equality is based on their _structure_, not their names.
+
+Due to structural typing, naming the class type provides a convenient abbreviation.
+
+For typing purposes, however, all that matters is the _structure_ of the corresponding object type: two classes with different names but equivalent definitions produce type compatible objects.
+
+When the optional type annotation is supplied in a class declaration, conformance is checked: the object type must be a subtype of the annotation. The annotation does not affect the type of the class, however, even if it only describes a proper super-type of the object type.
+
+Formally, subtyping relationships in {proglang} extend to all types, not just object types.
+
+Most cases are standard, and follow conventional programming language theory (for _structural_ subtyping, specifically).
+
+Other notable cases in {proglang} for new programmers include
+array, options, variants and number type inter-relationships.
