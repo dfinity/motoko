@@ -378,11 +378,20 @@ An import introduces a resource named '<id>?' referring to a local source module
 The syntax of a _library_ (that can be referenced in an import) is as follows:
 
 ```bnf
-<lib> ::=                                        library
-    <imp>;* module <id>? =? { <dec-field>;* }
+<lib> ::=                                                                                       library
+    <imp>;* module <id>? =? { <dec-field>;* }                                                         module
+    <imp>;* <shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }    actor class
 ```
+//// TODO dec sugar
 
-A library `<lib>` is a sequence of imports `<imp>;*` followed by a named or anonymous (module) declaration `module <id>? =? { <dec-field>;* }`.
+A library `<lib>` is a sequence of imports `<imp>;*` followed by:
+* a named or anonymous (module) declaration `module <id>? =? { <dec-field>;* }`; or
+* a named actor class declaration.
+
+Because it defines both a type constructor and a function with name `<id>`, an actor class library is imported as a module defining both a type and a function named `<id>`.
+The imported actor class constructor is asynchronous, with return type `async T`. Here `T` is the inferred or supplied type of the class body.
+Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
+(i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
 Libraries stored in {ext} files may be referenced by `import`s.
 
@@ -404,7 +413,7 @@ The syntax of a _declaration_ is as follows:
   <sort> <id>? =? { <dec-field>;* }                                                      object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>                       function
   type <id> <typ-params>? = <typ>                                                        type
-  <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
+  <shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }  class
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -1390,7 +1399,7 @@ Named function definitions are recursive.
 [[decl-class]]
 === Class declaration
 
-The declaration `<shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
+The declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
 
 ```bnf
 <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
