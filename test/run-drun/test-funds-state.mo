@@ -1,6 +1,6 @@
 import Prim = "mo:prim";
 import Funds = "funds/funds";
-import Wallet = "funds/wallet";
+import WalletLib = "funds/wallet";
 
 // test state behind funds and refunds works as expected, with
 // funds initially zero, additive, reset on context switches
@@ -12,7 +12,7 @@ actor a {
 
  public func go() : async () {
 
-  let wallet = await Wallet();
+  let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting funds");
   await Funds.dev_set_funds(wallet, 2_000_000_000_000_000, 2000);

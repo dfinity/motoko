@@ -1,6 +1,6 @@
 import Prim = "mo:prim";
 import Funds = "funds/funds";
-import Wallet = "funds/wallet";
+import WalletLib = "funds/wallet";
 
 actor a {
 
@@ -18,7 +18,7 @@ actor a {
   print(debug_show(Funds.accept(#icpt, 0)));
   print(debug_show(Funds.accept(#cycle, 0)));
 
-  let wallet = await Wallet();
+  let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting funds");
   await Funds.dev_set_funds(wallet, 1_000_000_000_000_000, 1000);

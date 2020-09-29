@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Node "distributor/node";
+import Lib "distributor/node";
 
 // A naive, distributed map from Nat to Text.
 // Illustrates dynamic installation of imported actor classes.
@@ -12,11 +12,7 @@ actor a {
   // Number of Nodes
   let n = 8;
 
-  // Would be nice if class import defined a type too
-  type Node = actor {
-    lookup : Key -> async ?Value;
-    insert : (Key, Value) -> async ()
-  };
+  type Node = Lib.Node;
 
   let nodes : [var ?Node] = Prim.Array_init(n, null);
 
@@ -32,7 +28,7 @@ actor a {
     let i = k % n;
     let node = switch (nodes[i]) {
       case null {
-        let n = await Node(i); // dynamically install a new Node
+        let n = await Lib.Node(i); // dynamically install a new Node
         nodes[i] := ?n;
         n;
       };
