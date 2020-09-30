@@ -336,9 +336,9 @@ module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = com
 let dw_typedefs = ref TypedefRefs.empty
 module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
-module EnumRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
 let dw_enums = ref EnumRefs.empty
-module ObjectRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_objects = ref ObjectRefs.empty
 module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
 let dw_tuples = ref TupleRefs.empty
@@ -629,18 +629,22 @@ and dw_variant vnts =
          dw_tag_close (* struct_type *)) in
     variant
 and dw_object fs =
-  let selectors = List.map (fun Type.{lab; _} -> lab) fs in
-  match ObjectRefs.find_opt selectors !dw_objects with
-  | Some r -> nop, r
+  let selectors = List.map (fun Type.{lab; typ} -> lab, dw_type_ref typ) fs in
+  (* make sure all prerequisite types are around *)
+  let prereqs0 = effects (concat_map (fun (_, (dw, _)) -> dw) selectors) in
+  let key = List.map (fun (name, (_, reference)) -> name, reference) selectors in
+  match ObjectRefs.find_opt key !dw_objects with
+  | Some r -> prereqs0, r
   | None ->
-    let add r = dw_objects := ObjectRefs.add selectors r !dw_objects in
+    let add r = dw_objects := ObjectRefs.add key r !dw_objects in
     let struct_ref =
       (* reference to structure_type *)
       let internal_struct =
         with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size (4 * List.length selectors)]) in
-      let field name =
+      let field (name, _) =
         let _hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
-        meta_tag dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
+        meta_tag dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4 (*; Location search *)]) in
+      prereqs0 ^^
       fst internal_struct ^^
       concat_map field selectors ^^
       dw_tag_close (* structure_type *)
