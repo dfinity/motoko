@@ -1,4 +1,4 @@
-// RUN: llvm-dwarfdump %.wasm -debug-info | tee /dev/tty | FileCheck %.mo -check-prefix=DWARF
+// RUN: llvm-dwarfdump %.wasm -debug-info | FileCheck %.mo -check-prefix=DWARF
 
 type Person = { name : Text; age : Nat };
 
@@ -22,18 +22,19 @@ func indirect(p : Person) : Person = p;
 
 // DWARF:      DW_TAG_subprogram
 // DWARF-LABEL:  DW_AT_name ("indirect")
-// DWARF:          DW_TAG_formal_parameter
-// DWARF-NEXT:       DW_AT_name ("p")
-
-ignore indirect { name = "Jane"; age = 32 };
+// DWARF-NEXT:   DW_AT_type (0x{{[0-9a-f]*}} "Person/1")
+// DWARF:        DW_TAG_formal_parameter
+// DWARF-NEXT:     DW_AT_name ("p")
 
 func direct({ name : Text; age : Nat }) : Text =
          "b person";
 
 // DWARF:      DW_TAG_subprogram
 // DWARF-LABEL:  DW_AT_name ("direct")
-// DWARF:          DW_TAG_formal_parameter
-// DWARF-NEXT:       DW_AT_name ("$param/0")
-// DWARF:            DW_AT_type (0x{{[0-9a-f]*}} "@obj&")
+// DWARF-NEXT:   DW_AT_type (0x{{[0-9a-f]*}} "Text")
+// DWARF:        DW_TAG_formal_parameter
+// DWARF-NEXT:     DW_AT_name ("$param/0")
+// DWARF:          DW_AT_type (0x{{[0-9a-f]*}} "@obj")
 
-ignore direct { name = "Jane"; age = 32 }
+ignore direct { name = "Jane"; age = 32 };
+ignore indirect { name = "Jane"; age = 32 }
