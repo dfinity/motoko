@@ -322,7 +322,7 @@ In full, classes are defined by the keyword `class`, followed by:
  - a name for the constructor and type being defined (for example, `Counter`)
  - optional type arguments (for example, omitted, or `<X>`, or `<X, Y>`)
  - an argument list (for example, `()`, or `(init : Nat)`, etc.)
- - an optional type annotation for the constructed objects (e.g., omitted, or `Accum<X>`, etc.),
+ - an optional type annotation for the constructed objects (for example, omitted, or `Accum<X>`),
  - the class "body" is an object definition, parameterized by the type and value arguments (if any).
 
 The constituents of the body marked `public` contribute to the resulting objects' type and these types compared against the (optional) annotation, if given.
