@@ -334,7 +334,7 @@ module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
 module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = compare end)
 let dw_typedefs = ref TypedefRefs.empty
-module VariantRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_enums = ref EnumRefs.empty
@@ -582,12 +582,15 @@ and dw_enum vnts =
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
 and dw_variant vnts =
-  let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
-  match VariantRefs.find_opt (List.map fst selectors) !dw_variants with
-  | Some r -> nop, r
+  let selectors = List.map (fun Type.{lab; typ} -> lab, typ, dw_type_ref typ) vnts in
+  (* make sure all prerequisite types are around *)
+  let prereqs0 = effects (concat_map (fun (_, _, (dw, _)) -> dw) selectors) in
+  let key = List.map (fun (name, _, (_, reference)) -> name, reference) selectors in
+  match VariantRefs.find_opt key !dw_variants with
+  | Some r -> prereqs0, r
   | None ->
-    let add r = dw_variants := VariantRefs.add (List.map fst selectors) r !dw_variants in
-    let prereq (name, typ) =
+    let add r = dw_variants := VariantRefs.add key r !dw_variants in
+    let prereq (name, typ, _) =
       let dw_payload_pre, dw_payload_mem =
         match typ with
         | Type.Tup [] -> nop, nop
@@ -603,7 +606,7 @@ and dw_variant vnts =
     (dw_overlay,
      meta_tag dw_TAG_member_In_variant
        (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 8]))  in
-    (* make sure all prerequisite types are around *)
+    (* make sure all artificial prerequisite types are around *)
     let overlays = List.map prereq selectors in
     let prereqs = effects (concat_map fst overlays) in
     let variant =
@@ -615,13 +618,13 @@ and dw_variant vnts =
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
         mem ^^
         dw_tag_close (* variant *) in
-      prereqs ^^<
+      (prereqs0 ^^ prereqs) ^^<
       internal_struct ^<^
         (meta_tag dw_TAG_member_Tag_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
          let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
          dw2 ^^
          (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
-         concat_map summand (List.map2 (fun (name, _) (_, mem) -> name, mem) selectors overlays) ^^
+         concat_map summand (List.map2 (fun (name, _, _) (_, mem) -> name, mem) selectors overlays) ^^
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
     variant
