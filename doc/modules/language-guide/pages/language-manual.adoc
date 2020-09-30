@@ -425,7 +425,7 @@ The syntax of a _declaration_ is as follows:
    { <dec-field>;* }       field declarations
 
 <class-body> ::=         class body
-    =? <id>? <obj-body>    object body binding <id> to "this" instance
+    =? <id>? <obj-body>    object body, optionally binding <id> to "this" instance
     <obj-body>             object body
 ```
 
@@ -1096,7 +1096,9 @@ A module library evaluates by (transitively) evaluating its imports, binding the
 
 ==== Actor class libraries
 
-//// This ugly asyncification of actor class imports below will go away once we change actor class definitions to be asynchronous. This is a temporary kludge.
+////
+This ugly asyncification of actor class imports below will go away once we change actor class definitions to be asynchronous. This is a temporary kludge.
+////
 
 The actor class library `<imp>;* <dec>` where `dec` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
 
@@ -1447,7 +1449,9 @@ Named function definitions are recursive.
 [[decl-class]]
 === Class declaration
 
-//// TODO: revise once actor class declaration async
+////
+TODO: revise once actor class declaration async
+////
 
 The declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>` is sugar for pair of a type and function declaration:
 
