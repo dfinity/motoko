@@ -19,7 +19,10 @@ func headV(l : ListV) : ?Int = switch l {
 };
 
 // argument types get normalised, so have one typedef returned too
-// DWARF:  DW_TAG_typedef
+
+// DWARF:      DW_TAG_typedef
+// DWARF-NEXT:   DW_AT_name	("ListV/1")
+// DWARF-NEXT:   DW_AT_type	(0x{{[0-9a-f]*}} "VARIANT")
 
 func tailV(l : ListV) : ListV = switch l {
   case (#cons { tl }) tl;

@@ -240,6 +240,7 @@ type dw_AT = Producer of string
            | Discr_value of int
            | Artificial of bool
            | TypeRef of int (* reference *)
+           | TypePromise of int Lib.Promise.t (* reference *)
            | Encoding of int
            | Location of int list
            | DataMemberLocation of int
@@ -284,6 +285,9 @@ let dw_attr' : dw_AT -> die =
   | Artificial b -> IntAttribute (dw_AT_artificial, bool b)
   | Discr r -> IntAttribute (dw_AT_discr, r)
   | TypeRef r -> IntAttribute (dw_AT_type, r)
+  | TypePromise p ->
+    (* See Note [placeholder promises for typedefs] *)
+    IntAttribute (dw_AT_type, Wasm_exts.CustomModuleEncode.promise_reference_slot p)
   | Encoding e -> IntAttribute (dw_AT_encoding, e)
   | Discr_value v -> IntAttribute (dw_AT_discr_value, v)
   | Const_value v -> IntAttribute (dw_AT_const_value, v)
@@ -484,11 +488,14 @@ and dw_typedef_ref c ty =
   match TypedefRefs.find_opt c !dw_typedefs with
   | Some r -> nop, r
   | None ->
-    let dw, reference = dw_type_ref (Type.normalize ty) in
     let add r = dw_typedefs := TypedefRefs.add c r !dw_typedefs in
+    (* See Note [placeholder promises for typedefs] *)
+    let p = Lib.Promise.make () in
     let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
-    dw ^^<
-    with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypeRef reference])
+    let td = with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypePromise p]) in
+    let dw, reference = dw_type_ref (Type.normalize ty) in
+    Lib.Promise.fulfill p reference;
+    td ^<^ dw
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function

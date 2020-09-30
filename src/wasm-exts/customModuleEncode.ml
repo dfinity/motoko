@@ -43,6 +43,27 @@ we perform a stable sort by serial number, with non-referencable DIEs trailing.
 
  *)
 
+(* Note [placeholder promises for typedefs]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When forming the DIE for a Motoko type synonym (`type List = ...`)
+we need to do something special. Since such typedefs are cycle-breakers
+in the type system, we will need to adopt the same property in the
+`.debug_info` section too. So, we'll output `DW_TAG_typedef` before
+even knowing which type it refers to. Instead we use a DW_FORM_ref4
+for its `DW_AT_type` attribute, which is backpatchable. The value of this
+attribute is an integer, pointing to a fulfilled promise created when the
+DIE was formed. It got fulfilled when the typedef's type became known,
+another DIE, formed shortly after the typedef's. Resolving this fulfilled
+promise in turn gives us the index (actual type ref) of an unfulfilled
+promise (the forward reference). This forward reference will be fulfilled
+to be a byte offset in the section as soon as the corresponding DIE is emitted.
+
+We keep a function that performs the patching of the section (before it is
+written to disk) by overwriting the preliminary bytes in `DW_TAG_typedef`'s
+`DW_AT_type` with the now fulfilled offset obtained from the forward reference.
+
+ *)
+
 module Promise = Lib.Promise
 
 open Dwarf5.Meta
@@ -81,11 +102,13 @@ module References = Map.Make (struct type t = int let compare = compare end)
 
 let dw_references = ref References.empty
 let num_dw_references = ref 1 (* 0 would mean: "this tag doesn't fulfill a reference" *)
-let allocate_reference_slot () =
+let promise_reference_slot p =
   let have = !num_dw_references in
-  dw_references := References.add have (Promise.make ()) !dw_references;
+  dw_references := References.add have p !dw_references;
   num_dw_references := 1 + have;
   have
+let allocate_reference_slot () =
+  promise_reference_slot (Promise.make ())
 
 (* Encoding *)
 
@@ -791,6 +814,14 @@ let encode (em : extended_module) =
     let vec_uleb128 el = vec_by uleb128 el
     let writeBlock1 str = let len = String.length str in assert (len < 256); u8 len; put_string s str
     let writeBlockLEB str = uleb128 (String.length str); put_string s str
+    let dw_gap32 () = let p = pos s in write32 0x0; p
+    let dw_patch_gap32 p n =
+      let lsb i = Char.chr (i land 0xff) in
+      patch s p (lsb n);
+      patch s (p + 1) (lsb (n lsr 8));
+      patch s (p + 2) (lsb (n lsr 16));
+      patch s (p + 3) (lsb (n lsr 24))
+    let dw_patches = ref (fun i -> i)
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
@@ -834,6 +865,20 @@ let encode (em : extended_module) =
         begin function
           | IntAttribute (attr, i) -> uleb128 i
           | _ -> failwith "dw_FORM_addrx"
+        end
+      | f when dw_FORM_ref4 = f ->
+        begin function
+          | IntAttribute (attr, i) ->
+            (* See Note [placeholder promises for typedefs] *)
+            let placeholder_promise = References.find i !dw_references in
+            assert (Promise.is_fulfilled placeholder_promise);
+            let forward_ref = Promise.value placeholder_promise in
+            let offset_promise = References.find forward_ref !dw_references in
+            assert (not (Promise.is_fulfilled offset_promise));
+            let g = dw_gap32 () in
+            dw_patches :=
+              (fun ps () -> ps (); dw_patch_gap32 g (Promise.value offset_promise)) !dw_patches
+          | _ -> failwith "dw_FORM_ref_ref4"
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
@@ -918,13 +963,6 @@ let encode (em : extended_module) =
       | _ -> failwith "Tag expected"
 
     let unit f =
-      let dw_gap32 () = let p = pos s in write32 0x0; p in
-      let dw_patch_gap32 p n =
-        let lsb i = Char.chr (i land 0xff) in
-        patch s p (lsb n);
-        patch s (p + 1) (lsb (n lsr 8));
-        patch s (p + 2) (lsb (n lsr 16));
-        patch s (p + 3) (lsb (n lsr 24)) in
       let g = dw_gap32 () in (* unit_length *)
       let p = pos s in
       f g; dw_patch_gap32 g (pos s - p)
@@ -941,7 +979,8 @@ let encode (em : extended_module) =
             match !dwarf_tags with
             | [toplevel] -> writeTag true toplevel
             | _ -> failwith "expected one toplevel tag"
-          ) in
+        );
+        !dw_patches () in
       let relevant ts = ts <> [Tag (None, 0, [])] in
       custom_section ".debug_info" section_body dwarf_tags (relevant !dwarf_tags)
 
