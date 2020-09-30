@@ -363,7 +363,7 @@ In {proglang}, the question of two types' equality is based on their _structure_
 
 Due to structural typing, naming the class type provides a convenient abbreviation.
 
-For typing purposes, however, all that matters is the _structure_ of the corresponding object type: two classes with different names but equivalent definitions produce type compatible objects.
+For typing purposes, however, all that matters is the _structure_ of the corresponding object type: two classes with different names but equivalent definitions produce type-compatible objects.
 
 When the optional type annotation is supplied in a class declaration, conformance is checked: the object type must be a subtype of the annotation. The annotation does not affect the type of the class, however, even if it only describes a proper super-type of the object type.
 
