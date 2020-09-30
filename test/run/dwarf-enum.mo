@@ -27,8 +27,8 @@ func variantToText(foo : {#a; #b}) : Text =
 // DWARF-NEXT:       DW_AT_name ("foo")
 // DWARF-NEXT:       DW_AT_decl_line (19)
 // DWARF-NEXT:       DW_AT_decl_column (0x13)
-// DWARF-NEXT:       DW_AT_type (0x{{[0-9a-f]*}} "enumeration &")
-// DWARF-NEXT:       DW_AT_location (DW_OP_WASM_location 0x0 +1, DW_OP_stack_value)
+// DWARF-NEXT:       DW_AT_type (0x{{[0-9a-f]*}} "enumeration ")
+// DWARF-NEXT:       DW_AT_location (DW_OP_WASM_location 0x0 +1, DW_OP_plus_uconst 0x5, DW_OP_deref, DW_OP_stack_value)
 // DWARF:          NULL
 
 
@@ -36,9 +36,15 @@ func dayToText(day : WeekDay) : Text =
     switch day {
     case (#Mon or #Tue or #Wed or #Thu or #Fri or #Sat or #Sun)
          "a daay :-)"
-    }
+    };
 
 // DWARF-LABEL:  DW_AT_name ("dayToText")
 // DWARF:          DW_TAG_formal_parameter
 // DWARF-NEXT:       DW_AT_name ("day")
-// DWARF:            DW_AT_type (0x{{[0-9a-f]*}} "enumeration &")
+// DWARF:            DW_AT_type (0x{{[0-9a-f]*}} "enumeration "
+// DWARF-NEXT:       DW_AT_location (DW_OP_WASM_location 0x0 +1, DW_OP_plus_uconst 0x5, DW_OP_deref, DW_OP_stack_value)
+// DWARF:          NULL
+
+
+ignore dayToText (#Fri);
+ignore variantToText (#a)
