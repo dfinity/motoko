@@ -27,7 +27,7 @@ Each _object_, if important enough, has the potential to be refactored into an I
 *Object classes*. Frequently, one needs _a family_ of related objects to perform a task.
 When objects exhibit similar behavior, it makes sense to fabricate them according to the same blueprint,
 but with customizable initial state.
-To this end {proglang} provides a syntactical construct, called a `class` definition,
+To this end, {proglang} provides a syntactical construct, called a `class` definition,
 which simplifies building objects of the same type and implementation.
 We introduce these after discussing objects.
 
