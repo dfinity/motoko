@@ -874,10 +874,13 @@ let encode (em : extended_module) =
             assert (Promise.is_fulfilled placeholder_promise);
             let forward_ref = Promise.value placeholder_promise in
             let offset_promise = References.find forward_ref !dw_references in
-            assert (not (Promise.is_fulfilled offset_promise));
-            let g = dw_gap32 () in
-            dw_patches :=
-              (fun ps () -> ps (); dw_patch_gap32 g (Promise.value offset_promise)) !dw_patches
+            if Promise.is_fulfilled offset_promise
+            then write32 (Promise.value offset_promise)
+            else dw_patches :=
+                   (fun gap ps () ->
+                     ps ();
+                     dw_patch_gap32 gap (Promise.value offset_promise)
+                   ) (dw_gap32 ()) !dw_patches
           | _ -> failwith "dw_FORM_ref_ref4"
         end
       | f when dw_FORM_ref_udata = f ->

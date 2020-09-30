@@ -641,9 +641,9 @@ and dw_object fs =
       (* reference to structure_type *)
       let internal_struct =
         with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size (4 * List.length selectors)]) in
-      let field (name, _) =
+      let field (name, (_, r)) =
         let _hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
-        meta_tag dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4 (*; Location search *)]) in
+        meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name name; TypeRef r; Byte_size 4 (*; Location search *)]) in
       prereqs0 ^^
       fst internal_struct ^^
       concat_map field selectors ^^
