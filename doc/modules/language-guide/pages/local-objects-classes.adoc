@@ -238,7 +238,7 @@ We may want to name this type, for example, `Counter`, as follows, for use in fu
 type Counter = { inc : () -> Nat };
 ```
 
-In fact, the `class` keyword syntax shown above introduces these two definitions for `Counter`: a factory function `Counter` that constructs objects, each of type `Counter`.
+In fact, the `class` keyword syntax shown above is nothing but a shorthand for these two definitions for `Counter`: a factory function `Counter` that constructs objects, and the type `Counter` of these objects. Classes do not provide any new functionality beyond this convenience.
 
 === Class constructor
 
