@@ -1091,7 +1091,7 @@ A library `<imp>;* module <id>? <obj-body>` is a sequence of imports `<import>;*
 
 A library has module type `T` provided
 
-* `module <id>? =? { <dec-field>;* }` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
+* `module <id>? <obj-body>` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
 
 A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? <obj-body>`.
 
@@ -1109,6 +1109,7 @@ The actor class library `<imp>;* <dec>` where `dec` is of the form  `<shared-pat
     <id> : (U1,...,UN) -> async T
   }
 ```
+
 provided that:
 
 * the actor class declaration `<dec>` has function type `(U1,..,UN) -> T` under the static environment induced by the imports in `<import>;*`.
