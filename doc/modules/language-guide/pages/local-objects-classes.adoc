@@ -321,7 +321,7 @@ class Counter<X>(init : Buffer.Buffer<X>) : Accum<X> {
 In full, classes are defined by the keyword `class`, followed by:
  - a name for the constructor and type being defined (for example, `Counter`)
  - optional type arguments (for example, omitted, or `<X>`, or `<X, Y>`)
- - an argument list (e.g., `()`, or `(init : Nat)`, etc.)
+ - an argument list (for example, `()`, or `(init : Nat)`, etc.)
  - an optional type annotation for the constructed objects (e.g., omitted, or `Accum<X>`, etc.),
  - the class "body" is an object definition, parameterized by the type and value arguments (if any).
 
