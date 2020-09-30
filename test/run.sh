@@ -82,7 +82,10 @@ function normalize () {
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
+    # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    # Normalize instruction locations on traps, added by ic-ref ad6ea9e
+    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/:0.1/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
