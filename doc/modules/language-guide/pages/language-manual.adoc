@@ -1472,7 +1472,7 @@ where:
 * `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
-* `<id_this>?` is the optional `this` parameter of `<class-body>`.
+* `<id_this>?` is the optional *this* (a.k.a *self*), parameter of `<class-body>`.
 
 Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
 
