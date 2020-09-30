@@ -1003,7 +1003,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
 ** `T` and `U` are either both equivalently `<shared>?`, and
 ** assuming constraints `X0 <: W0, ..., Xn <: Wn` then
-*** for all `i`, `Wi <: Vi`, and
+*** for all `i`, `Wi == Vi`, and
 *** `U1 <: T1`, and
 *** `T2 <: U2`.
 +
@@ -1472,7 +1472,7 @@ where:
 * `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
-* `<id_this>?` is the optional *this* (a.k.a *self*), parameter of `<class-body>`.
+* `<id_this>?` is the optional _this_ (a.k.a _self_), parameter of `<class-body>`.
 
 Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
 
