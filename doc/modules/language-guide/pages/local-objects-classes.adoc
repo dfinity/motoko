@@ -343,7 +343,7 @@ class Bits(n : Nat) {
 }
 ....
 
-The above class definition amounts to the simultaneous definition of a structural type synonym and a factory function, both named `Bits`:
+The above class definition is equivalent to the simultaneous definition of a structural type synonym and a factory function, both named `Bits`:
 
 ....
 type Bits = {next : () -> ?Bool}
