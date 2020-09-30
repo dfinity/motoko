@@ -232,7 +232,7 @@ Notice the return type of this _constructor function_ (an object type):
 { inc : () -> Nat }
 ``
 
-We may want to name this type, e.g., `Counter`, as follows, for use in further type declarations:
+We may want to name this type, for example, `Counter`, as follows, for use in further type declarations:
 
 ```
 type Counter = { inc : () -> Nat };
