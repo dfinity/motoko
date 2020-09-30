@@ -329,7 +329,7 @@ The constituents of the body marked `public` contribute to the resulting objects
 
 =====  Another example: `Bits`
 
-For example imagine the task of walking the bits of a `Nat`ural number. We could define:
+As another example, let's consider the task of walking the bits of a `Nat`ural number. For this example, we could define the following:
 
 ....
 class Bits(n : Nat) {
