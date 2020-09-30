@@ -426,7 +426,7 @@ The syntax of a _declaration_ is as follows:
    { <dec-field>;* }       field declarations
 
 <class-body> ::=         class body
-    =? <id>? <obj-body>    object body, optionally binding <id> to "this" instance
+    = <id>? <obj-body>    object body, optionally binding <id> to _this_ instance
     <obj-body>             object body
 ```
 
@@ -1106,24 +1106,24 @@ The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-p
 ```
   module {
     type <id> = T;
-    <id> : (U1,...,UN) -> async T
+    <id> : (U1,...,UN) -> async T // asynchronous!
   }
 ```
 
 provided that:
 
-* the actor class declaration `<dec>` has function type `(U1,..,UN) -> T` under the static environment induced by the imports in `<import>;*`.
+* the actor class declaration `<dec>` has function type `(U1, ..., Un) -> T` under the static environment induced by the imports in `<import>;*`.
 
-Notice that the imported type of the function `<id>` is the *asynchronous* of version of its declared type.
+Notice that the imported type of the function `<id>` is the *asynchronous* version of its declared type.
 
 An actor class library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*`, and evaluating the (derived) module:
 
 ```
   module {
     public type <id> = T;
-    public func <id> (a1:U1, ..., aN:UN) : async T {
+    public func <id> (a1:U1, ..., an:Un) : async T {
       <dec>;
-      await <id>(a1, ..., aN);
+      await <id>(a1, ..., an);
     };
   }
 ```
@@ -1131,7 +1131,7 @@ An actor class library evaluates by (transitively) evaluating its imports, bindi
 The imported module contains an asynchronous implementation of function `<id>`.
 
 On the Internet Computer, calling `await <id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
-as installation arguments, and returning a reference to a (remote) actor of type `T`.
+as installation arguments, and returns a reference to a (remote) actor of type `T`.
 Installation is (necessarily) asynchronous.
 
 [[imports]]
@@ -1459,7 +1459,7 @@ Named function definitions are recursive.
 TODO: revise once actor class declaration async
 ////
 
-The declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>` is sugar for pair of a type and function declaration:
+The _class_ declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>` is sugar for pair of a type and function declaration:
 
 ```bnf
 <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? <class-body> :=
@@ -1472,6 +1472,7 @@ where:
 * `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
+* `<obj-body>` is the object body of `<class-body>`.
 * `<id_this>?` is the optional _this_ (a.k.a _self_), parameter of `<class-body>`.
 
 Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
