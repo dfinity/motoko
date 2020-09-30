@@ -1011,7 +1011,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
  every bound in `T` supertypes the corresponding parameter bound in `U` (contra-variance), the domain of `T` supertypes the domain of `U` (contra-variance) and the range of `T` subtypes
  the range of `U` (co-variance).)
 +
-* `T` (respectively `U`) is a constructed type `C<V0,...Vn>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
+* `T` (respectively `U`) is a constructed type `C<V0, ..., Vn>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
 
 * For some type `V`, `T <: V` and `V <: U` (_transitivity_).
 
@@ -1106,7 +1106,7 @@ The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-p
 ```
   module {
     type <id> = T;
-    <id> : (U1,...,UN) -> async T // asynchronous!
+    <id> : (U1,...,Un) -> async T // asynchronous!
   }
 ```
 
