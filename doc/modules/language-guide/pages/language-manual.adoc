@@ -1121,14 +1121,18 @@ An actor class library evaluates by (transitively) evaluating its imports, bindi
 ```
   module {
     public type <id> = T;
-    public func <id> (a1:U1,...,aN:UN) : async T {
-      async { <dec>; await <id>(a1:U1,...,aN,UN); }
+    public func <id> (a1:U1, ..., aN:UN) : async T {
+      <dec>;
+      await <id>(a1, ..., aN);
     };
   }
 ```
 
 The imported module contains an asynchronous implementation of function `<id>`.
 
+On the Internet Computer, calling `await <id>(<exp1>, ..., <expM>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expN>`
+as installation arguments, and returning a reference to a (remote) actor of type `T`.
+Installation is (necessarily) asynchronous.
 
 [[imports]]
 === Imports and Urls
