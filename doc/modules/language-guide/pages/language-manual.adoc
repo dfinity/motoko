@@ -390,8 +390,8 @@ A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 * a named actor class declaration; or
 * a sequence of declarations `<dec>;*` (not matching the previous two cases).
 
-In a library, the declaration sequence `<dec>;*` =  `<dec1>; ..., <decN>`
-is convenient shorthand for the explicit module `module { public <dec1>; ...; public <decN> }`, exporting each declaration as `public`.
+In a library, the declaration sequence `<dec>;*` =  `<dec1>; ..., <decn>`
+is convenient shorthand for the explicit module `module { public <dec1>; ...; public <decn> }`, exporting each declaration as `public`.
 
 Libraries stored in {ext} files may be referenced by `import` declarations.
 
@@ -515,7 +515,7 @@ The syntax of an _expression_ is as follows:
   try <exp> catch <pat> <exp>                    catch an error (only in async)
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
-  dec                                            declaration
+  <dec>                                          declaration
   debug <exp>                                    debug expression
   ( <exp> )                                      parentheses
 ```
@@ -949,7 +949,7 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
 * if `T` is `async U` then `U` is shared, and
 * if `T` is `shared query? U -> V`, `U` is shared and
   `V == ()` or `V == async W'` with `W` shared, and
-* if `T` is `C<T0, ..., TN>` where:
+* if `T` is `C<T0, ..., Tn>` where:
 ** a declaration `type C<X0 <: U0, Xn <: Un>  = ...` is in scope, and
 ** `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 \<= i \<= n`.
 * if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
@@ -1011,7 +1011,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
  every bound in `T` supertypes the corresponding parameter bound in `U` (contra-variance), the domain of `T` supertypes the domain of `U` (contra-variance) and the range of `T` subtypes
  the range of `U` (co-variance).)
 +
-* `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
+* `T` (respectively `U`) is a constructed type `C<V0,...Vn>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
 
 * For some type `V`, `T <: V` and `V <: U` (_transitivity_).
 
@@ -1101,7 +1101,7 @@ A module library evaluates by (transitively) evaluating its imports, binding the
 This ugly asyncification of actor class imports below will go away once we change actor class definitions to be asynchronous. This is a temporary kludge.
 ////
 
-The actor class library `<imp>;* <dec>` where `dec` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
+The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
 
 ```
   module {
@@ -1130,7 +1130,7 @@ An actor class library evaluates by (transitively) evaluating its imports, bindi
 
 The imported module contains an asynchronous implementation of function `<id>`.
 
-On the Internet Computer, calling `await <id>(<exp1>, ..., <expM>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expN>`
+On the Internet Computer, calling `await <id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
 as installation arguments, and returning a reference to a (remote) actor of type `T`.
 Installation is (necessarily) asynchronous.
 
@@ -1223,7 +1223,7 @@ During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `po
 [[decl-seq]]
 === Sequence of declarations
 
-A sequence of declarations `<dec>;*` occurring in a block, a program or the embedded in the `<dec-field>;*` sequence of an object declaration has type `T`
+A sequence of declarations `<dec>;*` occurring in a block, a program or embedded in the `<dec-field>;*` sequence of an object body has type `T`
 provided:
 
 * `<dec>;*` is empty and `T == ()`; or
@@ -1405,13 +1405,13 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 [[decl-obj]]
 === Object declaration
 
-Declaration `<sort> <id>? <obj-body>`, where` <obj_body>` is `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`.
+Declaration `<sort> <id>? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
 
 Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
-Let `<dec>;*` be the sequence of declarations in `<dec-field>;*`.
+Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`.
 The object declaration has type `T` provided that:
 
 1. type `T` is well-formed for sort `sort`, and
@@ -1542,7 +1542,7 @@ the Boolean result of `v1 <relop> v2`.
 === Tuples
 
 Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provided
-`<exp1>`, ..., `<expN>` have types `T1`, ..., `Tn`.
+`<exp1>`, ..., `<expn>` have types `T1`, ..., `Tn`.
 
 The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp1`, ..., `<expn>` evaluate to values `v1`,...,`vn` then the tuple expression returns the tuple value `(v1, ... , vn)`.
 
