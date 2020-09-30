@@ -197,7 +197,7 @@ class Counter() {
   var c = 0;
   public func inc() : Nat {
     c += 1;
-    c
+    return c;
   }
 };
 ```
