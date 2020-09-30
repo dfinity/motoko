@@ -319,7 +319,7 @@ class Counter<X>(init : Buffer.Buffer<X>) : Accum<X> {
 ==== Full syntax
 
 In full, classes are defined by the keyword `class`, followed by:
- - a name for the constructor and type being defined (e.g., `Counter`)
+ - a name for the constructor and type being defined (for example, `Counter`)
  - optional type arguments (e.g., omitted, or `<X>`, or `<X, Y>`, etc.)
  - an argument list (e.g., `()`, or `(init : Nat)`, etc.)
  - an optional type annotation for the constructed objects (e.g., omitted, or `Accum<X>`, etc.),
