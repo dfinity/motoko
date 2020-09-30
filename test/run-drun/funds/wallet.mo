@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 import Funds "funds";
 
-shared {caller}  actor class () {
+shared {caller} actor class Wallet() {
 
   let print = Prim.debugPrint;
 

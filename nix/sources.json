@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "129dcc07ccf90440e0ececf5e8cf1a5a0318f8fe",
+        "rev": "17d12301cd41a6c05faf58d5513e4b6c0c043faa",
         "type": "git"
     },
     "dfinity": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.11",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "ebd6b2a31aa37aa159e50c6c3d944b2ca0a68a09",
+        "rev": "ad6ea9e56295342e3eb4cdd8c46e2b27796cb2a1",
         "type": "git"
     },
     "libtommath": {
@@ -40,7 +40,7 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "7cdbb04f92b9ddbf3763e2346983c89780ba2a4c",
+        "rev": "93211a230696e986dcbbe0602bd88f9dfaae5781",
         "type": "git"
     },
     "motoko-matchers": {
@@ -89,10 +89,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "efda5b357451dbb0431f983cca679ae3cd9b9829",
-        "sha256": "11wqrg86g3qva67vnk81ynvqyfj0zxk83cbrf0p9hsvxiwxs8469",
+        "rev": "57c8084c7ef41366993909c20491e359bbb90f54",
+        "sha256": "0lchhjys1jj8fdiisd2718sqd63ys7jrj6hq6iq9l1gxj3mz2w81",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/efda5b357451dbb0431f983cca679ae3cd9b9829.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/57c8084c7ef41366993909c20491e359bbb90f54.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
