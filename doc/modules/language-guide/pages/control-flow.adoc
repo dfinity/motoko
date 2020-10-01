@@ -21,7 +21,7 @@ A special shortcut is available when the function has a unit result type, and th
 
 - `for` expressions for iterating over members of structured data.
 - `loop` expressions for programmatic repetition (optionally with termination condition).
-- `while` loops for programmatic repetition with entry check.
+- `while` loops for programmatic repetition with entry condition.
 
 Any of these can be prefixed with a `label ⟨name⟩` qualifier to give the loop a symbolic name. The naming of loops is useful for imperatively changing the control flow of the _innermost_ loop with the given name:
 
