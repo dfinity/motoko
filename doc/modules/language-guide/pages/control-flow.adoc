@@ -80,6 +80,7 @@ Sometimes an entry condition is needed to guard the first execution of a loop. F
 while (earned < need) { earned += earn() };
 ....
 
+Unlike a `loop`, the body of a `while` loop may never be executed.
 [[for-loops]]
 == `for` loops for iteration
 
