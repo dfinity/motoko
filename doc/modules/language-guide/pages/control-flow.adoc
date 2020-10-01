@@ -10,7 +10,8 @@ Imperative control flow often goes hand-in-hand with destructive updates (value-
 [[early-return]]
 == Early `return` from `func`
 
-Normally, the result of a function is the value of the last expression in its body. Sometimes the result is readily available at an earlier moment (usually due to some checked condition), and in such situations the `return ⟨val⟩` construct can be used to abandon the regular control flow, and give the function a result immediately.
+Normally, the result of a function is the value of its body. Sometimes, during evaluation of the body, the result is available before the end of evaluation. In such situations the `return ⟨exp⟩` construct can be used to abandon the rest of the computation and immediately exit the function with a result.
+Similarly, where permitted, `throw` may be used to abandon a computation with an error.
 
 A special shortcut is available when the function has a unit result type, and the shorthand `return` can be used instead of the equivalent `return ()`.
 
