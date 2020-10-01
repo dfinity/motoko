@@ -1,6 +1,6 @@
 = Imperative control flow
 
-Control flow comes in two flavors
+There are two key categories of control flow:
 
 - _declarative_, when the value itself guides control and the selection of the resulting value, like in `if` and `switch` expressions
 - _imperative_ (or programmer designed), where control changes according to some manipulative syntax and the result value either doesn't exist or is uninteresting.
