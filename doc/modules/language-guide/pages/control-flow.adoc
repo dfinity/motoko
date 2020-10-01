@@ -3,7 +3,7 @@
 There are two key categories of control flow:
 
 - _declarative_, when the value itself guides control and the selection of the resulting value, like in `if` and `switch` expressions
-- _imperative_ (or programmer designed), where control changes according to some manipulative syntax and the result value either doesn't exist or is uninteresting.
+- _imperative_  sometimes referred to as _programmer-designed_, where control changes according to some manipulative syntax and the result value either doesn't exist or is uninteresting.
 
 Imperative control flow often goes hand-in-hand with destructive updates (value-changing assignments) or other flavors of side-effects, like input/output.
 
