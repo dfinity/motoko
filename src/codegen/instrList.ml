@@ -472,11 +472,9 @@ and lookup_pointer_key () : t * int =
   match !pointer_key with
   | Some r -> nop, r
   | None ->
-    let dw, r =
-      referencable_meta_tag (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
-        (dw_attrs [Bit_size 1; Data_bit_offset 1]) in
-    pointer_key := Some r;
-    dw, r
+    let add r = pointer_key := Some r in
+    with_referencable_meta_tag add (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
+      (dw_attrs [Bit_size 1; Data_bit_offset 1])
 and meta_tag tag attrs =
   i (Meta (Tag (None, tag, attrs)))
 and referencable_meta_tag tag attrs : t * int =
@@ -520,9 +518,9 @@ and dw_type_ref =
     | None -> dw_typedef_ref c ty
     end
   | Type.Opt inner ->
-    let prereq0, selector = dw_type_ref inner in
+    let prereq, selector = dw_type_ref inner in
     (* make sure all prerequisite types are around *)
-    effects prereq0 ^^< dw_option_instance selector
+    effects prereq ^^< dw_option_instance selector
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
@@ -602,7 +600,7 @@ and dw_option_instance key =
          dw_tag_close (* structure_type *)) in
     (dw_overlay,
      meta_tag dw_TAG_member_In_variant
-       (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 8]))  in
+       (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 4]))  in
     (* make sure all prerequisite types are around *)
     let overlays = [prereq "FIXME:none";prereq "FIXME:some"] in
     let prereqs = effects (concat_map fst overlays) in
@@ -610,14 +608,14 @@ and dw_option_instance key =
       (* struct_type, assumes location points at heap tag *)
       let internal_struct =
         with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "OPTION"; Byte_size 8]) in
-      let summand (((name, discr), mem) : (string * int) * t) =
+      let summand ((name, discr), mem) =
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value discr]) ^^
         mem ^^
         dw_tag_close (* variant *) in
       prereqs ^^<
       internal_struct ^<^
         (meta_tag dw_TAG_member_Tag_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
-         let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
+         let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
          dw2 ^^
          (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
          concat_map summand (List.map2 (fun nd (_, mem) -> nd, mem) [("FIXME:none", 0x0); ("FIXME:some", 0x8)] overlays) ^^
