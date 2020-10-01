@@ -42,7 +42,7 @@ label letters for (c in someText.chars()) {
 There are two other facets to `label`{zwsp}s that are less mainstream, but come very handy in certain situations:
 
 - `label`{zwsp}s can be typed
-- any expression can be named by prefixing it with a label, and `break` allows to short circuit its evaluation, providing a value.
+- any expression (not just loops) can be named by prefixing it with a label; `break` allows one to short-circuit the expression's evaluation by providing an immediate value for its result. (This is similar to exiting a function early using `return`, but without the overhead of a declaring and calling a function.)
 
 The syntax for type-annotated labels is `label ⟨name⟩ : ⟨type⟩ ⟨expr⟩`, signifying that any expression can be exited using a `break ⟨name⟩ ⟨alt-expr⟩` construct that short-circuits evaluation of `⟨expr⟩`, and results in a value by evaluating `⟨alt-expr⟩` instead.
 
