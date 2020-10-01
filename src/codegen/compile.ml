@@ -5062,8 +5062,8 @@ module FuncDec = struct
       (* prereq has side effects (i.e. creating DW types) that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
       let prereq_types =
-        G.(effects (concat_map (fun arg -> dw_tag_no_children (Type arg.note)) args) ^^
-           effects (concat_map (fun ty -> dw_tag_no_children (Type ty)) ret_tys)) in
+        G.(effects (concat_map (fun arg -> dw_tag_no_children (Type arg.note)) args ^^
+                    concat_map (fun ty -> dw_tag_no_children (Type ty)) ret_tys)) in
 
       (* Add arguments to the environment (shifted by 1) *)
       let ae2, dw_args = bind_args env ae1 1 args in
