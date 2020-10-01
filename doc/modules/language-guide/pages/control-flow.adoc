@@ -23,7 +23,7 @@ A special shortcut is available when the function has a unit result type, and th
 - `loop` expressions for programmatic repetition (optionally with termination condition).
 - `while` loops for programmatic repetition with entry condition.
 
-Any of these can be prefixed with a `label ⟨name⟩` qualifier to give the loop a symbolic name. The naming of loops is useful for imperatively changing the control flow of the _innermost_ loop with the given name:
+Any of these can be prefixed with a `label ⟨name⟩` qualifier to give the loop a symbolic name. Named loops are useful for imperatively changing  control flow to continue from the entry or exit of the named loop.
 
 - re-entering the loop with `continue ⟨name⟩`, or
 - exiting the loop altogether with `break ⟨name⟩`.
