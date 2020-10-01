@@ -74,7 +74,7 @@ The loop can only be abandoned with a `return` or `break` construct. A re-entry 
 [[while-loops]]
 == `while` loops with precondition
 
-Sometimes the entry condition is predicating the execution of the loop body. For this kind of repetition the `while ⟨enter-cond⟩ ⟨body⟩`-flavor is available
+Sometimes an entry condition is needed to guard the first execution of a loop. For this kind of repetition the `while ⟨cond⟩ ⟨body⟩`-flavor is available
 
 ....
 while (earned < need) { earned += earn() };
