@@ -614,8 +614,7 @@ and dw_option_instance key =
         dw_tag_close (* variant *) in
       prereqs ^^<
       internal_struct ^<^
-        (meta_tag dw_TAG_member_Tag_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
-         let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
+        (let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
          dw2 ^^
          (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
          concat_map summand (List.map2 (fun nd (_, mem) -> nd, mem) [("FIXME:none", 0x0); ("FIXME:some", 0x8)] overlays) ^^
