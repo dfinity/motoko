@@ -19,7 +19,7 @@ A special shortcut is available when the function has a unit result type, and th
 
 {proglang} provides several kinds of repetition constructs, including:
 
-- `for` expressions for iterationg over members of structured data
+- `for` expressions for iterating over members of structured data.
 - `loop` expressions for programmatic repetition (optionally with termination condition)
 - `while` loops for programmatic repetition with entry check.
 
