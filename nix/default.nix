@@ -21,10 +21,6 @@ let
           self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
-              wasm = import ./ocaml-wasm.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml;
-                inherit (self.ocamlPackages) findlib ocamlbuild;
-              };
               vlq = import ./ocaml-vlq.nix {
                 inherit (self) stdenv fetchFromGitHub ocaml dune;
                 inherit (self.ocamlPackages) findlib;
