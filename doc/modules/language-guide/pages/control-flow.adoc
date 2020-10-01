@@ -17,7 +17,7 @@ A special shortcut is available when the function has a unit result type, and th
 [[loops-labels]]
 == Loops and labels
 
-{proglang} provides several kinds of repetition constructs
+{proglang} provides several kinds of repetition constructs, including:
 
 - `for` expressions for iterationg over members of structured data
 - `loop` expressions for programmatic repetition (optionally with termination condition)
