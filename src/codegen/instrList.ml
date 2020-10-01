@@ -694,8 +694,9 @@ and dw_object fs =
 and dw_tuple ts =
   let field_dw_refs = List.map dw_type_ref ts in
   let field_refs = List.map snd field_dw_refs in
+  let prereqs = effects (concat_map fst field_dw_refs) in
   match TupleRefs.find_opt field_refs !dw_tuples with
-  | Some r -> nop, r
+  | Some r -> prereqs, r
   | None ->
     let add r = dw_tuples := TupleRefs.add field_refs r !dw_tuples in
     let tuple_type =
@@ -703,7 +704,7 @@ and dw_tuple ts =
         meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
       with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "@tup"; Byte_size 4]) ^<^
       (concat_mapi field field_dw_refs ^^ dw_tag_close (* structure_type *)) in
-    concat_map fst field_dw_refs ^^<
+    prereqs ^^<
     tuple_type
 
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
