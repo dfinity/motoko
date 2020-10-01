@@ -12,7 +12,7 @@ Imperative control flow often goes hand-in-hand with destructive updates (value-
 
 Normally, the result of a function is the value of the last expression in its body. Sometimes the result is readily available at an earlier moment (usually due to some checked condition), and in such situations the `return ⟨val⟩` construct can be used to abandon the regular control flow, and give the function a result immediately.
 
-A special shortcut is available when the function has unit result type, and the shorthand `return` can be used instead of the equivalent `return ()`.
+A special shortcut is available when the function has a unit result type, and the shorthand `return` can be used instead of the equivalent `return ()`.
 
 [[loops-labels]]
 == Loops and labels
