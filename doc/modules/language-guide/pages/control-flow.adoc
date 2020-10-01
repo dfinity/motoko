@@ -13,7 +13,7 @@ Imperative control flow often goes hand-in-hand with destructive updates (value-
 Normally, the result of a function is the value of its body. Sometimes, during evaluation of the body, the result is available before the end of evaluation. In such situations the `return ⟨exp⟩` construct can be used to abandon the rest of the computation and immediately exit the function with a result.
 Similarly, where permitted, `throw` may be used to abandon a computation with an error.
 
-A special shortcut is available when the function has a unit result type, and the shorthand `return` can be used instead of the equivalent `return ()`.
+When a function has unit result type, the shorthand `return` may be used instead of the equivalent `return ()`.
 
 [[loops-labels]]
 == Loops and labels
