@@ -69,7 +69,11 @@ The simplest way to indefinitely repeat a sequence of imperative expressions is 
 loop { ⟨expr1⟩; ⟨expr2⟩; ... }
 ....
 
-The loop can only be abandoned with a `return` or `break` construct. A re-entry condition can be affixed to allow a predicated remaining in the loop with `loop ⟨body⟩ while ⟨remain-cond⟩`.
+The loop can only be abandoned with a `return` or `break` construct. 
+
+A re-entry condition can be affixed to allow a conditional repetition of the loop with `loop ⟨body⟩ while ⟨cond⟩`.
+
+The body of such a loop is always executed at least once.
 
 [[while-loops]]
 == `while` loops with precondition
