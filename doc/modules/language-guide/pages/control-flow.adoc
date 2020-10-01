@@ -5,7 +5,7 @@ There are two key categories of control flow:
 - _declarative_, when the structure of some value  guides control and the selection of the next expression to evaluate, like in `if` and `switch` expressions
 - _imperative_  sometimes referred to as _programmer-designed_, where control changes according to some manipulative syntax and the result value either doesn't exist or is uninteresting.
 
-Imperative control flow often goes hand-in-hand with destructive updates (value-changing assignments) or other side-effects, like input/output.
+Imperative control flow often goes hand-in-hand with state changes and other flavors of side-effects, such as error handling and input/output.
 
 [[early-return]]
 == Early `return` from `func`
