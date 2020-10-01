@@ -334,6 +334,8 @@ module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
 module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = compare end)
 let dw_typedefs = ref TypedefRefs.empty
+module OptionRefs = Map.Make (struct type t = int let compare = compare end)
+let dw_options = ref OptionRefs.empty
 module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
@@ -517,7 +519,10 @@ and dw_type_ref =
     | Some p -> dw_type_ref (Type.Prim p)
     | None -> dw_typedef_ref c ty
     end
-  (* | Type.Opt inner -> assert false templated type *)
+  | Type.Opt inner ->
+    let prereq0, selector = dw_type_ref inner in
+    (* make sure all prerequisite types are around *)
+    effects prereq0 ^^< dw_option_instance selector
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
@@ -581,6 +586,45 @@ and dw_enum vnts =
          dw_tag_close (* enumeration_type *)) in
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
+
+and dw_option_instance key =
+  (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
+  match OptionRefs.find_opt key !dw_options with
+  | Some r -> nop, r
+  | None ->
+    let add r = dw_options := OptionRefs.add key r !dw_options in
+    let prereq name(*WAT?*) =
+      let dw_payload_mem =
+        meta_tag dw_TAG_member_In_variant (dw_attrs [Name ("?"); TypeRef key; DataMemberLocation 4]) in
+      let dw_overlay, ref_overlay =
+        (referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name name; Byte_size 8 (*; Artificial *)]) ^<^
+         dw_payload_mem ^^
+         dw_tag_close (* structure_type *)) in
+    (dw_overlay,
+     meta_tag dw_TAG_member_In_variant
+       (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 8]))  in
+    (* make sure all prerequisite types are around *)
+    let overlays = [prereq "FIXME:none";prereq "FIXME:some"] in
+    let prereqs = effects (concat_map fst overlays) in
+    let option =
+      (* struct_type, assumes location points at heap tag *)
+      let internal_struct =
+        with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "OPTION"; Byte_size 8]) in
+      let summand (((name, discr), mem) : (string * int) * t) =
+        meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value discr]) ^^
+        mem ^^
+        dw_tag_close (* variant *) in
+      prereqs ^^<
+      internal_struct ^<^
+        (meta_tag dw_TAG_member_Tag_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
+         let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
+         dw2 ^^
+         (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
+         concat_map summand (List.map2 (fun nd (_, mem) -> nd, mem) [("FIXME:none", 0x0); ("FIXME:some", 0x8)] overlays) ^^
+         dw_tag_close (* variant_part *) ^^
+         dw_tag_close (* struct_type *)) in
+    option
+
 and dw_variant vnts =
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ, dw_type_ref typ) vnts in
   (* make sure all prerequisite types are around *)
