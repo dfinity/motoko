@@ -24,7 +24,7 @@
 * [X] Remove Shared type
 * [X] Explain dot keys, dot vals and iterators
 * [X] Debug expressions
-* [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
+* [X] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
 * [X] Update ErrorCode section
 * [Floats] Literals type and operations
 * [ ] Re-section so headings appear in content outline
@@ -516,6 +516,8 @@ The syntax of a _pattern_ is as follows:
 
 <pat-field> ::=                                object pattern fields
   <id> = <pat>                                   field
+  <id>                                           punned field
+  <id> : <typ>                                   typed punned field
 ```
 
 
@@ -1229,6 +1231,10 @@ The object pattern `{ <pat-field>;* }` matches an object value, a collection of 
 The set of identifiers bound by each field of the object pattern must be distinct.
 The names of the pattern fields in the object pattern must be distinct.
 
+Object pattern supporting _punning_ for concision.
+A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ> ` is short-hand for `<id> = <id> : <typ>`. Both
+bind the value of the field named `<id>` to the identifier `<id>`.
+
 Pattern matching fails if one of the pattern fields fails to match the corresponding field value of the object value.
 Pattern matching succeeds if every pattern field matches the corresponding named field of the object value.
 The binding returned by a successful match is the union of the bindings returned by the field matches.
@@ -1345,7 +1351,7 @@ Fields can be declared with `public` or `private` visibility; if the visibility 
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
 
-Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
+Let `T = <sort> { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
 Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
 The object declaration has type `T` provided that:
 
@@ -1355,13 +1361,14 @@ The object declaration has type `T` provided that:
      with types `T(id)` for `id` in `Id == Id_private union Id_public`, and
    * `{ id0, ..., idn } == Id_public`, and
    * for all `i in 0 \<= i \<= n`, `[vari] Ti == T(idi)`.
+3. If `<sort>` is `module`, then the declarations in `<dec>;*` must be _static_ (<<decl-static>>).
 
 Note that requirement 1. imposes further constraints on the field types of `T`.
 In particular:
 
 * if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
-Evaluation of `(object|actor)? <id>? =? { <exp-field>;* }` proceeds by
+Evaluation of `<sort>? (object|actor)? <id>? =? { <exp-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
@@ -1369,7 +1376,39 @@ The result of the object declaration is the object `v == sort { <id0> = v1, ...,
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
-// TBR do we actually propagate trapping of actor creation?
+[[decl-static]]
+==== Static declarations
+
+A declaration is _static_ if it is:
+
+*   a type definition, or
+*   a class definition, or
+*   a let-definition with a static pattern with a static right-hand side.
+*   a static expression or `ignore` of a static expression.
+
+An expression is _static_ if it is:
+
+*   a literal
+*   a tuple of static expressions, or
+*   a record of static expressions, or
+*   a variant or option with a static expression, or
+*   an immutable record, or
+*   field access and projection from a static expression, or
+////
+do we want to allow this - it could trap? If we allow that, then why not refutable patterns?
+*   array access using static expressions, or
+////
+*   a module, i.e. an object consisting of static declarations, or
+*   a function or class declaration, or
+*   a block, all of whose declarations are static or,
+*   a type annotation with a static expression.
+
+A pattern is _static_ if it is:
+
+* an identifier, or
+* a wildcard, or
+* a tuple of static patterns, or
+* type annotation with a static pattern.
 
 [[decl-func]]
 === Function declaration
