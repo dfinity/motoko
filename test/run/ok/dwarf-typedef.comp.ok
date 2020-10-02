@@ -30,23 +30,3 @@ Cannot type typ: (Obj
   )
 )
 
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Tup (Con Int) (Con List/1)))
-
-Cannot type typ: (Opt (Tup (Con Int) (Con List/1)))
-
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Con Int))
-
-Cannot type typ: (Opt (Con Int))
-
