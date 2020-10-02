@@ -1122,7 +1122,7 @@ An actor class library evaluates by (transitively) evaluating its imports, bindi
   module {
     public type <id> = T;
     public func <id>(a1 : U1, ..., an : Un) : async T {
-      <dec>;
+      <dec>;  // locally binds actor class <id>
       await <id>(a1, ..., an);
     };
   }
