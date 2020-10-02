@@ -1361,14 +1361,14 @@ The object declaration has type `T` provided that:
      with types `T(id)` for `id` in `Id == Id_private union Id_public`, and
    * `{ id0, ..., idn } == Id_public`, and
    * for all `i in 0 \<= i \<= n`, `[vari] Ti == T(idi)`.
-3. If `<sort>` is `module`, then the declarations in `<dec>;*` must be _static_ (<<decl-static>>).
+3. If `<sort>` is `module`, then the declarations in `<dec>;*` must be _static_ (see <<decl-static>>).
 
 Note that requirement 1. imposes further constraints on the field types of `T`.
 In particular:
 
 * if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
-Evaluation of `<sort>? (object|actor)? <id>? =? { <exp-field>;* }` proceeds by
+Evaluation of `<sort>? <id>? =? { <exp-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
@@ -1385,7 +1385,7 @@ A declaration is _static_ if it is:
 *   a `class` declaration, or
 *   a `let` declaration with a static pattern and a static expression, or
 *   a static expression, or
-*   an ignored static expression.
+*   an `ignore` with static expression.
 
 An expression is _static_ if it is:
 
@@ -1393,7 +1393,7 @@ An expression is _static_ if it is:
 *  a tuple of static expressions, or
 *  a record of static expressions, or
 *  a variant or option with a static expression, or
-*  an immutable record, or
+*  an immutable array, or
 *  field access and projection from a static expression, or
 ////
 do we want to allow this - it could trap? If we allow that, then why not refutable patterns?
@@ -1403,7 +1403,7 @@ I think both should be disallowed or we could no deadcode imported but unreferen
 *  a module, i.e. an object consisting of static declarations, or
 *  a function or class declaration, or
 *  a static declaration, or
-*  a block, all of whose declarations are static or,
+*  a block, all of whose declarations are static, or
 *  a type annotation with a static expression.
 
 A pattern is _static_ if it is:
@@ -1412,9 +1412,13 @@ A pattern is _static_ if it is:
 * a wildcard, or
 * a tuple of static patterns, or
 * type annotation with a static pattern.
+////
+why not record patterns?
+////
 
-Static phrases are designed to be side-effect free, allowing simple de-duplication
-and dead-code elimination, in particular of libraries of inherently static modules.
+Static phrases are designed to be side-effect free, allowing:
+* the identification of duplicate library imports (a.k.a deduplication)
+* the elimination of imported, but unreferenced libaries.
 
 [[decl-func]]
 === Function declaration
