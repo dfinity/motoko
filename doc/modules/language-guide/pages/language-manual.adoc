@@ -1999,18 +1999,18 @@ The actor assertion `actor <canister-id-exp>` has expected type `T` provided:
 
 * the expression is used in a context expecting an expression of type `T` (typically as the subject of a type annotation, typed declaration or function argument); and
 * `T` is an some actor type `actor { .... }`; and
-* `<canister-id-exp>` has type Text.
+* `<canister-id-exp>` has type `Text`.
 
 The argument `<canister-id-exp>` must be, or evaluate to, the textual format of an IC canister identifier (specified elsewhere), otherwise the expression traps.
-The result of the expression is an actor value.
+The result of the expression is an actor value representing that canister.
 
-The validity of the principal and its asserted type `T` are taken on trust.
+The validity of the principal and its asserted type `T` are promises and taken on trust.
 
 An invalid principal or type may manifest itself, if at all, as a later dynamic failure
 when calling a function on the actor's proclaimed interface.
 
-Note: although they do not compromise type safety, actor assertions can introduce latent dynamic errors.
-They should be used sparingly and only when needed.
+Note: although they do not compromise type safety, actor assertions can easily introduce latent, dynamic errors.
+Accordingly, actor assertions should be used sparingly and only when needed.
 
 [[exp-paren]]
 === Parentheses
