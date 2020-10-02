@@ -2009,8 +2009,12 @@ The validity of the canister identifier and its asserted type `T` are promises a
 An invalid canister identifier or type may manifest itself, if at all, as a later dynamic failure
 when calling a function on the actor's proclaimed interface.
 
-Note: although they do not compromise type safety, actor assertions can easily introduce latent, dynamic errors.
+Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+
+Warning: although they do not compromise type safety, actor assertions can easily introduce latent, dynamic errors.
 Accordingly, actor assertions should be used sparingly and only when needed.
+
+
 
 [[exp-paren]]
 === Parentheses
