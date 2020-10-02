@@ -426,7 +426,7 @@ The syntax of a _declaration_ is as follows:
    { <dec-field>;* }       field declarations
 
 <class-body> ::=         class body
-    = <id>? <obj-body>    object body, optionally binding <id> to _this_ instance
+    = <id>? <obj-body>     object body, optionally binding <id> to _this_ instance
     <obj-body>             object body
 ```
 
@@ -2072,4 +2072,3 @@ In general, this means that an expression of a more specific type may appear whe
 
 [bibliography]
 - [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
-
