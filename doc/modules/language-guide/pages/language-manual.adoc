@@ -1381,27 +1381,30 @@ If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produc
 
 A declaration is _static_ if it is:
 
-*   a type definition, or
-*   a class definition, or
-*   a let-definition with a static pattern with a static right-hand side.
-*   a static expression or `ignore` of a static expression.
+*   a `type` declaration, or
+*   a `class` declaration, or
+*   a `let` declaration with a static pattern and a static expression, or
+*   a static expression, or
+*   an ignored static expression.
 
 An expression is _static_ if it is:
 
-*   a literal
-*   a tuple of static expressions, or
-*   a record of static expressions, or
-*   a variant or option with a static expression, or
-*   an immutable record, or
-*   field access and projection from a static expression, or
+*  a literal expression, or
+*  a tuple of static expressions, or
+*  a record of static expressions, or
+*  a variant or option with a static expression, or
+*  an immutable record, or
+*  field access and projection from a static expression, or
 ////
 do we want to allow this - it could trap? If we allow that, then why not refutable patterns?
+I think both should be disallowed or we could no deadcode imported but unreferenced libraries.
 *   array access using static expressions, or
 ////
-*   a module, i.e. an object consisting of static declarations, or
-*   a function or class declaration, or
-*   a block, all of whose declarations are static or,
-*   a type annotation with a static expression.
+*  a module, i.e. an object consisting of static declarations, or
+*  a function or class declaration, or
+*  a static declaration, or
+*  a block, all of whose declarations are static or,
+*  a type annotation with a static expression.
 
 A pattern is _static_ if it is:
 
@@ -1409,6 +1412,9 @@ A pattern is _static_ if it is:
 * a wildcard, or
 * a tuple of static patterns, or
 * type annotation with a static pattern.
+
+Static phrases are designed to be side-effect free, allowing simple de-duplication
+and dead-code elimination, in particular of libraries of inherently static modules.
 
 [[decl-func]]
 === Function declaration
@@ -2012,6 +2018,8 @@ Note: type annotations have no-runtime cost and cannot be used to perform the (c
 The declaration expression `<dec>` has type `T` provided the declaration `<dec>` has type `T`.
 
 Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
+
+(The expression `<dec>` is actually shorthand for the block expression `{ <dec> }`.)
 
 [[exp-debug]]
 === Debug
