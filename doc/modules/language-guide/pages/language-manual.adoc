@@ -238,7 +238,7 @@ For example, type `Int` is both arithmetic (A) and ordered (O) and supports both
 Note that equality (`==`) and inequality (`!=`) do not have categories.
 Instead, equality and inequality are applicable to arguments of all
 _shared_ types, including non-primitive, compound types such as
-immutable arrays and records.
+immutable arrays, records, and variants.
 
 Equality and inequality are structural and based on the observable content of their operands (as determined by their static type).
 
