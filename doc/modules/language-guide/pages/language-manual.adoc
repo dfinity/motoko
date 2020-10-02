@@ -1160,7 +1160,7 @@ During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `po
 [[decl-seq]]
 === Sequence of declarations
 
-A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T`
+A sequence of declarations `<dec>;*` occurring in a block, a program or the `<dec-field>;*` sequence of an object declaration has type `T`
 provided:
 
 * `<dec>;*` is empty and `T == ()`; or
@@ -1346,13 +1346,13 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 [[decl-obj]]
 === Object declaration
 
-Declaration `<sort> <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp-field>;*`.
+Declaration `<sort> <id>? =? { <dec-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
 
 Let `T = <sort> { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
-Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
+Let `<dec>;*` be the sequence of declarations in `<dec-field>;*`.
 The object declaration has type `T` provided that:
 
 1. type `T` is well-formed for sort `sort`, and
@@ -1368,7 +1368,7 @@ In particular:
 
 * if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
-Evaluation of `<sort>? <id>? =? { <exp-field>;* }` proceeds by
+Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
