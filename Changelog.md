@@ -1,5 +1,10 @@
 = Motoko compiler changelog
 
+* BREAKING CHANGE: a library containing a single actor class is
+  imported as a module, providing access to both the class type and
+  class constructor function as module components. Restores the
+  invariant that imported libraries are modules.
+
 == 0.4.4 (2020-09-21)
 
 * Actor class export
