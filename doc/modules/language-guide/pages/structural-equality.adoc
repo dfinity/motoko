@@ -45,6 +45,6 @@ to itself at supertype
   Any
 ===
 
-Comparing these two at the `Any` type means this comparison will return `true` no matter its arguments, so this doesn't work.
+Comparing these two at the `Any` type means this comparison will return `true` no matter its arguments, so this doesn't work as one might hope.
 
 If you run into this limitation in your code, you should accept a comparison function of type `(A, A) -> Bool` as an argument, and use that to compare these values instead.
