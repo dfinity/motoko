@@ -2,7 +2,7 @@
 
 There are two key categories of control flow:
 
-- _declarative_, when the structure of some value  guides control and the selection of the next expression to evaluate, like in `if` and `switch` expressions
+- _declarative_, when the structure of some value  guides control and the selection of the next expression to evaluate, like in `if` and `switch` expressions;
 - _imperative_  where control changes abruptly according to a programmer's command, abondoning regular control flow; examples are `break` and `continue`, but also `return` and `throw`.
 
 Imperative control flow often goes hand-in-hand with state changes and other flavors of side-effects, such as error handling and input/output.
@@ -29,7 +29,7 @@ Any of these can be prefixed with a `label ⟨name⟩` qualifier to give the loo
 - re-entering the loop with `continue ⟨name⟩`, or
 - exiting the loop altogether with `break ⟨name⟩`.
 
-In the following example the `for` expression loops over characters of some text and abandons iteration as soon as an exclamation sign is encountered
+In the following example the `for` expression loops over characters of some text and abandons iteration as soon as an exclamation sign is encountered.
 
 ....
 label letters for (c in someText.chars()) {
@@ -40,10 +40,10 @@ label letters for (c in someText.chars()) {
 
 === Labeled expressions
 
-There are two other facets to `label`{zwsp}s that are less mainstream, but come very handy in certain situations:
+There are two other facets to `label`{zwsp}s that are less mainstream, but come in handy in certain situations:
 
 - `label`{zwsp}s can be typed
-- any expression (not just loops) can be named by prefixing it with a label; `break` allows one to short-circuit the expression's evaluation by providing an immediate value for its result. (This is similar to exiting a function early using `return`, but without the overhead of a declaring and calling a function.)
+- _any_ expression (not just loops) can be named by prefixing it with a label; `break` allows one to short-circuit the expression's evaluation by providing an immediate value for its result. (This is similar to exiting a function early using `return`, but without the overhead of declaring and calling a function.)
 
 The syntax for type-annotated labels is `label ⟨name⟩ : ⟨type⟩ ⟨expr⟩`, signifying that any expression can be exited using a `break ⟨name⟩ ⟨alt-expr⟩` construct that short-circuits evaluation of `⟨expr⟩`, and results in a value by evaluating `⟨alt-expr⟩` instead.
 
@@ -70,7 +70,7 @@ The simplest way to indefinitely repeat a sequence of imperative expressions is 
 loop { ⟨expr1⟩; ⟨expr2⟩; ... }
 ....
 
-The loop can only be abandoned with a `return` or `break` construct. 
+The loop can only be abandoned with a `return` or `break` construct.
 
 A re-entry condition can be affixed to allow a conditional repetition of the loop with `loop ⟨body⟩ while ⟨cond⟩`.
 
@@ -86,6 +86,7 @@ while (earned < need) { earned += earn() };
 ....
 
 Unlike a `loop`, the body of a `while` loop may never be executed.
+
 [[for-loops]]
 == `for` loops for iteration
 
