@@ -381,17 +381,12 @@ The syntax of a _library_ (that can be referenced in an import) is as follows:
 <lib> ::=                                                                                       library
     <imp>;* module <id>? <obj-body>                                                               module
     <imp>;* <shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>            actor class
-    <imp>;* <dec>;*                                                                               module shorthand
 ```
 
 A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 
 * a named or anonymous (module) declaration; or
-* a named actor class declaration; or
-* a sequence of declarations `<dec>;*` (not matching the previous two cases).
-
-In a library, the declaration sequence `<dec>;*` =  `<dec1>; ..., <decn>`
-is convenient shorthand for the explicit module `module { public <dec1>; ...; public <decn> }`, exporting each declaration as `public`.
+* a named actor class declaration.
 
 Libraries stored in {ext} files may be referenced by `import` declarations.
 
