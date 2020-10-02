@@ -45,14 +45,14 @@ export void* mp_calloc(size_t n, size_t size) {
 export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
   as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
 
-  if (FIELD(r, 0) != TAG_BLOB) bigint_trap(); // assert block type
+  if (TAG(r) != TAG_BLOB) bigint_trap(); // assert block type
 
-  if (new_size > FIELD(r, 1)) {
+  if (new_size > BLOB_LEN(r)) {
     void *newptr = mp_alloc(new_size);
-    if (old_size != FIELD(r, 1)) bigint_trap();
-    as_memcpy(newptr, ptr, old_size);
+    if (old_size != BLOB_LEN(r)) bigint_trap();
+    memcpy(newptr, ptr, old_size);
     return newptr;
-  } else if (new_size == FIELD(r, 1)) {
+  } else if (new_size == BLOB_LEN(r)) {
     // No need to grow
     return ptr;
   } else {
@@ -92,7 +92,7 @@ we call a trap function provided by the Wasm part of the runtime.
 
 as_ptr bigint_alloc() {
   as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
-  FIELD(r, 0) = TAG_BIGINT;
+  TAG(r) = TAG_BIGINT;
   CHECK(mp_init(BIGINT_PAYLOAD(r)));
   return r;
 }
@@ -185,9 +185,6 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
 
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
-}
-export bool bigint_ne(as_ptr a, as_ptr b) {
-  return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) != 0;
 }
 export bool bigint_lt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) < 0;

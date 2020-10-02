@@ -72,7 +72,7 @@ let ic_id_to_lookup : string option -> string -> string -> string =
 
 let lookup_module (project_root : string) (path : string) (index : t) :
     (string * ide_decl list) option =
-  let open Pipeline.URL in
+  let open Ic.Url in
   let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
@@ -127,9 +127,8 @@ let shorten_import_path :
     let idl_basename = Filename.basename path in
     Flags.M.bindings ic_aliases
     |> Lib.List.first_opt (fun (alias, id) ->
-           Debug.log "basename" (Pipeline.URL.idl_basename_of_blob id);
-           if Pipeline.URL.idl_basename_of_blob id = idl_basename then
-             Some alias
+           Debug.log "basename" (Ic.Url.idl_basename_of_blob id);
+           if Ic.Url.idl_basename_of_blob id = idl_basename then Some alias
            else None)
     |> function
     | None -> Printf.sprintf "ic:%s" (Filename.remove_extension idl_basename)
@@ -225,18 +224,8 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   | _ -> None
 
 let unwrap_module_ast (lib : Syntax.lib) : Syntax.exp_field list option =
-  match lib.it.it with
-  | Syntax.BlockE [] -> None
-  | Syntax.BlockE decs -> (
-      match Lib.List.last decs with
-      | { it = Syntax.ExpD { it = Syntax.ObjE (_, fields); _ }; _ } ->
-          Some fields
-      | { it = Syntax.LetD (_, { it = Syntax.ObjE (_, fields); _ }); _ } ->
-          Some fields
-      | d ->
-          Debug.log "unwrap_module_ast"
-            (Wasm.Sexpr.to_string 80 (Arrange.dec d));
-          None )
+  match lib.it with
+  | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
 let populate_definitions (project_root : string) (libs : Syntax.lib list)
@@ -249,7 +238,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
   let is_type_def exp_field =
     match exp_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) -> Some typ_id
-    | Syntax.ClassD (typ_id, _, _, _, _, _, _) -> Some typ_id
+    | Syntax.ClassD (_, typ_id, _, _, _, _, _, _) -> Some typ_id
     | _ -> None
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
@@ -332,8 +321,9 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
     List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ())
   in
   let package_env =
-    Pipeline.chase_imports (Vfs.parse_file vfs) Pipeline.initial_stat_env
-      package_paths
+    Pipeline.chase_imports
+      (fun _ -> Vfs.parse_file vfs)
+      Pipeline.initial_stat_env package_paths
   in
   let lib_index =
     match package_env with
@@ -365,8 +355,9 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
   let actor_index = index_from_scope project_root lib_index [] actor_env in
   (* TODO(Christoph): We should be able to return at least the
      actor_index even if compiling from the entry points fails *)
-  Pipeline.load_progs (Vfs.parse_file vfs) entry_points
-    Pipeline.initial_stat_env
+  Pipeline.load_progs
+    (fun _ -> Vfs.parse_file vfs)
+    entry_points Pipeline.initial_stat_env
   |> Diag.map (fun (libs, _, scope) ->
          index_from_scope project_root actor_index libs scope)
 

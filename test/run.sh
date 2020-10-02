@@ -24,17 +24,10 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MOCFLAGS=-g
-MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
-DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
-export MO_LD
-WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift"
-DRUN=${DRUN:-drun}
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
-IC_REF_RUN=${IC_REF_RUN:-ic-ref-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
@@ -89,6 +82,11 @@ function normalize () {
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
+    sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
+    # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
+    sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    # Normalize instruction locations on traps, added by ic-ref ad6ea9e
+    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/:0.1/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -102,7 +100,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext$" $file; then return 1; fi
+  if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -157,16 +155,16 @@ FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if $DRUN --version >& /dev/null
+  if drun --version >& /dev/null
   then
     HAVE_drun=yes
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run $DRUN, cannot update expected test output"
+      echo "ERROR: Could not run drun, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run $DRUN, will skip some tests"
+      echo "WARNING: Could not run drun, will skip some tests"
       HAVE_drun=no
     fi
   fi
@@ -174,16 +172,16 @@ fi
 
 if [ $DTESTS = yes ]
 then
-  if $IC_REF_RUN --help >& /dev/null
+  if ic-ref-run --help >& /dev/null
   then
     HAVE_ic_ref_run=yes
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run $IC_REF_RUN, cannot update expected test output"
+      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run $IC_REF_RUN, will skip some tests"
+      echo "WARNING: Could not run ic-ref-run, will skip some tests"
       HAVE_ic_ref_run=no
     fi
   fi
@@ -236,16 +234,18 @@ do
   "mo")
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
+    moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
+    moc="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
 
     # Typecheck
-    run tc $MOC $MOCFLAGS $moc_extra_flags --check $base.mo
+    run tc $moc $MOCFLAGS --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $MOCFLAGS $moc_extra_flags --idl $base.mo -o $out/$base.did
+        run idl $moc $MOCFLAGS --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -253,16 +253,16 @@ do
 
         if [ "$idl_succeeded" -eq 0 ]
         then
-          run didc $DIDC --check $out/$base.did
+          run didc didc --check $out/$base.did
         fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run $MOC $MOCFLAGS $moc_extra_flags --hide-warnings -r $base.mo
+          run run $moc $MOCFLAGS --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $MOCFLAGS $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc $MOCFLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -272,7 +272,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $MOCFLAGS $moc_extra_flags --hide-warnings -r -iR $base.mo
+          run run-low $moc $MOCFLAGS --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -305,13 +305,13 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp $MOC $MOCFLAGS $moc_extra_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $MOC $MOCFLAGS $moc_extra_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $moc $MOCFLAGS $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc $MOCFLAGS $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
-          run comp $MOC $MOCFLAGS $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc $MOCFLAGS --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $MOC $MOCFLAGS $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc $MOCFLAGS -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -353,7 +353,7 @@ do
               fi
             fi
           else
-            run_if wasm wasm-run $WASMTIME $WASMTIME_OPTIONS $out/$base.wasm
+            run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
           fi
         fi
 
@@ -384,7 +384,7 @@ do
 
     for runner in ic-ref-run drun
     do
-      if grep -q "# *SKIP $runner" $file
+      if grep -q "# *SKIP $runner" $(basename $file)
       then
         continue
       fi
@@ -397,7 +397,7 @@ do
       fi
 
       # collect all .mo files referenced from the file
-      mo_files="$(grep -o '[^[:space:]]\+\.mo' $file |sort -u)"
+      mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
 
       for mo_file in $mo_files
       do
@@ -405,16 +405,16 @@ do
         if [ "$(dirname $mo_file)" != "$base" ];
         then
           $ECHO ""
-          echo "$file references $mo_file which is not in directory $base"
+          echo "$base.drun references $mo_file which is not in directory $base"
           exit 1
         fi
 
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp $MOC $MOCFLAGS ${!flags} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $MOCFLAGS ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
-      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $file > $out/$base/$base.$runner.drun
+      LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
 
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
@@ -425,7 +425,7 @@ do
   "sh")
     # The file is a shell script, just run it
     $ECHO -n " [out]"
-    ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+    ./$(basename $base.sh) > $out/$base.stdout 2> $out/$base.stderr
     normalize $out/$base.stdout
     normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
@@ -435,7 +435,7 @@ do
     $ECHO -n " [mo-ld]"
     rm -f $out/$base.{base,lib,linked}.{wasm,wat,o}
     make --quiet $out/$base.{base,lib}.wasm
-    $MO_LD -b $out/$base.base.wasm -l $out/$base.lib.wasm -o $out/$base.linked.wasm > $out/$base.mo-ld 2>&1
+    mo-ld -b $out/$base.base.wasm -l $out/$base.lib.wasm -o $out/$base.linked.wasm > $out/$base.mo-ld 2>&1
     diff_files="$diff_files $base.mo-ld"
 
     if [ -e $out/$base.linked.wasm ]
@@ -448,7 +448,7 @@ do
     # The file is a .did file, so we are expected to test the idl
     # Typecheck
     $ECHO -n " [tc]"
-    $DIDC --check $base.did > $out/$base.tc 2>&1
+    didc --check $base.did > $out/$base.tc 2>&1
     tc_succeeded=$?
     normalize $out/$base.tc
     diff_files="$diff_files $base.tc"
@@ -456,12 +456,12 @@ do
     if [ "$tc_succeeded" -eq 0 ];
     then
       $ECHO -n " [pp]"
-      $DIDC --pp $base.did > $out/$base.pp.did
+      didc --pp $base.did > $out/$base.pp.did
       sed -i 's/import "/import "..\//g' $out/$base.pp.did
-      $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
+      didc --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
       diff_files="$diff_files $base.pp.tc"
 
-      run didc-js $DIDC --js $base.did -o $out/$base.js
+      run didc-js didc --js $base.did -o $out/$base.js
       normalize $out/$base.js
       diff_files="$diff_files $base.js"
 

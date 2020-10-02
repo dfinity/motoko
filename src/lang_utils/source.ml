@@ -23,3 +23,8 @@ let string_of_region r =
   if r.left.file = "" then "(unknown location)" else
   r.left.file ^ ":" ^ string_of_pos r.left ^
   (if r.right = r.left then "" else "-" ^ string_of_pos r.right)
+
+(* generic parse error *)
+
+exception ParseError of region * string
+

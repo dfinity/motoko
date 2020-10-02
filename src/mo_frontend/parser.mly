@@ -179,16 +179,17 @@ let rec normalize_let p e =
 %left POWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) text_like
-%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_item
+%type<Mo_def.Syntax.typ_item> typ_item
+%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
 %type<Mo_def.Syntax.typ_tag> typ_tag
 %type<Mo_def.Syntax.typ_tag list> typ_variant
 %type<Mo_def.Syntax.typ_field> typ_field
 %type<Mo_def.Syntax.typ_bind> typ_bind
 %type<Mo_def.Syntax.typ list> typ_args
-%type<Source.region -> Mo_def.Syntax.pat> sort_pat_opt
+%type<Source.region -> Mo_def.Syntax.pat> pat_opt 
 %type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
-%type<Mo_def.Syntax.typ list> seplist(typ_item,COMMA)
+%type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
 %type<Mo_def.Syntax.typ_bind list> seplist(typ_bind,COMMA)
 %type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
@@ -284,10 +285,10 @@ seplist1(X, SEP) :
   | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
   | QUERY { Type.Shared Type.Query @@ at $sloc }
 
-%inline sort_pat :
+%inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
-  | QUERY op=sort_pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+  | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
+  | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
 
@@ -312,7 +313,10 @@ typ_variant :
 
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
-    { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
+    { (match ts with
+       | [(Some id, t)] -> NamedT(id, t)
+       | [(None, t)] -> ParT t
+       | _ -> TupT(ts)) @! at $sloc }
   | p=path tso=typ_args?
     { PathT(p, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
@@ -347,8 +351,8 @@ typ :
     { funcT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
-  | id COLON t=typ { t }
-  | t=typ { t }
+  | i=id COLON t=typ { Some i, t }
+  | t=typ { None, t }
 
 typ_args :
   | LT ts=seplist(typ, COMMA) GT { ts }
@@ -373,7 +377,7 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | x=tag t=return_typ_nullary?
+  | x=tag t=return_typ?
     { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
 
 typ_bind :
@@ -390,7 +394,7 @@ lit :
   | s=NAT { PreLit (s, Type.Nat) }
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
-  | t=TEXT { TextLit t }
+  | t=TEXT { PreLit (t, Type.Text) }
 
 %inline unop :
   | ADDOP { PosOp }
@@ -451,7 +455,7 @@ ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
-  | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
+  | t=TEXT { LitE (ref (PreLit (t, Type.Text))) @? at $sloc }
   | LPAR e=exp(bl) RPAR { e }
 
 exp_block :
@@ -546,14 +550,16 @@ exp_nondec(B) :
     { AssertE(e) @? at $sloc }
   | LABEL x=id rt=return_typ_nullary? e=exp(bl)
     { let x' = ("continue " ^ x.it) @@ x.at in
-      let t = Lib.Option.get rt (TupT [] @! at $sloc) in
+      (* `unit` is a function, to avoid sharing of mutable AST nodes *)
+      let unit () = TupT [] @! at $sloc in
       let e' =
         match e.it with
-        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', t, e2) @? e2.at) @? e.at
-        | LoopE (e1, eo) -> LoopE (LabelE (x', t, e1) @? e1.at, eo) @? e.at
-        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', t, e2) @? e2.at) @? e.at
+        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
+        | LoopE (e1, eo) -> LoopE (LabelE (x', unit (), e1) @? e1.at, eo) @? e.at
+        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
         | _ -> e
-      in LabelE(x, t, e') @? at $sloc }
+      in
+      LabelE(x, Lib.Option.get rt (unit ()), e') @? at $sloc }
   | BREAK x=id eo=exp_nullary(ob)?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
@@ -566,7 +572,7 @@ exp_nondec(B) :
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)
     { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nullary(ob) CATCH c=catch
+  | TRY e1=exp_nullary(ob) c=catch
     { TryE(e1, [c]) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
@@ -602,7 +608,7 @@ case :
     { {pat = p; exp = e} @@ at $sloc }
 
 catch :
-  | p=pat_nullary e=exp(bl)
+  | CATCH p=pat_nullary e=exp(bl)
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field_nonvar :
@@ -698,7 +704,7 @@ pat_field :
   | x=id COLON t=typ
     { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
 
-sort_pat_opt :
+pat_opt :
   | p=pat_nullary
     { fun sloc -> p }
   | (* Empty *)
@@ -725,7 +731,7 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
-  | sp=sort_pat FUNC xf=id_opt
+  | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
@@ -733,12 +739,12 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt
+  | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
-      in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+      in ClassD(sp, xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 

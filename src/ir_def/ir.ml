@@ -119,13 +119,23 @@ and prim =
   | AwaitPrim                         (* await *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
-  | ShowPrim of Type.typ              (* debug show *)
+  | ShowPrim of Type.typ              (* debug_show *)
+  | SerializePrim of Type.typ list    (* Candid serialization prim *)
+  | DeserializePrim of Type.typ list  (* Candid deserialization prim *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
   | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
+  | SystemTimePrim
+  (* Funds *)
+  | SystemFundsAddPrim
+  | SystemFundsAcceptPrim
+  | SystemFundsAvailablePrim
+  | SystemFundsBalancePrim
+  | SystemFundsRefundedPrim
+
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
   | CPSAwait
@@ -147,6 +157,7 @@ and dec' =
 
 (* Literals *)
 
+(* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
@@ -184,6 +195,7 @@ type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
+  has_poly_eq : bool; (* Polymorphic equality *)
   serialized : bool; (* Shared function arguments are serialized *)
 }
 
@@ -191,6 +203,7 @@ let full_flavor : flavor = {
   has_await = true;
   has_async_typ = true;
   has_show = true;
+  has_poly_eq = true;
   serialized = false;
 }
 
@@ -198,7 +211,12 @@ let full_flavor : flavor = {
 
 (* Program *)
 
-type prog = (dec list * exp) * flavor
+type comp_unit =
+  | LibU of dec list * exp
+  | ProgU of dec list
+  | ActorU of arg list option * dec list * field list * upgrade * Type.typ (* actor (class) *)
+
+type prog = comp_unit * flavor
 
 
 (* object pattern helpers *)

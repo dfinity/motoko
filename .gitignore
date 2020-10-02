@@ -1,8 +1,10 @@
 .database
 .dvm
 _out
+_out-dbg
 _output
 _build
+target
 
 **/*~
 /result*

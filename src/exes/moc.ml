@@ -4,8 +4,7 @@ open Mo_config
 open Printf
 
 let name = "moc"
-let version = "0.1"
-let banner = "Motoko " ^ version ^ " interpreter"
+let banner = "Motoko compiler (revision " ^ Source_id.id ^ ")"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -74,7 +73,7 @@ let argspec = Arg.align [
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
-      " use the future DFINITY system API (ic-ref-run)";
+      " use the reference implementation of the DFINITY system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
@@ -83,7 +82,7 @@ let argspec = Arg.align [
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation";
   "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--release",
   Arg.Unit
@@ -93,6 +92,10 @@ let argspec = Arg.align [
   Arg.Unit
     (fun () -> Flags.release_mode := false),
       " respect debug expressions in source (the default)";
+  "--sanity-checks",
+  Arg.Unit
+    (fun () -> Flags.sanity := true),
+    " enable sanity checking in the RTS and generated code";
 ]
 
 
@@ -168,6 +171,12 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
-  Flags.compiled := (!mode = Compile);
-  process_profiler_flags () ;
-  process_files !args
+  Flags.compiled := (!mode = Compile || !mode = Idl);
+  process_profiler_flags ();
+  try
+    process_files !args
+  with
+  | Sys_error msg ->
+    (* IO error *)
+    eprintf "%s\n" msg;
+    exit 1

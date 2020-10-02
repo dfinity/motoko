@@ -102,15 +102,15 @@ no valid instantiation exists
 inference.mo:137.4-137.8: type error, cannot implicitly instantiate function of type
   <U <: {}>U -> ()
 to argument of type
-  T/34
+  T/37
 to produce result of type
   ()
 over-constrained implicit instantiation requires T <: U <: {}, but T </: {};
 no valid instantiation exists
 inference.mo:152.11-152.15: type error, cannot implicitly instantiate function of type
-  <U <: T/37>U -> U
+  <U <: T/40>U -> U
 to argument of type
-  T/37
+  T/40
 to produce result of type
   None
 over-constrained implicit instantiation requires T <: U <: None, but T </: None;

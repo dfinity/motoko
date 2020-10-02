@@ -187,6 +187,7 @@ let value_of_lit = function
   | FloatLit z -> V.Float z
   | CharLit c -> V.Char c
   | TextLit t -> V.Text t
+  | BlobLit b -> V.Blob b
   | PreLit _ -> assert false
 
 
