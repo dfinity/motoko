@@ -235,7 +235,7 @@ For example, type `Int` is both arithmetic (A) and ordered (O) and supports both
 |===
 
 
-Not that equality (`==`) and inequality (`!=`) do not have categories.
+Note that equality (`==`) and inequality (`!=`) do not have categories.
 Instead, equality and inequality are applicable to arguments of all
 _shared_ types, including non-primitive, compound types such as
 immutable arrays and records.
@@ -2009,4 +2009,3 @@ In general, this means that an expression of a more specific type may appear whe
 
 [bibliography]
 - [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
-
