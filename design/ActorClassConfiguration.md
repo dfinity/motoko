@@ -5,7 +5,7 @@ as a module containing a type definition an asynchronous actor class constructor
 
 The constructor abstracts a call the System's `ManagementCanister`,
 passing the quoted code of the imported actor class and actual
-argument as arguments, using the managment canister methods:
+argument as arguments, using the management canister's methods:
 
 ```
   create_canister : () -> (record {canister_id : canister_id});
@@ -19,7 +19,7 @@ argument as arguments, using the managment canister methods:
   }) -> ();
 ```
 
-By default, motoko constructores create a fresh canister id and use
+By default, motoko constructors create a fresh canister id and use
 `#install` (or `mode`) and `null` for `compute_allocation` and
 `memory_alloction`. The latter is unfortunate as it leads to a default
 allocation of 4GB.
@@ -54,12 +54,13 @@ Solutions:
    This approach seems too much of hack.
 
 3. Extend actor class definition to introduce a second value, with a
-   derived name `Configure<class-name>`.  This would be a curried constructor
-   that take the explicit installation arguments and returns a
-   specialzed constructor (with the usual signature) for instances of
-   that class.
-   Naive users (and simple examples) would continue to use the default class constructor;
-   advanced users could resort to the `Configure<class-name>` constructor when necessary.
+   derived name `Configure<class-name>` (please suggest a better
+   prefix or suffix).  This would be a curried constructor that takes
+   the explicit installation arguments and returns a specialized
+   constructor (with the usual signature) for instances of that class.
+   Naive users (and simple examples) would continue to use the default
+   class constructor; advanced users could resort to the
+   `Configure<class-name>` constructor when necessary.
 
    For example, the declaration:
 
@@ -98,6 +99,8 @@ compatibility of _stable_ state, which we don't yet track
 in actor types and wouldn't be never be able to check for foreign actors
 anyway.
 
+Here's what a slightly safer API would look like, assuming lower-bounds. It's better to introduce three functions, since only one requires a type parameter.
+
 ```
    type Counter = actor { inc: () -> () };
    func InstallCounter(
@@ -110,7 +113,7 @@ anyway.
      memory_allocation: ?Nat)
 	 (step : Nat) :
 	 async Counter;
-   func Upgrade<A :> Counter> { // note the upper bound
+   func Upgrade<A :> Counter> { // note the lower bound (inverting `<:`)
      actor: A;
      compute_allocation: ?Nat;
      memory_allocation: ?Nat)
