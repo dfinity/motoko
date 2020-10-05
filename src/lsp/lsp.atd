@@ -113,6 +113,7 @@ type completion_item = {
   ?additionalTextEdits : text_edit list nullable;
   ?detail: string nullable;
   ?documentation: string nullable;
+  ?tags : int list nullable;
 }
 <ocaml field_prefix="completion_item_">
 

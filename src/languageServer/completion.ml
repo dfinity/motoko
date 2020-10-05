@@ -23,6 +23,7 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_documentation =
             Some (Pretty.string_of_typ value.DI.typ);
           completion_item_detail = None;
+          completion_item_tags = Some [];
         }
   | DI.TypeDecl ty ->
       let con = ty.DI.typ in
@@ -37,6 +38,7 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_documentation =
             Some (Printf.sprintf "type %s%s" ty.DI.name params);
           completion_item_detail = None;
+          completion_item_tags = Some [];
         }
 
 let import_relative_to_project_root root module_path dependency =
@@ -127,6 +129,7 @@ let completions index project_root file_path file_contents line column =
         completion_item_additionalTextEdits = None;
         completion_item_documentation = None;
         completion_item_detail = None;
+        completion_item_tags = Some [];
       }
   in
   match find_completion_prefix file_contents line column with
