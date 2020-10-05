@@ -1400,7 +1400,7 @@ do we want to allow this - it could trap? If we allow that, then why not refutab
 I think both should be disallowed or we could no deadcode imported but unreferenced libraries.
 *   array access using static expressions, or
 ////
-*  a module, i.e. an object consisting of static declarations, or
+*  a module expression, or
 *  a function or class declaration, or
 *  a static declaration, or
 *  a block, all of whose declarations are static, or
