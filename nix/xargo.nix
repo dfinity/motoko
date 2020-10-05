@@ -16,7 +16,7 @@ rustPlatform-nightly.buildRustPackage rec {
     fetchSubmodules = true;
   };
 
-  cargoSha256 = "0zzksgi2prgw01m6r4bqjjz902h5g5ich0h3xvb60w4sshlss891";
+  cargoSha256 = "171a7xm47qdcdd6n67plyvnsxp00hn6skx5vzxd8a2kmblfqn5gy";
 
   doCheck = false;
   USER = "nobody"; # for xargo tests (if we would run them)
