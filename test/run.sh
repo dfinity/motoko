@@ -24,7 +24,6 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-MOCFLAGS=-g
 WASMTIME_OPTIONS="--disable-cache --cranelift"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
@@ -410,7 +409,7 @@ do
         fi
 
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc $MOCFLAGS ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
