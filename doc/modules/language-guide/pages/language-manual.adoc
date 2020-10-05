@@ -788,7 +788,7 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 [[option-types]]
 === Option types
 
-`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `typ`.
+`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `<typ>`.
 
 [[function-types]]
 === Function types
@@ -1078,14 +1078,14 @@ Multiple imports of the same library can be safely deduplicated without loss of 
 
 An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
 
-`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, 
+`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
 * `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in `<url>`. 
+  Note the `.mo` extension is implicit and should *not* be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
@@ -1438,7 +1438,7 @@ The unary operator `<unop> <exp>` has type `T` provided:
 * `<exp>` has type `T`, and
 * The category of `<unop>` is a category of `T`.
 
-The unary operator expression `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
+The unary operator expression `<unop> <exp>` evaluates `<exp>` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
 If the result is `trap`, the entire expression results in `trap`.
 
 [[binary-operators]]
@@ -1487,7 +1487,7 @@ The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ..
 The tuple projection `<exp> . <nat>` has type `Ti` provided `<exp>` has tuple type
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 \<= i \<= n`.
 
-The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
+The projection `<exp> . <nat>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
 
 The empty tuple expression `()` is called the *unit value*.
 
@@ -1506,7 +1506,7 @@ The variant injection `# <id> <exp>` has variant type `{# id T}` provided:
 
 The variant injection `# <id>` is just syntactic sugar for `# <id> ()`.
 
-The variant injection`# <id> <exp>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`.
+The variant injection`# <id> <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
 
 The tag and contents of a variant value can be tested and accessed using a <<pat-variant,variant pattern>>.
@@ -1527,7 +1527,7 @@ Such an object literal is equivalent to the object declaration `object { <dec-fi
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
+The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
 object value  `{ <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
@@ -1557,7 +1557,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `[var T]` | `put` | `(Nat, T) -> ()` | indexed write function (mutable arrays only)
 |===
 
-The projection `<exp> . <id>` evaluates `exp` to a result `r`.
+The projection `<exp> . <id>` evaluates `<exp>` to a result `r`.
 If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
@@ -1659,7 +1659,7 @@ Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, ..., n <: Vn
 If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p`
 is the `Principal` invoking the function (typically a user or canister).
 Matching continues by matching `v1` against `<pat1>`.
-If pattern matching succeeds with some bindings, then evaluation returns the result of `exp` in the environment of the function value (not shown) extended with those bindings.
+If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
 Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
@@ -1890,7 +1890,7 @@ The expression `return <exp>` has type `None` provided:
   * `T` is the return type of the nearest enclosing function (with no intervening `async` expression), or
   * `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `exp`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `<exp>`.
 
 // TBR async traps?
 
@@ -1953,7 +1953,7 @@ See <<type-Error>>.
 [[exp-assert]]
 === Assert
 
-The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
+The assert expression `assert <exp>` has type `()` provided `<exp>` has type `Bool`.
 
 Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a Boolean value `v`. The result of `assert <exp>` is:
 
