@@ -22,7 +22,8 @@ argument as arguments, using the management canister's methods:
 By default, motoko constructors create a fresh canister id and use
 `#install` (or `mode`) and `null` for `compute_allocation` and
 `memory_alloction`. The latter is unfortunate as it leads to a default
-allocation of 4GB.
+allocation of 8GB (although rumors are that  eventually it should mean
+“reserve none, grow on demand if possible)”
 
 While this is sufficient for basic programmatic installation of
 canisters, it fails to expose some the additional configuration
@@ -121,5 +122,4 @@ Here's what a slightly safer API would look like, assuming lower-bounds. It's be
 	 async Counter;
    func Counter(step : Nat) : async Counter; // = #InstallCounter(null, null);
 ```
-
 
