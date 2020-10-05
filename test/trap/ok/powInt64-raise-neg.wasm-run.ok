@@ -2,9 +2,9 @@ negative power
 Error: failed to run main module `_out/powInt64-raise-neg.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
        wasm backtrace:
-         0: <unknown>!init
-         1: <unknown>!_start
+         0: init
+         1: _start
        

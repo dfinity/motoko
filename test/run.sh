@@ -79,7 +79,7 @@ function normalize () {
     sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
     sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
-    sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
+    sed 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
