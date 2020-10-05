@@ -4966,14 +4966,24 @@ module VarEnv = struct
       (add_local_local env ae name i, i)
 
   (* Adds the names to the environment and returns a list of setters *)
-  let rec add_argument_locals env (ae : t) = function
-    | [] -> (ae, [])
+  let rec add_arguments env (ae : t) as_local = function
+    | [] -> ae
     | (name :: names) ->
-      let i = E.add_anon_local env I32Type in
-      E.add_local_name env i name;
-      let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
-      let (ae_final, setters) = add_argument_locals env ae' names
-      in (ae_final, G.i (LocalSet (nr i)) :: setters)
+      if as_local name then
+        let i = E.add_anon_local env I32Type in
+        E.add_local_name env i name;
+        let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
+        add_arguments env ae' as_local names
+      else (* needs to go to static memory *)
+        let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+        let zero = bytes_of_int32 0l in
+        let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+        E.add_static_root env ptr;
+        let ae' = add_local_heap_static ae name ptr in
+        add_arguments env ae' as_local names
+
+  let add_argument_locals env (ae : t) =
+    add_arguments env ae (fun _ -> true)
 
   let add_label (ae : t) name (d : G.depth) =
       { ae with labels = NameEnv.add name d ae.labels }
@@ -5149,9 +5159,9 @@ module FuncDec = struct
       (* Deserialize argument and add params to the environment *)
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
-      let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
+      let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
       Serialization.deserialize env arg_tys ^^
-      G.concat (List.rev setters) ^^
+      G.concat_map (Var.set_val env ae1) (List.rev arg_names) ^^
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -7598,11 +7608,15 @@ and main_actor as_opt mod_env ds fs up =
   Func.define_built_in mod_env "init" [] [] (fun env ->
     let ae0 = VarEnv.empty_ae in
 
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
+
     (* Add any params to the environment *)
+    (* Captured ones need to to static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
     let arg_names = List.map (fun a -> a.it) args in
     let arg_tys = List.map (fun a -> a.note) args in
-    let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
+    let as_local n = not (Freevars.S.mem n captured) in
+    let ae1 = VarEnv.add_arguments env ae0 as_local arg_names in
 
     (* Reverse the fs, to a map from variable to exported name *)
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7623,7 +7637,7 @@ and main_actor as_opt mod_env ds fs up =
     Dfinity.export_upgrade_methods env;
 
     (* Deserialize any arguments *)
-    (match as_opt with
+    begin match as_opt with
      | None
      | Some [] ->
        (* Liberally accept empty as well as unit argument *)
@@ -7632,7 +7646,8 @@ and main_actor as_opt mod_env ds fs up =
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
      | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
-       G.concat (List.rev setters)) ^^
+       G.concat_map (Var.set_val env ae1) (List.rev arg_names)
+    end ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
