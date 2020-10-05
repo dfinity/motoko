@@ -1401,7 +1401,7 @@ I think both should be disallowed or we could no deadcode imported but unreferen
 *   array access using static expressions, or
 ////
 *  a module expression, or
-*  a function or class declaration, or
+*  a function expression, or
 *  a static declaration, or
 *  a block, all of whose declarations are static, or
 *  a type annotation with a static expression.
