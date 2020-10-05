@@ -48,3 +48,43 @@ to itself at supertype
 Comparing these two at the `Any` type means this comparison will return `true` no matter its arguments, so this doesn't work as one might hope.
 
 If you run into this limitation in your code, you should accept a comparison function of type `(A, A) -> Bool` as an argument, and use that to compare these values instead.
+Let's look at a list membership test for example. This first implementation _does not_ work:
+
+===
+type List<A> = ?(A, List<A>);
+
+func contains<A>(element : A, list : List<A>) : Bool {
+  switch list {
+    case (?(head, tail))
+      if (element == head) {
+        true
+      } else {
+        contains(element, tail)
+      };
+    case null false;
+  }
+};
+
+assert(not contains(1, ?(0, null)));
+===
+
+This assertion will trap, because the compiler compares the type `A` at `Any` which is always `true`. So as long as the list has at least one element this version of `contains` will always return true.
+This second implementation shows how to accept the comparison function explicitly instead:
+
+===
+type List<A> = ?(A, List<A>);
+
+func contains<A>(eqA : (A, A) -> Bool, element : A, list : List<A>) : Bool {
+  switch list {
+    case (?(head, tail))
+      if (eqA(element, head)) {
+        true
+      } else {
+        contains(eqA, element, tail)
+      };
+    case null false;
+  }
+};
+
+assert(not contains(func (x : Nat, y : Nat) : Bool = x == y, 1, ?(0, null)));
+===
