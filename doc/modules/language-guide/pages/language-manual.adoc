@@ -1384,6 +1384,7 @@ A declaration is _static_ if it is:
 *   a `type` declaration, or
 *   a `class` declaration, or
 *   a `let` declaration with a static pattern and a static expression, or
+*   a module, function or object declaration that desugars to a static `let` declaration, or
 *   a static expression, or
 *   an `ignore` with static expression.
 
@@ -1414,7 +1415,6 @@ why not record patterns?
 Static phrases are designed to be side-effect free, allowing:
 
 * the coalescing of duplicate library imports (a.k.a deduplication), and
-* the elimination of imported, but unreferenced libaries.
 
 [[decl-func]]
 === Function declaration
