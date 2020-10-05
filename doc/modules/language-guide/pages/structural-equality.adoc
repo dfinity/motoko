@@ -51,9 +51,9 @@ If you run into this limitation in your code, you should accept a comparison fun
 Let's look at a list membership test for example. This first implementation _does not_ work:
 
 ===
-type List<A> = ?(A, List<A>);
+import List "mo:base/List";
 
-func contains<A>(element : A, list : List<A>) : Bool {
+func contains<A>(element : A, list : List.List<A>) : Bool {
   switch list {
     case (?(head, tail))
       element == head or contains(element, tail)
@@ -68,9 +68,10 @@ This assertion will trap, because the compiler compares the type `A` at `Any` wh
 This second implementation shows how to accept the comparison function explicitly instead:
 
 ===
-type List<A> = ?(A, List<A>);
+import List "mo:base/List";
+import Nat "mo:base/Nat";
 
-func contains<A>(eqA : (A, A) -> Bool, element : A, list : List<A>) : Bool {
+func contains<A>(eqA : (A, A) -> Bool, element : A, list : List.List<A>) : Bool {
   switch list {
     case (?(head, tail))
       eqA(element, head) or contains(eqA, element, tail)
@@ -78,5 +79,5 @@ func contains<A>(eqA : (A, A) -> Bool, element : A, list : List<A>) : Bool {
   }
 };
 
-assert(not contains(func (x : Nat, y : Nat) : Bool = x == y, 1, ?(0, null)));
+assert(not contains(Nat.equal, 1, ?(0, null)));
 ===
