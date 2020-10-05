@@ -2005,7 +2005,7 @@ The code for `<exp>` is never executed, nor is its code included in the compiled
 The actor reference `actor <canister-id-exp>` has expected type `T` provided:
 
 * the expression is used in a context expecting an expression of type `T` (typically as the subject of a type annotation, typed declaration or function argument); and
-* `T` is an some actor type `actor { .... }`; and
+* `T` is an some actor type `actor { ... }`; and
 * `<canister-id-exp>` has type `Text`.
 
 The argument `<canister-id-exp>` must be, or evaluate to, the textual format of an IC canister identifier (specified elsewhere), otherwise the expression traps.
