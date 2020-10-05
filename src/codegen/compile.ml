@@ -1233,6 +1233,16 @@ module MutBox = struct
   (* Mutable heap objects *)
 
   let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+
+  let static env =
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let zero = bytes_of_int32 0l in
+    let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+    E.add_static_root env ptr;
+    ptr
 end
 
 
@@ -4975,10 +4985,7 @@ module VarEnv = struct
         let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
         add_arguments env ae' as_local names
       else (* needs to go to static memory *)
-        let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
-        let zero = bytes_of_int32 0l in
-        let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
-        E.add_static_root env ptr;
+        let ptr = MutBox.static env in
         let ae' = add_local_heap_static ae name ptr in
         add_arguments env ae' as_local names
 
@@ -5650,15 +5657,10 @@ module AllocHow = struct
       (ae1, G.nop)
     | StoreHeap ->
       let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
-      let alloc_code =
-        Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
-        G.i (LocalSet (nr i)) in
+      let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
-      let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
-      let zero = bytes_of_int32 0l in
-      let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
-      E.add_static_root env ptr;
+      let ptr = MutBox.static env in
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
 
@@ -7076,8 +7078,7 @@ and compile_exp (env : E.t) ae exp =
     let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
     let sr, code = compile_exp env ae1 e in
     sr,
-    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
-    G.i (LocalSet (nr i)) ^^
+    MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
     code
   | DefineE (name, _, e) ->
     SR.unit,
