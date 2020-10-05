@@ -1391,7 +1391,7 @@ An expression is _static_ if it is:
 
 *  a literal expression, or
 *  a tuple of static expressions, or
-*  a record of static expressions, or
+*  an object of static expressions, or
 *  a variant or option with a static expression, or
 *  an immutable array, or
 *  field access and projection from a static expression, or
@@ -2054,4 +2054,3 @@ In general, this means that an expression of a more specific type may appear whe
 
 [bibliography]
 - [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
-
