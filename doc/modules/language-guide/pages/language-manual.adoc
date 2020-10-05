@@ -498,6 +498,7 @@ The syntax of an _expression_ is as follows:
   <exp> : <typ>                                  type annotation
   dec                                            declaration
   debug <exp>                                    debug expression
+  actor <canister-id-exp>                        actor reference
   ( <exp> )                                      parentheses
 ```
 
@@ -788,7 +789,7 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 [[option-types]]
 === Option types
 
-`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `typ`.
+`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `<typ>`.
 
 [[function-types]]
 === Function types
@@ -1078,14 +1079,14 @@ Multiple imports of the same library can be safely deduplicated without loss of 
 
 An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
 
-`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, 
+`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
 * `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in `<url>`. 
+  Note the `.mo` extension is implicit and should *not* be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
@@ -1096,7 +1097,7 @@ In detail, if `<url>` is of the form:
 * `"ic:<canisterid>"` then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
   The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`.
   The compiler assumes that  `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
-  For example, `import C "ic:DEADBEEF"` defines `C` to reference the actor with canister id `ic:DEADBEEF` and IDL file `DEADBEAF.did`.
+  For example, `import C "ic:lg264-qjkae"` defines `C` to reference the actor with canister id `lg264-qjkae` and IDL file `lg264-qjkae.did`.
 
 * `"canister:<name>"` is a symbolic reference to canister alias `<name>`.
   The compiler assumes that the mapping of `<name>` to `<canisterid>` is specified by command line argument  `--actor-alias <name> ic:<canisterid>`.
@@ -1106,7 +1107,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import Actor "canister:counter"`), without specifying low-level canister ids (e.g. `import Actor "ic:DEADBEEF"`).
+(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
 
 
@@ -1438,7 +1439,7 @@ The unary operator `<unop> <exp>` has type `T` provided:
 * `<exp>` has type `T`, and
 * The category of `<unop>` is a category of `T`.
 
-The unary operator expression `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
+The unary operator expression `<unop> <exp>` evaluates `<exp>` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
 If the result is `trap`, the entire expression results in `trap`.
 
 [[binary-operators]]
@@ -1487,7 +1488,7 @@ The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ..
 The tuple projection `<exp> . <nat>` has type `Ti` provided `<exp>` has tuple type
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 \<= i \<= n`.
 
-The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
+The projection `<exp> . <nat>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
 
 The empty tuple expression `()` is called the *unit value*.
 
@@ -1506,7 +1507,7 @@ The variant injection `# <id> <exp>` has variant type `{# id T}` provided:
 
 The variant injection `# <id>` is just syntactic sugar for `# <id> ()`.
 
-The variant injection`# <id> <exp>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`.
+The variant injection`# <id> <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
 
 The tag and contents of a variant value can be tested and accessed using a <<pat-variant,variant pattern>>.
@@ -1527,7 +1528,7 @@ Such an object literal is equivalent to the object declaration `object { <dec-fi
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
+The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
 object value  `{ <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
@@ -1557,7 +1558,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `[var T]` | `put` | `(Nat, T) -> ()` | indexed write function (mutable arrays only)
 |===
 
-The projection `<exp> . <id>` evaluates `exp` to a result `r`.
+The projection `<exp> . <id>` evaluates `<exp>` to a result `r`.
 If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
@@ -1659,7 +1660,7 @@ Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, ..., n <: Vn
 If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p`
 is the `Principal` invoking the function (typically a user or canister).
 Matching continues by matching `v1` against `<pat1>`.
-If pattern matching succeeds with some bindings, then evaluation returns the result of `exp` in the environment of the function value (not shown) extended with those bindings.
+If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
 Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
@@ -1890,7 +1891,7 @@ The expression `return <exp>` has type `None` provided:
   * `T` is the return type of the nearest enclosing function (with no intervening `async` expression), or
   * `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `exp`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `<exp>`.
 
 // TBR async traps?
 
@@ -1953,7 +1954,7 @@ See <<type-Error>>.
 [[exp-assert]]
 === Assert
 
-The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
+The assert expression `assert <exp>` has type `()` provided `<exp>` has type `Bool`.
 
 Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a Boolean value `v`. The result of `assert <exp>` is:
 
@@ -1990,6 +1991,37 @@ When the program is compiled or interpreted with (default) flag `--debug`, evalu
 
 When the program is compiled or interpreted with flag `--release`, evaluating the expression `debug <exp>` immediately returns the unit value `()`.
 The code for `<exp>` is never executed, nor is its code included in the compiled binary.
+
+
+[[exp-actor]]
+=== Actor references
+
+```
+<canister-id-exp> ::=
+  <text>                literal canister identifier
+  ( <exp> )             computed canister identifier
+```
+
+The actor reference `actor <canister-id-exp>` has expected type `T` provided:
+
+* the expression is used in a context expecting an expression of type `T` (typically as the subject of a type annotation, typed declaration or function argument); and
+* `T` is an some actor type `actor { ... }`; and
+* `<canister-id-exp>` has type `Text`.
+
+The argument `<canister-id-exp>` must be, or evaluate to, the textual format of an IC canister identifier (specified elsewhere), otherwise the expression traps.
+The result of the expression is an actor value representing that canister.
+
+The validity of the canister identifier and its asserted type `T` are promises and taken on trust.
+
+An invalid canister identifier or type may manifest itself, if at all, as a later dynamic failure
+when calling a function on the actor's proclaimed interface,
+which will either fail or be rejected.
+
+Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+
+Warning: although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
+Accordingly, actor references should be used sparingly and only when needed.
+
 
 [[exp-paren]]
 === Parentheses

@@ -52,7 +52,7 @@ let rec exp m e = match e.it with
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)
   | DotE (exp1, _) -> exp m exp1
-  | IdxE (exp1, exp2) -> exp m exp1; exp m exp2
+  | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
   | AnnotE (exp1, _) -> exp m exp1
