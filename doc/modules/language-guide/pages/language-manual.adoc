@@ -784,7 +784,7 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 [[option-types]]
 === Option types
 
-`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `typ`.
+`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `<typ>`.
 
 [[function-types]]
 === Function types
@@ -1074,14 +1074,14 @@ Multiple imports of the same library can be safely deduplicated without loss of 
 
 An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
 
-`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, 
+`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
 * `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in `<url>`. 
+  Note the `.mo` extension is implicit and should *not* be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
