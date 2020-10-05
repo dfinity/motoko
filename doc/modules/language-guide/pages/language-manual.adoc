@@ -2007,7 +2007,8 @@ The result of the expression is an actor value representing that canister.
 The validity of the canister identifier and its asserted type `T` are promises and taken on trust.
 
 An invalid canister identifier or type may manifest itself, if at all, as a later dynamic failure
-when calling a function on the actor's proclaimed interface.
+when calling a function on the actor's proclaimed interface,
+which will either fail or be rejected.
 
 Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
 
