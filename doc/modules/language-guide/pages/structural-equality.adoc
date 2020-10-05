@@ -1,7 +1,7 @@
 = Structural Equality
 
 (In)Equality is structural. It is defined only on `shared` types.
-Informally this means equality is defined on types that don't contain mutable fields or non-shared functions.
+Informally this means equality is defined on types that don't contain mutable fields, mutable arrays, non-shared functions or components of generic type.
 
 For example we can compare arrays of objects.
 ===
@@ -30,7 +30,7 @@ true : Bool
 ===
 
 == Generic types
-It's not possible to declare that a generic type variable is "equatable" so equality can only be used on non-generic types. For example:
+It is not possible to declare that a generic type variable is `shared`, so equality can only be used on non-generic types. For example:
 
 ===
 func eq<A>(a : A, b : A) : Bool = a == b;
