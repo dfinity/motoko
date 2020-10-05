@@ -191,9 +191,7 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
   | Function function_doc ->
       let is_multiline = List.length function_doc.args > 2 in
       let br' = if is_multiline then br else empty in
-      let br_indent =
-        if is_multiline then br ++ space ++ space else empty
-      in
+      let br_indent = if is_multiline then br ++ space ++ space else empty in
       let ty_args = html_of_typ_binders function_doc.type_args in
       (* TODO: Figure out a layout to show documentation for individual
        *  arguments *)
@@ -222,9 +220,7 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
   | Class class_doc ->
       let is_multiline = List.length class_doc.constructor > 2 in
       let br' = if is_multiline then br else empty in
-      let br_indent =
-        if is_multiline then br ++ space ++ space else empty
-      in
+      let br_indent = if is_multiline then br ++ space ++ space else empty in
       let ty_args = html_of_typ_binders class_doc.type_args in
       let args =
         join_with
@@ -271,9 +267,7 @@ let html_of_docs : render_input -> Cow.Html.t =
   let header =
     head ~attrs:[ ("title", "Doc") ]
       ( meta ~charset:"UTF-8" []
-      ++ link ~rel:"stylesheet"
-           (Uri.of_string (path_to_root ^ "styles.css"))
-           )
+      ++ link ~rel:"stylesheet" (Uri.of_string (path_to_root ^ "styles.css")) )
   in
   let nav_of_doc doc =
     match doc.Extract.declaration with
@@ -320,7 +314,7 @@ let make_index : render_input list -> string =
     head
       ~attrs:[ ("title", "Motoko docs") ]
       ( meta ~charset:"UTF-8" []
-      ++ link ~rel:"stylesheet" (Uri.of_string "styles.css"))
+      ++ link ~rel:"stylesheet" (Uri.of_string "styles.css") )
   in
   let make_link input =
     a ~cls:"index-item-link"
