@@ -498,7 +498,7 @@ The syntax of an _expression_ is as follows:
   <exp> : <typ>                                  type annotation
   dec                                            declaration
   debug <exp>                                    debug expression
-  actor <canister-id-exp>                        actor assertion
+  actor <canister-id-exp>                        actor reference
   ( <exp> )                                      parentheses
 ```
 
@@ -1994,15 +1994,15 @@ The code for `<exp>` is never executed, nor is its code included in the compiled
 
 
 [[exp-actor]]
-=== Actor assertions
+=== Actor references
 
 ```
 <canister-id-exp> ::=
-  <text>           // literal canister identifier
-  ( <exp> )        // computed canister identifier
+  <text>                literal canister identifier
+  ( <exp> )             computed canister identifier
 ```
 
-The actor assertion `actor <canister-id-exp>` has expected type `T` provided:
+The actor reference `actor <canister-id-exp>` has expected type `T` provided:
 
 * the expression is used in a context expecting an expression of type `T` (typically as the subject of a type annotation, typed declaration or function argument); and
 * `T` is an some actor type `actor { .... }`; and
@@ -2019,9 +2019,8 @@ which will either fail or be rejected.
 
 Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
 
-Warning: although they do not compromise type safety, actor assertions can easily introduce latent, dynamic errors.
-Accordingly, actor assertions should be used sparingly and only when needed.
-
+Warning: although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
+Accordingly, actor references should be used sparingly and only when needed.
 
 
 [[exp-paren]]
