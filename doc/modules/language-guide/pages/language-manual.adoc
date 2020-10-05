@@ -498,6 +498,7 @@ The syntax of an _expression_ is as follows:
   <exp> : <typ>                                  type annotation
   dec                                            declaration
   debug <exp>                                    debug expression
+  actor <canister-id-exp>                        actor reference
   ( <exp> )                                      parentheses
 ```
 
@@ -1096,7 +1097,7 @@ In detail, if `<url>` is of the form:
 * `"ic:<canisterid>"` then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
   The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`.
   The compiler assumes that  `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
-  For example, `import C "ic:DEADBEEF"` defines `C` to reference the actor with canister id `ic:DEADBEEF` and IDL file `DEADBEAF.did`.
+  For example, `import C "ic:lg264-qjkae"` defines `C` to reference the actor with canister id `lg264-qjkae` and IDL file `lg264-qjkae.did`.
 
 * `"canister:<name>"` is a symbolic reference to canister alias `<name>`.
   The compiler assumes that the mapping of `<name>` to `<canisterid>` is specified by command line argument  `--actor-alias <name> ic:<canisterid>`.
@@ -1106,7 +1107,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import Actor "canister:counter"`), without specifying low-level canister ids (e.g. `import Actor "ic:DEADBEEF"`).
+(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
 
 
@@ -1990,6 +1991,37 @@ When the program is compiled or interpreted with (default) flag `--debug`, evalu
 
 When the program is compiled or interpreted with flag `--release`, evaluating the expression `debug <exp>` immediately returns the unit value `()`.
 The code for `<exp>` is never executed, nor is its code included in the compiled binary.
+
+
+[[exp-actor]]
+=== Actor references
+
+```
+<canister-id-exp> ::=
+  <text>                literal canister identifier
+  ( <exp> )             computed canister identifier
+```
+
+The actor reference `actor <canister-id-exp>` has expected type `T` provided:
+
+* the expression is used in a context expecting an expression of type `T` (typically as the subject of a type annotation, typed declaration or function argument); and
+* `T` is an some actor type `actor { ... }`; and
+* `<canister-id-exp>` has type `Text`.
+
+The argument `<canister-id-exp>` must be, or evaluate to, the textual format of an IC canister identifier (specified elsewhere), otherwise the expression traps.
+The result of the expression is an actor value representing that canister.
+
+The validity of the canister identifier and its asserted type `T` are promises and taken on trust.
+
+An invalid canister identifier or type may manifest itself, if at all, as a later dynamic failure
+when calling a function on the actor's proclaimed interface,
+which will either fail or be rejected.
+
+Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+
+Warning: although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
+Accordingly, actor references should be used sparingly and only when needed.
+
 
 [[exp-paren]]
 === Parentheses
