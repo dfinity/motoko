@@ -453,9 +453,10 @@ and dec' at n d = match d with
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
       | T.Local ->
-        if s.it = T.Actor then (* HACK: work around for issue #1847 (also below) *)
+(*        if s.it = T.Actor then (* HACK: work around for issue #1841 (also below) *)
           Some { it = S.WildP; at = no_region; note = T.ctxt }
         else
+ *)
           None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
@@ -765,8 +766,9 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local ->
-        (* HACK: work around for issue #1847 (also above) *)
-        Some { it = S.WildP; at = no_region; note = T.ctxt }
+(*        (* HACK: work around for issue #1847 (also above) *)
+        Some { it = S.WildP; at = no_region; note = T.ctxt } *)
+        None
       | T.Shared (_, p) -> Some p in
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
