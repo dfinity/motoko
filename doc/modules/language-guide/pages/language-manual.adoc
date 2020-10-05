@@ -1107,7 +1107,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import Actor "canister:counter"`), without specifying low-level canister ids (e.g. `import Actor "ic:lg264-qjkae"`).
+(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
 
 
