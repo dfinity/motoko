@@ -16,7 +16,7 @@
 * [ ] Modules and static restriction
 * [X] Type components and paths
 * [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
-* [ ] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O.
+* [X] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O. (Actually renamed R to O, and defined ==/!= on _shared_ types.
 * [X] Include actual grammar (extracted from menhir) in appendix?
 * [ ] Prose description of definedness checks
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
@@ -197,17 +197,17 @@ Literals are constant values. The syntactic validity of a literal depends on the
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 |===
-| Abbreviation | Category |
+| Abbreviation | Category | Supported opertions
 
 | A            | Arithmetic | arithmetic operations
 | L            | Logical    | logical/Boolean operations
 | B            | Bitwise    | bitwise operations
-| R            | Relational | equality and comparison
+| O            | Ordered    | comparison
 | T            | Text       | concatenation
 |===
 
 Some types have several categories.
-For example, type `Int` is both arithmetic (A) and relational \(R) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
+For example, type `Int` is both arithmetic (A) and ordered (O) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
 
 [[syntax-ops-unary]]
 === Unary operators
@@ -225,18 +225,22 @@ For example, type `Int` is both arithmetic (A) and relational \(R) and supports 
 === Relational operators
 
 |===
-| `<relop>` | Category    |
-
-| `␣<␣` | R | less than *(must be enclosed in whitespace)*
-| `␣>␣` | R | greater than *(must be enclosed in whitespace)*
-|  `==` | R | equals
-|  `!=` | R | not equals
-|  `\<=` | R | less than or equal
-|  `>=` | R | greater than or equal
+| `<relop>` | Category |
+|  `==` |  | equals
+|  `!=` |  | not equals
+| `␣<␣` | O | less than *(must be enclosed in whitespace)*
+| `␣>␣` | O | greater than *(must be enclosed in whitespace)*
+|  `\<=` | O | less than or equal
+|  `>=` | O | greater than or equal
 |===
 
 
-Equality is structural.
+Note that equality (`==`) and inequality (`!=`) do not have categories.
+Instead, equality and inequality are applicable to arguments of all
+_shared_ types, including non-primitive, compound types such as
+immutable arrays, records, and variants.
+
+Equality and inequality are structural and based on the observable content of their operands (as determined by their static type).
 
 [[syntax-ops-num]]
 === Numeric binary operators
@@ -301,7 +305,7 @@ Equality is structural.
 | `#=`   | T | in place concatenation
 |===
 
-The  category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
+The category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
 
 [[syntax-precedence]]
 === Operator and keyword precedence
@@ -566,40 +570,40 @@ The category of a type determines the operators (unary, binary, relational and i
 |===
 | Identifier | Category | Description
 
-| `Bool` | L, R | Boolean values `true` and `false` and logical operators
-| `Char` | R | Unicode characters
-| `Text` | T, R | Unicode strings of characters with concatenation `_ # _` and iteration
-| `Float` | A, R | 64-bit floating point values
-| `Int`  | A, R | signed integer values with arithmetic (unbounded)
-| `Int8`  | A, R | signed 8-bit integer values with checked arithmetic
-| `Int16`  | A, R | signed 16-bit integer values with checked arithmetic
-| `Int32`  | A, R | signed 32-bit integer values with checked arithmetic
-| `Int64`  | A, R | signed 64-bit integer values with checked arithmetic
-| `Nat`  | A, R | non-negative integer values with arithmetic (unbounded)
-| `Nat8`  | A, R | non-negative 8-bit integer values with checked arithmetic
-| `Nat16`  | A, R | non-negative 16-bit integer values with checked arithmetic
-| `Nat32`  | A, R | non-negative 32-bit integer values with checked arithmetic
-| `Nat64`  | A, R | non-negative 64-bit integer values with checked arithmetic
-| `Word8` | A, B, R | unsigned 8-bit integers with bitwise operations
-| `Word16` | A, B, R | unsigned 16-bit integers with bitwise operations
-| `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations
-| `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations
-| `Blob` | R | binary blobs with iterators
-| `Principal` | R | principals
+| `Bool` | L, O | Boolean values `true` and `false` and logical operators
+| `Char` | O | Unicode characters
+| `Text` | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
+| `Float` | A, O | 64-bit floating point values
+| `Int`  | A, O | signed integer values with arithmetic (unbounded)
+| `Int8`  | A, O | signed 8-bit integer values with checked arithmetic
+| `Int16`  | A, O | signed 16-bit integer values with checked arithmetic
+| `Int32`  | A, O | signed 32-bit integer values with checked arithmetic
+| `Int64`  | A, O | signed 64-bit integer values with checked arithmetic
+| `Nat`  | A, O | non-negative integer values with arithmetic (unbounded)
+| `Nat8`  | A, O | non-negative 8-bit integer values with checked arithmetic
+| `Nat16`  | A, O | non-negative 16-bit integer values with checked arithmetic
+| `Nat32`  | A, O | non-negative 32-bit integer values with checked arithmetic
+| `Nat64`  | A, O | non-negative 64-bit integer values with checked arithmetic
+| `Word8` | A, B, O | unsigned 8-bit integers with bitwise operations
+| `Word16` | A, B, O | unsigned 16-bit integers with bitwise operations
+| `Word32` | A, B, O | unsigned 32-bit integers with bitwise operations
+| `Word64` | A, B, O | unsigned 64-bit integers with bitwise operations
+| `Blob` | O | binary blobs with iterators
+| `Principal` | O | principals
 | `Error` | | (opaque) error values
 |===
 
 [[type-bool]]
 === Type `Bool`
 
-The type `Bool` of categories L, R (Logical, Relational) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
+The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
 // Comparison TODO.
 
 [[type-char]]
 === Type `Char`
 
-A `Char` of category R (Relational) represents characters as a code point in the Unicode character
+A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
 set. Characters can be converted to `Word32`, and `Word32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
 if outside of this range). With `charToText` a character can be
@@ -608,7 +612,7 @@ converted into a text of length 1.
 [[type-text]]
 === Type `Text`
 
-The type `Text` of categories T and R (Text, Relational) represents sequences of Unicode characters (i.e. strings).
+The type `Text` of categories T and O (Text, Ordered) represents sequences of Unicode characters (i.e. strings).
 Function `t.size` returns the number of characters in `Text` value `t`.
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { ... c ... }`.
 
@@ -617,7 +621,7 @@ Operations on text values include concatenation (`_ # _`) and sequential iterati
 [[type-float]]
 === Type `Float`
 
-The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and R (Relational).
+The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and O (Ordered).
 
 The semantics of `Float` and its operations is in accordance with standard https://ieeexplore.ieee.org/document/8766229[IEEE 754-2019]  (See <<IEEE754>>).
 
@@ -627,7 +631,7 @@ Common functions and values are defined in base library "base/Float".
 [[types-int-and-nat]]
 === Types `Int` and `Nat`
 
-The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and R (Relational).
+The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and O (Ordered).
 
 Both `Int` and `Nat` are arbitrary precision,
 with only subtraction `-` on `Nat` trapping on underflow.
@@ -640,7 +644,7 @@ In particular, every value of type `Nat` is also a value of type `Int`, without 
 
 The types `Int8`, `Int16`, `Int32` and `Int64` represent
 signed integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and R (Relational).
+All have categories A (Arithmetic) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
@@ -649,7 +653,7 @@ Operations that may under- or overflow the representation are checked and trap o
 
 The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
 unsigned integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and R (Relational).
+All have categories A (Arithmetic) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
@@ -658,7 +662,7 @@ Operations that may under- or overflow the representation are checked and trap o
 
 The types `Word8`, `Word16`, `Word32` and `Word64` represent
 fixed-width bit patterns of width *n* (8, 16, 32 and 64).
-All word types have categories A (Arithmetic), B (Bitwise) and  R (Relational).
+All word types have categories A (Arithmetic), B (Bitwise) and  O (Ordered).
 As arithmetic types, word types implementing numeric wrap-around
 (modulo *2^n*).
 As bitwise types, word types support bitwise operations *and* `(&)`,
@@ -683,7 +687,7 @@ representation is applied.
 [[type-Blob]]
 === Type `Blob`
 
-The type `Blob` of category R (Relational) represents binary blobs or sequences of bytes.
+The type `Blob` of category O (Ordered) represents binary blobs or sequences of bytes.
 Function `b.size` returns the number of characters in `Blob` value `b`.
 Operations on blob values include sequential iteration over bytes via function `b.bytes` as in
 `for (w : Word8 in b.bytes()) { ... w ... }`.
@@ -691,7 +695,7 @@ Operations on blob values include sequential iteration over bytes via function `
 [[type-Principal]]
 === Type `Principal`
 
-The type `Principal` of category R (Relational) represents opaque
+The type `Principal` of category O (Ordered) represents opaque
 principals such as canisters and users that can, for example, be used to identify callers of
 shared functions and used for simple authentication. Although opaque, principals may be converted to binary `Blob` values for more efficient hashing and other applications (see module `Principal` from the base library).
 
@@ -786,7 +790,7 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 [[option-types]]
 === Option types
 
-`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `typ`.
+`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `<typ>`.
 
 [[function-types]]
 === Function types
@@ -1076,14 +1080,14 @@ Multiple imports of the same library can be safely deduplicated without loss of 
 
 An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
 
-`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, 
+`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
 * `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in `<url>`. 
+  Note the `.mo` extension is implicit and should *not* be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
@@ -1477,13 +1481,13 @@ The unary operator `<unop> <exp>` has type `T` provided:
 * `<exp>` has type `T`, and
 * The category of `<unop>` is a category of `T`.
 
-The unary operator expression `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
+The unary operator expression `<unop> <exp>` evaluates `<exp>` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
 If the result is `trap`, the entire expression results in `trap`.
 
 [[binary-operators]]
 === Binary operators
 
-The binary compound assignment `<exp1> <binop> <exp2>` has type `T` provided:
+The binary operator expression `<exp1> <binop> <exp2>` has type `T` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
@@ -1503,7 +1507,8 @@ The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
-* the category R is a category of `T`.
+* `<relop>` is equality `==` or inequality `!=`, `T` is _shared_, and `T` is the least type such that `<exp1>` and `<exp2>` have type `T`;
+* the category O (Ordered) is a category of `T` and <relop>; or
 
 The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
@@ -1511,6 +1516,8 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns
 the Boolean result of `v1 <relop> v2`.
+
+For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
 
 [[exp-tuple]]
 === Tuples
@@ -1523,7 +1530,7 @@ The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ..
 The tuple projection `<exp> . <nat>` has type `Ti` provided `<exp>` has tuple type
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 \<= i \<= n`.
 
-The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
+The projection `<exp> . <nat>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
 
 The empty tuple expression `()` is called the *unit value*.
 
@@ -1542,7 +1549,7 @@ The variant injection `# <id> <exp>` has variant type `{# id T}` provided:
 
 The variant injection `# <id>` is just syntactic sugar for `# <id> ()`.
 
-The variant injection`# <id> <exp>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`.
+The variant injection`# <id> <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
 
 The tag and contents of a variant value can be tested and accessed using a <<pat-variant,variant pattern>>.
@@ -1563,7 +1570,7 @@ Such an object literal is equivalent to the object declaration `object { <dec-fi
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
+The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
 object value  `{ <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
@@ -1593,7 +1600,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `[var T]` | `put` | `(Nat, T) -> ()` | indexed write function (mutable arrays only)
 |===
 
-The projection `<exp> . <id>` evaluates `exp` to a result `r`.
+The projection `<exp> . <id>` evaluates `<exp>` to a result `r`.
 If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
@@ -1695,7 +1702,7 @@ Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, ..., n <: Vn
 If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p`
 is the `Principal` invoking the function (typically a user or canister).
 Matching continues by matching `v1` against `<pat1>`.
-If pattern matching succeeds with some bindings, then evaluation returns the result of `exp` in the environment of the function value (not shown) extended with those bindings.
+If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
 Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
@@ -1926,7 +1933,7 @@ The expression `return <exp>` has type `None` provided:
   * `T` is the return type of the nearest enclosing function (with no intervening `async` expression), or
   * `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `exp`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `<exp>`.
 
 // TBR async traps?
 
@@ -1989,7 +1996,7 @@ See <<type-Error>>.
 [[exp-assert]]
 === Assert
 
-The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
+The assert expression `assert <exp>` has type `()` provided `<exp>` has type `Bool`.
 
 Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a Boolean value `v`. The result of `assert <exp>` is:
 
