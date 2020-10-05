@@ -1,0 +1,4 @@
+lib/c.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations
+lib/b.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations
+lib/a.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations
+lib/triangle.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations
