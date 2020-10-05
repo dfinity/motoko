@@ -148,12 +148,13 @@ rec {
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
         echo "Using vendored sources from ${rustDeps}"
+        unpackFile ${rustDeps}
         cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
 
           [source."vendored-sources"]
-          "directory" = "${rustDeps}"
+          "directory" = "$(stripHash ${rustDeps})"
         __END__
 
         ${llvmEnv}
