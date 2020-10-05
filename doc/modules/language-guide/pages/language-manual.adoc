@@ -1395,11 +1395,6 @@ An expression is _static_ if it is:
 *  a variant or option with a static expression, or
 *  an immutable array, or
 *  field access and projection from a static expression, or
-////
-do we want to allow this - it could trap? If we allow that, then why not refutable patterns?
-I think both should be disallowed or we could no deadcode imported but unreferenced libraries.
-*   array access using static expressions, or
-////
 *  a module expression, or
 *  a function expression, or
 *  a static declaration, or
