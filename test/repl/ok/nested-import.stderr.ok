@@ -1,2 +1,2 @@
-lib/nested/a.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations
-lib/nested.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations
+lib/nested/a.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class
+lib/nested.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class
