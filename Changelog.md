@@ -1,5 +1,19 @@
 = Motoko compiler changelog
 
+* BREAKING CHANGE: a library containing a single actor class is
+  imported as a module, providing access to both the class type and
+  class constructor function as module components. Restores the
+  invariant that imported libraries are modules.
+
+== 0.4.4 (2020-09-21)
+
+* Actor class export
+* Accept unit installation args for actors
+* Reject platform actor (class) programs with additional decs
+* Handle IO exceptions at the top-level
+* RTS: Remove duplicate array and blob allocation code
+* RTS: Fix pointer arithmetic in BigInt collection function
+
 == 0.4.3 (2020-09-14)
 
 * Preliminary support for actor class import and dynamic canister installation.

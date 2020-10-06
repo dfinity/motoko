@@ -641,8 +641,7 @@ let encode (em : extended_module) =
         section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> []) in
 
       custom_section "name" name_section_body ns
-        (!Mo_config.Flags.debug_info &&
-           (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> []))
+        (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
