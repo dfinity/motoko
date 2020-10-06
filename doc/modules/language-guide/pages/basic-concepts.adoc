@@ -412,8 +412,7 @@ To import from the base library, use the `import` keyword.
 Give a local module name to introduce, in this example `P` for "`**P**relude`", and a URL where the `import` declaration may locate the imported module:
 
 ....
-import P "mo:base/Prelude";
-P.printLn("hello world");
+include::../examples/println.mo[]
 ....
 
 In this case, we import {proglang} code (not some other module form) with the `mo:` prefix.

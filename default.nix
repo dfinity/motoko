@@ -444,6 +444,26 @@ rec {
     '';
   };
 
+  guide-examples-tc =  stdenv.mkDerivation {
+    name = "guid-examples-tc";
+    src = subpath doc/modules/language-guide/examples;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    installPhase = "touch $out";
+    checkInputs = [
+      moc
+    ];
+    checkPhase = ''
+      for file in *.mo
+      do
+        echo $file ...
+        moc --check --package base ${base-src} $file
+      done
+    '';
+  };
+
+
+
   base-doc = stdenv.mkDerivation {
     name = "base-doc";
     src = nixpkgs.sources.motoko-base;
