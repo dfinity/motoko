@@ -3,7 +3,7 @@
 Imports of actor classes are now supported. An actor class is imported
 as a module containing a type definition and an asynchronous actor class constructor.
 
-The constructor abstracts a call the System's `ManagementCanister`,
+The constructor abstracts a call to the System's `ManagementCanister`,
 passing the quoted code of the imported actor class and actual
 argument as arguments, using the management canister's methods:
 
