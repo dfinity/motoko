@@ -16,7 +16,7 @@
 * [ ] Modules and static restriction
 * [X] Type components and paths
 * [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
-* [ ] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O.
+* [X] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O. (Actually renamed R to O, and defined ==/!= on _shared_ types.
 * [X] Include actual grammar (extracted from menhir) in appendix?
 * [ ] Prose description of definedness checks
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
@@ -24,7 +24,7 @@
 * [X] Remove Shared type
 * [X] Explain dot keys, dot vals and iterators
 * [X] Debug expressions
-* [ ] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
+* [X] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
 * [X] Update ErrorCode section
 * [Floats] Literals type and operations
 * [ ] Re-section so headings appear in content outline
@@ -197,17 +197,17 @@ Literals are constant values. The syntactic validity of a literal depends on the
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 |===
-| Abbreviation | Category |
+| Abbreviation | Category | Supported opertions
 
 | A            | Arithmetic | arithmetic operations
 | L            | Logical    | logical/Boolean operations
 | B            | Bitwise    | bitwise operations
-| R            | Relational | equality and comparison
+| O            | Ordered    | comparison
 | T            | Text       | concatenation
 |===
 
 Some types have several categories.
-For example, type `Int` is both arithmetic (A) and relational \(R) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
+For example, type `Int` is both arithmetic (A) and ordered (O) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
 
 [[syntax-ops-unary]]
 === Unary operators
@@ -225,18 +225,22 @@ For example, type `Int` is both arithmetic (A) and relational \(R) and supports 
 === Relational operators
 
 |===
-| `<relop>` | Category    |
-
-| `␣<␣` | R | less than *(must be enclosed in whitespace)*
-| `␣>␣` | R | greater than *(must be enclosed in whitespace)*
-|  `==` | R | equals
-|  `!=` | R | not equals
-|  `\<=` | R | less than or equal
-|  `>=` | R | greater than or equal
+| `<relop>` | Category |
+|  `==` |  | equals
+|  `!=` |  | not equals
+| `␣<␣` | O | less than *(must be enclosed in whitespace)*
+| `␣>␣` | O | greater than *(must be enclosed in whitespace)*
+|  `\<=` | O | less than or equal
+|  `>=` | O | greater than or equal
 |===
 
 
-Equality is structural.
+Note that equality (`==`) and inequality (`!=`) do not have categories.
+Instead, equality and inequality are applicable to arguments of all
+_shared_ types, including non-primitive, compound types such as
+immutable arrays, records, and variants.
+
+Equality and inequality are structural and based on the observable content of their operands (as determined by their static type).
 
 [[syntax-ops-num]]
 === Numeric binary operators
@@ -301,7 +305,7 @@ Equality is structural.
 | `#=`   | T | in place concatenation
 |===
 
-The  category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
+The category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
 
 [[syntax-precedence]]
 === Operator and keyword precedence
@@ -378,17 +382,28 @@ An import introduces a resource named '<id>?' referring to a local source module
 The syntax of a _library_ (that can be referenced in an import) is as follows:
 
 ```bnf
-<lib> ::=                                        library
-    <imp>;* module <id>? =? { <dec-field>;* }
+<lib> ::=                                                                                       library
+    <imp>;* module <id>? <obj-body>                                                               module
+    <imp>;* <shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>            actor class
 ```
 
-A library `<lib>` is a sequence of imports `<imp>;*` followed by a named or anonymous (module) declaration `module <id>? =? { <dec-field>;* }`.
+A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 
-Libraries stored in {ext} files may be referenced by `import`s.
+* a named or anonymous (module) declaration; or
+* a named actor class declaration.
 
-The name `<id>?` is only significant within the library and does not determine the name of the library when imported.
+Libraries stored in {ext} files may be referenced by `import` declarations.
+
+In a module library, the optional name `<id>?` is only significant within the library and does not determine the name of the library when imported.
 Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to
 choose library names (e.g. to avoid clashes).
+
+An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`.
+The name `<id>` is mandatory and cannot be omitted.
+The imported actor class constructor is asynchronous, with return type `async T`. Here `T` is the inferred or supplied type of the class body.
+Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
+(i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+
 
 [[syntax-decls]]
 === Declaration syntax
@@ -401,10 +416,17 @@ The syntax of a _declaration_ is as follows:
   ignore <exp>                                                                           ignore
   let <pat> = <exp>                                                                      immutable
   var <id> (: <typ>)? = <exp>                                                            mutable
-  <sort> <id>? =? { <dec-field>;* }                                                      object
+  <sort> <id>? =? <obj-body>                                                             object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>                       function
   type <id> <typ-params>? = <typ>                                                        type
-  <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
+  <shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>          class
+
+<obj-body> ::=           object body
+   { <dec-field>;* }       field declarations
+
+<class-body> ::=         class body
+    = <id>? <obj-body>     object body, optionally binding <id> to _this_ instance
+    <obj-body>             object body
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -492,8 +514,9 @@ The syntax of an _expression_ is as follows:
   try <exp> catch <pat> <exp>                    catch an error (only in async)
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
-  dec                                            declaration
+  <dec>                                          declaration
   debug <exp>                                    debug expression
+  actor <canister-id-exp>                        actor reference
   ( <exp> )                                      parentheses
 ```
 
@@ -516,6 +539,8 @@ The syntax of a _pattern_ is as follows:
 
 <pat-field> ::=                                object pattern fields
   <id> = <pat>                                   field
+  <id>                                           punned field
+  <id> : <typ>                                   typed punned field
 ```
 
 
@@ -564,40 +589,40 @@ The category of a type determines the operators (unary, binary, relational and i
 |===
 | Identifier | Category | Description
 
-| `Bool` | L, R | Boolean values `true` and `false` and logical operators
-| `Char` | R | Unicode characters
-| `Text` | T, R | Unicode strings of characters with concatenation `_ # _` and iteration
-| `Float` | A, R | 64-bit floating point values
-| `Int`  | A, R | signed integer values with arithmetic (unbounded)
-| `Int8`  | A, R | signed 8-bit integer values with checked arithmetic
-| `Int16`  | A, R | signed 16-bit integer values with checked arithmetic
-| `Int32`  | A, R | signed 32-bit integer values with checked arithmetic
-| `Int64`  | A, R | signed 64-bit integer values with checked arithmetic
-| `Nat`  | A, R | non-negative integer values with arithmetic (unbounded)
-| `Nat8`  | A, R | non-negative 8-bit integer values with checked arithmetic
-| `Nat16`  | A, R | non-negative 16-bit integer values with checked arithmetic
-| `Nat32`  | A, R | non-negative 32-bit integer values with checked arithmetic
-| `Nat64`  | A, R | non-negative 64-bit integer values with checked arithmetic
-| `Word8` | A, B, R | unsigned 8-bit integers with bitwise operations
-| `Word16` | A, B, R | unsigned 16-bit integers with bitwise operations
-| `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations
-| `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations
-| `Blob` | R | binary blobs with iterators
-| `Principal` | R | principals
+| `Bool` | L, O | Boolean values `true` and `false` and logical operators
+| `Char` | O | Unicode characters
+| `Text` | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
+| `Float` | A, O | 64-bit floating point values
+| `Int`  | A, O | signed integer values with arithmetic (unbounded)
+| `Int8`  | A, O | signed 8-bit integer values with checked arithmetic
+| `Int16`  | A, O | signed 16-bit integer values with checked arithmetic
+| `Int32`  | A, O | signed 32-bit integer values with checked arithmetic
+| `Int64`  | A, O | signed 64-bit integer values with checked arithmetic
+| `Nat`  | A, O | non-negative integer values with arithmetic (unbounded)
+| `Nat8`  | A, O | non-negative 8-bit integer values with checked arithmetic
+| `Nat16`  | A, O | non-negative 16-bit integer values with checked arithmetic
+| `Nat32`  | A, O | non-negative 32-bit integer values with checked arithmetic
+| `Nat64`  | A, O | non-negative 64-bit integer values with checked arithmetic
+| `Word8` | A, B, O | unsigned 8-bit integers with bitwise operations
+| `Word16` | A, B, O | unsigned 16-bit integers with bitwise operations
+| `Word32` | A, B, O | unsigned 32-bit integers with bitwise operations
+| `Word64` | A, B, O | unsigned 64-bit integers with bitwise operations
+| `Blob` | O | binary blobs with iterators
+| `Principal` | O | principals
 | `Error` | | (opaque) error values
 |===
 
 [[type-bool]]
 === Type `Bool`
 
-The type `Bool` of categories L, R (Logical, Relational) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
+The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
 // Comparison TODO.
 
 [[type-char]]
 === Type `Char`
 
-A `Char` of category R (Relational) represents characters as a code point in the Unicode character
+A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
 set. Characters can be converted to `Word32`, and `Word32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
 if outside of this range). With `charToText` a character can be
@@ -606,7 +631,7 @@ converted into a text of length 1.
 [[type-text]]
 === Type `Text`
 
-The type `Text` of categories T and R (Text, Relational) represents sequences of Unicode characters (i.e. strings).
+The type `Text` of categories T and O (Text, Ordered) represents sequences of Unicode characters (i.e. strings).
 Function `t.size` returns the number of characters in `Text` value `t`.
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { ... c ... }`.
 
@@ -615,7 +640,7 @@ Operations on text values include concatenation (`_ # _`) and sequential iterati
 [[type-float]]
 === Type `Float`
 
-The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and R (Relational).
+The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and O (Ordered).
 
 The semantics of `Float` and its operations is in accordance with standard https://ieeexplore.ieee.org/document/8766229[IEEE 754-2019]  (See <<IEEE754>>).
 
@@ -625,7 +650,7 @@ Common functions and values are defined in base library "base/Float".
 [[types-int-and-nat]]
 === Types `Int` and `Nat`
 
-The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and R (Relational).
+The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and O (Ordered).
 
 Both `Int` and `Nat` are arbitrary precision,
 with only subtraction `-` on `Nat` trapping on underflow.
@@ -638,7 +663,7 @@ In particular, every value of type `Nat` is also a value of type `Int`, without 
 
 The types `Int8`, `Int16`, `Int32` and `Int64` represent
 signed integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and R (Relational).
+All have categories A (Arithmetic) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
@@ -647,7 +672,7 @@ Operations that may under- or overflow the representation are checked and trap o
 
 The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
 unsigned integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and R (Relational).
+All have categories A (Arithmetic) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
@@ -656,7 +681,7 @@ Operations that may under- or overflow the representation are checked and trap o
 
 The types `Word8`, `Word16`, `Word32` and `Word64` represent
 fixed-width bit patterns of width *n* (8, 16, 32 and 64).
-All word types have categories A (Arithmetic), B (Bitwise) and  R (Relational).
+All word types have categories A (Arithmetic), B (Bitwise) and  O (Ordered).
 As arithmetic types, word types implementing numeric wrap-around
 (modulo *2^n*).
 As bitwise types, word types support bitwise operations *and* `(&)`,
@@ -681,7 +706,7 @@ representation is applied.
 [[type-Blob]]
 === Type `Blob`
 
-The type `Blob` of category R (Relational) represents binary blobs or sequences of bytes.
+The type `Blob` of category O (Ordered) represents binary blobs or sequences of bytes.
 Function `b.size` returns the number of characters in `Blob` value `b`.
 Operations on blob values include sequential iteration over bytes via function `b.bytes` as in
 `for (w : Word8 in b.bytes()) { ... w ... }`.
@@ -689,7 +714,7 @@ Operations on blob values include sequential iteration over bytes via function `
 [[type-Principal]]
 === Type `Principal`
 
-The type `Principal` of category R (Relational) represents opaque
+The type `Principal` of category O (Ordered) represents opaque
 principals such as canisters and users that can, for example, be used to identify callers of
 shared functions and used for simple authentication. Although opaque, principals may be converted to binary `Blob` values for more efficient hashing and other applications (see module `Principal` from the base library).
 
@@ -784,7 +809,7 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 [[option-types]]
 === Option types
 
-`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `typ`.
+`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `<typ>`.
 
 [[function-types]]
 === Function types
@@ -926,7 +951,7 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
 * if `T` is `async U` then `U` is shared, and
 * if `T` is `shared query? U -> V`, `U` is shared and
   `V == ()` or `V == async W'` with `W` shared, and
-* if `T` is `C<T0, ..., TN>` where:
+* if `T` is `C<T0, ..., Tn>` where:
 ** a declaration `type C<X0 <: U0, Xn <: Un>  = ...` is in scope, and
 ** `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 \<= i \<= n`.
 * if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
@@ -980,7 +1005,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
 ** `T` and `U` are either both equivalently `<shared>?`, and
 ** assuming constraints `X0 <: W0, ..., Xn <: Wn` then
-*** for all `i`, `Wi <: Vi`, and
+*** for all `i`, `Wi == Vi`, and
 *** `U1 <: T1`, and
 *** `T2 <: U2`.
 +
@@ -988,7 +1013,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
  every bound in `T` supertypes the corresponding parameter bound in `U` (contra-variance), the domain of `T` supertypes the domain of `U` (contra-variance) and the range of `T` subtypes
  the range of `U` (co-variance).)
 +
-* `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
+* `T` (respectively `U`) is a constructed type `C<V0, ..., Vn>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
 
 * For some type `V`, `T <: V` and `V <: U` (_transitivity_).
 
@@ -1056,32 +1081,73 @@ A program evaluates by (transitively) evaluating the imports, binding their valu
 [[libraries]]
 === Libraries
 
-A library `<imp>;* module <id>? =? { <dec-field>;* }` is a sequence of imports `<import>;*` followed by a single module declaration.
-
-A library has module type `T` provided
-
-* `module <id>? =? { <dec-field>;* }` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
+Restrictions on the syntactic form of modules means that libraries can have no side-effects.
 
 The imports of a library are local and not re-exported in its interface.
 
-A library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating the sequence of declarations in `<dec>;*`.
-
-Restrictions on the syntactic form of modules means that libraries can have no side-effects.
 Multiple imports of the same library can be safely deduplicated without loss of side-effects.
+
+==== Module libraries
+
+A library `<imp>;* module <id>? <obj-body>` is a sequence of imports `<import>;*` followed by a single module declaration.
+
+A library has module type `T` provided
+
+* `module <id>? <obj-body>` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
+
+A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? <obj-body>`.
+
+==== Actor class libraries
+
+////
+This ugly asyncification of actor class imports below will go away once we change actor class definitions to be asynchronous. This is a temporary kludge.
+////
+
+The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
+
+```
+  module {
+    type <id> = T;
+    <id> : (U1,...,Un) -> async T // asynchronous!
+  }
+```
+
+provided that:
+
+* the actor class declaration `<dec>` has function type `(U1, ..., Un) -> T` under the static environment induced by the imports in `<import>;*`.
+
+Notice that the imported type of the function `<id>` is the *asynchronous* version of its declared type.
+
+An actor class library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*`, and evaluating the (derived) module:
+
+```
+  module {
+    public type <id> = T;
+    public func <id>(a1 : U1, ..., an : Un) : async T { // asynchronous!
+      (<dec>)(a1, ..., an)
+    }
+  }
+```
+
+The imported module contains an asynchronous implementation of function `<id>`.
+
+On the Internet Computer, calling `await <id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
+as installation arguments, and returns a reference to a (remote) actor of type `T`.
+Installation is (necessarily) asynchronous.
 
 [[imports]]
 === Imports and Urls
 
 An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
 
-`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, 
+`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
 * `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in `<url>`. 
+  Note the `.mo` extension is implicit and should *not* be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
@@ -1092,7 +1158,7 @@ In detail, if `<url>` is of the form:
 * `"ic:<canisterid>"` then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
   The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`.
   The compiler assumes that  `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
-  For example, `import C "ic:DEADBEEF"` defines `C` to reference the actor with canister id `ic:DEADBEEF` and IDL file `DEADBEAF.did`.
+  For example, `import C "ic:lg264-qjkae"` defines `C` to reference the actor with canister id `lg264-qjkae` and IDL file `lg264-qjkae.did`.
 
 * `"canister:<name>"` is a symbolic reference to canister alias `<name>`.
   The compiler assumes that the mapping of `<name>` to `<canisterid>` is specified by command line argument  `--actor-alias <name> ic:<canisterid>`.
@@ -1102,7 +1168,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import Actor "canister:counter"`), without specifying low-level canister ids (e.g. `import Actor "ic:DEADBEEF"`).
+(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
 
 
@@ -1158,7 +1224,8 @@ During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `po
 [[decl-seq]]
 === Sequence of declarations
 
-A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T`
+
+A sequence of declarations `<dec>;*` occurring in a block, a program or embedded in the `<dec-field>;*` sequence of an object body has type `T`
 provided:
 
 * `<dec>;*` is empty and `T == ()`; or
@@ -1228,6 +1295,10 @@ The binding returned by a successful match is the disjoint union of the bindings
 The object pattern `{ <pat-field>;* }` matches an object value, a collection of named field values, against a sequence of named pattern fields.
 The set of identifiers bound by each field of the object pattern must be distinct.
 The names of the pattern fields in the object pattern must be distinct.
+
+Object patterns support _punning_ for concision.
+A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ> ` is short-hand for `<id> = <id> : <typ>`. Both
+bind the matched value of the field named `<id>` to the identifier `<id>`.
 
 Pattern matching fails if one of the pattern fields fails to match the corresponding field value of the object value.
 Pattern matching succeeds if every pattern field matches the corresponding named field of the object value.
@@ -1340,13 +1411,13 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 [[decl-obj]]
 === Object declaration
 
-Declaration `<sort> <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp-field>;*`.
+Declaration `<sort> <id>? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
 
-Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
-Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
+Let `T = <sort> { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
+Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`.
 The object declaration has type `T` provided that:
 
 1. type `T` is well-formed for sort `sort`, and
@@ -1355,13 +1426,14 @@ The object declaration has type `T` provided that:
      with types `T(id)` for `id` in `Id == Id_private union Id_public`, and
    * `{ id0, ..., idn } == Id_public`, and
    * for all `i in 0 \<= i \<= n`, `[vari] Ti == T(idi)`.
+3. If `<sort>` is `module`, then the declarations in `<dec>;*` must be _static_ (see <<decl-static>>).
 
 Note that requirement 1. imposes further constraints on the field types of `T`.
 In particular:
 
 * if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
-Evaluation of `(object|actor)? <id>? =? { <exp-field>;* }` proceeds by
+Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
@@ -1369,7 +1441,43 @@ The result of the object declaration is the object `v == sort { <id0> = v1, ...,
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
-// TBR do we actually propagate trapping of actor creation?
+[[decl-static]]
+==== Static declarations
+
+A declaration is _static_ if it is:
+
+*   a `type` declaration, or
+*   a `class` declaration, or
+*   a `let` declaration with a static pattern and a static expression, or
+*   a module, function or object declaration that desugars to a static `let` declaration, or
+*   a static expression, or
+*   an `ignore` with static expression.
+
+An expression is _static_ if it is:
+
+*  a literal expression, or
+*  a tuple of static expressions, or
+*  an object of static expressions, or
+*  a variant or option with a static expression, or
+*  an immutable array, or
+*  field access and projection from a static expression, or
+*  a module expression, or
+*  a function expression, or
+*  a static declaration, or
+*  a block, all of whose declarations are static, or
+*  a type annotation with a static expression.
+
+A pattern is _static_ if it is:
+
+* an identifier, or
+* a wildcard, or
+* a tuple of static patterns, or
+* type annotation with a static pattern.
+////
+why not record patterns?
+////
+
+Static phrases are designed to be side-effect free, allowing the coalescing of duplicate library imports (a.k.a deduplication).
 
 [[decl-func]]
 === Function declaration
@@ -1390,12 +1498,16 @@ Named function definitions are recursive.
 [[decl-class]]
 === Class declaration
 
-The declaration `<shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
+////
+TODO: revise once actor class declaration async
+////
+
+The _class_ declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>` is sugar for pair of a type and function declaration:
 
 ```bnf
-<shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
+<shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? <class-body> :=
   type <id> <typ-params> = <sort> { <typ-field>;* };
-  <shared-pat>? func <id> <typ-params>? <pat> : <id> <typ-args>  = <sort> <id_this>? { <dec-field>;* }
+  <shared-pat>? func <id> <typ-params>? <pat> : <id> <typ-args> = <sort> <id_this>? <obj-body>
 ```
 
 where:
@@ -1403,7 +1515,8 @@ where:
 * `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
-* `<id_this>?` is the optional `this` parameter of the object instance.
+* `<obj-body>` is the object body of `<class-body>`.
+* `<id_this>?` is the optional _this_ (a.k.a _self_), parameter of `<class-body>`.
 
 Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
 
@@ -1434,13 +1547,13 @@ The unary operator `<unop> <exp>` has type `T` provided:
 * `<exp>` has type `T`, and
 * The category of `<unop>` is a category of `T`.
 
-The unary operator expression `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
+The unary operator expression `<unop> <exp>` evaluates `<exp>` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
 If the result is `trap`, the entire expression results in `trap`.
 
 [[binary-operators]]
 === Binary operators
 
-The binary compound assignment `<exp1> <binop> <exp2>` has type `T` provided:
+The binary operator expression `<exp1> <binop> <exp2>` has type `T` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
@@ -1460,7 +1573,8 @@ The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
-* the category R is a category of `T`.
+* `<relop>` is equality `==` or inequality `!=`, `T` is _shared_, and `T` is the least type such that `<exp1>` and `<exp2>` have type `T`;
+* the category O (Ordered) is a category of `T` and <relop>; or
 
 The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
@@ -1469,18 +1583,20 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns
 the Boolean result of `v1 <relop> v2`.
 
+For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
+
 [[exp-tuple]]
 === Tuples
 
 Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provided
-`<exp1>`, ..., `<expN>` have types `T1`, ..., `Tn`.
+`<exp1>`, ..., `<expn>` have types `T1`, ..., `Tn`.
 
 The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp1`, ..., `<expn>` evaluate to values `v1`,...,`vn` then the tuple expression returns the tuple value `(v1, ... , vn)`.
 
 The tuple projection `<exp> . <nat>` has type `Ti` provided `<exp>` has tuple type
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 \<= i \<= n`.
 
-The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
+The projection `<exp> . <nat>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
 
 The empty tuple expression `()` is called the *unit value*.
 
@@ -1499,7 +1615,7 @@ The variant injection `# <id> <exp>` has variant type `{# id T}` provided:
 
 The variant injection `# <id>` is just syntactic sugar for `# <id> ()`.
 
-The variant injection`# <id> <exp>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`.
+The variant injection`# <id> <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
 
 The tag and contents of a variant value can be tested and accessed using a <<pat-variant,variant pattern>>.
@@ -1520,7 +1636,7 @@ Such an object literal is equivalent to the object declaration `object { <dec-fi
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
+The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an
 object value  `{ <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
@@ -1550,7 +1666,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `[var T]` | `put` | `(Nat, T) -> ()` | indexed write function (mutable arrays only)
 |===
 
-The projection `<exp> . <id>` evaluates `exp` to a result `r`.
+The projection `<exp> . <id>` evaluates `<exp>` to a result `r`.
 If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
@@ -1652,7 +1768,7 @@ Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, ..., n <: Vn
 If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p`
 is the `Principal` invoking the function (typically a user or canister).
 Matching continues by matching `v1` against `<pat1>`.
-If pattern matching succeeds with some bindings, then evaluation returns the result of `exp` in the environment of the function value (not shown) extended with those bindings.
+If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
 Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
@@ -1883,7 +1999,7 @@ The expression `return <exp>` has type `None` provided:
   * `T` is the return type of the nearest enclosing function (with no intervening `async` expression), or
   * `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `exp`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `<exp>`.
 
 // TBR async traps?
 
@@ -1946,7 +2062,7 @@ See <<type-Error>>.
 [[exp-assert]]
 === Assert
 
-The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
+The assert expression `assert <exp>` has type `()` provided `<exp>` has type `Bool`.
 
 Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a Boolean value `v`. The result of `assert <exp>` is:
 
@@ -1972,7 +2088,9 @@ Note: type annotations have no-runtime cost and cannot be used to perform the (c
 
 The declaration expression `<dec>` has type `T` provided the declaration `<dec>` has type `T`.
 
-Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
+Evaluating the expression `<dec>` proceeds by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
+
+(The expression `<dec>` is actually shorthand for the block expression `{ <dec> }`.)
 
 [[exp-debug]]
 === Debug
@@ -1983,6 +2101,37 @@ When the program is compiled or interpreted with (default) flag `--debug`, evalu
 
 When the program is compiled or interpreted with flag `--release`, evaluating the expression `debug <exp>` immediately returns the unit value `()`.
 The code for `<exp>` is never executed, nor is its code included in the compiled binary.
+
+
+[[exp-actor]]
+=== Actor references
+
+```
+<canister-id-exp> ::=
+  <text>                literal canister identifier
+  ( <exp> )             computed canister identifier
+```
+
+The actor reference `actor <canister-id-exp>` has expected type `T` provided:
+
+* the expression is used in a context expecting an expression of type `T` (typically as the subject of a type annotation, typed declaration or function argument); and
+* `T` is an some actor type `actor { ... }`; and
+* `<canister-id-exp>` has type `Text`.
+
+The argument `<canister-id-exp>` must be, or evaluate to, the textual format of an IC canister identifier (specified elsewhere), otherwise the expression traps.
+The result of the expression is an actor value representing that canister.
+
+The validity of the canister identifier and its asserted type `T` are promises and taken on trust.
+
+An invalid canister identifier or type may manifest itself, if at all, as a later dynamic failure
+when calling a function on the actor's proclaimed interface,
+which will either fail or be rejected.
+
+Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+
+Warning: although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
+Accordingly, actor references should be used sparingly and only when needed.
+
 
 [[exp-paren]]
 === Parentheses
@@ -2002,4 +2151,3 @@ In general, this means that an expression of a more specific type may appear whe
 
 [bibliography]
 - [[[IEEE754]]] IEEE Standard for Floating-Point Arithmetic," in IEEE Std 754-2019 (Revision of IEEE 754-2008) , vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
-

@@ -10,7 +10,7 @@ actor a {
  public func go() : async () {
 
   print(debug_show(Funds.balance(#icpt)));
-  print(debug_show(Funds.balance(#cycle)));
+  //print(debug_show(Funds.balance(#cycle))); // to volatile to show
 
   print(debug_show(Funds.available(#icpt)));
   print(debug_show(Funds.available(#cycle)));
