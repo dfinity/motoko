@@ -346,7 +346,3 @@ type message_type = int wrap <ocaml module="MessageType">
 
 (* Helpers *)
 type json <ocaml module="Yojson.Safe" t="t"> = abstract
-
-(* Empty records aren't valid in OCaml but some notifications send them in the
-   `params` field. Work around that by defining a record with a field that is
-   never expected to be provided. *)
