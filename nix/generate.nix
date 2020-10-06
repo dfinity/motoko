@@ -54,6 +54,8 @@ let
     lsp-int = localHaskellSrc2nixWithDoc "lsp-int" "test/lsp-int" "";
     # Packages on hackage that are newer than whats in nixpks
     lsp-test = pkgs.haskellPackages.hackage2nix "lsp-test" "0.11.0.6";
+    haskell-lsp = pkgs.haskellPackages.hackage2nix "haskell-lsp" "0.23.0.0";
+    haskell-lsp-types = pkgs.haskellPackages.hackage2nix "haskell-lsp-types" "0.23.0.0";
   };
 
   allGenerated = pkgs.runCommandNoCC "generated" {
