@@ -1,0 +1,9 @@
+dwarf-closure.mo.mangled:10:17: error: DWARF-LABEL: expected string not found in input
+// DWARF-LABEL: DW_AT_name ("closure")
+                ^
+<stdin>:1:1: note: scanning from here
+_out/dwarf-closure.wasm: file format WASM
+^
+<stdin>:9:2: note: possible intended match here
+ DW_AT_name ("dwarf-closure.mo.mangled")
+ ^

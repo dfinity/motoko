@@ -1,0 +1,9 @@
+dwarf.mo.mangled:39:17: error: DWARF-LABEL: expected string not found in input
+// DWARF-LABEL: DW_AT_name [DW_FORM_strp] {{.*}} "foo"
+                ^
+<stdin>:135:1: note: scanning from here
+0x00000000: Compile Unit: length = 0x00000149 version = 0x0005 unit_type = DW_UT_compile abbr_offset = 0x0000 addr_size = 0x04 (next unit at 0x0000014d)
+^
+<stdin>:140:2: note: possible intended match here
+ DW_AT_name [DW_FORM_strp] ( .debug_str[0x0000003c] = "dwarf.mo.mangled")
+ ^

@@ -1,0 +1,12 @@
+dwarf-obj.mo.mangled:8:16: error: DWARF-NEXT: is not on the line after the previous match
+// DWARF-NEXT: DW_AT_name ("age")
+               ^
+<stdin>:303:2: note: 'next' match was here
+ DW_AT_name ("age")
+ ^
+<stdin>:268:26: note: previous match ended here
+0x00000039: DW_TAG_member
+                         ^
+<stdin>:269:1: note: non-matching line after previous match is here
+ DW_AT_name ("cycles")
+^
