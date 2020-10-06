@@ -68,7 +68,7 @@ Solutions:
 ```
    class Counter(step : Nat) {
      var state = 0;
-	 public shared inc() { state += step; };
+     public shared inc() { state += step; };
    }
 ```
    would introduce one type and two values:
@@ -78,7 +78,7 @@ Solutions:
    func ConfigureCounter(
      mode: { #install;
              #upgrade : Principal;   // use actor {} instead?
-			 #reinstall : Principal; // use Counter instead?
+             #reinstall : Principal; // use Counter instead?
      },
      compute_allocation: ?Nat;
      memory_allocation: ?Nat)
