@@ -106,14 +106,22 @@ let () =
   Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
   Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
   Flags.check_ir := false;
+  Flags.debug_info := false;
   Flags.compiled := true;
+  Flags.actor_idl_path := Some "idl/";
   Js.export "Motoko"
     (object%js
       method saveFile name content = js_save_file name content
+      method loadFile name = Sys_js.read_file ~name:(Js.to_string name)
       method addPackage package dir =
         let libs = Flags.package_urls in
         libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
-      method loadFile name = Sys_js.read_file ~name:(Js.to_string name)
+      method setActorAliases entries =
+        let entries = Array.map (fun kv ->
+                          let kv = Js.to_array kv in
+                          Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
+        let aliases = Flags.actor_aliases in
+        aliases := Flags.M.of_seq (Array.to_seq entries)
       method check s = wrap_output (fun _ -> js_check s)
       method candid s = wrap_output (fun _ -> js_candid s)
       method compileWasm mode s = wrap_output (fun _ -> js_compile_wasm mode s)
