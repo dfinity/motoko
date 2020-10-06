@@ -10,6 +10,27 @@ The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
 *)
 
+(* Note [placeholder promises for typedefs]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When forming the DIE for a Motoko type synonym (`type List = ...`)
+we need to do something special. Since such typedefs are cycle-breakers
+in the type system, we will need to adopt the same property in the
+`.debug_info` section too. So, we'll output `DW_TAG_typedef` before
+even knowing which type it refers to. Instead we use a DW_FORM_ref4
+for its `DW_AT_type` attribute, which is backpatchable. The value of this
+attribute is an integer, pointing to a fulfilled promise created when the
+DIE was formed. It got fulfilled when the typedef's type became known,
+another DIE, formed shortly after the typedef's. Resolving this fulfilled
+promise in turn gives us the index (actual type ref) of an unfulfilled
+promise (the forward reference). This forward reference will be fulfilled
+to be a byte offset in the section as soon as the corresponding DIE is emitted.
+
+We keep a function that performs the patching of the section (before it is
+written to disk) by overwriting the preliminary bytes in `DW_TAG_typedef`'s
+`DW_AT_type` with the now fulfilled offset obtained from the forward reference.
+
+ *)
+
 module Promise = Lib.Promise
 
 open CustomModule

@@ -239,6 +239,7 @@ type dw_AT = Producer of string
            | Discr_value of int
            | Artificial of bool
            | TypeRef of int (* reference *)
+           | TypePromise of int Lib.Promise.t (* reference *)
            | Encoding of int
            | Location of int list
            | DataMemberLocation of int
@@ -283,6 +284,9 @@ let dw_attr' : dw_AT -> die =
   | Artificial b -> IntAttribute (dw_AT_artificial, bool b)
   | Discr r -> IntAttribute (dw_AT_discr, r)
   | TypeRef r -> IntAttribute (dw_AT_type, r)
+  | TypePromise p ->
+    (* See Note [placeholder promises for typedefs] *)
+    IntAttribute (dw_AT_type, Wasm_exts.CustomModuleEncode.promise_reference_slot p)
   | Encoding e -> IntAttribute (dw_AT_encoding, e)
   | Discr_value v -> IntAttribute (dw_AT_discr_value, v)
   | Const_value v -> IntAttribute (dw_AT_const_value, v)
@@ -327,13 +331,15 @@ let dw_tag_close : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
-module TypedefRefs = Map.Make (struct type t = string let compare = compare end)
+module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = compare end)
 let dw_typedefs = ref TypedefRefs.empty
-module VariantRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+module OptionRefs = Map.Make (struct type t = int let compare = compare end)
+let dw_options = ref OptionRefs.empty
+module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
-module EnumRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
 let dw_enums = ref EnumRefs.empty
-module ObjectRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_objects = ref ObjectRefs.empty
 module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
 let dw_tuples = ref TupleRefs.empty
@@ -465,11 +471,9 @@ and lookup_pointer_key () : t * int =
   match !pointer_key with
   | Some r -> nop, r
   | None ->
-    let dw, r =
-      referencable_meta_tag (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
-        (dw_attrs [Bit_size 1; Data_bit_offset 1]) in
-    pointer_key := Some r;
-    dw, r
+    let add r = pointer_key := Some r in
+    with_referencable_meta_tag add (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
+      (dw_attrs [Bit_size 1; Data_bit_offset 1])
 and meta_tag tag attrs =
   i (Meta (Tag (None, tag, attrs)))
 and referencable_meta_tag tag attrs : t * int =
@@ -480,14 +484,17 @@ and with_referencable_meta_tag f tag attrs : t * int =
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
 and dw_typedef_ref c ty =
-  let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
-  match TypedefRefs.find_opt name !dw_typedefs with
+  match TypedefRefs.find_opt c !dw_typedefs with
   | Some r -> nop, r
   | None ->
-    let dw, ref = dw_type_ref (Type.normalize ty) in
-    let add r = dw_typedefs := TypedefRefs.add name r !dw_typedefs in
-    dw ^^<
-    with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypeRef ref])
+    let add r = dw_typedefs := TypedefRefs.add c r !dw_typedefs in
+    (* See Note [placeholder promises for typedefs] *)
+    let p = Lib.Promise.make () in
+    let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
+    let td = with_referencable_meta_tag add dw_TAG_typedef (dw_attrs [Name name; TypePromise p]) in
+    let dw, reference = dw_type_ref (Type.normalize ty) in
+    Lib.Promise.fulfill p reference;
+    td ^<^ dw
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function
@@ -509,7 +516,10 @@ and dw_type_ref =
     | Some p -> dw_type_ref (Type.Prim p)
     | None -> dw_typedef_ref c ty
     end
-  (* | Type.Opt inner -> assert false templated type *)
+  | Type.Opt inner ->
+    let prereq, selector = dw_type_ref inner in
+    (* make sure all prerequisite types are around *)
+    effects prereq ^^< dw_option_instance selector
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
@@ -573,13 +583,54 @@ and dw_enum vnts =
          dw_tag_close (* enumeration_type *)) in
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
-and dw_variant vnts =
-  let selectors = List.map (fun Type.{lab; typ} -> lab, typ) vnts in
-  match VariantRefs.find_opt (List.map fst selectors) !dw_variants with
+
+and dw_option_instance key =
+  (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
+  match OptionRefs.find_opt key !dw_options with
   | Some r -> nop, r
   | None ->
-    let add r = dw_variants := VariantRefs.add (List.map fst selectors) r !dw_variants in
-    let prereq (name, typ) =
+    let add r = dw_options := OptionRefs.add key r !dw_options in
+    let prereq name(*WAT?*) =
+      let dw_payload_mem =
+        meta_tag dw_TAG_member_In_variant (dw_attrs [Name ("?"); TypeRef key; DataMemberLocation 4]) in
+      let dw_overlay, ref_overlay =
+        (referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name name; Byte_size 8 (*; Artificial *)]) ^<^
+         dw_payload_mem ^^
+         dw_tag_close (* structure_type *)) in
+    (dw_overlay,
+     meta_tag dw_TAG_member_In_variant
+       (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 4]))  in
+    (* make sure all prerequisite types are around *)
+    let overlays = [prereq "FIXME:none";prereq "FIXME:some"] in
+    let prereqs = effects (concat_map fst overlays) in
+    let option =
+      (* struct_type, assumes location points at heap tag *)
+      let internal_struct =
+        with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "OPTION"; Byte_size 8]) in
+      let summand ((name, discr), mem) =
+        meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value discr]) ^^
+        mem ^^
+        dw_tag_close (* variant *) in
+      prereqs ^^<
+      internal_struct ^<^
+        (let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
+         dw2 ^^
+         (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
+         concat_map summand (List.map2 (fun nd (_, mem) -> nd, mem) [("FIXME:none", 0x0); ("FIXME:some", 0x8)] overlays) ^^
+         dw_tag_close (* variant_part *) ^^
+         dw_tag_close (* struct_type *)) in
+    option
+
+and dw_variant vnts =
+  let selectors = List.map (fun Type.{lab; typ} -> lab, typ, dw_type_ref typ) vnts in
+  (* make sure all prerequisite types are around *)
+  let prereqs0 = effects (concat_map (fun (_, _, (dw, _)) -> dw) selectors) in
+  let key = List.map (fun (name, _, (_, reference)) -> name, reference) selectors in
+  match VariantRefs.find_opt key !dw_variants with
+  | Some r -> prereqs0, r
+  | None ->
+    let add r = dw_variants := VariantRefs.add key r !dw_variants in
+    let prereq (name, typ, _) =
       let dw_payload_pre, dw_payload_mem =
         match typ with
         | Type.Tup [] -> nop, nop
@@ -595,7 +646,7 @@ and dw_variant vnts =
     (dw_overlay,
      meta_tag dw_TAG_member_In_variant
        (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 8]))  in
-    (* make sure all prerequisite types are around *)
+    (* make sure all artificial prerequisite types are around *)
     let overlays = List.map prereq selectors in
     let prereqs = effects (concat_map fst overlays) in
     let variant =
@@ -607,40 +658,44 @@ and dw_variant vnts =
         meta_tag dw_TAG_variant_Named (dw_attrs [Name name; Discr_value hash]) ^^
         mem ^^
         dw_tag_close (* variant *) in
-      prereqs ^^<
+      (prereqs0 ^^ prereqs) ^^<
       internal_struct ^<^
         (meta_tag dw_TAG_member_Tag_mark (dw_attrs [Artificial true; Byte_size 4]) ^^
          let dw2, discr = referencable_meta_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
          dw2 ^^
          (meta_tag dw_TAG_variant_part (dw_attrs [Discr discr])) ^^
-         concat_map summand (List.map2 (fun (name, _) (_, mem) -> name, mem) selectors overlays) ^^
+         concat_map summand (List.map2 (fun (name, _, _) (_, mem) -> name, mem) selectors overlays) ^^
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
     variant
 and dw_object fs =
-  let selectors = List.map (fun Type.{lab; _} -> lab) fs in
-  match ObjectRefs.find_opt selectors !dw_objects with
-  | Some r -> nop, r
+  let selectors = List.map (fun Type.{lab; typ} -> lab, dw_type_ref typ) fs in
+  (* make sure all prerequisite types are around *)
+  let prereqs0 = effects (concat_map (fun (_, (dw, _)) -> dw) selectors) in
+  let key = List.map (fun (name, (_, reference)) -> name, reference) selectors in
+  match ObjectRefs.find_opt key !dw_objects with
+  | Some r -> prereqs0, r
   | None ->
-    let add r = dw_objects := ObjectRefs.add selectors r !dw_objects in
+    let add r = dw_objects := ObjectRefs.add key r !dw_objects in
     let struct_ref =
       (* reference to structure_type *)
       let internal_struct =
-        referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size 4]) in
-      let field name =
+        with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size (4 * List.length selectors)]) in
+      let field (name, (_, r)) =
         let _hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
-        meta_tag dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
-      (fst internal_struct ^^
-       concat_map field selectors ^^
-       dw_tag_close (* structure_type *)) ^^<
-      with_referencable_meta_tag add dw_TAG_reference_type
-        (dw_attr (TypeRef (snd internal_struct))) in
+        meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name name; TypeRef r; Byte_size 4 (*; Location search *)]) in
+      prereqs0 ^^
+      fst internal_struct ^^
+      concat_map field selectors ^^
+      dw_tag_close (* structure_type *)
+      , snd internal_struct in
     struct_ref
 and dw_tuple ts =
   let field_dw_refs = List.map dw_type_ref ts in
   let field_refs = List.map snd field_dw_refs in
+  let prereqs = effects (concat_map fst field_dw_refs) in
   match TupleRefs.find_opt field_refs !dw_tuples with
-  | Some r -> nop, r
+  | Some r -> prereqs, r
   | None ->
     let add r = dw_tuples := TupleRefs.add field_refs r !dw_tuples in
     let tuple_type =
@@ -648,7 +703,7 @@ and dw_tuple ts =
         meta_tag dw_TAG_member_Word_sized_typed (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
       with_referencable_meta_tag add dw_TAG_structure_type (dw_attrs [Name "@tup"; Byte_size 4]) ^<^
       (concat_mapi field field_dw_refs ^^ dw_tag_close (* structure_type *)) in
-    concat_map fst field_dw_refs ^^<
+    prereqs ^^<
     tuple_type
 
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
