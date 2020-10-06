@@ -31,3 +31,5 @@ func tailV(l : ListV) : ListV = switch l {
 
 assert ?42 == headV (#cons { hd = 42; tl = #cons { hd = 25; tl = #empty } });
 assert #empty == tailV (#cons { hd = 42; tl = #empty });
+
+//MOC-FLAG -g

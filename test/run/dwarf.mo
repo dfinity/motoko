@@ -57,3 +57,5 @@ func bar (a : Int) : Int {
 
     if (foo b) { b } else { ignore b; assert (a != 42); b }
 }
+
+//MOC-FLAG -g

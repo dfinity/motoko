@@ -38,3 +38,5 @@ func direct({ name : Text; age : Nat }) : Text =
 
 ignore direct { name = "Jane"; age = 32 };
 ignore indirect { name = "Jane"; age = 32 }
+
+//MOC-FLAG -g

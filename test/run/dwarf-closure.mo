@@ -1,5 +1,4 @@
-// RUN: llvm-dwarfdump %.wasm -debug-info | tee /dev/tty | FileCheck %.mo -check-prefix=DWARF
-
+// RUN: llvm-dwarfdump %.wasm -debug-info | FileCheck %.mo -check-prefix=DWARF
 
 
 func closure(a : Nat16) : Nat16 {
@@ -107,3 +106,4 @@ func closureC(a : Word16) : Word16 {
 // DWARF-NEXT:        DW_AT_decl_column (0x0d)
 // DWARF-NEXT:        DW_AT_type (0x{{[0-9a-f]*}} "Nat16")
 
+//MOC-FLAG -g

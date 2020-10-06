@@ -48,3 +48,5 @@ func dayToText(day : WeekDay) : Text =
 
 ignore dayToText (#Fri);
 ignore variantToText (#a)
+
+//MOC-FLAG -g
