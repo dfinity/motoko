@@ -46,11 +46,13 @@ module References = Map.Make (struct type t = int let compare = compare end)
 
 let dw_references = ref References.empty
 let num_dw_references = ref 1 (* 0 would mean: "this tag doesn't fulfill a reference" *)
-let allocate_reference_slot () =
+let promise_reference_slot p =
   let have = !num_dw_references in
-  dw_references := References.add have (Promise.make ()) !dw_references;
+  dw_references := References.add have p !dw_references;
   num_dw_references := 1 + have;
   have
+let allocate_reference_slot () =
+  promise_reference_slot (Promise.make ())
 
 (* Encoding *)
 
