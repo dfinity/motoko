@@ -1,9 +1,20 @@
 # THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT MANUALLY!
 # See ./nix/generate.nix for instructions.
 
-{ mkDerivation, pkgs, base, exceptions, managed, process, QuickCheck
-, quickcheck-text, quickcheck-unicode, stdenv, tasty
-, tasty-quickcheck, text, turtle
+{ mkDerivation
+, pkgs
+, base
+, exceptions
+, managed
+, process
+, QuickCheck
+, quickcheck-text
+, quickcheck-unicode
+, stdenv
+, tasty
+, tasty-quickcheck
+, text
+, turtle
 }:
 mkDerivation {
   pname = "qc-motoko";
@@ -12,8 +23,17 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    base exceptions managed process QuickCheck quickcheck-text
-    quickcheck-unicode tasty tasty-quickcheck text turtle
+    base
+    exceptions
+    managed
+    process
+    QuickCheck
+    quickcheck-text
+    quickcheck-unicode
+    tasty
+    tasty-quickcheck
+    text
+    turtle
   ];
   description = "generate randomised tests for Motoko";
   license = "unknown";
