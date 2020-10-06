@@ -1,7 +1,7 @@
 # Configuring Actor Installation
 
 Imports of actor classes are now supported. An actor class is imported
-as a module containing a type definition an asynchronous actor class constructor.
+as a module containing a type definition and an asynchronous actor class constructor.
 
 The constructor abstracts a call the System's `ManagementCanister`,
 passing the quoted code of the imported actor class and actual
@@ -122,4 +122,3 @@ Here's what a slightly safer API would look like, assuming lower-bounds. It's be
 	 async Counter;
    func Counter(step : Nat) : async Counter; // = #InstallCounter(null, null);
 ```
-
