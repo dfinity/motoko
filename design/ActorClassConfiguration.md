@@ -26,7 +26,7 @@ allocation of 8GB (although rumors are that  eventually it should mean
 “reserve none, grow on demand if possible)”
 
 While this is sufficient for basic programmatic installation of
-canisters, it fails to expose some the additional configuration
+canisters, it fails to expose some of the additional configuration
 arguments of canister installation, choosing sensible defaults
 instead.
 
