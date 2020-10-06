@@ -108,16 +108,19 @@ let encode (em : extended_module) =
   let code_section_start = ref 0 in
 
   let add_to_map file il ic ol oc =
-    let il = il - 1 in
-    let if_ = add_source file !sources in
-    if ol <> !prev_ol then Buffer.add_char map ';';
-    Vlq.Base64.encode map (oc - !prev_oc);             (* output column *)
-    Vlq.Base64.encode map (if_ - !prev_if);            (* sources index *)
-    Vlq.Base64.encode map (il - !prev_il);             (* input row *)
-    Vlq.Base64.encode map (ic - !prev_ic);             (* input column *)
-    Buffer.add_char map ',';
+    if !Mo_config.Flags.gen_source_map then
+      begin
+        let il = il - 1 in
+        let if_ = add_source file !sources in
+        if ol <> !prev_ol then Buffer.add_char map ';';
+        Vlq.Base64.encode map (oc - !prev_oc);             (* output column *)
+        Vlq.Base64.encode map (if_ - !prev_if);            (* sources index *)
+        Vlq.Base64.encode map (il - !prev_il);             (* input row *)
+        Vlq.Base64.encode map (ic - !prev_ic);             (* input column *)
+        Buffer.add_char map ',';
 
-    prev_if := if_; prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
+        prev_if := if_; prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
+    end
   in
 
   let module E = struct
@@ -813,13 +816,17 @@ let encode (em : extended_module) =
   end
   in E.module_ em;
 
-  let mappings = Buffer.contents map in
-  let n = max 0 ((String.length mappings) - 1) in
-  let json : Yojson.Basic.t = `Assoc [
-    ("version", `Int 3);
-    ("sources", `List ( List.map (fun x -> `String x) !sources ) );
-    ("sourcesContent", `List ( List.map (fun x -> if x = "" then `Null else `String x) !sourcesContent ) );
-    ("mappings", `String (String.sub mappings 0 n) )
-  ] in
+  if !Mo_config.Flags.gen_source_map then
+    begin
+      let mappings = Buffer.contents map in
+      let n = max 0 ((String.length mappings) - 1) in
+      let json : Yojson.Basic.t = `Assoc [
+        ("version", `Int 3);
+        ("sources", `List ( List.map (fun x -> `String x) !sources ) );
+        ("sourcesContent", `List ( List.map (fun x -> if x = "" then `Null else `String x) !sourcesContent ) );
+        ("mappings", `String (String.sub mappings 0 n) )
+      ] in
 
-  (Yojson.Basic.to_string json, to_string s)
+      (Yojson.Basic.to_string json, to_string s)
+    end
+  else ("", to_string s)

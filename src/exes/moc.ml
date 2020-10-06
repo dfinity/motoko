@@ -25,7 +25,6 @@ let set_mode m () =
 let out_file = ref ""
 let link = ref true
 let interpret_ir = ref false
-let gen_source_map = ref false
 
 let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -47,7 +46,7 @@ let argspec = Arg.align [
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
-  "--map", Arg.Set gen_source_map, " output source map";
+  "--map", Arg.Set Flags.gen_source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing in interpreters"]
 
@@ -138,7 +137,7 @@ let process_files files : unit =
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
-    if !gen_source_map then begin
+    if !Flags.gen_source_map then begin
       let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
