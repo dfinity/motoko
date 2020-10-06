@@ -2274,7 +2274,7 @@ let check_lib scope lib : Scope.t Diag.result =
                   left = { no_pos with file = lib.note };
                   right = { no_pos with file = lib.note }})
                 in
-                warn env r "deprecated syntax: an imported library should be a module or named actor class, not a sequence of declarations"
+                warn env r "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
             | ActorClassU  (sp, id, p, _, self_id, fields) ->
