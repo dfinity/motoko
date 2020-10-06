@@ -449,20 +449,16 @@ rec {
     src = subpath doc/modules/language-guide/examples;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
+    MOTOKO_BASE = base-src;
     installPhase = "touch $out";
     checkInputs = [
       moc
     ];
     checkPhase = ''
-      for file in *.mo
-      do
-        echo $file ...
-        moc --check --package base ${base-src} $file
-      done
+      patchShebangs .
+      ./check.sh
     '';
   };
-
-
 
   base-doc = stdenv.mkDerivation {
     name = "base-doc";
@@ -567,6 +563,7 @@ rec {
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    MOTOKO_BASE = base-src;
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell
