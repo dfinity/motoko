@@ -7612,7 +7612,7 @@ and main_actor as_opt mod_env ds fs up =
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
 
     (* Add any params to the environment *)
-    (* Captured ones need to to static memory, the rest into locals *)
+    (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
     let arg_names = List.map (fun a -> a.it) args in
     let arg_tys = List.map (fun a -> a.note) args in
