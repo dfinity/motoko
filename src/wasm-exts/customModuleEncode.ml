@@ -245,7 +245,7 @@ let encode (em : extended_module) =
       let instr = instr noting in
 
       match e.it with
-      | Meta (StatementDelimiter left) ->
+      | Meta (Dwarf5.Meta.StatementDelimiter left) ->
         modif statement_positions (Instrs.add (pos s, left))
       | Meta _ -> assert false
       | Unreachable -> op 0x00
