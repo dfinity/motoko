@@ -2268,7 +2268,15 @@ let check_lib scope lib : Scope.t Diag.result =
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           let imp_typ = match cub.it with
-            | ModuleU _ -> typ
+            | ModuleU _ ->
+              if cub.at = no_region then begin
+                let r = Source.({
+                  left = { no_pos with file = lib.note };
+                  right = { no_pos with file = lib.note }})
+                in
+                warn env r "deprecated syntax: an imported library should be a module or named actor class"
+              end;
+              typ
             | ActorClassU  (sp, id, p, _, self_id, fields) ->
               if Syntax.is_anonymous id then
                 error env cub.at "bad import: imported actor class cannot be anonymous";
