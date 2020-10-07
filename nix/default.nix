@@ -50,6 +50,14 @@ let
           };
         })
 
+        # to allow picking up more recent Haskell packages from Hackage
+        (self: super: {
+          all-cabal-hashes = self.fetchurl {
+            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/66a799608f2c6e0e6c530383bc0e2bcb42ae11f2.tar.gz";
+            sha256 = "0ds95gacrzsqg5f0f6j533ghxzcqqn7wn1d391pcpj5g9frp01q2";
+          };
+        })
+
       ];
     };
 in
