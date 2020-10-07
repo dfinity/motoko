@@ -8,30 +8,31 @@ shared {caller} actor class PiggyBank(
   capacity: Nat) {
 
   let owner = caller;
-  var savings_ = 0;
+  var savings = 0;
 
-  public shared {caller} func savings() : async Nat {
+  public shared {caller} func getSavings() : async Nat {
     assert (caller == owner);
-    return savings_;
+    return savings;
   };
 
   public func deposit() : async () {
     let amount = Funds.available(unit);
-    let acceptable =
-      if (amount <= capacity - savings_) amount
-      else (capacity - savings_);
+    let maxAcceptable = capacity - savings;
+    let acceptable = 
+      if (amount <= maxAcceptable) amount
+      else maxAcceptable;
     Funds.accept(unit, acceptable);
-    savings_ += acceptable;
+    savings += acceptable;
   };
 
   public shared {caller} func withdraw(amount : Nat)
     : async () {
     assert (caller == owner);
-    assert (amount <= savings_);
+    assert (amount <= savings);
     Funds.add(unit, amount);
     await credit();
     let refund = Funds.refunded(unit);
-    savings_ -= amount - refund;
+    savings -= amount - refund;
   };
 
 }
