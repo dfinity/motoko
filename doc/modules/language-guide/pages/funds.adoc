@@ -1,0 +1,195 @@
+= Working it Funds
+:proglang: Motoko
+:company-id: DFINITY
+
+The {company-id} platform maintains funds of tokens of various units.
+For now, the supported units are _Cycle_ and _ICPT_ but user-defined units are destined for future support.
+
+Each {DFINITY} canister or {proglang} actor has a balance of funds, that can be transferred between canisters.
+Funds are selectively transferred and received through messages, i.e. shared function calls.
+In future, we may see {proglang} adopt dedicated syntax and types to support safer programming with funds and units.
+But for now, the way to manage funds is through an imperative API
+provided by the `ExperimentalFunds` library in package `base`.
+
+== The `ExperimentalFunds` Library
+
+Funds and units
+
+Provides imperative operations for observing funds, transferring funds and
+observing refunds of various units.
+
+The two currently supported units are `#cycle` and `#icpt`.
+Usage of the Internet Computer is measured, and paid for, in unit *Cycle*.
+*ICPT*  is the unit of Internet Computer Tokens.
+
+**NOTE:** Since unit `#cycle` also measures computation, the value of
+`balance(#cycle)` generally decreases from one call to the next.
+
+[[type.Unit]]
+=== Unit
+
+Units for funds: `{#cycle; #icpt}`.
+
+[source,motoko]
+----
+type Unit = {#cycle; #icpt}
+----
+
+[[value.balance]]
+=== balance
+
+Returns the actor's current balance of unit `u` as `amount`.
+
+[source,motoko]
+----
+func balance(u : Unit) : (amount : Nat)
+----
+
+[[value.available]]
+=== available
+
+Given `u`, returns the currently available `amount` of unit `u`.
+The amount available is the amount received in the current call,
+minus the cumulative amount `accept`ed by this call.
+On exit from the current shared function or async expression via `return` or `throw`
+any remaining available amount is automatically
+refunded to the caller/context.
+
+[source,motoko]
+----
+func available(u : Unit) : (amount : Nat)
+----
+
+[[value.accept]]
+=== accept
+
+Transfers `amount` from `available(u)` to `balance(u)`,
+Traps if trying to accept more funds than are available.
+
+[source,motoko]
+----
+func accept(u : Unit, amount : Nat) : ()
+----
+
+[[value.add]]
+=== add
+
+Indicates additional `amount` of unit `u` to be transferred in
+the next call, i.e. evaluation of a shared function call or
+async expression.
+Upon the call, but not before, the total amount of units `add`ed since
+the last call is deducted from `balance(u)`.
+If this total exceeds `balance(u)`, the caller traps, aborting the call.
+
+Note: the implicit, per unit register of added amounts is reset to zero on entry to
+a shared function and after each shared function call or resume from an await.
+
+[source,motoko]
+----
+func add(u : Unit, amount : Nat) : ()
+----
+
+[[value.refunded]]
+=== refunded
+
+Reports `amount` of unit `u` refunded in the last `await` of the current
+context, or `0` if no await has occurred yet.
+Calling `refunded(u)` is solely informational and does not affect `balance(u)`.
+Instead, refunds are automatically added to the current balance,
+whether or not `refunded` is used to observe them.
+
+[source,motoko]
+----
+func refunded(u : Unit) : (amount : Nat)
+----
+
+
+=== Example
+
+To illustrate, we will now use the `ExperimentalFunds` library to implement a simple _piggy bank_.
+Our piggy bank has an implicit owner, a designated credit method (for crediting the owner),
+stores one kind of `unit`, and has a fixed `capacity`, all three determined at time of construction:
+
+[source,motoko]
+----
+import Funds "mo:base/ExperimentalFunds";
+
+shared {caller} actor class PiggyBank(
+  credit : shared () -> async (),
+  unit : Funds.Unit,
+  capacity: Nat) {
+
+  let owner = caller;
+  var savings = 0;
+
+  public shared {caller} func getSavings() : async Nat {
+    assert (caller == owner);
+    return savings;
+  };
+
+  public func deposit() : async () {
+    let amount = Funds.available(unit);
+    let maxAcceptable = capacity - savings;
+    let acceptable =
+      if (amount <= maxAcceptable) amount
+      else maxAcceptable;
+    Funds.accept(unit, acceptable);
+    savings += acceptable;
+  };
+
+  public shared {caller} func withdraw(amount : Nat)
+    : async () {
+    assert (caller == owner);
+    assert (amount <= savings);
+    Funds.add(unit, amount);
+    await credit();
+    let refund = Funds.refunded(unit);
+    savings -= amount - refund;
+  };
+
+}
+```
+
+The owner of the bank is identified by the (implicit) caller of
+constructor `PiggyBank`, accessed via the context pattern `{caller}`
+and stored in private binding `owner`.
+
+The piggy bank is initially empty, with zero current `savings`.
+
+Only calls from `owner` may:
+* query the current `savings` of the piggy bank (function `getSavings`),
+* `withdraw` amounts from the savings (function `withdraw`).
+
+The restriction on the caller is enforced by the `assert (caller ==
+owner)`, whose failure causes boths methods to trap without revealing or
+modifying any state.
+
+Any caller may deposit tokens of kind `unit`, provided the amount of
+`unit` doesn't break the bank by exceeding capacity.  Because the
+deposit method may only accept a portion of the available amount, any
+caller whose deposit exceeds capacity will receive an implicit refund
+of unaccepted funds. Refunding is automatic and ensured by the
+platform.
+
+Since transfer of funds is one-directional (from caller to callee),
+retrieving funds requires the use of an explicit callback (the
+`credit` function, received by the constructor as an argument).  Here,
+`credit` is invoked by the `withdraw` function, but only after
+verifying the caller is `owner`.
+
+Note that the owner of the `PiggyBank` could, in fact, supply a callback
+that credits other beneficiaries than the owner.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
