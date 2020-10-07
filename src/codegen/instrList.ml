@@ -374,10 +374,6 @@ let pointer_key = ref None
    - `Text` will be treated as `Any` as it needs pretty-printing in the presence
      of concatenation nodes
 
-  When running in `wasmtime`, the debugging model is somewhat schizophrenic, as
-  WASM is emitted as 32-bit DWARF, but the virtual machine is actually 64-bit.
-  Thus any shift DW_OP_ must be careful not to import any random bits from
-  the actual 64-bit operand stack. Be prepared to read a lot of masking ops.
  *)
 
 let obvious_prim_of_con c ty : Type.prim option =
@@ -397,9 +393,9 @@ let rec dw_tag_open : dw_TAG -> t =
     | Prim Char -> Location.local slot [ dw_OP_lit8; dw_OP_shr; dw_OP_stack_value ]
     | Prim Bool -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
-    | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_const1u; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
-    | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_const2u; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+    | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
     | Prim Int32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
                                           dw_OP_lit1; dw_OP_shra; dw_OP_skip; 3; 0;
                                           dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
