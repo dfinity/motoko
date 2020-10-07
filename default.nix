@@ -546,10 +546,10 @@ rec {
     ESM=nixpkgs.sources.esm;
     GUI_FLAGS = ''
       "-DCURSES_INCLUDE_DIRS=${nixpkgs.ncurses.dev}/include"
-      "-DCURSES_LIBRARIES=${nixpkgs.ncurses}/lib"
-      "-DPANEL_LIBRARIES=${nixpkgs.ncurses}/lib"
+      "-DCURSES_LIBRARIES=${nixpkgs.ncurses}/lib/libncurses.so"
+      "-DPANEL_LIBRARIES=${nixpkgs.ncurses}/lib/libpanel.so"
       "-DLibEdit_INCLUDE_DIRS=${nixpkgs.libedit.dev}/include"
-      "-DLibEdit_LIBRARIES=${nixpkgs.libedit}/lib"
+      "-DLibEdit_LIBRARIES=${nixpkgs.libedit}/lib/libedit.so"
     '';
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
