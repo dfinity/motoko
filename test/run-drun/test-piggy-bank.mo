@@ -8,17 +8,15 @@ actor Owner {
 
   public func test() : async () {
 
-    //await Funds.dev_set_funds(Owner, 1_000_000_000_000_000, 1000);
-  
     let porky = await Lib.PiggyBank(Owner.credit, #cycle, 1000_000);
     assert (0 == (await porky.getSavings()));
- 
+
     await { Funds.add(#cycle, 1000); porky.deposit() };
     assert (1000 == (await porky.getSavings()));
-    
+
     await porky.withdraw(500);
     assert (500 == (await porky.getSavings()));
-    
+
     await porky.withdraw(500);
     assert (0 == (await porky.getSavings()));
 
@@ -26,7 +24,7 @@ actor Owner {
     let refund = Funds.refunded(#cycle);
     assert (1000_000 == refund);
     assert (1000_000 == (await porky.getSavings()));
-  
+
   };
 
    // callback for accepting funds from PiggyBank
