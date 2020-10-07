@@ -287,6 +287,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | ds' ->
       if as_lib
       then
+        (* Deprecated syntax, see Typing.check_lib *)
         let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
         finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }

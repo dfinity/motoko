@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "129dcc07ccf90440e0ececf5e8cf1a5a0318f8fe",
+        "rev": "9a7f0a0dd70dbd40f587c06a8949f74da1f57f53",
         "type": "git"
     },
     "dfinity": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.10",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "0e5c7b827d403f6a5966ce99c33c27be55abfef7",
+        "rev": "9edd0fdda006519118ed40515b84c74f69c59bc1",
         "type": "git"
     },
     "libtommath": {
@@ -40,7 +40,7 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "7cdbb04f92b9ddbf3763e2346983c89780ba2a4c",
+        "rev": "93211a230696e986dcbbe0602bd88f9dfaae5781",
         "type": "git"
     },
     "motoko-matchers": {
@@ -63,10 +63,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "215adc8ac9f91eb055311acc72683fd2eb1ae15a",
-        "sha256": "004hkwh2yy7ifnxm13igpvfz7pnn0wkh2bv2z2lw1qc28d33wq56",
+        "rev": "614d783e927261e503bc144f7c7d1a9dc02565ba",
+        "sha256": "02m036sq3zw5f1chwg3041k7mi5n8iqc0flhwz0pb193ii1dkimb",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/215adc8ac9f91eb055311acc72683fd2eb1ae15a.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/614d783e927261e503bc144f7c7d1a9dc02565ba.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -89,10 +89,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "efda5b357451dbb0431f983cca679ae3cd9b9829",
-        "sha256": "11wqrg86g3qva67vnk81ynvqyfj0zxk83cbrf0p9hsvxiwxs8469",
+        "rev": "57c8084c7ef41366993909c20491e359bbb90f54",
+        "sha256": "0lchhjys1jj8fdiisd2718sqd63ys7jrj6hq6iq9l1gxj3mz2w81",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/efda5b357451dbb0431f983cca679ae3cd9b9829.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/57c8084c7ef41366993909c20491e359bbb90f54.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

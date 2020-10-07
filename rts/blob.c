@@ -17,6 +17,7 @@ typedef as_ptr blob_iter_t; // the data structure used to iterate a text value
 export blob_iter_t blob_iter(blob_t s) {
   as_ptr i = alloc_words(TUPLE_HEADER_SIZE + 2);
   TAG(i) = TAG_ARRAY;
+  TUPLE_LEN(i) = 2;
   BLOB_ITER_BLOB(i) = s;
   BLOB_ITER_POS(i) = 0;
   return i;

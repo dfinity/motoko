@@ -120,8 +120,8 @@ type env = info M.t
 
 
 let no_info = { loc_known = false; const = surely_false }
-let arg env a = M.add a.it no_info env
-let args env as_ = List.fold_left arg env as_
+let arg lvl env a = M.add a.it { no_info with loc_known = lvl = TopLvl } env
+let args lvl env as_ = List.fold_left (arg lvl) env as_
 
 let rec pat env p = match p.it with
   | WildP
@@ -153,7 +153,7 @@ let rec exp lvl (env : env) e : lazy_bool =
     match e.it with
     | VarE v -> (find v env).const
     | FuncE (x, s, c, tp, as_ , ts, body) ->
-      exp_ NotTopLvl (args env as_) body;
+      exp_ NotTopLvl (args NotTopLvl env as_) body;
       begin match s, lvl with
       (* shared functions are not const for now *)
       | Type.Shared _, _ -> surely_false
@@ -271,7 +271,7 @@ and comp_unit = function
   | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
     let env = match as_opt with
       | None -> M.empty
-      | Some as_ -> args M.empty as_
+      | Some as_ -> args TopLvl M.empty as_
     in
     let (env', _) = decs TopLvl env ds in
     exp_ TopLvl env' pre;

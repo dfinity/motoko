@@ -133,6 +133,19 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "time";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.SystemTimePrim, [])
+  (* Funds *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsBalance";_},_);_}, _, e) ->
+    I.PrimE (I.SystemFundsBalancePrim, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsAvailable";_},_);_}, _, e) ->
+    I.PrimE (I.SystemFundsAvailablePrim, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsRefunded";_},_);_}, _, e) ->
+    I.PrimE (I.SystemFundsRefundedPrim, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsAccept";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (List.length es = 2);
+    I.PrimE (I.SystemFundsAcceptPrim, exps es)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "fundsAdd";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (List.length es = 2);
+    I.PrimE (I.SystemFundsAddPrim, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
@@ -439,11 +452,7 @@ and dec' at n d = match d with
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local ->
-        if s.it = T.Actor then (* HACK: work around for issue #1847 (also below) *)
-          Some { it = S.WildP; at = no_region; note = T.ctxt }
-        else
-          None
+      | T.Local -> None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -629,17 +638,36 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
+let actor_class_mod_exp id class_typ func =
+  let fun_typ = func.note.Note.typ in
+  let class_con = Con.fresh id (T.Def([], class_typ)) in
+  let v = fresh_var id fun_typ in
+  blockE
+    [letD v func]
+    (newObjE T.Module
+       [{ it = {I.name = id; I.var = id_of_var v};
+          at = no_region;
+          note = fun_typ }]
+       (T.Obj(T.Module, List.sort T.compare_field [
+          { T.lab = id; T.typ = T.Typ class_con };
+          { T.lab = id; T.typ = fun_typ }])))
+
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note in
   let (_, cub) = lib.it in
-  let t = match T.normalize cub.note.S.note_typ with
+  let id = match cub.it with
+    | S.ActorClassU (_, id, _, _, _, _) -> id.it
+    | _ -> assert false
+  in
+  let class_typ, fun_typ = match T.normalize cub.note.S.note_typ with
     | T.Func (sort, control, [], ts1, [t2]) ->
+      t2,
       T.Func (sort, control, [T.scope_bind],
               ts1,
               [T.Async (T.Var (T.default_scope_var, 0), t2)])
     | _ -> assert false
   in
-  let s, cntrl, tbs, ts1, ts2 = T.as_func t in
+  let s, cntrl, tbs, ts1, ts2 = T.as_func fun_typ in
   let cs = T.open_binds tbs in
   let c, _ = T.as_con (List.hd cs) in
   let ts1' = List.map (T.open_ cs) ts1 in
@@ -669,13 +697,15 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
   in
-  let func = funcE "actor_class_constructor" T.Local T.Returns
+  let func = funcE id T.Local T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
     body
   in
-  [ letD (var (id_of_full_path f) t) func ]
+  let mod_exp = actor_class_mod_exp id class_typ func in
+  let mod_typ = mod_exp.note.Note.typ in
+  [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 
 let import_prelude prelude : import_declaration =
@@ -730,9 +760,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   | S.ActorClassU (sp, typ_id, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
-      | T.Local ->
-        (* HACK: work around for issue #1847 (also above) *)
-        Some { it = S.WildP; at = no_region; note = T.ctxt }
+      | T.Local -> None
       | T.Shared (_, p) -> Some p in
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
@@ -783,6 +811,10 @@ let import_unit (u : S.comp_unit) : import_declaration =
     | I.ActorU (None, ds, fs, up, t) ->
       raise (Invalid_argument "Desugar: Cannot import actor")
     | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+      let id = match body.it with
+        | S.ActorClassU (_, id, _, _, _, _) -> id.it
+        | _ -> assert false
+      in
       let s, cntrl, tbs, ts1, ts2 = T.as_func t in
       assert (tbs = []);
       let cs = T.open_binds [T.scope_bind] in
@@ -795,11 +827,14 @@ let import_unit (u : S.comp_unit) : import_declaration =
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
-      funcE "actor_class_constructor" T.Local T.Returns
+      let class_typ = match ts2 with [t2] -> t2 | _ -> assert false in
+      let func = funcE id T.Local T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (List.hd cs, actor_t)]
         body
+      in
+      actor_class_mod_exp id class_typ func
     | I.ProgU ds ->
       raise (Invalid_argument "Desugar: Cannot import program")
   in
