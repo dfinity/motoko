@@ -8,7 +8,7 @@
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "f01b0f1b469f79a5ec951d9fd7f2ec0424c79763",
+        "rev": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
         "type": "git"
     },
     "esm": {
@@ -20,7 +20,7 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "release-0.10",
+        "ref": "release-0.11",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
         "rev": "9edd0fdda006519118ed40515b84c74f69c59bc1",
         "type": "git"

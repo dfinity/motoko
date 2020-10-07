@@ -3352,7 +3352,7 @@ module Dfinity = struct
         get_data_size ^^
         system_call env "ic0" "msg_reply_data_append" ^^
         system_call env "ic0" "msg_reply"
-    )
+   )
 
   (* Actor reference on the stack *)
   let actor_public_field env name =
@@ -5353,8 +5353,8 @@ module FuncDec = struct
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-
+    | Flags.ICMode
+    | Flags.RefMode ->
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
@@ -5362,12 +5362,13 @@ module FuncDec = struct
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
+      Dfinity.system_call env "ic0" "call_new" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
       (* the funds *)
       add_funds ^^
       (* done! *)
-      Dfinity.system_call env "ic0" "call_simple" ^^
+      Dfinity.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
@@ -5376,8 +5377,8 @@ module FuncDec = struct
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_funds =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-
+    | Flags.ICMode
+    | Flags.RefMode ->
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
@@ -5388,6 +5389,7 @@ module FuncDec = struct
       (* The reject callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
+      Dfinity.system_call env "ic0" "call_new" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
