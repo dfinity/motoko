@@ -1,10 +1,8 @@
-import Prim = "mo:prim";
 import Funds = "piggy-bank/ExperimentalFunds";
-import Lib = "PiggyBank";
+//import Funds = "mo:base/ExperimentalFunds";
+import Lib = "piggy-bank/PiggyBank";
 
 actor Owner {
-
-  let print = Prim.debugPrint;
 
   public func test() : async () {
 

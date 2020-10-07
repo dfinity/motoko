@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Funds "piggy-bank/ExperimentalFunds";
+import Funds "ExperimentalFunds";
 //import Funds "mo:base/ExperimentalFunds";
 
 shared {caller} actor class PiggyBank(
@@ -18,7 +18,7 @@ shared {caller} actor class PiggyBank(
   public func deposit() : async () {
     let amount = Funds.available(unit);
     let maxAcceptable = capacity - savings;
-    let acceptable = 
+    let acceptable =
       if (amount <= maxAcceptable) amount
       else maxAcceptable;
     Funds.accept(unit, acceptable);
