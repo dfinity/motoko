@@ -4,15 +4,18 @@
 
 The {company-id} platform maintains funds of tokens of various units.
 For now, the supported units are _Cycle_ and _ICPT_ but user-defined units will be available soon.
+Usage of the Internet Computer is measured, and paid for, in cycles.
+_ICPT_  is the unit of Internet Computer Tokens.
+More varieties of units may be supported in the future.
 
-Each {DFINITY} canister or {proglang} actor has a balance of funds. The ownership of funds can be transferred between canisters.
+Each {company-id} canister or {proglang} actor has a balance of funds. The ownership of funds can be transferred between canisters.
 Funds are selectively sent and received through messages, i.e. shared function calls.
-Callers can choose to transfer funds, and calleer can choose to accepts funds that are
+A caller can choose to transfer funds with a call, and a callee can choose to accept funds that are
 made available by the caller.
 Unless directed otherwise, no funds of any unit are transferred by callers or accepted by callees.
 Callees can accept all, some or none of the available funds.
-Unaccepted funds are refunded with the call.
-All funds are refunded if the call traps.
+Any remaining funds are refunded to the caller.
+If a call traps, all its accompanying funds are automatically refunded to the caller, without loss.
 
 In future, we may see {proglang} adopt dedicated syntax and types to support safer programming with funds and units.
 But for now, the way to manage funds is through an imperative API
@@ -20,16 +23,13 @@ provided by the `ExperimentalFunds` library in package `base`.
 
 == The `ExperimentalFunds` Library
 
-The `ExperimentalFunds` library provides imperative operations for observing funds, transferring funds and
-observing refunds of various units.
+The `ExperimentalFunds` library provides imperative operations for observing an actor's current balance of funds, transferring funds and
+observing refunds, on a per-unit basis.
 
-The two currently supported units are `#cycle` and `#icpt`.
-Usage of the Internet Computer is measured, and paid for, in unit *Cycle*.
-*ICPT*  is the unit of Internet Computer Tokens.
-More varities of units may be supported in the future.
+The two currently supported units are specified using Motoko variants `#cycle` and `#icpt`.
 
 **NOTE:** Since unit `#cycle` also measures computation, the value of
-`balance(#cycle)` generally decreases from one call to the next.
+`balance(#cycle)` generally decreases from one instruction to the next.
 
 [[type.Unit]]
 === Unit
@@ -83,7 +83,7 @@ func accept(u : Unit, amount : Nat) : ()
 Indicates additional `amount` of unit `u` to be transferred in
 the next call, i.e. evaluation of a shared function call or
 async expression.
-Upon the call, but not before, the total amount of units `add`ed since
+Upon the call, but not before, the total amount of units ``add``ed since
 the last call is deducted from `balance(u)`.
 If this total exceeds `balance(u)`, the caller traps, aborting the call.
 
@@ -112,7 +112,7 @@ func refunded(u : Unit) : (amount : Nat)
 
 === Example
 
-To illustrate, we will now use the `ExperimentalFunds` library to implement a simple _piggy bank_.
+To illustrate, we will now use the `ExperimentalFunds` library to implement a toy _piggy bank_.
 Our piggy bank has an implicit owner, a designated credit method (for crediting the owner),
 stores one kind of `unit`, and has a fixed `capacity`, all three determined at time of construction:
 
@@ -156,27 +156,27 @@ shared {caller} actor class PiggyBank(
 }
 ----
 
-The owner of the bank is identified by the (implicit) caller of
-constructor `PiggyBank`, accessed via the context pattern `{caller}`
-and stored in private binding `owner`.
+The owner of the bank is identified with the (implicit) caller of
+constructor `PiggyBank()`, using the shared pattern `{caller}`. Caller is a `Principal` and is
+stored in private binding `owner` (for future reference).
 
 The piggy bank is initially empty, with zero current `savings`.
 
 Only calls from `owner` may:
 
-* query the current `savings` of the piggy bank (function `getSavings`),
+* query the current `savings` of the piggy bank (function `getSavings`), or
 * `withdraw` amounts from the savings (function `withdraw`).
 
-The restriction on the caller is enforced by the `assert (caller ==
-owner)`, whose failure causes boths methods to trap without revealing or
-modifying any state.
+The restriction on the caller is enforced by the statements `assert (caller ==
+owner)`, whose failure causes the enclosing function to trap, without revealing the balance
+or committing any funds.
 
-Any caller may deposit tokens of kind `unit`, provided the amount of
-`unit` doesn't break the bank by exceeding capacity.  Because the
-deposit method may only accept a portion of the available amount, any
-caller whose deposit exceeds capacity will receive an implicit refund
-of unaccepted funds. Refunding is automatic and ensured by the
-platform.
+Any caller may deposit amounts of kind `unit`, provided the amount
+doesn't exceed capacity (breaking the piggy bank).  Because the
+deposit method only accepts a portion of the available
+amount, a caller whose deposit exceeds capacity will receive an
+implicit refund of the unaccepted funds. Refunding is automatic and
+ensured by the platform.
 
 Since transfer of funds is one-directional (from caller to callee),
 retrieving funds requires the use of an explicit callback (the
@@ -187,7 +187,7 @@ authenticating the caller as `owner`.
 Note that the owner of the `PiggyBank` could, in fact, supply a callback
 that credits a beneficiary nominated by, and distinct from,  the owner.
 
-Here's how an owner, Alice, might use the piggy bank.
+Here's  how an owner, `Alice`, might use an instance of `Piggy Bank`:
 
 [source,motoko]
 ----
@@ -227,8 +227,8 @@ actor Alice {
 
 Let's dissect actor ``Alice``'s code.
 
-`Alice` imports the `PiggyBank` actor class as a library, so she can
-install a new PiggyBank actor on demand.
+`Alice` imports the `PiggyBank` actor class as a library, so she can create
+a new `PiggyBank` actor on demand.
 
 Most of the action occurs in `Alice` `test()` method:
 
@@ -254,8 +254,8 @@ These are the funds added by `porky.withdraw()`.
 
 `Alice` vainly tries to deposit 2000,000 cycles into `porky` but this
 exceeds ``porky``'s capacity by half, so porky accepts 1000,000 and
-refunds the other 1000,000 to `Alice`.  `Alice` verifies the refund
-amount (`Fundes.refunded(#cycle)`), which is automatically added to
+refunds the remaining 1000,000 to `Alice`.  `Alice` verifies the refund
+amount (`Fundes.refunded(#cycle)`), which has (already) been automatically restored to
 her balance. She also verifies ``porky``'s adjusted savings.
 
 ``Alice``'s `credit()` method simply accepts all available `#cycle`
@@ -270,6 +270,8 @@ then Alice could predict and assert the changes to her balance,
 reflected in call to `Funds.balance(`u`)`. The volatility of cycles, however,
 prevents her from doing that directly.
 
-Note: Because `porky` consumes cycles in its operation, it is possible, but unlikely, for
-porky to spend some or even all of Alice's cycle savings before she has a
-chance to retrieve them. This would not be a problem for units other than cycles. Caveat emptor.
+Note: Because `porky` consumes cycles in its operation, it is possible
+for `porky` to spend some or even all of Alice's cycle savings before
+she has a chance to retrieve them. This ongoing consumption does not
+apply to other units, but should be taken into consideration when
+dealing with cycles in particular.
