@@ -234,9 +234,8 @@ Most of the action occurs in `Alice` `test()` method:
 
 Alice asynchronously creates a new instance, `porky` of the
 `PiggyBank`, with callback `Alice.credit`, storing `#cycle` units,
-with initial capacity `1000_000`.
-
-The `Porky.getSavings` initially returns `0`.
+with initial capacity `1000_000`. She then verifies that
+the `Porky.getSavings()` is `0` (using an `assert`).
 
 `Alice` dedicates 1000 of her cycles (`Funds.add(#cycle, 1000)`) to
 transfer to porky with the next call to `porky.deposit()`.  The funds
@@ -244,23 +243,25 @@ are only consumed from Alice's `#cycle` balance if the call to
 `porky.deposit()` succeeds (which it should).
 
 `Alice` now withdraws half the amount (500) and verifies that
-``porky``s savings have halved. `Alice actually receives the funds via
-the `credit()` callback (itself called by ``porky.withdraw()``).
+``porky``s savings have halved. `Alice` eventually receives the funds via
+a callback to `credit()` (initiated by ``porky.withdraw()``).
 `credit()` calls `Funds.accept(#cycle, Funds.available(#cycle))` to
 retain *all* of the cycles available to `credit()`.  Note these are
-the funds added by `porky.withdraw()` before calling the corresponding
-callback `credit()`.
+precisely the funds added in `porky.withdraw()`, before it calls the
+`credit()`.
 
-`Alice` withdraws another 500 cycles to clear her savings.
+`Alice` withdraws another 500 cycles to wipe out her savings.
 
 `Alice` vainly tries to deposit 2000,000 cycles into `porky` but this
 exceeds ``porky``'s capacity by half, so porky accepts 1000,000 and
-refunds the remaining 1000,000 to `Alice`.  `Alice` verifies the refund
-amount (`Fundes.refunded(#cycle)`), which has (already) been automatically restored to
-her balance. She also verifies ``porky``'s adjusted savings.
+refunds the remaining 1000,000 to `Alice`.  `Alice` verifies the
+refund amount (`Fundes.refunded(#cycle)`), which has (already) been
+automatically restored to her balance. She also verifies ``porky``'s
+adjusted savings.
 
 ``Alice``'s `credit()` method simply accepts all available `#cycle`
-funds (and implicitly refunds any available amount of other units, notably `#icpt`).
+funds. In addition, it implicitly refunds any available amount of
+other units, notably `#icpt`.
 
 NOTE: For this example, Alice is using her (readily available)
 `#cycle` units (that she already owns), rather than `#icpt` which she
