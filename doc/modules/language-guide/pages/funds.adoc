@@ -1,4 +1,4 @@
-= Working it Funds
+= Managing Funds
 :proglang: Motoko
 :company-id: DFINITY
 
@@ -13,14 +13,13 @@ provided by the `ExperimentalFunds` library in package `base`.
 
 == The `ExperimentalFunds` Library
 
-Funds and units
-
-Provides imperative operations for observing funds, transferring funds and
+The `ExperimentalFunds` library provides imperative operations for observing funds, transferring funds and
 observing refunds of various units.
 
 The two currently supported units are `#cycle` and `#icpt`.
 Usage of the Internet Computer is measured, and paid for, in unit *Cycle*.
 *ICPT*  is the unit of Internet Computer Tokens.
+More varities of units may be supported in the future.
 
 **NOTE:** Since unit `#cycle` also measures computation, the value of
 `balance(#cycle)` generally decreases from one call to the next.
@@ -148,7 +147,7 @@ shared {caller} actor class PiggyBank(
   };
 
 }
-```
+----
 
 The owner of the bank is identified by the (implicit) caller of
 constructor `PiggyBank`, accessed via the context pattern `{caller}`
@@ -175,21 +174,92 @@ Since transfer of funds is one-directional (from caller to callee),
 retrieving funds requires the use of an explicit callback (the
 `credit` function, received by the constructor as an argument).  Here,
 `credit` is invoked by the `withdraw` function, but only after
-verifying the caller is `owner`.
+authenticating the caller as `owner`.
 
 Note that the owner of the `PiggyBank` could, in fact, supply a callback
-that credits other beneficiaries than the owner.
+that credits a beneficiary nominated by, and distinct from,  the owner.
 
+Here's how an owner, Alice, might use the piggy bank.
 
+[source,motoko]
+----
+import Funds = "mo:base/ExperimentalFunds";
+import Lib = "piggy-bank/PiggyBank";
 
+actor Alice {
 
+  public func test() : async () {
 
+    let porky = await Lib.PiggyBank(Alice.credit, #cycle, 1000_000);
+    assert (0 == (await porky.getSavings()));
 
+    await { Funds.add(#cycle, 1000); porky.deposit() };
+    assert (1000 == (await porky.getSavings()));
 
+    await porky.withdraw(500);
+    assert (500 == (await porky.getSavings()));
 
+    await porky.withdraw(500);
+    assert (0 == (await porky.getSavings()));
 
+    await { Funds.add(#cycle, 2000_000); porky.deposit() };
+    let refund = Funds.refunded(#cycle);
+    assert (1000_000 == refund);
+    assert (1000_000 == (await porky.getSavings()));
 
+  };
 
+   // callback for accepting funds from PiggyBank
+  public func credit() : async () {
+    Funds.accept(#cycle, Funds.available(#cycle));
+  }
 
+};
+----
 
+Let's disect actor `Alice`'s code.
 
+`Alice` imports the `PiggyBank` actor class as a library.
+
+Most of the action occurs in `Alice` `test()` method:
+
+Alice asynchronously creates a new instance, `porky` of the
+`PiggyBank`, with callback `Alice.credit`, storing `#cycle` units,
+with initial capacity `1000_000`.
+
+The `Porky.getSavings` initially returns `0`.
+
+`Alice` dedicates 1000 of her cycles (`Funds.add(#cycle, 1000)`) to
+transfer to porky with the next call to `porky.deposit()`.  The funds
+are only consumed from Alice's #cycle balance if the call to
+`porky.deposit()` succeeds (which it should).
+
+`Alice` now withdraws half the amount (500) and verifies that
+`porkie`s savings have halfed.  `Alice` receives the funds via the
+`credit()` callback, which calls `Funds.accept(#cycle, ...)` to retain
+all of the cycles available `Funds.available(#cycle)` in the callback.
+These are the funds added by `porkie.withdraw()`.
+
+`Alice` withdraws another 500 cycles to clear her savings.
+
+`Alice` vainly tries to deposit 2000,000 cycles into `porky` but this
+exceeds `porky`'s capacity by half, so porky accepts 1000,000 and
+refunds the other 1000,000 to `Alice`.  `Alice` verifies the refund
+amount (`Fundes.refunded(#cycle)`), which is automatically added to
+her balance, and verifies `porky`'s actual savings.
+
+`Alice`'s `credit()` method simply accepts all available `#cycle`
+funds (and implicitly refunds any available amount of other units, notably `#icpt`).
+
+Note: For this example, Alice is using  her (readily available) `#cycle` units
+(that she already owns), rather than `#icpt` which she won't initially have.
+Because `Alice`'s balance of cycles is steadily decreasing due to
+computation, this code does not assert the exact balance of Alice's cycles
+between banking operations.  If she had chosen a different unit, `u`,
+then Alice could predict and assert the changes to her balance,
+reflected in call to `Funds.balance(`u`)`. The volatility of cycles, however,
+prevents her from doing that directly.
+
+Note: Because `porky` consumes cycles in its operation, it is possible, but unlikely, for
+porky to spend some or even all of Alice's cycle savings before she has a
+chance to retrieve them. This would not be a problem for units other than cycles. Caveat emptor.
