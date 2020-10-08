@@ -3,10 +3,17 @@
 :company-id: DFINITY
 
 The {company-id} platform maintains funds of tokens of various units.
-For now, the supported units are _Cycle_ and _ICPT_ but user-defined units are destined for future support.
+For now, the supported units are _Cycle_ and _ICPT_ but user-defined units will be available soon.
 
-Each {DFINITY} canister or {proglang} actor has a balance of funds, that can be transferred between canisters.
-Funds are selectively transferred and received through messages, i.e. shared function calls.
+Each {DFINITY} canister or {proglang} actor has a balance of funds. The ownership of funds can be transferred between canisters.
+Funds are selectively sent and received through messages, i.e. shared function calls.
+Callers can choose to transfer funds, and calleer can choose to accepts funds that are
+made available by the caller.
+Unless directed otherwise, no funds of any unit are transferred by callers or accepted by callees.
+Callees can accept all, some or none of the available funds.
+Unaccepted funds are refunded with the call.
+All funds are refunded if the call traps.
+
 In future, we may see {proglang} adopt dedicated syntax and types to support safer programming with funds and units.
 But for now, the way to manage funds is through an imperative API
 provided by the `ExperimentalFunds` library in package `base`.
@@ -156,6 +163,7 @@ and stored in private binding `owner`.
 The piggy bank is initially empty, with zero current `savings`.
 
 Only calls from `owner` may:
+
 * query the current `savings` of the piggy bank (function `getSavings`),
 * `withdraw` amounts from the savings (function `withdraw`).
 
@@ -217,9 +225,10 @@ actor Alice {
 };
 ----
 
-Let's disect actor `Alice`'s code.
+Let's dissect actor ``Alice``'s code.
 
-`Alice` imports the `PiggyBank` actor class as a library.
+`Alice` imports the `PiggyBank` actor class as a library, so she can
+install a new PiggyBank actor on demand.
 
 Most of the action occurs in `Alice` `test()` method:
 
@@ -231,29 +240,30 @@ The `Porky.getSavings` initially returns `0`.
 
 `Alice` dedicates 1000 of her cycles (`Funds.add(#cycle, 1000)`) to
 transfer to porky with the next call to `porky.deposit()`.  The funds
-are only consumed from Alice's #cycle balance if the call to
+are only consumed from Alice's `#cycle` balance if the call to
 `porky.deposit()` succeeds (which it should).
 
 `Alice` now withdraws half the amount (500) and verifies that
-`porkie`s savings have halfed.  `Alice` receives the funds via the
-`credit()` callback, which calls `Funds.accept(#cycle, ...)` to retain
-all of the cycles available `Funds.available(#cycle)` in the callback.
-These are the funds added by `porkie.withdraw()`.
+`porky`s savings have halved.  `Alice` actually receives the funds via the
+`credit()` callback (itself called by ``porky.withdraw()``).
+`credit()` calls `Funds.accept(#cycle, ...)` to retain
+all of the cycles available (`Funds.available(#cycle)`) in to callback.
+These are the funds added by `porky.withdraw()`.
 
 `Alice` withdraws another 500 cycles to clear her savings.
 
 `Alice` vainly tries to deposit 2000,000 cycles into `porky` but this
-exceeds `porky`'s capacity by half, so porky accepts 1000,000 and
+exceeds ``porky``'s capacity by half, so porky accepts 1000,000 and
 refunds the other 1000,000 to `Alice`.  `Alice` verifies the refund
 amount (`Fundes.refunded(#cycle)`), which is automatically added to
-her balance, and verifies `porky`'s actual savings.
+her balance. She also verifies ``porky``'s adjusted savings.
 
-`Alice`'s `credit()` method simply accepts all available `#cycle`
+``Alice``'s `credit()` method simply accepts all available `#cycle`
 funds (and implicitly refunds any available amount of other units, notably `#icpt`).
 
 Note: For this example, Alice is using  her (readily available) `#cycle` units
 (that she already owns), rather than `#icpt` which she won't initially have.
-Because `Alice`'s balance of cycles is steadily decreasing due to
+Because ``Alice``'s balance of cycles is steadily decreasing due to
 computation, this code does not assert the exact balance of Alice's cycles
 between banking operations.  If she had chosen a different unit, `u`,
 then Alice could predict and assert the changes to her balance,
