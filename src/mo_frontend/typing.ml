@@ -2193,7 +2193,7 @@ and infer_dec_valdecs env dec : Scope.t =
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (is_anonymous id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
+          "the constructor function of this actor class is not available for recursive calls, but is available when imported";
       if not (typ_binds = []) then
         error env dec.at
           "actor classes with type parameters are not supported yet";
@@ -2268,7 +2268,15 @@ let check_lib scope lib : Scope.t Diag.result =
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           let imp_typ = match cub.it with
-            | ModuleU _ -> typ
+            | ModuleU _ ->
+              if cub.at = no_region then begin
+                let r = Source.({
+                  left = { no_pos with file = lib.note };
+                  right = { no_pos with file = lib.note }})
+                in
+                warn env r "deprecated syntax: an imported library should be a module or named actor class"
+              end;
+              typ
             | ActorClassU  (sp, id, p, _, self_id, fields) ->
               if Syntax.is_anonymous id then
                 error env cub.at "bad import: imported actor class cannot be anonymous";

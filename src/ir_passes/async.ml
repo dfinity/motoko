@@ -218,6 +218,8 @@ let transform mode prog =
     | SelfRef t -> SelfRef (t_typ t)
     | ICStableRead t -> ICStableRead (t_typ t)
     | ICStableWrite t -> ICStableWrite (t_typ t)
+    | SerializePrim ts -> SerializePrim (List.map t_typ ts)
+    | DeserializePrim ts ->  DeserializePrim (List.map t_typ ts)
     | p -> p
 
   and t_field {lab; typ} =
