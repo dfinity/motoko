@@ -214,7 +214,7 @@ The DWARF attributes `Low_pc`, `High_pc` and `Ranges` carry information
 about the Wasm bytecode's layout in the emitted Code section for the
 compilation unit. The information is not available here, so these
 attributes have no payload at this side. Instead it is filled in
-in a tag-dependent manner by the emitting module. For LexicalBlock
+in a tag-dependent manner by `customModuleEncode.ml`. For LexicalBlock
 the Low_pc and High_pc attributes are managed entirely by the emitter.
  *)
 
