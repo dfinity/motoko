@@ -69,7 +69,7 @@ deser: $(SOURCE_ID)
 
 # only actually touch the file if changed
 $(SOURCE_ID):
-	sh source_id/gen.sh
+	source_id/gen.sh
 
 unit-tests: $(SOURCE_ID)
 	dune runtest $(DUNE_OPTS)
