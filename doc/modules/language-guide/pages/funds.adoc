@@ -244,11 +244,12 @@ are only consumed from Alice's `#cycle` balance if the call to
 `porky.deposit()` succeeds (which it should).
 
 `Alice` now withdraws half the amount (500) and verifies that
-`porky`s savings have halved.  `Alice` actually receives the funds via the
-`credit()` callback (itself called by ``porky.withdraw()``).
-`credit()` calls `Funds.accept(#cycle, ...)` to retain
-all of the cycles available (`Funds.available(#cycle)`) in to callback.
-These are the funds added by `porky.withdraw()`.
+``porky``s savings have halved. `Alice actually receives the funds via
+the `credit()` callback (itself called by ``porky.withdraw()``).
+`credit()` calls `Funds.accept(#cycle, Funds.available(#cycle))` to
+retain *all* of the cycles available to `credit()`.  Note these are
+the funds added by `porky.withdraw()` before calling the corresponding
+callback `credit()`.
 
 `Alice` withdraws another 500 cycles to clear her savings.
 
@@ -261,16 +262,17 @@ her balance. She also verifies ``porky``'s adjusted savings.
 ``Alice``'s `credit()` method simply accepts all available `#cycle`
 funds (and implicitly refunds any available amount of other units, notably `#icpt`).
 
-Note: For this example, Alice is using  her (readily available) `#cycle` units
-(that she already owns), rather than `#icpt` which she won't initially have.
-Because ``Alice``'s balance of cycles is steadily decreasing due to
-computation, this code does not assert the exact balance of Alice's cycles
-between banking operations.  If she had chosen a different unit, `u`,
-then Alice could predict and assert the changes to her balance,
-reflected in call to `Funds.balance(`u`)`. The volatility of cycles, however,
-prevents her from doing that directly.
+NOTE: For this example, Alice is using her (readily available)
+`#cycle` units (that she already owns), rather than `#icpt` which she
+won't initially have.  Because ``Alice``'s balance of cycles is
+steadily decreasing due to computation, this code does not assert the
+exact balance of Alice's cycles between banking operations.  If she
+had chosen a different unit, `u`, then Alice could predict and assert
+the changes to her balance, reflected in call to
+`Funds.balance(`u`)`. The volatility of `balance(#cycles)` prevents
+her from doing that directly.
 
-Note: Because `porky` consumes cycles in its operation, it is possible
+WARNING: Because `porky` consumes cycles in its operation, it is possible
 for `porky` to spend some or even all of Alice's cycle savings before
 she has a chance to retrieve them. This ongoing consumption does not
 apply to other units, but should be taken into consideration when
