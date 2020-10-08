@@ -113,7 +113,7 @@ func refunded(u : Unit) : (amount : Nat)
 === Example
 
 To illustrate, we will now use the `ExperimentalFunds` library to implement a toy _piggy bank_.
-Our piggy bank has an implicit owner, a designated credit method (for crediting the owner),
+Our piggy bank has an implicit owner, a designated credit function (for crediting the owner),
 stores one kind of `unit`, and has a fixed `capacity`, all three determined at time of construction:
 
 [source,motoko]
@@ -121,7 +121,7 @@ stores one kind of `unit`, and has a fixed `capacity`, all three determined at t
 import Funds "mo:base/ExperimentalFunds";
 
 shared {caller} actor class PiggyBank(
-  credit : shared () -> async (),
+  benefit : shared () -> async (),
   unit : Funds.Unit,
   capacity: Nat) {
 
@@ -148,7 +148,7 @@ shared {caller} actor class PiggyBank(
     assert (caller == owner);
     assert (amount <= savings);
     Funds.add(unit, amount);
-    await credit();
+    await benefit();
     let refund = Funds.refunded(unit);
     savings -= amount - refund;
   };
@@ -173,21 +173,21 @@ or committing any funds.
 
 Any caller may deposit amounts of kind `unit`, provided the amount
 doesn't exceed capacity (breaking the piggy bank).  Because the
-deposit method only accepts a portion of the available
+deposit function only accepts a portion of the available
 amount, a caller whose deposit exceeds capacity will receive an
 implicit refund of the unaccepted funds. Refunding is automatic and
 ensured by the platform.
 
 Since transfer of funds is one-directional (from caller to callee),
 retrieving funds requires the use of an explicit callback (the
-`credit` function, received by the constructor as an argument).  Here,
-`credit` is invoked by the `withdraw` function, but only after
+`benefit` function, taken by the constructor as an argument).  Here,
+`benefit` is invoked by the `withdraw` function, but only after
 authenticating the caller as `owner`.
 
 Note that the owner of the `PiggyBank` could, in fact, supply a callback
-that credits a beneficiary nominated by, and distinct from,  the owner.
+that rewards a beneficiary nominated by, and distinct from, `owner`.
 
-Here's  how an owner, `Alice`, might use an instance of `Piggy Bank`:
+Here's how an owner, `Alice`, might use an instance of `Piggy Bank`:
 
 [source,motoko]
 ----
@@ -230,11 +230,14 @@ Let's dissect actor ``Alice``'s code.
 `Alice` imports the `PiggyBank` actor class as a library, so she can create
 a new `PiggyBank` actor on demand.
 
-Most of the action occurs in `Alice` `test()` method:
+Most of the action occurs in  ``Alice``'s `test()` function:
 
-Alice asynchronously creates a new instance, `porky` of the
+Alice asynchronously creates a new instance, `porky`, of the
 `PiggyBank`, with callback `Alice.credit`, storing `#cycle` units,
-with initial capacity `1000_000`. She then verifies that
+with initial capacity `1000_000`. Passing `Alice.credit` nominates `Alice` as
+the beneficiary of the savings.
+
+Afer constructing `porky`, she first verifies that
 the `Porky.getSavings()` is `0` (using an `assert`).
 
 `Alice` dedicates 1000 of her cycles (`Funds.add(#cycle, 1000)`) to
@@ -244,11 +247,9 @@ are only consumed from Alice's `#cycle` balance if the call to
 
 `Alice` now withdraws half the amount (500) and verifies that
 ``porky``s savings have halved. `Alice` eventually receives the funds via
-a callback to `credit()` (initiated by ``porky.withdraw()``).
-`credit()` calls `Funds.accept(#cycle, Funds.available(#cycle))` to
-retain *all* of the cycles available to `credit()`.  Note these are
-precisely the funds added in `porky.withdraw()`, before it calls the
-`credit()`.
+a callback to `credit()`, initiated in ``porky.withdraw()``.
+Note the received funds are precisely the funds ``add``ed in `porky.withdraw()`, before it invokes its
+`benefit()` callback  (i.e. `Alice.credit()`).
 
 `Alice` withdraws another 500 cycles to wipe out her savings.
 
@@ -259,8 +260,9 @@ refund amount (`Fundes.refunded(#cycle)`), which has (already) been
 automatically restored to her balance. She also verifies ``porky``'s
 adjusted savings.
 
-``Alice``'s `credit()` method simply accepts all available `#cycle`
-funds. In addition, it implicitly refunds any available amount of
+``Alice``'s `credit()` function simply accepts all available `#cycle`
+funds by calling `Funds.accept(#cycle, Funds.available(#cycle))`.
+In addition, it implicitly refunds any available amount of
 other units, notably `#icpt`.
 
 NOTE: For this example, Alice is using her (readily available)
