@@ -2,12 +2,11 @@ import Prim "mo:prim";
 import Funds "ExperimentalFunds";
 //import Funds "mo:base/ExperimentalFunds";
 
-shared {caller} actor class PiggyBank(
-  credit : shared () -> async (),
+shared {caller = owner} actor class PiggyBank(
   unit : Funds.Unit,
-  capacity: Nat) {
+  capacity: Nat,
+  benefit : shared () -> async ()) {
 
-  let owner = caller;
   var savings = 0;
 
   public shared {caller} func getSavings() : async Nat {
@@ -17,10 +16,10 @@ shared {caller} actor class PiggyBank(
 
   public func deposit() : async () {
     let amount = Funds.available(unit);
-    let maxAcceptable = capacity - savings;
+    let limit = capacity - savings;
     let acceptable =
-      if (amount <= maxAcceptable) amount
-      else maxAcceptable;
+      if (amount <= limit) amount
+      else limit;
     Funds.accept(unit, acceptable);
     savings += acceptable;
   };
@@ -30,7 +29,7 @@ shared {caller} actor class PiggyBank(
     assert (caller == owner);
     assert (amount <= savings);
     Funds.add(unit, amount);
-    await credit();
+    await benefit();
     let refund = Funds.refunded(unit);
     savings -= amount - refund;
   };
