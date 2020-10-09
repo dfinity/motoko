@@ -272,7 +272,7 @@ steadily decreasing due to computation, this code does not assert the
 exact balance of Alice's cycles between banking operations.  If she
 had chosen a different unit, `u`, then Alice could predict and assert
 the changes to her balance, reflected in call to
-`Funds.balance(`u`)`. The volatility of `balance(#cycles)` prevents
+`Funds.balance(u)`. The volatility of `balance(#cycles)` prevents
 her from doing that directly.
 
 WARNING: Because `porky` consumes cycles in its operation, it is possible
