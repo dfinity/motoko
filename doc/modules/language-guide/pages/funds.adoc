@@ -26,89 +26,59 @@ provided by the `ExperimentalFunds` library in package `base`.
 The `ExperimentalFunds` library provides imperative operations for observing an actor's current balance of funds, transferring funds and
 observing refunds, on a per-unit basis.
 
-The two currently supported units are specified using Motoko variants `#cycle` and `#icpt`.
 
-**NOTE:** Since unit `#cycle` also measures computation, the value of
+
+
+
+[source,motoko]
+----
+type Unit = { #cycle; #icpt }
+
+func balance(u : Unit) : (amount : Nat)
+
+func available(u : Unit) : (amount : Nat)
+
+func accept(u : Unit, amount : Nat) : ()
+
+func add(u : Unit, amount : Nat) : ()
+
+func refunded(u : Unit) : (amount : Nat)
+----
+
+Type `Unit` is a variant describing the two currently supported units,
+`#cycle` and `#icpt`. This type is likely to be extended in future.
+
+Function `balance(u)` returns the actor's current balance of unit `u` as `amount`.
+Function `balance(u)` is stateful and may return different values after calls to `accept(u,...)`,
+calling a function with added funds of `u`, or resuming from await (reflecting a refund).
+WARNING: Since  `#cycle` measures computation, the value of
 `balance(#cycle)` generally decreases from one instruction to the next.
 
-[[type.Unit]]
-=== Unit
-
-Units for funds: `{#cycle; #icpt}`.
-
-[source,motoko]
-----
-type Unit = {#cycle; #icpt}
-----
-
-[[value.balance]]
-=== balance
-
-Returns the actor's current balance of unit `u` as `amount`.
-
-[source,motoko]
-----
-func balance(u : Unit) : (amount : Nat)
-----
-
-[[value.available]]
-=== available
-
-Given `u`, returns the currently available `amount` of unit `u`.
+Function ``available(u)``, returns the currently available `amount` of unit `u`.
 The amount available is the amount received in the current call,
 minus the cumulative amount `accept`ed by this call.
 On exit from the current shared function or async expression via `return` or `throw`
 any remaining available amount is automatically
 refunded to the caller/context.
 
-[source,motoko]
-----
-func available(u : Unit) : (amount : Nat)
-----
+Function `accept(u, amount)` Transfers `amount` from `available(u)` to `balance(u)`,
+The function traps if trying to accept more funds than are available.
 
-[[value.accept]]
-=== accept
-
-Transfers `amount` from `available(u)` to `balance(u)`,
-Traps if trying to accept more funds than are available.
-
-[source,motoko]
-----
-func accept(u : Unit, amount : Nat) : ()
-----
-
-[[value.add]]
-=== add
-
-Indicates additional `amount` of unit `u` to be transferred in
-the next call, i.e. evaluation of a shared function call or
+Function `add(u, amount)` indicates the additional `amount` of unit `u` to be transferred in
+the remote call, i.e. evaluation of a shared function call or
 async expression.
 Upon the call, but not before, the total amount of units ``add``ed since
 the last call is deducted from `balance(u)`.
 If this total exceeds `balance(u)`, the caller traps, aborting the call.
 
-Note: the implicit, per unit register of added amounts is reset to zero on entry to
+NOTE: the implicit, per unit register of added amounts is reset to zero on entry to
 a shared function and after each shared function call or resume from an await.
 
-[source,motoko]
-----
-func add(u : Unit, amount : Nat) : ()
-----
-
-[[value.refunded]]
-=== refunded
-
-Reports `amount` of unit `u` refunded in the last `await` of the current
+Function `refunded(u, amount)` reports then `amount` of unit `u` refunded in the last `await` of the current
 context, or `0` if no await has occurred yet.
 Calling `refunded(u)` is solely informational and does not affect `balance(u)`.
 Instead, refunds are automatically added to the current balance,
 whether or not `refunded` is used to observe them.
-
-[source,motoko]
-----
-func refunded(u : Unit) : (amount : Nat)
-----
-
 
 === Example
 
