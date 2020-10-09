@@ -280,3 +280,4 @@ for `porky` to spend some or even all of Alice's cycle savings before
 she has a chance to retrieve them. This ongoing consumption does not
 apply to other units, but should be taken into consideration when
 dealing with cycles in particular.
+
