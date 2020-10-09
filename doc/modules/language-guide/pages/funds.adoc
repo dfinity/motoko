@@ -233,9 +233,9 @@ a new `PiggyBank` actor on demand.
 Most of the action occurs in  ``Alice``'s `test()` function:
 
 Alice asynchronously creates a new instance, `porky`, of the
-`PiggyBank`, with callback `Alice.credit`, storing `#cycle` units,
-with initial capacity `1000_000`. Passing `Alice.credit` nominates `Alice` as
-the beneficiary of the savings.
+`PiggyBank`, passing callback `Alice.credit`, unit `#cycle`,
+and capacity `1000_000`. Choosing `Alice.credit` nominates `Alice` as
+the beneficiary of withdrawals.
 
 Afer constructing `porky`, she first verifies that
 the `Porky.getSavings()` is `0` (using an `assert`).
@@ -249,7 +249,7 @@ are only consumed from Alice's `#cycle` balance if the call to
 ``porky``s savings have halved. `Alice` eventually receives the funds via
 a callback to `credit()`, initiated in ``porky.withdraw()``.
 Note the received funds are precisely the funds ``add``ed in `porky.withdraw()`, before it invokes its
-`benefit()` callback  (i.e. `Alice.credit()`).
+`benefit` callback  (i.e. `Alice.credit`).
 
 `Alice` withdraws another 500 cycles to wipe out her savings.
 
@@ -267,8 +267,8 @@ other units, notably `#icpt`.
 
 NOTE: For this example, Alice is using her (readily available)
 `#cycle` units (that she already owns), rather than `#icpt` which she
-won't initially have.  Because ``Alice``'s balance of cycles is
-steadily decreasing due to computation, this code does not assert the
+won't initially have.  Because ``Alice``'s balance of cycles
+steadily decreases with computation, this code does not assert the
 exact balance of Alice's cycles between banking operations.  If she
 had chosen a different unit, `u`, then Alice could predict and assert
 the changes to her balance, reflected in call to
