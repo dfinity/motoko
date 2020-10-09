@@ -7,7 +7,7 @@
   class constructor function as module components. Restores the
   invariant that imported libraries are modules.
 * Backend: Compile captured actor class parameters statically (#2022)
-* flip the default for -g (#1546)
+* The -g flag is now off by default (#1546)
 * Bug fix: reject array indexing as non-static (could trap) (#2011)
 * Initialize tuple length fields (#1992)
 * Warns for structural equality on abstract types (#1972)
