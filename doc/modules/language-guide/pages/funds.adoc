@@ -20,9 +20,11 @@ accompanying funds are automatically refunded to the caller, without
 loss.
 
 In future, we may see {proglang} adopt dedicated syntax and types to
-support safer programming with funds and units.  But for now, the way
-to manage funds is through an imperative API provided by the
+support safer programming with funds and units.  For now, we provide
+a temporary way to manage funds through a low-level imperative API provided by the
 `ExperimentalFunds` library in package `base`.
+
+**Note:** This library is subject to change and likely to be replaced by more high-level support for funds in later versions of Motoko.
 
 == The `ExperimentalFunds` Library
 
@@ -256,4 +258,3 @@ for `porky` to spend some or even all of Alice's cycle savings before
 she has a chance to retrieve them. This ongoing consumption does not
 apply to other units, but should be taken into consideration when
 dealing with cycles in particular.
-
