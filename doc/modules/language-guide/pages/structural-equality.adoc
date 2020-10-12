@@ -4,12 +4,15 @@
 Informally this means equality is defined on types that don't contain mutable fields, mutable arrays, non-shared functions or components of generic type.
 
 For example we can compare arrays of objects.
-===
+
+[source,bash]
+----
 > let a = [ { x = 10 }, { x = 20 } ];
 > let b = [ { x = 10 }, { x = 20 } ];
 > a == b;
 true : Bool
-===
+----
+
 Importantly this does _not_ compare by reference, but by value.
 
 == Subtyping
@@ -18,7 +21,8 @@ The compiler will warn in cases where this might lead to subtle unwanted behavio
 For example: `{ x = 10 } == { y = 20 }` will return `true` because the two values get compared at the empty record type.
 That's unlikely the intention, so the compiler will emit a warning here.
 
-===
+[source,bash]
+----
 > { x = 10 } == { y = 20 };
 stdin:1.1-1.25: warning, comparing incompatible types
   {x : Nat}
@@ -27,30 +31,34 @@ and
 at common supertype
   {}
 true : Bool
-===
+----
 
 == Generic types
 It is not possible to declare that a generic type variable is `shared`, so equality can only be used on non-generic types. For example:
 
-===
+
+[source,motoko]
+----
 func eq<A>(a : A, b : A) : Bool = a == b;
-===
+----
 
 Warns with:
 
-===
+[bash]
+----
 stdin:1.35-1.41: warning, comparing abstract type
   A/9
 to itself at supertype
   Any
-===
+----
 
 Comparing these two at the `Any` type means this comparison will return `true` no matter its arguments, so this doesn't work as one might hope.
 
 If you run into this limitation in your code, you should accept a comparison function of type `(A, A) -> Bool` as an argument, and use that to compare these values instead.
 Let's look at a list membership test for example. This first implementation _does not_ work:
 
-===
+[source,motoko]
+----
 import List "mo:base/List";
 
 func contains<A>(element : A, list : List.List<A>) : Bool {
@@ -62,12 +70,13 @@ func contains<A>(element : A, list : List.List<A>) : Bool {
 };
 
 assert(not contains(1, ?(0, null)));
-===
+----
 
 This assertion will trap, because the compiler compares the type `A` at `Any` which is always `true`. So as long as the list has at least one element this version of `contains` will always return true.
 This second implementation shows how to accept the comparison function explicitly instead:
 
-===
+[source,motoko]
+----
 import List "mo:base/List";
 import Nat "mo:base/Nat";
 
@@ -80,4 +89,5 @@ func contains<A>(eqA : (A, A) -> Bool, element : A, list : List.List<A>) : Bool 
 };
 
 assert(not contains(Nat.equal, 1, ?(0, null)));
-===
+----
+
