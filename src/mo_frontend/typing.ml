@@ -2193,7 +2193,7 @@ and infer_dec_valdecs env dec : Scope.t =
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (is_anonymous id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
+          "the constructor function of this actor class is not available for recursive calls, but is available when imported";
       if not (typ_binds = []) then
         error env dec.at
           "actor classes with type parameters are not supported yet";
