@@ -32,7 +32,6 @@ The `ExperimentalFunds` library provides imperative operations for
 observing an actor's current balance of funds, transferring funds and
 observing refunds, on a per-unit basis.
 
-
 The library provides the following type and operations:
 
 [source,motoko]
