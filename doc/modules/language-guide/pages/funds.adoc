@@ -24,7 +24,7 @@ support safer programming with funds and units.  For now, we provide
 a temporary way to manage funds through a low-level imperative API provided by the
 `ExperimentalFunds` library in package `base`.
 
-**Note:** This library is subject to change and likely to be replaced by more high-level support for funds in later versions of Motoko.
+NOTE: This library is subject to change and likely to be replaced by more high-level support for funds in later versions of Motoko.
 
 == The `ExperimentalFunds` Library
 
