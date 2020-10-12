@@ -1,5 +1,6 @@
-TODO - Move examples into separate files (where?)
-
+// TODO - Move examples into doc/modules/language-guide/examples
+// Use this syntax to include the files here:
+// include::example$file-name.mo[]
 = Local objects and classes
 :proglang: Motoko
 :company-id: DFINITY
@@ -230,7 +231,7 @@ Notice the return type of this _constructor function_ (an object type):
 
 ```
 { inc : () -> Nat }
-``
+```
 
 We may want to name this type, for example, `Counter`, as follows, for use in further type declarations:
 
@@ -300,8 +301,8 @@ When supplied, {proglang} checks that this type annotation is compatible with th
 This check ensures that each object produced by the constructor meets the supplied specification.
 
 For example, we repeat the `Counter` as a buffer, and annotate it with
-a more general type `Accum<X>` that permits adding, but not reseting
-the counter.  This annotation ensures that the objects are compatible
+a more general type `Accum<X>` that permits adding, but not resetting
+the counter. This annotation ensures that the objects are compatible
 with the type `Accum<X>`.
 
 ....
