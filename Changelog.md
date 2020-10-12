@@ -1,5 +1,22 @@
 = Motoko compiler changelog
 
+== 0.4.5 (2020-10-06)
+
+* BREAKING CHANGE: a library containing a single actor class is
+  imported as a module, providing access to both the class type and
+  class constructor function as module components. Restores the
+  invariant that imported libraries are modules.
+* Backend: Compile captured actor class parameters statically (#2022)
+* flip the default for -g (#1546)
+* Bug fix: reject array indexing as non-static (could trap) (#2011)
+* Initialize tuple length fields (#1992)
+* Warns for structural equality on abstract types (#1972)
+* Funds Imperative API  (#1922)
+* Restrict subtyping (#1970)
+* Continue labels always have unit codomain (#1975)
+* Compile.ml: target and use new builder call pattern (#1974)
+* fix scope var bugs (#1973)
+
 == 0.4.4 (2020-09-21)
 
 * Actor class export
