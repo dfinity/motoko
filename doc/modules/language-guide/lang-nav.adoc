@@ -12,6 +12,7 @@
 ** xref:modules-and-imports.adoc[Modules and imports]
 ** xref:control-flow.adoc[Imperative control flow]
 ** xref:structural-equality.adoc[Structural Equality]
+** xref:funds.adoc[Managing Funds]
 //** xref:advanced-discussion.adoc[Advanced discussion topics]
 ** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]
