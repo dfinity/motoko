@@ -227,21 +227,14 @@ open Die
 let dw_tag_close : t =
   i (Meta TagClose)
 
-module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
-let dw_prims = ref PrimRefs.empty
-module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = compare end)
-let dw_typedefs = ref TypedefRefs.empty
 module OptionRefs = Map.Make (struct type t = int let compare = compare end)
 let dw_options = ref OptionRefs.empty
 module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
-module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
-let dw_enums = ref EnumRefs.empty
 module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_objects = ref ObjectRefs.empty
 module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
 let dw_tuples = ref TupleRefs.empty
-let any_type = ref None
 
 let pointer_key = ref None
 
@@ -274,11 +267,14 @@ let pointer_key = ref None
 
  *)
 
+(*
 let obvious_prim_of_con c ty : Type.prim option =
   match Type.normalize ty with
   | Type.Prim p ->
     if Arrange_type.(prim p = con c) then Some p else None
   | _ -> None
+ *)
+
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
@@ -373,7 +369,7 @@ and lookup_pointer_key () : t * int =
     with_referencable_meta_tag add (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
       (dw_attrs [Bit_size 1; Data_bit_offset 1])
 and meta_tag tag attrs =
-  i (Meta (Tag (None, tag, attrs)))
+  i (Meta (unreferencable_tag tag attrs))
 and referencable_meta_tag tag attrs : t * int =
   with_referencable_meta_tag ignore tag attrs
 and with_referencable_meta_tag f tag attrs : t * int =
@@ -381,6 +377,10 @@ and with_referencable_meta_tag f tag attrs : t * int =
   f refslot;
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
+and dw_typedef_ref c ty =
+  let ms, r = typedef_ref c ty in
+  concat_map i ms, r
+(*
 and dw_typedef_ref c ty =
   match TypedefRefs.find_opt c !dw_typedefs with
   | Some r -> nop, r
@@ -393,7 +393,12 @@ and dw_typedef_ref c ty =
     let dw, reference = dw_type_ref (Type.normalize ty) in
     Lib.Promise.fulfill p reference;
     td ^<^ dw
+ *)
 and dw_type ty = fst (dw_type_ref ty)
+and dw_type_ref ty =
+  let ms, r = type_ref ty in
+  concat_map i ms, r
+(*
 and dw_type_ref =
   function
   | Type.Any ->
@@ -419,10 +424,14 @@ and dw_type_ref =
     (* make sure all prerequisite types are around *)
     effects prereq ^^< dw_option_instance selector
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_type_ref Type.Any (* FIXME assert false *)
-
+ *)
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
 and (^<^) (dw1, r) dw2 = (dw1 ^^ dw2, r)
 and dw_prim_type prim = fst (dw_prim_type_ref prim)
+and dw_prim_type_ref (prim : Type.prim) =
+  let ms, r = prim_type_ref prim in
+  concat_map i ms, r
+(*
 and dw_prim_type_ref (prim : Type.prim) =
   match PrimRefs.find_opt prim !dw_prims with
   | Some r -> nop, r
@@ -459,11 +468,11 @@ and dw_prim_type_ref (prim : Type.prim) =
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;
     dw, refindx
-and is_enum =
-  let no_payload = function
-    | Type.{typ = Tup []; _} -> true
-    | _ -> false in
-  List.for_all no_payload
+ *)
+and dw_enum vnts =
+  let ms, r = enum vnts in
+  concat_map i ms ^^ dw_tag_close, r
+(*
 and dw_enum vnts =
   let selectors = List.map (fun Type.{lab; _} -> lab) vnts in
   match EnumRefs.find_opt selectors !dw_enums with
@@ -481,7 +490,7 @@ and dw_enum vnts =
          dw_tag_close (* enumeration_type *)) in
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
-
+ *)
 and dw_option_instance key =
   (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
   match OptionRefs.find_opt key !dw_options with
