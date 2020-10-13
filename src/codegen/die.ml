@@ -140,6 +140,8 @@ module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
 let dw_enums = ref EnumRefs.empty
+module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
+let dw_objects = ref ObjectRefs.empty
 module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
 let dw_tuples = ref TupleRefs.empty
 
@@ -156,8 +158,8 @@ let rec type_ref : Type.typ -> instr' list * int =
     end
   | Type.Prim pr -> prim_type_ref pr
   | Type.Variant vs when is_enum vs -> enum vs
-(*  | Type.Variant vs -> variant vs
-  | Type.(Obj (Object, fs)) -> object fs *)
+(*  | Type.Variant vs -> variant vs *)
+  | Type.(Obj (Object, fs)) -> object_ fs
   | Type.(Tup cs) -> tuple cs
   | Type.Con (c, _) as ty ->
     begin match obvious_prim_of_con c ty with
@@ -234,6 +236,26 @@ and enum vnts : instr' list * int =
 
 
 
+and object_ fs =
+  let open List in
+  let open Wasm_exts.Abbreviation in
+  let selectors = map (fun Type.{lab; typ} -> lab, type_ref typ) fs in
+  (* make sure all prerequisite types are around *)
+  let prereqs = Lib.List.concat_map (fun (_, (ms, _)) -> ms) selectors in
+  let key = map (fun (name, (_, reference)) -> name, reference) selectors in
+  match ObjectRefs.find_opt key !dw_objects with
+  | Some r -> prereqs, r
+  | None ->
+    let add r = dw_objects := ObjectRefs.add key r !dw_objects in
+    let ms, r =
+      let field (name, (_, r)) : die =
+        let _hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
+        unreferencable_tag dw_TAG_member_Word_sized_typed
+          (dw_attrs [Name name; TypeRef r; Byte_size 4 (*; Location search *)]) in
+      (* reference to structure_type *)
+      with_referencable_meta_tags add dw_TAG_structure_type
+          (dw_attrs [Name "@obj"; Byte_size (4 * length selectors)] @ map field selectors) in
+    prereqs @ ms, r
 
 
 
@@ -248,7 +270,7 @@ and tuple ts : instr' list * int =
   | None ->
     let add r = dw_tuples := TupleRefs.add field_refs r !dw_tuples in
     let ms, r =
-      let field index (_, r) : die =
+      let field index (_, r) =
         unreferencable_tag dw_TAG_member_Word_sized_typed
           (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
       with_referencable_meta_tags add dw_TAG_structure_type

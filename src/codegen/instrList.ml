@@ -231,8 +231,6 @@ module OptionRefs = Map.Make (struct type t = int let compare = compare end)
 let dw_options = ref OptionRefs.empty
 module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
-module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
-let dw_objects = ref ObjectRefs.empty
 
 let pointer_key = ref None
 
@@ -574,6 +572,10 @@ and dw_variant vnts =
          dw_tag_close (* struct_type *)) in
     variant
 and dw_object fs =
+  let ms, r = object_ fs in
+  concat_map i ms ^^ dw_tag_close, r
+(*
+and dw_object fs =
   let selectors = List.map (fun Type.{lab; typ} -> lab, dw_type_ref typ) fs in
   (* make sure all prerequisite types are around *)
   let prereqs0 = effects (concat_map (fun (_, (dw, _)) -> dw) selectors) in
@@ -595,7 +597,7 @@ and dw_object fs =
       dw_tag_close (* structure_type *)
       , snd internal_struct in
     struct_ref
-
+ *)
 and dw_tuple ts =
   let ms, r = tuple ts in
   concat_map i ms ^^ dw_tag_close, r
