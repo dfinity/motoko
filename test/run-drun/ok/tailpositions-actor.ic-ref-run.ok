@@ -3,11 +3,11 @@
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
 → query test_loop1()
-debug.print: Done
+debug.print: done
 ← completed: ()
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 debug.print: preupgrade
-debug.print: Done
+debug.print: preupgrade_loop done
 debug.print: postupgrade
-debug.print: done
+debug.print: postupgrade_loop done
 ← completed: ()

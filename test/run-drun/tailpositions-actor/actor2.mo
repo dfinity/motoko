@@ -4,17 +4,17 @@ actor a {
 
     let bound : Int = 100000;
 
-    func Loop1(n : Int) {
-        if (n >= bound) {
-            Prim.debugPrint "done";
-            return;
-        };
-        Loop1(n+1);
-    };
-
     system func postupgrade() {
+        func postupgrade_loop(n : Int) {
+            if (n >= bound) {
+                Prim.debugPrint "postupgrade_loop done";
+                return;
+            };
+            postupgrade_loop(n+1);
+        };
+
         Prim.debugPrint("postupgrade");
-        Loop1(0);
+        postupgrade_loop(0);
     };
 
 };

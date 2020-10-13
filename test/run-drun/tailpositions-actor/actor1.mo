@@ -6,7 +6,7 @@ actor a {
 
     func Loop1(n : Int) {
         if (n >= bound) {
-            Prim.debugPrint "Done";
+            Prim.debugPrint "done";
             return;
         };
         Loop1(n+1);
@@ -17,8 +17,16 @@ actor a {
     };
 
     system func preupgrade() {
+        func preupgrade_loop(n : Int) {
+            if (n >= bound) {
+                Prim.debugPrint "preupgrade_loop done";
+                return;
+            };
+            preupgrade_loop(n+1);
+        };
+
         Prim.debugPrint("preupgrade");
-        Loop1(0);
+        preupgrade_loop(0);
     };
 
 };
