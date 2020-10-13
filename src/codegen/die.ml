@@ -140,6 +140,8 @@ module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
 let dw_enums = ref EnumRefs.empty
+module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
+let dw_tuples = ref TupleRefs.empty
 
 (* Factory for referencable type DIEs *)
 let rec type_ref : Type.typ -> instr' list * int =
@@ -155,8 +157,8 @@ let rec type_ref : Type.typ -> instr' list * int =
   | Type.Prim pr -> prim_type_ref pr
   | Type.Variant vs when is_enum vs -> enum vs
 (*  | Type.Variant vs -> variant vs
-  | Type.(Obj (Object, fs)) -> object fs
-  | Type.(Tup cs) -> tuple cs *)
+  | Type.(Obj (Object, fs)) -> object fs *)
+  | Type.(Tup cs) -> tuple cs
   | Type.Con (c, _) as ty ->
     begin match obvious_prim_of_con c ty with
     | Some p -> type_ref (Type.Prim p)
@@ -229,3 +231,26 @@ and enum vnts : instr' list * int =
     with_referencable_meta_tags add
        dw_TAG_enumeration_type
        (dw_attr' (Artificial true) :: List.map enumerator selectors)
+
+
+
+
+
+
+and tuple ts : instr' list * int =
+  let open List in
+  let open Wasm_exts.Abbreviation in
+  let field_types_refs = map type_ref ts in
+  let field_refs = map snd field_types_refs in
+  let prereqs = Lib.List.concat_map fst field_types_refs in
+  match TupleRefs.find_opt field_refs !dw_tuples with
+  | Some r -> prereqs, r
+  | None ->
+    let add r = dw_tuples := TupleRefs.add field_refs r !dw_tuples in
+    let ms, r =
+      let field index (_, r) : die =
+        unreferencable_tag dw_TAG_member_Word_sized_typed
+          (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
+      with_referencable_meta_tags add dw_TAG_structure_type
+        (dw_attrs [Name "@tup"; Byte_size 4] @ mapi field field_types_refs) in
+    prereqs @ ms, r

@@ -233,8 +233,6 @@ module VariantRefs = Map.Make (struct type t = (string * int) list let compare =
 let dw_variants = ref VariantRefs.empty
 module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_objects = ref ObjectRefs.empty
-module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
-let dw_tuples = ref TupleRefs.empty
 
 let pointer_key = ref None
 
@@ -597,6 +595,11 @@ and dw_object fs =
       dw_tag_close (* structure_type *)
       , snd internal_struct in
     struct_ref
+
+and dw_tuple ts =
+  let ms, r = tuple ts in
+  concat_map i ms ^^ dw_tag_close, r
+(*
 and dw_tuple ts =
   let field_dw_refs = List.map dw_type_ref ts in
   let field_refs = List.map snd field_dw_refs in
@@ -612,7 +615,7 @@ and dw_tuple ts =
       (concat_mapi field field_dw_refs ^^ dw_tag_close (* structure_type *)) in
     prereqs ^^<
     tuple_type
-
+ *)
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
 let dw_tag_no_children = dw_tag_open (* self-closing *)
 
