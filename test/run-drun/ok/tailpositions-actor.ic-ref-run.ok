@@ -1,0 +1,13 @@
+→ update create_canister()
+← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← completed: ()
+→ query test_loop1()
+debug.print: Done
+← completed: ()
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+debug.print: preupgrade
+debug.print: Done
+debug.print: postupgrade
+debug.print: done
+← completed: ()
