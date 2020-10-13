@@ -227,8 +227,6 @@ open Die
 let dw_tag_close : t =
   i (Meta TagClose)
 
-module OptionRefs = Map.Make (struct type t = int let compare = compare end)
-let dw_options = ref OptionRefs.empty
 module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_variants = ref VariantRefs.empty
 
@@ -487,6 +485,11 @@ and dw_enum vnts =
     dw_enums := EnumRefs.add selectors (snd enum) !dw_enums;
     enum
  *)
+
+and dw_option_instance key =
+  let ms, r = option_instance key in
+  concat_map i ms ^^ dw_tag_close, r
+(*
 and dw_option_instance key =
   (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
   match OptionRefs.find_opt key !dw_options with
@@ -500,9 +503,9 @@ and dw_option_instance key =
         (referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name name; Byte_size 8 (*; Artificial *)]) ^<^
          dw_payload_mem ^^
          dw_tag_close (* structure_type *)) in
-    (dw_overlay,
-     meta_tag dw_TAG_member_In_variant
-       (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 4]))  in
+      (dw_overlay,
+       meta_tag dw_TAG_member_In_variant
+         (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 4])) in
     (* make sure all prerequisite types are around *)
     let overlays = [prereq "FIXME:none";prereq "FIXME:some"] in
     let prereqs = effects (concat_map fst overlays) in
@@ -523,7 +526,7 @@ and dw_option_instance key =
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
     option
-
+ *)
 and dw_variant vnts =
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ, dw_type_ref typ) vnts in
   (* make sure all prerequisite types are around *)

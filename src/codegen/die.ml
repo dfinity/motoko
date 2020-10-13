@@ -110,15 +110,18 @@ open Wasm_exts.Ast
 let unreferencable_tag tag attrs =
   Tag (None, tag, attrs)
 
-let with_referencable_meta_tag' f tag attrs : instr' * int =
+
+
+let with_referencable_tag f tag attrs : die * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
   f refslot;
-  Meta (Tag (Some refslot, tag, attrs)),
+  Tag (Some refslot, tag, attrs),
   refslot
 
+(* FIXME: misnomer, just one tag returned, as a list *)
 let with_referencable_meta_tags f tag attrs : instr' list * int =
-  let m, r = with_referencable_meta_tag' f tag attrs in
-  [m], r
+  let t, r = with_referencable_tag f tag attrs in
+  [Meta t], r
 
 let obvious_prim_of_con c ty : Type.prim option =
   match Type.normalize ty with
@@ -140,6 +143,8 @@ module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
 module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
 let dw_enums = ref EnumRefs.empty
+module OptionRefs = Map.Make (struct type t = int let compare = compare end)
+let dw_options = ref OptionRefs.empty
 module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_objects = ref ObjectRefs.empty
 module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
@@ -166,10 +171,10 @@ let rec type_ref : Type.typ -> instr' list * int =
     | Some p -> type_ref (Type.Prim p)
     | None -> typedef_ref c ty
     end
-(*  | Type.Opt inner ->
-    let prereq, selector = dw_type_ref inner in
-    (* make sure all prerequisite types are around *)
-    effects prereq ^^< dw_option_instance selector *)
+  | Type.Opt inner ->
+    let prereq, selector = type_ref inner in
+    let opt, r = option_instance selector in
+    prereq @ opt, r
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); type_ref Type.Any (* FIXME assert false *)
 
 and typedef_ref c ty : instr' list * int =
@@ -180,10 +185,10 @@ and typedef_ref c ty : instr' list * int =
     (* See Note [placeholder promises for typedefs] *)
     let p = Lib.Promise.make () in
     let name = match Arrange_type.con c with | Wasm.Sexpr.Atom n -> n | _ -> assert false in
-    let m, typedef_ref = with_referencable_meta_tag' add dw_TAG_typedef (dw_attrs [Name name; TypePromise p]) in
+    let typedef_tag, typedef_ref = with_referencable_tag add dw_TAG_typedef (dw_attrs [Name name; TypePromise p]) in
     let ms, reference = type_ref (Type.normalize ty) in
     Lib.Promise.fulfill p reference;
-    m :: ms, typedef_ref
+    Meta typedef_tag :: ms, typedef_ref
 and prim_type_ref (prim : Type.prim) : instr' list * int =
   match PrimRefs.find_opt prim !dw_prims with
   | Some r -> [], r
@@ -236,6 +241,51 @@ and enum vnts : instr' list * int =
 
 
 
+
+and autoclose_referencable_meta_tag tag attrs =
+  let ms, r = with_referencable_meta_tags ignore tag attrs in
+  ms @ [Meta TagClose], r
+and referencable_tag = with_referencable_tag ignore
+and autoclose_unreferencable_tag tag attrs = Grouped [TagClose; unreferencable_tag tag attrs]
+
+and option_instance key : instr' list * int =
+  (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
+  let open Wasm_exts.Abbreviation in
+  match OptionRefs.find_opt key !dw_options with
+  | Some r -> [], r
+  | None ->
+    let add r = dw_options := OptionRefs.add key r !dw_options in
+    let prereq name(*WAT?*) : instr' list * die =
+      let overlay_ms, ref_overlay =
+        autoclose_referencable_meta_tag dw_TAG_structure_type
+          (unreferencable_tag dw_TAG_member_In_variant
+             (dw_attrs [Name "?"; TypeRef key; DataMemberLocation 4]) ::
+           dw_attrs [Name name; Byte_size 8 (*; Artificial *)]) in
+      overlay_ms,
+      unreferencable_tag dw_TAG_member_In_variant
+        (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 4]) in
+    (* make sure all prerequisite types are around *)
+    let overlays = List.map prereq ["FIXME:none"; "FIXME:some"] in
+    (* struct_type, assumes location points at heap tag -- NO! FIXME *)
+    let discr_tag, discr_ref = referencable_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
+     let summand ((name, discr), member) : die =
+       autoclose_unreferencable_tag dw_TAG_variant_Named
+         (member :: dw_attrs [Name name; Discr_value discr]) in
+     let internal_struct, struct_ref =
+       with_referencable_meta_tags add dw_TAG_structure_type
+         (discr_tag ::
+          autoclose_unreferencable_tag dw_TAG_variant_part
+            (dw_attr' (Discr discr_ref) ::
+             List.map summand (List.map2 (fun nd (_, mem) -> nd, mem) ["FIXME:none", 0x0; "FIXME:some", 0x8] overlays)) ::
+          dw_attrs [Name "OPTION"; Byte_size 8]) in
+    Lib.List.concat_map fst overlays @ internal_struct,
+    struct_ref
+
+
+
+
+
+
 and object_ fs =
   let open List in
   let open Wasm_exts.Abbreviation in
@@ -256,9 +306,6 @@ and object_ fs =
       with_referencable_meta_tags add dw_TAG_structure_type
           (dw_attrs [Name "@obj"; Byte_size (4 * length selectors)] @ map field selectors) in
     prereqs @ ms, r
-
-
-
 and tuple ts : instr' list * int =
   let open List in
   let open Wasm_exts.Abbreviation in
