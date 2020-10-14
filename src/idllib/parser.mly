@@ -177,12 +177,19 @@ id_opt :
   | (* empty *) { }
   | id { }
 
+actor_class_typ :
+  | args=param_typs ARROW tys=actor_typ
+    { ClassT (args, ServT tys @@ at $loc(tys)) @@ at $sloc }
+  | args=param_typs ARROW x=id
+    { ClassT (args, VarT x @@ x.at) @@ at $sloc }
+
 actor :
   | (* empty *) { None }
   | SERVICE id_opt COLON tys=actor_typ
     { Some (ServT tys @@ at $loc(tys)) }
   | SERVICE id_opt COLON x=id
     { Some (VarT x @@ x.at) }
+  | SERVICE id_opt COLON t=actor_class_typ { Some t }
 
 (* Programs *)
 

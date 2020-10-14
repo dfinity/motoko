@@ -392,7 +392,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
-    | LibPath fp -> k (find fp env.libs)
+    | LibPath fp ->
+      k (find fp env.libs)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -932,12 +933,33 @@ let interpret_prog flags scope p : (V.value * scope) option =
 
 (* Libraries *)
 
+(* Import a module unchanged, and a class constructor as an asynchronous function.
+   The conversion will be unnecessary once we declare classes as asynchronous. *)
+let import_lib env lib =
+  let (_, cub) = lib.it in
+  match cub.it with
+  | Syntax.ModuleU _ ->
+    fun v -> v
+  | Syntax.ActorClassU (_sp, id, _p, _typ, _self_id, _fields) ->
+    fun v ->
+    let call_conv, f = V.as_func v in
+    let async_f = V.local_func call_conv.Call_conv.n_args 1
+      (fun c v k -> async env lib.at (fun k' _r -> f c v k') k)
+    in
+      V.Obj(V.Env.singleton id.it async_f)
+  | _ -> assert false
+
+
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
+  let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_exp env lib.it (fun v -> vo := Some v)
+    let import = import_lib env lib in
+    let (imp_decs, decs) = Syntax.decs_of_comp_unit lib in
+    interpret_block env (imp_decs @ decs) (Some ve) (fun v ->
+      vo := Some (import v))
   );
   Scheduler.run ();
   lib_scope lib.note (Option.get !vo) scope

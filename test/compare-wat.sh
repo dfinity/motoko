@@ -29,7 +29,6 @@ function build_ref_to {
   then
     echo "Building $2 moc from working copy.."
     chronic nix-build -E '((import ./..) {}).moc' \
-      --option binary-caches '' \
       -o $2-moc/
   else
     echo "Building $2 moc (rev $1).."
@@ -43,7 +42,6 @@ function build_ref_to {
       let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev;}).outPath; in
       builtins.trace checkout (
       ((import checkout) {}).moc)' \
-      --option binary-caches '' \
       -o $2-moc/
   fi
   test -x $2-moc/bin/moc || exit 1

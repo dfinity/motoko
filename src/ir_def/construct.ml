@@ -1,3 +1,4 @@
+
 (* WIP translation of syntaxops to use IR in place of Source *)
 open Source
 open Ir
@@ -41,6 +42,12 @@ let fresh_var name_base typ : var =
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
 
+(* type arguments *)
+
+let typ_arg c sort typ =
+  { it = { Ir.con = c; Ir.sort = sort; Ir.bound = typ };
+    at = no_region;
+    note = () }
 
 (* Patterns *)
 
@@ -83,8 +90,10 @@ let primE prim es =
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
     | IcUrlOfBlob -> T.text
+    | ActorOfIdBlob t -> t
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
+    | SerializePrim _ -> T.blob
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -100,11 +109,6 @@ let selfRefE typ =
     note = Note.{ def with typ }
   }
 
-let asyncE typ1 typ2 e =
-  { it = PrimE (CPSAsync typ1, [e]);
-    at = no_region;
-    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
-  }
 
 let assertE e =
   { it = PrimE (AssertPrim, [e]);
@@ -112,7 +116,26 @@ let assertE e =
     note = Note.{ def with typ = T.unit; eff = eff e}
   }
 
-let awaitE typ e1 e2 =
+
+let asyncE typ_bind e typ1 =
+  { it = AsyncE (typ_bind, e, typ1);
+    at = no_region;
+    note = Note.{ def with typ = T.Async (typ1, typ e); eff = T.Triv }
+  }
+
+let awaitE e =
+  { it = PrimE (AwaitPrim, [e]);
+    at = no_region;
+    note = Note.{ def with typ = snd (T.as_async (T.normalize (typ e))) ; eff = T.Await }
+  }
+
+let cps_asyncE typ1 typ2 e =
+  { it = PrimE (CPSAsync typ1, [e]);
+    at = no_region;
+    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
+  }
+
+let cps_awaitE typ e1 e2 =
   { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = max_eff (eff e1) (eff e2) }
@@ -215,6 +238,22 @@ let nullE () =
     note = Note.{ def with typ = T.Prim T.Null }
   }
 
+
+(* Functions *)
+
+let funcE name sort ctrl typ_binds args typs exp =
+  let cs = List.map (function { it = {con;_ }; _ } -> con) typ_binds in
+  let tbs = List.map (function { it = { sort; bound; con}; _ } ->
+    {T.var = Con.name con; T.sort; T.bound = T.close cs bound})
+    typ_binds
+  in
+  let ts1 = List.map (function arg -> T.close cs arg.note) args in
+  let ts2 = List.map (T.close cs) typs in
+  let typ = T.Func(sort, ctrl, tbs, ts1, ts2) in
+  { it = FuncE(name, sort, ctrl, typ_binds, args, typs, exp);
+    at = no_region;
+    note = Note.{ def with typ; eff = T.Triv };
+  }
 
 let callE exp1 ts exp2 =
   match T.promote (typ exp1) with
@@ -401,11 +440,13 @@ let ignoreE exp =
 
 
 (* Mono-morphic function expression *)
+
 let arg_of_var (id, typ) =
   { it = id; at = no_region; note = typ }
-let var_of_arg { it = id; note = typ; _} = (id, typ) 
 
-let funcE name typ x exp =
+let var_of_arg { it = id; note = typ; _} = (id, typ)
+
+let unary_funcE name typ x exp =
   let sort, control, arg_tys, ret_tys = match typ with
     | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
@@ -452,7 +493,7 @@ let nary_funcE name typ xs exp =
 
 (* Mono-morphic function declaration, sharing inferred from f's type *)
 let funcD ((id, typ) as f) x exp =
-  letD f (funcE id typ x exp)
+  letD f (unary_funcE id typ x exp)
 
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD ((id, typ) as f) xs exp =
@@ -482,7 +523,7 @@ let seqE es =
 (* local lambda *)
 let (-->) x exp =
   let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
-  funcE "$lambda" fun_ty x exp
+  unary_funcE "$lambda" fun_ty x exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =

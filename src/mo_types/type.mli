@@ -74,11 +74,13 @@ val is_shared_sort : 'a shared -> bool
 val unit : typ
 val bool : typ
 val nat : typ
+val nat64 : typ
 val int : typ
 val text : typ
 val blob : typ
 val error : typ
 val char : typ
+val principal : typ
 
 val throwErrorCodes : field list
 val catchErrorCodes : field list
@@ -98,6 +100,7 @@ val prim : string -> prim
 val is_non : typ -> bool
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
+val is_module : typ -> bool
 val is_immutable_obj : typ -> bool
 val is_variant : typ -> bool
 val is_array : typ -> bool

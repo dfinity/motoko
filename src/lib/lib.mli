@@ -204,9 +204,8 @@ sig
 
 
   (**
-   * Opens file, and if successful checks whether there
-   * were any mismatches in filename case, returning
-   * a warning.
+   * Opens a file, and if successful checks whether there were any mismatches
+   * in filename case (in case-insensitive file systems), returning a warning.
    *
    * Examples:
    *
