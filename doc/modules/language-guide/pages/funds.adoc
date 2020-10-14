@@ -1,4 +1,4 @@
-= Managing Funds
+= Managing funds
 :proglang: Motoko
 :company-id: DFINITY
 
