@@ -119,6 +119,22 @@ shared {caller = owner} actor class PiggyBank(
 }
 ```
 
+Linear Funds Api:
+
+```
+type Funds // abstract finite map from unit to Nat.
+available :  () -> own funds
+getAmount: (own funds, unit) -> (own funds, Nat)
+split : own funds * unit * Nat -> {
+          #ok : (own funds, own funds;
+		  #err : own funds };
+accept : own funds -> ()
+reject : own funds -> ();
+emtpy : () -> own funds;
+swap : (var own funds, var own funds) -> ();
+```
+
+Linear Piggy Bank
 ```
 import Prim "mo:prim";
 import Funds "mo:base/ExperimentalFunds";
@@ -128,29 +144,38 @@ shared {caller = owner} actor class PiggyBank(
   capacity: Nat,
   benefit : shared () -> async ()) {
 
-  var savings := own funds();
+  var savings := own Funds.empty();
 
   public shared {caller} func getSavings() : async Nat {
     assert (caller == owner);
-    return savings;
+	let funds = swap(own Funds.empty(), savings);
+	let (amount, saving) = Funds.amount(savings,funds)(unit);
+    swap(funds, savings);
+	discard funds;
+	return savings;
   };
 
-  public func deposit() : async () {
-    let amount = Funds.available(unit);
+  public func deposit(funds : Funds.Funds) : async () {
+    let (amount, funds1) = Funds.amount(funds, unit);
     let limit = capacity - savings;
     let acceptable =
       if (amount <= limit) amount
       else limit;
-    Funds.accept(unit, acceptable);
-    savings += acceptable;
-  };
+    switch (Funds.split(funds1, #cyle, acceptable)) {
+	  case #ok (funds2, cycleFunds) {
+        savings += acceptable;
+        Funds.accept(cycleFunds);
+        Funds.refund(funds2);
+      };
+	  case #err funds2 { funds.refund(funds2); }
+    };
 
   public shared {caller} func withdraw(amount : Nat)
     : async () {
     assert (caller == owner);
     assert (amount <= savings);
     Funds.add(unit, amount);
-    await benefit();
+    await benefit(funds);
     let refund = Funds.refunded(unit);
     savings -= amount - refund;
   };
