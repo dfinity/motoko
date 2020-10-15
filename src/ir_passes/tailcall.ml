@@ -127,7 +127,9 @@ and exp' env e  : exp' = match e.it with
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
     SelfCallE (ts, exp1', exp2', exp3')
-  | ActorE (ds, fs, u, t)  -> ActorE (ds, fs, u, t) (* TODO(1358): descent into ds  *)
+  | ActorE (ds, fs, u, t) ->
+    let u = { u with pre = exp env u.pre; post = exp env u.post } in
+    ActorE (snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 
@@ -255,7 +257,9 @@ and block env ds exp =
 and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
-  | ActorU (as_opt, ds, fs, u, t)  -> ActorU (as_opt, ds, fs, u, t) (* TODO(1358): descent into ds  *)
+  | ActorU (as_opt, ds, fs, u, t)  ->
+    let u = { u with pre = exp env u.pre; post = exp env u.post } in
+    ActorU (as_opt, snd (decs env ds), fs, u, t)
 
 and prog (cu, flavor) =
   let env = { tail_pos = false; info = None } in
@@ -263,4 +267,4 @@ and prog (cu, flavor) =
 
 (* validation *)
 
-let transform p = prog p
+let transform = prog
