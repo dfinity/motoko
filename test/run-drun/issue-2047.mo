@@ -1,8 +1,9 @@
 actor a {
-let fooArr = [];
-public func run() {
-  for (f in fooArr.vals()) {
-    await f();
+  let fooArr /* : [None] */  = [];
+  ignore (fooArr : [Any]);
+  public func run() {
+    for (f in fooArr.vals()) {
+      await f();
+    };
   };
-};
 };
