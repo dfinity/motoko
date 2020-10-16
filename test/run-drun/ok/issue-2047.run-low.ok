@@ -1,0 +1,7 @@
+Fatal error: exception (Failure
+   "Impossible: \
+  \n func: (PrimE (CallPrim) (VarE $f/0) (PrimE TupPrim))\
+  \n \
+  \n : None arg: \
+  \n (PrimE TupPrim (VarE $loop/0) (VarE $r/2))\
+  \n")
