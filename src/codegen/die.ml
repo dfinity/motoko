@@ -315,7 +315,7 @@ and variant vnts =
       overlay_ms @ [Meta overlay_die],
       unreferencable_tag dw_TAG_member_In_variant
         (dw_attrs [Name name; TypeRef overlay_ref; DataMemberLocation 8]) in
-    (* make sure all artificial prerequisite types are around *)
+    (* make sure all artificial overlay types are around *)
     let overlays = List.map prereq selectors in
     let discr_tag, discr_ref =
       referencable_tag dw_TAG_member_Variant_mark
