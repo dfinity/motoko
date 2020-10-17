@@ -227,11 +227,7 @@ open Die
 let dw_tag_close : t =
   i (Meta TagClose)
 
-module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
-let dw_variants = ref VariantRefs.empty
-
 let pointer_key = ref None
-
 
 (* Note [locations for types]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -528,6 +524,11 @@ and dw_option_instance key =
     option
  *)
 and dw_variant vnts =
+  let ms, r = variant vnts in
+  concat_map i ms ^^ dw_tag_close, r
+
+(*
+and dw_variant vnts =
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ, dw_type_ref typ) vnts in
   (* make sure all prerequisite types are around *)
   let prereqs0 = effects (concat_map (fun (_, _, (dw, _)) -> dw) selectors) in
@@ -549,9 +550,9 @@ and dw_variant vnts =
         (referencable_meta_tag dw_TAG_structure_type (dw_attrs [Name name; Byte_size 12 (*; Artificial *)]) ^<^
          dw_payload_mem ^^
          dw_tag_close (* structure_type *)) in
-    (dw_overlay,
-     meta_tag dw_TAG_member_In_variant
-       (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 8]))  in
+      (dw_overlay,
+       meta_tag dw_TAG_member_In_variant
+         (dw_attrs [Name name; TypeRef ref_overlay; DataMemberLocation 8])) in
     (* make sure all artificial prerequisite types are around *)
     let overlays = List.map prereq selectors in
     let prereqs = effects (concat_map fst overlays) in
@@ -574,6 +575,7 @@ and dw_variant vnts =
          dw_tag_close (* variant_part *) ^^
          dw_tag_close (* struct_type *)) in
     variant
+    *)
 and dw_object fs =
   let ms, r = object_ fs in
   concat_map i ms ^^ dw_tag_close, r

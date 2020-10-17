@@ -145,6 +145,8 @@ module EnumRefs = Map.Make (struct type t = string list let compare = compare en
 let dw_enums = ref EnumRefs.empty
 module OptionRefs = Map.Make (struct type t = int let compare = compare end)
 let dw_options = ref OptionRefs.empty
+module VariantRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
+let dw_variants = ref VariantRefs.empty
 module ObjectRefs = Map.Make (struct type t = (string * int) list let compare = compare end)
 let dw_objects = ref ObjectRefs.empty
 module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
@@ -163,7 +165,7 @@ let rec type_ref : Type.typ -> instr' list * int =
     end
   | Type.Prim pr -> prim_type_ref pr
   | Type.Variant vs when is_enum vs -> enum vs
-(*  | Type.Variant vs -> variant vs *)
+  | Type.Variant vs -> variant vs
   | Type.(Obj (Object, fs)) -> object_ fs
   | Type.(Tup cs) -> tuple cs
   | Type.Con (c, _) as ty ->
@@ -247,6 +249,9 @@ and autoclose_referencable_meta_tag tag attrs =
   ms @ [Meta TagClose], r
 and referencable_tag = with_referencable_tag ignore
 and autoclose_unreferencable_tag tag attrs = Grouped [TagClose; unreferencable_tag tag attrs]
+and autoclose_referencable_tag tag attrs =
+  let t, r = referencable_tag tag attrs in
+  Grouped [TagClose; t], r
 
 and option_instance key : instr' list * int =
   (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
@@ -267,22 +272,70 @@ and option_instance key : instr' list * int =
     (* make sure all prerequisite types are around *)
     let overlays = List.map prereq ["FIXME:none"; "FIXME:some"] in
     (* struct_type, assumes location points at heap tag -- NO! FIXME *)
-    let discr_tag, discr_ref = referencable_tag dw_TAG_member_Variant_mark (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
-     let summand ((name, discr), member) : die =
-       autoclose_unreferencable_tag dw_TAG_variant_Named
-         (member :: dw_attrs [Name name; Discr_value discr]) in
-     let internal_struct, struct_ref =
-       with_referencable_meta_tags add dw_TAG_structure_type
-         (discr_tag ::
-          autoclose_unreferencable_tag dw_TAG_variant_part
-            (dw_attr' (Discr discr_ref) ::
-             List.map summand (List.map2 (fun nd (_, mem) -> nd, mem) ["FIXME:none", 0x0; "FIXME:some", 0x8] overlays)) ::
-          dw_attrs [Name "OPTION"; Byte_size 8]) in
+    let discr_tag, discr_ref =
+      referencable_tag dw_TAG_member_Variant_mark
+        (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 0]) in
+    let summand ((name, discr), member) : die =
+      autoclose_unreferencable_tag dw_TAG_variant_Named
+        (member :: dw_attrs [Name name; Discr_value discr]) in
+    let internal_struct, struct_ref =
+      with_referencable_meta_tags add dw_TAG_structure_type
+        (discr_tag ::
+         autoclose_unreferencable_tag dw_TAG_variant_part
+           (dw_attr' (Discr discr_ref) ::
+            List.map summand (List.map2 (fun nd (_, mem) -> nd, mem) ["FIXME:none", 0x0; "FIXME:some", 0x8] overlays)) ::
+         dw_attrs [Name "OPTION"; Byte_size 8]) in
     Lib.List.concat_map fst overlays @ internal_struct,
     struct_ref
 
 
-
+and variant vnts =
+  let open Wasm_exts.Abbreviation in
+  let selectors = List.map (fun Type.{lab; typ} -> lab, typ, type_ref typ) vnts in
+  (* make sure all prerequisite types are around *)
+  let prereqs = Lib.List.concat_map (fun (_, _, (dw, _)) -> dw) selectors in
+  let key = List.map (fun (name, _, (_, reference)) -> name, reference) selectors in
+  match VariantRefs.find_opt key !dw_variants with
+  | Some r -> prereqs, r
+  | None ->
+    let add r = dw_variants := VariantRefs.add key r !dw_variants in
+    let prereq (name, typ, _) : instr' list * die =
+      let (payload_pre, payload_mem) : instr' list * die list =
+        match typ with
+        | Type.Tup [] -> [], []
+        | _ ->
+          let ms, r = type_ref typ in
+          ms,
+          [unreferencable_tag dw_TAG_member_In_variant
+             (dw_attrs [Name ("#" ^ name); TypeRef r; DataMemberLocation 8])] in
+      let overlay_ms, (overlay_die, overlay_ref) =
+        payload_pre,
+        autoclose_referencable_tag dw_TAG_structure_type
+          (dw_attrs [Name name; Byte_size 12 (*; Artificial *)] @ payload_mem) in
+      overlay_ms @ [Meta overlay_die],
+      unreferencable_tag dw_TAG_member_In_variant
+        (dw_attrs [Name name; TypeRef overlay_ref; DataMemberLocation 8]) in
+    (* make sure all artificial prerequisite types are around *)
+    let overlays = List.map prereq selectors in
+    let discr_tag, discr_ref =
+      referencable_tag dw_TAG_member_Variant_mark
+        (dw_attrs [Artificial true; Byte_size 4; DataMemberLocation 4]) in
+    (* struct_type, assumes location points at heap tag *)
+    let summand (name, member) : die =
+      let hash = Int32.to_int (Mo_types.Hash.hash name) in
+      autoclose_unreferencable_tag dw_TAG_variant_Named
+        (member :: dw_attrs [Name name; Discr_value hash]) in
+    let internal_struct, struct_ref =
+      with_referencable_meta_tags add dw_TAG_structure_type
+        (autoclose_unreferencable_tag dw_TAG_member_Tag_mark
+           (dw_attrs [Artificial true; Byte_size 4]) ::
+        discr_tag ::
+        (autoclose_unreferencable_tag
+           dw_TAG_variant_part (
+             List.map summand (List.map2 (fun (name, _, _) (_, mem) -> name, mem) selectors overlays) @
+             dw_attrs [Discr discr_ref])) ::
+        dw_attrs [Name "VARIANT"; Byte_size 8]) in
+    prereqs @ Lib.List.concat_map fst overlays @ internal_struct, struct_ref
 
 
 
