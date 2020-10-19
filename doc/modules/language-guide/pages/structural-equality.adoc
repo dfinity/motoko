@@ -20,6 +20,8 @@ Importantly, this does _not_ compare by reference, but by value.
 == Subtyping
 
 Equality respects subtyping so `+{ x = 10 } == { x = 10; y = 20 }+` returns `true`.
+
+To accommodate subtyping, two values of different types are equal if they are equal at their most specific, common supertype, i.e. they agree on their common structure.
 The compiler will warn in cases where this might lead to subtle unwanted behaviour.
 For example: `{ x = 10 } == { y = 20 }` will return `true` because the two values get compared at the empty record type.
 That's unlikely the intention, so the compiler will emit a warning here.
