@@ -1,6 +1,10 @@
 = Structural equality
 
-Equality—and by extension inequality—is structural, meaning that it is defined only on `+shared+` types or on types that don't contain mutable fields, mutable arrays, non-shared functions, or components of generic type.
+Equality (`+_ == _+`) —and by extension inequality (`+_ != _+`)— is *structural*: two values `+a+` and `+b+` are equal, `+a == b+`, whenever they have equal contents, regardless of the physical representation, or identity,  of those values in memory. 
+
+For example, the strings `+"hello world"+`  and `+"hello " #  "world"+` are equal, even though they are most likely  represented by different objects in memory.
+
+Equality is defined only on `+shared+` types or on types that don't contain mutable fields, mutable arrays, non-shared functions, or components of generic type.
 
 For example, we can compare arrays of objects.
 
@@ -88,4 +92,3 @@ func contains<A>(eqA : (A, A) -> Bool, element : A, list : List.List<A>) : Bool 
 
 assert(not contains(Nat.equal, 1, ?(0, null)));
 ....
-
