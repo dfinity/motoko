@@ -1,9 +1,9 @@
 [[#actor_classes]]
 == Actor Classes
 
-The ability to define and import actor classes allows one to create networks of actor programmatically.
+The ability to define and import actor classes allows one to create networks of actors programmatically.
 
-As an example, we show how to implemented a distributed map from a space of keys, here  `+Nat+`, to values, here `+Text+`.
+As a toy example, we show how to implemented a distributed map from a space of keys, here  `+Nat+`, to values, here `+Text+`.
 
 Our map supports simple, functional insert and lookup operations.
 
