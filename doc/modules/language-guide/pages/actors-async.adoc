@@ -75,6 +75,7 @@ NOTE: For now, the {proglang} compiler gives an error for calls that
 do not follow this second form, which is currently required to ensure
 that certain program resources will always be reclaimed.
 
+[[#actor_classes]]
 == Actor classes generalize an actor's initial state
 
 An actor class defines a constructor function that produces objects of a predetermined type, with a predetermined interface and behavior.
@@ -100,6 +101,10 @@ actor class CounterInit(init: Nat) {
 }
 ....
 
+////
+TODO make the following asynchronous
+////
+
 To use this class, we can create several actors with different initial values:
 
 ....
@@ -112,8 +117,11 @@ The first invocation uses the initial value `1`, where the second uses initial v
 Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
 
 NOTE: For now, the {proglang} compiler gives an error when compiling
-programs that do not consist of a single actor.
+programs that do not consist of a single actor or actor class.
+Compiled programs may still, however, reference ``import``ed actor classes
+(see <<modules-and-imports.adoc#importing_actor_classes>> and <<actor-classes.adoc#actor_classes>>).
 The interpreter accommodates the examples above.
+
 
 == Stable and flexible variables
 
@@ -147,17 +155,17 @@ actor {
 
 === Typing
 
-Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
+Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state:
 
-* A `+stable+` declaration must have a _stable_ type. 
+* A `+stable+` declaration must have a _stable_ type.
 * Stable types are a superset of _shared_ types.
 * Stable types allow objects or arrays with mutable components.
 
-The key point to note is that stable types extend shared types to include **mutable arrays and fields**. 
-Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
+The key point to note is that stable types extend shared types to include **mutable arrays and fields**.
+Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects).
 This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
 
-NOTE: In general, object types are not stable because they can contain local functions. 
+NOTE: In general, object types are not stable because they can contain local functions.
 However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
 Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
 
@@ -166,3 +174,8 @@ Actors and shared functions are also stable, allowing you to preserve their valu
 When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
 When deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
+
+
+////
+TODO: describe pre and post upgrade hooks
+////

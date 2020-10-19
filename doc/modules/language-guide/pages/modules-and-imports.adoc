@@ -43,11 +43,12 @@ Because these lines import modules from the local project instead of the {progla
 In this example, both the `+types.mo+` and `+utils.mo+` files are in the same directory as the `+main.mo+` file.
 Once again, import does not use the +`.mo+` file suffix.
 
+
 == Importing from another package or directory
 
 You can also import modules from other packages or from directories other than the local directory.
 
-For example, the following lines import modules from a `+redraw+` package that is defined as a dependency: 
+For example, the following lines import modules from a `+redraw+` package that is defined as a dependency:
 
 [source,bash]
 ----
@@ -58,6 +59,36 @@ import Mono5x5 "mo:redraw/glyph/Mono5x5";
 You can define dependencies for a project using the Vessel package manager or in the project `+dfx.json+` configuration file.
 
 In this example, the `+Render+` module is in the default location for source code in the `+redraw+` package and the `+Mono5x5+` module is in a `+redraw+` package subdirectory called `+glyph+`.
+
+[[#importing_actor_classes]]
+== Importing actor classes
+
+While module imports are typically used to import libraries of local functions and values, they can also be used to import actor classes.
+When an imported file consists of a named actor class, the client of the imported field sees a module containing the actor class.
+
+This module has two components, both named after the actor class:
+
+* a type definition, describing the interface of the clasee
+* an asynchronous function, that takes the class parameters as arguments an asynchronously returns an fresh instance of the class.
+
+For example, a motoko actor can import and instantiate the `CounterInit` class (from Section _link:actors-async.adoc#actor_classes[Acptor classes]_) as follows:
+
+....
+import CI "CounterInit";
+
+actor CountToTen {
+  public func CountToTen() : async () {
+    let c : CI.CounterInit = await CI.CounterInit(1);
+    while ((await c.get_current()) < 10) {
+      await c.increment();
+    };
+  }
+}
+....
+
+The call to `+CounterInit(1)+` installs a fresh counter on the network. Installation is asychronous, so the caller must `await` the result.
+
+The type annotation  `+: CI.CounterInit+` is redundant here. It's included only to illustrate that the type of the class is available when required.
 
 == Importing from another canister
 

@@ -1,0 +1,112 @@
+[[#actor_classes]]
+== Actor Classes
+
+The ability to define and import actor classes allows one to create networks of actor programmatically.
+
+As an example, we show how to implemented a distributed map from a space of keys, here  `+Nat+`, to values, here `+Text+`.
+
+Our map supports simple, functional insert and lookup operations.
+
+The space of keys is partioned into `n` subspaces, with a separate actor dedicated to storing text values assigned to keys in subspace `i` (`i` in `0..n-1`).
+The subspace of a key is determined by its integral remainder modulo division by `n`.
+
+The actor responsible for space `i` is obtained as an instance of the actor class `Node(i)`, defined (in file `Node.mo`) as follows:
+
+```
+actor class Node(i : Nat) {
+
+  type Key = Nat;
+  type Value = Text;
+
+  var map = func (k: Nat) : ?Value { return null };
+
+  public func lookup(k : Key) : async ? Value {
+    return map(k);
+  };
+
+  public func insert(k : Key, v : Value) : async () {
+    let map0 = map;
+    map := func(k1 : Nat) : ?Value { if (k1 == k) ?v else map0(k1); };
+  };
+
+};
+```
+
+A node stores the current mapping of keys to values in a (mutable) map function that initially maps all keys to `null`.
+
+On `lookup(k)`, the map actor simply returns any value stored at `map(v)`.
+
+On `insert(k,v)` the map actor updates the current map function to a new function that maps `k` to `? v` and all other keys to their previous mapping.
+
+Although this code makes no use of the class parameter `i`, it could be employed for logging, or (given `n`) asserting that keys are in an appropriate subspace (e.g. `assert ((k % n) == i)`).
+
+Clients of the map communicate with a coordinating `Map` actor:
+
+```
+import Array "mo:base/Array";
+import Lib "Node";
+
+actor Map {
+
+  type Key = Nat;
+  type Value = Text;
+
+  let n = 8; // number of nodes
+
+  type Node = Lib.Node;
+
+  let nodes : [var ?Node] = Array.init(n, null);
+
+  public func lookup(k : Key) : async ?Value {
+    switch (nodes[k % n]) {
+      case null null;
+      case (?node) await node.lookup(k);
+    };
+  };
+
+  public func insert(k : Key, v : Value) : async () {
+    let i = k % n;
+    let node = switch (nodes[i]) {
+      case null {
+        let n = await Lib.Node(i); // dynamically install a new Node
+        nodes[i] := ?n;
+        n;
+      };
+      case (?node) node;
+    };
+    await node.insert(k, v);
+  };
+
+};
+```
+
+The `Map` code imports the `Node` actor class as module `Lib`.
+
+The `Map` actor maintains an array of  `n` allocated nodes (here `n = 8`).
+
+On `lookup(k,v)`, the map actor examines the key, `k`, divides it by
+`n` and takes the remainder, `i`, to determine which of the `n` nodes
+is responsible for storing the result.  If no such node yet exists, it
+returns `null`, otherwise it delegates to that node to return any value
+associated with `k`.
+
+On `insert(k,v)`, the map actor again uses the remainder of `k`
+divided `n`, to determine the index `i` of the node responsible for
+storing the result.
+If no such node exists, it first installs one
+using an asynchronous call to `Lib.Node(i)` and records in the array
+`nodes`.  It then delegates the insertion to the node in `nodes[i]`.
+
+While our example fixes the number of nodes to `8`, we can easily
+generalize the example by making the `Map` actor and actor class:
+
+```
+actor class Map(n : Nat) {
+  ...
+
+}
+
+```
+
+Clients of the `Map` class are now free to determine the (maximum) number of nodes in the network.
+
