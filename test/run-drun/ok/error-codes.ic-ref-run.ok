@@ -4,6 +4,5 @@
 ← completed: ()
 → update go()
 debug.print: canister_reject:ball
-Trap: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
 debug.print: canister_error:canister trapped: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
 ← completed: ()
