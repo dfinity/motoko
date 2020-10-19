@@ -369,32 +369,33 @@ and with_referencable_meta_tag f tag attrs : t * int =
   i (Meta (Tag (Some refslot, tag, attrs))),
   refslot
  *)
+and metas = concat_map (fun  die -> i (Meta die))
 and dw_typedef_ref c ty =
-  let ms, r = typedef_ref c ty in
-  concat_map i ms, r
+  let ds, r = typedef_ref c ty in
+  metas ds, r
 and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref ty =
-  let ms, r = type_ref ty in
-  concat_map i ms, r
+  let ds, r = type_ref ty in
+  metas ds, r
 and dw_prim_type prim = fst (dw_prim_type_ref prim)
 and dw_prim_type_ref (prim : Type.prim) =
-  let ms, r = prim_type_ref prim in
-  concat_map i ms, r
+  let ds, r = prim_type_ref prim in
+  metas ds, r
 and dw_enum vnts =
-  let ms, r = enum vnts in
-  concat_map i ms ^^ dw_tag_close, r
+  let ds, r = enum vnts in
+  metas ds ^^ dw_tag_close, r
 and dw_option_instance key =
-  let ms, r = option_instance key in
-  concat_map i ms ^^ dw_tag_close, r
+  let ds, r = option_instance key in
+  metas ds ^^ dw_tag_close, r
 and dw_variant vnts =
-  let ms, r = variant vnts in
-  concat_map i ms ^^ dw_tag_close, r
+  let ds, r = variant vnts in
+  metas ds ^^ dw_tag_close, r
 and dw_object fs =
-  let ms, r = object_ fs in
-  concat_map i ms ^^ dw_tag_close, r
+  let ds, r = object_ fs in
+  metas ds ^^ dw_tag_close, r
 and dw_tuple ts =
-  let ms, r = tuple ts in
-  concat_map i ms ^^ dw_tag_close, r
+  let ds, r = tuple ts in
+  metas ds ^^ dw_tag_close, r
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
 let dw_tag_no_children = dw_tag_open (* self-closing *)
 

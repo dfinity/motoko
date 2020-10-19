@@ -105,8 +105,6 @@ let dw_attr at : die list = [dw_attr' at]
 
 let dw_attrs = List.map dw_attr'
 
-open Wasm_exts.Ast
-
 let unreferencable_tag tag attrs =
   Tag (None, tag, attrs)
 
@@ -119,9 +117,9 @@ let with_referencable_tag f tag attrs : die * int =
   refslot
 
 (* FIXME: misnomer, just one tag returned, as a list *)
-let with_referencable_meta_tags f tag attrs : instr' list * int =
+let with_referencable_meta_tags f tag attrs : die list * int =
   let t, r = with_referencable_tag f tag attrs in
-  [Meta t], r
+  [t], r
 
 let obvious_prim_of_con c ty : Type.prim option =
   match Type.normalize ty with
@@ -153,7 +151,7 @@ module TupleRefs = Map.Make (struct type t = int list let compare = compare end)
 let dw_tuples = ref TupleRefs.empty
 
 (* Factory for referencable type DIEs *)
-let rec type_ref : Type.typ -> instr' list * int =
+let rec type_ref : Type.typ -> die list * int =
   function
   | Type.Any ->
     begin match !any_type with
@@ -179,7 +177,7 @@ let rec type_ref : Type.typ -> instr' list * int =
     prereq @ opt, r
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); type_ref Type.Any (* FIXME assert false *)
 
-and typedef_ref c ty : instr' list * int =
+and typedef_ref c ty : die list * int =
   match TypedefRefs.find_opt c !dw_typedefs with
   | Some r -> ([], r)
   | None ->
@@ -190,8 +188,8 @@ and typedef_ref c ty : instr' list * int =
     let typedef_tag, typedef_ref = with_referencable_tag add dw_TAG_typedef (dw_attrs [Name name; TypePromise p]) in
     let ms, reference = type_ref (Type.normalize ty) in
     Lib.Promise.fulfill p reference;
-    Meta typedef_tag :: ms, typedef_ref
-and prim_type_ref (prim : Type.prim) : instr' list * int =
+    typedef_tag :: ms, typedef_ref
+and prim_type_ref (prim : Type.prim) : die list * int =
   match PrimRefs.find_opt prim !dw_prims with
   | Some r -> [], r
   | None ->
@@ -227,7 +225,7 @@ and prim_type_ref (prim : Type.prim) : instr' list * int =
 (* | _ -> assert false (* TODO *)*)
     in
     ms, r
-and enum vnts : instr' list * int =
+and enum vnts : die list * int =
   let selectors = List.map (fun Type.{lab; _} -> lab) vnts in
   match EnumRefs.find_opt selectors !dw_enums with
   | Some r -> [], r
@@ -244,23 +242,23 @@ and enum vnts : instr' list * int =
 
 
 
-and autoclose_referencable_meta_tag tag attrs =
+and autoclose_referencable_meta_tag tag attrs : die list * int =
   let ms, r = with_referencable_meta_tags ignore tag attrs in
-  ms @ [Meta TagClose], r
+  ms @ [TagClose], r
 and referencable_tag = with_referencable_tag ignore
 and autoclose_unreferencable_tag tag attrs = Grouped [TagClose; unreferencable_tag tag attrs]
 and autoclose_referencable_tag tag attrs =
   let t, r = referencable_tag tag attrs in
   Grouped [TagClose; t], r
 
-and option_instance key : instr' list * int =
+and option_instance key : die list * int =
   (* TODO: make this with DW_TAG_template_alias? ... lldb-10 is not ready yet *)
   let open Wasm_exts.Abbreviation in
   match OptionRefs.find_opt key !dw_options with
   | Some r -> [], r
   | None ->
     let add r = dw_options := OptionRefs.add key r !dw_options in
-    let prereq name(*WAT?*) : instr' list * die =
+    let prereq name(*WAT?*) : die list * die =
       let overlay_ms, ref_overlay =
         autoclose_referencable_meta_tag dw_TAG_structure_type
           (unreferencable_tag dw_TAG_member_In_variant
@@ -289,7 +287,7 @@ and option_instance key : instr' list * int =
     struct_ref
 
 
-and variant vnts =
+and variant vnts : die list * int =
   let open Wasm_exts.Abbreviation in
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ, type_ref typ) vnts in
   (* make sure all prerequisite types are around *)
@@ -299,8 +297,8 @@ and variant vnts =
   | Some r -> prereqs, r
   | None ->
     let add r = dw_variants := VariantRefs.add key r !dw_variants in
-    let prereq (name, typ, _) : instr' list * die =
-      let (payload_pre, payload_mem) : instr' list * die list =
+    let prereq (name, typ, _) : die list * die =
+      let (payload_pre, payload_mem) : die list * die list =
         match typ with
         | Type.Tup [] -> [], []
         | _ ->
@@ -312,7 +310,7 @@ and variant vnts =
         payload_pre,
         autoclose_referencable_tag dw_TAG_structure_type
           (dw_attrs [Name name; Byte_size 12 (*; Artificial *)] @ payload_mem) in
-      overlay_ms @ [Meta overlay_die],
+      overlay_ms @ [overlay_die],
       unreferencable_tag dw_TAG_member_In_variant
         (dw_attrs [Name name; TypeRef overlay_ref; DataMemberLocation 8]) in
     (* make sure all artificial overlay types are around *)
@@ -339,7 +337,7 @@ and variant vnts =
 
 
 
-and object_ fs =
+and object_ fs : die list * int =
   let open List in
   let open Wasm_exts.Abbreviation in
   let selectors = map (fun Type.{lab; typ} -> lab, type_ref typ) fs in
@@ -359,7 +357,7 @@ and object_ fs =
       with_referencable_meta_tags add dw_TAG_structure_type
           (dw_attrs [Name "@obj"; Byte_size (4 * length selectors)] @ map field selectors) in
     prereqs @ ms, r
-and tuple ts : instr' list * int =
+and tuple ts : die list * int =
   let open List in
   let open Wasm_exts.Abbreviation in
   let field_types_refs = map type_ref ts in
@@ -369,10 +367,10 @@ and tuple ts : instr' list * int =
   | Some r -> prereqs, r
   | None ->
     let add r = dw_tuples := TupleRefs.add field_refs r !dw_tuples in
-    let ms, r =
+    let ds, r =
       let field index (_, r) =
         unreferencable_tag dw_TAG_member_Word_sized_typed
           (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
       with_referencable_meta_tags add dw_TAG_structure_type
         (dw_attrs [Name "@tup"; Byte_size 4] @ mapi field field_types_refs) in
-    prereqs @ ms, r
+    prereqs @ ds, r
