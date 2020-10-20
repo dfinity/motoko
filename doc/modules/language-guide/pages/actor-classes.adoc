@@ -1,4 +1,4 @@
-[[#actor_classes]]
+[#actor_classes]
 == Actor Classes
 
 The ability to define and import actor classes allows one to create networks of actors programmatically.
