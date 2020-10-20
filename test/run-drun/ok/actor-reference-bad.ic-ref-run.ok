@@ -5,18 +5,13 @@
 → update go()
 debug.print: "bfozs-kwa73-7nadi":
 debug.print: "":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
 debug.print: "BFOZS-KWA73-7NADI":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
 debug.print: "bfozskwa737nadi":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
 debug.print: "vpgq":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
 debug.print: "5h74t-uga73-7nadi":
-Trap: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
 debug.print: canister trapped: EvalTrapError :0.1 "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
 ← completed: ()
