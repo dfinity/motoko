@@ -96,8 +96,7 @@ On `+insert(k, v)+`, the `+Map+` actor again uses the remainder of `+k+`
 divided `+n+`, to determine the index `+i+` of the node responsible for
 storing the result.
 If no such node exists, it first installs one
-using an asynchronous call to `+Lib.Node(i)+` and records in the array
-`+nodes+`.
+using an asynchronous call to the constructor, `+Lib.Node(i)+`, and, after awaitng the result, records it in the array `+nodes+`.
 It then delegates the insertion to that node by calling `+node.insert(k, v)+`.
 
 While our example fixes the number of nodes to `+8+`, we can easily
