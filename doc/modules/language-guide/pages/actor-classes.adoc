@@ -7,8 +7,9 @@ As a toy example, we show how to implemented a distributed map from a space of k
 
 Our map supports simple insert and lookup operations.
 
-To distribute our data, the space of keys is partioned into `+n+` subspaces, with a separate actor dedicated to storing text values assigned to keys in subspace `+i+` (`+i+` in ``[0..n)``).
-The subspace, `+i+`, of a key, `+k+`, is determined by its integral remainder modulo division by `n`, that is, `i = k % n`. For now, we just fix ``n = 8``.
+To distribute our data, the space of keys is partioned into `+n+` subspaces. For now, we just fix ``n = 8``.
+The subspace, `+i+`, of a key, `+k+`, is determined by the remainder of `k` divided by `n`, that is, `i = k % n`.
+The ``i``th subspace (`+i+` in ``[0..n)``)  receives a dedicated actor to store text values assigned to keys in that subspace.
 
 The actor responsible for space `+i+` is obtained as an instance of the actor class `+Node(i)+`, defined (in file ``Node.mo``) as follows:
 
@@ -83,7 +84,7 @@ actor Map {
 The `+Map+` code imports the `+Node+` actor class as module `+Lib+`.
 
 The actor maintains an array of `+n+` allocated nodes, with all
-entires initially `null`. Entries are populated with `+Node+` actors
+entries initially `null`. Entries are populated with `+Node+` actors
 on demand.
 
 On `+lookup(k, v)+`, the `Map` actor examines the key, `+k+`, divides it by
