@@ -32,7 +32,7 @@ actor class Node(i : Nat) {
 };
 ```
 
-A node stores the current mapping of keys to values in a (mutable) `+map+` varialbe containing a function that initially maps all keys to `+null+`.
+A node stores the current mapping of keys to values in a (mutable) `+map+` variable containing a function that initially assigns all keys to `+null+`.
 
 On `+lookup(k)+`, the map actor simply returns any value stored at `+map(k)+`.
 
@@ -82,20 +82,23 @@ actor Map {
 
 The `+Map+` code imports the `+Node+` actor class as module `+Lib+`.
 
-The actor maintains an array of `+n+` allocated nodes, with all entires initially `null`. Entries are populated with `+Node+` actors on demand.
+The actor maintains an array of `+n+` allocated nodes, with all
+entires initially `null`. Entries are populated with `+Node+` actors
+on demand.
 
 On `+lookup(k, v)+`, the `Map` actor examines the key, `+k+`, divides it by
 `+n+` and takes the remainder, `+i+`, to determine which of the `+n+` nodes
 is responsible for storing the result.  If no such node exists yet, it
-returns `+null+`, otherwise it delegates to that node to return any value
-associated with `+k+`.
+returns `+null+`, otherwise it delegates to that node by calling
+`+node.lookup(k, v)+`.
 
 On `+insert(k, v)+`, the `+Map+` actor again uses the remainder of `+k+`
 divided `+n+`, to determine the index `+i+` of the node responsible for
 storing the result.
 If no such node exists, it first installs one
 using an asynchronous call to `+Lib.Node(i)+` and records in the array
-`+nodes+`.  It then delegates the insertion to that node by calling `+node.insert(k, v)+`.
+`+nodes+`.
+It then delegates the insertion to that node by calling `+node.insert(k, v)+`.
 
 While our example fixes the number of nodes to `+8+`, we can easily
 generalize the example by making the `+Map+` actor an actor class, adding a parameter `+(n : Nat)+` and omitting the declaration `+let n = 8;+`:
