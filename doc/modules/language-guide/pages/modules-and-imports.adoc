@@ -52,7 +52,7 @@ You can also import modules from other packages or from directories other than t
 
 For example, the following lines import modules from a `+redraw+` package that is defined as a dependency:
 
-[source,bash]
+[source,motoko]
 ----
 import Render "mo:redraw/Render";
 import Mono5x5 "mo:redraw/glyph/Mono5x5";
@@ -133,7 +133,7 @@ The following examples illustrate different names you might use when importing t
 
 [source,motoko]
 ----
-import List  "mo:base/List:";
-import Sequence  "mo:collections/List";
+import List "mo:base/List:";
+import Sequence "mo:collections/List";
 import L "mo:base/List";
 ----
