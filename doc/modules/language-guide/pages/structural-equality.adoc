@@ -40,7 +40,7 @@ true : Bool
 == Generic types
 
 It is not possible to declare that a generic type variable is `+shared+`, so equality can only be used on non-generic types. 
-For example, the following exapression:
+For example, the following expression:
 
 ....
 func eq<A>(a : A, b : A) : Bool = a == b;
