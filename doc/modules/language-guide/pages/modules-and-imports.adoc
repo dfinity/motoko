@@ -88,7 +88,7 @@ actor CountToTen {
 }
 ....
 
-The call to `+CounterInit(1)+` installs a fresh counter on the network. Installation is asychronous, so the caller must `await` the result.
+The call to `+CounterInit(1)+` installs a fresh counter on the network. Installation is asynchronous, so the caller must `await` the result.
 
 The type annotation  `+: CI.CounterInit+` is redundant here. It's included only to illustrate that the type of the class is available when required.
 
