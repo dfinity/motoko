@@ -111,5 +111,5 @@ actor class MapClass(n : Nat) {
 }
 ```
 
-Clients of `+MapClass+` class are now free to determine the (maximum) number of nodes in the network.
+Clients of `+MapClass+` are now free to determine the (maximum) number of nodes in the network by passing an argument on construction.
 
