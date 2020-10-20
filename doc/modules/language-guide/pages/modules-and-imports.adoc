@@ -73,7 +73,7 @@ This module has two components, both named after the actor class:
 * a type definition, describing the interface of the class, and
 * an asynchronous function, that takes the class parameters as arguments an asynchronously returns a fresh instance of the class.
 
-For example, a {proglang} actor can import and instantiate the `CounterInit` class (from Section _link:actors-async.adoc#actor_classes[Acptor classes]_) as follows:
+For example, a {proglang} actor can import and instantiate the `CounterInit` class (from Section _link:actors-async.adoc#actor_class_) as follows:
 
 ....
 import CI "CounterInit";
