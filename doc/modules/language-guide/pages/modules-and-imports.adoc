@@ -1,4 +1,6 @@
 = Modules and imports
+:proglang: Motoko
+
 
 This section provides examples of different scenarios for using the `module` and `import` keywords.
 
@@ -60,7 +62,7 @@ You can define dependencies for a project using the Vessel package manager or in
 
 In this example, the `+Render+` module is in the default location for source code in the `+redraw+` package and the `+Mono5x5+` module is in a `+redraw+` package subdirectory called `+glyph+`.
 
-[[#importing_actor_classes]]
+[#importing_actor_classes]
 == Importing actor classes
 
 While module imports are typically used to import libraries of local functions and values, they can also be used to import actor classes.
@@ -68,10 +70,10 @@ When an imported file consists of a named actor class, the client of the importe
 
 This module has two components, both named after the actor class:
 
-* a type definition, describing the interface of the clasee
-* an asynchronous function, that takes the class parameters as arguments an asynchronously returns an fresh instance of the class.
+* a type definition, describing the interface of the class
+* an asynchronous function, that takes the class parameters as arguments an asynchronously returns a fresh instance of the class.
 
-For example, a motoko actor can import and instantiate the `CounterInit` class (from Section _link:actors-async.adoc#actor_classes[Acptor classes]_) as follows:
+For example, a {proglang} actor can import and instantiate the `CounterInit` class (from Section _link:actors-async.adoc#actor_classes[Acptor classes]_) as follows:
 
 ....
 import CI "CounterInit";
@@ -118,9 +120,9 @@ For the imported canister actor, types are derived from the Candid file—the _p
 The translation from {proglang} actor type to Candid service type is mostly, but not entirely, one-to-one, and there are some distinct {proglang} types that map to the same Candid type. For example, the {proglang} `Nat8` and `Word8` types both exported as Candid type `nat8`, but `nat8` is canonically  imported as {proglang} `Nat8`, not `Word8`.
  
 The type of an imported canister function, therefore, might differ from the type of the original {proglang} code that implements it.
-For example, if the {proglang} function had type `+shared Word8 -> async Word64` in the implementation, its exported Candid type would be `+(Nat8) -> Nat64+` but the {proglang} type imported from this Candid type will actually be the correct—but perhaps unexpected—type  `+shared Nat8 -> async Nat64+`. 
+For example, if the {proglang} function had type `+shared Word8 -> async Word64` in the implementation, its exported Candid type would be `+(Nat8) -> Nat64+` but the {proglang} type imported from this Candid type will actually be the correct—but perhaps unexpected—type  `+shared Nat8 -> async Nat64+`.
 
-These type differences are the result of the Candid-to-Motoko composition layer inherent to the canister abstraction. 
+These type differences are the result of the Candid-to-{proglang} composition layer inherent to the canister abstraction.
 
 == Naming imported modules
 
