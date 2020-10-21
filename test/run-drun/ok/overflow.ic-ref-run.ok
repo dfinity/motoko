@@ -5,7 +5,6 @@
 → update go()
 debug.print: ok 1
 debug.print: ok 2
-Trap: EvalTrapError :0.1 "canister trapped explicitly: Natural subtraction underflow"
 debug.print: ok 3
 debug.print: ok 4
 debug.print: ok 5
