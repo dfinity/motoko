@@ -268,69 +268,7 @@ let dw_tag_close : t =
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open tag : t = metas (tag_open tag)
 
-  (*
-  let dw_prim_type prim = fst (dw_prim_type_ref prim) in
-  let dw_type ty = fst (dw_type_ref ty) in
-  let open Type in
-  function
-  | Compile_unit (dir, file) ->
-    let base_types = (* these are emitted for inspectionability *)
-      dw_prim_type Bool ^^
-      dw_prim_type Char ^^
-      dw_prim_type Text ^^
-      dw_prim_type Word8 ^^
-      dw_prim_type Nat8 ^^
-      dw_prim_type Int8 ^^
-      dw_prim_type Word16 ^^
-      dw_prim_type Nat16 ^^
-      dw_prim_type Int16 ^^
-      dw_prim_type Word32 ^^
-      dw_prim_type Nat32 ^^
-      dw_prim_type Int32 ^^
-      dw_prim_type Word64 ^^
-      dw_prim_type Nat64 ^^
-      dw_prim_type Int64
-    in
-    let builtin_types =
-      dw_type Any ^^
-      dw_prim_type Nat ^^
-      dw_prim_type Int
-    in
-    meta_tag dw_TAG_compile_unit
-      (dw_attrs
-         [ Producer (Printf.sprintf "DFINITY Motoko compiler, revision %s" Source_id.id);
-           Language dw_LANG_Motoko; Name file; Stmt_list 0;
-           Comp_dir dir; Use_UTF8 true; Low_pc; Addr_base 8; Ranges ]) ^^
-      base_types ^^
-      builtin_types
-  | Subprogram (name, [retty], pos) ->
-    let dw, ref_ret = dw_type_ref retty in
-    dw ^^
-    meta_tag Wasm_exts.Abbreviation.dw_TAG_subprogram_Ret
-      (dw_attrs [Low_pc; High_pc; Name name; TypeRef ref_ret; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
-  | Subprogram (name, _, pos) ->
-    meta_tag dw_TAG_subprogram
-      (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
-  | Formal_parameter (name, pos, ty, slot) ->
-    let dw, reference = dw_type_ref ty in
-    dw ^^
-    meta_tag dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
-  | LexicalBlock pos ->
-    meta_tag dw_TAG_lexical_block
-      (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])
-  | Variable (name, pos, ty, slot) ->
-    let dw, reference = dw_type_ref ty in
-    dw ^^
-    meta_tag dw_TAG_variable
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
-  | Type ty -> dw_type ty
-  | _ -> assert false
-   *)
-
-and meta_tag tag attrs =
-  i (Meta (unreferencable_tag tag attrs))
-and metas = concat_map (fun  die -> i (Meta die))
+and metas = concat_map (fun die -> i (Meta die))
 and dw_typedef_ref c ty =
   let ds, r = typedef_ref c ty in
   metas ds, r
