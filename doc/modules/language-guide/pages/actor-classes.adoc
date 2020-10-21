@@ -1,17 +1,16 @@
 [#actor_classes]
-== Actor Classes
+== Actor classes
 
-The ability to define and import actor classes allows one to create networks of actors programmatically.
+Actor classes enable you to create networks of actors programmatically. 
+To illustrate how to define and import actor classes, the following example implements a distributed map of keys of  type `Nat`` that map to values of type `Text`` and provides simple insert and lookup functions for working with these keys and values.
 
-As a toy example, we show how to implemented a distributed map from a space of keys, here  ``Nat``, to values, here ``Text``.
 
-Our map supports simple insert and lookup operations.
 
-To distribute our data, the space of keys is partioned into `+n+` subspaces. For now, we just fix ``n = 8``.
+To distribute the data for this example, the space of keys is partitioned into `+n+` subspaces. For now, we just fix ``n = 8``.
 The subspace, `+i+`, of a key, `+k+`, is determined by the remainder of `k` divided by `n`, that is, `i = k % n`.
-The ``i``th subspace (`+i+` in ``[0..n)``)  receives a dedicated actor to store text values assigned to keys in that subspace.
+The `+i+`th subspace (`+i+` in ``[0..n)``)  receives a dedicated actor to store text values assigned to keys in that subspace.
 
-The actor responsible for space `+i+` is obtained as an instance of the actor class `+Node(i)+`, defined (in file ``Node.mo``) as follows:
+The actor responsible for space `+i+` is obtained as an instance of the actor class `+Node(i)+`, defined in file `+Node.mo+` as follows:
 
 ```
 actor class Node(i : Nat) {
@@ -33,15 +32,15 @@ actor class Node(i : Nat) {
 };
 ```
 
-A node stores the current mapping of keys to values in a (mutable) `+map+` variable containing a function that initially assigns all keys to `+null+`.
+A node stores the current mapping of keys to values in a mutable `+map+` variable containing a function that initially assigns all key values to `+null+`.
 
 On `+lookup(k)+`, the map actor simply returns any value stored at `+map(k)+`.
 
 On `+insert(k, v)+` the map actor updates the current `+map+` function to a new function that maps `+k+` to `+?v+` and all other keys to their previous mapping.
 
-Although this code makes no use of the class parameter `+i+`, it could be employed for logging, or (given `+n+`) asserting that keys are in an appropriate subspace (e.g. ``assert ((k % n) == i)``).
+Although this code makes no use of the class parameter `+i+`, it could be employed for logging, or (given `+n+`) asserting that keys are in an appropriate subspace (for example, `+assert ((k % n) == i)+`).
 
-Clients of the map communicate with a coordinating `+Map+` actor:
+Clients of the map can then communicate with a coordinating `+Map+` actor like this:
 
 ```
 import Array "mo:base/Array";
@@ -100,8 +99,8 @@ If no such node exists, it first installs one
 using an asynchronous call to the constructor, `+Lib.Node(i)+`, and, after awaitng the result, records it in the array `+nodes+`.
 It then delegates the insertion to that node by calling `+node.insert(k, v)+`.
 
-While our example fixes the number of nodes to `+8+`, we can easily
-generalize the example by making the `+Map+` actor an actor class, adding a parameter `+(n : Nat)+` and omitting the declaration `+let n = 8;+`:
+While this example sets the number of nodes to `+8+`, you can easily
+generalize the example by making the `+Map+` actor an actor class, adding a parameter `+(n : Nat)+` and omitting the declaration `+let n = 8;+`. For example:
 
 ```
 actor class MapClass(n : Nat) {
@@ -111,5 +110,4 @@ actor class MapClass(n : Nat) {
 }
 ```
 
-Clients of `+MapClass+` are now free to determine the (maximum) number of nodes in the network by passing an argument on construction.
-
+Clients of `+MapClass+` actor class are now free to determine the (maximum) number of nodes in the network by passing an argument on construction.
