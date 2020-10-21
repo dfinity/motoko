@@ -266,7 +266,9 @@ let dw_tag_close : t =
  *)
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
-let rec dw_tag_open : dw_TAG -> t =
+let rec dw_tag_open tag : t = metas (tag_open tag)
+
+  (*
   let dw_prim_type prim = fst (dw_prim_type_ref prim) in
   let dw_type ty = fst (dw_type_ref ty) in
   let open Type in
@@ -324,6 +326,7 @@ let rec dw_tag_open : dw_TAG -> t =
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
   | Type ty -> dw_type ty
   | _ -> assert false
+   *)
 
 and meta_tag tag attrs =
   i (Meta (unreferencable_tag tag attrs))

@@ -413,7 +413,7 @@ let rec loc slot =
 
 (* Initiate a (hierarchical) DWARF tag
    this might produce a list of DIEs
-   and might need a subsequent closing DIE
+   and might need a subsequent closing DIE.
    See Note [emit a DW_TAG] *)
 let tag_open : dw_TAG -> die list =
   let prim_type prim = fst (prim_type_ref prim) in
