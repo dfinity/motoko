@@ -79,48 +79,39 @@ that certain program resources will always be reclaimed.
 
 An actor class defines a constructor function that produces objects of a predetermined type, with a predetermined interface and behavior.
 
-For example, we can generalize `Counter` given above to `CounterInit`
+For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
+.Counters.mo
 ....
-actor class CounterInit(init: Nat) {
-  var count : Nat = init;
-
-  public func increment() : async () {
-    count += 1;
-  };
-
-  public query func get_current() : async Nat {
-    count
-  };
-
-  public func set_current(n: Nat) : async () {
-    count := n;
-  };
-}
+include::../examples/Counters.mo[]
 ....
 
 ////
 TODO make the following asynchronous
 ////
 
-To use this class, we can create several actors with different initial values:
+If this is class is stored in file `+Counters.ml+`, then
+we can import the file as a module and use it to
+create several actors with different initial values:
 
 ....
-let c1 = CounterInit(1);
-let c2 = CounterInit(2);
+import Counters "Counters";
+
+let c1 = await Counters.Counter(1);
+let c2 = await Counters.Counter(2);
 ....
 
-The two lines above _instantiate_ the actor class twice, once per line.
+The two lines above _instantiate_ the actor class twice, once per line
 The first invocation uses the initial value `1`, where the second uses initial value `2`.
+Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a promise that can be ``await``ed for the resulting actor value.
 Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
+
 
 NOTE: For now, the {proglang} compiler gives an error when compiling
 programs that do not consist of a single actor or actor class.
 Compiled programs may still, however, reference imported actor classes
 For more information, see link:modules-and-imports{outfilesuffix}#importing_actor_classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor_classes[Actor classes].
-The interpreter accommodates the examples above.
-
 
 == Stable and flexible variables
 
