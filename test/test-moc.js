@@ -6,9 +6,9 @@ const assert = require('assert').strict;
 const moc = require('moc.js');
 
 // Store files
-moc.saveFile('empty.mo', '');
-moc.saveFile('ok.mo', '1');
-moc.saveFile('bad.mo', '1+');
+moc.Motoko.saveFile('empty.mo', '');
+moc.Motoko.saveFile('ok.mo', '1');
+moc.Motoko.saveFile('bad.mo', '1+');
 
 // Compile the empty module in plain and dfinity mode
 const empty_wasm_plain = moc.Motoko.compileWasm('wasm', 'empty.mo').result;
