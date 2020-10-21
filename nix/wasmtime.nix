@@ -12,7 +12,7 @@ rustPlatform.buildRustPackage rec {
     fetchSubmodules = true;
   };
 
-  cargoSha256 = "1pvmgbk6ifd770g0nch21y9w1a9sxj89i8lj4xwv91xfma8r8f3h";
+  cargoSha256 = "170bz48jrc1k2ylfmd3bcry0xpcxx8p3rzzv9mprlfmrfpb0b28r";
 
   nativeBuildInputs = [ python cmake clang ];
   buildInputs = [ llvmPackages.libclang ] ++

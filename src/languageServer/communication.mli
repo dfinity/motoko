@@ -14,7 +14,7 @@ module type IO = sig
   val clear_diagnostics : Lsp_t.document_uri -> unit
 end
 
-module MakeIO (Channels : sig
+module MakeIO (_ : sig
   val debug_channel : out_channel option
 
   val in_channel : in_channel
