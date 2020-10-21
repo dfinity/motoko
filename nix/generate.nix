@@ -1,6 +1,6 @@
 # This file generates the contents of nix/generated/. Use
 #
-#   cp -fv $(nix-build generate.nix --no-link)/ generated/
+#  nix-shell generate.nix
 #
 # to update
 
@@ -48,17 +48,49 @@ let
       src_subst = "import ../gitSource.nix \"${path}\"";
     };
 
-  random = localHaskellSrc2nixWithDoc "qc-motoko" "test/random" "";
-  lsp-int = localHaskellSrc2nixWithDoc "lsp-int" "test/lsp-int" "";
+  packages = {
+    # local packages
+    random = localHaskellSrc2nixWithDoc "qc-motoko" "test/random" "";
+    lsp-int = localHaskellSrc2nixWithDoc "lsp-int" "test/lsp-int" "";
+    # Packages on hackage that are newer than what's in nixpkgs
+    lsp-test = pkgs.haskellPackages.hackage2nix "lsp-test" "0.11.0.6";
+    haskell-lsp = pkgs.haskellPackages.hackage2nix "haskell-lsp" "0.23.0.0";
+    haskell-lsp-types = pkgs.haskellPackages.hackage2nix "haskell-lsp-types" "0.23.0.0";
+  };
 
-  allGenerated = pkgs.runCommandNoCC "generated" {} ''
+  allGenerated = pkgs.runCommandNoCC "generated" {
+    buildInputs = [ pkgs.nixpkgs-fmt ];
+  } (
+    ''
     mkdir -p $out
-    cp ${random}/default.nix $out/random.nix
-    cp ${lsp-int}/default.nix $out/lsp-int.nix
-  '';
+    '' + builtins.concatStringsSep "" (
+      pkgs.lib.flip pkgs.lib.mapAttrsToList packages (
+        n: pkg: ''
+          cp ${pkg}/default.nix $out/${n}.nix
+        ''
+      )
+    ) + ''
+      chmod u+w $out/*.nix
+      nixpkgs-fmt $out/*.nix
+      echo <<__END__ > $out/README.md
+      The contents of this directory are automatically generated.
+      To update, please run nix-shell generate.nix
+      __END__
+    ''
+  );
+
 in
-allGenerated
+allGenerated.overrideAttrs (
+  old: {
+    shellHook = if pkgs.lib.inNixShell then
+      ''
+        dest=${toString ./generated}
 
+        rm -f $dest/*.nix $dest/README.md
+        cp -v -t $dest/ ${allGenerated}/*
+        chmod u-w -R $dest/*
 
-
-
+        exit 0
+      '' else null;
+  }
+)

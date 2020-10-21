@@ -2,7 +2,7 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "9a7f0a0dd70dbd40f587c06a8949f74da1f57f53",
+        "rev": "8620955bf495750a664b66050f5761be0f3ec05d",
         "type": "git"
     },
     "dfinity": {
@@ -22,7 +22,7 @@
     "ic-ref": {
         "ref": "release-0.11",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "9edd0fdda006519118ed40515b84c74f69c59bc1",
+        "rev": "824fd6d904b0635349820ca52262ce91fd9e695c",
         "type": "git"
     },
     "libtommath": {
@@ -40,7 +40,7 @@
     "motoko-base": {
         "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "93211a230696e986dcbbe0602bd88f9dfaae5781",
+        "rev": "66795f2f1a9ade7d2fc54215a3feb232366a55c1",
         "type": "git"
     },
     "motoko-matchers": {
@@ -63,23 +63,23 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "614d783e927261e503bc144f7c7d1a9dc02565ba",
-        "sha256": "02m036sq3zw5f1chwg3041k7mi5n8iqc0flhwz0pb193ii1dkimb",
+        "rev": "9083fe84568fb4de76152757abfd216ba34ad908",
+        "sha256": "1ajbbhj0j0npnkyp1lnk3l928xxmn0x96pqz3s3cl87p99akz8z4",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/614d783e927261e503bc144f7c7d1a9dc02565ba.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/9083fe84568fb4de76152757abfd216ba34ad908.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-20.03",
+        "branch": "release-20.09",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "b50d55871fb7de1e5791bbd56738ff20f4d15f2c",
-        "sha256": "0sxkpacyzpmc5n658pj287j6bd7sc2d6r1azyrpmd5fyx8q1ihvs",
+        "rev": "66cd39409e8ae1e2981edfb33bb06c164893d70d",
+        "sha256": "1c44akgqbqsm2b6k5b850lb0q7wq5l5p4hm6bqbaif1h05sc2bkx",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/b50d55871fb7de1e5791bbd56738ff20f4d15f2c.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/66cd39409e8ae1e2981edfb33bb06c164893d70d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

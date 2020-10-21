@@ -326,7 +326,7 @@ let combine_progs progs : prog =
   let open Source in
   if progs = []
   then { it = []; at = no_region; note = "empty" }
-  else { it = Lib.List.concat_map (fun p -> p.it) progs
+  else { it = List.concat_map (fun p -> p.it) progs
        ; at = (Lib.List.last progs).at
        ; note = (Lib.List.last progs).note
        }
