@@ -372,6 +372,7 @@ and tuple ts : die list * int =
     prereqs @ ds, r
 
 
+
 (* Location expressions for DWARF
    These are instruction sequences that direct the debugger
    at where the data resides.
@@ -408,3 +409,62 @@ let rec loc slot =
     | _ -> Location.local slot [ dw_OP_stack_value ] (* FIXME: locate real type *)
     end
   | _ -> Location.local slot [ dw_OP_stack_value ] (* FIXME: objects, options *)
+
+
+(* Initiate a (hierarchical) DWARF tag
+   this might produce a list of DIEs
+   and might need a subsequent closing DIE
+   See Note [emit a DW_TAG] *)
+let tag_open : dw_TAG -> die list =
+  let prim_type prim = fst (prim_type_ref prim) in
+  let type_ ty = fst (type_ref ty) in
+  let append_tag ds t ats = ds @ [unreferencable_tag t ats] in
+  let open Type in
+  function
+  | Compile_unit (dir, file) ->
+    let base_types = (* these are emitted for inspectionability, now *)
+      prim_type Bool @
+      prim_type Char @
+      prim_type Text @
+      prim_type Word8 @
+      prim_type Nat8 @
+      prim_type Int8 @
+      prim_type Word16 @
+      prim_type Nat16 @
+      prim_type Int16 @
+      prim_type Word32 @
+      prim_type Nat32 @
+      prim_type Int32 @
+      prim_type Word64 @
+      prim_type Nat64 @
+      prim_type Int64 in
+    let builtin_types =
+      type_ Any @
+      prim_type Nat @
+      prim_type Int in
+    [unreferencable_tag dw_TAG_compile_unit
+       (dw_attrs
+          [ Producer (Printf.sprintf "DFINITY Motoko compiler, revision %s" Source_id.id);
+            Language dw_LANG_Motoko; Name file; Stmt_list 0;
+            Comp_dir dir; Use_UTF8 true; Low_pc; Addr_base 8; Ranges ] @
+        base_types @ builtin_types)]
+  | Subprogram (name, [retty], pos) ->
+    let ds, ref_ret = type_ref retty in
+    append_tag ds Wasm_exts.Abbreviation.dw_TAG_subprogram_Ret
+      (dw_attrs [Low_pc; High_pc; Name name; TypeRef ref_ret; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
+  | Subprogram (name, _, pos) ->
+    [unreferencable_tag dw_TAG_subprogram
+       (dw_attrs [Low_pc; High_pc; Name name; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])]
+  | Formal_parameter (name, pos, ty, slot) ->
+    let ds, reference = type_ref ty in
+    append_tag ds dw_TAG_formal_parameter
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
+  | LexicalBlock pos ->
+    [unreferencable_tag dw_TAG_lexical_block
+       (dw_attrs [Decl_line pos.Source.line; Decl_column pos.Source.column])]
+  | Variable (name, pos, ty, slot) ->
+    let ds, reference = type_ref ty in
+    append_tag ds dw_TAG_variable
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
+  | Type ty -> type_ ty
+  | _ -> assert false

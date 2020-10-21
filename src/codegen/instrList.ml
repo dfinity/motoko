@@ -267,6 +267,8 @@ let dw_tag_close : t =
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
+  let dw_prim_type prim = fst (dw_prim_type_ref prim) in
+  let dw_type ty = fst (dw_type_ref ty) in
   let open Type in
   function
   | Compile_unit (dir, file) ->
@@ -301,6 +303,7 @@ let rec dw_tag_open : dw_TAG -> t =
       builtin_types
   | Subprogram (name, [retty], pos) ->
     let dw, ref_ret = dw_type_ref retty in
+    dw ^^
     meta_tag Wasm_exts.Abbreviation.dw_TAG_subprogram_Ret
       (dw_attrs [Low_pc; High_pc; Name name; TypeRef ref_ret; Decl_file pos.Source.file; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Subprogram (name, _, pos) ->
@@ -328,11 +331,9 @@ and metas = concat_map (fun  die -> i (Meta die))
 and dw_typedef_ref c ty =
   let ds, r = typedef_ref c ty in
   metas ds, r
-and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref ty =
   let ds, r = type_ref ty in
   metas ds, r
-and dw_prim_type prim = fst (dw_prim_type_ref prim)
 and dw_prim_type_ref (prim : Type.prim) =
   let ds, r = prim_type_ref prim in
   metas ds, r
