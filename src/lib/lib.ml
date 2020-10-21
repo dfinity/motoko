@@ -273,13 +273,6 @@ struct
     | [] -> None
     | xs -> Some (last xs)
 
-  let rec first_opt f = function
-    | [] -> None
-    | x::xs ->
-       match f x with
-       | None -> first_opt f xs
-       | some -> some
-
   let rec split_last = function
     | [x] -> [], x
     | x::xs -> let ys, y = split_last xs in x::ys, y

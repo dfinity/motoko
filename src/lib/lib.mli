@@ -25,7 +25,6 @@ sig
 
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
-  val first_opt : ('a -> 'b option) -> 'a list -> 'b option
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool

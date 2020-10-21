@@ -232,7 +232,7 @@ and with_self i typ decs =
   let_no_shadow (var i typ) (selfRefE typ) decs
 
 and call_system_func_opt name es =
-  Lib.List.first_opt (fun es ->
+  List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
