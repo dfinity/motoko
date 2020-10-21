@@ -448,6 +448,15 @@ struct
     match o with
     | Some y -> y
     | None -> x
+
+  module Syntax =
+  struct
+    let (let+) x f = Option.map f x
+    let (and+) x y = match x, y with
+      | Some x, Some y -> Some (x, y)
+      | _  -> None
+    let (let*) = Option.bind
+  end
 end
 
 module Promise =
