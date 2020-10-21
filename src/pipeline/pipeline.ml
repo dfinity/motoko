@@ -345,7 +345,7 @@ let load_progs parsefn files senv : load_result =
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
-  let libs = Lib.List.concat_map snd rs in
+  let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
   let* senv'' = check_progs senv' progs' in
   Diag.return (libs, progs', senv'')
@@ -630,7 +630,7 @@ let compile_string mode s name : compile_result =
    not compiled to wasm
 *)
 let import_libs libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map Lowering.Desugar.import_unit libs
+  List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
   let prog = Syntax.combine_progs progs in
