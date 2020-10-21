@@ -20,7 +20,7 @@ let range_of_region at =
 
 let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
-    val source = msg.at.left.file
+    val source = Js.string msg.at.left.file
     val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info)  -> 2
     val range = range_of_region msg.at
     val message = Js.string msg.text
