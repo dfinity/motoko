@@ -29,8 +29,18 @@ let dw_TAG_variant_Named = pseudo_tag Dwarf5.dw_TAG_variant 1
 
 let dw_TAG_subprogram_Ret = pseudo_tag Dwarf5.dw_TAG_subprogram 1
 
+type dw_tag_id = int
+type dw_bool = int
+type dw_attr_id = int
+type dw_form = int
 
-let abbreviations =
+type tag_to_contents_assoc = (dw_tag_id * dw_bool * (dw_attr_id * dw_form) list) list
+
+(* The following data associates the expected attribute sequence
+   (each with encoding form) and whether it is hierarchic with
+   each used tag identifier. It corresponds to the `.debug_abbrev`
+   section. *)
+let abbreviations : tag_to_contents_assoc =
   let open Dwarf5 in
   [ ( dw_TAG_compile_unit, dw_CHILDREN_yes,
       [ dw_AT_producer, dw_FORM_strp;
