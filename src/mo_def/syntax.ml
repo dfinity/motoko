@@ -287,6 +287,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | ds' ->
       if as_lib
       then
+        (* Deprecated syntax, see Typing.check_lib *)
         let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
         finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
@@ -325,7 +326,7 @@ let combine_progs progs : prog =
   let open Source in
   if progs = []
   then { it = []; at = no_region; note = "empty" }
-  else { it = Lib.List.concat_map (fun p -> p.it) progs
+  else { it = List.concat_map (fun p -> p.it) progs
        ; at = (Lib.List.last progs).at
        ; note = (Lib.List.last progs).note
        }

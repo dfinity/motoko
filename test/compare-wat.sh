@@ -9,7 +9,7 @@
 old="$(git rev-parse HEAD)"
 new=""
 
-WASM2WAT="wasm2wat --no-check --enable-multi-value"
+WASM2WAT="wasm2wat --no-check"
 
 while getopts "f:t:" o; do
     case "${o}" in
