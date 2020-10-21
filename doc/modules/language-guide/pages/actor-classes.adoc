@@ -8,7 +8,7 @@ To illustrate how to define and import actor classes, the following example impl
 
 To distribute the data for this example, the space of keys is partitioned into `+n+` subspaces. For now, we just fix ``n = 8``.
 The subspace, `+i+`, of a key, `+k+`, is determined by the remainder of `k` divided by `n`, that is, `i = k % n`.
-The `+i+`th subspace (`+i+` in ``[0..n)``)  receives a dedicated actor to store text values assigned to keys in that subspace.
+The ``i``th subspace (`+i+` in ``[0..n)``)  receives a dedicated actor to store text values assigned to keys in that subspace.
 
 The actor responsible for space `+i+` is obtained as an instance of the actor class `+Node(i)+`, defined in file `+Node.mo+` as follows:
 
