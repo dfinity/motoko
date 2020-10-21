@@ -10,8 +10,8 @@ moc.Motoko.saveFile('empty.mo', '');
 moc.Motoko.saveFile('ok.mo', '1');
 moc.Motoko.saveFile('bad.mo', '1+');
 
-// Compile the empty module in plain and dfinity mode
-const empty_wasm_plain = moc.Motoko.compileWasm('wasm', 'empty.mo').result;
+// Compile the empty module in wasi and dfinity mode
+const empty_wasm_plain = moc.Motoko.compileWasm('wasi', 'empty.mo').result;
 const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', 'empty.mo').result;
 
 // For the plain module...

@@ -20,7 +20,7 @@ let range_of_region at =
 
 let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
-    val source = Js.string "motoko"
+    val source = msg.at.left.file
     val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info)  -> 2
     val range = range_of_region msg.at
     val message = Js.string msg.text
@@ -54,7 +54,6 @@ let js_candid source =
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
-    | "wasm" -> Flags.WasmMode
     | "wasi" -> Flags.WASIMode
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
