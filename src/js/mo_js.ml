@@ -34,7 +34,7 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
   | Ok (code, msgs) ->
      object%js
        val diagnostics = Js.array (diagnostics_of_msgs msgs)
-       val code = Js.some (wrap_code code)
+       val code = wrap_code code
      end
   | Error msgs ->
      object%js
@@ -43,7 +43,7 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
      end
 
 let js_check source =
-  js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> "")
+  js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
   (*let msgs = match
     Pipeline.check_files [Js.to_string source] with
     | Error msgs -> msgs
@@ -72,7 +72,7 @@ let js_compile_with mode_string source convert =
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
-  js_result (Pipeline.compile_files mode true [Js.to_string source]) (fun module_ -> convert module_)
+  js_result (Pipeline.compile_files mode true [Js.to_string source]) (fun module_ -> Js.some (convert module_))
   (*  
   match Pipeline.compile_files mode true [Js.to_string source] with
   | Ok (module_, msgs) ->
