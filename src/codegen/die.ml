@@ -289,7 +289,7 @@ and variant vnts : die list * int =
   let open Wasm_exts.Abbreviation in
   let selectors = List.map (fun Type.{lab; typ} -> lab, typ, type_ref typ) vnts in
   (* make sure all prerequisite types are around *)
-  let prereqs = Lib.List.concat_map (fun (_, _, (dw, _)) -> dw) selectors in
+  let prereqs = List.concat_map (fun (_, _, (dw, _)) -> dw) selectors in
   let key = List.map (fun (name, _, (_, reference)) -> name, reference) selectors in
   match VariantRefs.find_opt key !dw_variants with
   | Some r -> prereqs, r
@@ -331,14 +331,14 @@ and variant vnts : die list * int =
              List.map summand (List.map2 (fun (name, _, _) (_, mem) -> name, mem) selectors overlays) @
              dw_attrs [Discr discr_ref])) ::
         dw_attrs [Name "VARIANT"; Byte_size 8]) in
-    prereqs @ Lib.List.concat_map fst overlays @ internal_struct, struct_ref
+    prereqs @ List.concat_map fst overlays @ internal_struct, struct_ref
 
 and object_ fs : die list * int =
   let open List in
   let open Wasm_exts.Abbreviation in
   let selectors = map (fun Type.{lab; typ} -> lab, type_ref typ) fs in
   (* make sure all prerequisite types are around *)
-  let prereqs = Lib.List.concat_map (fun (_, (ds, _)) -> ds) selectors in
+  let prereqs = concat_map (fun (_, (ds, _)) -> ds) selectors in
   let key = map (fun (name, (_, reference)) -> name, reference) selectors in
   match ObjectRefs.find_opt key !dw_objects with
   | Some r -> prereqs, r
@@ -359,7 +359,7 @@ and tuple ts : die list * int =
   let open Wasm_exts.Abbreviation in
   let field_types_refs = map type_ref ts in
   let field_refs = map snd field_types_refs in
-  let prereqs = Lib.List.concat_map fst field_types_refs in
+  let prereqs = concat_map fst field_types_refs in
   match TupleRefs.find_opt field_refs !dw_tuples with
   | Some r -> prereqs, r
   | None ->
@@ -424,7 +424,7 @@ let tag_open : dw_TAG -> die list =
   function
   | Compile_unit (dir, file) ->
     let base_types = (* these are emitted for inspectionability, now *)
-      Lib.List.concat_map prim_type
+      List.concat_map prim_type
         [ Bool; Char; Text; Word8; Nat8; Int8; Word16; Nat16
         ; Int16; Word32; Nat32; Int32; Word64; Nat64; Int64] in
     let builtin_types =
