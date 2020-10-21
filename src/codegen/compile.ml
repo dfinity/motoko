@@ -3294,9 +3294,11 @@ module Dfinity = struct
     SR.Vanilla,
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Blob.of_size_copy env
-        (fun env -> system_call env "ic0" "msg_caller_size")
-        (fun env -> system_call env "ic0" "msg_caller_copy") 0l
+      Func.share_code0 env "caller" [I32Type] (fun env ->
+        Blob.of_size_copy env
+          (fun env -> system_call env "ic0" "msg_caller_size")
+          (fun env -> system_call env "ic0" "msg_caller_copy") 0l
+        )
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
 
