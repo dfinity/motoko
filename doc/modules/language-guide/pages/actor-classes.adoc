@@ -88,6 +88,7 @@ on demand.
 
 
 On `+lookup(k, v)+`, the `Map` actor:
+
 - examines the key, `+k+` and divides it by `+n+` 
 - takes the remainder, `+i+`, to determine which of the `+n+` nodes
 is responsible for the key
