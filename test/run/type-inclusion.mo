@@ -108,52 +108,52 @@ func f(x : A) : B<Nat> = x;
 
 {
 type A = <X> X -> X;
-type B = <Y <: Nat> Y -> Y;
+type B = <Y> Y -> Y;
 func f(x : A) : B = x;
 };
 
 {
 type A = <X <: Int, Y <: {}> X -> Y;
-type B = <X <: Int, Y <: {x : Nat}> X -> Y;
+type B = <X <: Int, Y <: {}> X -> Y;
 func f(x : A) : B = x;
 };
 
 {
 type A = <X <: Nat, Y> X -> Y;
-type B = <Y <: Nat, X <: Y> Y -> X;
+type B = <Y <: Nat, X> Y -> X;
 func f(x : A) : B = x;
 };
 
 {
 type A = <X, Y> X -> X;
-type B = <X <: Y, Y> X -> X;
+type B = <X, Y> X -> X;
 func f(x : A) : B = x;
 };
 
 {
 type A = <X, Y, Z <: X> X -> X;
-type B = <X, Y <: X, Z <: Y> X -> X;
+type B = <X, Y, Z <: X> X -> X;
 func f(x : A) : B = x;
 };
 
 {
 class C() { public let x = 0 };
-type A = <X <: {x : Int}> X -> X;
+type A = <X <: C> X -> X;
 type B = <X <: C> X -> X;
 func f(x : A) : B = x;
 };
 
 {
 class C<X <: Int>() {public func f() : X { f() }};
-type A = <X, Y <: {f : () -> X}> X -> X;
-type B = <X <: Nat, Y <: C<X>> X -> X;
+type A = <X <: Int, Y <: {f : () -> X}> X -> X;
+type B = <X <: Int, Y <: C<X>> X -> X;
 func f(x : A) : B = x;
 };
 
 {
 class C<X <: Int>() {public func f() : X { f() }};
 type A = <X, Y <: {f : () -> Nat}> X -> X;
-type B = <X <: Nat, Y <: C<X>> X -> X;
+type B = <X, Y <: C<Nat>> X -> X;
 func f(x : A) : B = x;
 };
 

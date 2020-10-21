@@ -1,6 +1,6 @@
-type Counter = 
+type anon_class_2_1 = 
  service {
    dec: () -> () oneway;
    read: () -> (int);
  };
-service : Counter
+service : (int, nat) -> anon_class_2_1

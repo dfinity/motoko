@@ -17,7 +17,6 @@ let print_stat_te =
 let dump_prog flag prog =
     if flag then
       Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
-    else ()
 
 (* Parsing *)
 

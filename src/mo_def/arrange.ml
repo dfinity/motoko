@@ -191,4 +191,4 @@ and dec d = match d.it with
       obj_sort s; id i'
     ] @ List.map exp_field efs
 
-and prog prog = "BlockE"  $$ List.map dec prog.it
+and prog prog = "Prog" $$ List.map dec prog.it

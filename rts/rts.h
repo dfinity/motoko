@@ -36,7 +36,7 @@ typedef as_ptr blob_t;
 
 #define TUPLE_HEADER_SIZE 2
 #define TUPLE_LEN(p) (FIELD(p,1))
-#define TUPLE_FIELD(p,n,t) (*(t *)(&(FIELD(p,TUPLE_HEADER_SIZE+n))))
+#define TUPLE_FIELD(p,n,t) (*(t *)(&FIELD(p,TUPLE_HEADER_SIZE+n)))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
 enum as_heap_tag {
@@ -86,6 +86,7 @@ from_rts __attribute__ ((noreturn)) void bigint_trap();
 typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
+as_ptr alloc_array(uint32_t n_elems);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
 as_ptr text_of_cstr(const char *buf);
 int text_compare(as_ptr s1, as_ptr s2);
