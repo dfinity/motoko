@@ -160,8 +160,9 @@ let dw_tuples = ref TupleRefs.empty
 
 (* Factory for referencable type DIEs *)
 let rec type_ref : Type.typ -> die list * int =
+  let open Type in
   function
-  | Type.Any ->
+  | Any ->
     begin match !any_type with
     | Some r -> [], r
     | None ->
@@ -169,21 +170,21 @@ let rec type_ref : Type.typ -> die list * int =
       with_referencable_tags add dw_TAG_base_type
           (dw_attrs [Name "Any"; Bit_size 0; Data_bit_offset 0; Encoding dw_ATE_address])
     end
-  | Type.Prim pr -> prim_type_ref pr
-  | Type.Variant vs when is_enum vs -> enum vs
-  | Type.Variant vs -> variant vs
-  | Type.(Obj (Object, fs)) -> object_ fs
-  | Type.(Tup cs) -> tuple cs
-  | Type.Con (c, _) as ty ->
+  | Prim pr -> prim_type_ref pr
+  | Variant vs when is_enum vs -> enum vs
+  | Variant vs -> variant vs
+  | Obj (Object, fs) -> object_ fs
+  | Tup cs -> tuple cs
+  | Con (c, _) as ty ->
     begin match obvious_prim_of_con c ty with
-    | Some p -> type_ref (Type.Prim p)
+    | Some p -> type_ref (Prim p)
     | None -> typedef_ref c ty
     end
-  | Type.Opt inner ->
+  | Opt inner ->
     let prereq, selector = type_ref inner in
     let opt, r = option_instance selector in
     prereq @ opt, r
-  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); type_ref Type.Any (* FIXME assert false *)
+  | typ -> (*Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ));*) type_ref Any (* FIXME: assert false *)
 
 and typedef_ref c ty : die list * int =
   match TypedefRefs.find_opt c !dw_typedefs with
