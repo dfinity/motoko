@@ -15,6 +15,10 @@ The actor responsible for bucket `+i+` is obtained as an instance of the actor c
 
 .Buckets.mo
 ....
+include::../examples/Buckets.mo[]
+....
+
+////
 actor class Bucket(i : Nat) {
 
   type Key = Nat;
@@ -32,7 +36,7 @@ actor class Bucket(i : Nat) {
   };
 
 };
-....
+////
 
 A bucket stores the current mapping of keys to values in a mutable `+map+` variable containing a function that initially assigns all key values to `+null+`.
 
@@ -45,6 +49,10 @@ Although this code makes no use of the class parameter `+i+`, it could be employ
 Clients of the map can then communicate with a coordinating `+Map+` actor, implemented as follows:
 
 ....
+include::../examples/Map.mo[]
+....
+
+////
 import Array "mo:base/Array";
 import Buckets "Buckets";
 
@@ -80,7 +88,7 @@ actor Map {
   };
 
 };
-....
+////
 
 As this example illustrates, the `+Map+` code imports the `+Bucket+` actor class as module `+Buckets+`.
 
