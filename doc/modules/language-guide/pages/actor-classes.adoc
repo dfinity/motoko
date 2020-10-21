@@ -2,7 +2,7 @@
 == Actor classes
 
 Actor classes enable you to create networks of actors programmatically. 
-To illustrate how to define and import actor classes, the following example implements a distributed map of keys of  type `Nat`` that map to values of type `Text`` and provides simple insert and lookup functions for working with these keys and values.
+To illustrate how to define and import actor classes, the following example implements a distributed map of keys of  type `Nat` that map to values of type `Text` and provides simple insert and lookup functions for working with these keys and values.
 
 
 
