@@ -73,39 +73,38 @@ let ic_id_to_lookup : string option -> string -> string -> string =
 let lookup_module (project_root : string) (path : string) (index : t) :
     (string * ide_decl list) option =
   let open Ic.Url in
+  let open Lib.Option.Syntax in
   let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
       let path = Pipeline.ResolveImport.append_extension Sys.file_exists path in
-      Index.find_opt (make_absolute path) index.modules
-      |> Option.map (fun decls -> (path, decls))
+      let+ decls = Index.find_opt (make_absolute path) index.modules in
+      (path, decls)
   | Ok (Package (pkg, path)) ->
-      Option.bind (Flags.M.find_opt pkg index.package_map) (fun pkg_path ->
-          let path =
-            Pipeline.ResolveImport.append_extension Sys.file_exists
-              (Filename.concat pkg_path path)
-          in
-          Index.find_opt (make_absolute path) index.modules
-          |> Option.map (fun decls -> (path, decls)))
+      let* pkg_path = Flags.M.find_opt pkg index.package_map in
+      let path =
+        Pipeline.ResolveImport.append_extension Sys.file_exists
+          (Filename.concat pkg_path path)
+      in
+      let+ decls = Index.find_opt (make_absolute path) index.modules in
+      (path, decls)
   | Ok Prim ->
-      Index.find_opt "@prim" index.modules
-      |> Option.map (fun decls -> ("@prim", decls))
+      let+ decls = Index.find_opt "@prim" index.modules in
+      ("@prim", decls)
   | Ok (Ic id) ->
       let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
-      Index.find_opt lookup_path index.modules
-      |> Option.map (fun decls -> (path, decls))
+      let+ decls = Index.find_opt lookup_path index.modules in
+      (path, decls)
   | Ok (IcAlias alias) ->
       let mic_id = Flags.M.find_opt alias index.ic_aliases in
       let _ =
         Debug.log "lookup_module.ic_alias.ic_id"
           (string_of_option (fun x -> x) mic_id)
       in
-      Option.bind mic_id (fun id ->
-          let lookup_path =
-            ic_id_to_lookup index.actor_idl_path project_root id
-          in
-          Index.find_opt lookup_path index.modules)
-      |> Option.map (fun decls -> (alias, decls))
+      let* id = mic_id in
+      let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
+      let+ decls = Index.find_opt lookup_path index.modules in
+      (alias, decls)
   | Error _ -> None
 
 let rec drop_common_prefix eq l1 l2 =
