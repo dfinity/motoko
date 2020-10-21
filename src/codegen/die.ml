@@ -423,21 +423,9 @@ let tag_open : dw_TAG -> die list =
   function
   | Compile_unit (dir, file) ->
     let base_types = (* these are emitted for inspectionability, now *)
-      prim_type Bool @
-      prim_type Char @
-      prim_type Text @
-      prim_type Word8 @
-      prim_type Nat8 @
-      prim_type Int8 @
-      prim_type Word16 @
-      prim_type Nat16 @
-      prim_type Int16 @
-      prim_type Word32 @
-      prim_type Nat32 @
-      prim_type Int32 @
-      prim_type Word64 @
-      prim_type Nat64 @
-      prim_type Int64 in
+      Lib.List.concat_map prim_type
+        [ Bool; Char; Text; Word8; Nat8; Int8; Word16; Nat16
+        ; Int16; Word32; Nat32; Int32; Word64; Nat64; Int64] in
     let builtin_types =
       type_ Any @
       prim_type Nat @
