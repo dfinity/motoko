@@ -17,8 +17,8 @@ const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', 'empty.mo').result;
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
 assert.equal(typeof(empty_wasm_plain), 'object');
-assert.equal(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
-assert.equal(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
+assert.strictEqual(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
+assert.strictEqual(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
 assert.equal(typeof(empty_wasm_plain.diagnostics), 'object');
 assert.equal(empty_wasm_plain.diagnostics.length, 0);
 
@@ -27,8 +27,8 @@ WebAssembly.compile(empty_wasm_plain.code);
 
 // Now again for the dfinity module
 assert.equal(typeof(empty_wasm_dfinity), 'object');
-assert.equal(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
-assert.equal(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
+assert.strictEqual(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
+assert.strictEqual(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
 assert.equal(typeof(empty_wasm_dfinity.diagnostics), 'object');
 assert.equal(empty_wasm_dfinity.diagnostics.length, 0);
 
