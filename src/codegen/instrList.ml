@@ -27,14 +27,16 @@ let optimize : instr list -> instr list = fun is ->
   let rec go l r = match l, r with
     (* Combine adjacent Metas *)
     | {it = Meta m2; _} as n2 :: {it = Meta m1; _} :: l', r' ->
-      let combine = let open Wasm_exts.Dwarf5.Meta in function
+      let combined =
+        let open Wasm_exts.Dwarf5.Meta in
+        match m1, m2 with
         | StatementDelimiter _, StatementDelimiter _ -> m2
         | StatementDelimiter _, Grouped (StatementDelimiter _ :: t) -> Grouped (m2 :: t)
         | Grouped g1, Grouped g2 -> Grouped (g2 @ g1)
         | Grouped g1, _ -> Grouped (m2 :: g1)
         | _, Grouped g2 -> Grouped (g2 @ [m1])
         | _, _ -> Grouped [m2; m1] in
-      go ({ n2 with it = Meta (combine (m1, m2)) } :: l') r'
+      go ({ n2 with it = Meta combined } :: l') r'
 
     (* Loading and dropping is pointless *)
     | { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
