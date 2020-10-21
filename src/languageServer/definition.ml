@@ -19,7 +19,7 @@ let range_of_region (at : Source.region) : Lsp.range =
 let find_named :
     string -> string * DI.ide_decl list -> (string * Source.region) option =
  fun name (path, decls) ->
-  Lib.List.first_opt
+  List.find_map
     (function
       | DI.ValueDecl value ->
           if String.equal value.DI.name name then value.DI.definition else None

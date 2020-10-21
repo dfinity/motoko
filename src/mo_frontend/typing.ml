@@ -2241,7 +2241,7 @@ let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
-        let prog = Lib.List.concat_map (fun prog -> prog.Source.it) progs in
+        let prog = List.concat_map (fun prog -> prog.Source.it) progs in
         let env = env_of_scope msgs scope in
         let rec go ds = function
           | [] -> ()

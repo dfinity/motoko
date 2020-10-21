@@ -232,7 +232,7 @@ and with_self i typ decs =
   let_no_shadow (var i typ) (selfRefE typ) decs
 
 and call_system_func_opt name es =
-  Lib.List.first_opt (fun es ->
+  List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
@@ -787,7 +787,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let (imports, body) = u.it in
-  let imports' = Lib.List.concat_map transform_import imports in
+  let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   inject_decs imports' body', initial_flavor
 
@@ -803,7 +803,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let f = u.note in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
-  let imports' = Lib.List.concat_map transform_import imports in
+  let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in
   let exp = match prog with
