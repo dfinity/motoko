@@ -96,6 +96,7 @@ is responsible for the key
 - delegates to that node by calling `+node.lookup(k, v)+` if it does.
 
 On `+insert(k, v)+`, the `+Map+` actor:
+
 - uses the remainder of key  `+k+`divided by `+n+` to determine the index `+i+` of the node responsible for that key
 - installs node +i+ if the node does not exist by using an asynchronous call to the constructor, `+Lib.Node(i)+`, and, after awaiting the result, records it in the array `+nodes+`
 - delegates the insertion to that node by calling `+node.insert(k, v)+`.
