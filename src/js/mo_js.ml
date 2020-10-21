@@ -29,15 +29,29 @@ let diagnostics_of_msg (msg : Diag.message) =
 let diagnostics_of_msgs (msgs : Diag.message list) =
   Array.of_list (List.map diagnostics_of_msg msgs)
 
+let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
+  match result with
+  | Ok (code, msgs) ->
+     object%js
+       val diagnostics = Js.array (diagnostics_of_msgs msgs)
+       val code = Js.some (wrap_code code)
+     end
+  | Error msgs ->
+     object%js
+       val diagnostics = Js.array (diagnostics_of_msgs msgs)
+       val code = Js.null
+     end
+
 let js_check source =
-  let msgs = match
+  js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> "")
+  (*let msgs = match
     Pipeline.check_files [Js.to_string source] with
     | Error msgs -> msgs
     | Ok (_,  msgs) -> msgs in
   object%js
     val diagnostics = Js.array (diagnostics_of_msgs msgs)
     val code = Js.null
-  end
+  end*)
 
 let js_run source =
   let _ = Flags.compiled := false in
@@ -58,6 +72,8 @@ let js_compile_with mode_string source convert =
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
+  js_result (Pipeline.compile_files mode true [Js.to_string source]) (fun module_ -> convert module_)
+  (*  
   match Pipeline.compile_files mode true [Js.to_string source] with
   | Ok (module_, msgs) ->
     let code = convert module_ in
@@ -69,7 +85,7 @@ let js_compile_with mode_string source convert =
     object%js
       val diagnostics = Js.array (diagnostics_of_msgs msgs)
       val code = Js.null
-    end
+    end*)
 
 let js_compile_wasm mode s =
   js_compile_with mode s
@@ -112,7 +128,6 @@ let () =
   Js.export "Motoko"
     (object%js
       method saveFile name content = js_save_file name content
-      method loadFile name = Sys_js.read_file ~name:(Js.to_string name)
       method addPackage package dir =
         let libs = Flags.package_urls in
         libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
