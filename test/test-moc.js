@@ -17,22 +17,22 @@ const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', 'empty.mo').result;
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
 assert.equal(typeof(empty_wasm_plain), 'object');
-assert.equal(empty_wasm_plain.code.substr(0,4), '\0asm');
-assert.equal(empty_wasm_plain.code.substr(4,4), '\1\0\0\0');
+assert.equal(empty_wasm_plain.code.subarray(0,4).toString(), '\0asm');
+assert.equal(empty_wasm_plain.code.subarray(4,4).toString(), '\1\0\0\0');
 assert.equal(typeof(empty_wasm_plain.diagnostics), 'object');
 assert.equal(empty_wasm_plain.diagnostics.length, 0);
 
 // Check that the WebAssembly binary can be loaded
-WebAssembly.compile(Buffer.from(empty_wasm_plain.code, 'ascii'));
+WebAssembly.compile(empty_wasm_plain.code);
 
 // Now again for the dfinity module
 assert.equal(typeof(empty_wasm_dfinity), 'object');
-assert.equal(empty_wasm_dfinity.code.substr(0,4), '\0asm');
-assert.equal(empty_wasm_dfinity.code.substr(4,4), '\1\0\0\0');
+assert.equal(empty_wasm_dfinity.code.subarray(0,4).toString(), '\0asm');
+assert.equal(empty_wasm_dfinity.code.subarray(4,4).toString(), '\1\0\0\0');
 assert.equal(typeof(empty_wasm_dfinity.diagnostics), 'object');
 assert.equal(empty_wasm_dfinity.diagnostics.length, 0);
 
-WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'));
+WebAssembly.compile(empty_wasm_dfinity.code);
 
 // The plain and the dfinity module should not be the same
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
