@@ -10,22 +10,26 @@ The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
 *)
 
-open Dwarf5.Meta
+(* Note [placeholder promises for typedefs]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When forming the DIE for a Motoko type synonym (`type List = ...`)
+we need to do something special. Since such typedefs are cycle-breakers
+in the type system, we will need to adopt the same property in the
+`.debug_info` section too. So, we'll output `DW_TAG_typedef` before
+even knowing which type it refers to. Instead we use a DW_FORM_ref4
+for its `DW_AT_type` attribute, which is backpatchable. The value of this
+attribute is an integer, pointing to a fulfilled promise created when the
+DIE was formed. It got fulfilled when the typedef's type became known,
+another DIE, formed shortly after the typedef's. Resolving this fulfilled
+promise in turn gives us the index (actual type ref) of an unfulfilled
+promise (the forward reference). This forward reference will be fulfilled
+to be a byte offset in the section as soon as the corresponding DIE is emitted.
 
-(* Utility predicates *)
+We keep a function that performs the patching of the section (before it is
+written to disk) by overwriting the preliminary bytes in `DW_TAG_typedef`'s
+`DW_AT_type` with the now fulfilled offset obtained from the forward reference.
 
-(* is_dwarf_like indicates whether a Wasm.Ast meta instruction
-   prevents dead-code elimination. Elimination is forbidden,
-   if the instruction contributes to a DIE, i.e. establishes, augments
-   or closes a DWARF Tag.
  *)
-let rec is_dwarf_like' = function
-  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
-  | Grouped parts -> List.exists is_dwarf_like' parts
-  | StatementDelimiter _ | FutureAttribute _ -> false
-let is_dwarf_like = function
-  | Ast.Meta m -> is_dwarf_like' m
-  | _ -> false
 
 module Promise = Lib.Promise
 
@@ -39,7 +43,6 @@ let version = 1l
 (* Errors *)
 
 module Code = Wasm.Error.Make ()
-
 
 (* Encoding stream *)
 
@@ -60,6 +63,17 @@ let to_string s =
   List.iter (fun (pos, b) -> Bytes.set bs pos b) !(s.patches);
   Bytes.to_string bs
 
+module References = Map.Make (struct type t = int let compare = compare end)
+
+let dw_references = ref References.empty
+let num_dw_references = ref 1 (* 0 would mean: "this tag doesn't fulfill a reference" *)
+let promise_reference_slot p =
+  let have = !num_dw_references in
+  dw_references := References.add have p !dw_references;
+  num_dw_references := 1 + have;
+  have
+let allocate_reference_slot () =
+  promise_reference_slot (Promise.make ())
 
 (* Encoding *)
 
@@ -231,7 +245,7 @@ let encode (em : extended_module) =
       let instr = instr noting in
 
       match e.it with
-      | Meta (StatementDelimiter left) ->
+      | Meta (Dwarf5.Meta.StatementDelimiter left) ->
         modif statement_positions (Instrs.add (pos s, left))
       | Meta _ -> assert false
       | Unreachable -> op 0x00

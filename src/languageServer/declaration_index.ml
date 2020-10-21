@@ -125,7 +125,7 @@ let shorten_import_path :
   if Filename.extension path = ".did" then
     let idl_basename = Filename.basename path in
     Flags.M.bindings ic_aliases
-    |> Lib.List.first_opt (fun (alias, id) ->
+    |> List.find_map (fun (alias, id) ->
            Debug.log "basename" (Ic.Url.idl_basename_of_blob id);
            if Ic.Url.idl_basename_of_blob id = idl_basename then Some alias
            else None)
@@ -135,7 +135,7 @@ let shorten_import_path :
   else
     let pkg_path =
       Flags.M.bindings pkg_map
-      |> Lib.List.first_opt (fun (name, pkg_path) ->
+      |> List.find_map (fun (name, pkg_path) ->
              if Lib.FilePath.is_subpath pkg_path path then
                let rel_path =
                  Option.get (Lib.FilePath.relative_to pkg_path path)
@@ -257,7 +257,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
         let type_definition =
           fields
           |> List.filter_map is_type_def
-          |> Lib.List.first_opt (fun ty_id ->
+          |> List.find_map (fun ty_id ->
                  if ty_id.it = typ.name then Some ty_id.at else None)
         in
         TypeDecl { typ with definition = type_definition }
