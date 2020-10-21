@@ -321,25 +321,9 @@ let rec dw_tag_open : dw_TAG -> t =
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef reference; Location (loc slot ty)])
   | Type ty -> dw_type ty
   | _ -> assert false
-(*
-and lookup_pointer_key () : t * int =
-  match !pointer_key with
-  | Some r -> nop, r
-  | None ->
-    let add r = pointer_key := Some r in
-    with_referencable_meta_tag add (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
-      (dw_attrs [Bit_size 1; Data_bit_offset 0])
- *)
+
 and meta_tag tag attrs =
   i (Meta (unreferencable_tag tag attrs))
-(*and referencable_meta_tag tag attrs : t * int =
-  with_referencable_meta_tag ignore tag attrs
-and with_referencable_meta_tag f tag attrs : t * int =
-  let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  f refslot;
-  i (Meta (Tag (Some refslot, tag, attrs))),
-  refslot
- *)
 and metas = concat_map (fun  die -> i (Meta die))
 and dw_typedef_ref c ty =
   let ds, r = typedef_ref c ty in
