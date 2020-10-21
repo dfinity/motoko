@@ -46,7 +46,7 @@ Clients of the map can then communicate with a coordinating `+Map+` actor, imple
 
 ....
 import Array "mo:base/Array";
-import Buckets "Bucket";
+import Buckets "Buckets";
 
 actor Map {
 
