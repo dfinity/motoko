@@ -54,6 +54,7 @@ let js_candid source =
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
+    | "wasm" -> Flags.WasmMode
     | "wasi" -> Flags.WASIMode
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")

@@ -20,7 +20,7 @@ assert.equal(empty_wasm_plain.diagnostics.length, 0);
 // Check that the WebAssembly binary can be loaded
 WebAssembly.compile(Buffer.from(empty_wasm_plain.code, 'ascii'));
 
-// Now again for the definity module
+// Now again for the dfinity module
 assert.equal(typeof(empty_wasm_dfinity), 'object');
 assert.equal(empty_wasm_dfinity.code.substr(0,4), '\0asm');
 assert.equal(empty_wasm_dfinity.code.substr(4,4), '\1\0\0\0');
