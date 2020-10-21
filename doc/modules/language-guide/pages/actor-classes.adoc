@@ -11,7 +11,7 @@ To distribute the data for this example, the set of keys is partitioned into `+n
 The bucket, `+i+`, of a key, `+k+`, is determined by the remainder of `k` divided by `n`, that is, `i = k % n`.
 The ``i``th bucket (`+i+` in ``[0..n)``)  receives a dedicated actor to store text values assigned to keys in that bucket.
 
-The actor responsible for bucket `+i+` is obtained as an instance of the actor class `+Bucket(i)+`, defined in file `+Buckets.mo+` as follows:
+The actor responsible for bucket `+i+` is obtained as an instance of the actor class `+Bucket(i)+`, defined in the sample `+Buckets.mo+` file as follows:
 
 .Buckets.mo
 ....
