@@ -370,3 +370,41 @@ and tuple ts : die list * int =
       with_referencable_tags add dw_TAG_structure_type
         (dw_attrs [Name "@tup"; Byte_size 4] @ mapi field field_types_refs) in
     prereqs @ ds, r
+
+
+(* Location expressions for DWARF
+   These are instruction sequences that direct the debugger
+   at where the data resides.
+ *)
+let rec loc slot =
+  let unskew, past_tag = 1, 4 in
+  let open Type in
+  function (* See Note [locations for types] *)
+  | Type.Variant vs when is_enum vs ->
+    Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+  | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
+  | Prim Text -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
+  | Prim Char -> Location.local slot [ dw_OP_lit8; dw_OP_shr; dw_OP_stack_value ]
+  | Prim Bool -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
+  | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
+  | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
+  | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
+  | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
+  | Prim Int32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
+                                        dw_OP_lit1; dw_OP_shra; dw_OP_skip; 3; 0;
+                                        dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+  | Prim (Word32|Nat32) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
+                                                 dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
+                                                 dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
+  (* FIXME: for Int64|Word64|Nat64|Nat|Int the heap check is ignored for now *)
+  | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+  | Prim (Word64|Nat64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+  | Prim (Nat|Int) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
+
+  | Tup _ -> Location.local slot []
+  | Con (c, _) as ty ->
+    begin match obvious_prim_of_con c ty with
+    | Some p -> loc slot (Prim p)
+    | _ -> Location.local slot [ dw_OP_stack_value ] (* FIXME: locate real type *)
+    end
+  | _ -> Location.local slot [ dw_OP_stack_value ] (* FIXME: objects, options *)

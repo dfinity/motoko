@@ -209,6 +209,15 @@ open Die
 
 (* Note [emit a DW_TAG]
    ~~~~~~~~~~~~~~~~~~~~
+   There are two principal types of DWARF tags, those
+   which are intimately tied to the generated instructions
+   and those that are not. The latter ones include type
+   definitions which can be regarded as global, while
+   the former bracket or delimit instructions, like
+   scoping or variable definitions. These are required to
+   float with the instruction stream.
+
+   Another aspect of tags is whether a tag admits children.
    When it admits children, these follow sequentially,
    closed by dw_tag_close. The abbreviation table must
    be consulted when deciding between
@@ -256,50 +265,12 @@ let dw_tag_close : t =
 
  *)
 
-(*
-let obvious_prim_of_con c ty : Type.prim option =
-  match Type.normalize ty with
-  | Type.Prim p ->
-    if Arrange_type.(prim p = con c) then Some p else None
-  | _ -> None
- *)
-
-
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
 let rec dw_tag_open : dw_TAG -> t =
-  let unskew, past_tag = 1, 4 in
   let open Type in
-  let rec loc slot = function (* See Note [locations for types] *)
-    | Type.Variant vs when is_enum vs -> Location.local slot [ dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-    | Type.Variant _ -> Location.local slot [ dw_OP_plus_uconst; unskew ]
-    | Prim Text -> Location.local slot [ dw_OP_plus_uconst; unskew; dw_OP_stack_value ]
-    | Prim Char -> Location.local slot [ dw_OP_lit8; dw_OP_shr; dw_OP_stack_value ]
-    | Prim Bool -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
-    | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
-    | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
-    | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
-    | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
-    | Prim Int32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
-                                          dw_OP_lit1; dw_OP_shra; dw_OP_skip; 3; 0;
-                                          dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-    | Prim (Word32|Nat32) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
-                                                   dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
-                                                   dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-    (* FIXME: for Int64|Word64|Nat64|Nat|Int the heap check is ignored for now *)
-    | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
-    | Prim (Word64|Nat64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
-    | Prim (Nat|Int) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
-
-    | Tup _ -> Location.local slot []
-    | Con (c, _) as ty ->
-      begin match obvious_prim_of_con c ty with
-      | Some p -> loc slot (Prim p)
-      | _ -> Location.local slot [ dw_OP_stack_value ] (* FIXME: locate real type *)
-      end
-    | _ -> Location.local slot [ dw_OP_stack_value ] in (* FIXME: objects, options *)
   function
   | Compile_unit (dir, file) ->
-    let base_types =
+    let base_types = (* these are emitted for inspectionability *)
       dw_prim_type Bool ^^
       dw_prim_type Char ^^
       dw_prim_type Text ^^
@@ -357,7 +328,7 @@ and lookup_pointer_key () : t * int =
   | None ->
     let add r = pointer_key := Some r in
     with_referencable_meta_tag add (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
-      (dw_attrs [Bit_size 1; Data_bit_offset 1])
+      (dw_attrs [Bit_size 1; Data_bit_offset 0])
  *)
 and meta_tag tag attrs =
   i (Meta (unreferencable_tag tag attrs))
