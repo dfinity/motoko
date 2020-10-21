@@ -5030,7 +5030,7 @@ module Var = struct
     Tagged.obj env Tagged.ObjInd [ code ]
 
   let get_val_ptr env ae var = match VarEnv.lookup_var ae var with
-    | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
+    | Some (HeapInd (i, 2l)) -> G.i (LocalGet (nr i))
     | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
     | _  -> field_box env (get_val_vanilla env ae var)
 
@@ -5577,7 +5577,7 @@ module AllocHow = struct
       let (ae1, i) = VarEnv.add_direct_local env ae name in
       (ae1, G.nop)
     | StoreHeap ->
-      let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+      let (ae1, i) = VarEnv.add_local_with_offset env ae name 2l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
@@ -6979,7 +6979,7 @@ and compile_exp (env : E.t) ae exp =
       code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
-    let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+    let (ae1, i) = VarEnv.add_local_with_offset env ae name 2l in
     let sr, code = compile_exp env ae1 e in
     sr,
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
