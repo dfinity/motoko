@@ -4844,7 +4844,7 @@ module VarEnv = struct
        with an offset (in words) to value.
        Used for mutable captured data *)
     | HeapInd of int32 * int32
-    (* A static mutable memory location (static address of a MutBox field) *)
+    (* A static mutable memory location (static address of a MutBox object) *)
     (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
     (* Not materialized (yet), statically known constant, static location on demand *)
@@ -4978,7 +4978,7 @@ module Var = struct
       set_new_val ^^
       compile_unboxed_const ptr ^^
       get_new_val ^^
-      Heap.store_field 1l
+      Heap.store_field MutBox.field
     | Some (Const _) -> fatal "set_val: %s is const" var
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
@@ -4990,7 +4990,7 @@ module Var = struct
     | Some (HeapInd (i, off)) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field off
     | Some (HeapStatic i) ->
-      SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
+      SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field MutBox.field
     | Some (Const c) ->
       SR.Const c, G.nop
     | Some (PublicMethod (_, name)) ->
