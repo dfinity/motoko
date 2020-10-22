@@ -7653,7 +7653,7 @@ and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
         (codeW G.nop)
     )
   | ActorU (as_opt, ds, fs, up, _t) ->
-    main_actor as_opt mod_env ds fs up (*DW_TODO*)
+    main_actor as_opt mod_env ds fs up
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -7727,7 +7727,8 @@ and main_actor as_opt mod_env ds fs up =
        G.concat_map (Var.set_val env ae1) List.(rev_map fst arg_names_tys)
     end ^^
     (* Continue with decls *)
-    decls_codeW G.nop
+    G.(dw_tag Flags.(Compile_unit (!compilation_dir, !compilation_unit)))
+      (decls_codeW G.nop)
   )
 
 and conclude_module env start_fi_o =
