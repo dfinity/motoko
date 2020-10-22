@@ -161,7 +161,7 @@ Actors and shared functions are also stable, allowing you to preserve their valu
 === How stable variables are upgraded
 
 When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
-When deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
+When you deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
 
