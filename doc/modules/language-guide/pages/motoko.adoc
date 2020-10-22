@@ -42,13 +42,7 @@ include::../examples/counter.mo[]
 On the Internet Computer, software canisters call into other canisters asynchronously, but Motoko enables you to program your systems sequentially in direct style. Asynchronous messages are function calls that return a future, and the await constructs allows chaining calls as if they were synchronous.
 
 ----
-actor Factorial {
-  var last = 1;
-  public func next() : async Nat {
-    last *= (await Counter.inc());
-    return last;
-  }
-}
+include::../examples/factorial.mo[lines=9..-1]
 ----
 
 
@@ -58,20 +52,7 @@ actor Factorial {
 Motoko has been designed to be intuitive to those familiar with Javascript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
 
 ----
-type Tree<T> = {
-  #leaf : T;
-  #branch : {left : Tree<T>; right : Tree<T>};
-};
-
-func iterTree<T>(tree : Tree<T>, f : T -> ()) {
-  switch (tree) {
-    case (#leaf(x)) { f(x) };
-    case (#branch{left; right}) {
-      iterTree<T>(left, f);
-      iterTree<T>(right, f);
-    };
-  }
-}
+include::../examples/tree.mo[]
 ----
 
 [.card]
@@ -87,23 +68,12 @@ service Counter : {
 ----
 
 [.card]
-== Orthogonal persistence 
+== Orthogonal persistence
 
 The Internet Computer persists the memory pages in which your canister runs. Thus the state of an actor and all its memory data structures survive indefinitely, they do not need to be “saved” explicitly. Motoko provides numerous features to help you leverage this environment, including language features that allow your heap to self-migrate when you upgrade the software of a canister.
 
 ----
-import Dict = "mo:dict";
-
-actor Registry {
-  type Id = Nat64;
-  let dict = Dict<Id>();
-  public func register(name : Text, id : Id) {
-    dict.insert<Id>(name, id);
-  };
-  public func lookup(name : Text, id : Id) : async ?Id {
-    dict.lookup<Id>(name);
-  };
-}
+include::../examples/Registry.mo[]
 ----
 
 [.card]
