@@ -208,7 +208,6 @@ let is_nop (is : t) =
 open Wasm_exts.Dwarf5
 open Meta
 
-open Mo_types
 open Die
 
 (* Note [emit a DW_TAG]
@@ -239,8 +238,6 @@ open Die
 let dw_tag_close : t =
   i (Meta TagClose)
 
-(*let pointer_key = ref None*)
-
 (* Note [locations for types]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~
    Motoko uses a variety of formats to store data depending on its type
@@ -270,34 +267,10 @@ let dw_tag_close : t =
  *)
 
 (* injecting a tag into the instruction stream, see Note [emit a DW_TAG] *)
-let rec dw_tag_open tag : t = metas (tag_open tag)
+let dw_tag_open tag : t =
+  let metas = concat_map (fun die -> i (Meta die)) in
+  metas (tag_open tag)
 
-and metas = concat_map (fun die -> i (Meta die))
-(*
-and dw_typedef_ref c ty =
-  let ds, r = typedef_ref c ty in
-  metas ds, r
-and dw_type_ref ty =
-  let ds, r = type_ref ty in
-  metas ds, r
-and dw_prim_type_ref (prim : Type.prim) =
-  let ds, r = prim_type_ref prim in
-  metas ds, r
-and dw_enum vnts =
-  let ds, r = enum vnts in
-  metas ds ^^ dw_tag_close, r
-and dw_option_instance key =
-  let ds, r = option_instance key in
-  metas ds ^^ dw_tag_close, r
-and dw_variant vnts =
-  let ds, r = variant vnts in
-  metas ds ^^ dw_tag_close, r
-and dw_object fs =
-  let ds, r = object_ fs in
-  metas ds ^^ dw_tag_close, r
-and dw_tuple ts =
-  let ds, r = tuple ts in
-  metas ds ^^ dw_tag_close, r *)
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
 let dw_tag_no_children = dw_tag_open (* self-closing *)
 
