@@ -171,7 +171,7 @@ and typ t = match t.it with
   | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
   | OptT t -> "OptT" $$ [typ t]
   | VariantT cts -> "VariantT" $$ List.map typ_tag cts
-  | TupT ts -> "TupT" $$ Lib.List.concat_map typ_item ts
+  | TupT ts -> "TupT" $$ List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]

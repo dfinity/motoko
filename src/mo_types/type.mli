@@ -246,7 +246,7 @@ module type Pretty = sig
   val string_of_typ_expand : typ -> string
 end
 
-module MakePretty(Cfg : sig val show_stamps : bool end) : Pretty
+module MakePretty(_ : sig val show_stamps : bool end) : Pretty
 
 include Pretty
 

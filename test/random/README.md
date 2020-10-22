@@ -45,7 +45,7 @@ to WASM, and execute it in (e.g.) `wasm-interp`:
 
 ``` shell
 $ moc -no-system-api snippet.mo
-$ wasm-interp --enable-multi snippet.wasm
+$ wasm-interp snippet.wasm
 ```
 
 In tests under category *expected failures*, this should trap.
