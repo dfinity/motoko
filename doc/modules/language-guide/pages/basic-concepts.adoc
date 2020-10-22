@@ -409,7 +409,7 @@ The link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a
 However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword.
-Give a local module name to introduce, in this example `D` for "`**P**ebug`", and a URL where the `import` declaration may locate the imported module:
+Give a local module name to introduce, in this example `D` for "`**D**ebug`", and a URL where the `import` declaration may locate the imported module:
 
 ....
 include::../examples/print.mo[]
