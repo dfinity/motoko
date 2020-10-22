@@ -44,14 +44,6 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
 
 let js_check source =
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
-  (*let msgs = match
-    Pipeline.check_files [Js.to_string source] with
-    | Error msgs -> msgs
-    | Ok (_,  msgs) -> msgs in
-  object%js
-    val diagnostics = Js.array (diagnostics_of_msgs msgs)
-    val code = Js.null
-  end*)
 
 let js_run source =
   let _ = Flags.compiled := false in
@@ -61,41 +53,27 @@ let js_run source =
   Js.string result
 
 let js_candid source =
-  let prog = Diag.run (Pipeline.generate_idl [Js.to_string source]) in
-  let code = Idllib.Arrange_idl.string_of_prog prog in
-  Js.string code
+  js_result (Pipeline.generate_idl [Js.to_string source])
+    (fun prog ->
+      let code = Idllib.Arrange_idl.string_of_prog prog in
+      Js.some (Js.string code)
+    )
 
-let js_compile_with mode_string source convert =
+let js_compile_wasm mode source =
   let mode =
-    match Js.to_string mode_string with
+    match Js.to_string mode with
     | "wasi" -> Flags.WASIMode
     | "dfinity" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
-  js_result (Pipeline.compile_files mode true [Js.to_string source]) (fun module_ -> Js.some (convert module_))
-  (*  
-  match Pipeline.compile_files mode true [Js.to_string source] with
-  | Ok (module_, msgs) ->
-    let code = convert module_ in
-    object%js
-      val diagnostics = Js.array (diagnostics_of_msgs msgs)
-      val code = Js.some code
-    end
-  | Error msgs ->
-    object%js
-      val diagnostics = Js.array (diagnostics_of_msgs msgs)
-      val code = Js.null
-    end*)
-
-let js_compile_wasm mode s =
-  js_compile_with mode s
+  js_result (Pipeline.compile_files mode true [Js.to_string source])
     (fun m ->
       let (_, wasm) = CustomModuleEncode.encode m in
       let constructor = Js.Unsafe.global##._Uint8Array in
-      constructor##from
+      let code = constructor##from
         (object%js val length = String.length wasm end)
-        (Js.wrap_callback (fun _v k -> Char.code wasm.[k]))
-    )
+        (Js.wrap_callback (fun _v k -> Char.code wasm.[k])) in
+      Js.some code)
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
@@ -137,8 +115,8 @@ let () =
                           Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
         let aliases = Flags.actor_aliases in
         aliases := Flags.M.of_seq (Array.to_seq entries)
-      method check s = wrap_output (fun _ -> js_check s)
-      method candid s = wrap_output (fun _ -> js_candid s)
-      method compileWasm mode s = wrap_output (fun _ -> js_compile_wasm mode s)
+      method check s = js_check s
+      method candid s = js_candid s
+      method compileWasm mode s = js_compile_wasm mode s
       method run s = wrap_output (fun _ -> js_run s)
     end);

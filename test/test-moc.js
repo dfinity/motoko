@@ -11,8 +11,8 @@ moc.Motoko.saveFile('ok.mo', '1');
 moc.Motoko.saveFile('bad.mo', '1+');
 
 // Compile the empty module in wasi and dfinity mode
-const empty_wasm_plain = moc.Motoko.compileWasm('wasi', 'empty.mo').result;
-const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', 'empty.mo').result;
+const empty_wasm_plain = moc.Motoko.compileWasm('wasi', 'empty.mo');
+const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', 'empty.mo');
 
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
@@ -38,7 +38,7 @@ WebAssembly.compile(empty_wasm_dfinity.code);
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
 
 // Check if error messages are correctly returned
-const bad_result = moc.Motoko.compileWasm('dfinity', 'bad.mo').result;
+const bad_result = moc.Motoko.compileWasm('dfinity', 'bad.mo');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result, null, 2));
 assert.deepStrictEqual(bad_result, {
@@ -63,12 +63,12 @@ assert.deepStrictEqual(bad_result, {
 });
 
 // Check the check command (should print errors, but have no code)
-assert.deepStrictEqual(moc.Motoko.check('ok.mo').result, {
+assert.deepStrictEqual(moc.Motoko.check('ok.mo'), {
   "diagnostics": [],
   "code": null
 });
 
-assert.deepStrictEqual(moc.Motoko.check('bad.mo').result, {
+assert.deepStrictEqual(moc.Motoko.check('bad.mo'), {
   "diagnostics": [
     {
       "range": {
