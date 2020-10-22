@@ -378,7 +378,10 @@ let encode (em : extended_module) =
       | Meta TagClose -> close_dwarf true
       | Meta (StatementDelimiter left) ->
         modif statement_positions (Instrs.add (pos s, left))
-      | Meta (Tag (r, t, attrs)) -> extract_dwarf r t attrs
+      | Meta (Tag (r, t, attrs_tags)) ->
+        let tags, attrs = List.partition (function Tag _ | Grouped _ -> true | _ -> false) attrs_tags in
+        extract_dwarf r t attrs;
+        List.iter (fun t -> instr { e with it = (Meta t) }) tags
       | Meta (Grouped []) -> ()
       | Meta (Grouped (late :: former)) ->
         instr { e with it = Meta (Grouped former) };
