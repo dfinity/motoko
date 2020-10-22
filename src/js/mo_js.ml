@@ -46,11 +46,7 @@ let js_check source =
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
 
 let js_run source =
-  let _ = Flags.compiled := false in
-  let results = Pipeline.run_string (Js.to_string source) in
-  let result = String.concat "\n" results in
-  let _ = Flags.compiled := true in
-  Js.string result
+  ignore (Pipeline.run_stdin_from_file (Js.to_string source))
 
 let js_candid source =
   js_result (Pipeline.generate_idl [Js.to_string source])
@@ -101,7 +97,6 @@ let () =
   Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
   Flags.check_ir := false;
   Flags.debug_info := false;
-  Flags.compiled := true;
   Flags.actor_idl_path := Some "idl/";
   Js.export "Motoko"
     (object%js
@@ -115,8 +110,8 @@ let () =
                           Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
         let aliases = Flags.actor_aliases in
         aliases := Flags.M.of_seq (Array.to_seq entries)
-      method check s = js_check s
-      method candid s = js_candid s
-      method compileWasm mode s = js_compile_wasm mode s
-      method run s = wrap_output (fun _ -> js_run s)
+      method check s = Flags.compiled := false; js_check s
+      method candid s = Flags.compiled := true; js_candid s
+      method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
+      method run s = Flags.compiled := false; wrap_output (fun _ -> js_run s)
     end);

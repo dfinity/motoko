@@ -494,19 +494,20 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
-let run_string (senv, denv) s : string list =
-  match load_decl (parse_string "interpret" s) senv with
-  | Error msgs -> List.map Diag.string_of_message msgs
-  | Ok ((libs, prog, senv', t, sscope), msgs) ->
-     let msgs = List.map Diag.string_of_message msgs in
-     let denv' = interpret_libs denv libs in
-     match interpret_prog denv' prog with
-     | None -> msgs
-     | Some (v, dscope) ->
-        let string_of_val = sprintf "%s : %s" (Value.string_of_val 10 v) (Type.string_of_typ t) in
-        string_of_val :: msgs
-let run_string s = run_string initial_env s
-        
+let run_stdin_from_file (senv, denv) file =
+  Option.bind
+    (Diag.flush_messages (load_decl (parse_file Source.no_region file) senv))
+    (fun (libs, prog, senv', t, sscope) ->
+      let denv' = interpret_libs denv libs in
+      Option.bind
+        (interpret_prog denv' prog)
+        (fun (v, dscope) ->
+          printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
+          Some ()
+        )
+    )
+let run_stdin_from_file file = run_stdin_from_file initial_env file
+
 let run_files_and_stdin files =
   let lexer = Lexing.from_function lexer_stdin in
   Option.bind (interpret_files initial_env files) (fun env ->

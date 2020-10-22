@@ -24,7 +24,7 @@ val chase_imports : parse_fn -> Scope.scope -> Resolve_import.resolved_imports -
   (Syntax.lib list * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
-val run_string          : string -> string list
+val run_stdin_from_file : string -> unit option
 val interpret_ir_files  : string list -> unit option
 val run_files_and_stdin : string list -> unit option
 
