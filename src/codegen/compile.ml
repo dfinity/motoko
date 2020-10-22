@@ -4886,9 +4886,8 @@ module VarEnv = struct
        Used for immutable and mutable, non-captured data *)
     | Local of int32
     (* A Wasm Local of the current function, that points to memory location,
-       with an offset (in words) to value.
-       Used for mutable captured data *)
-    | HeapInd of int32 * int32
+       which is a MutBox.  Used for mutable captured data *)
+    | HeapInd of int32
     (* A static mutable memory location (static address of a MutBox field) *)
     (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
@@ -4950,13 +4949,10 @@ module VarEnv = struct
     | Some l -> not (is_non_local l)
     | None -> assert false
 
-  let reuse_local_with_offset (ae : t) name i off =
-      { ae with vars = NameEnv.add name (HeapInd (i, off)) ae.vars }
-
-  let add_local_with_offset env (ae : t) name off =
+  let add_local_with_heap_ind env (ae : t) name =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      (reuse_local_with_offset ae name i off, i)
+      ({ ae with vars = NameEnv.add name (HeapInd i) ae.vars }, i)
 
   let add_local_heap_static (ae : t) name ptr =
       { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
@@ -5019,12 +5015,12 @@ module Var = struct
   let set_val env ae var = match VarEnv.lookup_var ae var with
     | Some (Local i) ->
       G.i (LocalSet (nr i))
-    | Some (HeapInd (i, off)) ->
+    | Some (HeapInd i) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       G.i (LocalGet (nr i)) ^^
       get_new_val ^^
-      Heap.store_field off
+      Heap.store_field MutBox.field
     | Some (HeapStatic ptr) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
@@ -5039,8 +5035,8 @@ module Var = struct
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
     | Some (Local i) ->
       SR.Vanilla, G.i (LocalGet (nr i))
-    | Some (HeapInd (i, off)) ->
-      SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field off
+    | Some (HeapInd i) ->
+      SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field MutBox.field
     | Some (HeapStatic i) ->
       SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
     | Some (Const c) ->
@@ -5068,25 +5064,24 @@ module Var = struct
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some (HeapInd (i, off)) ->
+    | Some (HeapInd i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_local_with_offset new_env ae1 var off in
+        let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
     | _ -> assert false
 
-  (* Returns a pointer to a heap allocated box for this.
-     (either a mutbox, if already mutable, or a freshly allocated box)
+  (* This is used when putting a mutable field into an objects.
+     In the IR, mutable fields of objects alias can be set to pre-allocated
+     MutBox objects, to allow the async/await. So if we already have
+     this variable in a MutBox, then use that, else create a new one.
   *)
-  let field_box env code =
-    Tagged.obj env Tagged.ObjInd [ code ]
-
-  let get_val_ptr env ae var = match VarEnv.lookup_var ae var with
-    | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
+  let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
+    | Some (HeapInd i) -> G.i (LocalGet (nr i))
     | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
-    | _  -> field_box env (get_val_vanilla env ae var)
+    | _  -> Tagged.obj env Tagged.ObjInd [ get_val_vanilla env ae var ]
 
 end (* Var *)
 
@@ -5656,7 +5651,7 @@ module AllocHow = struct
       let (ae1, i) = VarEnv.add_direct_local env ae name in
       (ae1, G.nop)
     | StoreHeap ->
-      let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+      let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
@@ -7075,7 +7070,7 @@ and compile_exp (env : E.t) ae exp =
       code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
-    let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+    let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
     let sr, code = compile_exp env ae1 e in
     sr,
     MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
@@ -7125,7 +7120,7 @@ and compile_exp (env : E.t) ae exp =
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
         if Object.is_mut_field env exp.note.Note.typ f.it.name
-        then Var.get_val_ptr env ae f.it.var
+        then Var.get_aliased_box env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
