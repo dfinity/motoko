@@ -60,6 +60,6 @@ func bar (a : Int) : Int {
 };
 
 assert baz(42) == true;
-assert bar(42) == 5;
+assert bar(0) == 42;
 
 //MOC-FLAG -g
