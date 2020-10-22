@@ -297,6 +297,7 @@ rec {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
       '';
       installPhase = ''
@@ -445,6 +446,22 @@ rec {
     '';
   };
 
+  guide-examples-tc =  stdenv.mkDerivation {
+    name = "guid-examples-tc";
+    src = subpath doc/modules/language-guide/examples;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    MOTOKO_BASE = base-src;
+    installPhase = "touch $out";
+    checkInputs = [
+      moc
+    ];
+    checkPhase = ''
+      patchShebangs .
+      ./check.sh
+    '';
+  };
+
   base-doc = stdenv.mkDerivation {
     name = "base-doc";
     src = nixpkgs.sources.motoko-base;
@@ -548,6 +565,7 @@ rec {
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    MOTOKO_BASE = base-src;
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell

@@ -168,7 +168,7 @@ let completions index project_root file_path file_contents line column =
               index
           in
           let completions =
-            Lib.List.concat_map
+            List.concat_map
               (fun (p, ds) ->
                 if p = Filename.basename file_path then
                   (* Self-imports are not allowed *)

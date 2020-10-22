@@ -231,10 +231,6 @@ struct
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
 
-  (* TODO: remove and use List.concat_map from OCaml 4.10 *)
-  let concat_map f xs =
-    List.(concat (map f xs))
-
   let rec table n f = table' n f []
   and table' n f xs =
     if n = 0 then xs else table' (n - 1) f (f (n - 1) :: xs)
@@ -276,13 +272,6 @@ struct
   let last_opt = function
     | [] -> None
     | xs -> Some (last xs)
-
-  let rec first_opt f = function
-    | [] -> None
-    | x::xs ->
-       match f x with
-       | None -> first_opt f xs
-       | some -> some
 
   let rec split_last = function
     | [x] -> [], x
@@ -448,6 +437,15 @@ struct
     match o with
     | Some y -> y
     | None -> x
+
+  module Syntax =
+  struct
+    let (let+) x f = Option.map f x
+    let (and+) x y = match x, y with
+      | Some x, Some y -> Some (x, y)
+      | _  -> None
+    let (let*) = Option.bind
+  end
 end
 
 module Promise =
