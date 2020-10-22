@@ -273,6 +273,7 @@ let dw_tag_close : t =
 let rec dw_tag_open tag : t = metas (tag_open tag)
 
 and metas = concat_map (fun die -> i (Meta die))
+(*
 and dw_typedef_ref c ty =
   let ds, r = typedef_ref c ty in
   metas ds, r
@@ -296,7 +297,7 @@ and dw_object fs =
   metas ds ^^ dw_tag_close, r
 and dw_tuple ts =
   let ds, r = tuple ts in
-  metas ds ^^ dw_tag_close, r
+  metas ds ^^ dw_tag_close, r *)
 let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
 let dw_tag_no_children = dw_tag_open (* self-closing *)
 
