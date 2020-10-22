@@ -2,14 +2,20 @@ import Text "mo:base/Text";
 import Map "mo:base/HashMap";
 
 actor Registry {
-  type Id = Nat64;
-  let dict = Map.HashMap<Text,Id>(10, Text.equal, Text.hash);
+  var nextId = 0;
+  let dict = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
 
-  public func register(name : Text, id : Id) : async () {
-    dict.put(name, id);
+  public func register(name : Text) : async () {
+    switch (dict.get(name)) {
+      case null {
+        dict.put(name, nextId);
+        nextId += 1;
+      };
+      case (?id) { };
+    }
   };
 
-  public func lookup(name : Text, id : Id) : async ?Id {
+  public func lookup(name : Text) : async ?Nat {
     dict.get(name);
   };
 }
