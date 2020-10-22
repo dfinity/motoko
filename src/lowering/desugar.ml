@@ -232,7 +232,7 @@ and with_self i typ decs =
   let_no_shadow (var i typ) (selfRefE typ) decs
 
 and call_system_func_opt name es =
-  Lib.List.first_opt (fun es ->
+  List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
@@ -452,11 +452,7 @@ and dec' at n d = match d with
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local ->
-        if s.it = T.Actor then (* HACK: work around for issue #1847 (also below) *)
-          Some { it = S.WildP; at = no_region; note = T.ctxt }
-        else
-          None
+      | T.Local -> None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -764,9 +760,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   | S.ActorClassU (sp, typ_id, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
-      | T.Local ->
-        (* HACK: work around for issue #1847 (also above) *)
-        Some { it = S.WildP; at = no_region; note = T.ctxt }
+      | T.Local -> None
       | T.Shared (_, p) -> Some p in
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
@@ -793,7 +787,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let (imports, body) = u.it in
-  let imports' = Lib.List.concat_map transform_import imports in
+  let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   inject_decs imports' body', initial_flavor
 
@@ -809,7 +803,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let f = u.note in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
-  let imports' = Lib.List.concat_map transform_import imports in
+  let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in
   let exp = match prog with

@@ -1233,6 +1233,16 @@ module MutBox = struct
   (* Mutable heap objects *)
 
   let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+
+  let static env =
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let zero = bytes_of_int32 0l in
+    let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+    E.add_static_root env ptr;
+    ptr
 end
 
 
@@ -4973,6 +4983,7 @@ module VarEnv = struct
       (add_local_local env ae name ty srcloc i, i)
 
   (* Adds the names to the environment and returns a list of setters *)
+(*<<<<<<< HEAD
   let rec add_argument_locals env (ae : t) at = function
     | [] -> ae, []
     | (name, ty) :: rest ->
@@ -4981,6 +4992,24 @@ module VarEnv = struct
       let ae' = { ae with vars = add_binding name ty at (Local i) ae.vars } in
       let (ae_final, setters) = add_argument_locals env ae' at rest
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
+=======*)
+  let rec add_arguments env (ae : t) at as_local = function
+    | [] -> ae, []
+    | (name, ty) :: names_tys ->
+      if as_local name then
+        let i = E.add_anon_local env I32Type in
+        E.add_local_name env i name;
+        (*let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in*)
+        let ae' = { ae with vars = add_binding name ty at (Local i) ae.vars } in
+        let ae_final, setters = add_arguments env ae' at as_local names_tys
+        in ae_final, G.i (LocalSet (nr i)) :: setters
+      else (* needs to go to static memory *)
+        let ptr = MutBox.static env in
+        let ae' = add_local_heap_static ae name ty at ptr in
+        add_arguments env ae' at as_local names_tys (* FIXME: setters? *)
+
+  let add_argument_locals env (ae : t) at =
+    add_arguments env ae at (fun _ -> true)
 
   let add_label (ae : t) name (d : G.depth) =
       { ae with labels = NameEnv.add name d ae.labels }
@@ -5171,6 +5200,13 @@ module FuncDec = struct
       let ae1, setters = VarEnv.add_argument_locals env ae0 at arg_names_tys in
       Serialization.deserialize env (List.map snd arg_names_tys) ^^
       G.concat (List.rev setters) ^^
+(*=======
+      let arg_names = List.map (fun a -> a.it) args in
+      let arg_tys = List.map (fun a -> a.note) args in
+      let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
+      Serialization.deserialize env arg_tys ^^
+      G.concat_map (Var.set_val env ae1) (List.rev arg_names) ^^
+>>>>>>> origin/master*)
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -5218,7 +5254,7 @@ module FuncDec = struct
                  get_env ^^
                  Closure.load_data (Wasm.I32.of_int_u i) ^^
                  G.dw_tag
-                   (G.LexicalBlock at.left)
+                   (Die.LexicalBlock at.left)
                    (codeW (code_restW body))
                 )
               in store_env, restore_env in
@@ -5673,6 +5709,15 @@ module AllocHow = struct
       E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name typ at ptr in
       G.(ae1, nop, G.(dw_tag_no_children (Variable(*FIXME: ByPtr?*) (name, at.left, typ, Int32.to_int ptr))))
+(*=======
+      let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
+      let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
+      (ae1, alloc_code)
+    | StoreStatic ->
+      let ptr = MutBox.static env in
+      let ae1 = VarEnv.add_local_heap_static ae name ptr in
+      (ae1, G.nop)
+>>>>>>> origin/master*)
 
 end (* AllocHow *)
 
@@ -7100,8 +7145,7 @@ and compile_exp (env : E.t) ae exp =
     let ae1, i = VarEnv.add_local_with_offset env ae name exp.note.Ir_def.Note.typ exp.at 1l in
     let sr, code = compile_exp env ae1 e in
     sr,
-    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
-    G.i (LocalSet (nr i)) ^^
+    MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
     code
   | DefineE (name, _, e) ->
     SR.unit,
@@ -7456,7 +7500,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     let (pre_ae1, alloc_code, pat_arity, fill_code, dw) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
       (fun ae -> G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^ fill_code),
-      fun body -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ body)
+      fun body -> G.dw_tag (Die.LexicalBlock dec.at.left) (dw ^^ body)
     )
 
   | VarD (name, _, e) ->
@@ -7468,7 +7512,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       ( pre_ae1,
         alloc_code,
         (fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
-        fun body_code -> G.dw_tag (G.LexicalBlock dec.at.left) (dw ^^ body_code)
+        fun body_code -> G.dw_tag (Die.LexicalBlock dec.at.left) (dw ^^ body_code)
       )
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
@@ -7637,10 +7681,19 @@ and main_actor as_opt mod_env ds fs up =
   Func.define_built_in mod_env "init" [] [] (fun env ->
     let ae0 = VarEnv.empty_ae in
 
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
+
     (* Add any params to the environment *)
+    (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
-    let arg_names_tys = List.map (fun a -> a.it, a.note) args in
+(*    let arg_names_tys = List.map (fun a -> a.it, a.note) args in
     let ae1, setters = VarEnv.add_argument_locals env ae0 Source.no_region arg_names_tys in
+*)
+    let arg_names_tys = List.map (fun a -> a.it, a.note) args in
+    (*let arg_names = List.map (fun a -> a.it) args in
+    let arg_tys = List.map (fun a -> a.note) args in*)
+    let as_local n = not (Freevars.S.mem n captured) in
+    let ae1, setters = VarEnv.add_arguments env ae0 Source.no_region as_local arg_names_tys in
 
     (* Reverse the fs, to a map from variable to exported name *)
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7660,9 +7713,9 @@ and main_actor as_opt mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.post);
     Dfinity.export_upgrade_methods env;
 
-    let arg_tys = List.map (fun a -> a.note) args in
+    let arg_tys = List.map snd arg_names_tys in
     (* Deserialize any arguments *)
-    (match as_opt with
+    begin match as_opt with
      | None
      | Some [] ->
        (* Liberally accept empty as well as unit argument *)
@@ -7671,7 +7724,8 @@ and main_actor as_opt mod_env ds fs up =
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
      | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
-       G.concat (List.rev setters)) ^^
+       G.concat_map (Var.set_val env ae1) List.(rev_map fst arg_names_tys)
+    end ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )

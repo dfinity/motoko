@@ -840,7 +840,7 @@ and check_args env args =
       check env a.at (not (T.Env.mem a.it ve))
         "duplicate binding for %s in argument list" a.it;
       check_typ env a.note;
-      let val_info = {typ = a.note; const = false; loc_known = false} in
+      let val_info = {typ = a.note; const = false; loc_known = env.lvl = TopLvl } in
       let env' = T.Env.add a.it val_info ve in
       go env' as_
   in go T.Env.empty args

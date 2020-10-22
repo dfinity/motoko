@@ -651,7 +651,7 @@ let align p n =
   shift_left (shift_right_logical (add n (sub (shift_left 1l p) 1l)) p) p
 
 let find_fun_export (name : name) (exports : export list) : var option =
-  Lib.List.first_opt (fun (export : export) ->
+  List.find_map (fun (export : export) ->
     if export.it.name = name then
       match export.it.edesc.it with
       | FuncExport var -> Some var
