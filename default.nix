@@ -125,11 +125,11 @@ in
 rec {
   rts =
     let
-      rustDeps = nixpkgs.rustPlatform-nightly.fetchcargo {
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
         name = "motoko-rts-deps";
         src = subpath rts/motoko-rts;
         sourceRoot = null;
-        sha256 = "0axxn4g6wf4v3ah7parjzfzzc98w816kpipp905y5srx0fvws637";
+        sha256 = "11la5fl0fgx6i5g52p56sf48yz7f0mqrgm38m320xh3wyqa2nim6";
         copyLockfile = true;
       };
     in
@@ -148,12 +148,13 @@ rec {
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
         echo "Using vendored sources from ${rustDeps}"
+        unpackFile ${rustDeps}
         cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
 
           [source."vendored-sources"]
-          "directory" = "${rustDeps}"
+          "directory" = "$(stripHash ${rustDeps})"
         __END__
 
         ${llvmEnv}
@@ -296,6 +297,7 @@ rec {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
       '';
       installPhase = ''
@@ -444,6 +446,22 @@ rec {
     '';
   };
 
+  guide-examples-tc =  stdenv.mkDerivation {
+    name = "guid-examples-tc";
+    src = subpath doc/modules/language-guide/examples;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    MOTOKO_BASE = base-src;
+    installPhase = "touch $out";
+    checkInputs = [
+      moc
+    ];
+    checkPhase = ''
+      patchShebangs .
+      ./check.sh
+    '';
+  };
+
   base-doc = stdenv.mkDerivation {
     name = "base-doc";
     src = nixpkgs.sources.motoko-base;
@@ -547,6 +565,7 @@ rec {
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    MOTOKO_BASE = base-src;
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell

@@ -653,15 +653,15 @@ let find_unshared t =
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t -> go t
-      | Tup ts -> Lib.List.first_opt go ts
+      | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
         (match s with
          | Actor -> None
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
-           Lib.List.first_opt (fun f -> go f.typ) fs
+           List.find_map (fun f -> go f.typ) fs
          | Memory -> assert false)
-      | Variant fs -> Lib.List.first_opt (fun f -> go f.typ) fs
+      | Variant fs -> List.find_map (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         if is_shared_sort s
         then None

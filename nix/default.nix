@@ -21,10 +21,6 @@ let
           self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
-              wasm = import ./ocaml-wasm.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml;
-                inherit (self.ocamlPackages) findlib ocamlbuild;
-              };
               vlq = import ./ocaml-vlq.nix {
                 inherit (self) stdenv fetchFromGitHub ocaml dune;
                 inherit (self.ocamlPackages) findlib;
@@ -52,6 +48,14 @@ let
           rustPlatform-nightly = pkgs.makeRustPlatform {
             rustc = rustc-nightly;
             cargo = cargo-nightly;
+          };
+        })
+
+        # to allow picking up more recent Haskell packages from Hackage
+        (self: super: {
+          all-cabal-hashes = self.fetchurl {
+            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/66a799608f2c6e0e6c530383bc0e2bcb42ae11f2.tar.gz";
+            sha256 = "0ds95gacrzsqg5f0f6j533ghxzcqqn7wn1d391pcpj5g9frp01q2";
           };
         })
 

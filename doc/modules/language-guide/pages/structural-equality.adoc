@@ -1,4 +1,4 @@
-= Structural Equality
+= Structural equality
 
 (In)Equality is structural. It is defined only on `shared` types.
 Informally this means equality is defined on types that don't contain mutable fields, mutable arrays, non-shared functions or components of generic type.
