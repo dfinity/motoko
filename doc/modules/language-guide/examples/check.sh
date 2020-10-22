@@ -19,6 +19,3 @@ do
   echo "$file" ...
   moc --check --package base "$MOTOKO_BASE" "$file"
 done
-
-
-
