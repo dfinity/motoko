@@ -5085,14 +5085,14 @@ module Var = struct
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_direct_local new_env ae1 var ty at in
         let restore_code = G.i (LocalSet (nr j)) in
-        let dw = G.(dw_tag_no_children (Variable (* FIXME: Constant? *) (var, at.left, ty, Int32.to_int j)))
+        let dw = G.dw_tag_no_children (Die.Variable (* FIXME: Constant? *) (var, at.left, ty, Int32.to_int j))
         in ae2, fun body -> restore_code ^^ dw ^^ body
       )
     | Some (HeapInd (i, off), ty, at) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_offset new_env ae1 var ty at off in
-        let dw = G.(dw_tag_no_children (Variable(* FIXME: Indirect *) (var, at.left, ty, Int32.to_int j))) in
+        let dw = G.dw_tag_no_children (Die.Variable(* FIXME: Indirect *) (var, at.left, ty, Int32.to_int j)) in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ dw ^^ body
       )
@@ -5134,7 +5134,7 @@ module FuncDec = struct
     | [] -> ae, dw
     | {it; at; note}::args ->
       let ae' = VarEnv.add_local_local env ae it note at (Int32.of_int ix) in
-      let dw' = G.(dw_tag_no_children (Formal_parameter (it, at.left, note, ix))) in
+      let dw' = G.dw_tag_no_children (Die.Formal_parameter (it, at.left, note, ix)) in
       go (ix + 1) ae' (dw ^^ dw') args in
     go first_arg ae0 G.nop
 
@@ -5155,13 +5155,13 @@ module FuncDec = struct
       (* prereq has side effects (i.e. creating DW types) that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
       let prereq_types =
-        G.(effects (concat_map (fun arg -> dw_tag_no_children (Type arg.note)) args ^^
-                    concat_map (fun ty -> dw_tag_no_children (Type ty)) ret_tys)) in
+        G.(effects (concat_map (fun arg -> dw_tag_no_children (Die.Type arg.note)) args ^^
+                    concat_map (fun ty -> dw_tag_no_children (Die.Type ty)) ret_tys)) in
 
       (* Add arguments to the environment (shifted by 1) *)
       let ae2, dw_args = bind_args env ae1 1 args in
       prereq_types ^^
-      G.(dw_tag (Subprogram (name, ret_tys, at.left)))
+      G.dw_tag (Die.Subprogram (name, ret_tys, at.left))
         (dw_args ^^
          closure_codeW (mk_body env ae2))
     ))
@@ -5695,20 +5695,20 @@ module AllocHow = struct
     | LocalImmut | LocalMut ->
       let ae1, ix = VarEnv.add_direct_local env ae name typ at in
       G.(ae1, nop,
-         dw_tag_no_children (Variable(*FIXME: Constant?*) (name, at.left, typ, Int32.to_int ix)))
+         dw_tag_no_children (Die.Variable(*FIXME: Constant?*) (name, at.left, typ, Int32.to_int ix)))
     | StoreHeap ->
       let ae1, ix = VarEnv.add_local_with_offset env ae name typ at 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr ix)) in
-      (ae1, alloc_code, G.(dw_tag_no_children (Variable(*FIXME: Indirect?*) (name, at.left, typ, Int32.to_int ix))))
+      (ae1, alloc_code, G.dw_tag_no_children (Die.Variable(*FIXME: Indirect?*) (name, at.left, typ, Int32.to_int ix)))
     | StoreStatic ->
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
       E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name typ at ptr in
-      G.(ae1, nop, G.(dw_tag_no_children (Variable(*FIXME: ByPtr?*) (name, at.left, typ, Int32.to_int ptr))))
+      G.(ae1, nop, G.dw_tag_no_children (Die.Variable(*FIXME: ByPtr?*) (name, at.left, typ, Int32.to_int ptr)))
 (*=======
       let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
@@ -7133,7 +7133,7 @@ and compile_exp (env : E.t) ae exp =
                    code1 ^^^
                    CannotFail G.(dw_statement e.at ^^
                                  dw_tag
-                                   (LexicalBlock e.at.left)
+                                   (Die.LexicalBlock e.at.left)
                                    (dw ^^ compile_exp_vanilla env ae1 e) ^^
                                  set_j))
                  code2
@@ -7417,8 +7417,8 @@ and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
   AllocHow.M.fold (fun v typ (dw_ty, ae, dw) ->
     let ae1, ix = VarEnv.add_direct_local env ae v typ pat.at in
-    let prereq_type = G.(effects (dw_tag_no_children (Type typ))) in
-    G.(dw_ty ^^ prereq_type, ae1, dw ^^ dw_tag_no_children (Variable (v, pat.at.left, typ, Int32.to_int ix)))
+    let prereq_type = G.(effects (dw_tag_no_children (Die.Type typ))) in
+    G.(dw_ty ^^ prereq_type, ae1, dw ^^ dw_tag_no_children (Die.Variable (v, pat.at.left, typ, Int32.to_int ix)))
   ) d (G.nop, ae, G.nop)
 
 and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
@@ -7649,7 +7649,7 @@ and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
-      G.(dw_tag Flags.(Compile_unit (!compilation_dir, !compilation_unit)))
+      G.dw_tag Flags.(Die.Compile_unit (!compilation_dir, !compilation_unit))
         (codeW G.nop)
     )
   | ActorU (as_opt, ds, fs, up, _t) ->
@@ -7727,7 +7727,7 @@ and main_actor as_opt mod_env ds fs up =
        G.concat_map (Var.set_val env ae1) List.(rev_map fst arg_names_tys)
     end ^^
     (* Continue with decls *)
-    G.(dw_tag Flags.(Compile_unit (!compilation_dir, !compilation_unit)))
+    G.dw_tag Flags.(Die.Compile_unit (!compilation_dir, !compilation_unit))
       (decls_codeW G.nop)
   )
 
