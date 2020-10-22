@@ -235,9 +235,6 @@ open Die
    See also: Note [funneling DIEs through Wasm.Ast]
  *)
 
-let dw_tag_close : t =
-  i (Meta TagClose)
-
 (* Note [locations for types]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~
    Motoko uses a variety of formats to store data depending on its type
@@ -271,7 +268,9 @@ let dw_tag_open tag : t =
   let metas = concat_map (fun die -> i (Meta die)) in
   metas (tag_open tag)
 
-let dw_tag die body = dw_tag_open die ^^ body ^^ dw_tag_close
+let dw_tag die body =
+  let dw_tag_close : t = i (Meta TagClose) in
+  dw_tag_open die ^^ body ^^ dw_tag_close
 let dw_tag_no_children = dw_tag_open (* self-closing *)
 
 (* Marker for statement boundaries *)
