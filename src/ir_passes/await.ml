@@ -506,7 +506,7 @@ and define_pat patenv pat : dec list =
     []
 
 and define_pats patenv (pats : pat list) : dec list =
-  Lib.List.concat_map (define_pat patenv) pats
+  List.concat_map (define_pat patenv) pats
 
 and t_comp_unit context = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")

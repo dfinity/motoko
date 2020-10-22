@@ -71,7 +71,7 @@ deser: $(SOURCE_ID)
 $(SOURCE_ID):
 	source_id/gen.sh
 
-unit-tests:
+unit-tests: $(SOURCE_ID)
 	dune runtest $(DUNE_OPTS)
 
 format:

@@ -192,7 +192,7 @@ let tagE i e =
 let dec_eff dec = match dec.it with
   | LetD (_,e) | VarD (_, _, e) -> eff e
 
-let rec simpl_decs decs = Lib.List.concat_map simpl_dec decs
+let rec simpl_decs decs = List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
   | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []

@@ -125,11 +125,11 @@ in
 rec {
   rts =
     let
-      rustDeps = nixpkgs.rustPlatform-nightly.fetchcargo {
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
         name = "motoko-rts-deps";
         src = subpath rts/motoko-rts;
         sourceRoot = null;
-        sha256 = "0axxn4g6wf4v3ah7parjzfzzc98w816kpipp905y5srx0fvws637";
+        sha256 = "11la5fl0fgx6i5g52p56sf48yz7f0mqrgm38m320xh3wyqa2nim6";
         copyLockfile = true;
       };
     in
@@ -148,12 +148,13 @@ rec {
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
         echo "Using vendored sources from ${rustDeps}"
+        unpackFile ${rustDeps}
         cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
 
           [source."vendored-sources"]
-          "directory" = "${rustDeps}"
+          "directory" = "$(stripHash ${rustDeps})"
         __END__
 
         ${llvmEnv}
@@ -296,6 +297,7 @@ rec {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
       '';
       installPhase = ''
