@@ -768,6 +768,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter_next" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_iter_copy" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_len" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_of_ptr_size" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
@@ -806,7 +807,6 @@ module RTS = struct
     E.add_func_import env "rts" "init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
-    E.add_func_import env "rts" "copy_iter_object" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -6883,7 +6883,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "array_shallow_copy", [a] ->
       SR.Vanilla,
       compile_exp_vanilla env ae a ^^
-      E.call_import env "rts" "copy_iter_object"
+      E.call_import env "rts" "text_iter_copy"
 
     | OtherPrim "print", [e] ->
       SR.unit,

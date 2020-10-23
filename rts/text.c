@@ -355,3 +355,54 @@ export uint32_t text_iter_next(text_iter_t i) {
     return c;
   }
 }
+
+
+static text_iter_t  copy_iter_state(text_iter_t i0) {
+  if (TAG(i0) != TAG_ARRAY) {
+    rts_trap_with("copy_iter_array: not an array");
+  }
+  const uint32_t num_words = ARRAY_HEADER_SIZE + ARRAY_LEN(i0);
+  as_ptr i = alloc_words(num_words);
+  memcpy(i, i0, num_words << 2);
+  // duplicate the worklist, as it might get mutated
+  text_iter_cont_t *c = &TEXT_ITER_TODO(i);
+  while (*c) {
+    const uint32_t num_words = TUPLE_HEADER_SIZE + 2;
+    text_iter_cont_t d = alloc_words(num_words);
+    memcpy(d, *c, num_words << 2);
+    c = &TEXT_CONT_NEXT(d);
+  }
+  return i;
+}
+
+export as_ptr text_iter_copy(as_ptr a0) {
+  if (TAG(a0) != TAG_OBJECT) {
+    rts_trap_with("copy_iter_object: not an object");
+  }
+  if (ARRAY_LEN(a0) != 1) {
+    rts_trap_with("copy_iter_object: more fields?");
+  }
+  const uint32_t num_words = ARRAY_HEADER_SIZE + 1 + ARRAY_LEN(a0);
+  as_ptr a = alloc_words(num_words);
+  memcpy(a, a0, num_words << 2);
+
+  as_ptr closure = FIELD(a, 3);
+
+  if (TAG(closure) != TAG_CLOSURE) {
+    rts_trap_with("copy_iter_object: not a closure?");
+  }
+  if (FIELD(closure, 2) != 1) {
+    rts_trap_with("copy_iter_object: not single captured?");
+  }
+  as_ptr arr = FIELD(closure, 3);
+  as_ptr arr2 = copy_iter_state(arr);
+
+  as_ptr closure2 = alloc_words(4);
+  memcpy(closure2, closure, 8);
+  FIELD(closure2, 3) = arr2;
+
+  FIELD(a, 3) = closure2;
+
+  return a;
+}
+
