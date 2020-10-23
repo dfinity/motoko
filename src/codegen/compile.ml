@@ -5073,8 +5073,8 @@ module Var = struct
       )
     | _ -> assert false
 
-  (* This is used when putting a mutable field into an objects.
-     In the IR, mutable fields of objects alias can be set to pre-allocated
+  (* This is used when putting a mutable field into an object.
+     In the IR, mutable fields of objects can alias pre-allocated
      MutBox objects, to allow the async/await. So if we already have
      this variable in a MutBox, then use that, else create a new one.
   *)
