@@ -1150,31 +1150,6 @@ let encode (em : extended_module) =
       in
       custom_section ".debug_line" debug_line_section_body () (fs <> [])
 
-
-    (* 7.29 Location List Table *)
-    (*
-    let debug_loclists_section () =
-      let rec write_loclist =
-        let open Dwarf5 in
-        let open Location in
-        function
-        | op :: n :: r when dw_OP_WASM_local = op ->
-          u8 dw_OP_WASM_location; u8 0x00; uleb128 n; write_loclist r
-        | op :: n :: r when dw_OP_WASM_global = op ->
-          u8 dw_OP_WASM_location; u8 0x01; uleb128 n; write_loclist r
-        | op :: n :: r when dw_OP_WASM_stack = op ->
-          u8 dw_OP_WASM_location; u8 0x02; uleb128 n; write_loclist r
-        | _ -> failwith "write_loclist" in
-      let debug_loclists_section_body () =
-        write16 0x0005; (* version *)
-        u8 4; (* address_size *)
-        u8 0; (* segment_selector_size *)
-        write32 0; (* offset_entry_count *)
-
-      in
-      custom_section ".debug_loclists" debug_loclists_section_body () true
-     *)
-
     (* Module *)
 
     let module_ (em : extended_module) =
