@@ -5,7 +5,6 @@ features are
  * O(1) concatenation (using difference list internally)
  * Managing of label depths.
  * Some simple peephole optimizations.
- * Helpers for DWARF elements (tags and attributes).
 *)
 
 open Wasm_exts.Ast
