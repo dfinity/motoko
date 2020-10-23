@@ -5153,10 +5153,11 @@ module FuncDec = struct
 
       (* Add nested DWARF *)
       (* prereq has side effects (i.e. creating DW types) that must happen before generating
-         DWARF for the formal parameters, so we have to strictly evaluate *)
+         DWARF for the formal parameters, so we need to do this in a `let`
+         Note: this will be refactored to not work via instruction stream TODO *)
       let prereq_types =
-        G.(effects (concat_map (fun arg -> dw_tag_no_children (Die.Type arg.note)) args ^^
-                    concat_map (fun ty -> dw_tag_no_children (Die.Type ty)) ret_tys)) in
+        G.(concat_map (fun arg -> dw_tag_no_children (Die.Type arg.note)) args ^^
+           concat_map (fun ty -> dw_tag_no_children (Die.Type ty)) ret_tys) in
 
       (* Add arguments to the environment (shifted by 1) *)
       let ae2, dw_args = bind_args env ae1 1 args in
@@ -7417,7 +7418,7 @@ and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
   AllocHow.M.fold (fun v typ (dw_ty, ae, dw) ->
     let ae1, ix = VarEnv.add_direct_local env ae v typ pat.at in
-    let prereq_type = G.(effects (dw_tag_no_children (Die.Type typ))) in
+    let prereq_type = G.dw_tag_no_children (Die.Type typ) in
     G.(dw_ty ^^ prereq_type, ae1, dw ^^ dw_tag_no_children (Die.Variable (v, pat.at.left, typ, Int32.to_int ix)))
   ) d (G.nop, ae, G.nop)
 
