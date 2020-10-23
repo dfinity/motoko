@@ -276,7 +276,7 @@ export text_t text_singleton(uint32_t code) {
 // 2. index into that blob (shifted by two for GC's sake)
 // 3. 0, or a pointer to a linked list of non-empty text values to do next
 //
-// The linked list (text_cont_t) is a tuple with
+// The linked list (text_iter_cont_t) is a tuple with
 // 1. a pointer to the text_t
 // 2. 0, or a pointer to the next list entry
 //
@@ -295,7 +295,7 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 // used to enforce the invariant about TEXT_ITER_BLOB to be a blob.
 static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
-    as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
+    text_iter_cont_t c = alloc_words(TUPLE_HEADER_SIZE + 2);
     TAG(c) = TAG_ARRAY;
     TUPLE_LEN(c) = 2;
     TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
