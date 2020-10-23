@@ -806,6 +806,7 @@ module RTS = struct
     E.add_func_import env "rts" "init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
+    E.add_func_import env "rts" "copy_iter_object" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -6878,6 +6879,11 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "char_is_alphabetic", [e] ->
       compile_char_to_bool_rts env ae e "char_is_alphabetic"
+
+    | OtherPrim "array_shallow_copy", [a] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae a ^^
+      E.call_import env "rts" "copy_iter_object"
 
     | OtherPrim "print", [e] ->
       SR.unit,
