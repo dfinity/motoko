@@ -4,8 +4,7 @@
 Actor classes enable you to create networks of actors programmatically.
 Currently, actor classes have to be defined in a separate source file.
 To illustrate how to define and import actor classes, the following example
-implements a distributed map of keys of  type `Nat` that map to values of type `Text`
-and provides simple insert and lookup functions for working with these keys and values.
+implements a distributed map of keys of  type `Nat` to values of type `Text`. It provides simple insert and lookup functions, `put(k, v)` and `get(k)`, for working with these keys and values.
 
 
 To distribute the data for this example, the set of keys is partitioned into `+n+` buckets. For now, we just fix ``n = 8``.
@@ -19,7 +18,7 @@ The actor responsible for bucket `+i+` is obtained as an instance of the actor c
 include::../examples/Buckets.mo[]
 ....
 
-A bucket stores the current mapping of keys to values in a mutable `+map+` variable containing an imperative RedBlack tree, `map`, that initially assigns all key values to `+null+`.
+A bucket stores the current mapping of keys to values in a mutable `+map+` variable containing an imperative RedBlack tree, `map`, that is initially empty.
 
 On `+get(k)+`, the bucket actor simply returns any value stored at `k`, returning `+map.get(k)+`.
 
