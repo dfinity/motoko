@@ -2437,11 +2437,11 @@ module Object = struct
     The field1_data for mutable fields are pointers to either an ObjInd, or a
     MutBox (they have the same layout). This indirection is a consequence of
     how we compile object literals with `await` instructions, as these mutable
-    fields need to be able to alias local mutal variables.
+    fields need to be able to alias local mutable variables.
 
     We could alternatively switch to an allocate-first approach in the
     await-translation of objects, and get rid of this indirection -- if it were
-    not for the implemenating of sharing of mutable stable values.
+    not for the implementing of sharing of mutable stable values.
   *)
 
   let header_size = Int32.add Tagged.header_size 2l
