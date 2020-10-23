@@ -22,7 +22,7 @@ let
   rtsBuildInputs = [
     nixpkgs.clang_10 # for native/wasm building
     nixpkgs.lld_10 # for wasm building
-    nixpkgs.llvm_10 # for wasm and DWARF testing
+    # nixpkgs.llvm_10 # for wasm and DWARF testing
     nixpkgs.rustc-nightly
     nixpkgs.cargo-nightly
     nixpkgs.xargo
@@ -235,6 +235,7 @@ rec {
             nixpkgs.getconf
             nixpkgs.moreutils
             nixpkgs.nodejs-10_x
+            nixpkgs.llvm_10
             filecheck
             wasmtime
             nixpkgs.sources.esm
