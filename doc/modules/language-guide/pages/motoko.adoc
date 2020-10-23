@@ -33,13 +33,7 @@ Keep checking back for updates and for the announcement of the {proglang} becomi
 Motoko has native support for Internet Computer software canisters, which are expressed as actors, autonomous objects that encapsulate their state and communicate through asynchronous messages.
 
 ----
-actor Counter {
-  var value = 0;
-  public func inc() : async Nat {
-    value += 1;
-    return value;
-  };
-}
+include::../examples/counter.mo[]
 ----
 
 [.card]
