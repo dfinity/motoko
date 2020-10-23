@@ -19,13 +19,12 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  rtsBuildInputs = [
-    nixpkgs.clang_10 # for native/wasm building
-    nixpkgs.lld_10 # for wasm building
-    # nixpkgs.llvm_10 # for wasm and DWARF testing
-    nixpkgs.rustc-nightly
-    nixpkgs.cargo-nightly
-    nixpkgs.xargo
+  rtsBuildInputs = with nixpkgs; [
+    clang_10 # for native/wasm building
+    lld_10 # for wasm building
+    rustc-nightly
+    cargo-nightly
+    xargo
   ];
 
   llvmEnv = ''
@@ -229,18 +228,12 @@ rec {
         };
         buildInputs =
           deps ++
-          [ nixpkgs.wabt
-            nixpkgs.bash
-            nixpkgs.perl
-            nixpkgs.getconf
-            nixpkgs.moreutils
-            nixpkgs.nodejs-10_x
-            nixpkgs.llvm_10
-            filecheck
+          [ filecheck
             wasmtime
-            nixpkgs.sources.esm
           ] ++
-          rtsBuildInputs;
+          rtsBuildInputs ++
+          (with nixpkgs;
+            [ wabt bash perl getconf moreutils nodejs-10_x llvm_10 sources.esm ]);
 
         checkPhase = ''
             patchShebangs .
