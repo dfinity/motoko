@@ -228,12 +228,11 @@ rec {
         };
         buildInputs =
           deps ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
           [ filecheck
             wasmtime
           ] ++
-          rtsBuildInputs ++
-          (with nixpkgs;
-            [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]);
+          rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .
