@@ -24,7 +24,7 @@ export as_ptr alloc_array(uint32_t len) {
   return a;
 }
 
-export as_ptr copy_array(as_ptr a0) {
+static as_ptr copy_iter_array(as_ptr a0) {
   if (TAG(a0) != TAG_ARRAY) {
     rts_trap_with("copy_array: not an array");
   }
@@ -54,7 +54,7 @@ export as_ptr copy_iter_object(as_ptr a0) {
     rts_trap_with("copy_iter_object: not single captured?");
   }
   as_ptr arr = FIELD(closure, 3);
-  as_ptr arr2 = copy_array(arr);
+  as_ptr arr2 = copy_iter_array(arr);
 
   as_ptr closure2 = alloc_words(4);
   memcpy(closure2, closure, 8);
