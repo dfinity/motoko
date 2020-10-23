@@ -5,11 +5,11 @@ actor class Counter(init : Nat) {
     count += 1;
   };
 
-  public query func get_current() : async Nat {
+  public query func get() : async Nat {
     count
   };
 
-  public func set_current(n: Nat) : async () {
+  public func set(n: Nat) : async () {
     count := n;
   };
 }
