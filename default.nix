@@ -228,12 +228,10 @@ rec {
         };
         buildInputs =
           deps ++
-          [ filecheck
-            wasmtime
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x llvm_10 sources.esm ]) ++
+          [ wasmtime
           ] ++
-          rtsBuildInputs ++
-          (with nixpkgs;
-            [ wabt bash perl getconf moreutils nodejs-10_x llvm_10 sources.esm ]);
+          rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .
@@ -367,8 +365,6 @@ rec {
     };
 
   inherit drun;
-  filecheck = nixpkgs.linkFarm "FileCheck"
-    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
   xargo = nixpkgs.xargo;
