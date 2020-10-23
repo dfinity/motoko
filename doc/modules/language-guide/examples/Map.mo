@@ -12,24 +12,24 @@ actor Map {
 
   let buckets : [var ?Bucket] = Array.init(n, null);
 
-  public func lookup(k : Key) : async ?Value {
+  public func get(k : Key) : async ?Value {
     switch (buckets[k % n]) {
       case null null;
-      case (?bucket) await bucket.lookup(k);
+      case (?bucket) await bucket.get(k);
     };
   };
 
-  public func insert(k : Key, v : Value) : async () {
+  public func put(k : Key, v : Value) : async () {
     let i = k % n;
     let bucket = switch (buckets[i]) {
       case null {
-        let n = await Buckets.Bucket(i); // dynamically install a new Bucket
-        buckets[i] := ?n;
-        n;
+        let b = await Buckets.Bucket(n, i); // dynamically install a new Bucket
+        buckets[i] := ?b;
+        b;
       };
       case (?bucket) bucket;
     };
-    await bucket.insert(k, v);
+    await bucket.put(k, v);
   };
 
 };

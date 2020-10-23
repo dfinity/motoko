@@ -18,77 +18,19 @@ The actor responsible for bucket `+i+` is obtained as an instance of the actor c
 include::../examples/Buckets.mo[]
 ....
 
-////
-actor class Bucket(i : Nat) {
+A bucket stores the current mapping of keys to values in a mutable `+map+` variable containing an imperative RedBlack tree, `map`, that initially assigns all key values to `+null+`.
 
-  type Key = Nat;
-  type Value = Text;
+On `+get(k)+`, the bucket actor simply returns any value stored at `k`, returning `+map.get(k)+`.
 
-  var map = func(k: Nat) : ?Value { return null };
+On `+put(k, v)+`, the bucket actor updates the current `+map+` to  map `+k+` to `+?v+` by calling `+map.put(k, v)+`.
 
-  public func lookup(k : Key) : async ?Value {
-    return map(k);
-  };
-
-  public func insert(k : Key, v : Value) : async () {
-    let oldMap = map;
-    map := func(k1 : Nat) : ?Value { if (k1 == k) ?v else oldMap(k1); };
-  };
-
-};
-////
-
-A bucket stores the current mapping of keys to values in a mutable `+map+` variable containing a function that initially assigns all key values to `+null+`.
-
-On `+lookup(k)+`, the map actor simply returns any value stored at `+map(k)+`.
-
-On `+insert(k, v)+`, the map actor updates the current `+map+` function to a new function that maps `+k+` to `+?v+` and all other keys to their previous mapping.
-
-Although this code makes no use of the class parameter `+i+`, it could be employed for logging, or (given `+n+`) asserting that keys are in an appropriate bucket (for example, `+assert ((k % n) == i)+`).
+Both functions use the class parameters `n` and `i` to verify that the key is appropriate for the bucket by asserting `+((k % n) == i)+`.
 
 Clients of the map can then communicate with a coordinating `+Map+` actor, implemented as follows:
 
 ....
 include::../examples/Map.mo[]
 ....
-
-////
-import Array "mo:base/Array";
-import Buckets "Buckets";
-
-actor Map {
-
-  let n = 8; // number of buckets
-
-  type Key = Nat;
-  type Value = Text;
-
-  type Bucket = Buckets.Bucket;
-
-  let buckets : [var ?Bucket] = Array.init(n, null);
-
-  public func lookup(k : Key) : async ?Value {
-    switch (buckets[k % n]) {
-      case null null;
-      case (?bucket) await bucket.lookup(k);
-    };
-  };
-
-  public func insert(k : Key, v : Value) : async () {
-    let i = k % n;
-    let bucket = switch (buckets[i]) {
-      case null {
-        let n = await Buckets.Bucket(i); // dynamically install a new Bucket
-        buckets[i] := ?n;
-        n;
-      };
-      case (?bucket) bucket;
-    };
-    await bucket.insert(k, v);
-  };
-
-};
-////
 
 As this example illustrates, the `+Map+` code imports the `+Bucket+` actor class as module `+Buckets+`.
 
@@ -97,27 +39,27 @@ entries initially `null`. Entries are populated with `+Bucket+` actors
 on demand.
 
 
-On `+lookup(k, v)+`, the `+Map+` actor:
+On `+get(k, v)+`, the `+Map+` actor:
 
 - uses the remainder of key  `+k+` divided by `+n+` to determine the index `+i+` of the bucket responsible for that key
 - returns `+null+` if the ``i``th bucket does not exist, or
-- delegates to that bucket by calling `+bucket.lookup(k, v)+` if it does.
+- delegates to that bucket by calling `+bucket.get(k, v)+` if it does.
 
-On `+insert(k, v)+`, the `+Map+` actor:
+On `+put(k, v)+`, the `+Map+` actor:
 
 - uses the remainder of key  `+k+` divided by `+n+` to determine the index `+i+` of the bucket responsible for that key
 - installs bucket `+i+` if the bucket does not exist by using an asynchronous call to the constructor, `+Buckets.Bucket(i)+`, and, after awaiting the result, records it in the array `+buckets+`
-- delegates the insertion to that bucket by calling `+bucket.insert(k, v)+`.
+- delegates the insertion to that bucket by calling `+bucket.put(k, v)+`.
 
 While this example sets the number of buckets to `+8+`, you can easily
-generalize the example by making the `+Map+` actor an actor class, adding a parameter `+(n : Nat)+` and omitting the declaration `+let n = 8;+`. For example:
+generalize the example by making the `+Map+` actor an actor _class_, adding a parameter `+(n : Nat)+` and omitting the declaration `+let n = 8;+`. For example:
 
 ....
-actor class MapClass(n : Nat) {
+actor class Map(n : Nat) {
 
   type Key = Nat
   ...
 }
 ....
 
-Clients of `+MapClass+` actor class are now free to determine the (maximum) number of buckets in the network by passing an argument on construction.
+Clients of actor _class_ `+Map+` are now free to determine the (maximum) number of buckets in the network by passing an argument on construction.

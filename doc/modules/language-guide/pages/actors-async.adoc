@@ -40,15 +40,15 @@ Consider the following actor object (a value form):
 actor Counter {
   var count : Nat = 0;
 
-  public func increment() : async () {
+  public func inc() : async () {
     count += 1;
   };
 
-  public query func get_current() : async Nat {
+  public query func get() : async Nat {
     count
   };
 
-  public func set_current(n: Nat) : async () {
+  public func set(n: Nat) : async () {
     count := n;
   };
 }
@@ -59,11 +59,11 @@ TODO: discuss counter example
 ////
 == Using async to await values
 
-To get the underlying content of an `async` value, such as a return value from `get_current` above, the caller uses `await`:
+To get the underlying content of an `async` value, such as a return value from `get` above, the caller uses `await`:
 
 ....
-let a : async Nat = counter.get_current()
-let c : Nat = await(counter.get_current())
+let a : async Nat = counter.get()
+let c : Nat = await(counter.get())
 ....
 
 The first line gets _a promise of the current value_ (the variable `a`), but does not wait for it, and thus cannot use it as a natural number.

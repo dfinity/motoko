@@ -1,17 +1,21 @@
-actor class Bucket(i : Nat) {
+import Nat "mo:base/Nat";
+import Map "mo:base/RBTree";
+
+actor class Bucket(n : Nat, i : Nat) {
 
   type Key = Nat;
   type Value = Text;
 
-  var map = func(k: Nat) : ?Value { return null };
+  let map = Map.RBTree<Key, Value>(Nat.compare);
 
-  public func lookup(k : Key) : async ?Value {
-    return map(k);
+  public func get(k : Key) : async ?Value {
+    assert((k % n) == i);
+    map.get(k);
   };
 
-  public func insert(k : Key, v : Value) : async () {
-    let oldMap = map;
-    map := func(k1 : Nat) : ?Value { if (k1 == k) ?v else oldMap(k1); };
+  public func put(k : Key, v : Value) : async () {
+    assert((k % n) == i);
+    map.put(k,v);
   };
 
 };

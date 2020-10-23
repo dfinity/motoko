@@ -1,7 +1,7 @@
 actor class Counter(init : Nat) {
   var count : Nat = init;
 
-  public func increment() : async () {
+  public func inc() : async () {
     count += 1;
   };
 
