@@ -261,7 +261,7 @@ let encode (em : extended_module) =
     Vlq.Base64.encode map (ic - !prev_ic);             (* input column *)
     Buffer.add_char map ',';
 
-    prev_if := if_; prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
+    prev_if := if_; prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; incr segs
   in
 
   let module E = struct
@@ -763,7 +763,7 @@ let encode (em : extended_module) =
       modif instr_notes (Instrs.add (pos s, f.at.right));
       ignore (add_source_name f.at.right.file);
       end_ ();
-      sequence_number := 1 + !sequence_number;
+      incr sequence_number;
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
       modif sequence_bounds (DW_Sequence.add (p, !instr_notes, sequence_end))
@@ -1027,7 +1027,7 @@ let encode (em : extended_module) =
             DW_Sequence.iter (fun (st, _, en) ->
                 u8 Dwarf5.dw_RLE_startx_length;
                 uleb128 !index;
-                index := !index + 1;
+                incr index;
                 uleb128 (en - st))
               sequence_bounds;
             u8 Dwarf5.dw_RLE_end_of_list;
