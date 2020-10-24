@@ -6880,7 +6880,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "char_is_alphabetic", [e] ->
       compile_char_to_bool_rts env ae e "char_is_alphabetic"
 
-    | OtherPrim "array_shallow_copy", [a] ->
+    | OtherPrim "copy_text_iterator", [a] ->
       SR.Vanilla,
       compile_exp_vanilla env ae a ^^
       E.call_import env "rts" "text_iter_copy"

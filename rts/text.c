@@ -356,10 +356,9 @@ export uint32_t text_iter_next(text_iter_t i) {
   }
 }
 
-
 static text_iter_t  copy_iter_state(text_iter_t i0) {
   if (TAG(i0) != TAG_ARRAY) {
-    rts_trap_with("copy_iter_array: not an array");
+    rts_trap_with("copy_iter_state: not an array");
   }
   const uint32_t num_words = ARRAY_HEADER_SIZE + ARRAY_LEN(i0);
   as_ptr i = alloc_words(num_words);
@@ -377,10 +376,10 @@ static text_iter_t  copy_iter_state(text_iter_t i0) {
 
 export as_ptr text_iter_copy(as_ptr a0) {
   if (TAG(a0) != TAG_OBJECT) {
-    rts_trap_with("copy_iter_object: not an object");
+    rts_trap_with("text_iter_copy: not an object");
   }
   if (ARRAY_LEN(a0) != 1) {
-    rts_trap_with("copy_iter_object: more fields?");
+    rts_trap_with("text_iter_copy: more fields?");
   }
   const uint32_t num_words = ARRAY_HEADER_SIZE + 1 + ARRAY_LEN(a0);
   as_ptr a = alloc_words(num_words);
@@ -389,17 +388,15 @@ export as_ptr text_iter_copy(as_ptr a0) {
   as_ptr closure = FIELD(a, 3);
 
   if (TAG(closure) != TAG_CLOSURE) {
-    rts_trap_with("copy_iter_object: not a closure?");
+    rts_trap_with("text_iter_copy: not a closure?");
   }
   if (FIELD(closure, 2) != 1) {
-    rts_trap_with("copy_iter_object: not single captured?");
+    rts_trap_with("text_iter_copy: not single captured?");
   }
-  as_ptr arr = FIELD(closure, 3);
-  as_ptr arr2 = copy_iter_state(arr);
 
   as_ptr closure2 = alloc_words(4);
-  memcpy(closure2, closure, 8);
-  FIELD(closure2, 3) = arr2;
+  memcpy(closure2, closure, 3 << 2);
+  FIELD(closure2, 3) = copy_iter_state(FIELD(closure, 3));
 
   FIELD(a, 3) = closure2;
 

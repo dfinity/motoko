@@ -603,7 +603,7 @@ func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 // Shallow iterator copy
 
 func iter_shallow_copy(it : @Iter<Char>) : @Iter<Char> =
-  (prim "array_shallow_copy" : @Iter<Char> -> @Iter<Char>) it;
+  (prim "copy_text_iterator" : @Iter<Char> -> @Iter<Char>) it;
 
 // Array utilities
 
