@@ -115,7 +115,7 @@ let ocaml_exe = name: bin: rts:
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
     src = nixpkgs.sources.musl-wasi;
-    phases = [ "unpackPhase" "installPhase" ];
+    phases = [ "unpackPhase" "installPhase" "fixupPhase" ];
     installPhase = ''
       make SYSROOT="$out" include_dirs
     '';
@@ -200,7 +200,7 @@ rec {
     testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
       src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
-      phases = "unpackPhase checkPhase installPhase";
+      phases = "unpackPhase checkPhase installPhase fixupPhase";
       doCheck = true;
       installPhase = "touch $out";
     };
@@ -396,7 +396,7 @@ rec {
     buildInputs = with nixpkgs; [ ocamlformat ];
     src = subpath "./src";
     doCheck = true;
-    phases = "unpackPhase checkPhase installPhase";
+    phases = "unpackPhase checkPhase installPhase fixupPhase";
     installPhase = "touch $out";
     checkPhase = ''
       ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
@@ -408,7 +408,7 @@ rec {
     buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
     src = subpath ./rts/motoko-rts;
     doCheck = true;
-    phases = "unpackPhase checkPhase installPhase";
+    phases = "unpackPhase checkPhase installPhase fixupPhase";
     installPhase = "touch $out";
     checkPhase = ''
       cargo fmt -- --check
@@ -417,7 +417,7 @@ rec {
 
   base-src = stdenv.mkDerivation {
     name = "base-src";
-    phases = "unpackPhase installPhase";
+    phases = "unpackPhase installPhase fixupPhase";
     src = nixpkgs.sources.motoko-base + "/src";
     installPhase = ''
       mkdir -p $out
@@ -428,7 +428,7 @@ rec {
   base-tests = stdenv.mkDerivation {
     name = "base-tests";
     src = nixpkgs.sources.motoko-base;
-    phases = "unpackPhase checkPhase installPhase";
+    phases = "unpackPhase checkPhase installPhase fixupPhase";
     doCheck = true;
     installPhase = "touch $out";
     checkInputs = [
@@ -443,7 +443,7 @@ rec {
   guide-examples-tc =  stdenv.mkDerivation {
     name = "guid-examples-tc";
     src = subpath doc/modules/language-guide/examples;
-    phases = "unpackPhase checkPhase installPhase";
+    phases = "unpackPhase checkPhase installPhase fixupPhase";
     doCheck = true;
     MOTOKO_BASE = base-src;
     installPhase = "touch $out";
@@ -459,7 +459,7 @@ rec {
   base-doc = stdenv.mkDerivation {
     name = "base-doc";
     src = nixpkgs.sources.motoko-base;
-    phases = "unpackPhase buildPhase installPhase";
+    phases = "unpackPhase buildPhase installPhase fixupPhase";
     doCheck = true;
     buildInputs = [ mo-doc ];
     buildPhase = ''
@@ -487,7 +487,7 @@ rec {
   check-grammar = stdenv.mkDerivation {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
-      phases = "unpackPhase buildPhase installPhase";
+      phases = "unpackPhase buildPhase installPhase fixupPhase";
       buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
       buildPhase = ''
         patchShebangs .
