@@ -74,7 +74,10 @@ service Counter : {
 [.card]
 == Orthogonal persistence
 
-The Internet Computer persists the memory pages in which your canister runs. Thus the state of an actor and all its memory data structures survive indefinitely, they do not need to be “saved” explicitly. Motoko provides numerous features to help you leverage this environment, including language features that allow your heap to self-migrate when you upgrade the software of a canister.
+The Internet Computer persists the memory pages in which your canister runs. Thus the state of an actor and all its memory data structures survive indefinitely, they do not need to be “saved” explicitly.
+
+For example, in the following Registry service, that assigns sequential IDs to textual names, the state of the hash table is preserved across calls, even though the state of the canister
+is replicated across many nodes, and typically not resident in memory.
 
 [source,motoko]
 ----
@@ -82,6 +85,39 @@ include::../examples/Registry.mo[]
 ----
 
 [.card]
+== Upgrades
+
+Motoko provides numerous features to help you leverage orthogonal persistence, including language features that allow your heap to self-migrate when you upgrade the software of a canister.
+
+For example, Motoko lets you declare certain variables as `stable`. The values of `stable` variables are automatically preserved across software upgrades.
+
+Consider a stable counter:
+
+[source,motoko]
+----
+include::../examples/StableCounter.mo[]
+----
+
+It can be installed, incremented *n* times, and then upgraded, without interruption, to, for example, the richer implementation:
+
+[source,motoko]
+----
+include::../examples/StableCounterUpgrade.mo[]
+----
+
+Because `+value+` was declared stable, the current state, *n*, of the service is retained after the upgrade. Counting will continue from *n*, not restart
+from `0`.
+
+For scenarios that can't be solved using stable variables alone, {proglang} provides user-defined upgrade hooks that run immediately before and after upgrade,
+and allow you to migrate arbitrary state to stable variables.
+
+
+[.card]
 == And more ...
 
-Motoko provides many other cool features, including deep support for WebAssembly that allows modules written in other languages to be linked into your canisters. We are also working on adding Rust support to the SDK.
+{proglang} provides many other developer productivity features, including subtyping, generics, variants, arbitrary precision arithmetic and garbage collection.
+{proglang} is not, and is not intented to be, the only language for implementing canisters.
+If it doesn't suit your needs, we are also working on adding Rust support to the SDK.
+Our goal is to enable any language (with a compiler that targets WebAssembly) to be able to produce canisters that run on the {IC} and interoperate
+with other, perhaps foreign, canisters through language neutral Candid interfaces.
+
