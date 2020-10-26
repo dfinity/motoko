@@ -2,10 +2,10 @@ arithmetic overflow
 Error: failed to run main module `_out/powInt8-lower.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
        wasm backtrace:
-         0: <unknown>!pow<Int8>
-         1: <unknown>!init
-         2: <unknown>!_start
+         0: pow<Int8>
+         1: init
+         2: _start
        

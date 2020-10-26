@@ -811,7 +811,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let global_required1 = find_imports is_global_import libname em1.module_ in
   let global_required2 = find_imports is_global_import "env" dm2 in
   let global_exports2 = find_exports is_global_export dm2 in
-  (* Resolve imports, to produce a renumbering globalction(!): *)
+  (* Resolve imports, to produce a renumbering *)
   let global_resolved12 = resolve global_required1 global_exports2 in
   let global_resolved21 = resolve global_required2 global_exports1 in
   let (globals1, globals2) =
