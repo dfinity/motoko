@@ -81,7 +81,7 @@ let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
 
 let wrap_output f =
-  let result = f() in
+  let result = f () in
   let stdout_result = Buffer.contents stdout_buffer in
   let stderr_result = Buffer.contents stderr_buffer in
   Buffer.clear stdout_buffer;
