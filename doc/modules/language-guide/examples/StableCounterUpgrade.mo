@@ -7,7 +7,7 @@ actor Counter {
     return value;
   };
 
-  punc func reset() : async () {
+  public func reset() : async () {
     value := 0;
   }
 }

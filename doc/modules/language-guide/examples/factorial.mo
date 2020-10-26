@@ -7,7 +7,9 @@ actor Counter {
 };
 
 actor Factorial {
+
   var last = 1;
+
   public func next() : async Nat {
     last *= await Counter.inc();
     return last;
