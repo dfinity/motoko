@@ -17,7 +17,7 @@ This abstraction represents a _promise_ from the system to the caller, on behalf
 
  - or, an error --- system-level or callee-level --- will eventually arise.
 
-In general, the caller may not _immediately_ `await` each call.  But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: To maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
+In general, the caller may not _immediately_ `await` each call.  But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: to maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
 
 *Technical aside.* In reality, the underlying message-passing of the system forces the program's logic into another form.
 Specifically, control flow around each actor method call involves the program loosing control to a system-level message-processing loop, which forces the program's logic into a so-called
@@ -36,7 +36,12 @@ a single "current count" value.
 
 Consider the following actor object (a value form):
 
-....
+[source,motoko]
+----
+include::../examples/Counters.mo[]
+----
+
+////
 actor Counter {
   var count : Nat = 0;
 
@@ -52,27 +57,62 @@ actor Counter {
     count := n;
   };
 }
-....
-
 ////
-TODO: discuss counter example
-////
-== Using async to await values
 
-To get the underlying content of an `async` value, such as a return value from `get` above, the caller uses `await`:
+The `Counter` actor declares one field and three public functions:
 
-....
-let a : async Nat = counter.get()
-let c : Nat = await(counter.get())
-....
+* the field `count` is mutable, intialized to zero and implicitly `private`.
+* function `inc()` asynchronous increments the counter and returns a promise of type `async ()` for synchronization.
+* function `get()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
+* function `set(n)` asynchronously resets the counter's value using its argument `n` and returns a promise of type `async ()`.
 
-The first line gets _a promise of the current value_ (the variable `a`), but does not wait for it, and thus cannot use it as a natural number.
+The only way to read or change the state (`count`) of the `Counter` actor is through its functions.
 
-The second line immediately inspects this promise and gets the natural number, or waits until it is ready.
+Because all interaction with actors is asynchronous, an actor's public functions must either
+return a promise type `async T`, for some type `T`, or nothing at all `()`.
 
-NOTE: For now, the {proglang} compiler gives an error for calls that
-do not follow this second form, which is currently required to ensure
-that certain program resources will always be reclaimed.
+A value of type `async T` is a _promise_. The producer of the promise
+fulfills the promise when it returns a result, either a value or error.
+
+The only thing a consumer can do with a promise is wait for it to be fulfilled by the producer,
+throw it away, or store it for later use.
+
+== Using `await` to consume async promises
+
+To access the result of an `async` value -a promise returned from an asynchronous call-
+the receiver of the promise use an  `*await*` expression.
+
+For example, to use the result of `Counter.get()` above, we can first bind the
+promise to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
+
+[source, motoko]
+----
+let a : async Nat = Counter.get();
+let n : Nat = await a;
+----
+
+The first line immediately receives _a promise of the current value_, but does not wait for it, and thus cannot (yet) use it as a natural number.
+
+The second line ``await``s this promise and extracts the result, a natural number.
+This line may suspend execution until the promise has been fulfilled.
+
+Typically, one rolls the two steps into one and one just awaits an asynchronous call directly:
+
+[source, motoko]
+----
+let n : Nat = await Counter.get();
+----
+
+Unlike an ordinary function call, which blocks the caller until the callee has returned a result,
+an asynchronous call immediately returns a promise, `p`, without blocking.
+Instead of blocking, a later call to `await p` can suspend the current computation until or unless `p` is fullfilled.
+Once the promise if fulfilled (by the producer), execution of `await p` resumes with its result.
+If the result is a value, `await p` returns that value.
+Otherwise the result is some error, and `await p` propagates the error to the
+consumer of `await p`.
+
+(Awaiting a promise a second time will just produce the same result.)
+
 
 [#actor_classes]
 == Actor classes generalize an actor's initial state
@@ -83,26 +123,25 @@ For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
 .Counters.mo
-....
+[source, motoko]
+----
 include::../examples/Counters.mo[]
-....
+----
 
-////
-TODO make the following asynchronous
-////
 
 If this is class is stored in file `+Counters.ml+`, then
 we can import the file as a module and use it to
 create several actors with different initial values:
 
-....
+[source, motoko]
+----
 import Counters "Counters";
 
 let c1 = await Counters.Counter(1);
 let c2 = await Counters.Counter(2);
-....
+----
 
-The two lines above _instantiate_ the actor class twice, once per line
+The last two lines above _instantiate_ the actor class twice.
 The first invocation uses the initial value `1`, where the second uses initial value `2`.
 Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a promise that can be ``await``ed for the resulting actor value.
 Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
@@ -110,7 +149,7 @@ Their interface is common, and in terms of their types, they are compatible and 
 
 NOTE: For now, the {proglang} compiler gives an error when compiling
 programs that do not consist of a single actor or actor class.
-Compiled programs may still, however, reference imported actor classes
+Compiled programs may still, however, reference imported actor classes.
 For more information, see link:modules-and-imports{outfilesuffix}#importing_actor_classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor_classes[Actor classes].
 
 == Stable and flexible variables
