@@ -1,5 +1,8 @@
 // RUN: llvm-dwarfdump %.wasm -debug-info | FileCheck %.mo -check-prefix=DWARF
 
+// jump over an internally generated member
+// DWARF: DW_AT_name ("icpts")
+
 type Person = { name : Text; age : Nat };
 
 // DWARF:  DW_TAG_structure_type
