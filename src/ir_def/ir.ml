@@ -31,7 +31,7 @@ type lit =
 
 type 'a phrase = ('a, Note.t) Source.annotated_phrase
 
-type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
+type typ_bind' = {con : Type.con; sort : Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
 type unop = Operator.unop
