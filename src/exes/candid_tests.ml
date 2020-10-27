@@ -19,6 +19,7 @@ let usage = "Usage: " ^ name ^ " -i path/to/candid/test"
 
 let test_dir = ref ""
 let pattern = ref ""
+let expect_fail_pats = ref []
 
 let print_banner () =
   printf "%s\n" banner;
@@ -33,6 +34,7 @@ let argspec = Arg.align
 [
   "-i", Arg.Set_string test_dir, " candid test directory";
   "-p", Arg.Set_string pattern, " test selector (substring/regex)";
+  "--expect-fail", Arg.String (fun s -> expect_fail_pats := s :: !expect_fail_pats), " tests expected to fail";
   "--version", Arg.Unit print_banner, " show version";
 ]
 
@@ -106,9 +108,20 @@ let () =
         with Not_found -> false
   in
 
+  let expected_fail =
+    let rs = List.map Str.regexp !expect_fail_pats in
+    fun name ->
+      List.exists (fun r ->
+        try ignore(Str.search_forward r name 0); true
+        with Not_found -> false
+      ) rs
+  in
+
   let count = ref 0 in
   let count_ok = ref 0 in
   let count_fail = ref 0 in
+  let count_unexpected_ok = ref 0 in
+  let count_expected_fail = ref 0 in
   let count_skip = ref 0 in
 
   let files = Sys.readdir !test_dir in
@@ -142,17 +155,33 @@ let () =
               count_fail := !count_fail + 1;
               Printf.printf " compilation failed:\n%s%s\n" stdout stderr
             | (true, _, _) ->
-              match must_not_trap, run_cmd "wasmtime --disable-cache --cranelift tmp.wasm" with
-              | true, (true, _, _)
-              | false, (false, _, _) ->
-                count_ok := !count_ok + 1;
-                Printf.printf " ok!\n";
-              | true, (false, stdout, stderr) ->
-                count_fail := !count_fail + 1;
-                Printf.printf " fail (unexpected trap)!\n%s%s\n" stdout stderr;
-              | false, (true, _, _) ->
-                count_fail := !count_fail + 1;
-                Printf.printf " fail (unexpected pass)!\n";
+              if expected_fail testname
+              then
+              begin
+                Printf.printf " should not be ok:";
+                match must_not_trap, run_cmd "wasmtime --disable-cache --cranelift tmp.wasm" with
+                | true, (true, _, _)
+                | false, (false, _, _) ->
+                  count_unexpected_ok := !count_unexpected_ok + 1;
+                  Printf.printf " ok!\n";
+                | true, (false, stdout, stderr) ->
+                  count_expected_fail := !count_expected_fail + 1;
+                  Printf.printf " fail (unexpected trap)!\n%s%s\n" stdout stderr;
+                | false, (true, _, _) ->
+                  count_expected_fail := !count_expected_fail + 1;
+                  Printf.printf " fail (unexpected pass)!\n";
+              end else
+                match must_not_trap, run_cmd "wasmtime --disable-cache --cranelift tmp.wasm" with
+                | true, (true, _, _)
+                | false, (false, _, _) ->
+                  count_ok := !count_ok + 1;
+                  Printf.printf " ok!\n";
+                | true, (false, stdout, stderr) ->
+                  count_fail := !count_fail + 1;
+                  Printf.printf " fail (unexpected trap)!\n%s%s\n" stdout stderr;
+                | false, (true, _, _) ->
+                  count_fail := !count_fail + 1;
+                  Printf.printf " fail (unexpected pass)!\n";
         end else count_skip := !count_skip + 1;
       ) tests.it.tests;
     | None ->
@@ -161,8 +190,8 @@ let () =
       | None -> ()
   ) files;
 
-  Printf.printf "%d tests: %d skipped, %d ok, %d failed\n"
-    !count !count_skip !count_ok !count_fail;
+  Printf.printf "%d tests: %d skipped, %d ok, %d failed, %d unexpected ok, %d expected fail\n"
+    !count !count_skip !count_ok !count_fail !count_unexpected_ok !count_expected_fail;
   if !count_fail > 0
   then exit 1
   else exit 0

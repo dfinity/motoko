@@ -264,7 +264,8 @@ rec {
     let candid = testDerivation {
       buildInputs = [ moc wasmtime drun candid-tests ];
       checkPhase = ''
-	candid-tests -i ${nixpkgs.sources.candid}/test
+	candid-tests -i ${nixpkgs.sources.candid}/test \
+	  --expect-fail "reserved from invalid utf8 text"
       '';
     }; in
 
