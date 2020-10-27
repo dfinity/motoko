@@ -192,7 +192,7 @@ let () =
 
   Printf.printf "%d tests: %d skipped, %d ok, %d failed, %d unexpected ok, %d expected fail\n"
     !count !count_skip !count_ok !count_fail !count_unexpected_ok !count_expected_fail;
-  if !count_fail > 0
+  if !count_fail + !count_unexpected_ok > 0
   then exit 1
   else exit 0
 
