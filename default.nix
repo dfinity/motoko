@@ -334,7 +334,7 @@ rec {
   };
 
   js =
-    let mk = n: with_rts:
+    let mk = n:
       stdenv.mkDerivation {
         name = "${n}.js";
         src = subpath ./src;
@@ -345,14 +345,15 @@ rec {
         ];
         buildPhase = ''
           patchShebangs .
-          make ${n}.js
+          '' + nixpkgs.lib.optionalString (rts != null)''
+          ./rts/gen.sh ${rts}/rts/
+          '' + ''
+          make DUNE_OPTS="--profile=release" ${n}.js
         '';
         installPhase = ''
           mkdir -p $out
           cp -v ${n}.js $out
-        '' + (if with_rts then ''
-          cp -vr ${rts}/rts $out
-        '' else "");
+        '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
@@ -361,8 +362,8 @@ rec {
       };
     in
     {
-      moc = mk "moc" true;
-      didc = mk "didc" false;
+      moc = mk "moc";
+      didc = mk "didc";
     };
 
   inherit drun;
