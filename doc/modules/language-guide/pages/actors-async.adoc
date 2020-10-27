@@ -134,18 +134,19 @@ modifies the declaration of a (shared) actor function so that it executes with n
 
 For example, we can extend the `Counter` with fast-and-loose variant of the trustworthy `read` function, called `peek`:
 
+[source,motoko]
 ----
-actor Counter {
-
-  public query func peek() : async Nat {
-    count
-  };
-
-}
+include::../examples/CounterWithQuery.mo[]
 ----
 
 The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy,
 display of the current counter value.
+
+It is a compile-time error for query a method to call an actor function  since this would violate dynamic restrictions
+imposed by the {IC}. Calls to ordinary functions are permitted.
+
+Query functions can be called from non-query functions. Because those nested calls require concensus,
+the efficienty gains of nested query calls will be modest at best.
 
 
 [#actor_classes]
