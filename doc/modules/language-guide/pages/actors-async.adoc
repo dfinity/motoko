@@ -34,7 +34,7 @@ a single "current count" value.
 
 == Example: a Counter service
 
-Consider the following actor object (a value form):
+Consider the following actor declaration:
 
 [source,motoko]
 ----
@@ -66,7 +66,7 @@ The `Counter` actor declares one field and three public functions:
 * function `get()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
 * function `set(n)` asynchronously resets the counter's value using its argument `n` and returns a promise of type `async ()`.
 
-The only way to read or change the state (`count`) of the `Counter` actor is through its functions.
+The only way to read or modify the state (`count`) of the `Counter` actor is through its functions.
 
 Because all interaction with actors is asynchronous, an actor's public functions must either
 return a promise type `async T`, for some type `T`, or nothing at all `()`.
@@ -113,6 +113,14 @@ consumer of `await p`.
 
 (Awaiting a promise a second time will just produce the same result.)
 
+WARNING: A function that does not `await` in its body is guaranteed to
+execute atomically - in particular, the environment cannot change the
+state of the actor while the function is executing.  If a function
+performs an `await`, however, atomicity is no longer guaranteed.  Between suspension
+and resumption around the `await`, the state of the enclosing actor
+may change due to concurrent processing of other incoming actor
+messages. It is the programmer's responsibility to guard against
+non-synchronized state changes.
 
 == Query functions
 
@@ -162,7 +170,6 @@ below, by introducing a constructor parameter, variable `init` of type `Nat`:
 ----
 include::../examples/Counters.mo[]
 ----
-
 
 If this is class is stored in file `+Counters.ml+`, then
 we can import the file as a module and use it to
