@@ -101,9 +101,12 @@ let () =
   Js.export "Motoko"
     (object%js
       method saveFile name content = js_save_file name content
+      (* TODO set package flags all at once *)
       method addPackage package dir =
         let libs = Flags.package_urls in
         libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
+      method clearPackage () =
+        Flags.package_urls := Flags.M.empty
       method setActorAliases entries =
         let entries = Array.map (fun kv ->
                           let kv = Js.to_array kv in
