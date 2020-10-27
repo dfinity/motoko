@@ -54,10 +54,12 @@ mo-doc: $(SOURCE_ID)
 moc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
 	@ln -fs $(MOC_JS_TARGET) moc.js
+	ls -al $(MOC_JS_TARGET)
 
 didc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_JS_TARGET)
 	@ln -fs $(DIDC_JS_TARGET) didc.js
+	ls -al $(DIDC_JS_TARGET)
 
 didc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_TARGET)
@@ -77,7 +79,7 @@ candid-tests: $(SOURCE_ID)
 $(SOURCE_ID):
 	source_id/gen.sh
 
-unit-tests:
+unit-tests: $(SOURCE_ID)
 	dune runtest $(DUNE_OPTS)
 
 format:

@@ -107,11 +107,11 @@ You can get a development environment without having to use `nix-shell`
 ## Updating Haskell Packages
 
 When the `.cabal` file of a Haskell package is changed you need to make sure the
-corresponding `default.nix` file (stored in `nix/generated/`) is kept in sync
-with it.
-
-As mentioned in the `nix/generate.nix` files, these files are automatically
-generated. See `nix/generate.nix` for the command to update them.
+corresponding `.nix` file (stored in `nix/generated/`) is kept in sync with it. These files are automatically generated; run
+```
+nix-shell nix/generate.nix
+```
+to update.
 
 Don't worry if you forget to update the `default.nix` file, the CI job
 `check-generated` checks if these files are in sync and fail with a diff if

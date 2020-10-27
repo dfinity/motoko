@@ -19,16 +19,19 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  llvmBuildInputs = [
-    nixpkgs.clang_10 # for native/wasm building
-    nixpkgs.lld_10 # for wasm building
+  rtsBuildInputs = with nixpkgs; [
+    clang_10 # for native/wasm building
+    lld_10 # for wasm building
+    rustc-nightly
+    cargo-nightly
+    xargo
   ];
 
-  # When compiling natively, we want to use `clang` (which is a nixpkgs
-  # provided wrapper that sets various include paths etc).
-  # But for some reason it does not handle building for Wasm well, so
-  # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
+    # When compiling natively, we want to use `clang` (which is a nixpkgs
+    # provided wrapper that sets various include paths etc).
+    # But for some reason it does not handle building for Wasm well, so
+    # there we use plain clang-10. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_10}/bin/clang"
     export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
@@ -93,7 +96,7 @@ let ocaml_exe = name: bin: rts:
       buildPhase = ''
         patchShebangs .
       '' + nixpkgs.lib.optionalString (rts != null)''
-        ./rts/gen.sh ${rts}/rts/mo-rts.wasm
+        ./rts/gen.sh ${rts}/rts
       '' + ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
@@ -120,32 +123,66 @@ let ocaml_exe = name: bin: rts:
 in
 
 rec {
-  rts = stdenv.mkDerivation {
-    name = "moc-rts";
+  rts =
+    let
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
+        name = "motoko-rts-deps";
+        src = subpath rts/motoko-rts;
+        sourceRoot = null;
+        sha256 = "11la5fl0fgx6i5g52p56sf48yz7f0mqrgm38m320xh3wyqa2nim6";
+        copyLockfile = true;
+      };
+    in
+    stdenv.mkDerivation {
+      name = "moc-rts";
 
-    src = subpath ./rts;
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+      src = subpath ./rts;
+      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo ];
 
-    buildInputs = llvmBuildInputs;
+      buildInputs = rtsBuildInputs;
 
-    preBuild = ''
-      ${llvmEnv}
-      export TOMMATHSRC=${nixpkgs.sources.libtommath}
-      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-    '';
+      preBuild = ''
+        export XARGO_HOME=$PWD/xargo-home
+        export CARGO_HOME=$PWD/cargo-home
 
-    doCheck = true;
+        # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+        mkdir -p $CARGO_HOME
+        echo "Using vendored sources from ${rustDeps}"
+        unpackFile ${rustDeps}
+        cat > $CARGO_HOME/config <<__END__
+          [source."crates-io"]
+          "replace-with" = "vendored-sources"
 
-    checkPhase = ''
-      ./test_rts
-    '';
+          [source."vendored-sources"]
+          "directory" = "$(stripHash ${rustDeps})"
+        __END__
 
-    installPhase = ''
-      mkdir -p $out/rts
-      cp mo-rts.wasm $out/rts
-    '';
-  };
+        ${llvmEnv}
+        export TOMMATHSRC=${nixpkgs.sources.libtommath}
+        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
+
+      '';
+
+      doCheck = true;
+
+      checkPhase = ''
+        ./test_rts
+      '';
+
+      installPhase = ''
+        mkdir -p $out/rts
+        cp mo-rts.wasm $out/rts
+        cp mo-rts-debug.wasm $out/rts
+      '';
+
+      # This needs to be self-contained. Remove mention of
+      # nix path in debug message.
+      preFixup = ''
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+      '';
+      allowedRequisites = [];
+    };
 
   moc = ocaml_exe "moc" "moc" rts;
   mo-ld = ocaml_exe "mo-ld" "mo-ld" null;
@@ -160,24 +197,25 @@ rec {
 
   inherit ic-ref;
 
-  tests =
-    let testDerivationArgs = {
+  tests = let
+    testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
       src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
       phases = "unpackPhase checkPhase installPhase";
       doCheck = true;
       installPhase = "touch $out";
-    }; in
-    let testDerivation = args:
-      stdenv.mkDerivation (testDerivationArgs // args); in
-    let ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
+    };
+
+    testDerivation = args:
+      stdenv.mkDerivation (testDerivationArgs // args);
+
+    ocamlTestDerivation = args:
+      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
 
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
-    # And test/run-drun is actually run twice (once with drun and once with ic-ref-run)
-    let test_subdir = dir: deps:
+    test_subdir = dir: deps:
       testDerivation {
         # include from test/ only the common files, plus everything in test/${dir}/
         src =
@@ -191,17 +229,11 @@ rec {
         };
         buildInputs =
           deps ++
-          [ nixpkgs.wabt
-            nixpkgs.bash
-            nixpkgs.perl
-            nixpkgs.getconf
-            nixpkgs.moreutils
-            nixpkgs.nodejs-10_x
-            filecheck
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          [ filecheck
             wasmtime
-            nixpkgs.sources.esm
           ] ++
-          llvmBuildInputs;
+          rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .
@@ -212,9 +244,15 @@ rec {
             type -p drun && drun --version
             make -C ${dir}
           '';
-      }; in
+      };
 
-    let perf_subdir = dir: deps:
+    # Run a variant with sanity checking on
+    snty_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks";
+      });
+
+    perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
           mkdir -p $out
@@ -231,51 +269,54 @@ rec {
             exit 1
           fi
         '';
-      }); in
+      });
 
-    let qc = testDerivation {
+    qc = testDerivation {
       buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
-    }; in
+    };
 
-    let lsp = testDerivation {
+    lsp = testDerivation {
       src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
         lsp-int ${mo-ide}/bin/mo-ide .
       '';
-    }; in
+    };
 
-    let unit = ocamlTestDerivation {
+    unit = ocamlTestDerivation {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
       '';
       installPhase = ''
         touch $out
       '';
-    }; in
+    };
 
-    let candid = testDerivation {
+    candid = testDerivation {
       buildInputs = [ moc wasmtime drun candid-tests ];
       checkPhase = ''
 	candid-tests -i ${nixpkgs.sources.candid}/test \
 	  --expect-fail "reserved from invalid utf8 text"
       '';
-    }; in
+    };
 
-    let fix_names = builtins.mapAttrs (name: deriv:
+    fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
-    ); in
+    );
 
-    fix_names {
+  in fix_names {
       run        = test_subdir "run"        [ moc ] ;
+      run-dbg    = snty_subdir "run"        [ moc ] ;
       drun       = test_subdir "run-drun"   [ moc drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
       perf       = perf_subdir "perf"       [ moc drun ];
       fail       = test_subdir "fail"       [ moc ];
@@ -302,7 +343,7 @@ rec {
   };
 
   js =
-    let mk = n: with_rts:
+    let mk = n:
       stdenv.mkDerivation {
         name = "${n}.js";
         src = subpath ./src;
@@ -313,14 +354,15 @@ rec {
         ];
         buildPhase = ''
           patchShebangs .
-          make ${n}.js
+          '' + nixpkgs.lib.optionalString (rts != null)''
+          ./rts/gen.sh ${rts}/rts/
+          '' + ''
+          make DUNE_OPTS="--profile=release" ${n}.js
         '';
         installPhase = ''
           mkdir -p $out
           cp -v ${n}.js $out
-        '' + (if with_rts then ''
-          cp -vr ${rts}/rts $out
-        '' else "");
+        '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
@@ -329,8 +371,8 @@ rec {
       };
     in
     {
-      moc = mk "moc" true;
-      didc = mk "didc" false;
+      moc = mk "moc";
+      didc = mk "didc";
     };
 
   inherit drun;
@@ -338,6 +380,7 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
+  xargo = nixpkgs.xargo;
   wasm = nixpkgs.wasm;
 
   overview-slides = stdenv.mkDerivation {
@@ -370,6 +413,18 @@ rec {
     '';
   };
 
+  check-rts-formatting = stdenv.mkDerivation {
+    name = "check-rts-formatting";
+    buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
+    src = subpath ./rts/motoko-rts;
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      cargo fmt -- --check
+    '';
+  };
+
   base-src = stdenv.mkDerivation {
     name = "base-src";
     phases = "unpackPhase installPhase";
@@ -392,6 +447,22 @@ rec {
     ];
     checkPhase = ''
       make MOC=moc VESSEL_PKGS="--package matchers ${nixpkgs.sources.motoko-matchers}/src" -C test
+    '';
+  };
+
+  guide-examples-tc =  stdenv.mkDerivation {
+    name = "guid-examples-tc";
+    src = subpath doc/modules/language-guide/examples;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    MOTOKO_BASE = base-src;
+    installPhase = "touch $out";
+    checkInputs = [
+      moc
+    ];
+    checkPhase = ''
+      patchShebangs .
+      ./check.sh
     '';
   };
 
@@ -458,6 +529,7 @@ rec {
       ic-ref
       shell
       check-formatting
+      check-rts-formatting
       check-generated
       check-grammar
     ] ++
@@ -465,7 +537,7 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell {
+  shell = nixpkgs.mkShell rec {
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
@@ -473,7 +545,7 @@ rec {
     # both, while not actually building `moc`
     #
 
-    buildInputs =
+    propagatedBuildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
@@ -482,11 +554,11 @@ rec {
         overview-slides.buildInputs ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
-	  nixpkgs.ocamlPackages.merlin
-	  nixpkgs.ocamlformat
-	  nixpkgs.ocamlPackages.utop
-	  nixpkgs.niv
-	]
+          nixpkgs.ocamlPackages.merlin
+          nixpkgs.ocamlformat
+          nixpkgs.ocamlPackages.utop
+          nixpkgs.niv
+        ]
       ));
 
     shellHook = llvmEnv + ''
@@ -497,12 +569,16 @@ rec {
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    MOTOKO_BASE = base-src;
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell
-    phases = ["dummyBuildPhase"];
-    dummyBuildPhase = ''
-      touch $out
+    # Also mention the dependencies in the output, so that after `nix-build -A
+    # shell` (or just `nix-build`) they are guaranteed to be present in the
+    # local nix store.
+    phases = ["installPhase" "fixupPhase"];
+    installPhase = ''
+      mkdir $out
     '';
     preferLocalBuild = true;
     allowSubstitutes = true;

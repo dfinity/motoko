@@ -46,6 +46,7 @@ let chase_env env actor =
     | RecordT fs -> chase_fields fs
     | VariantT fs -> chase_fields fs
     | FuncT (ms, fs1, fs2) -> List.iter chase fs1; List.iter chase fs2
+    | ClassT _ -> assert false
     | PreT -> assert false
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
@@ -73,6 +74,7 @@ let infer_rec env_list =
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
     | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
+    | ClassT _ -> assert false
     | PreT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
@@ -142,6 +144,7 @@ let rec pp_typ ppf t =
      concat ppf pp_meth "," ts;
      str ppf "})";
      pp_close_box ppf ();
+  | ClassT _ -> assert false
   | PreT -> assert false
   );
   pp_close_box ppf ()

@@ -28,9 +28,8 @@ This program structure is complex for humans to read and maintain, and stands in
 We note that {proglang} programs may avoid callbacks for many cases, but not _all_ cases where they are used in other asynchronous, message-passing settings.
 Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
 
-'''
 
-To start, we consider the simplest stateful service: A counter with
+To start, we consider the simplest stateful service: a counter with
 a single "current count" value.
 
 == Example: a Counter service
@@ -41,15 +40,15 @@ Consider the following actor object (a value form):
 actor Counter {
   var count : Nat = 0;
 
-  public func increment() : async () {
+  public func inc() : async () {
     count += 1;
   };
 
-  public query func get_current() : async Nat {
+  public query func get() : async Nat {
     count
   };
 
-  public func set_current(n: Nat) : async () {
+  public func set(n: Nat) : async () {
     count := n;
   };
 }
@@ -60,11 +59,11 @@ TODO: discuss counter example
 ////
 == Using async to await values
 
-To get the underlying content of an `async` value, such as a return value from `get_current` above, the caller uses `await`:
+To get the underlying content of an `async` value, such as a return value from `get` above, the caller uses `await`:
 
 ....
-let a : async Nat = counter.get_current()
-let c : Nat = await(counter.get_current())
+let a : async Nat = counter.get()
+let c : Nat = await(counter.get())
 ....
 
 The first line gets _a promise of the current value_ (the variable `a`), but does not wait for it, and thus cannot use it as a natural number.
@@ -75,45 +74,44 @@ NOTE: For now, the {proglang} compiler gives an error for calls that
 do not follow this second form, which is currently required to ensure
 that certain program resources will always be reclaimed.
 
+[#actor_classes]
 == Actor classes generalize an actor's initial state
 
 An actor class defines a constructor function that produces objects of a predetermined type, with a predetermined interface and behavior.
 
-For example, we can generalize `Counter` given above to `CounterInit`
+For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
+.Counters.mo
 ....
-actor class CounterInit(init: Nat) {
-  var count : Nat = init;
-
-  public func increment() : async () {
-    count += 1;
-  };
-
-  public query func get_current() : async Nat {
-    count
-  };
-
-  public func set_current(n: Nat) : async () {
-    count := n;
-  };
-}
+include::../examples/Counters.mo[]
 ....
 
-To use this class, we can create several actors with different initial values:
+////
+TODO make the following asynchronous
+////
+
+If this is class is stored in file `+Counters.ml+`, then
+we can import the file as a module and use it to
+create several actors with different initial values:
 
 ....
-let c1 = CounterInit(1);
-let c2 = CounterInit(2);
+import Counters "Counters";
+
+let c1 = await Counters.Counter(1);
+let c2 = await Counters.Counter(2);
 ....
 
-The two lines above _instantiate_ the actor class twice, once per line.
+The two lines above _instantiate_ the actor class twice, once per line
 The first invocation uses the initial value `1`, where the second uses initial value `2`.
+Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a promise that can be ``await``ed for the resulting actor value.
 Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
 
+
 NOTE: For now, the {proglang} compiler gives an error when compiling
-programs that do not consist of a single actor.
-The interpreter accommodates the examples above.
+programs that do not consist of a single actor or actor class.
+Compiled programs may still, however, reference imported actor classes
+For more information, see link:modules-and-imports{outfilesuffix}#importing_actor_classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor_classes[Actor classes].
 
 == Stable and flexible variables
 
@@ -125,10 +123,10 @@ More precisely, every `+let+` and `+var+` variable declaration in an actor must 
 
 Concretely, you use the following syntax to declare stable or flexible variables in an actor:
 
-```
+....
 <dec-field> ::=
   (public|private)? (stable|flexible)? dec
-```
+....
 
 Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
 Note that you should only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
@@ -136,33 +134,37 @@ You should not use the `+stable+` or `+flexible+` modifier anywhere else in your
 
 The representation for stable variable signatures looks like a {proglang} actor type:
 
-[source,motoko]
-----
+....
 actor {
   stable x : Nat;
   stable var y : Int;
   stable z : [var Nat];
 };
-----
+....
 
 === Typing
 
-Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
+Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state:
 
-* A `+stable+` declaration must have a _stable_ type. 
+* A `+stable+` declaration must have a _stable_ type.
 * Stable types are a superset of _shared_ types.
 * Stable types allow objects or arrays with mutable components.
 
-The key point to note is that stable types extend shared types to include **mutable arrays and fields**. 
-Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
+The key point to note is that stable types extend shared types to include **mutable arrays and fields**.
+Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects).
 This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
 
-NOTE: In general, object types are not stable because they can contain local functions. 
+NOTE: In general, object types are not stable because they can contain local functions.
 However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
 Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
 
 === How stable variables are upgraded
 
 When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
-When deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
+When you deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
+
+
+////
+TODO: describe pre and post upgrade hooks
+////

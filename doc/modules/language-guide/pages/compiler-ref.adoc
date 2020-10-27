@@ -1,5 +1,6 @@
 = Compiler reference
 :proglang: Motoko
+:sdk-short-name: DFINITY Canister SDK
 :company-id: DFINITY
 
 The Motoko compiler (`+moc+`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. 

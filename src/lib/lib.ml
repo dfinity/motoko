@@ -231,10 +231,6 @@ struct
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
 
-  (* TODO: remove and use List.concat_map from OCaml 4.10 *)
-  let concat_map f xs =
-    List.(concat (map f xs))
-
   let rec table n f = table' n f []
   and table' n f xs =
     if n = 0 then xs else table' (n - 1) f (f (n - 1) :: xs)
@@ -276,13 +272,6 @@ struct
   let last_opt = function
     | [] -> None
     | xs -> Some (last xs)
-
-  let rec first_opt f = function
-    | [] -> None
-    | x::xs ->
-       match f x with
-       | None -> first_opt f xs
-       | some -> some
 
   let rec split_last = function
     | [x] -> [], x
@@ -448,6 +437,15 @@ struct
     match o with
     | Some y -> y
     | None -> x
+
+  module Syntax =
+  struct
+    let (let+) x f = Option.map f x
+    let (and+) x y = match x, y with
+      | Some x, Some y -> Some (x, y)
+      | _  -> None
+    let (let*) = Option.bind
+  end
 end
 
 module Promise =
@@ -564,7 +562,8 @@ struct
        /path/tosomething is not a subpath of /path/to*)
     else List.is_prefix (=) (segments base) (segments path)
 
-  (* When opening is successful, but there is a case mismatch, warn *)
+  (* When opening is successful, but there is a case mismatch (because the file
+     system is case insensitive), generate a warning. *)
   let open_in path : in_channel * string list =
     let ic = Stdlib.open_in path in
     let dir, base = Filename.(dirname path, basename path) in
@@ -573,12 +572,13 @@ struct
     if not (Array.exists (fun name -> name = base) files) then
       begin
         let open Stdlib.String in
-        let message = Printf.sprintf "file %s has been located with a name of different case" base in
-        let message' = Printf.sprintf "file %s has been located with a different name" base in
         let base = lowercase_ascii base in
         if Array.exists (fun name -> lowercase_ascii name = base) files then
+          let message = Printf.sprintf "file %s has been located with a name of different case" base in
           ic, [message]
-        else ic, [message']
+        else
+          let message = Printf.sprintf "file %s has been located with a different name" base in
+          ic, [message]
       end
     else ic, []
 end

@@ -65,12 +65,10 @@ let print_val _senv v t =
 let dump_prog flag prog =
     if !flag then
       Wasm.Sexpr.print 80 (Arrange.prog prog)
-    else ()
 
 let dump_ir flag prog_ir =
     if !flag then
       Wasm.Sexpr.print 80 (Arrange_ir.prog prog_ir)
-    else ()
 
 (* Parsing *)
 
@@ -199,36 +197,9 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
-(* Parsing libraries *)
 
-let is_import dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ExpD e | LetD (_, e) -> (match e.it with ImportE _ -> true | _ -> false)
-  | _ -> false
-
-let is_module dec =
-  let open Source in let open Syntax in
-  match dec.it with
-  | ExpD e | LetD (_, e) ->
-    (match e.it with ObjE (s, _) -> s.it = Type.Module | _ -> false)
-  | _ -> false
-
-let rec lib_of_prog' imps at = function
-  | [d] when is_module d -> imps, d
-  | d::ds when is_import d -> lib_of_prog' (d::imps) at ds
-  | ds ->
-    let open Source in let open Syntax in
-    let fs = List.map (fun d -> {vis = Public @@ at; dec = d; stab = None} @@ d.at) ds in
-    let obj = {it = ObjE (Type.Module @@ at, fs); at; note = empty_typ_note} in
-    imps, {it = ExpD obj; at; note = empty_typ_note}
-
-let lib_of_prog f prog =
-  let open Source in let open Syntax in
-  let imps, dec = lib_of_prog' [] prog.at prog.it in
-  let exp = {it = BlockE (List.rev imps @ [dec]); at = prog.at; note = empty_typ_note} in
-  {it = exp; at = prog.at; note = f}
-
+let lib_of_prog f prog : Syntax.lib  =
+ { (Syntax.comp_unit_of_prog true prog) with Source.note = f }
 
 (* Prelude *)
 
@@ -266,11 +237,16 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string Prelude.prim_module in
   let parse = Parser.Incremental.parse_prog in
+
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error e -> prim_error "parsing" [e]
   | Ok prog ->
+    let open Syntax in
+    let open Source in
     let senv0 = initial_stat_env in
-    let lib = lib_of_prog "@prim" prog in
+    let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    let cub = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
+    let lib = {it = ([],cub); at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, msgs) ->
@@ -329,8 +305,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
-        Error [Diag.{
-          sev = Error; at = ri.Source.at; cat = "import";
+        Error [{
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
           text = Printf.sprintf "file %s must not depend on itself" f
         }]
       else begin
@@ -338,9 +314,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let open Diag.Syntax in
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
-        let* more_imports =
-          ResolveImport.resolve (resolve_flags ()) prog base
-        in
+        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
         let* () = go_set more_imports in
         let lib = lib_of_prog f prog in
         let* sscope = check_lib !senv lib in
@@ -362,7 +336,6 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let sscope = Scope.lib f actor in
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
-
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
@@ -372,7 +345,7 @@ let load_progs parsefn files senv : load_result =
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
-  let libs = Lib.List.concat_map snd rs in
+  let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
   let* senv'' = check_progs senv' progs' in
   Diag.return (libs, progs', senv'')
@@ -428,7 +401,6 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | Some denv2 -> Some (senv1, denv2)
     )
 
-
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with
   | None -> prelude_error "initializing" []
@@ -450,14 +422,12 @@ let check_files' parsefn files : check_result =
 let check_files files : check_result =
   check_files' parse_file files
 
-let check_string s name : check_result =
-  Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
-
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
+  let* () = Typing.check_actors senv progs in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
 (* Running *)
@@ -524,15 +494,36 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
-let run_files_and_stdin files =
-  let lexer = Lexing.from_function lexer_stdin in
-  Option.bind (interpret_files initial_env files) (fun env ->
-    let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
-    try loop env with End_of_file ->
-      printf "\n%!";
-      Some ()
-  )
+let run_stdin_from_file file =
+  let open Lib.Option.Syntax in
+  let* (libs, prog, senv', t, sscope) =
+    Diag.flush_messages (load_decl (parse_file Source.no_region file) initial_stat_env) in
+  let denv' = interpret_libs initial_dyn_env libs in
+  let* (v, dscope) = interpret_prog denv' prog in
+  printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
+  Some ()
 
+let run_files_and_stdin files =
+  let open Lib.Option.Syntax in
+  let lexer = Lexing.from_function lexer_stdin in
+  let* env = interpret_files initial_env files in
+  let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
+  try loop env with End_of_file ->
+    printf "\n%!";
+    Some ()
+
+(* Desugaring *)
+
+let desugar_unit imports u name : Ir.prog =
+  phase "Desugaring" name;
+  let open Lowering.Desugar in
+  let prog_ir' : Ir.prog = link_declarations
+    (import_prelude prelude @ imports)
+    (transform_unit u) in
+  dump_ir Flags.dump_lowering prog_ir';
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
+  prog_ir'
 
 (* IR transforms *)
 
@@ -547,17 +538,6 @@ let transform transform_name trans prog name =
 let transform_if transform_name trans flag prog name =
   if flag then transform transform_name trans prog name
   else prog
-
-let desugar imports prog name =
-  phase "Desugaring" name;
-  let open Lowering.Desugar in
-  let prog_ir' : Ir.prog = link_declarations
-    (transform_prelude prelude @ imports)
-    (transform_prog prog) in
-  dump_ir Flags.dump_lowering prog_ir';
-  if !Flags.check_ir
-  then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
-  prog_ir'
 
 let await_lowering =
   transform_if "Await Lowering" Await.transform
@@ -580,26 +560,7 @@ let analyze analysis_name analysis prog name =
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose analysis_name prog
 
-
-(* Compilation *)
-
-let load_as_rts () =
-  Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force Rts.wasm)
-
-type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
-
-(* a hack to support compiling multiple files *)
-let combine_progs progs : Syntax.prog =
-  let open Source in
-  if progs = []
-  then { it = []; at = no_region; note = "empty" }
-  else { it = Lib.List.concat_map (fun p -> p.it) progs
-       ; at = (Lib.List.last progs).at
-       ; note = (Lib.List.last progs).note
-       }
-
-let lower_prog mode libs progs name =
-  let prog_ir = desugar libs progs name in
+let ir_passes mode prog_ir name =
   let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
   let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
   let prog_ir = tailcall_optimization true prog_ir name in
@@ -608,38 +569,73 @@ let lower_prog mode libs progs name =
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
-let lower_libs libs : Lowering.Desugar.import_declaration =
-  Lib.List.concat_map Lowering.Desugar.transform_lib libs
 
-let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
-  let prog = combine_progs progs in
-  let name = prog.Source.note in
-  let imports = lower_libs libs in
-  let prog_ir = lower_prog mode imports prog name in
+(* Compilation *)
+
+let load_as_rts () =
+  let rts = if !Flags.sanity then Rts.wasm_debug else Rts.wasm in
+  Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
+
+type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
+
+(* This transforms the flat list of libs (some of which are classes)
+   into a list of imported libs and (compiled) classes *)
+let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
+  let open Source in
+  let rec go imports = function
+    | [] -> imports
+    | l :: libs ->
+      let (_, cub) = l.it in
+      match cub.it with
+      | Syntax.ActorClassU _ ->
+        let wasm = compile_unit_to_wasm mode imports l in
+        go (imports @ Lowering.Desugar.import_compiled_class l wasm) libs
+      | _ ->
+        go (imports @ Lowering.Desugar.import_unit l) libs
+  in go [] libs
+
+and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
+  let name = u.Source.note in
+  let prog_ir = desugar_unit imports u name in
+  let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prog_ir
+
+and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
+  let wasm_mod = compile_unit mode true imports u in
+  let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
+  wasm
+
+and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
+  let imports = compile_libs mode libs in
+  let prog = Syntax.combine_progs progs in
+  let u = Syntax.comp_unit_of_prog false prog in
+  compile_unit mode do_link imports u
 
 let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
-  Diag.return (compile_prog mode do_link libs progs)
-
-let compile_string mode s name : compile_result =
-  let open Diag.Syntax in
-  let* libs, prog, senv, _t, _sscope =
-    load_decl (parse_string name s) initial_stat_env
-  in
-  Diag.return (compile_prog mode false libs [prog])
+  Diag.return (compile_progs mode do_link libs progs)
 
 (* Interpretation (IR) *)
 
-let interpret_ir_prog libs progs =
-  let prog = combine_progs progs in
+(*
+   This transforms the flat list of libs into a list of imported units,
+   Unlike, `compile_libs`, classes are imported as IR for interpretation,
+   not compiled to wasm
+*)
+let import_libs libs : Lowering.Desugar.import_declaration =
+  List.concat_map Lowering.Desugar.import_unit libs
+
+let interpret_ir_progs libs progs =
+  let prog = Syntax.combine_progs progs in
   let name = prog.Source.note in
-  let libs' = lower_libs libs in
-  let prog_ir = lower_prog (!Flags.compile_mode) libs' prog name in
+  let imports = import_libs libs in
+  let u = Syntax.comp_unit_of_prog false prog in
+  let prog_ir = desugar_unit imports u name in
+  let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
@@ -647,5 +643,5 @@ let interpret_ir_prog libs progs =
 
 let interpret_ir_files files =
   Option.map
-    (fun (libs, progs, senv) -> interpret_ir_prog libs progs)
+    (fun (libs, progs, senv) -> interpret_ir_progs libs progs)
     (Diag.flush_messages (load_progs parse_file files initial_stat_env))
