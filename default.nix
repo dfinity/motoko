@@ -190,6 +190,7 @@ rec {
   mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
   didc = ocaml_exe "didc" "didc" null;
   deser = ocaml_exe "deser" "deser" null;
+  candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
@@ -299,6 +300,17 @@ rec {
       '';
     };
 
+    candid = testDerivation {
+      buildInputs = [ moc wasmtime drun candid-tests ];
+      checkPhase = ''
+	candid-tests -i ${nixpkgs.sources.candid}/test \
+	  --expect-fail "reserved from invalid utf8 text" \
+	  --expect-fail "overlong typ table length" \
+	  --expect-fail "text: too overlong length leb" \
+	  --expect-fail "overlong arg length"
+      '';
+    };
+
     fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
     );
@@ -317,7 +329,7 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit;
+      inherit qc lsp unit candid;
     };
 
   samples = stdenv.mkDerivation {
