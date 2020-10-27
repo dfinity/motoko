@@ -409,21 +409,20 @@ The link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a
 However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword.
-Give a local module name to introduce, in this example `P` for "`**P**relude`", and a URL where the `import` declaration may locate the imported module:
+Give a local module name to introduce, in this example `D` for "`**D**ebug`", and a URL where the `import` declaration may locate the imported module:
 
 ....
-import P "mo:base/Prelude";
-P.printLn("hello world");
+include::../examples/print.mo[]
 ....
 
 In this case, we import {proglang} code (not some other module form) with the `mo:` prefix.
-We specify the `base/` path, followed by the module's file name `Prelude.mo` minus its extension.
+We specify the `base/` path, followed by the module's file name `Debug.mo` minus its extension.
 
 === Accommodating incomplete code
 
 Sometimes, in the midst of writing a program, we want to run an incomplete version, or a version where one or more execution paths are either missing or simply invalid.
 
-To accommodate these situations, we use the `xxx`, `nyi` and `unreachable` functions from the standard library, explained below.
+To accommodate these situations, we use the `xxx`, `nyi` and `unreachable` functions from the base `Prelude` library, explained below.
 Each wraps a <<overview-traps,general trap mechanism>>, explained further below.
 
 === Use short-term holes

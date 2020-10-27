@@ -119,6 +119,10 @@ let with_referencable_tags f tag attrs : die list * int =
   let t, r = with_referencable_tag f tag attrs in
   [t], r
 
+let with_closed_referencable_tags f tag attrs : die list * int =
+  let t, r = with_referencable_tag f tag attrs in
+  [Grouped [TagClose; t]], r
+
 let referencable_tag = with_referencable_tag ignore
 
 let autoclose_unreferencable_tag tag attrs =
@@ -246,7 +250,7 @@ and enum vnts : die list * int =
         let hash = Int32.to_int (Mo_types.Hash.hash name) in
         unreferencable_tag dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
     (*  enumeration_type, useful only with location expression *)
-    with_referencable_tags add
+    with_closed_referencable_tags add
        dw_TAG_enumeration_type
        (dw_attr' (Artificial true) :: List.map enumerator selectors)
 
@@ -276,7 +280,7 @@ and option_instance key : die list * int =
       autoclose_unreferencable_tag dw_TAG_variant_Named
         (member :: dw_attrs [Name name; Discr_value discr]) in
     let internal_struct, struct_ref =
-      with_referencable_tags add dw_TAG_structure_type
+      with_closed_referencable_tags add dw_TAG_structure_type
         (discr_tag ::
          autoclose_unreferencable_tag dw_TAG_variant_part
            (dw_attr' (Discr discr_ref) ::
@@ -322,7 +326,7 @@ and variant vnts : die list * int =
       autoclose_unreferencable_tag dw_TAG_variant_Named
         (member :: dw_attrs [Name name; Discr_value hash]) in
     let internal_struct, struct_ref =
-      with_referencable_tags add dw_TAG_structure_type
+      with_closed_referencable_tags add dw_TAG_structure_type
         (autoclose_unreferencable_tag dw_TAG_member_Tag_mark
            (dw_attrs [Artificial true; Byte_size 4]) ::
         discr_tag ::
@@ -350,7 +354,7 @@ and object_ fs : die list * int =
         unreferencable_tag dw_TAG_member_Word_sized_typed
           (dw_attrs [Name name; TypeRef r; Byte_size 4 (*; Location search *)]) in
       (* reference to structure_type *)
-      with_referencable_tags add dw_TAG_structure_type
+      with_closed_referencable_tags add dw_TAG_structure_type
           (dw_attrs [Name "@obj"; Byte_size (4 * length selectors)] @ map field selectors) in
     prereqs @ ds, r
 
@@ -368,7 +372,7 @@ and tuple ts : die list * int =
       let field index (_, r) =
         unreferencable_tag dw_TAG_member_Word_sized_typed
           (dw_attrs [Name (Printf.sprintf ".%d" index); TypeRef r; Byte_size 4]) in
-      with_referencable_tags add dw_TAG_structure_type
+      with_closed_referencable_tags add dw_TAG_structure_type
         (dw_attrs [Name "@tup"; Byte_size 4] @ mapi field field_types_refs) in
     prereqs @ ds, r
 

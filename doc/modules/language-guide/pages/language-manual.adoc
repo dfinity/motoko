@@ -3,6 +3,7 @@
 :candid: Candid
 :sdk-short-name: DFINITY Canister SDK
 :company-id: DFINITY
+:ext: mo
 ////
 * targetting release 0.5.4
 * [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
@@ -392,7 +393,7 @@ A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 * a named or anonymous (module) declaration; or
 * a named actor class declaration.
 
-Libraries stored in {ext} files may be referenced by `import` declarations.
+Libraries stored in `.{ext}` files may be referenced by `import` declarations.
 
 In a module library, the optional name `<id>?` is only significant within the library and does not determine the name of the library when imported.
 Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to
