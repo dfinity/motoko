@@ -109,7 +109,7 @@ Because `+value+` was declared `stable`, the current state, _n_, of the service 
 from `0`.
 
 Because the new interface is compatible with the previous one, existing clients referencing the service will continue to work, but new clients will be able to exploit its upgraded functionality
-(the  additional `reset` function).
+(the additional `reset` function).
 
 For scenarios that can't be solved using stable variables alone, {proglang} provides user-defined upgrade hooks that run immediately before and after upgrade,
 and allow you to migrate arbitrary state to stable variables.
