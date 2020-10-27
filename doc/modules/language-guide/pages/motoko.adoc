@@ -109,7 +109,7 @@ Because `+value+` was declared `stable`, the current state, _n_, of the service 
 from `0`.
 
 Because the new interface is compatible with the previous one, existing clients referencing the service will continue to work, but new clients will be able to exploit its upgraded functionality
-the additional `reset` function).
+(the additional `reset` function).
 
 For scenarios that can't be solved using stable variables alone, {proglang} provides user-definable upgrade hooks that run immediately before and after upgrade,
 and allow you to migrate arbitrary state to stable variables.
@@ -120,7 +120,7 @@ and allow you to migrate arbitrary state to stable variables.
 
 {proglang} provides many other developer productivity features, including subtyping, arbitrary precision arithmetic and garbage collection.
 
-{proglang} is not, and is not intented to be, the only language for implementing canisters.
+{proglang} is not, and is not intended to be, the only language for implementing canisters.
 If it doesn't suit your needs, we are also working on adding Rust support to the SDK.
 Our goal is to enable any language (with a compiler that targets WebAssembly) to be able to produce canisters that run on the {IC} and interoperate
 with other, perhaps foreign, canisters through language neutral Candid interfaces.
