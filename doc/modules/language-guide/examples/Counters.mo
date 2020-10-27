@@ -6,7 +6,7 @@ actor class Counter(init : Nat) {
     count += 1;
   };
 
-  public query func get() : async Nat {
+  public func get() : async Nat {
     count
   };
 

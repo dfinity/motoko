@@ -49,7 +49,7 @@ actor Counter {
     count += 1;
   };
 
-  public query func get() : async Nat {
+  public func get() : async Nat {
     count
   };
 
@@ -112,6 +112,40 @@ Otherwise the result is some error, and `await p` propagates the error to the
 consumer of `await p`.
 
 (Awaiting a promise a second time will just produce the same result.)
+
+
+== Query functions
+
+In {IC} terminology, all three `Counter` functions are _update_ messages
+than can alter the state of the canister when called and need to go
+through consensus amongst the distributed replicas before the {IC} can
+commit the state change and return a result.  Reaching concensus is an
+expensive process with high latency.
+
+For applications that don't
+require the guarantees of concensus, the {IC} supports more efficient
+_query_ operations. These are able to read the state of a canister from a single replica,
+modify a snapshot during their execution and return a result, but
+cannot permanently alter the state or send further {IC} messages.
+
+Motoko supports the implementation of {IC} queries using `query` functions. The `query` keyword
+modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster,
+{IC} query semantics.
+
+For example, we can extend the `Counter` with fast-and-loose variant of the trustworthy `read` function, called `peek`:
+
+----
+actor Counter {
+
+  public query func peek() : async Nat {
+    count
+  };
+
+}
+----
+
+The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy,
+display of the current counter value.
 
 
 [#actor_classes]
