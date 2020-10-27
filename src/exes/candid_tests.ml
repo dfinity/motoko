@@ -129,7 +129,7 @@ let () =
   Array.iter (fun base ->
     match Lib.String.chop_suffix ".test.did" base with
     | Some name ->
-      Printf.printf "Parsing %s...\n%!" base;
+      Printf.printf "Parsing %s ...\n%!" base;
       let tests = Diag.run (Pipeline.parse_test_file (Filename.concat !test_dir base)) in
       if (tests.it.tdecs <> [])
       then (Printf.eprintf "Definitions not yet supported\n"; exit 1);
@@ -142,7 +142,7 @@ let () =
 
         count := !count + 1;
         if filter testname then begin
-          Printf.printf "%s...%!" testname;
+          Printf.printf "%s ...%!" testname;
           (* generate test program *)
           match mo_of_test test with
           | None -> Printf.printf " ignored.\n"
@@ -186,7 +186,7 @@ let () =
       ) tests.it.tests;
     | None ->
       match Lib.String.chop_suffix ".did" base with
-      | Some _ -> Printf.printf "Ignoring file %s...\n" base;
+      | Some _ -> Printf.printf "Ignoring file %s ...\n" base;
       | None -> ()
   ) files;
 
