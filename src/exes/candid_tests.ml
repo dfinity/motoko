@@ -171,7 +171,7 @@ let () =
               Printf.printf " compilation failed:\n%s%s\n" stdout stderr
             | (Ok, _, _) ->
               let expect_fail = expected_fail testname in
-              if expect_fail then Printf.printf " should not be ok:";
+              if expect_fail then Printf.printf " known to not be ok:";
               match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with
               | true, (Ok, _, _)
               | false, (Fail, _, _) ->
