@@ -160,7 +160,11 @@ the efficienty gains of nested query calls will be modest at best.
 [#actor_classes]
 == Actor classes generalize an actor's initial state
 
-An actor class defines a constructor function that produces objects of a predetermined type, with a predetermined interface and behavior.
+An actor _class_ generalizes a single actor declaration to the declaration of family of actors satisfying the same interface.
+An actor class declares a type, naming the interface of its actors, and a function that
+constructs a fresh actor of that type each time it is supplied with an argument.
+An actor class thus serves as a template for manufacturing actors.
+Because canister installation is asychronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
 
 For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
@@ -186,7 +190,7 @@ let c2 = await Counters.Counter(2);
 The last two lines above _instantiate_ the actor class twice.
 The first invocation uses the initial value `1`, where the second uses initial value `2`.
 Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a promise that can be ``await``ed for the resulting actor value.
-Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
+Both `c1` and `c2` have the same type, `Counters.Counter` and can be used interchangeably.
 
 
 NOTE: For now, the {proglang} compiler gives an error when compiling
