@@ -233,7 +233,9 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_PRIM_text:
         {
           uint32_t len = read_u32_of_leb128(b);
-          advance(b, len);
+	  const char *p = (const char *)b->p;
+          advance(b, len); // advance first; does the bounds check
+	  utf8_validate(p, len);
         }
         return;
       case IDL_PRIM_empty:
