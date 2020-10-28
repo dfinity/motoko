@@ -62,18 +62,24 @@ let mo_of_test tenv test : (string * (* should_not_trap *) bool) option =
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
   let ignore e = "ignore (" ^ e ^ ")\n" in
 
+  let defs =
+    String.concat "" (List.map (fun (n,candid_typ) ->
+      let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
+      "type " ^ n ^ " = " ^ Type.string_of_typ mo_typ ^ ";\n"
+    ) (Typing.Env.bindings tenv)) ^ "\n" in
+
   let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
   match test.it.assertion with
   | ParsesAs (true, BinaryInput i)
   | ParsesEqual (_, BinaryInput i, TextualInput _)
   | ParsesEqual (_, TextualInput _, BinaryInput  i)
-  -> Some (ignore (deser typ i), true)
+  -> Some (defs ^ ignore (deser typ i), true)
   | ParsesAs (false, BinaryInput i)
-  -> Some (ignore (deser typ i), false)
+  -> Some (defs ^ ignore (deser typ i), false)
   | ParsesEqual (true, BinaryInput i1, BinaryInput i2)
-  -> Some (equal (deser typ i1) (deser typ i2), true)
+  -> Some (defs ^ equal (deser typ i1) (deser typ i2), true)
   | ParsesEqual (false, BinaryInput i1, BinaryInput i2)
-  -> Some (not_equal (deser typ i1) (deser typ i2), true)
+  -> Some (defs ^ not_equal (deser typ i1) (deser typ i2), true)
   | ParsesAs (_, TextualInput _)
   | ParsesEqual (_, TextualInput _, TextualInput _)
   -> None
@@ -158,7 +164,7 @@ let () =
               then
               begin
                 Printf.printf " should not be ok:";
-                match must_not_trap, run_cmd "wasmtime --disable-cache --cranelift tmp.wasm" with
+                match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with
                 | true, (true, _, _)
                 | false, (false, _, _) ->
                   count_unexpected_ok := !count_unexpected_ok + 1;
