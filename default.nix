@@ -305,9 +305,6 @@ rec {
       checkPhase = ''
 	candid-tests -i ${nixpkgs.sources.candid}/test \
 	  --expect-fail "reserved from invalid utf8 text" \
-	  --expect-fail "overlong typ table length" \
-	  --expect-fail "text: too overlong length leb" \
-	  --expect-fail "overlong arg length"
       '';
     };
 

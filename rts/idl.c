@@ -9,11 +9,6 @@ export uint32_t read_u32_of_leb128(buf *buf) {
   uint8_t b;
   do {
     b = read_byte(buf);
-    if (s == 28 && !((b & (uint8_t)0xF0) == 0x00)) {
-        // the 5th byte needs to be the last, and it must contribute at most 4 bits
-        // else we have an int overflow
-        idl_trap_with("int overflow");
-    }
     r += (b & (uint8_t)0x7f) << s;
     s += 7;
   } while (b & (uint8_t)0x80);
@@ -27,11 +22,6 @@ export int32_t read_i32_of_sleb128(buf *buf) {
   bool last_sign_bit_set = 0;
   do {
     b = read_byte(buf);
-    if (s == 28 && !((b & (uint8_t)0xF0) == 0x00 || (b & (uint8_t)0xF0) == 0x70)) {
-        // the 5th byte needs to be the last, and it must contribute at most 4 bits
-        // else we have an int overflow
-        idl_trap_with("int overflow");
-    }
     last_sign_bit_set = (b & (uint8_t)0x40);
     r += (b & (uint8_t)0x7f) << s;
     s += 7;
