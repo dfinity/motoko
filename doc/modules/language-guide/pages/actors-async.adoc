@@ -38,44 +38,80 @@ Consider the following actor declaration:
 
 [source,motoko]
 ----
-include::../examples/Counters.mo[]
+include::../examples/counter-actor.mo[]
 ----
 
 ////
-actor Counter {
-  var count : Nat = 0;
+actor counter {
 
-  public func inc() : async () {
+  var count = 0;
+
+  public shared func inc() : async () { count += 1 };
+
+  public shared func read() : async Nat { count };
+
+  public shared func bump() : async Nat {
     count += 1;
+    count;
   };
-
-  public func get() : async Nat {
-    count
-  };
-
-  public func set(n: Nat) : async () {
-    count := n;
-  };
-}
+};
 ////
 
-The `Counter` actor declares one field and three public functions:
+The `counter` actor declares one field and three public, _shared_ functions:
 
 * the field `count` is mutable, intialized to zero and implicitly `private`.
 * function `inc()` asynchronous increments the counter and returns a promise of type `async ()` for synchronization.
-* function `get()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
-* function `set(n)` asynchronously resets the counter's value using its argument `n` and returns a promise of type `async ()`.
+* function `read()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
+* function `bump()` asynchronously increments and reads the counter.
 
-The only way to read or modify the state (`count`) of the `Counter` actor is through its functions.
+Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be have _shared_ types - a subset of types that includes immutable data, actor references and shared function references, but excludes functions, objects containing functions and mutable data.
 
-Because all interaction with actors is asynchronous, an actor's public functions must either
+Because all interaction with actors is asynchronous, an actor's shared functions must either
 return a promise type `async T`, for some type `T`, or nothing at all `()`.
+
+Unlike objects and modules, actors can only expose shared functions. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
+
+[source,motoko]
+----
+include::../examples/counter-actor-sugar.mo[]
+----
+
+The only way to read or modify the state (`count`) of the `counter` actor is through its shared functions.
 
 A value of type `async T` is a _promise_. The producer of the promise
 fulfills the promise when it returns a result, either a value or error.
 
 The only thing a consumer can do with a promise is wait for it to be fulfilled by the producer,
 throw it away, or store it for later use.
+
+== Actor types
+
+Just as objects have object types, actors have _actor types_. The
+`counter` actor has the following type:
+
+....
+actor {
+  inc  : shared () -> async ();
+  read : shared () -> async Nat;
+  bump : shared () -> Nat;
+}
+....
+
+Again, because the `shared` modifier is required on an actor's function members,
+{proglang} both elides them on display, and allows you to omit them
+when authoring an actor type.
+
+Thus the previous type can be expressed more succinctly as:
+
+....
+actor {
+  inc  : () -> async ();
+  read : () -> async Nat;
+  bump : () -> Nat;
+}
+....
+
+Like object types, actor types support subtying: and more specific actor type is a subtype of a more general one that offers fewer functions, or functions with more general types.
 
 == Using `await` to consume async promises
 
@@ -87,7 +123,7 @@ promise to an identifier `a`, and then `await a` to retrieve the underlying `Nat
 
 [source, motoko]
 ----
-let a : async Nat = Counter.get();
+let a : async Nat = counter.read();
 let n : Nat = await a;
 ----
 
@@ -100,7 +136,7 @@ Typically, one rolls the two steps into one and one just awaits an asynchronous 
 
 [source, motoko]
 ----
-let n : Nat = await Counter.get();
+let n : Nat = await counter.read();
 ----
 
 Unlike an ordinary function call, which blocks the caller until the callee has returned a result,
@@ -122,6 +158,22 @@ may change due to concurrent processing of other incoming actor
 messages. It is the programmer's responsibility to guard against
 non-synchronized state changes.
 
+
+For example, the implementation of `bump()` above is guaranteed to increment and read the
+value of `count`, in one atomic step. The alternative implementation:
+
+....
+  public shared func bump() : async Nat {
+    await inc();
+    await read();
+  };
+....
+
+does _not_ have the same semantics and would allow another client of the actor to
+interfere with its operation: each `await` suspends execution, allowing another client
+to change the state of the actor.
+By design, the explicit `await`s make the potential points of interference clear to the reader.
+
 == Query functions
 
 In {IC} terminology, all three `Counter` functions are _update_ messages
@@ -140,14 +192,14 @@ Motoko supports the implementation of {IC} queries using `query` functions. The 
 modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster,
 {IC} query semantics.
 
-For example, we can extend the `Counter` with fast-and-loose variant of the trustworthy `read` function, called `peek`:
+For example, we can extend the `counter` actor with fast-and-loose variant of the trustworthy `read` function, called `peek`:
 
 [source,motoko]
 ----
 include::../examples/CounterWithQuery.mo[]
 ----
 
-The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy,
+The `peek()` function might be used by a `counter` frontend offering a quick, but less trustworthy,
 display of the current counter value.
 
 It is a compile-time error for query a method to call an actor function  since this would violate dynamic restrictions
@@ -156,9 +208,14 @@ imposed by the {IC}. Calls to ordinary functions are permitted.
 Query functions can be called from non-query functions. Because those nested calls require concensus,
 the efficienty gains of nested query calls will be modest at best.
 
+The query modifier is reflected in the type of a query function:
+
+....
+  peek : shared query () -> async Nat
+....
 
 [#actor_classes]
-== Actor classes generalize an actor's initial state
+== Actor classes generalize actors
 
 An actor _class_ generalizes a single actor declaration to the declaration of family of actors satisfying the same interface.
 An actor class declares a type, naming the interface of its actors, and a function that
@@ -166,7 +223,7 @@ constructs a fresh actor of that type each time it is supplied with an argument.
 An actor class thus serves as a template for manufacturing actors.
 Because canister installation is asychronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
 
-For example, we can generalize `Counter` given above to `Counter(init)`
+For example, we can generalize `counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
 .Counters.mo

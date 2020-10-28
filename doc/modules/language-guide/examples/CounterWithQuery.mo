@@ -1,6 +1,6 @@
-actor Counter {
+actor counter {
 
-  var count : Nat = 0;
+  var count = 0;
 
   // ...
 

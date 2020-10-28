@@ -41,7 +41,7 @@ When an object class exposes a _link:actors-async.adoc[service]_ (asynchronous b
 Consider the following _object declaration_ of the object value `counter`:
 
 ....
-object counter = {
+object counter {
   var count = 0;
   public func inc() { count += 1 };
   public func read() : Nat { count };
@@ -86,7 +86,7 @@ By not exposing this implementation detail, the object has a _more general_ type
 To illustrate the point just above, consider this variation of the `counter` declaration above, of `byte_counter`:
 
 ....
-object byte_counter = {
+object byte_counter {
   var count : Nat8 = 0;
   public func inc() { count += 1 };
   public func read() : Nat { nat8ToNat(count) };
@@ -120,7 +120,7 @@ In general, the implementation choices would each be more complex, and more inte
 To illustrate the role and use of object subtyping in {proglang}, consider implementing a simpler counter with a more general type (fewer public operations):
 
 ....
-object bump_counter = {
+object bump_counter {
   var c = 0; public func bump() : Nat { c += 1; c };
 };
 ....
