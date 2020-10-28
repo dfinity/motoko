@@ -103,5 +103,6 @@ export int blob_compare(blob_t s1, blob_t s2);
 export blob_t blob_of_principal(text_t);
 export blob_t base32_to_principal(blob_t);
 
+export void utf8_validate(const char *src, size_t len);
 
 #endif /* RTS_H */
