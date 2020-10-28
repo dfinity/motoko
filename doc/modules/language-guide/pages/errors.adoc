@@ -1,0 +1,125 @@
+= Errors and Options =
+Christoph Hegemann
+
+
+== Different ways to represent errors in Motoko ==
+. Option
+. Result
+. Asynchronous Exceptions
+
+== Our Example API ==
+Let's assume we're building an API for a Todo application and want to expose a function that lets a user mark one of their Todo's as *Done*.
+To keep it simple we'll accept a `TodoId` and return an `Int` that represents how many seconds the Todo has been open.
+We're also assuming we're running in our own canister so we return an async value.
+If nothing would ever go wrong that would leave us with the following API:
+
+----
+func markDone(id : TodoId) : async Int
+----
+
+The full definition of all types and helpers we'll use in this document is included for reference:
+
+[%collapsible]
+====
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="1..33"]
+----
+====
+
+
+== When things go wrong ==
+We now realize that there are conditions under which marking a Todo as done fails.
+
+* The `id` could reference a non-existing Todo
+* The Todo might already be marked as done
+
+We'll now talk about the different ways to communicate these errors in Motoko and slowly improve our solution.
+
+
+== What error type to prefer ==
+
+
+=== How _not_ to do things ===
+Definition:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="35..45"]
+----
+Callsite:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="82..90"]
+----
+
+=== Prefer Option/Result over Exceptions where possible ===
+Using Option or Result is the preferred way of signaling errors in Motoko.
+They work in both synchronous and asynchronous contexts and make your APIs safer to use. Exceptions should only be used to signal unexpected error states.
+
+=== Error reporting with Option ===
+Definition:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="47..58"]
+----
+Callsite:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="91..98"]
+----
+
+=== Boolean blindness and Option ===
+
+=== Error reporting with Result ===
+Definition:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="61..73"]
+----
+Callsite:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="100..111"]
+----
+
+== Working with Option/Result ==
+
+=== Pattern matching ===
+The first and most common way of working with `Option` and `Result` is to use 'pattern matching'.
+If we have a value of type `?Text` we can use the 'switch' keyword to get at the potential `Text` inside:
+[source,motoko]
+----
+func greetOptional(optionalName : ?Text) : Text {
+    switch (optionalName) {
+        case (null) "No name to be found.";
+        case (?name) "Hello, " # name # "!";
+    }
+};
+assert(greetOptional(?"Dominic") == "Hello, Dominic!");
+assert(greetOptional(null) ==  "No name to be found");
+----
+The important thing to understand here is that Motoko does not let you access the non-optional value without also dealing with the possibility of it missing.
+
+In the case of a `Result` we can also use pattern matching, with the difference that we also get a value in the `#err` case.
+[source,motoko]
+----
+func greetResult(resultName : ?R.Result<Text, Text>) : Text {
+    switch (resultName) {
+        case (#err(error)) "No name: " # error;
+        case (#ok(name)) "Hello, " # name;
+    }
+}
+assert(greetResult(#ok("Dominic") == "Hello, Dominic!");
+assert(greetResult(#err("404 Not Found")) == "No name: 404 Not Found");
+----
+
+=== Higher-Order functions ===
+Pattern matching can become tedious and verbose, especially when dealing with multiple optional values.
+
+=== Converting back and forth between Option/Result ===
+
+== Asynchronous Exceptions ==
+
+=== Never use exceptions for control flow ===
+
+=== Catch what you can handle ===
