@@ -239,3 +239,13 @@ let check_prog scope prog : (scope * typ option) Diag.result =
         )
         prog
     )
+
+(* Test declarations *)
+
+let check_tdecs scope decs : scope Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun prog -> check_decs (env_of_scope msgs scope) decs)
+        prog
+    )
