@@ -312,6 +312,7 @@ rec {
 	  --expect-fail "vec of empty records" \
 	  --expect-fail "variant: duplicate fields" \
 	  --expect-fail "variant: unsorted" \
+	  --expect-fail "int: leb overlong" \
 	  --expect-fail "nat: leb overlong" \
 
       '';
