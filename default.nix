@@ -304,7 +304,6 @@ rec {
       buildInputs = [ moc wasmtime drun candid-tests ];
       checkPhase = ''
 	candid-tests -i ${nixpkgs.sources.candid}/test \
-	  --expect-fail "overlong typ table length" \
 	  --expect-fail "text: too overlong length leb" \
 	  --expect-fail "arg too long" \
 	  --expect-fail "record: tuple" \
