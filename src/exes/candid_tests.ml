@@ -54,7 +54,7 @@ let write_file f s =
   close_out oc_
 
 (* Turning a test case into a motoko program *)
-let mo_of_test test : (string * (* should_not_trap *) bool) option =
+let mo_of_test tenv test : (string * (* should_not_trap *) bool) option =
   let deser t x =
     "(prim \"deserialize\" : Blob -> " ^ Type.string_of_typ (Type.seq t) ^ ") " ^
     "\"" ^ Value.Blob.escape x ^ "\"" in
@@ -62,7 +62,7 @@ let mo_of_test test : (string * (* should_not_trap *) bool) option =
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
   let ignore e = "ignore (" ^ e ^ ")\n" in
 
-  let typ = Idl_to_mo.check_typs Typing.empty_scope (test.it.ttyp) in
+  let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
   match test.it.assertion with
   | ParsesAs (true, BinaryInput i)
   | ParsesEqual (_, BinaryInput i, TextualInput _)
@@ -131,8 +131,7 @@ let () =
     | Some name ->
       Printf.printf "Parsing %s ...\n%!" base;
       let tests = Diag.run (Pipeline.parse_test_file (Filename.concat !test_dir base)) in
-      if (tests.it.tdecs <> [])
-      then (Printf.eprintf "Definitions not yet supported\n"; exit 1);
+      let tenv = Diag.run (Typing.check_tdecs Typing.empty_scope tests.it.tdecs) in
 
       List.iter (fun test ->
         let testname =
@@ -144,7 +143,7 @@ let () =
         if filter testname then begin
           Printf.printf "%s ...%!" testname;
           (* generate test program *)
-          match mo_of_test test with
+          match mo_of_test tenv test with
           | None -> Printf.printf " ignored.\n"
           | Some (src, must_not_trap) ->
             (* Printf.printf "\n%s" src *)
