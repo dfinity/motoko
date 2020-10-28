@@ -29,8 +29,8 @@ We note that {proglang} programs may avoid callbacks for many cases, but not _al
 Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
 
 
-To start, we consider the simplest stateful service: a counter with
-a single "current count" value.
+To start, we consider the simplest stateful service: a counter actor, the remote counterpart of our previous, local counter object.
+
 
 == Example: a Counter service
 
@@ -64,10 +64,14 @@ The `counter` actor declares one field and three public, _shared_ functions:
 * function `read()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
 * function `bump()` asynchronously increments and reads the counter.
 
-Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be have _shared_ types - a subset of types that includes immutable data, actor references and shared function references, but excludes functions, objects containing functions and mutable data.
+Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references and shared function references, but excludes functions,
+values containing functions and mutable data. Because all interaction with actors is asynchronous,
+an actor's functions must either return a promise type `async T`, for some type `T`, or nothing at all `()`.
 
-Because all interaction with actors is asynchronous, an actor's shared functions must either
-return a promise type `async T`, for some type `T`, or nothing at all `()`.
+The only way to read or modify the state (`count`) of the `counter` actor is through its shared functions.
+
+A value of type `async T` is a _promise_. The producer of the promise
+fulfills the promise when it returns a result, either a value or error.
 
 Unlike objects and modules, actors can only expose shared functions. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
@@ -76,13 +80,14 @@ Unlike objects and modules, actors can only expose shared functions. For this re
 include::../examples/counter-actor-sugar.mo[]
 ----
 
-The only way to read or modify the state (`count`) of the `counter` actor is through its shared functions.
+For now, the only place shared functions can be declared is in the
+body of an actor or actor class.  Despite this restriction, shared
+functions are still first-class values in {proglang} and can be passed
+as arguments or results, and stored in data structures.
 
-A value of type `async T` is a _promise_. The producer of the promise
-fulfills the promise when it returns a result, either a value or error.
-
-The only thing a consumer can do with a promise is wait for it to be fulfilled by the producer,
-throw it away, or store it for later use.
+The type of a shared functions is specified using a shared function type. For example, the
+value `counter.inc` has type `shared () -> async Nat` and could be supplied
+as a standalone callback to some other service.
 
 == Actor types
 
@@ -111,14 +116,19 @@ actor {
 }
 ....
 
-Like object types, actor types support subtying: and more specific actor type is a subtype of a more general one that offers fewer functions, or functions with more general types.
+Like object types, actor types support subtyping: an actor type is a subtype of a more general one that offers fewer functions with more general types.
 
 == Using `await` to consume async promises
 
-To access the result of an `async` value -a promise returned from an asynchronous call-
-the receiver of the promise use an  `*await*` expression.
+The caller of a shared function typically receives a promise, a value of type `async T` for some T.
 
-For example, to use the result of `Counter.get()` above, we can first bind the
+The only thing the caller, a consumer, can do with this promise is
+wait for it to be fulfilled by the producer, throw it away, or store
+it for later use.
+
+To access the result of an `async` value, the receiver of the promise use an  `*await*` expression.
+
+For example, to use the result of `Counter.read()` above, we can first bind the
 promise to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
 
 [source, motoko]
@@ -139,15 +149,15 @@ Typically, one rolls the two steps into one and one just awaits an asynchronous 
 let n : Nat = await counter.read();
 ----
 
-Unlike an ordinary function call, which blocks the caller until the callee has returned a result,
-an asynchronous call immediately returns a promise, `p`, without blocking.
+Unlike a local function call, which blocks the caller until the callee has returned a result,
+a shared function call immediately returns a promise, `p`, without blocking.
 Instead of blocking, a later call to `await p` can suspend the current computation until or unless `p` is fullfilled.
 Once the promise if fulfilled (by the producer), execution of `await p` resumes with its result.
 If the result is a value, `await p` returns that value.
 Otherwise the result is some error, and `await p` propagates the error to the
 consumer of `await p`.
 
-(Awaiting a promise a second time will just produce the same result.)
+Awaiting a promise a second time will just produce the same result.
 
 WARNING: A function that does not `await` in its body is guaranteed to
 execute atomically - in particular, the environment cannot change the
@@ -157,7 +167,6 @@ and resumption around the `await`, the state of the enclosing actor
 may change due to concurrent processing of other incoming actor
 messages. It is the programmer's responsibility to guard against
 non-synchronized state changes.
-
 
 For example, the implementation of `bump()` above is guaranteed to increment and read the
 value of `count`, in one atomic step. The alternative implementation:
@@ -169,10 +178,10 @@ value of `count`, in one atomic step. The alternative implementation:
   };
 ....
 
-does _not_ have the same semantics and would allow another client of the actor to
-interfere with its operation: each `await` suspends execution, allowing another client
+does _not_ have the same semantics and allows another client of the actor to
+interfere with its operation: each `await` suspends execution, allowing an interloper
 to change the state of the actor.
-By design, the explicit `await`s make the potential points of interference clear to the reader.
+By design, the explicit ``await``s make the potential points of interference clear to the reader.
 
 == Query functions
 
