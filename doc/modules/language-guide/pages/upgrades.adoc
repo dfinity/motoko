@@ -1,10 +1,34 @@
-== Stable and flexible variables
+= Upgrades, stable variables and upgrade methods
 
+
+The {IC} lets you install new canisters but it also lets you upgrade
+an existing canister that is already up and running with a new
+implementation, either to repair a bug or to add functionality.  For
+stateful canisters, upgrade can be difficult as it requires the
+migration of a canister's live state from the upgraded canister to its
+replacement.  The traditional approach would be to either maintain the
+state in a separate database, using a stable format across upgrades,
+or evacuate and reconstitute the date from a database before and after
+the upgrade. To facilitate upgrades, without resorting to database or
+external canisters, the {IC} allows canisters to save and restore
+state from dedicated _stable_ storage that is retained across
+upgrades.
+
+
+At a higher-level of abstraction, {proglang} provides linguistic support for using stable storage, automating the preservation of data in a way that accommodates changes to both the data and
+the {proglang} compiler version used to generate the canister code.
+
+The support relies on the programmer anticipating and indicating (to the compiler)
+the data that requires preservation. This may be some, none or all of an actor's state.
+
+////
 To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
+////
 
 In an actor, you can identify a variable that must be preserved by using the _stable_ modifier as part of the variable's declaration.
 
-More precisely, every `+let+` and `+var+` variable declaration in an actor must specify whether the variable is a `+stable+` variable or a `+flexible+` variable. If you don't include a modifier in the declaration, the variable is treated as a `+flexible+` variable by default.
+More precisely, every `+let+` and `+var+` variable declaration in an actor can specify whether the variable is a `+stable+` variable or a `+flexible+` variable.
+If you don't include a modifier in the declaration, the variable is treated as a `+flexible+` variable by default.
 
 Concretely, you use the following syntax to declare stable or flexible variables in an actor:
 
@@ -13,10 +37,18 @@ Concretely, you use the following syntax to declare stable or flexible variables
   (public|private)? (stable|flexible)? dec
 ....
 
-Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
-Note that you should only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
-You should not use the `+stable+` or `+flexible+` modifier anywhere else in your program.
+Unfortunately, not all types of variables can be declared stable. In particular, variables with higher-order types - types that are or contain local functions -
+cannot be made stable. This can exclude certain object types, since objects are typically a mix of data members and function members.
 
+Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
+Note that you can only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
+You cannot use these modifiers anywhere else in your program.
+
+You've already seen a simple example of declaring a stable counter,
+that can be upgraded while preserving the counter's value, here
+link:motoko{outfilesuffix}[Upgrades].
+
+////
 The representation for stable variable signatures looks like a {proglang} actor type:
 
 ....
@@ -26,8 +58,9 @@ actor {
   stable z : [var Nat];
 };
 ....
+////
 
-=== Typing
+== Typing
 
 Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state:
 
@@ -43,13 +76,44 @@ NOTE: In general, object types are not stable because they can contain local fun
 However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
 Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
 
-=== How stable variables are upgraded
+== How stable variables are upgraded
 
 When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
 When you deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
+== System methods `preupgrade` and `postupgrade`
 
-////
-TODO: describe pre and post upgrade hooks
-////
+
+Sometimes, variables cannot be marked stable because their types are not stable.
+
+As simple example, consider the `Registry` actor from link:motoko{outfilesuffix}[orthogonal_persistence].
+
+[source,motoko]
+----
+include::../examples/Registry.mo[]
+----
+
+This actor assigns sequential identifiers to Text values, using the size of the underlying `HashMap` object to determine the next `id`.
+
+Like other actors, it relies on +orthogonal persistence_ to maintain the state of the `dict` hashtable between calls.
+
+However, this state has a proper object type that contains member functions (e.g. `dict.get`) so the `dict` declaration cannot, itself, be declared `stable`.
+
+For scenarios that can't be solved using stable variables alone, {proglang} supports user-defined upgrade hooks that, when provided, run immediately before or after upgrade.
+These allow you to migrate state between unrestricted flexible to more restricted stable variables.
+These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () -> ()`.
+
+The `preupgrade` method lets you make any last-second updates to stable variables before the runtime commmits their final values to {IC} stable memory and performs an upgrade.
+The `postupgrade` method is run after an upgrade has initialized the replacement actor, but before executing any shared function call (or message) on that actor.
+
+Here, we introduce a stable array variable, `state`, to store the entries of the hash table in a stable format.
+Note that the type of the `state` array, since it just contains pairs of `Text` and `Nat` values, is a perfectly stable.
+
+[source,motoko]
+----
+include::../examples/StableRegistry.mo[]
+----
+
+Our `preupgrade` system method simply writes the `dict` entries to `state`.
+Our `postupgrade` system method resets `state` to the empty array, after `dict` has been populated with any entries in `state`.
