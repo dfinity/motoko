@@ -1,0 +1,55 @@
+== Stable and flexible variables
+
+To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
+
+In an actor, you can identify a variable that must be preserved by using the _stable_ modifier as part of the variable's declaration.
+
+More precisely, every `+let+` and `+var+` variable declaration in an actor must specify whether the variable is a `+stable+` variable or a `+flexible+` variable. If you don't include a modifier in the declaration, the variable is treated as a `+flexible+` variable by default.
+
+Concretely, you use the following syntax to declare stable or flexible variables in an actor:
+
+....
+<dec-field> ::=
+  (public|private)? (stable|flexible)? dec
+....
+
+Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
+Note that you should only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
+You should not use the `+stable+` or `+flexible+` modifier anywhere else in your program.
+
+The representation for stable variable signatures looks like a {proglang} actor type:
+
+....
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+....
+
+=== Typing
+
+Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state:
+
+* A `+stable+` declaration must have a _stable_ type.
+* Stable types are a superset of _shared_ types.
+* Stable types allow objects or arrays with mutable components.
+
+The key point to note is that stable types extend shared types to include **mutable arrays and fields**.
+Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects).
+This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
+
+NOTE: In general, object types are not stable because they can contain local functions.
+However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
+Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
+
+=== How stable variables are upgraded
+
+When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
+When you deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
+After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
+
+
+////
+TODO: describe pre and post upgrade hooks
+////
