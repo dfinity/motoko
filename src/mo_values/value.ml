@@ -454,8 +454,9 @@ let rec string_of_val_nullary d = function
       (if List.length vs = 1 then "," else "")
   | Obj ve ->
     if d = 0 then "{...}" else
+    if Env.is_empty ve then "{.}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
-      sprintf "%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve)))
+      sprintf ".%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]" (String.concat ", "
       (List.map (string_of_val d) (Array.to_list a)))

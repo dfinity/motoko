@@ -130,20 +130,19 @@
     '<>>='
     '@='
 
-<exp_block> ::= 
-    '{' <list(<dec>, ';')> '}'
-
 <exp_plain> ::= 
     <lit>
     '(' <list(<exp>, ',')> ')'
 
+<exp_block> ::= 
+    '{' <list(<dec>, ';')> '}'
+
 <exp_nullary> ::= 
     <exp_plain>
-    '{' '}'
     '{' '.' '}'
     '{' <list1(<exp_field>, ';')> '}'
-    '{' <list1(<dec>, ';')> '}'
     <id>
+    <deprecated_exp_nullary>
 
 <exp_post> ::= 
     <exp_nullary>
@@ -210,9 +209,9 @@
     'catch' <pat_nullary> <exp>
 
 <exp_field> ::= 
-    '.' <id>
-    '.' <id> '=' <exp>
-    'var' '.' <id> '=' <exp>
+    '.' <id> <return_typ>?
+    '.' <id> <return_typ>? '=' <exp>
+    'var' '.' <id> <return_typ>? '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -238,6 +237,7 @@
     <pat_param>
     '{' '.' '}'
     '{' <list1(<pat_field>, ';')> '}'
+    <deprecated_pat_nullary>
 
 <pat_un> ::= 
     <pat_nullary>
@@ -261,9 +261,8 @@
     ':' <typ_nullary>
 
 <pat_field> ::= 
-    '.' <id>
-    '.' <id> '=' <pat>
-    '.' <id> ':' <typ>
+    '.' <id> <return_typ>?
+    '.' <id> <return_typ>? '=' <pat>
 
 <dec_var> ::= 
     'var' <id> <return_typ>? '=' <exp>
@@ -291,6 +290,38 @@
 <class_body> ::= 
     '=' <id>? <obj_body>
     <obj_body>
+
+<deprecated_exp_nullary> ::= 
+    '{' <list(<dec_var>, ';')> '}'
+    '{' <deprecated_exp_field_list_unamb> '}'
+    '{' <deprecated_dec_list_unamb> '}'
+
+<deprecated_exp_field> ::= 
+    <deprecated_exp_field_unamb>
+    'var' <id> '=' <exp>
+
+<deprecated_exp_field_unamb> ::= 
+    <id> '=' <exp>
+
+<deprecated_exp_field_list_unamb> ::= 
+    <deprecated_exp_field_unamb>
+    <deprecated_exp_field_unamb> ';' <list(<deprecated_exp_field>, ';')>
+    <dec_var> ';' <deprecated_exp_field_list_unamb>
+
+<deprecated_dec_list_unamb> ::= 
+    <exp_nondec>
+    <dec_nonvar>
+    <exp_nondec> ';' <list(<dec>, ';')>
+    <dec_nonvar> ';' <list(<dec>, ';')>
+    <dec_var> ';' <deprecated_dec_list_unamb>
+
+<deprecated_pat_nullary> ::= 
+    '{' <list(<deprecated_pat_field>, ';')> '}'
+
+<deprecated_pat_field> ::= 
+    <id>
+    <id> '=' <pat>
+    <id> ':' <typ>
 
 <imp> ::= 
     'import' <id>? '='? <text>

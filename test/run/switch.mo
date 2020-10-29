@@ -26,7 +26,7 @@ let x4 = switch (null : ?{}) {
 };
 assert (x4 == 1);
 
-let x5 = switch (?{}) {
+let x5 = switch (?{.}) {
   case null 0;
   case x 1;
 };

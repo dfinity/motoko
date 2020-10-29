@@ -9,6 +9,12 @@ s/<id>/ID/g
 /^<import_list> ::=/,+2d
 /^<parse_module_header> ::=/,+2d
 /.*PRIM.*/d
+/^<bl> ::=/,+2d
+/^<ob> ::=/,+2d
+s/(<bl>)//g
+s/(<ob>)//g
+s/(B)//g
+s/ B$//g
 s/<start> //g
 s/<parse_prog>/<prog>/g
 s/\[/(/g

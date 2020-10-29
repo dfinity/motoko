@@ -1,6 +1,6 @@
 objects1.mo:26.3-26.28: warning, this case is never reached
 objects1.mo:27.3-27.15: warning, this case is never reached
-objects1.mo:36.23-39.2: warning, the cases in this switch over type
+objects1.mo:36.22-39.2: warning, the cases in this switch over type
   {a : Int; b : Nat}
 do not cover value
   {.a = 0 or 1 or _; .b = 0 or 1 or _)

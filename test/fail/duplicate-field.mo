@@ -44,8 +44,8 @@ ignore(module {
   public type nxnnbkddcv = Nat
 });};
 
-{
 // not a clash
 // syntax not supported yet
-// type T = {type foo = Int; nxnnbkddcv: Bool}
-};
+// {
+//   type T = {type foo = Int; nxnnbkddcv: Bool}
+// };
