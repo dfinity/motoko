@@ -197,7 +197,7 @@ _query_ operations. These are able to read the state of a canister from a single
 modify a snapshot during their execution and return a result, but
 cannot permanently alter the state or send further {IC} messages.
 
-Motoko supports the implementation of {IC} queries using `query` functions. The `query` keyword
+{proglang} supports the implementation of {IC} queries using `query` functions. The `query` keyword
 modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster,
 {IC} query semantics.
 
@@ -214,35 +214,37 @@ display of the current counter value.
 It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the {IC}. Calls to ordinary functions are permitted.
 
 Query functions can be called from non-query functions. Because those nested calls require concensus,
-the efficienty gains of nested query calls will be modest at best.
+the efficieny gains of nested query calls will be modest at best.
 
-The query modifier is reflected in the type of a query function:
+The `query` modifier is reflected in the type of a query function:
 
 ....
   peek : shared query () -> async Nat
 ....
 
+As before, in `query` declarations and actor types the `shared` keyword can be omitted.
 
 == Messaging Restrictions
 
-The {IC} places restrictions on when and how canister are allowed to communicate. These restrictions are enforced dynamically on the {IC} but prevented statically in {proglang}, ruling out a class
+The {IC} places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the {IC} but prevented statically in {proglang}, ruling out a class
 of dynamic execution errors. Two examples are:
 
 *  canister installation can execute code, but not send messages.
 *  a canister query method cannot send messages.
 
-These restrictions are surfaced in {proglang} as a restriction on the context in which a shared function can be called; the context in which promise can be awaited, preventing misplaced awaits; and the context in which messaging errors can be ``throw``n and handled via `try`/`catch`.
+These restrictions are surfaced in {proglang} as a restrictions on the context in which a shared function can be called, a promise can be awaited and messaging errors can be ``throw``n or handled via `try`/`catch`.
 
-In Motoko calling a shared function is an error unless the function is called from an async expression, the body of a (non-query) shared function, or the body of a local function with an async return type. Calling a shared function from actor class constructor is also an error.
+In {proglang} calling a shared function is an error unless the function is called from an async expression, the body of a (non-query) shared function, or the body of a local function with an async return type. Calling a shared function from actor class constructor is also an error.
 
 Similarly, the `await` constuct is only allowed in an asynchronous context: the body of an async expression the body of a shared function, or the body of local function with `async` return type.
 
-It is only possible to `throw` or `try/catch` errors in an async context, since structured error handling is supported for messaging only.
+It is only possible to `throw` or `try/catch` errors in an asynchronous context, since structured error handling is supported for messaging only.
 
-This restriction also means that most local functions cannot directly call shared functions or `await` promises.
+These restrictions also mean that local functions cannot directly call shared functions or `await` promises. This limitation is awkward in some scenarios:  we hope to extend the type system to be more permissive in future.
 
-
-These limitations can be awkward in some scenarios, and we hope to extend the type system to be more flexible in the future.
+////
+TODO: scoped awaits (if at all)
+////
 
 
 [#actor_classes]

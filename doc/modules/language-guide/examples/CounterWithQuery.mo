@@ -4,7 +4,7 @@ actor counter {
 
   // ...
 
-  public query func peek() : async Nat {
+  public shared query func peek() : async Nat {
     count
   };
 
