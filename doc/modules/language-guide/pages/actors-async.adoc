@@ -86,7 +86,7 @@ functions are still first-class values in {proglang} and can be passed
 as arguments or results, and stored in data structures.
 
 The type of a shared functions is specified using a shared function type. For example, the
-value `counter.inc` has type `shared () -> async Nat` and could be supplied
+value `inc` has type `shared () -> async Nat` and could be supplied
 as a standalone callback to some other service.
 
 == Actor types
@@ -186,13 +186,13 @@ By design, the explicit ``await``s make the potential points of interference cle
 == Query functions
 
 In {IC} terminology, all three `Counter` functions are _update_ messages
-than can alter the state of the canister when called and need to go
-through consensus amongst the distributed replicas before the {IC} can
-commit the state change and return a result.  Reaching concensus is an
-expensive process with high latency.
+than can alter the state of the canister when called. Effecting a state change requires
+agreement amongst the distributed replicas before the {IC} can
+commit the change and return a result.  Reaching consensus is an
+expensive process with relatively high latency.
 
 For applications that don't
-require the guarantees of concensus, the {IC} supports more efficient
+require the guarantees of consensus, the {IC} supports more efficient
 _query_ operations. These are able to read the state of a canister from a single replica,
 modify a snapshot during their execution and return a result, but
 cannot permanently alter the state or send further {IC} messages.
@@ -211,8 +211,7 @@ include::../examples/CounterWithQuery.mo[]
 The `peek()` function might be used by a `counter` frontend offering a quick, but less trustworthy,
 display of the current counter value.
 
-It is a compile-time error for query a method to call an actor function  since this would violate dynamic restrictions
-imposed by the {IC}. Calls to ordinary functions are permitted.
+It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the {IC}. Calls to ordinary functions are permitted.
 
 Query functions can be called from non-query functions. Because those nested calls require concensus,
 the efficienty gains of nested query calls will be modest at best.
@@ -222,6 +221,29 @@ The query modifier is reflected in the type of a query function:
 ....
   peek : shared query () -> async Nat
 ....
+
+
+== Messaging Restrictions
+
+The {IC} places restrictions on when and how canister are allowed to communicate. These restrictions are enforced dynamically on the {IC} but prevented statically in {proglang}, ruling out a class
+of dynamic execution errors. Two examples are:
+
+*  canister installation can execute code, but not send messages.
+*  a canister query method cannot send messages.
+
+These restrictions are surfaced in {proglang} as a restriction on the context in which a shared function can be called; the context in which promise can be awaited, preventing misplaced awaits; and the context in which messaging errors can be ``throw``n and handled via `try`/`catch`.
+
+In Motoko calling a shared function is an error unless the function is called from an async expression, the body of a (non-query) shared function, or the body of a local function with an async return type. Calling a shared function from actor class constructor is also an error.
+
+Similarly, the `await` constuct is only allowed in an asynchronous context: the body of an async expression the body of a shared function, or the body of local function with `async` return type.
+
+It is only possible to `throw` or `try/catch` errors in an async context, since structured error handling is supported for messaging only.
+
+This restriction also means that most local functions cannot directly call shared functions or `await` promises.
+
+
+These limitations can be awkward in some scenarios, and we hope to extend the type system to be more flexible in the future.
+
 
 [#actor_classes]
 == Actor classes generalize actors
