@@ -12,7 +12,7 @@ its interactions with the world are entirely through asynchronous, messaging, an
 
 In {proglang}, sending a message to an actor is a function call, but instead of
 blocking the caller until the call has returned, the message is enqueued
-on the callee, and a promise representing that unfilled request
+on the callee, and a promise representing that unfulfilled request
 immediately returned to the caller.  The promise is a placeholder for the eventual result
 of the request, that the caller can later query. Between issuing the
 request, and deciding to wait for the result, the caller is free to do
