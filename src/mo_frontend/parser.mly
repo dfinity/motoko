@@ -61,6 +61,16 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
+let annot_exp e t_opt =
+  match t_opt with
+  | None -> e
+  | Some t -> AnnotE(e, t) @? span t.at e.at
+
+let annot_pat p t_opt =
+  match t_opt with
+  | None -> p
+  | Some t -> AnnotP(p, t) @! span t.at p.at
+
 let let_or_exp named x e' at =
   if named
   then LetD(VarP(x) @! at, e' @? at) @? at
@@ -130,7 +140,7 @@ let share_expfield (ef : exp_field) =
 
 let rec normalize_let p e =
     match p.it with
-    | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
+    | AnnotP(p', t) -> p', AnnotE(e, t) @? p.at
     | ParP p' -> normalize_let p' e
     | _ -> (p, e)
 
@@ -615,11 +625,11 @@ catch :
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field :
-  | x=id EQ e=exp(ob)
-    { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
+  | x=id t=return_typ? EQ e=exp(ob)
+    { let d = LetD(VarP(x) @! x.at, annot_exp e t) @? at $sloc in
       {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
-  | VAR x=id EQ e=exp(ob)
-    { let d = VarD(x, e) @? at $sloc in
+  | VAR x=id t=return_typ? EQ e=exp(ob)
+    { let d = VarD(x, annot_exp e t) @? at $sloc in
       {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
 
 dec_field :
@@ -694,12 +704,10 @@ return_typ_nullary :
   | COLON t=typ_nullary { t }
 
 pat_field :
-  | x=id
-    { {id = x; pat = VarP x @! x.at} @@ at $sloc }
-  | x=id EQ p=pat
-    { {id = x; pat = p} @@ at $sloc }
-  | x=id COLON t=typ
-    { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
+  | x=id t=return_typ?
+    { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
+  | x=id t=return_typ? EQ p=pat
+    { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
   | p=pat_nullary
@@ -712,11 +720,7 @@ pat_opt :
 
 dec_var :
   | VAR x=id t=return_typ? EQ e=exp(ob)
-    { let e' =
-        match t with
-        | None -> e
-        | Some t -> AnnotE (e, t) @? span t.at e.at
-      in VarD(x, e') @? at $sloc }
+    { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
   | LET p=pat EQ e=exp(ob)

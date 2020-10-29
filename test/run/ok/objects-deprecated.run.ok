@@ -1,0 +1,17 @@
+objects-deprecated.mo:1.42-1.49: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:1.37-1.59: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:3.8-3.15: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:4.8-4.23: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:5.8-5.33: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:7.34-7.41: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:7.29-7.51: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:8.26-8.37: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:9.15-9.17: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:12.8-12.16: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:13.26-13.28: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:13.8-13.29: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:14.8-14.24: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:15.8-15.17: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:16.8-16.11: warning, old object syntax is deprecated, use .{ } instead
+objects-deprecated.mo:15.3-15.20: warning, this case is never reached
+objects-deprecated.mo:16.3-16.14: warning, this case is never reached

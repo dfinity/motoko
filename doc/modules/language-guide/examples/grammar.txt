@@ -208,8 +208,8 @@
     'catch' <pat_nullary> <exp>
 
 <exp_field> ::= 
-    <id> '=' <exp>
-    'var' <id> '=' <exp>
+    <id> <return_typ>? '=' <exp>
+    'var' <id> <return_typ>? '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -258,9 +258,8 @@
     ':' <typ_nullary>
 
 <pat_field> ::= 
-    <id>
-    <id> '=' <pat>
-    <id> ':' <typ>
+    <id> <return_typ>?
+    <id> <return_typ>? '=' <pat>
 
 <dec_var> ::= 
     'var' <id> <return_typ>? '=' <exp>
