@@ -2,11 +2,42 @@
 :proglang: Motoko
 :company-id: DFINITY
 
+The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of unstructured, binary data. A canister processes its message one-at-a-time, preventing race conditions.  A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
+
+{proglang} abstracts the complexity of the {IC} with a well known, higher-level abstraction: the _actor model_.
+Each canister is represented as a typed actor. The type of an actor lists the messages
+it can handle. Each message is abstracted as a typed, asynchronous function, imposing structure on the raw binary data of the underlying {IC}.
+An actor is similar to an object, but is different in that its state is completely isolated,
+its interactions with the world are entirely through asynchronous, messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
+
+In {proglang}, sending a message to an actor is a function call, but instead of
+blocking the caller until the call has returned, the message is enqueued
+on the callee, and a promise representing that unfilled request
+immediately returned to the caller.  The promise is a placeholder for the eventual result
+of the request, that the caller can later query. Between issuing the
+request, and deciding to wait for the result, the caller is free to do
+other work, including issuing more requests to the same or other
+actors.
+Once the caller has processed the request, the promise is fulfilled and its result made
+available to the callee.
+If the callee is waiting on the promise, its execution can resume with the result, otherwise the result is simply stored in the promise for future examination.
+
+In {proglang}, actors have dedicated syntax and actor types; messaging is handled by so called _shared_ functions returning promises (shared because they are available to remote actors);
+a promise, `p`, is a value of the special type `async T` for some type `T`; waiting
+on `p` to be fulfilled is expressed using `await p` to obtain a value of type `T`.
+To avoid introducing shared state through messaging, e.g. by sending an object or mutable array,
+the data that can be transmitted through shared functions is restricted to immutable, _shared_ types.
+
+
+////
+TODO: DELETE
+
 {proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the Internet Computer.
 
 An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
 
 Each {proglang} actor represents a service that one might want to deploy on the Internet Computer.
+
 
 The interface of each actor introduces `async` data whenever it returns information to its caller.
 This programming abstraction serves a key role in {proglang}, as it coordinates with the transformations of the {proglang} compiler pipeline and eventual execution behavior of {proglang} actors on the Internet Computer.
@@ -27,7 +58,7 @@ This program structure is complex for humans to read and maintain, and stands in
 
 We note that {proglang} programs may avoid callbacks for many cases, but not _all_ cases where they are used in other asynchronous, message-passing settings.
 Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
-
+////
 
 To start, we consider the simplest stateful service: a counter actor, the remote counterpart of our previous, local counter object.
 
@@ -87,7 +118,7 @@ as arguments or results, and stored in data structures.
 
 The type of a shared functions is specified using a shared function type. For example, the
 value `inc` has type `shared () -> async Nat` and could be supplied
-as a standalone callback to some other service.
+as a standalone callback to some other service (see link:sharing{outfilesuffix}[publish-subscribe] for an example).
 
 == Actor types
 
