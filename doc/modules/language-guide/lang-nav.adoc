@@ -14,7 +14,15 @@
 ** xref:structural-equality.adoc[Structural equality]
 ** xref:actor-classes.adoc[Actor classes]
 //** xref:advanced-discussion.adoc[Advanced discussion topics]
-** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]
 ** xref:motoko-grammar.adoc[Motoko grammar]
 ** xref:style.adoc[Motoko style guidelines]
+* xref:language-manual.adoc[Motoko Quick Reference]
+** xref:QR-basic-syntax.adoc[Basic language syntax]
+** xref:QR-operators-types.adoc[Operators and types]
+** xref:QR-type-syntax.adoc[Type expressions and syntax]
+** xref:QR-semantics.adoc[Static and dymanic semantics]
+
+
+
+
