@@ -90,7 +90,7 @@ actor counter {
 
 The `counter` actor declares one field and three public, _shared_ functions:
 
-* the field `count` is mutable, intialized to zero and implicitly `private`.
+* the field `count` is mutable, initialized to zero and implicitly `private`.
 * function `inc()` asynchronous increments the counter and returns a promise of type `async ()` for synchronization.
 * function `read()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
 * function `bump()` asynchronously increments and reads the counter.
@@ -182,7 +182,7 @@ let n : Nat = await counter.read();
 
 Unlike a local function call, which blocks the caller until the callee has returned a result,
 a shared function call immediately returns a promise, `p`, without blocking.
-Instead of blocking, a later call to `await p` can suspend the current computation until or unless `p` is fullfilled.
+Instead of blocking, a later call to `await p` can suspend the current computation until or unless `p` is fulfilled.
 Once the promise if fulfilled (by the producer), execution of `await p` resumes with its result.
 If the result is a value, `await p` returns that value.
 Otherwise the result is some error, and `await p` propagates the error to the
@@ -216,7 +216,7 @@ By design, the explicit ``await``s make the potential points of interference cle
 
 == Query functions
 
-In {IC} terminology, all three `Counter` functions are _update_ messages
+In {IC} terminology, all three `counter` functions are _update_ messages
 than can alter the state of the canister when called. Effecting a state change requires
 agreement amongst the distributed replicas before the {IC} can
 commit the change and return a result.  Reaching consensus is an
@@ -244,8 +244,8 @@ display of the current counter value.
 
 It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the {IC}. Calls to ordinary functions are permitted.
 
-Query functions can be called from non-query functions. Because those nested calls require concensus,
-the efficieny gains of nested query calls will be modest at best.
+Query functions can be called from non-query functions. Because those nested calls require consensus,
+the efficiency gains of nested query calls will be modest at best.
 
 The `query` modifier is reflected in the type of a query function:
 
@@ -267,7 +267,7 @@ These restrictions are surfaced in {proglang} as a restrictions on the context i
 
 In {proglang} calling a shared function is an error unless the function is called from an async expression, the body of a (non-query) shared function, or the body of a local function with an async return type. Calling a shared function from actor class constructor is also an error.
 
-Similarly, the `await` constuct is only allowed in an asynchronous context: the body of an async expression the body of a shared function, or the body of local function with `async` return type.
+Similarly, the `await` construct is only allowed in an asynchronous context: the body of an async expression the body of a shared function, or the body of local function with `async` return type.
 
 It is only possible to `throw` or `try/catch` errors in an asynchronous context, since structured error handling is supported for messaging only.
 
@@ -285,7 +285,7 @@ An actor _class_ generalizes a single actor declaration to the declaration of fa
 An actor class declares a type, naming the interface of its actors, and a function that
 constructs a fresh actor of that type each time it is supplied with an argument.
 An actor class thus serves as a template for manufacturing actors.
-Because canister installation is asychronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
+Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
 
 For example, we can generalize `counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
