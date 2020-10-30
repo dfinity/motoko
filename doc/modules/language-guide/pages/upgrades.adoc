@@ -110,7 +110,7 @@ For scenarios like this, that can't be solved using stable variables alone, {pro
 These allow you to migrate state between unrestricted flexible to more restricted stable variables.
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () -> ()`.
 
-The `preupgrade` method lets you make a final update to stable variables, before the runtime commmits their values to {IC} stable memory, and performs an upgrade.
+The `preupgrade` method lets you make a final update to stable variables, before the runtime commits their values to {IC} stable memory, and performs an upgrade.
 The `postupgrade` method is run after an upgrade has initialized the replacement actor, including its stable variables, but before executing any shared function call (or message) on that actor.
 
 Here, we introduce a new stable variable, `entries`, to save and restore the entries of the unstable hash table.
