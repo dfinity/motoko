@@ -85,7 +85,7 @@ When you first compile and deploy an actor (canister), all flexible and stable v
 When you deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
-== System methods `preupgrade` and `postupgrade`
+== System methods: `preupgrade()` and `postupgrade()`
 
 Declaring a variable to be `+stable+` requires its type to be stable too.
 Unfortunately, not all types are stable.
