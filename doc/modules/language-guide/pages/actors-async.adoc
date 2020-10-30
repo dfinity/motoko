@@ -1,11 +1,6 @@
 = Actors and async data
 :proglang: Motoko
 :company-id: DFINITY
-////
-TODO uppercase actor names (only object names are lower case BY LAW)
-////
-
-
 
 The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of unstructured, binary data. A canister processes its message one-at-a-time, preventing race conditions.  A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 
@@ -65,7 +60,7 @@ We note that {proglang} programs may avoid callbacks for many cases, but not _al
 Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
 ////
 
-To start, we consider the simplest stateful service: a counter actor, the remote counterpart of our previous, local counter object.
+To start, we consider the simplest stateful service: a `Counter` actor, the distributed version of our previous, local `counter` object.
 
 
 == Example: a Counter service
@@ -78,7 +73,7 @@ include::../examples/counter-actor.mo[]
 ----
 
 ////
-actor counter {
+actor Counter {
 
   var count = 0;
 
@@ -93,7 +88,7 @@ actor counter {
 };
 ////
 
-The `counter` actor declares one field and three public, _shared_ functions:
+The `Counter` actor declares one field and three public, _shared_ functions:
 
 * the field `count` is mutable, initialized to zero and implicitly `private`.
 * function `inc()` asynchronous increments the counter and returns a promise of type `async ()` for synchronization.
@@ -104,7 +99,7 @@ Shared functions, unlike local functions, are accessible to remote callers and h
 values containing functions and mutable data. Because all interaction with actors is asynchronous,
 an actor's functions must either return a promise type `async T`, for some type `T`, or nothing at all `()`.
 
-The only way to read or modify the state (`count`) of the `counter` actor is through its shared functions.
+The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
 
 A value of type `async T` is a _promise_. The producer of the promise
 fulfills the promise when it returns a result, either a value or error.
@@ -128,7 +123,7 @@ as a standalone callback to some other service (see link:sharing{outfilesuffix}[
 == Actor types
 
 Just as objects have object types, actors have _actor types_. The
-`counter` actor has the following type:
+`Counter` actor has the following type:
 
 ....
 actor {
@@ -169,7 +164,7 @@ promise to an identifier `a`, and then `await a` to retrieve the underlying `Nat
 
 [source, motoko]
 ----
-let a : async Nat = counter.read();
+let a : async Nat = Counter.read();
 let n : Nat = await a;
 ----
 
@@ -182,7 +177,7 @@ Typically, one rolls the two steps into one and one just awaits an asynchronous 
 
 [source, motoko]
 ----
-let n : Nat = await counter.read();
+let n : Nat = await Counter.read();
 ----
 
 Unlike a local function call, which blocks the caller until the callee has returned a result,
@@ -221,7 +216,7 @@ By design, the explicit ``await``s make the potential points of interference cle
 
 == Query functions
 
-In {IC} terminology, all three `counter` functions are _update_ messages
+In {IC} terminology, all three `Counter` functions are _update_ messages
 than can alter the state of the canister when called. Effecting a state change requires
 agreement amongst the distributed replicas before the {IC} can
 commit the change and return a result.  Reaching consensus is an
@@ -237,14 +232,14 @@ cannot permanently alter the state or send further {IC} messages.
 modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster,
 {IC} query semantics.
 
-For example, we can extend the `counter` actor with fast-and-loose variant of the trustworthy `read` function, called `peek`:
+For example, we can extend the `Counter` actor with fast-and-loose variant of the trustworthy `read` function, called `peek`:
 
 [source,motoko]
 ----
 include::../examples/CounterWithQuery.mo[]
 ----
 
-The `peek()` function might be used by a `counter` frontend offering a quick, but less trustworthy,
+The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy,
 display of the current counter value.
 
 It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the {IC}. Calls to ordinary functions are permitted.
@@ -268,15 +263,24 @@ of dynamic execution errors. Two examples are:
 *  canister installation can execute code, but not send messages.
 *  a canister query method cannot send messages.
 
-These restrictions are surfaced in {proglang} as a restrictions on the context in which a shared function can be called, a promise can be awaited and messaging errors can be ``throw``n or handled via `try`/`catch`.
+These restrictions are surfaced in {proglang} as restrictions on the context in which certain
+expressions can be used.
 
-In {proglang} calling a shared function is an error unless the function is called from an async expression, the body of a (non-query) shared function, or the body of a local function with an async return type. Calling a shared function from actor class constructor is also an error.
+In {proglang}, an expression occurs in an _asynchronous context_ if
+it appears in the body of an `async` expression, the body of a shared, non-`query`, function returning an `async`  type, or the body of local function with `async` return type
+and (explicit or implicit) `async` body.
 
-Similarly, the `await` construct is only allowed in an asynchronous context: the body of an async expression the body of a shared function, or the body of local function with `async` return type.
+In {proglang} calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from actor class constructor is also an error.
 
-It is only possible to `throw` or `try/catch` errors in an asynchronous context, since structured error handling is supported for messaging only.
+The `await` construct is only allowed in an asynchronous context.
 
-These restrictions also mean that local functions cannot directly call shared functions or `await` promises. This limitation is awkward in some scenarios:  we hope to extend the type system to be more permissive in future.
+The `async` construct is only allowed in an asynchronous context.
+
+It is only possible to `throw` or `try/catch` errors in an asynchronous context.
+This is because structured error handling is supported for messaging errors only and,
+like messaging itself, confined to asynchronous contexts.
+
+These rules also mean that local functions cannot, in general, directly call shared functions or `await` promises. This limitation can sometimes be awkward:  we hope to extend the type system to be more permissive in future.
 
 ////
 TODO: scoped awaits (if at all)
@@ -292,7 +296,7 @@ constructs a fresh actor of that type each time it is supplied with an argument.
 An actor class thus serves as a template for manufacturing actors.
 Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
 
-For example, we can generalize `counter` given above to `Counter(init)`
+For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
 .Counters.mo
@@ -301,7 +305,7 @@ below, by introducing a constructor parameter, variable `init` of type `Nat`:
 include::../examples/Counters.mo[]
 ----
 
-If this is class is stored in file `+Counters.ml+`, then
+If this is class is stored in file `+Counters.mo+`, then
 we can import the file as a module and use it to
 create several actors with different initial values:
 
@@ -309,14 +313,14 @@ create several actors with different initial values:
 ----
 import Counters "Counters";
 
-let c1 = await Counters.Counter(1);
-let c2 = await Counters.Counter(2);
+let C1 = await Counters.Counter(1);
+let C2 = await Counters.Counter(2);
 ----
 
 The last two lines above _instantiate_ the actor class twice.
 The first invocation uses the initial value `1`, where the second uses initial value `2`.
 Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a promise that can be ``await``ed for the resulting actor value.
-Both `c1` and `c2` have the same type, `Counters.Counter` and can be used interchangeably.
+Both `C1` and `C2` have the same type, `Counters.Counter` and can be used interchangeably.
 
 
 NOTE: For now, the {proglang} compiler gives an error when compiling

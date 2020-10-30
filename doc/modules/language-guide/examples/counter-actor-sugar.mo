@@ -1,4 +1,4 @@
-actor counter {
+actor Counter {
 
   var count = 0;
 
