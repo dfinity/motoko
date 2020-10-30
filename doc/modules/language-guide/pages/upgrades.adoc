@@ -116,4 +116,4 @@ include::../examples/StableRegistry.mo[]
 ----
 
 Our `preupgrade` system method simply writes the `dict` entries to `state`.
-Our `postupgrade` system method resets `state` to the empty array, after `dict` has been populated with any entries in `state`.
+Our `postupgrade` system method resets `state` to the empty array, after `dict` has been populated with any entries in `state`, to free space.

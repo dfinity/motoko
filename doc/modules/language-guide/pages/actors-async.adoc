@@ -1,6 +1,11 @@
 = Actors and async data
 :proglang: Motoko
 :company-id: DFINITY
+////
+TODO uppercase actor names (only object names are lower case BY LAW)
+////
+
+
 
 The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of unstructured, binary data. A canister processes its message one-at-a-time, preventing race conditions.  A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 

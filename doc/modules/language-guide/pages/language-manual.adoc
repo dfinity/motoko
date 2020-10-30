@@ -4,6 +4,9 @@
 :sdk-short-name: DFINITY Canister SDK
 :company-id: DFINITY
 :ext: mo
+:toc:
+:toclevels: 3
+
 ////
 * targetting release 0.5.4
 * [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
@@ -1399,7 +1402,7 @@ The result of the declaration is `()` and
 
 The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
 
-The declaration `type C < X0<:T0>, ..., Xn <: Tn > = U` is well-formed provided:
+The declaration `type C < X0 <: T0>, ..., Xn <: Tn > = U` is well-formed provided:
 
 * type parameters `X0`, ..., `Xn` are distinct, and
 * assuming the constraints `X0 <: T0`, ..., `Xn <: Tn`:
