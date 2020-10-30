@@ -1,0 +1,260 @@
+= Basic language syntax
+:proglang: Motoko
+:sdk-short-name: DFINITY Canister SDK
+:company-id: DFINITY
+
+This section describes the basic language conventions you need to know for programming in {proglang}.
+
+[[syntax-whitespace]]
+== Whitespace
+
+Space, newline, horizontal tab, carriage return, line feed, and form feed are considered as whitespace.
+Whitespace is ignored by the compiler but used to separate adjacent keywords, identifiers, and operators.
+
+In the definition of some lexemes, the quick reference uses the symbol `+␣+` to denote a single whitespace character.
+
+[[syntax-comments]]
+== Comments
+
+You can use single-line, multi-line, or nested multi-line comments to include descriptive non-executable text in your code. 
+For example, use comments to add context about a code block as a note to yourself or as information you want to share with anyone reviewing or maintaining your code. 
+Properly-formatted comments are treated as whitespace and ignored by the compiler.
+
+Single-line comments begin with two forward-slashes (`+//+`) and consist of the characters following `+//+` to the end of the same line. 
+For example, you can have single-line comments above, below, or on the same line as the code to which the comment applies.
+
+For example:
+
+....
+// single line comment
+x = 1
+....
+
+You can also include single-line, multi-line, and nested multi-line comments by enclosing any sequence of characters withing a forward-slash followed by an asterisk (`+/*+`) and ending with an asterisk followed by a forward-slash (`+*/+`.
+
+For example:
+
+....
+/* multi-line comments
+   look like this, as in C and friends
+*/
+....
+
+You can also write nested multi-line comments by starting a multi-line comment block, then starting a second multi-line comment within the first block. 
+For example:
+
+....
+/* This is the start of the first multi-line comment block.
+   /* This is the second, nested multi-line comment. */
+This is the end of the first multi-line comment block. 
+*/
+....
+
+[[syntax-keywords]]
+== Keywords
+
+The following keywords are reserved and cannot be used as identifiers or for any other purpose in {proglang} programs:
+
+[width="95%",cols="15%,80%",options="header",]
+|===
+|This keyword |Is reserved for this purpose
+|`+actor+` |Declare actor identifiers, actor objects and actor classes.
+
+|`+and+` |Boolean conjunction (short-circuiting).
+
+|`+assert+` |Assert a Boolean property (trapping when false).
+
+|`+async+` |Declare an asynchronous function or create a future.
+
+|`+await+` |Await the result of an asynchronous computation.
+
+|`+break+` |Exit from a labelled expression or loop (possibly with a value).
+
+|`+case+` |Case of a preceding `switch` expression, consisting of a pattern and expression.
+
+|`+catch+` |Failure branch of a preceding `try` expression.
+
+|`+class+` |Class declaration (actor, object and module classes).
+
+|`+continue+` |Continue with the next iteration of `loop` or `while` or `for`.
+
+|`+debug+` |Conditional debug expressions, excluded from `release` code.
+
+|`+debug_show+` |Display a debug message.
+
+|`+else+` |False branch of a conditional expression.
+
+|`+false+` |Boolean literal value *false*.
+
+|`+flexible+` |Optional identifier for variables that containing data that can be overwritten or discarded when a program is upgraded.
+
+|`+for+` |Iterate over the items of an iterator.
+
+|`+func+` |Declare a name function or anonymous function value.
+
+|`+if+` | Branch on a Boolean value.
+
+|`+ignore+` |Discard the value of an expression.
+
+|`+import+` |Import a source file or other resource as a named module.
+
+|`+in+` | Indicate the domain of a `for` loop.
+
+|`+label+` |Label an expression for early exit using a `break` keyword.
+
+|`+let+` |Bind an identifier (or pattern) to a value.
+
+|`+loop+` |Enter a loop (possibly with a guarded exit).
+
+|`+module+` |Declare a module identifier or module expression.
+
+|`+not+` |Negate a Boolean value.
+
+|`+null+` |The literal value of type `Null`.
+
+|`+object+` | Declare an object identifier or object expression.
+
+|`+or+` |Boolean disjunction (short-circuiting).
+
+|`+private+` |Restrict the visibility of a declaration to the enclosing
+actor, object, module or class.
+
+|`+public+` |Publish a declaration as member(s) of the enclosing
+actor, object, module or class.
+
+|`+query+` |A modifier on shared functions that return results without modifying state.
+
+|`+return+` |Exit from a function or async block (possibly with a value).
+
+|`+shared+` |Declare a function that can be called remotely.
+
+|`+stable+` |Identifier for variables that containing data that must be preserved when a program is upgraded.
+
+|`+switch+` |Conditional pattern matching, defined by cases.
+
+|`+system+` |
+
+|`+throw+` |Exit from an expression with an error.
+
+|`+true+` |A Boolean value returned as the result of a comparison.
+
+|`+try+` |Declare a scoped error handler.
+
+|`+type+` |Declare a type abbreviation.
+
+|`+var+` |Specify a (mutable) variable, field or array that can be updated.
+
+|`+while+` |Enter a guarded loop.
+
+|===
+
+[[syntax-ids]]
+== Identifiers
+
+Identifiers are alpha-numeric, start with a letter and may contain underscores:
+
+....
+<id>   ::= Letter (Letter | Digit | _)*
+Letter ::= A..Z | a..z
+Digit  ::= 0..9
+....
+
+[[syntax-integers]]
+== Integers
+
+Integers are written as decimal or hexadecimal, `Ox`-prefixed natural numbers.
+Subsequent digits may be prefixed a single, semantically irrelevant, underscore.
+
+....
+digit ::= ['0'-'9']
+hexdigit ::= ['0'-'9''a'-'f''A'-'F']
+num ::= digit ('_'? digit)*
+hexnum ::= hexdigit ('_'? hexdigit)*
+nat ::= num | "0x" hexnum
+....
+
+Negative integers may be constructed by applying a prefix negation `-` operation.
+
+[[syntax-floats]]
+== Floats
+
+Floating point literals are written in decimal or `Ox`-prefixed hexadecimal scientific notation.
+
+....
+let frac = num
+let hexfrac = hexnum
+let float =
+    num '.' frac?
+  | num ('.' frac?)? ('e' | 'E') sign? num
+  | "0x" hexnum '.' hexfrac?
+  | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
+....
+
+The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
+In both cases, the exponent is in decimal notation.
+
+Note: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
+
+[[syntax-chars]]
+== Characters
+
+A character is a single quote (`'`) delimited:
+
+* Unicode character in UTF-8,
+* `\`-escaped  newline, carriage return, tab, single or double quotation mark
+* `\`-prefixed ASCII character (TBR),
+* or  `\u{` hexnum `}` enclosed valid, escaped Unicode character in hexadecimal (TBR).
+
+....
+ascii ::= ['\x00'-'\x7f']
+ascii_no_nl ::= ['\x00'-'\x09''\x0b'-'\x7f']
+utf8cont ::= ['\x80'-'\xbf']
+utf8enc ::=
+    ['\xc2'-'\xdf'] utf8cont
+  | ['\xe0'] ['\xa0'-'\xbf'] utf8cont
+  | ['\xed'] ['\x80'-'\x9f'] utf8cont
+  | ['\xe1'-'\xec''\xee'-'\xef'] utf8cont utf8cont
+  | ['\xf0'] ['\x90'-'\xbf'] utf8cont utf8cont
+  | ['\xf4'] ['\x80'-'\x8f'] utf8cont utf8cont
+  | ['\xf1'-'\xf3'] utf8cont utf8cont utf8cont
+utf8 ::= ascii | utf8enc
+utf8_no_nl ::= ascii_no_nl | utf8enc
+
+escape ::= ['n''r''t''\\''\'''\"']
+
+character ::=
+  | [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
+  | utf8enc
+  | '\\'escape
+  | '\\'hexdigit hexdigit
+  | "\\u{" hexnum '}'
+
+char := '\'' character '\''
+....
+
+[[syntax-text]]
+== Text
+
+A text literal is a sequence of characters delimited using double quotation (") marks.
+
+For example, the following represents a text literal:
+
+"Hello, World!"
+
+Formal definition:
+....
+text ::= '"' character* '"'
+....
+
+[[syntax-literals]]
+== Literals
+
+Literals are constant values. The syntactic validity of a literal depends on the precision of the type for which it is used.
+
+....
+<lit> ::=                                     literals
+  <nat>                                         natural
+  <float>                                       float
+  <char>                                        character
+  <text>                                        Unicode text
+....
