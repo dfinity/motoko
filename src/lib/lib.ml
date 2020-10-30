@@ -195,14 +195,11 @@ struct
     let buf = Buffer.create (String.length s) in
     for i = 0 to String.length s - 1 do
       match s.[i] with
-      | ('\"' | '\'' | '\\') as c ->
+      | '\"' | '\'' | '\\' as c ->
         Buffer.add_char buf '\\'; Buffer.add_char buf c
-      | '\n' ->
-        Buffer.add_string buf "\\n"
-      | '\r' ->
-        Buffer.add_string buf "\\r"
-      | '\t' ->
-        Buffer.add_string buf "\\t"
+      | '\n' -> Buffer.add_string buf "\\n"
+      | '\r' -> Buffer.add_string buf "\\r"
+      | '\t' -> Buffer.add_string buf "\\t"
       | c -> Buffer.add_char buf c
     done;
     Buffer.contents buf

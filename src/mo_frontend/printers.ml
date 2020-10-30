@@ -168,7 +168,7 @@ let string_of_symbol symbol : string =
   | X (N N_pat_bin) -> "<pat_bin>"
   | X (N N_pat_field) -> "<pat_field>"
   | X (N N_pat_nullary) -> "<pat_nullary>"
-  | X (N N_pat_param) -> "<pat_param>"
+  | X (N N_pat_plain) -> "<pat_plain>"
   | X (N N_pat_un) -> "<pat_un>"
   | X (N N_path) -> "<path>"
   | X (N N_return_typ) -> "<return_typ>"

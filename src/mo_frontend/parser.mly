@@ -217,7 +217,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.typ> return_typ_nullary return_typ
 %type<Mo_def.Syntax.typ option> option(return_typ_nullary) option(return_typ)
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_param pat_nullary pat_bin deprecated_pat_nullary
+%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_nullary
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
 %type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
@@ -472,6 +472,8 @@ exp_plain :
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+  | DOT_LCURLY efs=seplist(exp_field, semicolon) RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
@@ -486,8 +488,6 @@ exp_nullary(B) :
 *)
   | x=id
     { VarE(x) @? at $sloc }
-  | DOT_LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
   | e=deprecated_exp_nullary(B)
@@ -650,7 +650,7 @@ stab :
 
 (* Patterns *)
 
-pat_param :
+pat_plain :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
@@ -659,12 +659,12 @@ pat_param :
     { LitP(ref l) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
-
-pat_nullary :
-  | p=pat_param
-    { p }
   | DOT_LCURLY fps=seplist(pat_field, semicolon) RCURLY
     { ObjP(fps) @! at $sloc }
+
+pat_nullary :
+  | p=pat_plain
+    { p }
   | p=deprecated_pat_nullary
     { p }
 
@@ -734,7 +734,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
+      tps=typ_params_opt p=pat_plain t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -742,7 +742,7 @@ dec_nonvar :
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
+      tps=typ_params_opt p=pat_plain t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs

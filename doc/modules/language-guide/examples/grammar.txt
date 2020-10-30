@@ -133,6 +133,7 @@
 <exp_plain> ::= 
     <lit>
     '(' <list(<exp>, ',')> ')'
+    '.{' <list(<exp_field>, ';')> '}'
 
 <exp_block> ::= 
     '{' <list(<dec>, ';')> '}'
@@ -140,7 +141,6 @@
 <exp_nullary> ::= 
     <exp_plain>
     <id>
-    '.{' <list(<exp_field>, ';')> '}'
     <exp_block>
     <deprecated_exp_nullary>
 
@@ -226,15 +226,15 @@
     'flexible'
     'stable'
 
-<pat_param> ::= 
+<pat_plain> ::= 
     '_'
     <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
+    '.{' <list(<pat_field>, ';')> '}'
 
 <pat_nullary> ::= 
-    <pat_param>
-    '.{' <list(<pat_field>, ';')> '}'
+    <pat_plain>
     <deprecated_pat_nullary>
 
 <pat_un> ::= 
@@ -269,8 +269,8 @@
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? '='? <obj_body>
-    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> <return_typ>? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> <return_typ>? <class_body>
+    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> <return_typ>? <func_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> <return_typ>? <class_body>
     'ignore' <exp>
 
 <dec> ::= 
