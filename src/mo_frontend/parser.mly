@@ -214,8 +214,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
-%type<Mo_def.Syntax.typ> annot(typ) annot(typ_nullary)
-%type<Mo_def.Syntax.typ option> option(annot(typ)) option(annot(typ_nullary))
+%type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
 %type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_nullary
 %type<Mo_def.Syntax.pat_field> pat_field
@@ -405,8 +404,9 @@ typ_bind :
   | x=id
     { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
 
-annot(T) :
-  | COLON t=T { t }
+annot_opt :
+  | COLON t=typ { Some t }
+  | (* empty *) { None }
 
 
 (* Expressions *)
@@ -568,9 +568,9 @@ exp_nondec(B) :
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=annot(typ_nullary)? e=exp(bl)
+  | LABEL x=id ta=annot_opt e=exp(bl)
     { let x' = ("continue " ^ x.it) @@ x.at in
-      let t = Lib.Option.get rt (TupT [] @! at $sloc) in
+      let t = Lib.Option.get ta (TupT [] @! at $sloc) in
       let e' =
         match e.it with
         | WhileE (e1, e2) -> WhileE (e1, LabelE (x', t, e2) @? e2.at) @? e.at
@@ -630,10 +630,10 @@ catch :
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field :
-  | x=id t=annot(typ)? EQ e=exp(ob)
+  | x=id t=annot_opt EQ e=exp(ob)
     { let d = LetD(VarP(x) @! x.at, annot_exp e t) @? at $sloc in
       {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
-  | VAR x=id t=annot(typ)? EQ e=exp(ob)
+  | VAR x=id t=annot_opt EQ e=exp(ob)
     { let d = VarD(x, annot_exp e t) @? at $sloc in
       {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
 
@@ -703,9 +703,9 @@ pat :
     { p }
 
 pat_field :
-  | x=id t=annot(typ)?
+  | x=id t=annot_opt
     { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
-  | x=id t=annot(typ)? EQ p=pat
+  | x=id t=annot_opt EQ p=pat
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
@@ -718,7 +718,7 @@ pat_opt :
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=annot(typ)? EQ e=exp(ob)
+  | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
@@ -733,7 +733,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot(typ)? fb=func_body
+      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -741,7 +741,7 @@ dec_nonvar :
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot(typ)? cb=class_body
+      tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs

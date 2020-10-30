@@ -181,7 +181,7 @@
     'async' <exp>
     'await' <exp>
     'assert' <exp>
-    'label' <id> (':' <typ_nullary>)? <exp>
+    'label' <id> (':' <typ>)? <exp>
     'break' <id> <exp_nullary>?
     'continue' <id>
     'debug' <exp>
