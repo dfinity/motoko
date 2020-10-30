@@ -1,4 +1,6 @@
 = Principals and caller identification
+:proglang: Motoko
+:IC: Internet Computer
 
 
 {proglang}'s shared functions support a simple form of caller identification.
@@ -46,8 +48,7 @@ The `assert (owner == msg.caller)` causes functions `inc()` and `bump()` to trap
 Principals support equality, ordering and hashing, so you can efficiently store principals in containers to, for example, maintain a white- or blacklist.
 More operations on principals are available in base library link:../base-libraries/result{outfilesuffix}[Principal].
 
-NOTE: The argument to `shared` is just a pattern, so one can also write, for example:
-
+The argument to `shared` is just a pattern, so, if you prefer, you can also rewrite the above to use pattern matching:
 
 [source,motoko]
 ----
