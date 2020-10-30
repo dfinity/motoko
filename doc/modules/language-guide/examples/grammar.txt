@@ -61,10 +61,10 @@
 
 <typ_field> ::= 
     'var'? <id> ':' <typ>
-    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> <return_typ>
+    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> <colon_typ>
 
 <typ_tag> ::= 
-    <tag> <return_typ_nullary>?
+    <tag> <colon_typ_nullary>?
 
 <typ_bind> ::= 
     <id> '<:' <typ>
@@ -180,7 +180,7 @@
     'async' <exp>
     'await' <exp>
     'assert' <exp>
-    'label' <id> <return_typ_nullary>? <exp>
+    'label' <id> <colon_typ_nullary>? <exp>
     'break' <id> <exp_nullary>?
     'continue' <id>
     'debug' <exp>
@@ -209,8 +209,8 @@
     'catch' <pat_nullary> <exp>
 
 <exp_field> ::= 
-    <id> <return_typ>? '=' <exp>
-    'var' <id> <return_typ>? '=' <exp>
+    <id> <colon_typ>? '=' <exp>
+    'var' <id> <colon_typ>? '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -252,25 +252,25 @@
 <pat> ::= 
     <pat_bin>
 
-<return_typ> ::= 
+<colon_typ> ::= 
     ':' <typ>
 
-<return_typ_nullary> ::= 
+<colon_typ_nullary> ::= 
     ':' <typ_nullary>
 
 <pat_field> ::= 
-    <id> <return_typ>?
-    <id> <return_typ>? '=' <pat>
+    <id> <colon_typ>?
+    <id> <colon_typ>? '=' <pat>
 
 <dec_var> ::= 
-    'var' <id> <return_typ>? '=' <exp>
+    'var' <id> <colon_typ>? '=' <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? '='? <obj_body>
-    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> <return_typ>? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> <return_typ>? <class_body>
+    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> <colon_typ>? <func_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> <colon_typ>? <class_body>
     'ignore' <exp>
 
 <dec> ::= 
