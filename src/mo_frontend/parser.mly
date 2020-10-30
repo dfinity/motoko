@@ -214,8 +214,8 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
-%type<Mo_def.Syntax.typ> colon_typ_nullary colon_typ
-%type<Mo_def.Syntax.typ option> option(colon_typ_nullary) option(colon_typ)
+%type<Mo_def.Syntax.typ> annot(typ) annot(typ_nullary)
+%type<Mo_def.Syntax.typ option> option(annot(typ)) option(annot(typ_nullary))
 %type<Mo_def.Syntax.path> path
 %type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_nullary
 %type<Mo_def.Syntax.pat_field> pat_field
@@ -388,20 +388,25 @@ inst :
 typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
-  | x=id tps=typ_params_opt t1=typ_nullary t2=colon_typ
+  | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | x=tag t=colon_typ_nullary?
-    { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
+  | x=tag COLON t=typ
+    { {tag = x; typ = t} @@ at $sloc }
+  | x=tag
+    { {tag = x; typ = TupT [] @! at $sloc} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
     { {var = x; sort = Type.Type @@ no_region; bound = t} @= at $sloc }
   | x=id
     { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
+
+annot(T) :
+  | COLON t=T { t }
 
 
 (* Expressions *)
@@ -563,7 +568,7 @@ exp_nondec(B) :
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=colon_typ_nullary? e=exp(bl)
+  | LABEL x=id rt=annot(typ_nullary)? e=exp(bl)
     { let x' = ("continue " ^ x.it) @@ x.at in
       let t = Lib.Option.get rt (TupT [] @! at $sloc) in
       let e' =
@@ -625,10 +630,10 @@ catch :
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field :
-  | x=id t=colon_typ? EQ e=exp(ob)
+  | x=id t=annot(typ)? EQ e=exp(ob)
     { let d = LetD(VarP(x) @! x.at, annot_exp e t) @? at $sloc in
       {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
-  | VAR x=id t=colon_typ? EQ e=exp(ob)
+  | VAR x=id t=annot(typ)? EQ e=exp(ob)
     { let d = VarD(x, annot_exp e t) @? at $sloc in
       {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
 
@@ -697,16 +702,10 @@ pat :
   | p=pat_bin
     { p }
 
-colon_typ :
-  | COLON t=typ { t }
-
-colon_typ_nullary :
-  | COLON t=typ_nullary { t }
-
 pat_field :
-  | x=id t=colon_typ?
+  | x=id t=annot(typ)?
     { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
-  | x=id t=colon_typ? EQ p=pat
+  | x=id t=annot(typ)? EQ p=pat
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
@@ -719,7 +718,7 @@ pat_opt :
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=colon_typ? EQ e=exp(ob)
+  | VAR x=id t=annot(typ)? EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
@@ -734,7 +733,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=colon_typ? fb=func_body
+      tps=typ_params_opt p=pat_plain t=annot(typ)? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -742,7 +741,7 @@ dec_nonvar :
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=colon_typ? cb=class_body
+      tps=typ_params_opt p=pat_plain t=annot(typ)? cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
