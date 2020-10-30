@@ -480,10 +480,10 @@ exp_block :
 exp_nullary(B) :
   | e=exp_plain
     { e }
-/* Activate once deprecated object disambiguation is removed
+(* Activate once deprecated object disambiguation is removed
   | e=exp_block
     { e }
-*/
+*)
   | x=id
     { VarE(x) @? at $sloc }
   | DOT_LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -778,7 +778,7 @@ imp :
       let_or_exp true x (ImportE (f, ref Unresolved)) (at $sloc) }
 
 start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
-  | /* Empty */ { () }
+  | (* empty *) { () }
 
 parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF

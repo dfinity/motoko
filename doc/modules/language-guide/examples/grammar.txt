@@ -140,7 +140,8 @@
 <exp_nullary> ::= 
     <exp_plain>
     <id>
-    '.'_'{' <list(<exp_field>, ';')> '}'
+    '.{' <list(<exp_field>, ';')> '}'
+    <exp_block>
     <deprecated_exp_nullary>
 
 <exp_post> ::= 
@@ -233,7 +234,7 @@
 
 <pat_nullary> ::= 
     <pat_param>
-    '.'_'{' <list(<pat_field>, ';')> '}'
+    '.{' <list(<pat_field>, ';')> '}'
     <deprecated_pat_nullary>
 
 <pat_un> ::= 

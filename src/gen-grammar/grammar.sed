@@ -82,6 +82,7 @@ s/LPAR/\'(\'/g
 s/LOOP/\'loop\'/g
 s/LET/\'let\'/g
 s/LEOP/\'<=\'/g
+s/DOT_LCURLY/\'.{\'/g
 s/LCURLY/\'{\'/g
 s/LBRACKET/\'[\'/g
 s/LABEL/\'label\'/g
@@ -125,3 +126,4 @@ s/ADDOP/\'+\'/g
 s/ASSIGN/\':=\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+s/<deprecated_exp_nullary>$/<exp_block>\n    <deprecated_exp_nullary>/g
