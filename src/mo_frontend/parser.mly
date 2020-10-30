@@ -393,10 +393,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | x=tag COLON t=typ
-    { {tag = x; typ = t} @@ at $sloc }
-  | x=tag
-    { {tag = x; typ = TupT [] @! at $sloc} @@ at $sloc }
+  | x=tag t=annot_opt
+    { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
