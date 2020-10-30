@@ -401,7 +401,6 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | Some denv2 -> Some (senv1, denv2)
     )
 
-
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with
   | None -> prelude_error "initializing" []
@@ -422,9 +421,6 @@ let check_files' parsefn files : check_result =
 
 let check_files files : check_result =
   check_files' parse_file files
-
-let check_string s name : check_result =
-  Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
 
 (* Generate IDL *)
 
@@ -498,15 +494,23 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
-let run_files_and_stdin files =
-  let lexer = Lexing.from_function lexer_stdin in
-  Option.bind (interpret_files initial_env files) (fun env ->
-    let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
-    try loop env with End_of_file ->
-      printf "\n%!";
-      Some ()
-  )
+let run_stdin_from_file file =
+  let open Lib.Option.Syntax in
+  let* (libs, prog, senv', t, sscope) =
+    Diag.flush_messages (load_decl (parse_file Source.no_region file) initial_stat_env) in
+  let denv' = interpret_libs initial_dyn_env libs in
+  let* (v, dscope) = interpret_prog denv' prog in
+  printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
+  Some ()
 
+let run_files_and_stdin files =
+  let open Lib.Option.Syntax in
+  let lexer = Lexing.from_function lexer_stdin in
+  let* env = interpret_files initial_env files in
+  let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
+  try loop env with End_of_file ->
+    printf "\n%!";
+    Some ()
 
 (* Desugaring *)
 
@@ -614,13 +618,6 @@ let compile_files mode do_link files : compile_result =
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
   Diag.return (compile_progs mode do_link libs progs)
-
-let compile_string mode s name : compile_result =
-  let open Diag.Syntax in
-  let* libs, prog, senv, _t, _sscope =
-    load_decl (parse_string name s) initial_stat_env
-  in
-  Diag.return (compile_progs mode false libs [prog])
 
 (* Interpretation (IR) *)
 
