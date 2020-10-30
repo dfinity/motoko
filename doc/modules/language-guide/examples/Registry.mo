@@ -3,18 +3,18 @@ import Map "mo:base/HashMap";
 
 actor Registry {
 
-  let dict = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
+  let map = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
 
   public func register(name : Text) : async () {
-    switch (dict.get(name)) {
+    switch (map.get(name)) {
       case null {
-        dict.put(name, dict.size());
+        map.put(name, map.size());
       };
       case (?id) { };
     }
   };
 
   public func lookup(name : Text) : async ?Nat {
-    dict.get(name);
+    map.get(name);
   };
 }
