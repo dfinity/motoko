@@ -2,7 +2,7 @@
 
 
 The {IC} lets you upgrade a deployed and running canister with a new
-implementation, either to repair a bug or to add functionality.  For a
+implementation, either to repair a bug or to add functionality. For a
 stateful canister, upgrade is challenging as it requires the migration
 of the canister's live state from the retired canister to its
 replacement.  The traditional approach would be to either maintain the
@@ -82,7 +82,7 @@ For example, you can preserve state recording a set of actors or shared function
 == How stable variables are upgraded
 
 When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
-When you deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
+When you deploy an actor (canister) as an upgrade, all stable variables that existed in the previous version are pre-initialized with their old values.
 After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
 == System methods: `preupgrade()` and `postupgrade()`
@@ -100,7 +100,7 @@ include::../examples/Registry.mo[]
 ----
 
 This actor assigns sequential identifiers to `Text` values, using the size of the underlying `map` object to determine the next identifier.
-Like other actors, it relies on _orthogonal persistence_ to maintain the state of the hash map between calls.
+Like other actors, it relies on _orthogonal persistence_ to maintain the state of the hashmap between calls.
 
 We'd like to make the `Register` upgradable, without the upgrade losing any existing registrations.
 

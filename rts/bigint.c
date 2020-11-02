@@ -340,10 +340,6 @@ export as_ptr bigint_leb128_decode(buf *buf) {
   uint8_t b;
   do {
     b = read_byte(buf);
-    if (s > 0 && b == 0x00) {
-        // The high 7 bits are all zeros, this is not a shortest encoding
-        idl_trap_with("not shortest encoding");
-    }
     if (s + 7 < s) {
         // shift overflow. number is absurdly large anyways
         idl_trap_with("absurdly large number");
@@ -366,10 +362,6 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
   bool last_sign_bit_set = 0;
   do {
     b = read_byte(buf);
-    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x7F))) {
-        // The high 8 bits are all zeros or ones, so this is not a shortest encoding
-        idl_trap_with("not shortest encoding");
-    }
     if (s + 7 < s) {
         // shift overflow. number is absurdly large anyways
         idl_trap_with("absurdly large number");

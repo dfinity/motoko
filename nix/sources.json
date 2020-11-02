@@ -1,8 +1,21 @@
 {
+    "candid": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Candid Library for the Internet Computer",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "candid",
+        "rev": "6e7a07ed799a82ca7b2302caec8c5b26d14a9ed5",
+        "sha256": "1vvm2yzsvs3qrvhpisj4pj4brglzc18wldkib4w80zdzlrkz6maz",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/candid/archive/6e7a07ed799a82ca7b2302caec8c5b26d14a9ed5.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "334746475ee307d5af3098fec9eb3580fc462f33",
+        "rev": "897d4674debd73015bc0273bca2ac6cbb0943516",
         "type": "git"
     },
     "dfinity": {
@@ -89,10 +102,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "57c8084c7ef41366993909c20491e359bbb90f54",
-        "sha256": "0lchhjys1jj8fdiisd2718sqd63ys7jrj6hq6iq9l1gxj3mz2w81",
+        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
+        "sha256": "1zybp62zz0h077zm2zmqs2wcg3whg6jqaah9hcl1gv4x8af4zhs6",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/57c8084c7ef41366993909c20491e359bbb90f54.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/8c007b60731c07dd7a052cce508de3bb1ae849b4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
