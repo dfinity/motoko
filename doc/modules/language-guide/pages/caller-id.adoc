@@ -9,7 +9,7 @@ The principal of a call corresponds to either a user or a canister.
 
 You can use this feature to implement basic _access-control_.
 
-In {proglang}, the `shared` keyword, used to declare a shared function, can declare an optional parameter of type `{caller : Principal}`.
+In {proglang}, the `shared` keyword, used to declare a shared function, can declare an optional parameter of type `{caller : Principal}`. (The type is a record to accommodate future extension.)
 
 To access the caller of a shared function like `inc()` you write:
 
