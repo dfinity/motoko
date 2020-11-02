@@ -45,7 +45,7 @@ include::../examples/Counters-caller.mo[]
 
 The `assert (owner == msg.caller)` causes functions `inc()` and `bump()` to trap if the call is unauthorized, preventing any modification of `count`; `read()` permits any caller.
 
-Principals support equality, ordering and hashing, so you can efficiently store principals in containers to, for example, maintain a white- or blacklist.
+Principals support equality, ordering and hashing, so you can efficiently store principals in containers to, for example, maintain an allow or deny list.
 More operations on principals are available in base library link:../base-libraries/result{outfilesuffix}[Principal].
 
 The argument to `shared` is just a pattern, so, if you prefer, you can also rewrite the above to use pattern matching:
@@ -58,10 +58,3 @@ include::../examples/Counters-caller-pat.mo[]
 NOTE: Simple actor declarations do not let you access their installer.
 If you do need access to the installer of an actor,
 just rewrite the actor declaration as a zero-argument actor class instead.
-
-
-
-
-
-
-
