@@ -28,40 +28,7 @@ on `p` to be fulfilled is expressed using `await p` to obtain a value of type `T
 To avoid introducing shared state through messaging, e.g. by sending an object or mutable array,
 the data that can be transmitted through shared functions is restricted to immutable, _shared_ types.
 
-
-////
-TODO: DELETE
-
-{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the Internet Computer.
-
-An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
-
-Each {proglang} actor represents a service that one might want to deploy on the Internet Computer.
-
-
-The interface of each actor introduces `async` data whenever it returns information to its caller.
-This programming abstraction serves a key role in {proglang}, as it coordinates with the transformations of the {proglang} compiler pipeline and eventual execution behavior of {proglang} actors on the Internet Computer.
-
-This abstraction represents a _promise_ from the system to the caller, on behalf of the callee:
-
- - Either the `async` value, when ``await``ed, will yield a value from the callee of the expected type,
-
- - or, an error --- system-level or callee-level --- will eventually arise.
-
-In general, the caller may not _immediately_ `await` each call.  But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: to maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
-
-*Technical aside.* In reality, the underlying message-passing of the system forces the program's logic into another form.
-Specifically, control flow around each actor method call involves the program loosing control to a system-level message-processing loop, which forces the program's logic into a so-called
-_"continuation-passing-style"_ (CPS) to expose event-handling
-_"callback functions"_.
-This program structure is complex for humans to read and maintain, and stands in stark contrast to the direct style most prefer for most program logic.
-
-We note that {proglang} programs may avoid callbacks for many cases, but not _all_ cases where they are used in other asynchronous, message-passing settings.
-Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
-////
-
 To start, we consider the simplest stateful service: a `Counter` actor, the distributed version of our previous, local `counter` object.
-
 
 == Example: a Counter service
 
