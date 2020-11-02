@@ -13,6 +13,7 @@
 ** xref:control-flow.adoc[Imperative control flow]
 ** xref:structural-equality.adoc[Structural equality]
 ** xref:actor-classes.adoc[Actor classes]
+** xref:caller-id.adoc[Principals and caller identification]
 //** xref:advanced-discussion.adoc[Advanced discussion topics]
 ** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]
