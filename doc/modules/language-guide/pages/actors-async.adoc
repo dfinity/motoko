@@ -2,13 +2,13 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of unstructured, binary data. A canister processes its message one-at-a-time, preventing race conditions.  A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
+The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of unstructured, binary data. A canister processes its messages one-at-a-time, preventing race conditions.  A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 
 {proglang} abstracts the complexity of the {IC} with a well known, higher-level abstraction: the _actor model_.
 Each canister is represented as a typed actor. The type of an actor lists the messages
 it can handle. Each message is abstracted as a typed, asynchronous function, imposing structure on the raw binary data of the underlying {IC}.
 An actor is similar to an object, but is different in that its state is completely isolated,
-its interactions with the world are entirely through asynchronous, messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
+its interactions with the world are entirely through asynchronous messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
 
 In {proglang}, sending a message to an actor is a function call, but instead of
 blocking the caller until the call has returned, the message is enqueued
@@ -48,7 +48,7 @@ This abstraction represents a _promise_ from the system to the caller, on behalf
 
  - or, an error --- system-level or callee-level --- will eventually arise.
 
-In general, the caller may not _immediately_ `await` each call.  But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: to maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
+In general, the caller may not _immediately_ `await` each call. But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: to maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
 
 *Technical aside.* In reality, the underlying message-passing of the system forces the program's logic into another form.
 Specifically, control flow around each actor method call involves the program loosing control to a system-level message-processing loop, which forces the program's logic into a so-called
@@ -91,12 +91,12 @@ actor Counter {
 The `Counter` actor declares one field and three public, _shared_ functions:
 
 * the field `count` is mutable, initialized to zero and implicitly `private`.
-* function `inc()` asynchronous increments the counter and returns a promise of type `async ()` for synchronization.
+* function `inc()` asynchronously increments the counter and returns a promise of type `async ()` for synchronization.
 * function `read()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
 * function `bump()` asynchronously increments and reads the counter.
 
-Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references and shared function references, but excludes functions,
-values containing functions and mutable data. Because all interaction with actors is asynchronous,
+Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references, and shared function references, but excludes functions,
+values containing functions, and mutable data. Because all interaction with actors is asynchronous,
 an actor's functions must either return a promise type `async T`, for some type `T`, or nothing at all `()`.
 
 The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
@@ -219,7 +219,7 @@ By design, the explicit ``await``s make the potential points of interference cle
 In {IC} terminology, all three `Counter` functions are _update_ messages
 than can alter the state of the canister when called. Effecting a state change requires
 agreement amongst the distributed replicas before the {IC} can
-commit the change and return a result.  Reaching consensus is an
+commit the change and return a result. Reaching consensus is an
 expensive process with relatively high latency.
 
 For applications that don't
@@ -232,7 +232,7 @@ cannot permanently alter the state or send further {IC} messages.
 modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster,
 {IC} query semantics.
 
-For example, we can extend the `Counter` actor with fast-and-loose variant of the trustworthy `read` function, called `peek`:
+For example, we can extend the `Counter` actor with a fast-and-loose variant of the trustworthy `read` function, called `peek`:
 
 [source,motoko]
 ----
@@ -270,7 +270,7 @@ In {proglang}, an expression occurs in an _asynchronous context_ if
 it appears in the body of an `async` expression, the body of a shared, non-`query`, function returning an `async`  type, or the body of local function with `async` return type
 and (explicit or implicit) `async` body.
 
-In {proglang} calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from actor class constructor is also an error.
+In {proglang} calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from an actor class constructor is also an error.
 
 The `await` construct is only allowed in an asynchronous context.
 
@@ -327,4 +327,3 @@ NOTE: For now, the {proglang} compiler gives an error when compiling
 programs that do not consist of a single actor or actor class.
 Compiled programs may still, however, reference imported actor classes.
 For more information, see link:modules-and-imports{outfilesuffix}#importing_actor_classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor_classes[Actor classes].
-
