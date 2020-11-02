@@ -5,11 +5,11 @@
 
 {proglang}'s shared functions support a simple form of caller identification.
 This allow you to inspect the {IC} _principal_ (or identity) of the caller of a function.
-The principal of a call corresponds either a user or a canister.
+The principal of a call corresponds to either a user or a canister.
 
 You can use this feature to implement basic _access-control_.
 
-In {proglang}, the `shared` keyword, used to declare a shared function, can take an optional parameter of type `{caller : Principal}`.
+In {proglang}, the `shared` keyword, used to declare a shared function, can declare an optional parameter of type `{caller : Principal}`.
 
 To access the caller of a shared function like `inc()` you write:
 
