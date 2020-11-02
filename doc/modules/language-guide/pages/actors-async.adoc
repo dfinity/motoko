@@ -189,8 +189,7 @@ agreement amongst the distributed replicas before the {IC} can
 commit the change and return a result. Reaching consensus is an
 expensive process with relatively high latency.
 
-For applications that don't
-require the guarantees of consensus, the {IC} supports more efficient
+For the parts of applications that don't require the guarantees of consensus, the {IC} supports more efficient
 _query_ operations. These are able to read the state of a canister from a single replica,
 modify a snapshot during their execution and return a result, but
 cannot permanently alter the state or send further {IC} messages.
