@@ -120,9 +120,10 @@ and allow you to migrate arbitrary state to stable variables.
 
 {proglang} provides many other developer productivity features, including subtyping, arbitrary precision arithmetic and garbage collection.
 
-{proglang} is not, and is not intented to be, the only language for implementing canisters.
+{proglang} is not, and is not intended to be, the only language for implementing canisters.
 If it doesn't suit your needs, we are also working on adding Rust support to the SDK.
 Our goal is to enable any language (with a compiler that targets WebAssembly) to be able to produce canisters that run on the {IC} and interoperate
 with other, perhaps foreign, canisters through language neutral Candid interfaces.
 
 Its tailored design means {proglang} should be the easiest and safest language for coding on the {IC}, at least for the forseeable future.
+
