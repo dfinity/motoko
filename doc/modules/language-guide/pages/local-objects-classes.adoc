@@ -86,7 +86,7 @@ By not exposing this implementation detail, the object has a _more general_ type
 To illustrate the point just above, consider this variation of the `counter` declaration above, of `byte_counter`:
 
 ....
-object byte_counter {
+object byteCounter {
   var count : Nat8 = 0;
   public func inc() { count += 1 };
   public func read() : Nat { nat8ToNat(count) };
@@ -120,7 +120,7 @@ In general, the implementation choices would each be more complex, and more inte
 To illustrate the role and use of object subtyping in {proglang}, consider implementing a simpler counter with a more general type (fewer public operations):
 
 ....
-object bump_counter {
+object bumpCounter {
   var c = 0; public func bump() : Nat { c += 1; c };
 };
 ....

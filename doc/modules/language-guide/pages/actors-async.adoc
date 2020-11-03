@@ -22,7 +22,7 @@ Once the caller has processed the request, the promise is fulfilled and its resu
 available to the callee.
 If the callee is waiting on the promise, its execution can resume with the result, otherwise the result is simply stored in the promise for future examination.
 
-In {proglang}, actors have dedicated syntax and actor types; messaging is handled by so called _shared_ functions returning promises (shared because they are available to remote actors);
+In {proglang}, actors have dedicated syntax and types; messaging is handled by so called _shared_ functions returning promises (shared because they are available to remote actors);
 a promise, `p`, is a value of the special type `async T` for some type `T`; waiting
 on `p` to be fulfilled is expressed using `await p` to obtain a value of type `T`.
 To avoid introducing shared state through messaging, e.g. by sending an object or mutable array,
@@ -62,16 +62,16 @@ The `Counter` actor declares one field and three public, _shared_ functions:
 * function `read()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
 * function `bump()` asynchronously increments and reads the counter.
 
-Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references, and shared function references, but excludes functions,
-values containing functions, and mutable data. Because all interaction with actors is asynchronous,
-an actor's functions must either return a promise type `async T`, for some type `T`, or nothing at all `()`.
+Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references, and shared function references, but excludes
+references to local functions and mutable data. Because all interaction with actors is asynchronous,
+an actor's functions must  return a promise type `async T`, for some type `T`.
 
 The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
 
-A value of type `async T` is a _promise_. The producer of the promise
+A value of type `async T` is a promise. The producer of the promise
 fulfills the promise when it returns a result, either a value or error.
 
-Unlike objects and modules, actors can only expose shared functions. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
+Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
 [source,motoko]
 ----
@@ -100,7 +100,7 @@ actor {
 }
 ....
 
-Again, because the `shared` modifier is required on an actor's function members,
+Again, because the `shared` modifier is required on every member of an actor,
 {proglang} both elides them on display, and allows you to omit them
 when authoring an actor type.
 
@@ -233,8 +233,8 @@ These restrictions are surfaced in {proglang} as restrictions on the context in 
 expressions can be used.
 
 In {proglang}, an expression occurs in an _asynchronous context_ if
-it appears in the body of an `async` expression, the body of a shared, non-`query`, function returning an `async`  type, or the body of local function with `async` return type
-and (explicit or implicit) `async` body.
+it appears in the body of an `async` expression, which may be the body of a (shared or local) function or a stand-alone expression.
+The only exception are `query` functions, whose body is not considered to open an asynchronous context.
 
 In {proglang} calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from an actor class constructor is also an error.
 
@@ -259,7 +259,7 @@ TODO: scoped awaits (if at all)
 An actor _class_ generalizes a single actor declaration to the declaration of family of actors satisfying the same interface.
 An actor class declares a type, naming the interface of its actors, and a function that
 constructs a fresh actor of that type each time it is supplied with an argument.
-An actor class thus serves as a template for manufacturing actors.
+An actor class thus serves as a factory for manufacturing actors.
 Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
 
 For example, we can generalize `Counter` given above to `Counter(init)`
@@ -271,7 +271,7 @@ below, by introducing a constructor parameter, variable `init` of type `Nat`:
 include::../examples/Counters.mo[]
 ----
 
-If this is class is stored in file `+Counters.mo+`, then
+If this class is stored in file `+Counters.mo+`, then
 we can import the file as a module and use it to
 create several actors with different initial values:
 
