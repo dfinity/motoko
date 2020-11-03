@@ -15,20 +15,20 @@ its interactions with the world are entirely through asynchronous messaging, and
 
 In {proglang}, sending a message to an actor is a function call, but instead of
 blocking the caller until the call has returned, the message is enqueued
-on the callee, and a promise representing that unfulfilled request
-immediately returned to the caller.  The promise is a placeholder for the eventual result
+on the callee, and a _future_ representing that pending request
+immediately returned to the caller.  The future is a placeholder for the eventual result
 of the request, that the caller can later query. Between issuing the
 request, and deciding to wait for the result, the caller is free to do
 other work, including issuing more requests to the same or other
 actors.
-Once the caller has processed the request, the promise is fulfilled and its result made
+Once the caller has processed the request, the future is completed and its result made
 available to the callee.
-If the callee is waiting on the promise, its execution can resume with the result, otherwise the result is simply stored in the promise for future examination.
+If the callee is waiting on the future, its execution can resume with the result, otherwise the result is simply stored in the future for later use.
 
-In {proglang}, actors have dedicated syntax and types; messaging is handled by so called _shared_ functions returning promises (shared because they are available to remote actors);
-a promise, `p`, is a value of the special type `async T` for some type `T`; waiting
-on `p` to be fulfilled is expressed using `await p` to obtain a value of type `T`.
-To avoid introducing shared state through messaging, e.g. by sending an object or mutable array,
+In {proglang}, actors have dedicated syntax and types; messaging is handled by so called _shared_ functions returning futures (shared because they are available to remote actors);
+a future, `f`, is a value of the special type `async T` for some type `T`; waiting
+on `f` to be completed is expressed using `await f` to obtain a value of type `T`.
+To avoid introducing shared state through messaging, for example, by sending an object or mutable array,
 the data that can be transmitted through shared functions is restricted to immutable, _shared_ types.
 
 To start, we consider the simplest stateful service: a `Counter` actor, the distributed version of our previous, local `counter` object.
@@ -61,18 +61,18 @@ actor Counter {
 The `Counter` actor declares one field and three public, _shared_ functions:
 
 * the field `count` is mutable, initialized to zero and implicitly `private`.
-* function `inc()` asynchronously increments the counter and returns a promise of type `async ()` for synchronization.
-* function `read()` asynchronously reads the counter value and returns a promise of type `async Nat` containing its value.
+* function `inc()` asynchronously increments the counter and returns a future of type `async ()` for synchronization.
+* function `read()` asynchronously reads the counter value and returns a future of type `async Nat` containing its value.
 * function `bump()` asynchronously increments and reads the counter.
 
 Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references, and shared function references, but excludes
 references to local functions and mutable data. Because all interaction with actors is asynchronous,
-an actor's functions must  return a promise type `async T`, for some type `T`.
+an actor's functions must return futures, that is, types of the form `async T`, for some type `T`.
 
 The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
 
-A value of type `async T` is a promise. The producer of the promise
-fulfills the promise when it returns a result, either a value or error.
+A value of type `async T` is a future. The producer of the future
+completes the future when it returns a result, either a value or error.
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
@@ -119,18 +119,18 @@ actor {
 
 Like object types, actor types support subtyping: an actor type is a subtype of a more general one that offers fewer functions with more general types.
 
-== Using `await` to consume async promises
+== Using `await` to consume async futures
 
-The caller of a shared function typically receives a promise, a value of type `async T` for some T.
+The caller of a shared function typically receives a future, a value of type `async T` for some T.
 
-The only thing the caller, a consumer, can do with this promise is
-wait for it to be fulfilled by the producer, throw it away, or store
+The only thing the caller, a consumer, can do with this future is
+wait for it to be completed by the producer, throw it away, or store
 it for later use.
 
-To access the result of an `async` value, the receiver of the promise use an  `*await*` expression.
+To access the result of an `async` value, the receiver of the future use an  `*await*` expression.
 
 For example, to use the result of `Counter.read()` above, we can first bind the
-promise to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
+future to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
 
 [source, motoko]
 ----
@@ -138,10 +138,10 @@ let a : async Nat = Counter.read();
 let n : Nat = await a;
 ----
 
-The first line immediately receives _a promise of the current value_, but does not wait for it, and thus cannot (yet) use it as a natural number.
+The first line immediately receives _a future of the counter value_, but does not wait for it, and thus cannot (yet) use it as a natural number.
 
-The second line ``await``s this promise and extracts the result, a natural number.
-This line may suspend execution until the promise has been fulfilled.
+The second line ``await``s this future and extracts the result, a natural number.
+This line may suspend execution until the future has been completed.
 
 Typically, one rolls the two steps into one and one just awaits an asynchronous call directly:
 
@@ -151,14 +151,14 @@ let n : Nat = await Counter.read();
 ----
 
 Unlike a local function call, which blocks the caller until the callee has returned a result,
-a shared function call immediately returns a promise, `p`, without blocking.
-Instead of blocking, a later call to `await p` can suspend the current computation until or unless `p` is fulfilled.
-Once the promise if fulfilled (by the producer), execution of `await p` resumes with its result.
-If the result is a value, `await p` returns that value.
-Otherwise the result is some error, and `await p` propagates the error to the
-consumer of `await p`.
+a shared function call immediately returns a future, `f`, without blocking.
+Instead of blocking, a later call to `await f` can suspend the current computation until or unless `f` is complete.
+Once the future is completed (by the producer), execution of `await p` resumes with its result.
+If the result is a value, `await f` returns that value.
+Otherwise the result is some error, and `await f` propagates the error to the
+consumer of `await f`.
 
-Awaiting a promise a second time will just produce the same result.
+Awaiting a future a second time will just produce the same result.
 
 WARNING: A function that does not `await` in its body is guaranteed to
 execute atomically - in particular, the environment cannot change the
@@ -249,7 +249,7 @@ It is only possible to `throw` or `try/catch` errors in an asynchronous context.
 This is because structured error handling is supported for messaging errors only and,
 like messaging itself, confined to asynchronous contexts.
 
-These rules also mean that local functions cannot, in general, directly call shared functions or `await` promises. This limitation can sometimes be awkward:  we hope to extend the type system to be more permissive in future.
+These rules also mean that local functions cannot, in general, directly call shared functions or `await` futures. This limitation can sometimes be awkward:  we hope to extend the type system to be more permissive in future.
 
 ////
 TODO: scoped awaits (if at all)
@@ -263,7 +263,7 @@ An actor _class_ generalizes a single actor declaration to the declaration of fa
 An actor class declares a type, naming the interface of its actors, and a function that
 constructs a fresh actor of that type each time it is supplied with an argument.
 An actor class thus serves as a factory for manufacturing actors.
-Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a promise.
+Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a future.
 
 For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
@@ -288,7 +288,7 @@ let C2 = await Counters.Counter(2);
 
 The last two lines above _instantiate_ the actor class twice.
 The first invocation uses the initial value `1`, where the second uses initial value `2`.
-Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a promise that can be ``await``ed for the resulting actor value.
+Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a future that can be ``await``ed for the resulting actor value.
 Both `C1` and `C2` have the same type, `Counters.Counter` and can be used interchangeably.
 
 

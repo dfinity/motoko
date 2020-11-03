@@ -831,9 +831,9 @@ The optional `<shared>` qualifier specifies whether the function value is shared
 [[async-types]]
 === Async types
 
-`async <typ>` specifies a promise producing a value of a type `<typ>`.
+`async <typ>` specifies a future producing a value of a type `<typ>`.
 
-Promise types typically appear as the result type of a `shared` function that produces an `await`-able value.
+Future types typically appear as the result type of a `shared` function that produces an `await`-able value.
 
 [[tuple-types]]
 === Tuple types
@@ -988,7 +988,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * `T` is `? V`, `U` is `? W` and `V <: W`.
 
-* `T` is a promise `async V`, `U` is a promise `async W`,
+* `T` is a future `async V`, `U` is a future `async W`,
     and `V <: W`.
 
 * `T` is an object type `sort0 { fts0 }`,
@@ -2020,7 +2020,7 @@ Any control-flow label in scope for `async <exp>` is not in scope for `<exp>`. H
 
 The implicit return type in `<exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
-Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
+Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
 [[exp-await]]
 === Await
@@ -2031,9 +2031,9 @@ The `await` expression `await <exp>` has type `T` provided:
 * `T` is shared,
 * the `await` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`.
-If the promise is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
-If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
+Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a future. If the future is complete with value `v`, then `await <exp>` evaluates to value `v`.
+If the future is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
+If the `future` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed (if ever).
 
 _WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 

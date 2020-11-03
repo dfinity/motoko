@@ -100,7 +100,7 @@ Like other actors, it relies on _orthogonal persistence_ to maintain the state o
 
 We'd like to make the `Register` upgradable, without the upgrade losing any existing registrations.
 
-Unfortunately, its state, `map`, has a proper object type, that contains member functions (e.g. `map.get`), so the `map` variable cannot, itself, be declared `stable`.
+Unfortunately, its state, `map`, has a proper object type, that contains member functions (for example, `map.get`), so the `map` variable cannot, itself, be declared `stable`.
 
 For scenarios like this, that can't be solved using stable variables alone, {proglang} supports user-defined upgrade hooks that, when provided, run immediately before and after upgrade.
 These allow you to migrate state between unrestricted flexible to more restricted stable variables.
