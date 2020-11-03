@@ -99,7 +99,7 @@ Just as objects have object types, actors have _actor types_. The
 actor {
   inc  : shared () -> async ();
   read : shared () -> async Nat;
-  bump : shared () -> Nat;
+  bump : shared () -> async Nat;
 }
 ....
 
@@ -113,7 +113,7 @@ Thus the previous type can be expressed more succinctly as:
 actor {
   inc  : () -> async ();
   read : () -> async Nat;
-  bump : () -> Nat;
+  bump : () -> async Nat;
 }
 ....
 
