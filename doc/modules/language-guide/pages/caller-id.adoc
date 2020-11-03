@@ -1,0 +1,60 @@
+= Principals and caller identification
+:proglang: Motoko
+:IC: Internet Computer
+
+
+{proglang}'s shared functions support a simple form of caller identification.
+This allow you to inspect the {IC} _principal_ (or identity) of the caller of a function.
+The principal of a call corresponds to either a user or a canister.
+
+You can use this feature to implement basic _access-control_.
+
+In {proglang}, the `shared` keyword, used to declare a shared function, can declare an optional parameter of type `{caller : Principal}`. (The type is a record to accommodate future extension.)
+
+To access the caller of a shared function like `inc()` you write:
+
+....
+shared(msg) func inc() : async () {
+  ... msg.caller ...
+}
+....
+
+Here, `msg` names the parameter, a record, and `msg.caller` accesses the principal field of `msg`.
+
+The call sites of `inc()` do not change - the caller's principal is provided the system, not the user, so it cannot be forged or spoofed by a malicious user.
+
+To access the caller of an actor class constructor, you use the same (optional) syntax on the actor class declaration:
+
+....
+shared(msg) actor class Counter(init : Nat) {
+  ... msg.caller ...
+}
+....
+
+For example, suppose we want to restrict our `Counter` actor so it can only be modified by the installer of the `Counter`.
+
+To do so, you can record the principal that installed the actor, call it  `owner`,
+and check that the caller of each method is equal to `owner`:
+
+
+[source,motoko]
+----
+include::../examples/Counters-caller.mo[]
+----
+
+
+The `assert (owner == msg.caller)` causes functions `inc()` and `bump()` to trap if the call is unauthorized, preventing any modification of `count`; `read()` permits any caller.
+
+Principals support equality, ordering and hashing, so you can efficiently store principals in containers to, for example, maintain an allow or deny list.
+More operations on principals are available in base library link:../base-libraries/result{outfilesuffix}[Principal].
+
+The argument to `shared` is just a pattern, so, if you prefer, you can also rewrite the above to use pattern matching:
+
+[source,motoko]
+----
+include::../examples/Counters-caller-pat.mo[]
+----
+
+NOTE: Simple actor declarations do not let you access their installer.
+If you do need access to the installer of an actor,
+just rewrite the actor declaration as a zero-argument actor class instead.
