@@ -31,7 +31,7 @@ type lit =
 
 type 'a phrase = ('a, Note.t) Source.annotated_phrase
 
-type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
+type typ_bind' = {con : Type.con; sort : Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
 type unop = Operator.unop
@@ -129,6 +129,13 @@ and prim =
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
+  (* Funds *)
+  | SystemFundsAddPrim
+  | SystemFundsAcceptPrim
+  | SystemFundsAvailablePrim
+  | SystemFundsBalancePrim
+  | SystemFundsRefundedPrim
+
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
   | CPSAwait
@@ -188,6 +195,7 @@ type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
+  has_poly_eq : bool; (* Polymorphic equality *)
   serialized : bool; (* Shared function arguments are serialized *)
 }
 
@@ -195,6 +203,7 @@ let full_flavor : flavor = {
   has_await = true;
   has_async_typ = true;
   has_show = true;
+  has_poly_eq = true;
   serialized = false;
 }
 
@@ -203,6 +212,7 @@ let full_flavor : flavor = {
 (* Program *)
 
 type comp_unit =
+  | LibU of dec list * exp
   | ProgU of dec list
   | ActorU of arg list option * dec list * field list * upgrade * Type.typ (* actor (class) *)
 

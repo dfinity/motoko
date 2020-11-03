@@ -32,8 +32,10 @@ ignore testDec();
 
 // Issue ten `dec` & `read` messages.
 func testRead() : async () {
+
   // Dummy function to show intermediate value in trace.
   func showAsync(note : Text, a : async Int) {};
+
   var i : Int = 10;
   while (i > 0) {
     c.dec();

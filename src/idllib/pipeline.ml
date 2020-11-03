@@ -17,7 +17,6 @@ let print_stat_te =
 let dump_prog flag prog =
     if flag then
       Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
-    else ()
 
 (* Parsing *)
 
@@ -31,10 +30,9 @@ let parse_with lexer parser name =
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
     let prog = parser Lexer.token lexer name in
-    dump_prog !Flags.dump_parse prog;
     Ok prog
   with
-    | Lexer.Error (at, msg) ->
+    | Source.ParseError (at, msg) ->
       error at "syntax" msg
     | Parser.Error ->
       error (Lexer.region lexer) "syntax" "unexpected token"
@@ -47,7 +45,9 @@ let parse_file filename : parse_result =
   let result = parse_with lexer parser name in
   close_in ic;
   match result with
-  | Ok prog -> Diag.return (prog, filename)
+  | Ok prog ->
+     dump_prog !Flags.dump_parse prog;
+     Diag.return (prog, filename)
   | Error e -> Error e
 
 let parse_string s : parse_result =
@@ -151,3 +151,19 @@ let compile_js_string source : compile_result =
   let* prog, senv, _ = check_string source in
   phase "JS Compiling" "source3";
   Diag.return (Compile_js.compile senv prog)
+
+(* Test file *)
+
+type parse_test_file_result = Syntax.tests Diag.result
+
+let parse_test_file filename : parse_test_file_result =
+  let ic = open_in filename in
+  let lexer = Lexing.from_channel ic in
+  let parser = Parser.parse_tests in
+  let name = Filename.basename filename in
+  let result = parse_with lexer parser name in
+  close_in ic;
+  match result with
+  | Ok prog -> Diag.return prog
+  | Error e -> Error e
+

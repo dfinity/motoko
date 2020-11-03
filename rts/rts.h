@@ -36,7 +36,7 @@ typedef as_ptr blob_t;
 
 #define TUPLE_HEADER_SIZE 2
 #define TUPLE_LEN(p) (FIELD(p,1))
-#define TUPLE_FIELD(p,n,t) (*(t *)(&(FIELD(p,TUPLE_HEADER_SIZE+n))))
+#define TUPLE_FIELD(p,n,t) (*(t *)(&FIELD(p,TUPLE_HEADER_SIZE+n)))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
 enum as_heap_tag {
@@ -83,14 +83,10 @@ from_rts as_ptr alloc_words(size_t n);
 from_rts __attribute__ ((noreturn)) void rts_trap(const char* str, size_t n);
 from_rts __attribute__ ((noreturn)) void bigint_trap();
 
-/** Functions used in multiple modules of the RTS */
-export void as_memcpy(char *str1, const char *str2, size_t n);
-export int as_memcmp(const char *str1, const char *str2, size_t n);
-export size_t as_strlen(const char *str1);
-
 typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
+as_ptr alloc_array(uint32_t n_elems);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
 as_ptr text_of_cstr(const char *buf);
 int text_compare(as_ptr s1, as_ptr s2);
@@ -107,5 +103,6 @@ export int blob_compare(blob_t s1, blob_t s2);
 export blob_t blob_of_principal(text_t);
 export blob_t base32_to_principal(blob_t);
 
+export void utf8_validate(const char *src, size_t len);
 
 #endif /* RTS_H */

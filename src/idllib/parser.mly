@@ -30,9 +30,6 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
                  "null", Null; "reserved", Reserved; "empty", Empty]
 let is_prim_typs t = List.assoc_opt t prim_typs
 
-let func_modes = ["oneway", Oneway; "query", Query]
-let get_func_mode m = List.assoc_opt m func_modes               
-
 let hash = IdlHash.idl_hash
 let record_fields fs =
   let open Uint32 in
@@ -56,16 +53,22 @@ let record_fields fs =
 %token ARROW
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
 %token SEMICOLON COMMA COLON EQ
-%token OPT VEC RECORD VARIANT BLOB
+%token NOTCOLON EQQ NOTEQ
+%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
 
 %start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.tests> parse_tests
 
 %%
 
 (* Helpers *)
+
+endlist(X, SEP) :
+  | (* empty *) { [] }
+  | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 seplist(X, SEP) :
   | (* empty *) { [] }
@@ -74,12 +77,18 @@ seplist(X, SEP) :
 
 (* Basics *)
 
+%inline text :
+ | s=TEXT
+   { try ignore (Wasm.Utf8.decode s); s
+     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
+   }
+
 %inline id :
   | id=ID { id @@ at $sloc }
 
 %inline name :
   | id=ID { id @@ at $sloc }
-  | text=TEXT { text @@ at $sloc }
+  | text=text { text @@ at $sloc }
 
 (* Types *)
 
@@ -140,11 +149,8 @@ param_typ :
   | name COLON t=data_typ { t }
 
 func_mode :
-  | m=id
-    { match get_func_mode m.it with
-        Some m -> m @@ at $sloc
-      | None -> $syntaxerror
-    }
+  | ONEWAY { Oneway @@ at $sloc }
+  | QUERY { Query @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -170,12 +176,18 @@ def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
   (* TODO enforce all imports to go first in the type definitions  *)
-  | IMPORT file=TEXT
+  | IMPORT file=text
     { ImportD (file, ref "") @@ at $sloc }
 
 id_opt :
   | (* empty *) { }
   | id { }
+
+actor_class_typ :
+  | args=param_typs ARROW tys=actor_typ
+    { ClassT (args, ServT tys @@ at $loc(tys)) @@ at $sloc }
+  | args=param_typs ARROW x=id
+    { ClassT (args, VarT x @@ x.at) @@ at $sloc }
 
 actor :
   | (* empty *) { None }
@@ -183,11 +195,33 @@ actor :
     { Some (ServT tys @@ at $loc(tys)) }
   | SERVICE id_opt COLON x=id
     { Some (VarT x @@ x.at) }
+  | SERVICE id_opt COLON t=actor_class_typ { Some t }
 
 (* Programs *)
 
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
     { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+
+(* Test suite *)
+
+input :
+  | text=text { TextualInput text }
+  | BLOB text=TEXT { BinaryInput text }
+
+assertion :
+  | input=input COLON    { ParsesAs (true,  input) }
+  | input=input NOTCOLON { ParsesAs (false, input) }
+  | i1=input EQQ   i2=input COLON { ParsesEqual (true,  i1, i2) }
+  | i1=input NOTEQ i2=input COLON { ParsesEqual (false, i1, i2) }
+
+test :
+  | id=id assertion=assertion tys=param_typs desc=text?
+    { if id.it <> "assert" then raise (ParseError (at $loc(id), id.it))
+      else { ttyp=tys; assertion; desc } @@ at $sloc }
+
+parse_tests :
+  | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
+    { fun filename -> { it = {tdecs; tests}; at = at $sloc; note = filename} }
 
 %%

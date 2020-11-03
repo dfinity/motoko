@@ -159,11 +159,86 @@ let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fblob fnull fbool =
   | T.Bool -> fun v1 v2 -> Bool (fbool (as_bool v1) (as_bool v2))
   | t -> ord_relop fnat fnats fint fints fwords ffloat fchar ftext fblob t
 
+let eq_prim =
+  eq_relop Nat.eq (Nat8.eq, Nat16.eq, Nat32.eq, Nat64.eq) Int.eq (Int_8.eq, Int_16.eq, Int_32.eq, Int_64.eq) (Word8.eq, Word16.eq, Word32.eq, Word64.eq) Float.eq (=) (=) (=) (=) (=)
+
+(* Follows the structure of `shared` in mo_type/type.ml *)
+let structural_equality t =
+  let rec go t =
+    match t with
+    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
+    | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
+    | T.Prim p -> eq_prim p
+    | T.Con (c, ts) -> (
+        match Mo_types.Con.kind c with
+        | T.Abs _ -> assert false
+        | T.Def (_, t) -> go (T.open_ ts t) (* TBR this may fail to terminate *)
+        )
+    | T.Array t ->
+        fun v1 v2 ->
+          let eq_elem = go t in
+          let v1 = as_array v1 in
+          let v2 = as_array v2 in
+          Bool (
+            Array.length v1 == Array.length v2 &&
+            Lib.Array.for_all2 (fun x y -> as_bool (eq_elem x y)) v1 v2
+          )
+    | T.Opt t -> (
+        fun v1 v2 ->
+          match (v1, v2) with
+          | Null, Null -> Bool true
+          | Null, Opt _ 
+          | Opt _, Null -> Bool false
+          | Opt v1, Opt v2 -> go t v1 v2
+          | _, _ -> assert false )
+    | T.Tup ts ->
+        fun v1 v2 ->
+          let v1 = as_tup v1 in
+          let v2 = as_tup v2 in
+          let rec go_inner ts v1 v2 =
+            match (ts, v1, v2) with
+            | [], [], [] -> true
+            | t :: ts, v1 :: v1s, v2 :: v2s ->
+                as_bool (go t v1 v2) && go_inner ts v1s v2s
+            | _ -> assert false
+          in
+          Bool (go_inner ts v1 v2)
+    | T.Obj (s, fs) -> (
+        match s with
+        | T.Actor ->
+            fun v1 v2 ->
+              (match (v1, v2) with
+               | Blob s1, Blob s2 -> Bool (s1 = s2)
+               | _, _ -> Bool (v1 == v2) (* HACK *))
+        | T.Module | T.Memory -> assert false
+        | T.Object ->
+            fun v1 v2 ->
+              let v1 = as_obj v1 in
+              let v2 = as_obj v2 in
+              Bool
+                (List.for_all
+                   (fun f ->
+                     as_bool
+                       (go f.T.typ (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
+                   fs) )
+    | T.Variant fs ->
+        fun v1 v2 ->
+          let l1, v1 = as_variant v1 in
+          let l2, v2 = as_variant v2 in
+          if l1 <> l2 then Bool false
+          else
+            go (List.find (fun f -> f.T.lab = l1) fs).T.typ v1 v2
+    | T.Func (s, c, tbs, ts1, ts2) ->
+        assert (T.is_shared_sort s);
+        fun v1 v2 -> Bool (v1 == v2)  (* HACK *)
+  in
+  go t
+
 let relop op t =
   match t with
   | T.Prim p ->
     (match op with
-    | EqOp -> eq_relop Nat.eq (Nat8.eq, Nat16.eq, Nat32.eq, Nat64.eq) Int.eq (Int_8.eq, Int_16.eq, Int_32.eq, Int_64.eq) (Word8.eq, Word16.eq, Word32.eq, Word64.eq) Float.eq (=) (=) (=) (=) (=) p
+    | EqOp -> eq_prim p
     | NeqOp -> eq_relop Nat.ne (Nat8.ne, Nat16.ne, Nat32.ne, Nat64.ne) Int.ne (Int_8.ne, Int_16.ne, Int_32.ne, Int_64.ne) (Word8.ne, Word16.ne, Word32.ne, Word64.ne) Float.ne (<>) (<>) (<>) (<>) (<>) p
     | LtOp -> ord_relop Nat.lt (Nat8.lt, Nat16.lt, Nat32.lt, Nat64.lt) Int.lt (Int_8.lt, Int_16.lt, Int_32.lt, Int_64.lt) (Word8.lt_u, Word16.lt_u, Word32.lt_u, Word64.lt_u) Float.lt (<) (<) (<) p
     | GtOp -> ord_relop Nat.gt (Nat8.gt, Nat16.gt, Nat32.gt, Nat64.gt) Int.gt (Int_8.gt, Int_16.gt, Int_32.gt, Int_64.gt) (Word8.gt_u, Word16.gt_u, Word32.gt_u, Word64.gt_u) Float.gt (>) (>) (>) p
@@ -171,6 +246,10 @@ let relop op t =
     | GeOp -> ord_relop Nat.ge (Nat8.ge, Nat16.ge, Nat32.ge, Nat64.ge) Int.ge (Int_8.ge, Int_16.ge, Int_32.ge, Int_64.ge) (Word8.ge_u, Word16.ge_u, Word32.ge_u, Word64.ge_u) Float.ge (>=) (>=) (>=) p
     )
   | T.Non -> impossible
+  | t when op = EqOp && T.shared t ->
+    structural_equality t
+  | t when op = NeqOp && T.shared t ->
+    fun v1 v2 -> Bool (not (as_bool (structural_equality t v1 v2)))
   | _ -> raise (Invalid_argument "relop")
 
 

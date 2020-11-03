@@ -35,26 +35,26 @@ $ nix-build --no-out-link
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.42) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.4.2) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        == 0.42 (2020-04-01)
+        == 0.4.2 (2020-04-01)
 
    with today’s date.
 
- * Look at `git log 0.41..HEAD` and check that everything relevant is mentioned
+ * Look at `git log 0.4.1..HEAD` and check that everything relevant is mentioned
    in the changelog section, and possibly clean it up.
 
- * `git commit -a -m "Releasing 0.42"`
+ * `git commit -a -m "Releasing 0.4.2"`
  * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
  * Switch to master. The release commit should be your `HEAD`
- * `git tag 0.42 -m "Motoko 0.42"`
- * `git branch -f release 0.42`
- * `git push origin release 0.42`
+ * `git tag 0.4.2 -m "Motoko 0.4.2"`
+ * `git branch -f release 0.4.2`
+ * `git push origin release 0.4.2`
 
-The `release` branch should thus always reference the lateste release commit.
+The `release` branch should thus always reference the latest release commit.
 
 ## Development without nix-shell
 
@@ -107,11 +107,11 @@ You can get a development environment without having to use `nix-shell`
 ## Updating Haskell Packages
 
 When the `.cabal` file of a Haskell package is changed you need to make sure the
-corresponding `default.nix` file (stored in `nix/generated/`) is kept in sync
-with it.
-
-As mentioned in the `nix/generate.nix` files, these files are automatically
-generated. See `nix/generate.nix` for the command to update them.
+corresponding `.nix` file (stored in `nix/generated/`) is kept in sync with it. These files are automatically generated; run
+```
+nix-shell nix/generate.nix
+```
+to update.
 
 Don't worry if you forget to update the `default.nix` file, the CI job
 `check-generated` checks if these files are in sync and fail with a diff if

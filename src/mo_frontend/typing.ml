@@ -770,9 +770,9 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = Operator.type_relop op (T.lub t1 t2) in
+    let t1 = T.normalize (infer_exp env exp1) in
+    let t2 = T.normalize (infer_exp env exp2) in
+    let t = Operator.type_relop op (T.lub (T.promote t1) (T.promote t2)) in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_relop op t) then
@@ -780,6 +780,18 @@ and infer_exp'' env exp : T.typ =
           "operator not defined for operand types\n  %s\nand\n  %s"
           (T.string_of_typ_expand t1)
           (T.string_of_typ_expand t2);
+      if not (T.eq t t1 || T.eq t t2) then
+        if T.eq t1 t2 then
+          warn env exp.at
+            "comparing abstract type\n  %s\nto itself at supertype\n  %s"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t)
+        else
+          warn env exp.at
+            "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
+            (T.string_of_typ_expand t1)
+            (T.string_of_typ_expand t2)
+            (T.string_of_typ_expand t);
       ot := t;
     end;
     T.bool
@@ -815,8 +827,11 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | ObjE (obj_sort, fields) ->
-    if not in_prog && obj_sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+    if obj_sort.it = T.Actor then begin
+      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
+      if not in_prog then
+        error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
+    end;
     let env' =
       if obj_sort.it = T.Actor then
         (if not (in_prog (* && env.async = C.NullCap*) ) then
@@ -875,8 +890,11 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
-    if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then
-      error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+    if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
+      error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "shared functions are not supported";
+      if not in_actor then
+        error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+    end;
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -1060,6 +1078,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | AsyncE (typ_bind, exp1) ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1150,6 +1169,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then begin
       local_error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
@@ -2205,12 +2225,16 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
+      error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "actor classes are not supported";
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (is_anonymous id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "actor classes should be anonymous: the constructor of this class will not be available to compiled code";
+          "the constructor function of this actor class is not available for recursive calls, but is available when imported";
+      if not (List.length typ_binds = 1) then
+        error env dec.at
+          "actor classes with type parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
@@ -2249,17 +2273,6 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
         ) prog
     )
 
-let check_lib scope lib : Scope.t Diag.result =
-  Diag.with_message_store
-    (fun msgs ->
-      recover_opt
-        (fun lib ->
-          let env = env_of_scope msgs scope in
-          let typ = infer_exp env lib.it in
-          Scope.lib lib.note typ
-        ) lib
-    )
-
 let is_actor_dec d =
   match d.it with
   | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
@@ -2267,19 +2280,77 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
+let is_import d =
+  match d.it with
+  | LetD ({it = VarP n; _}, {it = ImportE _; _}) -> true
+  | _ -> false
+
 let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
-        let prog = Lib.List.concat_map (fun prog -> prog.Source.it) progs in
+        let prog = List.concat_map (fun prog -> prog.Source.it) progs in
         let env = env_of_scope msgs scope in
-        let rec go = function
+        let rec go ds = function
           | [] -> ()
-          | [d] -> ()
-          | (d::ds) when is_actor_dec d ->
-            recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
-              "an actor or actor class must be the last declaration in a program"
-          | (d::ds) -> go ds in
-        go prog
+          | (d::ds') when is_actor_dec d ->
+            if ds <> [] || ds' <> []  then
+              recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
+                "an actor or actor class must be the only non-imported declaration in a program"
+          | (d::ds') when is_import d -> go ds ds'
+          | (d::ds') -> go (d::ds) ds'
+        in
+        go [] prog
       ) progs
+    )
+
+let check_lib scope lib : Scope.t Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun lib ->
+          let env = env_of_scope msgs scope in
+          let (imports, cub) = lib.it in
+          let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+          let typ, _ = infer_block env (imp_ds @ ds) lib.at in
+          List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
+          cub.note <- {note_typ = typ; note_eff = T.Triv};
+          let imp_typ = match cub.it with
+            | ModuleU _ ->
+              if cub.at = no_region then begin
+                let r = Source.({
+                  left = { no_pos with file = lib.note };
+                  right = { no_pos with file = lib.note }})
+                in
+                warn env r "deprecated syntax: an imported library should be a module or named actor class"
+              end;
+              typ
+            | ActorClassU  (sp, id, tbs, p, _, self_id, fields) ->
+              if Syntax.is_anonymous id then
+                error env cub.at "bad import: imported actor class cannot be anonymous";
+              let cs = List.map (fun tbs -> T.Con(Option.get tbs.note, [])) tbs in
+              let fun_typ = typ in
+              let class_typ =
+                match T.normalize fun_typ with
+                | T.Func (sort, control, _, ts1, [t2]) -> (* TODO: Revisit *)
+                  let t2 = T.normalize (T.open_ cs t2) in
+                  (match t2 with
+                   | T.Async (_ , class_typ) -> class_typ
+                   | _ -> assert false)
+                | _ ->
+                  assert false
+              in
+              let con = Con.fresh id.it (T.Def([], class_typ)) in
+              T.Obj(T.Module, List.sort T.compare_field [
+                { T.lab = id.it; T.typ = T.Typ con };
+                { T.lab = id.it; T.typ = fun_typ }
+              ])
+            | ActorU _ ->
+              error env cub.at "bad import: expected a module or actor class but found an actor"
+            | ProgU _ ->
+              (* this shouldn't really happen, as an imported program should be rewritten to a module *)
+              error env cub.at "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
+          in
+          Scope.lib lib.note imp_typ
+        ) lib
     )

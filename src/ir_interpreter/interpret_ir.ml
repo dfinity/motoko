@@ -453,6 +453,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Text env.self)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Value.Nat64.of_int 42))
+      | SystemFundsRefundedPrim, [v1] -> (* faking it *)
+        k (V.Nat64 (Value.Nat64.of_int 0))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -851,6 +853,7 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 (* Programs *)
 
 and interpret_comp_unit env cu k = match cu with
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds ->
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in

@@ -53,7 +53,7 @@ let new_asyncT =
   T.Func (
       T.Local,
       T.Returns,
-      [ { var = "T"; sort=T.Scope; bound = T.Any } ],
+      [ { var = "T"; sort = T.Type; bound = T.Any } ],
       [],
       new_async_ret unary (T.Var ("T", 0))
     )
@@ -218,6 +218,8 @@ let transform mode prog =
     | SelfRef t -> SelfRef (t_typ t)
     | ICStableRead t -> ICStableRead (t_typ t)
     | ICStableWrite t -> ICStableWrite (t_typ t)
+    | SerializePrim ts -> SerializePrim (List.map t_typ ts)
+    | DeserializePrim ts ->  DeserializePrim (List.map t_typ ts)
     | p -> p
 
   and t_field {lab; typ} =
@@ -437,6 +439,7 @@ let transform mode prog =
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
   and t_comp_unit = function
+    | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
     | ActorU (args_opt, ds, fs, {pre; post}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ t)
