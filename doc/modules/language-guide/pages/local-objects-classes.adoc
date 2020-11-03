@@ -81,9 +81,9 @@ Consequently, the type for `count` does not appear in the type of the object, _a
 The inaccessibility of this field comes with a powerful benefit:
 By not exposing this implementation detail, the object has a _more general_ type (fewer fields), and as a result, is interchangeable with objects that implement the same counter object type differently, without using such a field.
 
-== Example: The `byte_counter` object
+== Example: The `byteCounter` object
 
-To illustrate the point just above, consider this variation of the `counter` declaration above, of `byte_counter`:
+To illustrate the point just above, consider this variation of the `counter` declaration above, of `byteCounter`:
 
 ....
 object byteCounter {
@@ -125,7 +125,7 @@ object bumpCounter {
 };
 ....
 
-The object `bump_counter` has the following object type, exposing exactly one operation, `bump`:
+The object `bumpCounter` has the following object type, exposing exactly one operation, `bump`:
 
 ....
 { bump : () -> Nat }
@@ -137,7 +137,7 @@ For instance, the counter can only ever increase, and can never decrease or be s
 In other parts of a system, we may in fact implement and use a _less general_ version, with _more_ operations:
 
 ....
-full_counter : {
+fullCounter : {
   inc   : () -> () ;
   read  : () -> Nat ;
   bump  : () -> Nat ;
@@ -145,7 +145,7 @@ full_counter : {
 }
 ....
 
-Here, we consider a counter named `full_counter` with a less general type than any given above.
+Here, we consider a counter named `fullCounter` with a less general type than any given above.
 In addition to `inc`, `read` and `bump`, it additionally includes `write`, which permits the caller to change the current count value to an arbitrary one, such as back to `0`.
 
 **Object subtyping.** In {proglang}, objects have types that may
