@@ -115,6 +115,7 @@ assert(greetResult(#err("404 Not Found")) == "No name: 404 Not Found");
 
 === Higher-Order functions ===
 Pattern matching can become tedious and verbose, especially when dealing with multiple optional values.
+The (link base here) library exposes a collection of higher-order functions from the `Optional` and `Result` modules to improve ergonomics around error handling.
 
 === Converting back and forth between Option/Result ===
 
