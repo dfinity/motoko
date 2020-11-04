@@ -13,5 +13,5 @@ objects-deprecated.mo:13.8-13.29: warning, old object syntax is deprecated, use 
 objects-deprecated.mo:14.8-14.24: warning, old object syntax is deprecated, use .{ } instead
 objects-deprecated.mo:15.8-15.17: warning, old object syntax is deprecated, use .{ } instead
 objects-deprecated.mo:16.8-16.11: warning, old object syntax is deprecated, use .{ } instead
-objects-deprecated.mo:15.3-15.20: warning, this case is never reached
-objects-deprecated.mo:16.3-16.14: warning, this case is never reached
+objects-deprecated.mo:15.8-15.17: warning, this pattern is never matched
+objects-deprecated.mo:16.8-16.11: warning, this pattern is never matched

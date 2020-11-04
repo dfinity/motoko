@@ -1,4 +1,3 @@
-inference.mo:87.20-87.27: warning, this pattern is never matched
 inference.mo:61.14-61.45: type error, expression of type
   None -> Any
 cannot produce expected type
@@ -23,6 +22,7 @@ to produce result of type
   ()
 over-constrained implicit instantiation requires Any <: T <: None, but Any </: None;
 no valid instantiation exists
+inference.mo:87.20-87.27: warning, this pattern is never matched
 inference.mo:94.8-94.20: type error, cannot implicitly instantiate function of type
   <T <: U, U>(T, T) -> (U, U)
 to argument of type

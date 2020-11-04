@@ -1,6 +1,4 @@
-syntax6.mo:1.2-1.4: warning, old object syntax is deprecated, use .{ } instead
-syntax6.mo:1.5-1.6: syntax error, unexpected token '}', 
-expected one of token or <phrase> sequence:
+syntax6.mo:1.5-1.6: syntax error, unexpected token '}', expected one of token or <phrase> sequence:
   <eof>
   .<nat>
   <exp_nullary(ob)>

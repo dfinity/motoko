@@ -14,6 +14,7 @@ type 'a result = ('a * messages, messages) Stdlib.result
 let return x = Ok (x, [])
 
 let warn at cat text = Ok ((), [{ sev = Warning; at; cat; text}])
+let error at cat text = Stdlib.Error [{ sev = Error; at; cat; text}]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs

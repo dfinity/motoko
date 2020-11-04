@@ -1,10 +1,10 @@
-objects1.mo:23.3-23.27: warning, this case is never reached
-objects1.mo:24.3-24.15: warning, this case is never reached
-objects1.mo:33.22-36.2: warning, the cases in this switch over type
+objects1.mo:23.8-23.25: warning, this pattern is never matched
+objects1.mo:24.8-24.12: warning, this pattern is never matched
+objects1.mo:33.22-36.2: warning, this switch of type
   {a : Int; b : Nat}
-do not cover value
+does not cover value
   {a = 0 or 1 or _; b = 0 or 1 or _)
-objects1.mo:44.20-46.2: warning, the cases in this switch over type
+objects1.mo:44.20-46.2: warning, this switch of type
   (Nat, Int, {c : Char; d : Text})
-do not cover value
+does not cover value
   (_, 0 or 1 or _, _)

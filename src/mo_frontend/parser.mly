@@ -25,9 +25,12 @@ let positions_to_region position1 position2 =
   }
 
 let warn_deprecated_obj at =
-  Printf.fprintf stderr
-    "%s: warning, old object syntax is deprecated, use .{ } instead\n"
-    (Source.string_of_region at)
+  Diag.add_msg (Option.get !msg_store) Diag.{
+    sev = Warning;
+    cat = "syntax";
+    at;
+    text = "old object syntax is deprecated, use .{ } instead"
+  }
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 

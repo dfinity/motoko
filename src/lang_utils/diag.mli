@@ -34,6 +34,7 @@ val flush_messages : 'a result -> 'a option
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
 val warn : Source.region -> string -> string -> unit result
+val error : Source.region -> string -> string -> 'a result
 
 module Syntax : sig
   val (let*) : 'a result -> ('a -> 'b result) -> 'b result
