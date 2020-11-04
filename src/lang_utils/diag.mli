@@ -27,10 +27,11 @@ type 'a result = ('a * messages, messages) Stdlib.result
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result
 val map : ('a -> 'b) -> 'a result -> 'b result
-val traverse: ('a -> 'b result) -> 'a list -> 'b list result
-val traverse_: ('a -> unit result) -> 'a list -> unit result
-val fold: ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result
+val traverse : ('a -> 'b result) -> 'a list -> 'b list result
+val traverse_ : ('a -> unit result) -> 'a list -> unit result
+val fold : ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result
 val flush_messages : 'a result -> 'a option
+val finally : (unit -> unit) -> 'a result -> 'a result
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
 val warn : Source.region -> string -> string -> unit result

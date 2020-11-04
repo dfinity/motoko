@@ -108,17 +108,18 @@ let parse_string name s : parse_result =
   Diag.return (prog, name)
 
 let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
-  let open Diag.Syntax in
   let ic, messages = Lib.FilePath.open_in filename in
-  Diag.print_messages
-    (List.map
-       (fun text -> Diag.{ sev = Warning; at; cat = "import"; text })
-       messages);
-  let lexer = Lexing.from_channel ic in
-  let parse = Parser.Incremental.parse_prog in
-  let* prog, triv_table = parse_with' mode lexer parse filename in
-  close_in ic;
-  Diag.return (prog, triv_table, filename)
+  Diag.finally (fun () -> close_in ic) (
+    let open Diag.Syntax in
+    Diag.print_messages
+      (List.map
+        (fun text -> Diag.{ sev = Warning; at; cat = "import"; text })
+        messages);
+    let lexer = Lexing.from_channel ic in
+    let parse = Parser.Incremental.parse_prog in
+    let* prog, triv_table = parse_with' mode lexer parse filename in
+    Diag.return (prog, triv_table, filename)
+  )
 
 let parse_file at filename : parse_result =
   Diag.map (fun (p, _, f) -> p, f) (parse_file' Lexer.mode at filename)

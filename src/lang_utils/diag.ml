@@ -26,6 +26,8 @@ let bind x f = match x with
     | Ok (z, msgs2) -> Ok (z, msgs1 @ msgs2)
     | Stdlib.Error msgs2 -> Error (msgs1 @ msgs2)
 
+let finally f r = f (); r
+
 module Syntax = struct
   let (let*) = bind
 end
