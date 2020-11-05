@@ -3,4 +3,4 @@ class Pos() {
 };
 
 let pos = Pos();
-let c = .{ a=pos.x; b=pos.x };
+let c = {. a=pos.x; b=pos.x };

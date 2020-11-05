@@ -72,7 +72,7 @@ let rec show_val t v =
     Printf.sprintf "[%s]"
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
   | T.Obj (_, fts), Value.Obj fs ->
-    Printf.sprintf ".{%s}" (String.concat "; " (List.map (show_field fs) fts))
+    Printf.sprintf "{.%s}" (String.concat "; " (List.map (show_field fs) fts))
   | T.Variant fs, Value.Variant (l, v) ->
     begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
     | Some {T.typ = T.Tup []; _} -> Printf.sprintf "#%s" l

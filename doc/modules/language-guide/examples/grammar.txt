@@ -22,8 +22,8 @@
 
 <shared_pat_opt> ::= 
     <empty>
-    'shared' 'query'? <pat_nullary>?
-    'query' <pat_nullary>?
+    'shared' 'query'? <pat_plain>?
+    'query' <pat_plain>?
 
 <typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
@@ -133,13 +133,13 @@
 <exp_plain> ::= 
     <lit>
     '(' <list(<exp>, ',')> ')'
-    '.{' <list(<exp_field>, ';')> '}'
 
 <exp_block> ::= 
     '{' <list(<dec>, ';')> '}'
 
 <exp_nullary> ::= 
     <exp_plain>
+    '{' '.' <list(<exp_field>, ';')> '}'
     <id>
     <exp_block>
     <deprecated_exp_nullary>
@@ -231,10 +231,10 @@
     <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
-    '.{' <list(<pat_field>, ';')> '}'
 
 <pat_nullary> ::= 
     <pat_plain>
+    '{' '.' <list(<pat_field>, ';')> '}'
     <deprecated_pat_nullary>
 
 <pat_un> ::= 

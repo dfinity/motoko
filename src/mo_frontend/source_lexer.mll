@@ -120,7 +120,6 @@ rule token mode = parse
   | "]" { RBRACKET }
   | "{" { LCURLY }
   | "}" { RCURLY }
-  | ".{" { DOT_LCURLY }
   | ";" { SEMICOLON }
   | "," { COMMA }
   | ":" { COLON }

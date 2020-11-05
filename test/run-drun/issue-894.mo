@@ -5,14 +5,14 @@ actor a {
   public shared func go() : async () {
 
     {
-      let o = .{var l = 0};
+      let o = {.var l = 0};
       o.l := 1;
       Prim.debugPrintNat(o.l);
       assert o.l == 1;
     };
 
     {
-      let o = .{var l = 0};
+      let o = {.var l = 0};
       o.l := await async 1;
       Prim.debugPrintNat(o.l);
       assert o.l == 1;

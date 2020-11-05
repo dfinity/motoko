@@ -19,11 +19,11 @@ switch (magic () : (Nat, Nat)) {
 };
 
 switch (magic () : {a : Nat; b : Nat}) {
-  case (.{a = 1; b = -2} : {a : Int; b : Int}) {};
+  case ({.a = 1; b = -2} : {a : Int; b : Int}) {};
   case _ {};
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case .{a = 1 : Int; b = -2 : Int} {};
+  case {.a = 1 : Int; b = -2 : Int} {};
   case _ {};
 };
 
@@ -71,22 +71,22 @@ switch (magic () : {a : Int; b : Int}) {
   case (r : {a : Nat; b : Nat}) {};
 };
 switch (magic () : {a : Int; b : Int}) {
-  case (.{a; b} : {a : Nat; b : Nat}) {};
+  case ({.a; b} : {a : Nat; b : Nat}) {};
 };
 switch (magic () : {a : Int; b : Int}) {
-  case .{a = _ : Nat; b = _ : Nat} {};
+  case {.a = _ : Nat; b = _ : Nat} {};
 };
 switch (magic () : {a : Nat}) {
   case (r : {a : Nat; b : Nat}) {};
 };
 switch (magic () : {a : Nat}) {
-  case (.{a; b} : {a : Nat; b : Nat}) {};
+  case ({.a; b} : {a : Nat; b : Nat}) {};
 };
 switch (magic () : {}) {
   case (r : {a : Nat; b : Nat}) {};
 };
 switch (magic () : {}) {
-  case (.{a; b} : {a : Nat; b : Nat}) {};
+  case ({.a; b} : {a : Nat; b : Nat}) {};
 };
 
 switch (magic () : Null) {

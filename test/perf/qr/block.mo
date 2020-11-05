@@ -123,7 +123,7 @@ module {
     let elemsIn = List.map<List<Bool>, Elem>(chunksIn, Galois.elemFromBits);
     let errorSize = Common.errorSize(version, level);
     let errorPoly = Common.errorPoly(version, level);
-    let dataPoly = Galois.polyPadRight(errorSize, .{ unbox = elemsIn });
+    let dataPoly = Galois.polyPadRight(errorSize, {. unbox = elemsIn });
     let resultPoly = Galois.polyDivMod(dataPoly, errorPoly).1;
     let elemsOut = Galois.polyTrim(resultPoly).unbox;
     let chunksOut = List.map<Elem, List<Bool>>(elemsOut, Galois.elemToBits);

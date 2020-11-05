@@ -53,7 +53,7 @@ class Grid(state : State) {
         };
         (n, bits)
       };
-      case (#v2 .{size; bits}) {
+      case (#v2 {.size; bits}) {
         let ws = P.Array_init<Word64>(bits.size(), 0);
         for (n in bits.keys()) {
           ws[n] := P.nat64ToWord64(bits[n]);
@@ -102,7 +102,7 @@ class Grid(state : State) {
 
   public func toState() : State {
     let ws = bits;
-    #v2 .{
+    #v2 {.
       size = n;
       bits = P.Array_tabulate<Nat64>(ws.size(), func i
         { P.word64ToNat64(ws[i])})
@@ -131,12 +131,12 @@ actor Life {
         var word : Word64 = 0;
         for (j in below(64)) {
           let bit : Word64 = if (Random.next()) 0 else 1;
-            word |= bit;
-            word <<= 1;
-         };
-         P.word64ToNat64(word);
+          word |= bit;
+          word <<= 1;
+        };
+        P.word64ToNat64(word);
       });
-    #v2 .{ size = n; bits = words };
+    #v2 {. size = n; bits = words };
   };
 
   flexible var src = Grid(state);

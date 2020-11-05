@@ -152,7 +152,7 @@ let rec normalize_let p e =
 %token EOF
 
 %token LET VAR
-%token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY DOT_LCURLY
+%token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
@@ -478,8 +478,6 @@ exp_plain :
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
-  | DOT_LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
@@ -492,6 +490,8 @@ exp_nullary(B) :
   | e=exp_block
     { e }
 *)
+  | LCURLY DOT efs=seplist(exp_field, semicolon) RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
@@ -665,12 +665,12 @@ pat_plain :
     { LitP(ref l) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
-  | DOT_LCURLY fps=seplist(pat_field, semicolon) RCURLY
-    { ObjP(fps) @! at $sloc }
 
 pat_nullary :
   | p=pat_plain
     { p }
+  | LCURLY DOT fps=seplist(pat_field, semicolon) RCURLY
+    { ObjP(fps) @! at $sloc }
   | p=deprecated_pat_nullary
     { p }
 
@@ -710,7 +710,7 @@ pat_field :
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
-  | p=pat_nullary
+  | p=pat_plain
     { fun sloc -> p }
   | (* Empty *)
     { fun sloc -> WildP @! sloc }

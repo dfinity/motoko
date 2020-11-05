@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 actor a {
   public func transpose (data : [(Int,Text)]) : async {ints: [Int]; txts: [Text]} {
-    return .{
+    return {.
       ints = Prim.Array_tabulate<Int>(data.size(), func (i:Nat) : Int = (data[i].0));
       txts = Prim.Array_tabulate<Text>(data.size(), func (i:Nat) : Text = (data[i].1))
     }

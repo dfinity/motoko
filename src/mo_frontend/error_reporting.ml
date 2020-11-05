@@ -69,7 +69,6 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_LET -> LET
       | T_LEOP -> LEOP
       | T_LCURLY -> LCURLY
-      | T_DOT_LCURLY -> DOT_LCURLY
       | T_LBRACKET -> LBRACKET
       | T_LABEL -> LABEL
       | T_IN -> IN

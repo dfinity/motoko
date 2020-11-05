@@ -65,30 +65,30 @@ switch (magic ()) {
   case ((r : {a : Int; b : Int}) : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case (.{a; b} : {a : Int; b : Int}) {};
+  case ({.a; b} : {a : Int; b : Int}) {};
 };
 switch (magic ()) {
-  case ((.{a; b} : {a : Int; b : Int}) : {a : Nat; b : Nat}) {};  // redundant
+  case (({.a; b} : {a : Int; b : Int}) : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case .{a = _ : Int; b = _ : Int} {};
+  case {.a = _ : Int; b = _ : Int} {};
 };
 switch (magic ()) {
-  case (.{a = _ : Int; b = _ : Int} : {a : Nat; b : Nat}) {};  // redundant
+  case ({.a = _ : Int; b = _ : Int} : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case (.{a = 1; b = 2} : {a : Int; b : Int}) {};
+  case ({.a = 1; b = 2} : {a : Int; b : Int}) {};
   case _ {};
 };
 switch (magic ()) {
-  case ((.{a = 1; b = 2} : {a : Int; b : Int}) : {a : Nat; b : Nat}) {};  // redundant
+  case (({.a = 1; b = 2} : {a : Int; b : Int}) : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case .{a = 1 : Int; b = 2 : Int} {};
+  case {.a = 1 : Int; b = 2 : Int} {};
   case _ {};
 };
 switch (magic ()) {
-  case (.{a = 1 : Int; b = 2 : Int} : {a : Nat; b : Nat}) {};  // redundant
+  case ({.a = 1 : Int; b = 2 : Int} : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
   case (r : {a : Nat}) {};
@@ -97,10 +97,10 @@ switch (magic ()) {
   case ((r : {a : Nat}) : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case (.{a} : {a : Nat}) {};
+  case ({.a} : {a : Nat}) {};
 };
 switch (magic ()) {
-  case ((.{a} : {a : Nat}) : {a : Nat; b : Nat}) {};  // redundant
+  case (({.a} : {a : Nat}) : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
   case (r : {}) {};
@@ -109,10 +109,10 @@ switch (magic ()) {
   case ((r : {}) : {a : Nat; b : Nat}) {};  // redundant
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case .{} {};
+  case {.} {};
 };
 switch (magic ()) {
-  case (.{} : {a : Nat; b : Nat}) {};  // redundant
+  case ({.} : {a : Nat; b : Nat}) {};  // redundant
 };
 
 switch (magic ()) {
@@ -210,7 +210,7 @@ switch (magic ()) {
   case 2.5 {};
   case "" {};
   case () {};
-  case .{} {};
+  case {.} {};
   case null {};
   case (?_) {};
 };

@@ -53,7 +53,7 @@ class Grid(state : State) {
         };
         (n, bits)
       };
-      case (#v2 .{size; bits}) {
+      case (#v2 {.size; bits}) {
         (size,bits)
       }
     };
@@ -98,7 +98,7 @@ class Grid(state : State) {
 
   public func toState() : State {
     let ws = bits;
-    #v2 .{ size = n; bits = ws }
+    #v2 {. size = n; bits = ws }
   };
 
   public func toText() : Text {
@@ -128,7 +128,7 @@ actor Life {
       };
       words[i] := word;
     };
-    #v2 .{ size = n; bits = words };
+    #v2 {. size = n; bits = words };
   };
 
   flexible var src = Grid(state);

@@ -14,7 +14,7 @@ type State = {
    #v1 : [[var Cell]];
 };
 
-class Grid((#v1 state) : State) {
+class Grid(#v1 state : State) {
 
   let n = state.size();
 

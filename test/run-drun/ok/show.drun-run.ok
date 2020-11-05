@@ -22,10 +22,10 @@ debug.print: []
 debug.print: [1, 2, 3]
 debug.print: [var]
 debug.print: [var 1, 2, 3]
-debug.print: .{bar = true; foo = +42}
+debug.print: {.bar = true; foo = +42}
 debug.print: #foo
 debug.print: #bar(1, 2)
-debug.print: #bar(.{})
+debug.print: #bar({.})
 debug.print: #bar([])
 debug.print: #bar(42)
 debug.print: #bar(-42)

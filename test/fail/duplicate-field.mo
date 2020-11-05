@@ -17,11 +17,11 @@ type T = {#foo : Int; #nxnnbkddcv: Bool}
 };
 
 {
-ignore(.{foo = 5; foo = true});
+ignore({.foo = 5; foo = true});
 };
 
 {
-ignore(.{foo = 5; nxnnbkddcv = true});
+ignore({.foo = 5; nxnnbkddcv = true});
 };
 
 {
@@ -44,7 +44,7 @@ ignore(module {
   public type nxnnbkddcv = Nat
 });};
 
-.{
+{.
 // not a clash
 // syntax not supported yet
 // type T = {type foo = Int; nxnnbkddcv: Bool}

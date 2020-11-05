@@ -77,7 +77,6 @@ let string_of_symbol symbol : string =
   | X (T T_LET) -> "let"
   | X (T T_LEOP) -> relop "<="
   | X (T T_LCURLY) -> "{"
-  | X (T T_DOT_LCURLY) -> ".{"
   | X (T T_LBRACKET) -> "["
   | X (T T_LABEL) -> "label"
   | X (T T_IN) -> "in"

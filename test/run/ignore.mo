@@ -1,1 +1,1 @@
-ignore(.{});
+ignore({.});
