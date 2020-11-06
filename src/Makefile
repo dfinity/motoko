@@ -94,7 +94,7 @@ clean:
 	dune clean
 
 test: $(NAME)
-	make -C ../test all
+	make -C ../test parallel
 	make -C ../samples all
 
 test-quick: $(NAME)

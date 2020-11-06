@@ -1,26 +1,20 @@
-TEST_DIRS = fail idl ld mo-idl perf repl run run-deser run-drun trap
-
-all:
-	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir);)
+QUICK_DIRS = fail idl ld mo-idl repl run
+OTHER_DIRS = perf run-deser run-drun trap
+TEST_DIRS = $(QUICK_DIRS) $(OTHER_DIRS)
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
-quick:
-	$(MAKE_PAR) -C fail quick
-	$(MAKE_PAR) -C idl quick
-	$(MAKE_PAR) -C ld quick
-	$(MAKE_PAR) -C mo-idl quick
-	$(MAKE_PAR) -C repl quick
-	$(MAKE_PAR) -C run quick
+all:
+	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) &&) true
 
-parallel: quick
-	$(MAKE_PAR) -C perf quick
-	$(MAKE_PAR) -C run-deser quick
-	$(MAKE_PAR) -C run-drun quick
-	$(MAKE_PAR) -C trap quick
+quick:
+	$(foreach test_dir,$(QUICK_DIRS),$(MAKE_PAR) -C $(test_dir) &&) true
+
+parallel:
+	$(foreach test_dir,$(TEST_DIRS),$(MAKE_PAR) -C $(test_dir) &&) true
 
 accept:
-	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) accept;)
+	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) accept &&) true
 
 clean:
-	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) clean;)
+	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) clean &&) true
