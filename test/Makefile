@@ -8,10 +8,10 @@ all:
 	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) &&) true
 
 quick:
-	$(foreach test_dir,$(QUICK_DIRS),$(MAKE_PAR) -C $(test_dir) &&) true
+	$(foreach test_dir,$(QUICK_DIRS),$(MAKE_PAR) -C $(test_dir) quick &&) true
 
 parallel:
-	$(foreach test_dir,$(TEST_DIRS),$(MAKE_PAR) -C $(test_dir) &&) true
+	$(foreach test_dir,$(TEST_DIRS),$(MAKE_PAR) -C $(test_dir) quick &&) true
 
 accept:
 	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) accept &&) true
