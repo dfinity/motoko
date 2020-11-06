@@ -267,9 +267,6 @@ seplist1(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline tag :
-  | HASH id=ID { id @@ at $sloc }
-
 %inline typ_id :
   | id=ID { id @= at $sloc }
 
@@ -396,7 +393,7 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | x=tag t=annot_opt
+  | HASH x=id t=annot_opt
     { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
 
 typ_bind :
@@ -516,9 +513,9 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
-  | x=tag
+  | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
-  | x=tag e=exp_nullary(ob)
+  | HASH x=id e=exp_nullary(ob)
     { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
@@ -677,9 +674,9 @@ pat_nullary :
 pat_un :
   | p=pat_nullary
     { p }
-  | x=tag
+  | HASH x=id
     { TagP(x, TupP [] @! at $sloc) @! at $sloc }
-  | x=tag p=pat_nullary
+  | HASH x=id p=pat_nullary
     { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }

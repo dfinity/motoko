@@ -65,7 +65,7 @@ coverage.mo:40.56-40.57: warning, this pattern is never matched
 coverage.mo:41.3-41.64: warning, this switch of type
   {a : Nat; b : Nat}
 does not cover value
-  {a = 1 or 2 or _; b = 1 or 2 or _)
+  {.a = 1 or 2 or _; b = 1 or 2 or _}
 coverage.mo:45.3-45.74: warning, this switch of type
   {#a : Nat; #b : Nat}
 does not cover value

@@ -7,9 +7,6 @@
     X
     X SEP <list(X, SEP)>
 
-<tag> ::= 
-    '#' <id>
-
 <obj_sort> ::= 
     'object'
     'actor'
@@ -64,7 +61,7 @@
     <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> ':' <typ>
 
 <typ_tag> ::= 
-    <tag> (':' <typ>)?
+    '#' <id> (':' <typ>)?
 
 <typ_bind> ::= 
     <id> '<:' <typ>
@@ -154,8 +151,8 @@
 
 <exp_un> ::= 
     <exp_post>
-    <tag>
-    <tag> <exp_nullary>
+    '#' <id>
+    '#' <id> <exp_nullary>
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
@@ -239,8 +236,8 @@
 
 <pat_un> ::= 
     <pat_nullary>
-    <tag>
-    <tag> <pat_nullary>
+    '#' <id>
+    '#' <id> <pat_nullary>
     '?' <pat_un>
     <unop> <lit>
 

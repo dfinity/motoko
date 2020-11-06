@@ -8,6 +8,7 @@ all:
 	$(MAKE) -C idl
 	$(MAKE) -C mo-idl
 	$(MAKE) -C trap
+	$(MAKE) -C run-deser
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
@@ -47,3 +48,4 @@ clean:
 	$(MAKE) -C mo-idl clean
 	$(MAKE) -C idl clean
 	$(MAKE) -C trap clean
+	$(MAKE) -C run-deser clean

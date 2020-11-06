@@ -3,7 +3,7 @@ objects1.mo:24.8-24.12: warning, this pattern is never matched
 objects1.mo:33.22-36.2: warning, this switch of type
   {a : Int; b : Nat}
 does not cover value
-  {a = 0 or 1 or _; b = 0 or 1 or _)
+  {.a = 0 or 1 or _; b = 0 or 1 or _}
 objects1.mo:44.20-46.2: warning, this switch of type
   (Nat, Int, {c : Char; d : Text})
 does not cover value

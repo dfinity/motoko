@@ -1291,13 +1291,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
         ts, t_arg', t_ret'
-      with Failure msg ->
+      with Bi_match.Bimatch msg ->
         error env at
-          "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
+          "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\nbecause %s"
           (T.string_of_typ t1)
           (T.string_of_typ t2)
           (if Option.is_none t_expect_opt then ""
-           else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
+           else Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
           msg
   in
   inst.note <- ts;
@@ -1785,7 +1785,7 @@ and check_stab env sort scope fields =
     | Some t ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
-        local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
+        local_error env at "variable %s is declared stable but has non-stable type\n  %s" id (T.string_of_typ t1)
   in
   let idss = List.map (fun ef ->
     match sort, ef.it.stab, ef.it.dec.it with
