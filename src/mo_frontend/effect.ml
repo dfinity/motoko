@@ -48,6 +48,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | BreakE (_, exp1)
   | RetE exp1
   | AnnotE (exp1, _)
+  | IgnoreE exp1
   | LoopE (exp1, None) ->
     effect_exp exp1
   | BinE (_, exp1, _, exp2)
@@ -107,7 +108,6 @@ and effect_dec dec =
 and infer_effect_dec dec =
   match dec.it with
   | ExpD e
-  | IgnoreD e
   | LetD (_,e)
   | VarD (_, e) ->
     effect_exp e

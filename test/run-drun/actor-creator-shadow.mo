@@ -1,4 +1,4 @@
-shared {caller = c} actor class C () {
+shared(c) actor class C () {
   let c = 1;
 
   public shared ctxt func c1 () : async Nat {

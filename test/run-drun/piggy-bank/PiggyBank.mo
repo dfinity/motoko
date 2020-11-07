@@ -2,14 +2,15 @@ import Prim "mo:prim";
 import Funds "ExperimentalFunds";
 //import Funds "mo:base/ExperimentalFunds";
 
-shared {caller = owner} actor class PiggyBank(
+shared({caller = owner}) actor class PiggyBank(
   unit : Funds.Unit,
   capacity: Nat,
-  benefit : shared () -> async ()) {
+  benefit : shared () -> async ()
+) {
 
   var savings = 0;
 
-  public shared {caller} func getSavings() : async Nat {
+  public shared({caller}) func getSavings() : async Nat {
     assert (caller == owner);
     return savings;
   };
@@ -24,8 +25,7 @@ shared {caller = owner} actor class PiggyBank(
     savings += acceptable;
   };
 
-  public shared {caller} func withdraw(amount : Nat)
-    : async () {
+  public shared({caller}) func withdraw(amount : Nat) : async () {
     assert (caller == owner);
     assert (amount <= savings);
     Funds.add(unit, amount);

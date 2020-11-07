@@ -1,11 +1,11 @@
-func do(){};
+func fo(){};
 
-do()
-do();
-do();
+fo()
+fo();
+fo();
 
 func f(){ 
-  do();
-  do()
-  do()
+  fo();
+  fo()
+  fo()
 };

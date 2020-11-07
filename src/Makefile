@@ -93,14 +93,17 @@ clean:
 	rm -f moc mo-ide mo-ld moc.js didc deser $(SOURCE_ID)
 	dune clean
 
-test: $(NAME)
+test:
+	make
 	make -C ../test
 	make -C ../samples all
 
-test-quick: $(NAME)
+test-quick:
+	make
 	make -C ../test quick
 
-test-parallel: $(NAME)
+test-parallel:
+	make
 	make -C ../test parallel
 	make -C ../samples all
 

@@ -19,8 +19,8 @@
 
 <shared_pat_opt> ::= 
     <empty>
-    'shared' 'query'? <pat_nullary>?
-    'query' <pat_nullary>?
+    'shared' 'query'? <pat_plain>?
+    'query' <pat_plain>?
 
 <typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
@@ -127,18 +127,17 @@
     '<>>='
     '@='
 
+
+<exp_obj> ::= 
+    '{' <list(<exp_field>, ';')> '}'
+
 <exp_plain> ::= 
     <lit>
     '(' <list(<exp>, ',')> ')'
 
-<exp_block> ::= 
-    '{' <list(<dec>, ';')> '}'
-
 <exp_nullary> ::= 
+    <exp_obj>
     <exp_plain>
-    '{' <list(<dec_var>, ';')> '}'
-    '{' <exp_field_list_unamb> '}'
-    '{' <dec_list_unamb> '}'
     <id>
 
 <exp_post> ::= 
@@ -174,22 +173,24 @@
     <exp_bin> <binassign> <exp>
     'return'
     'return' <exp>
-    'async' <exp>
-    'await' <exp>
-    'assert' <exp>
-    'label' <id> (':' <typ>)? <exp>
+    'async' <exp_nest>
+    'await' <exp_nest>
+    'assert' <exp_nest>
+    'label' <id> (':' <typ>)? <exp_nest>
     'break' <id> <exp_nullary>?
     'continue' <id>
-    'debug' <exp>
-    'if' <exp_nullary> <exp>
-    'if' <exp_nullary> <exp> 'else' <exp>
-    'try' <exp_nullary> <catch>
-    'throw' <exp>
+    'debug' <exp_nest>
+    'if' <exp_nullary> <exp_nest>
+    'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
+    'try' <exp_nest> <catch>
+    'throw' <exp_nest>
     'switch' <exp_nullary> '{' <list(<case>, ';')> '}'
-    'while' <exp_nullary> <exp>
-    'loop' <exp>
-    'loop' <exp> 'while' <exp>
-    'for' '(' <pat> 'in' <exp> ')' <exp>
+    'while' <exp_nullary> <exp_nest>
+    'loop' <exp_nest>
+    'loop' <exp_nest> 'while' <exp_nest>
+    'for' '(' <pat> 'in' <exp> ')' <exp_nest>
+    'ignore' <exp_nest>
+    'do' <exp_nest>
 
 <exp_nonvar> ::= 
     <exp_nondec>
@@ -199,23 +200,21 @@
     <exp_nonvar>
     <dec_var>
 
+<exp_nest> ::= 
+    <block>
+    <exp>
+
+<block> ::= 
+    '{' <list(<dec>, ';')> '}'
+
 <case> ::= 
-    'case' <pat_nullary> <exp>
+    'case' <pat_nullary> <exp_nest>
 
 <catch> ::= 
-    'catch' <pat_nullary> <exp>
-
-<exp_field_nonvar> ::= 
-    <id> '=' <exp>
+    'catch' <pat_nullary> <exp_nest>
 
 <exp_field> ::= 
-    <exp_field_nonvar>
-    <dec_var>
-
-<exp_field_list_unamb> ::= 
-    <exp_field_nonvar>
-    <exp_field_nonvar> ';' <list(<exp_field>, ';')>
-    <dec_var> ';' <exp_field_list_unamb>
+    'var'? <id> '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -260,6 +259,7 @@
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
 
+
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>
 
@@ -269,23 +269,15 @@
     <obj_sort> <id>? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
-    'ignore' <exp>
 
 <dec> ::= 
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
 
-<dec_list_unamb> ::= 
-    <exp_nondec>
-    <dec_nonvar>
-    <exp_nondec> ';' <list(<dec>, ';')>
-    <dec_nonvar> ';' <list(<dec>, ';')>
-    <dec_var> ';' <dec_list_unamb>
-
 <func_body> ::= 
     '=' <exp>
-    <exp_block>
+    <block>
 
 <obj_body> ::= 
     '{' <list(<dec_field>, ';')> '}'
@@ -299,5 +291,4 @@
 
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
-
 

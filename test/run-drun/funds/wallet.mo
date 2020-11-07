@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 import Funds "funds";
 
-shared {caller} actor class Wallet() {
+shared({caller}) actor class Wallet() {
 
   let print = Prim.debugPrint;
 
@@ -25,26 +25,25 @@ shared {caller} actor class Wallet() {
     assert Funds.balance(u) == bu + du;
   };
 
-  public shared {caller} func debit(
+  public shared({caller}) func debit(
     u : Funds.Unit,
     amount : Nat64,
-    credit : shared Funds.Unit -> async ())
-    : async () {
+    credit : shared Funds.Unit -> async ()
+  ) : async () {
     if (caller != owner) assert false;
     Funds.add(u, amount);
     await credit(u);
   };
 
-  public shared {caller} func refund(
+  public func refund(
     u : Funds.Unit,
-    amount : Nat64)
-    : async () {
+    amount : Nat64
+  ) : async () {
     Funds.accept(u, Funds.available(u) - amount);
     print("refunding: " #  debug_show(amount));
   };
 
-  public shared {caller} func available()
-    : async (Nat64, Nat64) {
+  public func available() : async (Nat64, Nat64) {
     let available = (Funds.available(#cycle), Funds.available(#icpt));
     print("available: " #  debug_show(available));
     return available;

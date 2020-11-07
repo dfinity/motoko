@@ -51,7 +51,7 @@ actor a {
  };
 
  // returns the amounts transferred (without accepting, thus refunding fully)
- public shared {caller} func getAvailable()
+ public shared({caller}) func getAvailable()
     : async (Nat64, Nat64) {
     let available = (Funds.available(#cycle), Funds.available(#icpt));
     print("available: " #  debug_show(available));

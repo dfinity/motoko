@@ -180,6 +180,10 @@ and exp' at note = function
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
+  | S.IgnoreE e ->
+    I.BlockE ([
+      { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
+        at = e.at; note = ()}], unitE)
 
 and url e at =
     (* Set position explicitly *)
@@ -423,7 +427,6 @@ and block force_unit ds =
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
-  | _ , S.IgnoreD _ (* redundant, but explicit *)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -436,7 +439,6 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
   | S.ExpD e -> (expD (exp e)).it
-  | S.IgnoreD e -> I.LetD ({ it = I.WildP; at = e.at; note = T.Any}, exp e)
   | S.LetD (p, e) ->
     let p' = pat p in
     let e' = exp e in

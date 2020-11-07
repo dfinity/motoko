@@ -93,7 +93,11 @@ let slice_lexeme lexbuf i1 i2 =
 
 let parse error_detail checkpoint lexer lexbuf =
   try
-    Diag.return (E.entry checkpoint lexer)
+    (* Temporary hack! *)
+    Diag.with_message_store (fun m ->
+      Parser_lib.msg_store := Some m;
+      Some (E.entry checkpoint lexer)
+    )
   with E.Error ((start, end_), explanations) ->
     Diag.error
       Source.{

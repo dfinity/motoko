@@ -27,21 +27,22 @@ actor a {
 
   print(debug_show(Funds.balance(#icpt)));
 
-  { // check funds available
+  do {
+    // check funds available
     Funds.add(#cycle, 100);
     Funds.add(#icpt, 10);
     let (cs, is) = await wallet.available();
     assert (cs == (100: Nat64) and is == (10 : Nat64));
     assert (Funds.refunded(#cycle) == (100 : Nat64) and Funds.refunded(#icpt) == (10 : Nat64));
   };
-  {
+  do {
     // check funds reset to zero on send
     let (cs, is) = await wallet.available();
     assert (cs == (0: Nat64) and is == (0 : Nat64));
     assert (Funds.refunded(#cycle) == (0 : Nat64) and Funds.refunded(#icpt) == (0 : Nat64));
   };
 
-  {
+  do {
     // check funds additive to zero on send
     Funds.add(#cycle, 100);
     Funds.add(#icpt, 10);
