@@ -545,6 +545,7 @@ struct
        /path/tosomething is not a subpath of /path/to*)
     else List.is_prefix (=) (segments base) (segments path)
 
+  (* TODO: this function does not belong here *)
   (* When opening is successful, but there is a case mismatch (because the file
      system is case insensitive), generate a warning. *)
   let open_in path : in_channel * string list =
@@ -555,8 +556,8 @@ struct
     if not (Array.exists (fun name -> name = base) files) then
       begin
         let open Stdlib.String in
-        let base = lowercase_ascii base in
-        if Array.exists (fun name -> lowercase_ascii name = base) files then
+        let lbase = lowercase_ascii base in
+        if Array.exists (fun name -> lowercase_ascii name = lbase) files then
           let message = Printf.sprintf "file %s has been located with a name of different case" base in
           ic, [message]
         else

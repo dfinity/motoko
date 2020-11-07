@@ -94,11 +94,15 @@ clean:
 	dune clean
 
 test: $(NAME)
-	make -C ../test parallel
+	make -C ../test
 	make -C ../samples all
 
 test-quick: $(NAME)
 	make -C ../test quick
+
+test-parallel: $(NAME)
+	make -C ../test parallel
+	make -C ../samples all
 
 grammar: ../doc/modules/language-guide/examples/grammar.txt
 
