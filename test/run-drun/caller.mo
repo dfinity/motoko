@@ -11,7 +11,7 @@ actor a {
     return;
   };
 
-  public shared _ func c3 () : async () {
+  public shared _ func c3() : async () {
     return;
   };
 

@@ -157,6 +157,26 @@ let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
 
+
+(* Coverage *)
+
+let coverage' warnOrError category env f x t at =
+  let uncovered, unreached = f x t in
+  List.iter (fun at -> warn env at "this pattern is never matched") unreached;
+  if uncovered <> [] then
+    warnOrError env at
+      ("this %s of type\n  %s\ndoes not cover value\n  %s" : (_, _, _, _) format4)
+      category
+      (Type.string_of_typ_expand t)
+      (String.concat " or\n  " uncovered)
+
+let coverage_cases category env cases t at =
+  coverage' warn category env Coverage.check_cases cases t at
+
+let coverage_pat warnOrError env pat t =
+  coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
+
+
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -172,12 +192,14 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+
 (* System method types *)
 
 let system_funcs = [
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
   ]
+
 
 (* Imports *)
 
@@ -194,6 +216,7 @@ let check_import env at f ri =
     error env at "cannot infer type of forward import %s" f
   | Some t -> t
   | None -> error env at "imported file %s not loaded" full_path
+
 
 (* Paths *)
 
@@ -245,6 +268,9 @@ and check_typ_path' env path : T.con =
     try T.lookup_typ_field id.it fs with Invalid_argument _ ->
       error env id.at "type field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
+
+
+(* Type helpers *)
 
 let error_shared env t at fmt =
   match T.find_unshared t with
@@ -355,7 +381,10 @@ and scope_of_env env =
    | C.ErrorCap -> None
    | C.NullCap -> None
 
-and check_typ env (typ:typ) : T.typ =
+
+(* Types *)
+
+and check_typ env (typ : typ) : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
   t
@@ -977,28 +1006,15 @@ and infer_exp'' env exp : T.typ =
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
     let t = infer_cases env t1 T.Non cases in
-    if not env.pre then begin
-      match Coverage.check_cases cases t1 with
-      | [] -> ()
-      | ss ->
-        warn env exp.at
-          "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
-          (Type.string_of_typ_expand t1)
-          (String.concat " or\n  " ss)
-    end;
+    if not env.pre then
+      coverage_cases "switch" env cases t1 exp.at;
     t
   | TryE (exp1, cases) ->
     check_ErrorCap env "try" exp.at;
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
-    if not env.pre then begin
-      match Coverage.check_cases cases T.catch with
-      | [] -> ()
-      | ss ->
-        warn env exp.at
-          "the catches in this try do not cover error value\n  %s"
-          (String.concat " or\n  " ss)
-    end;
+    if not env.pre then
+      coverage_cases "try handler" env cases T.catch exp.at;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
@@ -1194,26 +1210,13 @@ and check_exp' env0 t exp : T.typ =
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    (match Coverage.check_cases cases t1 with
-    | [] -> ()
-    | ss ->
-      warn env exp.at
-        "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
-        (Type.string_of_typ_expand t1)
-        (String.concat " or\n  " ss)
-    );
+    coverage_cases "switch" env cases t1 exp.at;
     t
   | TryE (exp1, cases), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;
-    (match Coverage.check_cases cases T.catch with
-    | [] -> ()
-    | ss ->
-      warn env exp.at
-        "the catches in this try do not cover value\n  %s"
-        (String.concat " or\n  " ss)
-    );
+    coverage_cases "try handler" env cases T.catch exp.at;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
@@ -1302,13 +1305,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
         ts, t_arg', t_ret'
-      with Failure msg ->
+      with Bi_match.Bimatch msg ->
         error env at
-          "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
+          "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\nbecause %s"
           (T.string_of_typ t1)
           (T.string_of_typ t2)
           (if Option.is_none t_expect_opt then ""
-           else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
+           else Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
           msg
   in
   inst.note <- ts;
@@ -1361,15 +1364,8 @@ and inconsistent t ts =
 
 and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
   let t, ve = infer_pat env pat in
-  if not env.pre then begin
-    match Coverage.check_pat pat t with
-    | [] -> ()
-    | ss ->
-      warnOrError env pat.at
-        "this pattern consuming type\n  %s\ndoes not cover value\n  %s"
-        (Type.string_of_typ_expand t)
-        (String.concat " or\n  " ss)
-  end;
+  if not env.pre then
+    coverage_pat warnOrError env pat t;
   t, ve
 
 and infer_pat env pat : T.typ * Scope.val_env =
@@ -1466,15 +1462,8 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
 
 and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
   let ve = check_pat env t pat in
-  if not env.pre then begin
-    match Coverage.check_pat pat t with
-    | [] -> ()
-    | ss ->
-      warnOrError env pat.at
-        "this pattern consuming type\n  %s\ndoes not cover value\n  %s"
-        (Type.string_of_typ_expand t)
-        (String.concat " or\n  " ss)
-  end;
+  if not env.pre then
+    coverage_pat warnOrError env pat t;
   ve
 
 and check_pat env t pat : Scope.val_env =
@@ -1781,13 +1770,13 @@ and check_system_fields env sort scope fields =
             begin
               let t1 = T.Env.find id.it scope.Scope.val_env in
               if not (T.sub t1 t) then
-                local_error env ef.at "system function %s is declared with type %s, expecting type %s" id.it
+                local_error env ef.at "system function %s is declared with type\n  %s\ninstead of expected type\n  %s" id.it
                   (T.string_of_typ t1) (T.string_of_typ t)
             end
           else warn env id.at "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->
           if vis = System then
-            local_error env id.at "unexpected system method named %s: expected %s"
+            local_error env id.at "unexpected system method named %s, expected %s"
               id.it (String.concat " or " (List.map fst system_funcs))
           else ()
       end
@@ -1810,7 +1799,7 @@ and check_stab env sort scope fields =
     | Some t ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
-        local_error env at "variable %s is declared stable but has non-stable type %s" id (T.string_of_typ t1)
+        local_error env at "variable %s is declared stable but has non-stable type\n  %s" id (T.string_of_typ t1)
   in
   let idss = List.map (fun ef ->
     match sort, ef.it.stab, ef.it.dec.it with
