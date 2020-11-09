@@ -758,6 +758,7 @@ pat_opt :
     { fun sloc -> p }
 
 
+
 (* Declarations *)
 
 dec_var :
