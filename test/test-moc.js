@@ -56,7 +56,7 @@ assert.deepStrictEqual(bad_result, {
       },
       "severity": 1,
       "source": "bad.mo",
-      "message": "unexpected token \'\', \nexpected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
+      "message": "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
     }
   ],
   "code": null,
@@ -83,7 +83,7 @@ assert.deepStrictEqual(moc.Motoko.check('bad.mo'), {
       },
       "severity": 1,
       "source": "bad.mo",
-      "message": "unexpected token \'\', \nexpected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
+      "message": "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
     }
   ],
   "code": null
