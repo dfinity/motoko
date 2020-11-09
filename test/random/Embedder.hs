@@ -65,7 +65,7 @@ invokeEmbedder embedder wasm = go embedder
             let install = unsafeTextToLine $ format ("install 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q "%s%" 0x") w
 
             pipe (fileArg control) (pure create <|> pure install
-                                   <|> "ingress 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q do 0x4449444c0000")
+                                   <|> "ingress 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q go 0x4449444c0000")
             lns <- wait consumer
             -- view lns
             let errors = grep (has "Err: " <|> has "Reject: ") lns
