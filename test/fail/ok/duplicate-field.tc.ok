@@ -1,7 +1,7 @@
 duplicate-field.mo:4.15-4.16: type error, duplicate definition for m in block
 duplicate-field.mo:8.22-8.25: type error, duplicate field name foo in object type
 duplicate-field.mo:12.22-12.32: type error, field names foo and nxnnbkddcv in object type have colliding hashes
-duplicate-field.mo:16.23-16.34: type error, tag names foo and nxnnbkddcv in variant type have colliding hashes
+duplicate-field.mo:16.24-16.34: type error, tag names foo and nxnnbkddcv in variant type have colliding hashes
 duplicate-field.mo:20.18-20.21: type error, duplicate field name foo in object
 duplicate-field.mo:24.8-24.36: type error, field names nxnnbkddcv and foo in object type have colliding hashes
 duplicate-field.mo:28.8-28.70: type error, field names nxnnbkddcv and foo in object type have colliding hashes

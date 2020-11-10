@@ -41,6 +41,9 @@ and typ' =
   | RecordT of typ_field list  (* record *)
   | VariantT of typ_field list (* variant *)
   | ServT of typ_meth list (* service reference *)
+  (* ClassT can only appear in the main actor. *)
+  (* This is guarded by the parser and type checker *)
+  | ClassT of typ list * typ (* service constructor *)
   | PrincipalT
   | PreT   (* pre-type *)
 
@@ -62,3 +65,22 @@ and dec' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = { decs : dec list; actor : typ option }
 
+(* Tests *)
+
+type input =
+  | BinaryInput of string
+  | TextualInput of string
+
+type test_assertion =
+  | ParsesAs of (bool * input)
+  | ParsesEqual of (bool * input * input)
+
+type test' = {
+  assertion : test_assertion;
+  ttyp : typ list;
+  desc : string option;
+}
+type test = test' Source.phrase
+
+type tests = (tests', string) Source.annotated_phrase
+and tests' = { tdecs : dec list; tests : test list }

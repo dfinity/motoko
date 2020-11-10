@@ -1,6 +1,6 @@
 → update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob "DIDL\00\00"; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7…
+→ update install_code(record {4849238 = blob "DIDL\00\00"; 265441191 = blob "\00a…
 debug.print: hello
 ← completed: ()
 → query check(1)
@@ -8,7 +8,7 @@ debug.print: hello
 → update echo()
 debug.print: hello
 ← completed: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 debug.print: hello
 ← completed: ()
 → query check(1)
@@ -16,7 +16,7 @@ debug.print: hello
 → update echo()
 debug.print: hello
 ← completed: ()
-→ update install_code(record {4849238 = blob "DIDL\00\01q\05Hello"; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\0…
+→ update install_code(record {4849238 = blob "DIDL\00\01q\05Hello"; 265441191 = b…
 debug.print: Hello
 ← completed: ()
 → query check(1)
@@ -24,7 +24,7 @@ debug.print: Hello
 → update echo()
 debug.print: Hello
 ← completed: ()
-→ update install_code(record {4849238 = blob "DIDL\00\02qq\05Hello\05World"; 265441191 = blob "\00asm\01\00\00\00\01\a0\8…
+→ update install_code(record {4849238 = blob "DIDL\00\02qq\05Hello\05World"; 2654…
 debug.print: Hello
 ← completed: ()
 → query check(1)
@@ -33,7 +33,7 @@ debug.print: Hello
 debug.print: Hello
 debug.print: World
 ← completed: ()
-→ update install_code(record {4849238 = blob "DIDL\00\02qq\05Hello\05World"; 265441191 = blob "\00asm\01\00\00\00\01\a0\8…
+→ update install_code(record {4849238 = blob "DIDL\00\02qq\05Hello\05World"; 2654…
 debug.print: Hello
 ← completed: ()
 → query check(1)

@@ -80,6 +80,7 @@ let rec check_typ env t =
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)
+  | ClassT _ -> raise (Invalid_argument "service constructor not supported")
   | PreT -> assert false
 and check_typs env ts = List.map (check_typ env) ts
 and check_field env f =

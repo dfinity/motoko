@@ -37,7 +37,13 @@ let rec exp m e = match e.it with
   (* Plain values *)
   | (PrimE _ | LitE _ | ActorUrlE _ | FuncE _) -> ()
   | (TagE (_, exp1) | OptE exp1) -> exp m exp1
-  | (TupE es | ArrayE (_, es)) -> List.iter (exp m) es
+  | TupE es -> List.iter (exp m) es
+  | ArrayE (mut, es) ->
+    begin
+      match mut.it with
+      | Const ->  List.iter (exp m) es
+      | Var -> err m e.at
+    end
   | ObjE (_, efs) -> fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
@@ -46,7 +52,7 @@ let rec exp m e = match e.it with
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)
   | DotE (exp1, _) -> exp m exp1
-  | IdxE (exp1, exp2) -> exp m exp1; exp m exp2
+  | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
   | AnnotE (exp1, _) -> exp m exp1

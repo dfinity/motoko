@@ -109,6 +109,9 @@ rule token = parse
   | "," { COMMA }
   | ":" { COLON }
   | "=" { EQ }
+  | "==" { EQQ }
+  | "!:" { NOTCOLON }
+  | "!=" { NOTEQ }
   | "->" { ARROW }
 
   | nat as s { NAT s }

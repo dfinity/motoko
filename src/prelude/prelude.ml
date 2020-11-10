@@ -33,6 +33,31 @@ type Principal = prim "Principal";
 
 type @Iter<T_> = {next : () -> ?T_};
 
+// Blobs identifying fund units
+let @cycleBlob : Blob = "\00";
+let @icptBlob : Blob = "\01";
+
+var @cycleFunds : Nat64 = 0;
+var @icptFunds : Nat64 = 0;
+
+// Function called by backend to add funds to call.
+// DO NOT RENAME without modifying compilation.
+func @add_funds() {
+  let cycles = @cycleFunds;
+  let icpts = @icptFunds;
+  @reset_funds();
+  (prim "fundsAdd" : (Blob, Nat64) -> ()) (@cycleBlob, cycles);
+  (prim "fundsAdd" : (Blob, Nat64) -> ()) (@icptBlob, icpts);
+};
+
+// Function called by backend to zero funds on context switch.
+// DO NOT RENAME without modifying compilation.
+func @reset_funds() {
+  @cycleFunds := 0;
+  @icptFunds := 0;
+};
+
+
 // The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 
@@ -302,23 +327,42 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();
 
-type @Result<T> = {#ok : T; #error : Error};
+type @Refund = { cycles : Nat64; icpts : Nat64 };
+type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
+
+type @Waiter<T> = (@Refund,T) -> () ;
+
+var @refund : @Refund = { cycles = 0: Nat64; icpts = 0 : Nat64 };
+
+// Function called by backend to zero refunds on context switch.
+// DO NOT RENAME without modifying compilation.
+func @reset_refund() {
+  @refund := { cycles = 0: Nat64; icpts = 0 : Nat64 };
+};
+
+func @getSystemRefund() : @Refund {
+  return {
+    cycles = (prim "fundsRefunded" : Blob -> Nat64) @cycleBlob;
+    icpts =  (prim "fundsRefunded" : Blob -> Nat64) @icptBlob;
+  };
+};
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
-  let k_null = func(_ : T) {};
+  let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
-  var ks : @Cont<T> = k_null;
+  var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        result := ?(#ok t);
-        let ks_ = ks;
-        ks := k_null;
+        let refund = @getSystemRefund();
+        result := ?(#ok (refund, t));
+        let ws_ = ws;
+        ws := w_null;
         rs := r_null;
-        ks_(t);
+        ws_(refund, t);
       };
       case (? _) { assert false };
     };
@@ -329,7 +373,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
       case null {
         result := ?(#error e);
         let rs_ = rs;
-        ks := k_null;
+        ws := w_null;
         rs := r_null;
         rs_(e);
       };
@@ -340,18 +384,61 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   func enqueue(k : @Cont<T>, r : @Cont<Error>) {
     switch result {
       case null {
-        let ks_ = ks;
-        ks := func(t : T) { ks_(t); k(t) };
+        let ws_ = ws;
+        ws := func(r : @Refund, t : T) {
+          ws_(r, t);
+          @reset_funds();
+          @refund := r;
+          k(t);
+        };
         let rs_ = rs;
-        rs := func(e : Error) { rs_(e); r(e) };
+        rs := func(e : Error) {
+          rs_(e);
+          @reset_funds();
+          @reset_refund();
+          r(e) };
       };
-      case (? (#ok t)) { k(t) };
-      case (? (#error e)) { r(e) };
+      case (? (#ok (r, t))) {
+        @refund := r;
+        k(t)
+      };
+      case (? (#error e)) {
+        r(e)
+      };
     };
   };
 
   (enqueue, fulfill, fail)
 };
+
+let @ic00 = actor "aaaaa-aa" : actor {
+  create_canister : () -> async { canister_id : Principal };
+  install_code : {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : Blob;
+    arg : Blob;
+    compute_allocation : ?Nat;
+    memory_allocation : ?Nat;
+  } -> async ()
+};
+
+// It would be desirable if create_actor_helper can be defined
+// without paying the extra self-remote-call-cost
+func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let { canister_id = canister_id_ } =
+     await @ic00.create_canister();
+  await @ic00.install_code({
+    mode = #install;
+    canister_id = canister_id_;
+    wasm_module = wasm_module_;
+    arg = arg_;
+    compute_allocation = null;
+    memory_allocation = null;
+  });
+  return canister_id_;
+};
+
 |}
 
 (*
@@ -365,6 +452,7 @@ through Array.tabulate.
 *)
 let prim_module =
 {|
+
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
@@ -553,6 +641,47 @@ func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) 
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
-func caller() : Principal = (prim "caller" : () -> Principal) ();
+// Untyped dynamic actor creation from blobs
+let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
+
+// Funds
+type Unit = {
+ #cycle;
+ #icpt;
+};
+
+func unitToBlob(u: Unit) : Blob {
+  switch u {
+    case (#cycle) @cycleBlob;
+    case (#icpt) @icptBlob;
+  }
+};
+
+func fundsBalance(u : Unit) : Nat64 {
+  (prim "fundsBalance" : Blob -> Nat64) (unitToBlob u);
+};
+
+func fundsAvailable(u : Unit) : Nat64 {
+  (prim "fundsAvailable" : Blob -> Nat64) (unitToBlob u);
+};
+
+func fundsRefunded(u : Unit) : Nat64 {
+  switch u {
+    case (#cycle) @refund.cycles;
+    case (#icpt) @refund.icpts;
+  }
+};
+
+func fundsAccept(u : Unit, amount: Nat64) : () {
+  (prim "fundsAccept" : (Blob, Nat64) -> ()) (unitToBlob u, amount);
+};
+
+func fundsAdd(u : Unit, amount: Nat64) : () {
+  switch u {
+    case (#cycle) (@cycleFunds += amount);
+    case (#icpt) (@icptFunds += amount);
+  }
+};
+
 
 |}

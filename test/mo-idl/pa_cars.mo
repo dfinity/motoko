@@ -1,24 +1,8 @@
-// Stateless Suspendable Workflow
-// ==============================
+import T "import/car";
 
-// Creating an Account for the PA parking service
-
-// - Client: Insert Car data and holder's name
-// - Server: Validate car is registered under the given name
-// - Client: Pick a parking spot from a Google Map like interface + time
-// - Server: Register the parking spot for the user
-type Car = { model : Text; plate : Text };
-type DMV = actor { check : Car -> async CarInfo };
-type CarInfo = {
-  model : Text;
-  plate : Text;
-  isValid : Bool;
-  wasStolen : Bool;
-  expires : Nat;
-};
-
-actor class PACars(dmv : DMV) {
-  public func verifyCarInformation(user : User, car : Car) : async ?(shared (Location, TimeSpan) -> async Result) {
+actor class Car(dmv : T.DMV) {
+  /* Higher order function is supported for now.
+  public func verifyCarInformation(user : User, car : T.Car) : async ?(shared (Location, TimeSpan) -> async Result) {
     let carInfo = await dmv.check(car);
     if (carInfo.isValid and not carInfo.wasStolen) {
       return ?(shared func (location:Location, time:TimeSpan) : async Result {
@@ -28,8 +12,8 @@ actor class PACars(dmv : DMV) {
       return null;
     }
   };
-
-  flexible func reserveSpot(user : User, carInfo : CarInfo, location : Location, timeSpan : TimeSpan) : Result {
+  */
+  public func reserveSpot(user : User, carInfo : T.CarInfo, location : Location, timeSpan : TimeSpan) : async Result {
     // Do the actual work of registering the parking spot for the
     // given car in the given time span
     return null;

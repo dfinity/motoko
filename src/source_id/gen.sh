@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-cd "$(dirname "$BASH_SOURCE")"
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 file="source_id.ml"
 

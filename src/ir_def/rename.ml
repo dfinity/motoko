@@ -148,6 +148,9 @@ let comp_unit rho cu = match cu with
   | ProgU ds ->
     let ds', _ = decs rho ds in
     ProgU ds'
+  | LibU (ds, e) ->
+    let ds', rho' = decs rho ds
+    in LibU (ds', exp rho' e)
   | ActorU (as_opt, ds, fs, { pre; post }, t) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho

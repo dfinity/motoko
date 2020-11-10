@@ -45,14 +45,14 @@ export void* mp_calloc(size_t n, size_t size) {
 export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
   as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
 
-  if (FIELD(r, 0) != TAG_BLOB) bigint_trap(); // assert block type
+  if (TAG(r) != TAG_BLOB) bigint_trap(); // assert block type
 
-  if (new_size > FIELD(r, 1)) {
+  if (new_size > BLOB_LEN(r)) {
     void *newptr = mp_alloc(new_size);
-    if (old_size != FIELD(r, 1)) bigint_trap();
-    as_memcpy(newptr, ptr, old_size);
+    if (old_size != BLOB_LEN(r)) bigint_trap();
+    memcpy(newptr, ptr, old_size);
     return newptr;
-  } else if (new_size == FIELD(r, 1)) {
+  } else if (new_size == BLOB_LEN(r)) {
     // No need to grow
     return ptr;
   } else {
@@ -92,7 +92,7 @@ we call a trap function provided by the Wasm part of the runtime.
 
 as_ptr bigint_alloc() {
   as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
-  FIELD(r, 0) = TAG_BIGINT;
+  TAG(r) = TAG_BIGINT;
   CHECK(mp_init(BIGINT_PAYLOAD(r)));
   return r;
 }
@@ -340,10 +340,6 @@ export as_ptr bigint_leb128_decode(buf *buf) {
   uint8_t b;
   do {
     b = read_byte(buf);
-    if (s > 0 && b == 0x00) {
-        // The high 7 bits are all zeros, this is not a shortest encoding
-        idl_trap_with("not shortest encoding");
-    }
     if (s + 7 < s) {
         // shift overflow. number is absurdly large anyways
         idl_trap_with("absurdly large number");
@@ -366,10 +362,6 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
   bool last_sign_bit_set = 0;
   do {
     b = read_byte(buf);
-    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x7F))) {
-        // The high 8 bits are all zeros or ones, so this is not a shortest encoding
-        idl_trap_with("not shortest encoding");
-    }
     if (s + 7 < s) {
         // shift overflow. number is absurdly large anyways
         idl_trap_with("absurdly large number");

@@ -1,6 +1,6 @@
 → update create_canister()
 ← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\00\00\01\a0\81\80\80\00\1a`\n\7f\7f\7f\7f…
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← completed: ()
 → query any(null, "Foo")
 debug.print: ok: Foo
@@ -77,13 +77,13 @@ debug.print: ok: Foo
 → query any(record {128 = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← completed: ()
-→ query any(0x4449444c016c02007180017502007101a0deadbeef03466f6f)
+→ query any(record {0 = "☃"; 128 = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← completed: ()
 → query any(variant {128 = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← completed: ()
-→ query any(0x4449444c016b0200718001750200710001a003466f6f)
+→ query any(variant {0 = "☃"}, "Foo")
 debug.print: ok: Foo
 ← completed: ()
 → query any(variant {128 = (-272716322 : int32)}, "Foo")

@@ -7,9 +7,6 @@
     X
     X SEP <list(X, SEP)>
 
-<tag> ::= 
-    '#' <id>
-
 <obj_sort> ::= 
     'object'
     'actor'
@@ -61,10 +58,10 @@
 
 <typ_field> ::= 
     'var'? <id> ':' <typ>
-    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> <return_typ>
+    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> ':' <typ>
 
 <typ_tag> ::= 
-    <tag> <return_typ_nullary>?
+    '#' <id> (':' <typ>)?
 
 <typ_bind> ::= 
     <id> '<:' <typ>
@@ -154,8 +151,8 @@
 
 <exp_un> ::= 
     <exp_post>
-    <tag>
-    <tag> <exp_nullary>
+    '#' <id>
+    '#' <id> <exp_nullary>
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
@@ -180,7 +177,7 @@
     'async' <exp>
     'await' <exp>
     'assert' <exp>
-    'label' <id> <return_typ_nullary>? <exp>
+    'label' <id> (':' <typ>)? <exp>
     'break' <id> <exp_nullary>?
     'continue' <id>
     'debug' <exp>
@@ -234,20 +231,20 @@
     'flexible'
     'stable'
 
-<pat_param> ::= 
+<pat_plain> ::= 
     '_'
     <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
 
 <pat_nullary> ::= 
-    <pat_param>
+    <pat_plain>
     '{' <list(<pat_field>, ';')> '}'
 
 <pat_un> ::= 
     <pat_nullary>
-    <tag>
-    <tag> <pat_nullary>
+    '#' <id>
+    '#' <id> <pat_nullary>
     '?' <pat_un>
     <unop> <lit>
 
@@ -259,26 +256,19 @@
 <pat> ::= 
     <pat_bin>
 
-<return_typ> ::= 
-    ':' <typ>
-
-<return_typ_nullary> ::= 
-    ':' <typ_nullary>
-
 <pat_field> ::= 
-    <id>
-    <id> '=' <pat>
-    <id> ':' <typ>
+    <id> (':' <typ>)?
+    <id> (':' <typ>)? '=' <pat>
 
 <dec_var> ::= 
-    'var' <id> <return_typ>? '=' <exp>
+    'var' <id> (':' <typ>)? '=' <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? '='? <obj_body>
-    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> <return_typ>? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_param> <return_typ>? <class_body>
+    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
     'ignore' <exp>
 
 <dec> ::= 

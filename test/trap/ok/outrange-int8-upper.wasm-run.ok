@@ -2,11 +2,11 @@ losing precision
 Error: failed to run main module `_out/outrange-int8-upper.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
        wasm backtrace:
-         0: <unknown>!Int-><Int8>
-         1: <unknown>!intToInt8
-         2: <unknown>!init
-         3: <unknown>!_start
+         0: Int-><Int8>
+         1: intToInt8
+         2: init
+         3: _start
        

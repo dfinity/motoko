@@ -116,7 +116,7 @@ and instr' =
   | Unary of unop                     (* unary numeric operator *)
   | Binary of binop                   (* binary numeric operator *)
   | Convert of cvtop                  (* conversion *)
-
+  | Meta of Dwarf5.Meta.die           (* debugging metadata *)
 
 (* Globals & Functions *)
 
@@ -273,3 +273,19 @@ let string_of_name n =
   in
   List.iter escape n;
   Buffer.contents b
+
+(* is_dwarf_like indicates whether an AST meta instruction
+   prevents dead-code elimination. Elimination is forbidden,
+   if the instruction contributes to a DIE, i.e. establishes, augments
+   or closes a DWARF Tag.
+ *)
+let rec is_dwarf_like' =
+  let open Dwarf5.Meta in
+  function
+  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
+  | Grouped parts -> List.exists is_dwarf_like' parts
+  | StatementDelimiter _ | FutureAttribute _ -> false
+let is_dwarf_like = function
+  | Meta m -> is_dwarf_like' m
+  | _ -> false
+

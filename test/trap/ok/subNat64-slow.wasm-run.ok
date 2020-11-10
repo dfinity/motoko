@@ -2,12 +2,12 @@ Natural subtraction underflow
 Error: failed to run main module `_out/subNat64-slow.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
        wasm backtrace:
-         0: <unknown>!assert_nonneg
-         1: <unknown>!B_sub
-         2: <unknown>!sub<Nat64>
-         3: <unknown>!init
-         4: <unknown>!_start
+         0: assert_nonneg
+         1: B_sub
+         2: sub<Nat64>
+         3: init
+         4: _start
        

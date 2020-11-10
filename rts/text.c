@@ -54,12 +54,12 @@ static blob_t alloc_text_blob(size_t n) {
 // Create
 export text_t text_of_ptr_size(const char *buf, size_t n) {
   as_ptr r = alloc_text_blob(n);
-  as_memcpy(BLOB_PAYLOAD(r), buf, n);
+  memcpy(BLOB_PAYLOAD(r), buf, n);
   return r;
 }
 
 text_t text_of_cstr(const char * const s) {
-  size_t l = as_strlen(s);
+  size_t l = strlen(s);
   return text_of_ptr_size(s, l);
 }
 
@@ -75,8 +75,8 @@ export text_t text_concat(text_t s1, text_t s2) {
   // short texts are copied into a single blob
   if (n < MIN_CONCAT_SIZE) {
     as_ptr r = alloc_text_blob(n1 + n2);
-    as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
-    as_memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
+    memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
+    memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
     return r;
   }
   // Check max size
@@ -106,7 +106,7 @@ export void text_to_buf(text_t s, char *buf) {
   crumb *next_crumb = NULL; // what do do after we are done with s
   while (true) {
     if (TAG(s) == TAG_BLOB) {
-      as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
+      memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
 
       // return if we are done
       if (next_crumb == NULL) return;
@@ -155,7 +155,7 @@ export int blob_compare(text_t s1, text_t s2) {
   uint32_t n1 = BLOB_LEN(s1);
   uint32_t n2 = BLOB_LEN(s2);
   uint32_t n = n1 < n2 ? n1 : n2;
-  uint32_t r = as_memcmp(BLOB_PAYLOAD(s1), BLOB_PAYLOAD(s2), n);
+  uint32_t r = memcmp(BLOB_PAYLOAD(s1), BLOB_PAYLOAD(s2), n);
   if (r == 0) {
     if (n1 < n2) { return -1; }
     else if (n1 > n2) { return 1; }
@@ -196,7 +196,7 @@ static int text_compare_range(text_t s1, size_t offset1, text_t s2, size_t offse
     else return text_compare_range(s1, offset1 + n1, CONCAT_ARG2(s2), 0, n - n1);
   }
   // now both are blobs
-  return as_memcmp(BLOB_PAYLOAD(s1) + offset1, BLOB_PAYLOAD(s2) + offset2, n);
+  return memcmp(BLOB_PAYLOAD(s1) + offset1, BLOB_PAYLOAD(s2) + offset2, n);
 }
 
 export int text_compare(text_t s1, text_t s2) {
@@ -297,6 +297,7 @@ static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
     as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
     TAG(c) = TAG_ARRAY;
+    TUPLE_LEN(c) = 2;
     TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
     TEXT_CONT_NEXT(c) = *todo;
     *todo = c;
@@ -308,6 +309,7 @@ static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
 export text_iter_t text_iter(text_t s) {
   as_ptr i = alloc_words(TUPLE_HEADER_SIZE + 3);
   TAG(i) = TAG_ARRAY;
+  TUPLE_LEN(i) = 3;
   TEXT_ITER_POS(i) = 0;
   TEXT_ITER_TODO(i) = 0;
   TEXT_ITER_BLOB(i) = find_leaf(s, &TEXT_ITER_TODO(i));

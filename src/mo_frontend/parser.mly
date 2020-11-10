@@ -56,6 +56,16 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
+let annot_exp e t_opt =
+  match t_opt with
+  | None -> e
+  | Some t -> AnnotE(e, t) @? span t.at e.at
+
+let annot_pat p t_opt =
+  match t_opt with
+  | None -> p
+  | Some t -> AnnotP(p, t) @! span t.at p.at
+
 let let_or_exp named x e' at =
   if named
   then LetD(VarP(x) @! at, e' @? at) @? at
@@ -76,17 +86,19 @@ let let_field x x' = field (LetD(VarP(x) @! x.at, VarE(x') @? x'.at) @? x.at)
 let var_field x x' = field (VarD(x, VarE(x') @? x'.at) @? x.at)
 
 let obj ds' ds at =
-  BlockE(ds' @ [ExpD(ObjE(Type.Object @@ no_region, ds) @? at) @? at])
+  let e' = ObjE(Type.Object @@ at, ds) in
+  if ds' = [] then e' else BlockE(ds' @ [ExpD(e' @? at) @? at])
 
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-     | ObjE (sort, _) ->
-       sort.it = Type.Module
-     | FuncE _ ->
-       true
-     | _ -> false)
+    | ObjE(sort, _) ->
+      sort.it = Type.Module
+    | FuncE _ ->
+      true
+    | _ -> false
+    )
   | _ -> false
 
 let share_typ t =
@@ -140,7 +152,7 @@ let share_expfield (ef : exp_field) =
 
 let rec normalize_let p e =
     match p.it with
-    | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
+    | AnnotP(p', t) -> p', AnnotE(e, t) @? p.at
     | ParP p' -> normalize_let p' e
     | _ -> (p, e)
 
@@ -216,10 +228,9 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.exp_field list> seplist(dec_field,semicolon) obj_body
 %type<Mo_def.Syntax.dec list * Mo_def.Syntax.exp_field list> exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
-%type<Mo_def.Syntax.typ> return_typ_nullary return_typ
-%type<Mo_def.Syntax.typ option> option(return_typ_nullary) option(return_typ)
+%type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_param pat_nullary pat_bin
+%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
 %type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
@@ -246,6 +257,7 @@ let rec normalize_let p e =
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
 
+
 (* Helpers *)
 
 seplist(X, SEP) :
@@ -266,9 +278,6 @@ seplist1(X, SEP) :
 
 %inline id :
   | id=ID { id @@ at $sloc }
-
-%inline tag :
-  | HASH id=ID { id @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -307,6 +316,7 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
   | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+
 
 (* Paths *)
 
@@ -389,13 +399,13 @@ inst :
 typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
-  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
+  | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | x=tag t=return_typ_nullary?
+  | HASH x=id t=annot_opt
     { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
 
 typ_bind :
@@ -403,6 +413,11 @@ typ_bind :
     { {var = x; sort = Type.Type @@ no_region; bound = t} @= at $sloc }
   | x=id
     { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
+
+annot_opt :
+  | COLON t=typ { Some t }
+  | (* empty *) { None }
+
 
 (* Expressions *)
 
@@ -518,9 +533,9 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
-  | x=tag
+  | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
-  | x=tag e=exp_nullary(ob)
+  | HASH x=id e=exp_nullary(ob)
     { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
@@ -571,16 +586,17 @@ exp_nondec(B) :
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=return_typ_nullary? e=exp(bl)
+  | LABEL x=id rt=annot_opt e=exp(bl)
     { let x' = ("continue " ^ x.it) @@ x.at in
-      let t = Lib.Option.get rt (TupT [] @! at $sloc) in
+      let unit () = TupT [] @! at $sloc in
       let e' =
         match e.it with
-        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', t, e2) @? e2.at) @? e.at
-        | LoopE (e1, eo) -> LoopE (LabelE (x', t, e1) @? e1.at, eo) @? e.at
-        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', t, e2) @? e2.at) @? e.at
+        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
+        | LoopE (e1, eo) -> LoopE (LabelE (x', unit (), e1) @? e1.at, eo) @? e.at
+        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
         | _ -> e
-      in LabelE(x, t, e') @? at $sloc }
+      in
+      LabelE(x, Lib.Option.get rt (unit ()), e') @? at $sloc }
   | BREAK x=id eo=exp_nullary(ob)?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
@@ -673,9 +689,10 @@ stab :
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
 
+
 (* Patterns *)
 
-pat_param :
+pat_plain :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
@@ -686,7 +703,7 @@ pat_param :
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
 pat_nullary :
-  | p=pat_param
+  | p=pat_plain
     { p }
   | LCURLY fps=seplist(pat_field, semicolon) RCURLY
     { ObjP(fps) @! at $sloc }
@@ -694,9 +711,9 @@ pat_nullary :
 pat_un :
   | p=pat_nullary
     { p }
-  | x=tag
+  | HASH x=id
     { TagP(x, TupP [] @! at $sloc) @! at $sloc }
-  | x=tag p=pat_nullary
+  | HASH x=id p=pat_nullary
     { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
@@ -720,35 +737,24 @@ pat :
   | p=pat_bin
     { p }
 
-return_typ :
-  | COLON t=typ { t }
-
-return_typ_nullary :
-  | COLON t=typ_nullary { t }
-
 pat_field :
-  | x=id
-    { {id = x; pat = VarP x @! x.at} @@ at $sloc }
-  | x=id EQ p=pat
-    { {id = x; pat = p} @@ at $sloc }
-  | x=id COLON t=typ
-    { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
+  | x=id t=annot_opt
+    { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
+  | x=id t=annot_opt EQ p=pat
+    { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
   | p=pat_nullary
     { fun sloc -> p }
-  | (* Empty *)
+  | (* empty *)
     { fun sloc -> WildP @! sloc }
+
 
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=return_typ? EQ e=exp(ob)
-    { let e' =
-        match t with
-        | None -> e
-        | Some t -> AnnotE (e, t) @? span t.at e.at
-      in VarD(x, e') @? at $sloc }
+  | VAR x=id t=annot_opt EQ e=exp(ob)
+    { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
   | LET p=pat EQ e=exp(ob)
@@ -762,7 +768,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
+      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -770,7 +776,7 @@ dec_nonvar :
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
+      tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
@@ -811,13 +817,14 @@ class_body :
 
 
 (* Programs *)
+
 imp :
   | IMPORT xf=id_opt EQ? f=TEXT
     { let _, x = xf "import" $sloc in
       let_or_exp true x (ImportE (f, ref Unresolved)) (at $sloc) }
 
 start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
-  | /* Empty */ { () }
+  | (* empty *) { () }
 
 parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
