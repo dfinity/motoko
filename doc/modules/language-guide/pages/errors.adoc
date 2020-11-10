@@ -57,6 +57,11 @@ Using `Option` or `Result` is the preferred way of signaling errors in Motoko.
 They work in both synchronous and asynchronous contexts and make your APIs safer to use. Exceptions should only be used to signal unexpected error states.
 
 === Error reporting with Option ===
+A function that wants to return a value of type `A` or signal an error can
+return a value of type `?A` to use the `null` value to signal an error. In our
+example this means having our `markDone` function return an `async ?Int`.
+
+Here's what that looks like for our `markDone` function:
 Definition:
 [source,motoko]
 ----
@@ -118,6 +123,12 @@ Pattern matching can become tedious and verbose, especially when dealing with mu
 The (link base here) library exposes a collection of higher-order functions from the `Optional` and `Result` modules to improve ergonomics around error handling.
 
 === Converting back and forth between Option/Result ===
+Sometimes you'll want to move between Options and Results. A Hashmap lookup
+returns an Option on failure and that's fine, but maybe your callsite has more
+context and can turn that lookup failure into a meaningful Result. At other
+times you don't need the additional information a Result provides and just want
+to convert all `#err` cases into `null`. For these usecases `base` provides the
+`fromOption` and `toOption` functions in the `Result` module.
 
 == Asynchronous Exceptions ==
 
