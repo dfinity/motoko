@@ -53,7 +53,7 @@ include::../examples/todo-error.mo[lines="82..90"]
 ----
 
 === Prefer Option/Result over Exceptions where possible ===
-Using Option or Result is the preferred way of signaling errors in Motoko.
+Using `Option` or `Result` is the preferred way of signaling errors in Motoko.
 They work in both synchronous and asynchronous contexts and make your APIs safer to use. Exceptions should only be used to signal unexpected error states.
 
 === Error reporting with Option ===
