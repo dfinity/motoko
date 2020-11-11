@@ -424,7 +424,7 @@ let async f e =
 let ignoreAsync f e =
   IgnoreE (
     AnnotE (AsyncE (scope_bind f, e)  @? e.at,
-      AsyncT (scope_typ e.at,TupT[] @! e.at) @! e.at) @? e.at ) @? e.at
+      AsyncT (scope_typ e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let desugar sp f t_opt (sugar, e) =
   match sugar, e with
