@@ -19,8 +19,8 @@ actor a {
   // Would be nice if these were both tail calls on the platform
   public func lookup(k : Key) : async ?Value {
     switch (nodes[k % n]) {
-      case null null;
-      case (?node) await node.lookup(k);
+      case null { null };
+      case (?node) { await node.lookup(k) };
     };
   };
 
@@ -32,7 +32,7 @@ actor a {
         nodes[i] := ?n;
         n;
       };
-      case (?node) node;
+      case (?node) { node };
     };
     await node.insert(k, v);
   };

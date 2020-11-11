@@ -19,12 +19,12 @@ module {
   public type Version = { #Version : Nat };
 
   public func unbox(version : Version) : Nat {
-    let #Version n = version;
+    let #Version(n) = version;
     n
   };
 
   public func new(n : Nat) : ?Version {
-    if (n > 40 or n == 0) null else ?#Version n
+    if (n > 40 or n == 0) { null } else { ?#Version(n) }
   };
 
   public func encode(version : Version) : List<Bool> {

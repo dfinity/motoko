@@ -2,11 +2,11 @@ import Prim "mo:prim";
 
 // checks
 
-ignore (switch (object {}) { case {a} 42 });
+ignore (switch (object {}) { case {a} { 42 } });
 
 // checks
 
-for ({} in [object {}].vals()) { Prim.debugPrint "hey" };
+for ({} in [object {}].vals()) { Prim.debugPrint("hey") };
 
 // infers
 
@@ -22,8 +22,8 @@ ignore (foo({}));
 ignore (foo(object {}));
 ignore (foo(actor {}));
 
-let a = actor { public func bar({}) : async Nat = async 25 };
-ignore (foo a);
+let a = actor { public func bar({}) : async Nat = async { 25 } };
+ignore (foo(a));
 
 
 ignore (baz({}));

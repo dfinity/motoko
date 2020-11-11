@@ -7,4 +7,4 @@ func foo() = switch a {
   case {f; g} { () }
 };
 
-assert ((switch (foo()) { case () 0 }) == 0)
+assert ((switch (foo()) { case () { 0 } }) == 0)

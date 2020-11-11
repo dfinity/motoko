@@ -1,5 +1,5 @@
 func wantSeeSwap(x : Bool) : Nat =
-    if (not x) 42 else 25;
+    if (not x) { 42 } else { 25 };
 
 ignore(wantSeeSwap(true));
 

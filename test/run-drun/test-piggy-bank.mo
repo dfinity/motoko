@@ -9,7 +9,7 @@ actor Alice {
     let porky = await Lib.PiggyBank(#cycle, 1000_000, Alice.credit);
     assert (0 == (await porky.getSavings()));
 
-    await { Funds.add(#cycle, 1000); porky.deposit() };
+    await do { Funds.add(#cycle, 1000); porky.deposit() };
     assert (1000 == (await porky.getSavings()));
 
     await porky.withdraw(500);
@@ -18,7 +18,7 @@ actor Alice {
     await porky.withdraw(500);
     assert (0 == (await porky.getSavings()));
 
-    await { Funds.add(#cycle, 2000_000); porky.deposit() };
+    await do { Funds.add(#cycle, 2000_000); porky.deposit() };
     let refund = Funds.refunded(#cycle);
     assert (1000_000 == refund);
     assert (1000_000 == (await porky.getSavings()));

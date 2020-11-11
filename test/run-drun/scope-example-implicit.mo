@@ -3,7 +3,7 @@ actor A {
 
   public shared func f() : async(Int,Int) {
     // current scope: Y
-    var a : async Int = async 0;
+    var a : async Int = async { 0 };
 
     await (async {
       // current scope: Z

@@ -8,7 +8,7 @@ actor {
 
   class range(x : Nat, y : Nat) {
     var i = x;
-    public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+    public func next() : ?Nat { if (i > y) {null} else {let j = i; i += 1; ?j} };
   };
 
   flexible func unreachable() : None { assert false ; loop { } };
@@ -19,7 +19,7 @@ actor {
     };
 
     let isNegative = x < 0;
-    var int = if isNegative (-x) else x;
+    var int = if isNegative {-x} else {x};
 
     var text = "";
     let base = 10;
@@ -27,22 +27,22 @@ actor {
     while (int > 0) {
       let rem = int % base;
       text := (switch (rem) {
-        case 0 "0";
-        case 1 "1";
-        case 2 "2";
-        case 3 "3";
-        case 4 "4";
-        case 5 "5";
-        case 6 "6";
-        case 7 "7";
-        case 8 "8";
-        case 9 "9";
-        case _ unreachable();
+        case 0 { "0" };
+        case 1 { "1" };
+        case 2 { "2" };
+        case 3 { "3" };
+        case 4 { "4" };
+        case 5 { "5" };
+        case 6 { "6" };
+        case 7 { "7" };
+        case 8 { "8" };
+        case 9 { "9" };
+        case _ { unreachable() };
       }) # text;
       int := int / base;
     };
 
-    return if isNegative ("-" # text) else text;
+    return if isNegative {"-" # text} else {text};
   };
 
 
@@ -97,12 +97,11 @@ actor {
           for (j in range(0, N-1)) {
             if (board[i * N + j] == white) {
               str := str # "O";
-            } else if (board[i * N + j] == black) {
+            } else { if (board[i * N + j] == black) {
               str := str # "*";
-            }
-            else {
+            } else {
               str := str # ".";
-            };
+            } };
           };
           str := str # "\n";
         };
@@ -215,9 +214,9 @@ actor {
         if (c == white) {
           wc += 1;
         }
-        else if (c == black) {
+        else { if (c == black) {
           bc += 1;
-        }
+        } }
       };
       return (wc, bc);
     };

@@ -9,7 +9,7 @@ showing that string concatenation works as a tree with sharing.
 
 class range(x : Nat, y : Nat) {
   var i = x;
-  public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+  public func next() : ?Nat { if (i > y) {null} else {let j = i; i += 1; ?j} };
 };
 
 let before = Prim.rts_heap_size();

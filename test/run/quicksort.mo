@@ -30,7 +30,7 @@ class QS<T>(cmp : (T, T) -> Int) {
         j -= 1;
       };
 
-      if (i >= j) return j;
+      if (i >= j) { return j };
 
       swap(a, i, j);
     };

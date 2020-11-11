@@ -2,7 +2,7 @@ import Prim "mo:prim";
 
 actor {
   public query func absolute(x:Int) : async Nat {
-    Prim.abs x
+    Prim.abs(x)
   };
   public query func absolutes(xs:[Int]) : async [Nat] {
     Prim.Array_tabulate<Nat>(xs.size(), func (i:Int) : Nat = Prim.abs(xs[i]))

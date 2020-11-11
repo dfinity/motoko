@@ -19,8 +19,8 @@ shared({caller = owner}) actor class PiggyBank(
     let amount = Funds.available(unit);
     let limit = capacity - savings;
     let acceptable =
-      if (amount <= limit) amount
-      else limit;
+      if (amount <= limit) { amount }
+      else { limit };
     Funds.accept(unit, acceptable);
     savings += acceptable;
   };

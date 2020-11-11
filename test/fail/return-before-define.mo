@@ -9,8 +9,8 @@ func f():() -> Int {
   };
 };
 
-Prim.debugPrint "1";
+Prim.debugPrint("1");
 let h = f();
 
-Prim.debugPrint "2";
+Prim.debugPrint("2");
 let wrong = h();

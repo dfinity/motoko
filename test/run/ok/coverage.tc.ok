@@ -66,24 +66,24 @@ coverage.mo:41.3-41.61: warning, this switch of type
   {a : Nat; b : Nat}
 does not cover value
   {a = 1 or 2 or _; b = 1 or 2 or _}
-coverage.mo:45.3-45.74: warning, this switch of type
+coverage.mo:45.3-45.77: warning, this switch of type
   {#a : Nat; #b : Nat}
 does not cover value
   #b(0 or 1 or _)
-coverage.mo:46.63-46.69: warning, this pattern is never matched
-coverage.mo:47.3-47.58: warning, this switch of type
+coverage.mo:46.65-46.72: warning, this pattern is never matched
+coverage.mo:47.3-47.60: warning, this switch of type
   {#a : Nat; #b : Nat}
 does not cover value
   #b(_)
-coverage.mo:48.3-48.58: warning, this switch of type
+coverage.mo:48.3-48.60: warning, this switch of type
   {#a : Nat; #b : Nat}
 does not cover value
   #a(_)
-coverage.mo:49.3-49.62: warning, this switch of type
+coverage.mo:49.3-49.64: warning, this switch of type
   {#a : Nat; #b : Nat; #c}
 does not cover value
   #a(_) or #c
-coverage.mo:50.3-50.42: warning, this switch of type
+coverage.mo:50.3-50.43: warning, this switch of type
   {#a : Nat; #b : Nat}
 does not cover value
   _

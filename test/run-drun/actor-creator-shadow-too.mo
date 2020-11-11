@@ -1,6 +1,6 @@
 shared(c) actor class C() = c {
 
-  public shared ctxt func c1 () : async actor {} {
+  public shared(ctxt) func c1 () : async actor {} {
      return c;
   };
 

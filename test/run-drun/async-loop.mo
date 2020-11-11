@@ -25,7 +25,7 @@ actor a {
         assert(j == i);
         i += 1;
         j += 1;
-        if (await async (j == 3)) break l else continue l;
+        if (await async { j == 3 }) break l else continue l;
         assert(false);
       };
       assert(i == 3);
@@ -38,7 +38,7 @@ actor a {
       loop {
        Prim.debugPrintNat(j);
        assert(j == i);
-       await (async (i += 1));
+       await (async { i += 1 });
        j += 1;
        if (j == 3) break l else continue l;
        assert(false);
@@ -57,7 +57,7 @@ actor a {
        };
        Prim.debugPrintNat(j);
        assert(j == i);
-       await (async (i += 1));
+       await (async { i += 1 });
        j += 1;
        continue l;
        assert(false);

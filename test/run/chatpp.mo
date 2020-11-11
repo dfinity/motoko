@@ -41,15 +41,15 @@ actor class Server() = {
     clients := ?cs;
     return object {
       public shared func post(message : Text) {
-	if (not c.revoked) { // inlined call to broadcast(c.id,message)
+	      if (not c.revoked) { // inlined call to broadcast(c.id,message)
 	  let id = c.id;
 	  var next = clients;
 	  label sends loop {
 	    switch next {
 	      case null { break sends };
 	      case (?n) {
-		if (n.head.id != id) n.head.client.send(message);
-		next := n.tail;
+		      if (n.head.id != id) { n.head.client.send(message) };
+		      next := n.tail;
 	      };
 	    };
 	  };
@@ -64,15 +64,15 @@ actor class Server() = {
     var next = clients;
     loop {
       switch next {
-        case null return;
+        case null { return };
         case (?n) {
           if (n.head.id == id) {
             switch prev {
               case null { clients := n.tail };
               case (?p) { p.tail := n.tail };
             };
-            Prim.debugPrint "unsubscribe ";
-	    Prim.debugPrintInt id;
+            Prim.debugPrint("unsubscribe ");
+	    Prim.debugPrintInt(id);
             return;
           };
           prev := next;

@@ -13,7 +13,7 @@ h((),);
 func k((a : Nat, b : Bool)) {};
 let l : ((Nat, Bool),) -> () = k;
 
-l 42 false; // rejected, 42 is not of type (Nat, Bool)
+l(42)(false); // rejected, 42 is not of type (Nat, Bool)
 
 l(42, false); // accepted, first-class pair implicitly converted to argument of call
 l((42, false)); // accepted, parenthesis around values is redundant

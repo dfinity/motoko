@@ -27,11 +27,11 @@ actor a {
   };
 
   public shared query func badquery4() : async () {
-    throw (Prim.error ""); // can throw
+    throw (Prim.error("")); // can throw
   };
 
   public shared query func badquery5() : async () {
-    try ()  catch _  {}; // can catch
+    try {} catch _  {}; // can catch
   };
 
 };

@@ -9,9 +9,9 @@
 import imported1 "ic:lg264-qjkae";
 import imported2 "canister:self";
 actor a {
-  public func go() : async (actor {}) = async imported1;
-  public func go2() : async (actor {}) = async await (imported1.go());
-  public func go3() : async (actor {}) = async await (imported2.go());
+  public func go() : async (actor {}) = async { imported1 };
+  public func go2() : async (actor {}) = async { await (imported1.go()) };
+  public func go3() : async (actor {}) = async { await (imported2.go()) };
 };
 //CALL ingress go "DIDL\x00\x00"
 //CALL ingress go2 "DIDL\x00\x00"

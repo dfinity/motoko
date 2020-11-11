@@ -3,10 +3,10 @@ actor counter = {
   flexible var c = 1;
   public func inc() : async () {
     c += 1;
-    Prim.debugPrintNat c;
+    Prim.debugPrintNat(c);
   };
   public func printCounter () : async () {
-    Prim.debugPrintNat c;
+    Prim.debugPrintNat(c);
   };
   public func get() : async Nat {
     return c
@@ -14,8 +14,8 @@ actor counter = {
   public query func read() : async Nat {
     let tmp = c;
     c += 1;
-    Prim.debugPrint "In read:";
-    Prim.debugPrintNat c;
+    Prim.debugPrint("In read:");
+    Prim.debugPrintNat(c);
     return tmp;
   };
 

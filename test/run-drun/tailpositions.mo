@@ -8,7 +8,7 @@ let bound:Int = 100000;
 do {
     func Loop(n:Int){
 	if (n >= bound) {
-            Prim.debugPrint "done 1";
+            Prim.debugPrint("done 1");
             return;
 	};
 	Loop(n+1);
@@ -19,14 +19,14 @@ do {
 do {
     func Loop(n:Int){
 	if (n >= bound) {
-            Prim.debugPrint "done 2";
+            Prim.debugPrint("done 2");
             return;
 	};
-	if (true)
-            Loop(n+1)
-	else
+	if (true) {
+         Loop(n+1)
+	} else {
          Loop(n+1);
-    };
+    }};
     Loop(0);
 };
 
@@ -34,13 +34,13 @@ do {
 do {
     func Loop(n:Int){
 	if (n >= bound) {
-            Prim.debugPrint "done 3";
+            Prim.debugPrint("done 3");
             return;
 	};
 	switch (n % 2) {
-	case 0 Loop(n+1);
-	case 1 Loop(n+1);
-	case _ assert(false);
+	case 0 { Loop(n+1) };
+	case 1 { Loop(n+1) };
+	case _ { assert(false) };
 	};
     };
 
@@ -50,7 +50,7 @@ do {
 do {
     func Loop(n:Int){
 	if (n >= bound) {
-            Prim.debugPrint "done 4";
+            Prim.debugPrint("done 4");
             return;
 	};
 	do {
@@ -65,7 +65,7 @@ do {
 do {
     func Loop(n:Int){
 	if (n >= bound) {
-            Prim.debugPrint "done 5";
+            Prim.debugPrint("done 5");
             return;
 	};
 	let _ = (return Loop(n+1)) + 1;
@@ -77,7 +77,7 @@ do {
 do {
     func Loop(n:Int):Bool{
 	if (n >= bound) {
-            Prim.debugPrint "done 6";
+            Prim.debugPrint("done 6");
             return true;
 	};
 	true and Loop(n+1);
@@ -88,7 +88,7 @@ do {
 do {
     func Loop(n:Int):Bool {
 	if (n >= bound) {
-            Prim.debugPrint "done 7";
+            Prim.debugPrint("done 7");
             return true;
 	};
 	false or Loop(n+1);

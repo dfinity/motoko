@@ -43,6 +43,22 @@ let warn_deprecated_block at =
     text = "block syntax is deprecated in this position, use 'do { ... }'"
   }
 
+let warn_deprecated_nonblock at =
+  Diag.add_msg (Option.get !msg_store) Diag.{
+    sev = Warning;
+    cat = "syntax";
+    at;
+    text = "non-block syntax is deprecated in this position, use '{ ... }'"
+  }
+
+let warn_deprecated_arg at =
+  Diag.add_msg (Option.get !msg_store) Diag.{
+    sev = Warning;
+    cat = "syntax";
+    at;
+    text = "non-parenthesized expressions are deprecated in this position, use '(...)'"
+  }
+
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 
@@ -206,7 +222,7 @@ let rec normalize_let p e =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_arg exp_obj exp_key exp_nest deprecated_exp_obj deprecated_exp_arg deprecated_exp_block deprecated_block
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -229,15 +245,15 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_opt
+%type<Mo_def.Syntax.pat> pat pat_bin pat_un pat_nullary pat_plain pat_arg deprecated_pat_arg deprecated_pat_arg_nonarg deprecated_pat_opt
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
-%type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
+%type<Mo_def.Syntax.exp option> option(deprecated_exp_arg)
 %type<unit option> option(EQ)
-%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
+%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nondec(ob) block exp_bin(ob) exp_bin(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
-%type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
+%type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar dec_nonexp
 %type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar dec_field
 %type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
@@ -252,7 +268,7 @@ let rec normalize_let p e =
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 %start<unit> parse_module_header (* Result passed via the Parser_lib.Imports exception *)
 
-%on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
+%on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(ob)
 %%
 
 
@@ -503,11 +519,15 @@ exp_obj :
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
     { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
 
-exp_plain :
-  | l=lit
-    { LitE(ref l) @? at $sloc }
+exp_arg :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+
+exp_plain :
+  | e=exp_arg
+    { e }
+  | l=lit
+    { LitE(ref l) @? at $sloc }
 
 exp_nullary(B) :
   | e=B
@@ -530,7 +550,7 @@ exp_post(B) :
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
-  | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
+  | e1=exp_post(B) inst=inst e2=deprecated_exp_arg
     { CallE(e1, inst, e2) @? at $sloc }
 
 exp_un(B) :
@@ -538,7 +558,7 @@ exp_un(B) :
     { e }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
-  | HASH x=id e=exp_nullary(ob)
+  | HASH x=id e=deprecated_exp_arg
     { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
@@ -572,22 +592,16 @@ exp_bin(B) :
   | e=exp_bin(B) COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 
-exp_nondec(B) :
-  | e=exp_bin(B)
-    { e }
-  | e1=exp_bin(B) ASSIGN e2=exp(ob)
-    { AssignE(e1, e2) @? at $sloc}
-  | e1=exp_bin(B) op=binassign e2=exp(ob)
-    { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
+exp_key :
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
     { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
-  | AWAIT e=exp_nest
+  | AWAIT e=exp(ob)
     { AwaitE(e) @? at $sloc }
-  | ASSERT e=exp_nest
+  | ASSERT e=exp(ob)
     { AssertE(e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
@@ -600,7 +614,7 @@ exp_nondec(B) :
         | _ -> e
       in
       LabelE(x, Lib.Option.get rt (unit ()), e') @? at $sloc }
-  | BREAK x=id eo=exp_nullary(ob)?
+  | BREAK x=id eo=deprecated_exp_arg?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
   | CONTINUE x=id
@@ -618,7 +632,7 @@ exp_nondec(B) :
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
 *)
-  | THROW e=exp_nest
+  | THROW e=exp(ob)
     { ThrowE(e) @? at $sloc }
   | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
@@ -626,14 +640,24 @@ exp_nondec(B) :
     { WhileE(e1, e2) @? at $sloc }
   | LOOP e=exp_nest %prec LOOP_NO_WHILE
     { LoopE(e, None) @? at $sloc }
-  | LOOP e1=exp_nest WHILE e2=exp_nest
+  | LOOP e1=exp_nest WHILE e2=exp(ob)
     { LoopE(e1, Some e2) @? at $sloc }
   | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp_nest
     { ForE(p, e1, e2) @? at $sloc }
-  | IGNORE e=exp_nest
+  | IGNORE e=exp(ob)
     { IgnoreE(e) @? at $sloc }
   | DO e=exp_nest
     { e }
+
+exp_nondec(B) :
+  | e=exp_key
+    { e }
+  | e=exp_bin(B)
+    { e }
+  | e1=exp_bin(B) ASSIGN e2=exp(ob)
+    { AssignE(e1, e2) @? at $sloc}
+  | e1=exp_bin(B) op=binassign e2=exp(ob)
+    { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
 
 exp_nonvar(B) :
   | e=exp_nondec(B)
@@ -648,10 +672,12 @@ exp(B) :
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 exp_nest :
-  | e=block
+  | e=deprecated_block
     { e }
-  | e=exp(bl)
+  | e=exp_key
     { e }
+  | d=dec_nonexp
+    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 block :
 (* Activate once deprecated objects are removed
@@ -698,15 +724,19 @@ stab :
 
 (* Patterns *)
 
+pat_arg :
+  | LPAR ps=seplist(pat_bin, COMMA) RPAR
+    { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+
 pat_plain :
+  | p=pat_arg
+    { p }
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
-  | LPAR ps=seplist(pat_bin, COMMA) RPAR
-    { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
 pat_nullary :
   | p=pat_plain
@@ -719,7 +749,7 @@ pat_un :
     { p }
   | HASH x=id
     { TagP(x, TupP [] @! at $sloc) @! at $sloc }
-  | HASH x=id p=pat_nullary
+  | HASH x=id p=deprecated_pat_arg
     { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
@@ -750,10 +780,10 @@ pat_field :
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
-  | p=pat_plain
-    { fun sloc -> p }
   | (* empty *)
     { fun sloc -> WildP @! sloc }
+  | p=pat_arg
+    { fun sloc -> p }
   | p=deprecated_pat_opt
     { fun sloc -> p }
 
@@ -777,7 +807,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+      tps=typ_params_opt p=deprecated_pat_arg t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -785,17 +815,21 @@ dec_nonvar :
       let (sugar, e) = desugar sp x t fb in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
+      tps=typ_params_opt p=deprecated_pat_arg t=annot_opt cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(sp, xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
 
-dec :
+dec_nonexp :
   | d=dec_var
     { d }
   | d=dec_nonvar
     { d }
+
+dec :
+  | e=dec_nonexp
+    { e }
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
 
@@ -838,11 +872,6 @@ parse_module_header :
 
 (* Deprecated block/object syntax *)
 
-deprecated_pat_opt :
-  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
-    { warn_deprecated_obj (at $sloc);
-      ObjP(fps) @! at $sloc }
-
 deprecated_exp_obj :
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
     { warn_deprecated_obj (at $sloc);
@@ -855,6 +884,19 @@ deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
     { ef::efs }
   | d=dec_var semicolon efs=deprecated_exp_field_list_unamb
     { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
+
+deprecated_block :
+  | e=block
+    { e }
+  | e=exp_bin(bl)
+    { warn_deprecated_nonblock (at $sloc);
+      e }
+  | e1=exp_bin(bl) ASSIGN e2=exp(ob)
+    { warn_deprecated_nonblock (at $sloc);
+      AssignE(e1, e2) @? at $sloc}
+  | e1=exp_bin(bl) op=binassign e2=exp(ob)
+    { warn_deprecated_nonblock (at $sloc);
+      assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
 
 deprecated_exp_block :
   | LCURLY ds=deprecated_dec_list_unamb RCURLY
@@ -872,5 +914,42 @@ deprecated_dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
     { d::ds }
   | d=dec_var semicolon ds=deprecated_dec_list_unamb
     { d::ds }
+
+deprecated_exp_arg :
+  | e=exp_arg
+    { e }
+  | l=lit
+    { warn_deprecated_arg (at $sloc);
+      LitE(ref l) @? at $sloc }
+  | x=id
+    { warn_deprecated_arg (at $sloc);
+      VarE(x) @? at $sloc }
+  | e=ob
+    { warn_deprecated_arg (at $sloc);
+      e }
+
+deprecated_pat_arg :
+  | p=pat_arg
+    { p }
+  | p=deprecated_pat_arg_nonarg
+    { p }
+
+deprecated_pat_arg_nonarg :
+  | UNDERSCORE
+    { warn_deprecated_arg (at $sloc);
+      WildP @! at $sloc }
+  | x=id
+    { warn_deprecated_arg (at $sloc);
+      VarP(x) @! at $sloc }
+  | l=lit
+    { warn_deprecated_arg (at $sloc);
+      LitP(ref l) @! at $sloc }
+
+deprecated_pat_opt :
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { warn_deprecated_obj (at $sloc);
+      ObjP(fps) @! at $sloc }
+  | p=deprecated_pat_arg_nonarg
+    { p }
 
 %%

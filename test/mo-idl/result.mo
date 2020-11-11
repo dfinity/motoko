@@ -13,8 +13,8 @@ actor {
     };
     public func f(x:?Nat):async Result<Nat,Text> {
         switch x {
-        case (? x) {#ok x};
-        case null {#err "error"};
+        case (? x) {#ok(x)};
+        case null {#err("error")};
         }
     };
     public func g(x:Result3<()>):async Result2<Nat> {

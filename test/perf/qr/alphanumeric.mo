@@ -109,8 +109,8 @@ module {
 
   func encodeChunkOrTrap(chunk : List<Nat>) : List<Bool> {
     switch chunk {
-      case (?(x, null)) Util.padLeftTo(6, Nat.natToBits(x));
-      case (?(x, ?(y, null))) Util.padLeftTo(11, Nat.natToBits(x * 45 + y));
+      case (?(x, null)) { Util.padLeftTo(6, Nat.natToBits(x)) };
+      case (?(x, ?(y, null))) { Util.padLeftTo(11, Nat.natToBits(x * 45 + y)) };
       case _ {
         Prelude.printLn("Error: Invalid chunk size!");
         Prelude.unreachable();

@@ -18,10 +18,10 @@ let oo = object {
 // pattern matching
 
 func get_b () : Int = switch (o) {
-  case {b = 11} 22;
-  case {b = result} result;
-  case {b = b : Int; a} b;
-  case {a} 42
+  case {b = 11} { 22 };
+  case {b = result} { result };
+  case {b = b : Int; a} { b };
+  case {a} { 42 };
 };
 
 assert(get_b () == 0);
@@ -31,8 +31,8 @@ assert(get_b () == 0);
 let q : {a : Int; b : Nat} = {a = -42; b = 25};
 
 func get_a () : Int = switch (q) {
-  case {a = 42; b} b;                  // OK: 42 is Int by subtyping
-  case {b = 25 : Nat; a = a : Int} a   // OK: Int can consume all Nats
+  case {a = 42; b} { b };                  // OK: 42 is Int by subtyping
+  case {b = 25 : Nat; a = a : Int} { a }   // OK: Int can consume all Nats
 };
 
 assert (get_a () == -42);
@@ -42,7 +42,7 @@ assert (get_a () == -42);
 let row : (Nat, Int, {c : Char; d : Text}) = (100, -42, {c = 'C'; d = "D"});
 
 func foo () : Int = switch row {
-  case (a : Int, -42, {c} : {c : Char}) (Prim.word32ToNat(Prim.charToWord32 c))  // OK
+  case (a : Int, -42, {c} : {c : Char}) { Prim.word32ToNat(Prim.charToWord32(c)) }  // OK
 };
 
 assert (foo () == 67);
@@ -50,7 +50,7 @@ assert (foo () == 67);
 // matching on type-annotated fields
 
 func baz () : Int = switch {a = 42} {
-  case {a : Int} a  // OK
+  case {a : Int} { a }  // OK
 };
 
 func full_name({first_name : Text; last_name : Text}) : Text =

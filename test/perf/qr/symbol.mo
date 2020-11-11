@@ -303,7 +303,7 @@ module {
 
   func alignment(version : Version) : List<(Coordinate, Bool)> {
     let n = Common.alignments(version).size() ** 2;
-    let m = if (n < 4) 0 else n - 3;
+    let m = if (n < 4) { 0 } else { n - 3 };
     let coords = alignmentCoords(version);
     let pattern = Nat.natToBits(33084991);
     let cycles = List.concat<Bool>(List.replicate<List<Bool>>(m, pattern));

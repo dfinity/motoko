@@ -164,22 +164,22 @@ switch (magic ()) {
 };
 
 switch (magic () : {#A : Nat; #B}) {
-  case (#A _) {};
+  case (#A(_)) {};
   case (#B) {};
 };
 switch (magic ()) {
-  case (#A _ : {#A : Nat; #B}) {};  // redundant
+  case (#A(_) : {#A : Nat; #B}) {};  // redundant
   case (#B : {#A : Nat; #B}) {};  // redundant
 };
 switch (magic () : {#A : Nat; #B}) {
-  case (#A _ : {#A : Nat; #B}) {};
+  case (#A(_) : {#A : Nat; #B}) {};
   case (#B : {#A : Nat; #B}) {};
 };
 switch (magic () : {#A : Nat}) {
-  case (#A _ : {#A : Nat; #B}) {};
+  case (#A(_) : {#A : Nat; #B}) {};
 };
 switch (magic ()) {
-  case ((#A _ : {#A : Nat; #B}) : {#A : Nat}) {};  // redundant
+  case ((#A(_) : {#A : Nat; #B}) : {#A : Nat}) {};  // redundant
 };
 switch (magic () : {#}) {
   case (_ : {#A : Nat; #B}) {};  // redundant
@@ -192,7 +192,7 @@ switch (magic () : {#A : Nat; #B}) {
   case (#B) {};
 };
 switch (magic () : {#A : Nat; #B}) {
-  case (#A 1) {};
+  case (#A(1)) {};
   case _ {};
 };
 switch (magic () : {#A : Nat; #B}) {
@@ -200,7 +200,7 @@ switch (magic () : {#A : Nat; #B}) {
   case _ {};
 };
 switch (magic () : {#A : Nat; #B}) {
-  case (#A 1 : {#A : Int; #B}) {};
+  case (#A(1) : {#A : Int; #B}) {};
   case _ {};
 };
 

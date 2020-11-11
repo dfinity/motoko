@@ -2,7 +2,7 @@ import Prim "mo:prim";
 
 func f():() -> Int {
   do {
-    label exit : (() -> Int) {
+    label exit : (() -> Int) do {
       func g() : Int = x; // reference x
       break exit (func() : Int{ g(); }); // early exit omits definition of x
       let x:Int = 666;
@@ -11,8 +11,8 @@ func f():() -> Int {
   };
 };
 
-Prim.debugPrint "1";
+Prim.debugPrint("1");
 let h = f();
 
-Prim.debugPrint "2";
+Prim.debugPrint("2");
 let wrong = h();

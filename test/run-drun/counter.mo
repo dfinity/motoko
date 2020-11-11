@@ -3,10 +3,10 @@ actor {
   flexible var c = 1;
   public func inc() {
     c += 1;
-    Prim.debugPrintNat c
+    Prim.debugPrintNat(c)
   };
-  public func printCounter () {
-    Prim.debugPrintNat c
+  public func printCounter() {
+    Prim.debugPrintNat(c)
   };
   public func get() : async Nat {
     return c

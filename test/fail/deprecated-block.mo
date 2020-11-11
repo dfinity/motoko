@@ -7,14 +7,14 @@ f({ x });
 f({ let x = 0 });
 f { x };
 f { let x = 0 };
+f {};
+f {x = 0};
+f {var x = 0};
 
 // okay
 f({});  // object
 f({var x = 0});  // object
 f({x = 0});
-f {};
-f {x = 0};
-f {var x = 0};
 f(do { x });
 f(do { let x = 0 });
 
@@ -23,41 +23,50 @@ f(do { let x = 0 });
 { x };
 { let x = 0 };
 ignore (do {x = 0});
-ignore {
+ignore do {
   { x };
 };
+ignore (do ({}));
+ignore (do ({ var x = 0 }));
 
 // okay
 do {};
 do { x };
 do { let x = 0 };
 do { var x = 0 };
-ignore (do object {});
-ignore (do object { var x = 0 });
-ignore {
+ignore do {
   {};  // object
 };
-ignore {
+ignore do {
   {x = 0};
 };
-ignore {
+ignore do {
   {x = 0}.x;
 };
-ignore {
+ignore do {
   {var x = 0};  // object
 };
-ignore {
+ignore do {
   {var x = 0}.x;
 };
 
 
 // deprecated
 ignore (if true {x = 0});
-ignore (if true ({}) else {x = 0});
+ignore (if true {{}} else {x = 0});
 ignore (if true {x = 0}.x);
-ignore {
+ignore (if true ({}));
+ignore (if true ({x = 0}));
+ignore (if true ({x = 0}.x));
+ignore (if true ({var x = 0}));
+ignore (if true ({var x = 0}.x));
+ignore do {
   switch 0 {
     case 1 {x = 0};
+    case 5 ();
+    case 6 ({});
+    case 7 ({var x = 0});
+    case 8 ({x = 0});
     case _ {x = 0}.x;
   }
 };
@@ -68,28 +77,19 @@ if true { x };
 if true { let x = 0 };
 if true { var x = 0 };  // block
 if true do {};
-ignore (if true ({}));
-ignore (if true ({x = 0}));
-ignore (if true ({x = 0}.x));
-ignore (if true ({var x = 0}));
-ignore (if true ({var x = 0}.x));
 ignore (if true { {} });
 ignore (if true { {x = 0} });
 ignore (if true { {var x = 0} });
 ignore (if true object {});
 ignore (if true object { var x = 0 });
 ignore {};
-ignore {
+ignore do {
   switch 0 {
     case 0 {};
     case 1 { x };
     case 2 { let x = 0 };
     case 3 { var x = 0 };  // block
     case 4 do {};
-    case 5 ();
-    case 6 ({});
-    case 7 ({var x = 0});
-    case 8 ({x = 0});
     case 9 { {} };
     case 10 { {var x = 0} };
     case 11 { {x = 0} };

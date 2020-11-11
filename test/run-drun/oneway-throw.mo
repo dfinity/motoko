@@ -2,19 +2,19 @@ import Prim "mo:prim";
 actor a {
   flexible var committed = false;
   public func throws() : () {
-    Prim.debugPrint "throws()";
+    Prim.debugPrint("throws()");
     committed := true;
     throw (Prim.error("ignored"));
-    Prim.debugPrint "unreachable";
+    Prim.debugPrint("unreachable");
   };
   public func ping() : async () {
-    Prim.debugPrint "ping()";
+    Prim.debugPrint("ping()");
   };
   public func go() : async () {
-    Prim.debugPrint "go1";
+    Prim.debugPrint("go1");
     throws();
     await ping(); // in-order delivery guarantees that throw ran
-    Prim.debugPrint "go2";
+    Prim.debugPrint("go2");
     assert(committed);
   };
 };

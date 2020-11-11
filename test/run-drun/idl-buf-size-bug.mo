@@ -2,8 +2,8 @@ import Prim "mo:prim";
 actor {
   public func match (b : Int) : async () {
     assert (switch b {
-      case (4_619_372_036_854_775_805) true;
-      case _ false
+      case 4_619_372_036_854_775_805 { true };
+      case _ { false }
     })
   };
 

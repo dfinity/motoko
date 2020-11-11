@@ -9,7 +9,7 @@ let a = actor {
     await f(c);
   };
 
-  public func printNat(n: Nat) : async () { Prim.debugPrintNat n };
+  public func printNat(n: Nat) : async () { Prim.debugPrintNat(n) };
 
   public func go() : async () {
     await incn(1);

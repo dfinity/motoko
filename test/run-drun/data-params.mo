@@ -58,8 +58,8 @@ actor a {
     await a.sendopt(?14);
     await a.sendrecord({x = 15; y = 16});
     await a.sendrecord({x = 17; y = 18; z = 19});
-    await a.sendVariant(#foo 20);
-    await a.sendVariant(#bar 20);
+    await a.sendVariant(#foo(20));
+    await a.sendVariant(#bar(20));
     await a.sendLabeled("Foo1: ");
     await a.sendLabeled("μεταγράψτε: ");
     await a.sendLabeledOpt(?"Foo2: ");

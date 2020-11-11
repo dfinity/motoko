@@ -44,7 +44,7 @@ module {
     func step(chunk : List<Char>, accum : ?List<Bool>) : ?List<Bool> {
       switch (parse(chunk), accum) {
         case (?a, ?b) { ?List.append<Bool>(a, b) };
-        case _ null
+        case _ { null }
       }
     };
 
@@ -60,10 +60,10 @@ module {
 
     // 
     let p = switch (List.len<Char>(chunk)) {
-      case 3 ?10;
-      case 2 ?07;
-      case 1 ?04;
-      case _ null
+      case 3 { ?10 };
+      case 2 { ?07 };
+      case 1 { ?04 };
+      case _ { null };
     };
 
     //
@@ -83,7 +83,7 @@ module {
     // 
     switch (p, n) {
       case (?a, ?b) { ?Util.padLeftTo(a, Nat.natToBits(b)) };
-      case _ null
+      case _ { null };
     }
 
   };

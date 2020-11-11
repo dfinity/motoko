@@ -10,10 +10,11 @@ actor test {
 actor test2 {
   public let exported_three = test.exported_too;
   public let (exported_four, exported_five) =
-    if (true)
+    if (true) {
       (test.exported_too, test.exported_too)
-    else
+    } else {
       (exported_three, exported_three)
+    }
 };
 
 test.exported();

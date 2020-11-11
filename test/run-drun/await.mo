@@ -9,62 +9,62 @@ actor a {
         cnt;
     };
 
-    Prim.debugPrint "a";
+    Prim.debugPrint("a");
 
     let a = async await f(0);
 
-    Prim.debugPrint "b";
+    Prim.debugPrint("b");
 
     let b = async { await f(1); };
 
-    Prim.debugPrint "c";
+    Prim.debugPrint("c");
 
     let c = async {
         let _ = await f(2);
         await f(3);
     };
 
-    Prim.debugPrint "d";
+    Prim.debugPrint("d");
 
     let d  = (async { return await f(4); }) : async Int; 
 
-    Prim.debugPrint "e";
+    Prim.debugPrint("e");
 
     let e = async {
         var i = 5;
-        Prim.debugPrint "e-while";
+        Prim.debugPrint("e-while");
         while (i < 8) {
             let _ = await f(i);
             i += 1;
         };
-        Prim.debugPrint "e-exit";
+        Prim.debugPrint("e-exit");
     };
 
-    Prim.debugPrint "g";
+    Prim.debugPrint("g");
 
     let g = async {
         var i = 10;
-        Prim.debugPrint "g-label";
+        Prim.debugPrint("g-label");
         label lp
         while (true) {
             if (i < 13) {
-                Prim.debugPrint ".";
+                Prim.debugPrint(".");
                 let _ = await f(i);
                 i += 1;
                 continue lp; 
             } else {};
             break lp;
         };
-        Prim.debugPrint "g-exit";
+        Prim.debugPrint("g-exit");
     };
 
-    Prim.debugPrint "holy";
+    Prim.debugPrint("holy");
 
     func p():async (Text,Text) { ("fst","snd"); };
     let h = async {
        let (a,b) = ("a","b"); /* await p(a,b);*/
-       Prim.debugPrint a;
-       Prim.debugPrint b;
+       Prim.debugPrint(a);
+       Prim.debugPrint(b);
     };
 
     ignore(await a);

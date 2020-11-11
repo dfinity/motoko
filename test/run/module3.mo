@@ -5,8 +5,8 @@ module List = {
 
   func rev<A>(x : List<A>, acc : List.List<A>) : List<A> {
     switch (x) {
-      case (null) acc;
-      case (?(h, t)) rev<A>(t, ?(h, acc));
+      case (null) { acc };
+      case (?(h, t)) { rev<A>(t, ?(h, acc)) };
     };
   };
 };

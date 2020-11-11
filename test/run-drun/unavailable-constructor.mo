@@ -4,7 +4,7 @@ actor class C() {
 
   let _ : Any = C;
 
-  public shared ctxt func m () : async () {
+  public shared(ctxt) func m() : async () {
      let _ : actor {} = C();
   };
 

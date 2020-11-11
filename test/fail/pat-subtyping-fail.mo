@@ -107,10 +107,10 @@ switch (magic () : ?Int) {
 };
 
 switch (magic () : {#}) {
-  case (#A _ : {#A : Nat; #B}) {};  // redundant
+  case (#A(_) : {#A : Nat; #B}) {};  // redundant
 };
 switch (magic () : {#A : Nat; #B}) {
-  case (#A _ : {#A : Nat}) {};
+  case (#A(_) : {#A : Nat}) {};
   case _ {};
 };
 switch (magic () : {#A : Nat; #B}) {

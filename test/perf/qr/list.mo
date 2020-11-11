@@ -86,7 +86,7 @@ module {
   public let lenIsEqLessThan : <T> (List<T>, Nat) -> Bool =
     func<T>(l : List <T>, i : Nat) : Bool {
       switch l {
-        case null true;
+        case null { true };
         case (?(_, t)) {
           if (i == 0) { false }
           else { lenIsEqLessThan<T>(t, i - 1) }
@@ -410,7 +410,7 @@ module {
   */
   public let replicate : <X>(Nat, X) -> List<X> =
     func<X>(n : Nat, x : X) : List<X> {
-      tabulate<X>(n, func _ { x })
+      tabulate<X>(n, func (_) { x })
     };
 
   /**
@@ -434,10 +434,10 @@ module {
   public let zipWith : <X, Y, Z>(List<X>, List<Y>, f : (X, Y) -> Z) -> List<Z> =
     func<X, Y, Z>(xs : List<X>, ys : List<Y>, f : (X, Y) -> Z) : List<Z> {
       switch (pop<X>(xs)) {
-        case (null, _) null;
+        case (null, _) { null };
         case (?x, xt) {
           switch (pop<Y>(ys)) {
-            case (null, _) null;
+            case (null, _) { null };
             case (?y, yt) {
               push<Z>(f(x, y), zipWith<X, Y, Z>(xt, yt, f))
             }

@@ -5,17 +5,17 @@ import Prim "mo:prim";
 actor {
     public query func pair(o : (Text, Int)) : async () {
      switch o {
-       case (content, num) Prim.debugPrint ("ok: " # debug_show num);
+       case (content, num) { Prim.debugPrint ("ok: " # debug_show num) };
      }
   };
   public query func record(o : {content: Text; value : Int}) : async () {
      switch o {
-       case {content} Prim.debugPrint ("ok: " # content);
+       case {content} { Prim.debugPrint ("ok: " # content) };
      }
   };
   public query func record1(o : {value : Int; byte : Int8}) : async () {
      switch o {
-       case {byte} Prim.debugPrint ("ok: " # debug_show byte);
+       case {byte} { Prim.debugPrint ("ok: " # debug_show byte) };
      }
   };
   public query func record2(o : {content: Text; value : Int}, follower : Int8) : async Int8 {
@@ -25,7 +25,7 @@ actor {
   };
   public query func record3(o : {content: Text; value : Int; extra : Nat }) : async () {
      switch o {
-       case {content} Prim.debugPrint ("ok: " # content);
+       case {content} { Prim.debugPrint ("ok: " # content) };
      }
   };
 }

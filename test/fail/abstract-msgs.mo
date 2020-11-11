@@ -7,7 +7,7 @@ do { func foo<A <: Any>() : () = do {
 }};
 
 // In function calls, parameters with abstract types are not fine
-do { func foo<A <: Any>( f : shared A -> (), x : A )  = (f x); };
+do { func foo<A <: Any>( f : shared A -> (), x : A )  = f(x); };
 do { func foo<A <: Any>( f : shared () -> async A ) : async A = async { await (f ())}; };
 
 // Just in types, away from definitinos and calls, parameters with abstract types are fine

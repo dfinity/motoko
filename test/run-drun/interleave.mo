@@ -4,7 +4,7 @@ actor a {
 
     var cnt : Nat = 0;
     func f(m: Text, i:Nat) : async Nat {
-        Prim.debugPrint (m # " cnt: " # debug_show cnt # " i: " # debug_show i);
+        Prim.debugPrint(m # " cnt: " # debug_show cnt # " i: " # debug_show i);
         cnt += 1;
         cnt;
     };
@@ -13,19 +13,19 @@ actor a {
 
     let e = async {
         var i = 5;
-        Prim.debugPrint "  e-while\n";
+        Prim.debugPrint("  e-while\n");
         while (i < 10) {
             let _ = await f("  e",i);
             i += 1;
         };
-        Prim.debugPrint "  e-exit\n";
+        Prim.debugPrint("  e-exit\n");
     };
 
-    Prim.debugPrint "g";
+    Prim.debugPrint("g");
 
     let g = async {
         var i = 10;
-        Prim.debugPrint "g-label\n";
+        Prim.debugPrint("g-label\n");
         label lp
         while (true) {
             if (i < 15) {
@@ -35,7 +35,7 @@ actor a {
             } else {};
             break lp;
         };
-        Prim.debugPrint "g-exit\n";
+        Prim.debugPrint("g-exit\n");
     };
     await g;
   }

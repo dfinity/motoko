@@ -31,8 +31,8 @@ actor a {
                 , func (a : [Nat]) : Int = -42
                 ];
 
-    let variant_funcs = [ func (a : {#foo; #bar}) { switch a { case (#foo) (); case (#bar) () } }
-                        , func (a : {#baz; #bar}) { switch a { case (#baz) (); case (#bar) () } }
+    let variant_funcs = [ func (a : {#foo; #bar}) { switch a { case (#foo) {}; case (#bar) {} } }
+                        , func (a : {#baz; #bar}) { switch a { case (#baz) {}; case (#bar) {} } }
                         ];
 
     // TODO(gabor), mutable arrays
@@ -50,7 +50,7 @@ actor a {
 
 
     func c0(c : async (?Int), d : async (?Nat)) : [async (?Int)] { ignore([c, d]); [c, d] };
-    let c1s = [async ?4, async ?-42];
+    let c1s = [async { ?4 }, async { ?-42 }];
 
 
     // recursive objects
@@ -81,7 +81,7 @@ actor a {
     // example from https://dfinity.atlassian.net/browse/AST-83
 
     type Foo<A> = ?(Foo<A>);
-    ignore (if true (null : Foo<Int>) else (null : Foo<Bool>));
+    ignore (if true { null : Foo<Int> } else { null : Foo<Bool> });
 
 
     type U = { #a : U; #b : Int };

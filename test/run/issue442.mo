@@ -1,2 +1,2 @@
 let foo = [1, true, ""];
-let bar = if true 1 else "2";
+let bar = if true { 1 } else { "2" };

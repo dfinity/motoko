@@ -2,7 +2,7 @@ import Prim "mo:prim";
 actor a {
   public func go() : async () {
     let o = object {
-      public var x = await { async { 1 } };
+      public var x = await async { 1 };
       let a = Prim.debugPrintNat(x);
       // private b = (x := await { async (x + 1) });
       let b = (x := x + 1);

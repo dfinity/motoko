@@ -8,7 +8,7 @@ func foo_0_2_block () : (Int, Int) { let x = 1; let y = 2; (x,y) };
 
 func foo_0_return_2 () : (Int, Int) { return (1,2); (3,4) };
 
-func foo_0_break_2 () : (Int, Int) { label exit : (Int,Int) { break exit (1,2); (3,4) } };
+func foo_0_break_2 () : (Int, Int) { label exit : (Int,Int) do { break exit (1,2); (3,4) } };
 
 func foo_1_1 (x : Int) : Int {x + 1};
 

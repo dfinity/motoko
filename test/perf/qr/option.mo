@@ -12,8 +12,8 @@ Returns true if the argument is not `null`.
 */
 public let isSome : ?Any -> Bool = func(x) =
   switch x {
-    case null false;
-    case _ true;
+    case null { false };
+    case _ { true };
   };
 
 /**
@@ -21,8 +21,8 @@ Returns true if the argument is `null`.
 */
 public let isNull : ?Any -> Bool = func(x) =
   switch x {
-    case null true;
-    case _ false;
+    case null { true };
+    case _ { false };
   };
 
 /**
@@ -32,7 +32,7 @@ public let unwrapOr : <T> (?T, default : T) -> T =
   func <T>(x: ?T, d: T): T =
     switch x {
       case null { d };
-      case (?x_) x_;
+      case (?x_) { x_ };
     };
 
 /**
@@ -42,7 +42,7 @@ public let option : <A,B>(?A, f : A -> B, default : B) -> B =
   func<A, B>(x: ?A, f: A->B, d: B): B =
     switch x {
       case null { d };
-      case (?x_) f(x_);
+      case (?x_) { f(x_) };
     };
 
 /**
@@ -51,8 +51,8 @@ Applies a function to the wrapped value.
 public let map : <A, B>(f: A->B, x: ?A) -> ?B =
   func map<A, B>(f: A->B, x: ?A): ?B =
     switch x {
-      case null null;
-      case (?x_) ?f(x_);
+      case null { null };
+      case (?x_) { ?f(x_) };
     };
 
 /**
@@ -132,7 +132,7 @@ public let unwrap : <T>?T -> T =
   func<T>(x: ?T): T =
     switch x {
       case null { P.unreachable() };
-      case (?x_) x_;
+      case (?x_) { x_ };
     };
 
 

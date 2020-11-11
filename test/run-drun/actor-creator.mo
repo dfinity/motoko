@@ -3,11 +3,11 @@ shared({caller = creator}) actor class C() {
   let c : Principal = creator;
   let d = creator;
 
-  public shared ctxt func c1 () : async Principal {
+  public shared(ctxt) func c1 () : async Principal {
      return c;
   };
 
-  public shared ctxt func c2 () : async Principal {
+  public shared(ctxt) func c2 () : async Principal {
      return d;
   };
 

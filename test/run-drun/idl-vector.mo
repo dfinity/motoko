@@ -8,7 +8,7 @@ actor {
     ?Prim.Array_tabulate<MayRose>(r.size(), func (i : Nat) = may(r[i]));
 
   public query func rose(r : Rose) : async MayRose {
-    may r
+    may(r)
   }
 }
 

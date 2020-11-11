@@ -4,6 +4,6 @@ for (i in a.vals()) { x := i };
 
 // This tests that the iterator does proceed past the null element
 switch x {
-  case null ();
+  case null {};
   case (?y) {assert (y == 1) };
 };

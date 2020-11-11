@@ -2,18 +2,18 @@ import Prim "mo:prim";
 
 // Branch warnings.
 
-let _ = if true true else 5;
-let _ = if true true else [var 5];
-let _ = if true 5 else 5.1;
-let _ = if true {} else ({});
-let _ = if true ({x = 5}) else ({var x = 5});
-let _ = if true 1 else (-1);  // ok
-let _ = if true true else (5 : Any);  // ok
+let _ = if true { true } else { 5 };
+let _ = if true { true } else { [var 5] };
+let _ = if true { 5 } else { 5.1 };
+let _ = if true {} else { {} };
+let _ = if true { {x = 5} } else { {var x = 5} };
+let _ = if true { 1 } else { -1 };  // ok
+let _ = if true { true } else { 5 : Any };  // ok
 
-let _ = switch 0 { case 0 true; case _ 5 };
-let _ = switch 0 { case 0 true; case _ [var 5] };
-let _ = switch 0 { case 0 2; case 2 (-5); case 3 "text"; case _ () };
-let _ = switch 0 { case 0 true; case _ (() : Any); };  // ok
+let _ = switch 0 { case 0 { true }; case _ { 5 } };
+let _ = switch 0 { case 0 { true }; case _ { [var 5] } };
+let _ = switch 0 { case 0 { 2 }; case 2 { -5 }; case 3 { "text" }; case _ { () } };
+let _ = switch 0 { case 0 { true}; case _ { () : Any }; };  // ok
 
 
 // Array warnings.
@@ -99,27 +99,27 @@ do {
 
 // Function types.
 
-func f(h : Int -> Int) : Int = h 5;
+func f(h : Int -> Int) : Int = h(5);
 func g(h : (Int, Int) -> Int) : Int = h(5, 6);
-func k(h : {#A; #B : Int} -> Int) : Int = h(#B 9);
+func k(h : {#A; #B : Int} -> Int) : Int = h(#B(9));
 
-let _ = f(func x = x);
-let _ = f(func x = x + 1);
-let _ = f(func x = Prim.abs(x + 1));
-let _ = f(func x = -1);
-let _ = g(func p = Prim.abs(p.0));
+let _ = f(func(x) = x);
+let _ = f(func(x) = x + 1);
+let _ = f(func(x) = Prim.abs(x + 1));
+let _ = f(func(x) = -1);
+let _ = g(func(p) = Prim.abs(p.0));
 let _ = g(func(x, y) = x + y);
-let _ = g(func(x, y) = Prim.abs x);
-let _ = k(func(#A or #B _) = 0);
+let _ = g(func(x, y) = Prim.abs(x));
+let _ = k(func(#A or #B(_)) = 0);
 
-let _ = f(func x : Int = x);
-let _ = f(func x : Int = x + 1);
-let _ = f(func x : Nat = Prim.abs(x + 1));
-let _ = f(func x : Int = 0);
-let _ = g(func p : Nat = Prim.abs(p.0));
+let _ = f(func(x) : Int = x);
+let _ = f(func(x) : Int = x + 1);
+let _ = f(func(x) : Nat = Prim.abs(x + 1));
+let _ = f(func(x) : Int = 0);
+let _ = g(func(p) : Nat = Prim.abs(p.0));
 let _ = g(func(x, y) : Int = x + y);
-let _ = g(func(x, _) : Nat = Prim.abs x);
-let _ = k(func(#A or #B _) : Nat = 0);
+let _ = g(func(x, _) : Nat = Prim.abs(x));
+let _ = k(func(#A or #B(_)) : Nat = 0);
 
 let _ = f(func(x : Int) : Int = x);
 let _ = f(func(x : Int) : Int = x + 1);
@@ -127,10 +127,10 @@ let _ = f(func(x : Int) : Nat = Prim.abs(x + 1));
 let _ = f(func(x : Any) : Int = 0);
 let _ = g(func(p : (Int, Any)) : Nat = Prim.abs(p.0));
 let _ = g(func(x : Int, y : Int) : Int = x + y);
-let _ = g(func(x : Int, _ : Any) : Nat = Prim.abs x);
-let _ = g(func((x, _) : (Int, Any)) : Nat = Prim.abs x);
+let _ = g(func(x : Int, _ : Any) : Nat = Prim.abs(x));
+let _ = g(func((x, _) : (Int, Any)) : Nat = Prim.abs(x));
 let _ = k(func(#A or #B (_ : Any)) : Nat = 0);
-let _ = k(func((#A or #B _) : {#A; #B : Any}) : Nat = 0);
+let _ = k(func((#A or #B(_)) : {#A; #B : Any}) : Nat = 0);
 
 let _ = f(func<>(x : Int) : Int = x);
 let _ = f(func<>(x : Int) : Int = x + 1);
@@ -138,7 +138,7 @@ let _ = f(func<>(x : Int) : Nat = Prim.abs(x + 1));
 let _ = f(func<>(x : Any) : Int = 0);
 let _ = g(func<>(p : (Int, Any)) : Nat = Prim.abs(p.0));
 let _ = g(func<>(x : Int, y : Int) : Int = x + y);
-let _ = g(func<>(x : Int, y : Any) : Nat = Prim.abs x);
-let _ = g(func<>((x, _) : (Int, Any)) : Nat = Prim.abs x);
+let _ = g(func<>(x : Int, y : Any) : Nat = Prim.abs(x));
+let _ = g(func<>((x, _) : (Int, Any)) : Nat = Prim.abs(x));
 let _ = k(func<>(#A or #B (_ : Any)) : Nat = 0);
-let _ = k(func<>((#A or #B _) : {#A; #B : Any}) : Nat = 0);
+let _ = k(func<>((#A or #B(_)) : {#A; #B : Any}) : Nat = 0);

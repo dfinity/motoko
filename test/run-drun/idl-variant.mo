@@ -5,13 +5,13 @@ actor {
 
   func to_left(e : Either) : Either
     = switch e {
-        case (#right n) #left (Prim.charToWord32 n);
-        case (#fix t) #fix (to_left t);
-        case other other
+        case (#right(n)) { #left(Prim.charToWord32(n)) };
+        case (#fix(t)) { #fix(to_left(t)) };
+        case other { other }
       };
 
   public query func numify(t: Either) : async Either {
-    to_left t
+    to_left(t)
   }
 }
 

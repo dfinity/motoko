@@ -16,8 +16,8 @@ actor a {
 
     for (t in tests.vals()) {
       Prim.debugPrint(debug_show t # ":");
-      try (await async ignore (actor(t) : actor {}))
-      catch (e) Prim.debugPrint(Prim.errorMessage(e))
+      try { await async { ignore (actor(t) : actor {}) } }
+      catch (e) { Prim.debugPrint(Prim.errorMessage(e)) }
     }
   }
 };

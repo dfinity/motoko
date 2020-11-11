@@ -11,10 +11,10 @@ actor control {
     label l1 {
       break l1
     };
-    label l2 break l2();
-    label l2 (let m = 1 + (break l2) : Int);
+    label l2 { break l2() };
+    label l2 { let m = 1 + (break l2) : Int };
     let n = label l3 : Int { break l3(2) };
-    let (x, y, z) = label l3 : (Int, Bool, Text) (break l3(2, true, ""));
+    let (x, y, z) = label l3 : (Int, Bool, Text) { break l3(2, true, "") };
   };
 
   public func testWhile() {

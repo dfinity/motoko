@@ -14,104 +14,104 @@ let a = actor {
 
     // higher-order cases
     public func h0 (f0:shared () -> async (),u:()) : async ()
-       { await f0 u;};
+       { await f0(u);};
     public func h1 (f1:shared (Int) -> async Int,x:Int)  : async Int
-       { await f1 x;};
+       { await f1(x);};
     public func h2 (f2:shared (Int,Bool) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
-       { await f2 xy; };
+       { await f2(xy); };
     public func h3 (f3:shared (Int,Bool,Text) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
-       { await f3 xyz; };
+       { await f3(xyz); };
 
     public func g0 (f0:shared (()) -> async (),u:()) : async ()
-       { await f0 u;};
+       { await f0(u);};
     public func g1 (f1:shared (Int) -> async Int,x:Int)  : async Int
-       { await f1 x;};
+       { await f1(x);};
     public func g2 (f2:shared ((Int,Bool)) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
-       { await f2 xy; };
+       { await f2(xy); };
     public func g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
-       { await f3 xyz; };
+       { await f3(xyz); };
 
   public func go() : async () {
 
-    Prim.debugPrint "first-order";
+    Prim.debugPrint("first-order");
 
     let () = await a.m0();
-    Prim.debugPrint "0";
+    Prim.debugPrint("0");
     let 1 = await a.m1(1);
-    Prim.debugPrint "1";
+    Prim.debugPrint("1");
     let (2,true) = await a.m2(2,true);
-    Prim.debugPrint "2";
+    Prim.debugPrint("2");
     let (3,false,"text") = await a.m3(3,false,"text");
-    Prim.debugPrint "3";
+    Prim.debugPrint("3");
 
     let () = await a.n0();
-    Prim.debugPrint "4";
+    Prim.debugPrint("4");
     let 1 = await a.n1(1);
-    Prim.debugPrint "5";
+    Prim.debugPrint("5");
     let (2,true) = await a.n2(2,true);
-    Prim.debugPrint "6";
+    Prim.debugPrint("6");
     let (3,false,"text") = await a.n3(3,false,"text");
-    Prim.debugPrint "7";
+    Prim.debugPrint("7");
 
     let u = ();
     let x:Int = 1;
     let xy:(Int,Bool) = (2,true);
     let xyz:(Int,Bool,Text) = (3,false,"text");
 
-    let () = await a.m0 u;
-    Prim.debugPrint "8";
-    let 1 = await a.m1 x;
-    Prim.debugPrint "9";
-    let (2,true) = await a.m2 xy;
-    Prim.debugPrint "10";
-    let (3,false,"text") = await a.m3 xyz;
-    Prim.debugPrint "11";
+    let () = await a.m0(u);
+    Prim.debugPrint("8");
+    let 1 = await a.m1(x);
+    Prim.debugPrint("9");
+    let (2,true) = await a.m2(xy);
+    Prim.debugPrint("10");
+    let (3,false,"text") = await a.m3(xyz);
+    Prim.debugPrint("11");
 
-    let () = await a.n0 u;
-    Prim.debugPrint "12";
-    let 1 = await a.n1 x;
-    Prim.debugPrint "13";
-    let (2,true) = await a.n2 xy;
-    Prim.debugPrint "14";
-    let (3,false,"text") = await a.n3 xyz;
-    Prim.debugPrint "15";
+    let () = await a.n0(u);
+    Prim.debugPrint("12");
+    let 1 = await a.n1(x);
+    Prim.debugPrint("13");
+    let (2,true) = await a.n2(xy);
+    Prim.debugPrint("14");
+    let (3,false,"text") = await a.n3(xyz);
+    Prim.debugPrint("15");
 
-    Prim.debugPrint "higher-order";
+    Prim.debugPrint("higher-order");
     let () = await a.h0(a.m0,());
-    Prim.debugPrint "0";
+    Prim.debugPrint("0");
     let 1 = await a.h1(a.m1,1);
-    Prim.debugPrint "1";
+    Prim.debugPrint("1");
     let (2,true) = await a.h2(a.m2,(2,true));
-    Prim.debugPrint "2";
+    Prim.debugPrint("2");
     let (3,false,"text") = await a.h3(a.m3,(3,false,"text"));
-    Prim.debugPrint "3";
+    Prim.debugPrint("3");
 
     let () = await a.g0(a.n0,());
-    Prim.debugPrint "4";
+    Prim.debugPrint("4");
     let 1 = await a.g1(a.n1,1);
-    Prim.debugPrint "5";
+    Prim.debugPrint("5");
     let (2,true) = await a.g2(a.n2,(2,true));
-    Prim.debugPrint "6";
+    Prim.debugPrint("6");
     let (3,false,"text") = await a.g3(a.n3,(3,false,"text"));
-    Prim.debugPrint "7";
+    Prim.debugPrint("7");
 
     let () = await a.h0(a.m0,u);
-    Prim.debugPrint "8";
+    Prim.debugPrint("8");
     let 1 = await a.h1(a.m1,x);
-    Prim.debugPrint "9";
+    Prim.debugPrint("9");
     let (2,true) = await a.h2(a.m2,xy);
-    Prim.debugPrint "10";
+    Prim.debugPrint("10");
     let (3,false,"text") = await a.h3(a.m3,xyz);
-    Prim.debugPrint "11";
+    Prim.debugPrint("11");
 
     let () = await a.g0(a.n0,u);
-    Prim.debugPrint "12";
+    Prim.debugPrint("12");
     let 1 = await a.g1(a.n1,x);
-    Prim.debugPrint "13";
+    Prim.debugPrint("13");
     let (2,true) = await a.g2(a.n2,xy);
-    Prim.debugPrint "14";
+    Prim.debugPrint("14");
     let (3,false,"text") = await a.g3(a.n3,xyz);
-    Prim.debugPrint "15";
+    Prim.debugPrint("15");
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

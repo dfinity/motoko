@@ -1,1 +1,1 @@
-let t = async t;
+let t = async { t };

@@ -16,15 +16,15 @@ func succ(n : N) : N {
 
 ignore zero;
 ignore succ(zero);
-ignore succ(succ zero);
+ignore succ(succ(zero));
 
 func app<T, U>(f : T-> U, x : T) : U { f(x); };
 
 ignore app/*<N, N>*/(succ,zero);
 
-func compose<T, U, V>(f: T -> U, g : U-> V) : T->V { func x { g (f(x))} };
+func compose<T, U, V>(f: T -> U, g : U-> V) : T->V { func(x) { g (f(x))} };
 
-ignore compose((func( x : Int) : Int = x),(func (x : Int) : Int = x));
+ignore compose((func( x : Int) : Int = x),(func(x : Int) : Int = x));
 ignore compose/*<N,N,N>*/(succ, succ);
 
 
@@ -50,7 +50,7 @@ func add(m:N, n:N) : N { m/*<N>*/(succ,n) };
 
 func mult1(m:N, n:N): N { m/*<N>*/(func (a:N) : N { add(a,n)},zero) };
 
-func mult2(m:N, n:N) : N { m/*<N>*/(curry/*<N,N,N>*/ add n, zero) };
+func mult2(m:N, n:N) : N { m/*<N>*/(curry/*<N,N,N>*/(add)(n), zero) };
 
 
 func tricky<T>(f : T -> T) { };
@@ -105,9 +105,9 @@ func f(g:shared Nat8 -> ()) : async () {
 func bnd<T <: Int>(x : T) : T { x };
 ignore bnd(1 : Int) : Int;
 ignore bnd(1) : Nat; // ok, uses expected type
-ignore (if false (bnd(loop {}):Nat) else 1); // ok, given expected type
-ignore (if false (bnd(loop {}):Int) else 1);
-ignore (if false (bnd(loop {}):None) else 1); // ok, given expected type
+ignore (if false { bnd(loop {}):Nat } else { 1 }); // ok, given expected type
+ignore (if false { bnd(loop {}):Int } else { 1 });
+ignore (if false { bnd(loop {}):None } else { 1 }); // ok, given expected type
 ignore bnd(true); // reject, overconstrained
 bnd(true); // reject, overconstrained
 
@@ -159,14 +159,14 @@ func k<T <: Any>(x:T) {
 
 // immutable arrays
 
-func choose<T>(b : Bool, x : [T], y : [T]) : [T] { if b x else y };
+func choose<T>(b : Bool, x : [T], y : [T]) : [T] { if b { x } else { y } };
 ignore choose(true, [1 : Nat], [1 : Nat]);
 ignore choose(true, [1 : Int], [1 : Int]);
 ignore choose(true, [1 : Nat], [1 :  Int]);
 
 
 // mutable arrays
-func choose_var<T>(b : Bool, x : [var T], y : [var T]) : [var T] { if b x else y };
+func choose_var<T>(b : Bool, x : [var T], y : [var T]) : [var T] { if b { x } else { y } };
 ignore choose_var(true, [var (1:Nat)], [var (1:Nat)]);
 ignore choose_var(true, [var (1:Int)], [var (1:Int)]);
 ignore choose_var(true, [var (1:Nat)], [var (1:Int)]); // rejected as overconstrained (variance not applicable)

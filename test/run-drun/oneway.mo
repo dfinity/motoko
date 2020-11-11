@@ -5,12 +5,12 @@ actor a {
 
   // test that oneways can locally try/throw
   public func oneway() : () {
-    Prim.debugPrint "1";
+    Prim.debugPrint("1");
     try {
       throw (Prim.error("Error"));
-      Prim.debugPrint "unreachable";
+      Prim.debugPrint("unreachable");
     }
-    catch e { Prim.debugPrint "2"};
+    catch e { Prim.debugPrint("2")};
     pending -= 1;
   };
 
@@ -19,12 +19,12 @@ actor a {
   public func onewayAlt() : () =
     ignore (
       (async {
-        Prim.debugPrint "3";
+        Prim.debugPrint("3");
         try {
           throw (Prim.error("Error"));
-          Prim.debugPrint "unreachable";
+          Prim.debugPrint("unreachable");
         }
-        catch e { Prim.debugPrint "4"};
+        catch e { Prim.debugPrint("4")};
         pending -= 1;
       }) : async ()
     );
@@ -32,10 +32,10 @@ actor a {
 
   // test that throws from oneways are silently discarded (because replies are eager)
   public func discard() : () {
-    Prim.debugPrint "5";
+    Prim.debugPrint("5");
     pending -= 1;
     throw (Prim.error("ignored"));
-    Prim.debugPrint "unreachable";
+    Prim.debugPrint("unreachable");
   };
 
   // test that throws from oneways are silently discarded (because replies are eager)
@@ -43,10 +43,10 @@ actor a {
   public func discardAlt() : () =
     ignore (
       (async {
-        Prim.debugPrint "6"; 
+        Prim.debugPrint("6"); 
         pending -= 1;
         throw (Prim.error("ignored"));
-        Prim.debugPrint "unreachable";
+        Prim.debugPrint("unreachable");
       }) : async ()
     );
 
@@ -63,7 +63,7 @@ actor a {
     discardAlt();
     Prim.debugPrint("E");
     while (pending > 0)
-      await async ();
+      await async {};
   };
 
 };

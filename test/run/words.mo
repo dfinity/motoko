@@ -2,7 +2,7 @@ import Prim "mo:prim";
 
 // CHECK: func $init
 
-func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
+func printBit(a : Bool) { Prim.debugPrint(if a { "set" } else { "clear" }) };
 
 
 func checkpointAlpha() {};
@@ -19,7 +19,7 @@ func checkpointJuliett() {};
 // Word64 operations
 do {
     func printW64ln(w : Word64) {
-      Prim.debugPrintNat(Prim.word64ToNat w);
+      Prim.debugPrintNat(Prim.word64ToNat(w));
     };
 
     let a : Word64 = 4567;
@@ -59,9 +59,9 @@ do {
     printW64ln(-5225319197819536385 +>> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> -326582449863721025L
     printW64ln(c <<> b);
     printW64ln(c <>> b);
-    printW64ln(Prim.popcntWord64 d); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
-    printW64ln(Prim.clzWord64 e); // 20000 = 0x0000000000004e20 (leading zeros = 49)
-    printW64ln(Prim.ctzWord64 e); // 20000 = 0x0000000000004e20 (trailing zeros = 5)
+    printW64ln(Prim.popcntWord64(d)); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
+    printW64ln(Prim.clzWord64(e)); // 20000 = 0x0000000000004e20 (leading zeros = 49)
+    printW64ln(Prim.ctzWord64(e)); // 20000 = 0x0000000000004e20 (trailing zeros = 5)
     printBit(Prim.btstWord64(e, 5 : Word64)); // 20000 = 0x0000000000004e20 (result = true)
     printBit(Prim.btstWord64(e, 63 : Word64)); // 20000 = 0x0000000000004e20 (result = false)
     printBit(Prim.btstWord64(e, 69 : Word64)); // 20000 = 0x0000000000004e20 (mod 64, result = true)
@@ -77,7 +77,7 @@ do {
 // Word32 operations
 do {
     func printW32ln(w : Word32) {
-      Prim.debugPrintNat(Prim.word32ToNat w);
+      Prim.debugPrintNat(Prim.word32ToNat(w));
     };
 
     let a : Word32 = 4567;
@@ -118,9 +118,9 @@ do {
     printW32ln(-1216614433 +>> 4); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
     printW32ln(c <<> b);
     printW32ln(c <>> b);
-    printW32ln(Prim.popcntWord32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
-    printW32ln(Prim.clzWord32 e); // 20000 = 0x00004e20 (leading zeros = 17)
-    printW32ln(Prim.ctzWord32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
+    printW32ln(Prim.popcntWord32(d)); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
+    printW32ln(Prim.clzWord32(e)); // 20000 = 0x00004e20 (leading zeros = 17)
+    printW32ln(Prim.ctzWord32(e)); // 20000 = 0x00004e20 (trailing zeros = 5)
     printBit(Prim.btstWord32(e, 5 : Word32)); // 20000 = 0x00004e20 (result = true)
     printBit(Prim.btstWord32(e, 31 : Word32)); // 20000 = 0x00004e20 (result = false)
     printBit(Prim.btstWord32(e, 37 : Word32)); // 20000 = 0x00004e20 (mod 32, result = true)
@@ -134,7 +134,7 @@ do {
 // Word16 operations
 do {
     func printW16ln(w : Word16) {
-      Prim.debugPrintNat(Prim.word16ToNat w);
+      Prim.debugPrintNat(Prim.word16ToNat(w));
     };
 
     let a : Word16 = 4567;
@@ -204,9 +204,9 @@ do {
 // CHECK-NEXT: call $rotr<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <>> b);
-    printW16ln(Prim.popcntWord16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
-    printW16ln(Prim.clzWord16 e); // 20000 = 0x4e20 (leading zeros = 1)
-    printW16ln(Prim.ctzWord16 e); // 20000 = 0x4e20 (trailing zeros = 5)
+    printW16ln(Prim.popcntWord16(d)); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
+    printW16ln(Prim.clzWord16(e)); // 20000 = 0x4e20 (leading zeros = 1)
+    printW16ln(Prim.ctzWord16(e)); // 20000 = 0x4e20 (trailing zeros = 5)
     printBit(Prim.btstWord16(e, 5 : Word16)); // 20000 = 0x4e20 (result = true)
     printBit(Prim.btstWord16(e, 15 : Word16)); // 20000 = 0x4e20 (result = false)
     printBit(Prim.btstWord16(e, 21 : Word16)); // 20000 = 0x4e20 (mod 16, result = true)
@@ -221,7 +221,7 @@ do {
 // Word8 operations
 do {
     func printW8ln(w : Word8) {
-      Prim.debugPrintNat(Prim.word8ToNat w);
+      Prim.debugPrintNat(Prim.word8ToNat(w));
     };
 
     let a : Word8 = 67;
@@ -285,9 +285,9 @@ do {
 // CHECK-NEXT: call $rotr<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <>> b);
-    printW8ln(Prim.popcntWord8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
-    printW8ln(Prim.clzWord8 e); // 200 = 0xC8 (leading zeros = 0)
-    printW8ln(Prim.ctzWord8 e); // 200 = 0xC8 (trailing zeros = 3)
+    printW8ln(Prim.popcntWord8(d)); // -15 = 0xf1 = 0b1111_0001 (population = 5)
+    printW8ln(Prim.clzWord8(e)); // 200 = 0xC8 (leading zeros = 0)
+    printW8ln(Prim.ctzWord8(e)); // 200 = 0xC8 (trailing zeros = 3)
     printBit(Prim.btstWord8(e, 3 : Word8)); // 200 = 0xC8 (result = true)
     printBit(Prim.btstWord8(e, 5 : Word8)); // 200 = 0xC8 (result = false)
     printBit(Prim.btstWord8(e, 11 : Word8)); // 200 = 0xC8 (mod 8, result = true)
@@ -301,13 +301,13 @@ do {
 
 // check whether patterns work
 
-func w8 (n : Word8) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
-func w16 (n : Word16) = assert (switch n { case 0 false; case 1 false; case 65000 true; case _ false });
-func w32 (n : Word32) = assert (switch n { case 0 false; case 1 false; case 4_294_967_295 true; case _ false });
-func w64 (n : Word64) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
+func w8 (n : Word8) = assert (switch n { case 0 { false }; case 1 { false }; case 42 { true }; case _ { false } });
+func w16 (n : Word16) = assert (switch n { case 0 { false }; case 1 { false }; case 65000 { true }; case _ { false } });
+func w32 (n : Word32) = assert (switch n { case 0 { false }; case 1 { false }; case 4_294_967_295 { true }; case _ { false } });
+func w64 (n : Word64) = assert (switch n { case 0 { false }; case 1 { false }; case 42 { true }; case _ { false } });
 
 
-w8 42;
-w16 65000;
-w32 4_294_967_295;
-w64 42;
+w8(42);
+w16(65000);
+w32(4_294_967_295);
+w64(42);

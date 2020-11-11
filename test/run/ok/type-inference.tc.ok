@@ -1,34 +1,34 @@
-type-inference.mo:5.9-5.28: warning, this if has type Any because branches have inconsistent types,
+type-inference.mo:5.9-5.36: warning, this if has type Any because branches have inconsistent types,
 true produces
   Bool
 false produces
   Nat
-type-inference.mo:6.9-6.34: warning, this if has type Any because branches have inconsistent types,
+type-inference.mo:6.9-6.42: warning, this if has type Any because branches have inconsistent types,
 true produces
   Bool
 false produces
   [var Nat]
-type-inference.mo:7.9-7.27: warning, this if has type Any because branches have inconsistent types,
+type-inference.mo:7.9-7.35: warning, this if has type Any because branches have inconsistent types,
 true produces
   Nat
 false produces
   Float
-type-inference.mo:8.9-8.29: warning, this if has type Any because branches have inconsistent types,
+type-inference.mo:8.9-8.31: warning, this if has type Any because branches have inconsistent types,
 true produces
   ()
 false produces
   {}
-type-inference.mo:13.33-13.41: warning, the switch has type Any because branches have inconsistent types,
+type-inference.mo:13.37-13.49: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
   Nat
-type-inference.mo:14.33-14.47: warning, the switch has type Any because branches have inconsistent types,
+type-inference.mo:14.37-14.55: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
   [var Nat]
-type-inference.mo:15.43-15.56: warning, the switch has type Any because branches have inconsistent types,
+type-inference.mo:15.49-15.66: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Int
 the previous produce type

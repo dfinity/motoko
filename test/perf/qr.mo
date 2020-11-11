@@ -46,7 +46,7 @@ actor QR {
   ) : async ?Matrix {
     Option.bind<Version, Matrix>(
       Version.new(Version.unbox(version)),
-      func _ {
+      func (_) {
         Option.bind<List<Bool>, Matrix>(
           Generic.encode(version, mode, text),
           func (data) {
@@ -68,10 +68,10 @@ actor QR {
   };
 
   public func show(matrix : Matrix) : async Text {
-    let #Matrix arrays = matrix;
+    let #Matrix(arrays) = matrix;
     Array.foldl<[Bool], Text>(func (accum1, array) {
       Array.foldl<Bool, Text>(func (accum2, bit) {
-        let text = if bit "##" else "  ";
+        let text = if bit { "##" } else { "  " };
         text # accum2
       }, "\n", array) # accum1
     }, "", arrays)
@@ -79,15 +79,15 @@ actor QR {
 
   public func go() : async () {
     let tests = [
-      (#Version 1, #M, #Numeric, "01234567"),
-      (#Version 1, #Q, #Alphanumeric, "HELLO WORLD"),
-      (#Version 2, #M, #Alphanumeric, "HTTPS://SDK.DFINITY.ORG"),
+      (#Version(1), #M, #Numeric, "01234567"),
+      (#Version(1), #Q, #Alphanumeric, "HELLO WORLD"),
+      (#Version(2), #M, #Alphanumeric, "HTTPS://SDK.DFINITY.ORG"),
     ];
     for ((version, level, mode, text) in tests.vals())  {
       let result = await QR.encode(version, level, mode, text);
       Prelude.printLn(switch result {
-        case (?matrix) "\n" # (await QR.show(matrix));
-        case _ "Error: Invalid input!";
+        case (?matrix) { "\n" # (await QR.show(matrix)) };
+        case _ { "Error: Invalid input!" };
       })
     };
   };

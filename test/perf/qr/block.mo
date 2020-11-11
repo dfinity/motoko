@@ -67,7 +67,7 @@ module {
         sizes : List<Nat>
       ) : Blocks {
         switch sizes {
-          case (null) List.rev<Block>(accum);
+          case (null) { List.rev<Block>(accum) };
           case (?(h, t)) {
             let (a, b) = List.splitAt<List<Bool>>(h, chunks);
             go(List.push<Block>(List.concat<Bool>(a), accum), b, t)
@@ -92,7 +92,7 @@ module {
 
     let dataSize = List.len<Bool>(data);
     let targetSize = Common.targetSize(version, level);
-    if (dataSize > targetSize) null else {
+    if (dataSize > targetSize) { null } else {
 
       let zeroPadSize =
         if (dataSize + 7 > targetSize) {
@@ -133,14 +133,16 @@ module {
   func flatten(data : List<Codewords>) : List<Bool> {
     func go<X>(xss : List<List<X>>, accum : List<X>) : List<X> {
       switch (List.pop<List<X>>(xss)) {
-        case (null, _) List.rev<X>(accum);
+        case (null, _) { List.rev<X>(accum) };
         case (?h1, t1) {
           switch (List.pop<X>(h1)) {
-            case (null, _) go<X>(t1, accum);
-            case (?h2, t2) go<X>(
-              List.append<List<X>>(t1, List.singleton<List<X>>(t2)),
-              List.push<X>(h2, accum)
-            )
+            case (null, _) { go<X>(t1, accum) };
+            case (?h2, t2) {
+              go<X>(
+                List.append<List<X>>(t1, List.singleton<List<X>>(t2)),
+                List.push<X>(h2, accum)
+              )
+            }
           }
         }
       }

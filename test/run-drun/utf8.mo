@@ -5,13 +5,13 @@ actor a {
 
 public func callshow(): async Text {
    let t = await show();
-   Prim.debugPrint t;
+   Prim.debugPrint(t);
    t
  };
 
 public func show() : async Text {
   let accum = "██    ██\n";
-  Prim.debugPrint accum;
+  Prim.debugPrint(accum);
   accum
  };
 };

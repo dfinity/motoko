@@ -108,7 +108,7 @@ module {
   };
 
   public func elemFromBit(bit : Bool) : Elem {
-    if bit ({ unbox = 1 }) else ({ unbox = 0 })
+    if bit {{ unbox = 1 }} else {{ unbox = 0 }}
   };
 
   public func elemToBits(elem : Elem) : List<Bool> {
@@ -225,7 +225,9 @@ module {
     let from = polyLen(poly);
     if (to > from) {
       polyPadLeft(to - from, poly)
-    } else poly
+    } else {
+      poly
+    }
   };
 
   public func polyZipWith(
@@ -235,7 +237,7 @@ module {
   ) : Poly {
     let n1 = polyLen(poly1);
     let n2 = polyLen(poly2);
-    let to = if (n1 > n2) n1 else n2;
+    let to = if (n1 > n2) { n1 } else { n2 };
     { unbox = List.zipWith<Elem, Elem, Elem>(
       polyGrow(to, poly1).unbox,
       polyGrow(to, poly2).unbox,
@@ -263,12 +265,12 @@ module {
   public type Term = { coeff : Elem; order : Int };
 
   public func polyAddTerm(poly : Poly, term : Term) : Poly {
-    let n = if (term.order <= 0) 0 else Prim.abs(term.order);
+    let n = if (term.order <= 0) { 0 } else { Prim.abs(term.order) };
     polyAdd(poly, polyPadRight(n, polyNew([term.coeff.unbox])))
   };
 
   public func polyMulTerm(poly : Poly, term : Term) : Poly {
-    let n = if (term.order <= 0) 0 else Prim.abs(term.order);
+    let n = if (term.order <= 0) { 0 } else { Prim.abs(term.order) };
     polyScale(term.coeff, polyPadRight(n, poly))
   };
 

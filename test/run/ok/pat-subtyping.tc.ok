@@ -26,9 +26,9 @@ pat-subtyping.mo:138.8-138.12: warning, this pattern is never matched
 pat-subtyping.mo:145.8-145.27: warning, this pattern is never matched
 pat-subtyping.mo:156.8-156.28: warning, this pattern is never matched
 pat-subtyping.mo:163.8-163.27: warning, this pattern is never matched
-pat-subtyping.mo:171.8-171.31: warning, this pattern is never matched
+pat-subtyping.mo:171.8-171.32: warning, this pattern is never matched
 pat-subtyping.mo:172.8-172.29: warning, this pattern is never matched
-pat-subtyping.mo:182.8-182.46: warning, this pattern is never matched
+pat-subtyping.mo:182.8-182.47: warning, this pattern is never matched
 pat-subtyping.mo:185.8-185.28: warning, this pattern is never matched
 pat-subtyping.mo:188.8-188.36: warning, this pattern is never matched
 pat-subtyping.mo:208.8-208.12: warning, this pattern is never matched

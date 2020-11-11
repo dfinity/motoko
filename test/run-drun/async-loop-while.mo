@@ -22,7 +22,7 @@ actor a {
         assert(j == i);
         i += 1;
         j += 1;
-      } while (await async (i < 3));
+      } while (await async { i < 3 });
       assert(i == 3);
     };
 
@@ -32,7 +32,7 @@ actor a {
       loop {
        Prim.debugPrintNat(j);
        assert(j == i);
-       await (async (i += 1));
+       await (async { i += 1 });
        j += 1;
       } while (i < 3);
       assert(i == 3);
@@ -49,7 +49,7 @@ actor a {
        };
        Prim.debugPrintNat(j);
        assert(j == i);
-       await (async (i += 1));
+       await (async { i += 1 });
        j += 1;
        continue l;
        assert(false);

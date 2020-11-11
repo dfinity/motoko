@@ -35,9 +35,9 @@ actor a {
       }
     };
 
-    try ()
+    try {
       // nuthin
-    catch e {
+    } catch e {
       switch (P.errorCode(e)) {
         case (#system_fatal) { assert false};
         case (#system_transient) { assert false};

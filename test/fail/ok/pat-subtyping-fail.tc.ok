@@ -104,9 +104,9 @@ pat-subtyping-fail.mo:105.11-105.18: type error, pattern of type
   Nat
 cannot consume expected type
   Int
-pat-subtyping-fail.mo:110.9-110.13: type error, variant pattern cannot consume expected type
+pat-subtyping-fail.mo:110.9-110.14: type error, variant pattern cannot consume expected type
   {#}
-pat-subtyping-fail.mo:113.9-113.26: type error, pattern of type
+pat-subtyping-fail.mo:113.9-113.27: type error, pattern of type
   {#A : Nat}
 cannot consume expected type
   {#A : Nat; #B}

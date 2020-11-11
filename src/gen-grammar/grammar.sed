@@ -137,3 +137,6 @@ s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
 /^<deprecated_/,$d
 /<exp_field_nonvar>/,+2d
 s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/
+s/<deprecated_block>/<block>/g
+s/<deprecated_exp_arg>/<exp_arg>/g
+s/<deprecated_pat_arg>/<pat_arg>/g

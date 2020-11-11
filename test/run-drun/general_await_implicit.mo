@@ -3,7 +3,7 @@ import Prim "mo:prim";
 actor Await {
 
   public shared func Ack() : async(){
-    Prim.debugPrint "Ack"
+    Prim.debugPrint("Ack")
   };
 
   public shared func Request(i : Int) : async Int {
@@ -35,8 +35,8 @@ actor Await {
    };
    for (o in os.vals()) {
      switch o {
-      case (? a) await a;
-      case null (assert false);
+      case (? a) { await a };
+      case null { assert false };
      };
    };
   };
@@ -51,17 +51,17 @@ actor Await {
     let res = Prim.Array_init<Int>(os.size(),-1);
     for (i in os.keys()) {
       switch (os[i]) {
-        case (? a) res[i] := await a;
-        case null (assert false);
+        case (? a) { res[i] := await a };
+        case null { assert false };
       };
     };
-    Prim.Array_tabulate<Int>(res.size(),func i { res[i] })
+    Prim.Array_tabulate<Int>(res.size(),func (i) { res[i] })
   };
 
   // Recursive parallel waiting
 
   public shared func RPA(n:Nat) : async () {
-    if (n == 0) ()
+    if (n == 0) {}
     else {
       let a = Ack();
       await RPA(n-1); // recurse
@@ -74,7 +74,7 @@ actor Await {
   public type List<Int> = ?(Int,List<Int>);
 
   public shared func RPR(n:Nat) : async List<Int> {
-    if (n == 0) null
+    if (n == 0) { null }
     else {
       let a = Request(n);
       let tl = await RPR(n-1); // recurse
@@ -88,8 +88,8 @@ actor Await {
       await PA();
 
       switch (await PR()) {
-        case (1,2) ();
-        case _ (assert false);
+        case (1,2) {};
+        case _ { assert false };
       };
 
       await DPA();
@@ -109,7 +109,7 @@ actor Await {
             assert (h == i);
             l := t;
           };
-          case null (assert false);
+          case null { assert false };
         };
 	i -= 1;
       };

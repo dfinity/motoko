@@ -4,8 +4,8 @@ import Prim "mo:prim";
 actor {
   public query func any(o : ?Text) : async () {
      switch o {
-       case null Prim.debugPrint ("ok: null");
-       case (?x) Prim.debugPrint ("ok: " # x);
+       case null { Prim.debugPrint ("ok: null") };
+       case (?x) { Prim.debugPrint ("ok: " # x) };
      }
   };
 }

@@ -3,14 +3,14 @@ actor a {
   public func go(){
     ignore async{
       type T = Null;
-      await { async (null:T) };
+      await async { null:T };
     };
 
     ignore async{
       type T = U;
-      let _ = await { async (null:T) };
+      let _ = await async { null:T };
       type U = Null;
-      await { async (null:T) };
+      await async { null:T };
     };
   };
 };

@@ -22,7 +22,7 @@ actor a {
       let t = "0_0";
       await async {
         await f0_0();
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
       };
     };
 
@@ -30,7 +30,7 @@ actor a {
       let t = "1_0";
       await async {
         await f1_0(1);
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
       };
     };
 
@@ -38,7 +38,7 @@ actor a {
       let t = "2_0";
       await async {
         await f2_0(1,true);
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
       };
     };
 
@@ -46,7 +46,7 @@ actor a {
     let t = "3_0";
       await async {
         await f3_0(1,true,"a");
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
       };
     };
   };
@@ -68,7 +68,7 @@ actor a {
       let t = "0_0";
       await async {
         await g0_0();
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
       };
     };
 
@@ -77,7 +77,7 @@ actor a {
       ignore await async {
         let x = await g0_1();
         assert(x == 1);
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
         x;
       };
     };
@@ -88,7 +88,7 @@ actor a {
         let (x,y) = await g0_2();
         assert(x==1);
         assert(y==true);
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
         (x,y);
       };
     };
@@ -101,7 +101,7 @@ actor a {
         assert(x==1);
         assert(y==true);
         assert(z=="a");
-        Prim.debugPrint t;
+        Prim.debugPrint(t);
         (x,y,z);
       };
     };

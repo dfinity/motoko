@@ -1,8 +1,8 @@
 // CHECK-LABEL: (func $init
 
 func matchNat(n : Nat) : Bool =
-         switch n { case 1073741823 true
-                  ; case _ false };
+         switch n { case 1073741823 { true }
+                  ; case _ { false } };
 // CHECK-LABEL: (func $matchNat
 // CHECK:        local.get $switch_in
 // CHECK-NEXT:   i32.const 2147483646
@@ -23,9 +23,9 @@ this is 2147483646.
 */
 
 func matchInt(n : Int) : Bool =
-         switch n { case (-1073741824) true
-                  ; case 1073741823 true
-                  ; case _ false };
+         switch n { case (-1073741824) { true }
+                  ; case 1073741823 { true }
+                  ; case _ { false } };
 // CHECK-LABEL: (func $matchInt
 // CHECK:        local.get $switch_in
 // CHECK-NEXT:   i32.const -2147483648
@@ -34,13 +34,13 @@ func matchInt(n : Int) : Bool =
 // CHECK-NEXT:   i32.const 2147483646
 // CHECK-NEXT:   $B_eq
 
-func match8(n : Word8) : Bool = switch n { case 42 true; case _ false };
+func match8(n : Word8) : Bool = switch n { case 42 { true }; case _ { false } };
 // CHECK-LABEL: (func $match8
 // CHECK:        i32.const 704643072
 // CHECK-NEXT:   i32.eq
 // N.B.: 704643072 == 0x2a000000 == 42 << 24
 
-func match16(n : Word16) : Bool = switch n { case 42 true; case _ false };
+func match16(n : Word16) : Bool = switch n { case 42 { true }; case _ { false } };
 // CHECK-LABEL: (func $match16
 // CHECK:        i32.const 2752512
 // CHECK-NEXT:   i32.eq

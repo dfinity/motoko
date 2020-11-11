@@ -1,7 +1,7 @@
 syntax2.mo:2.1-2.4: syntax error, unexpected token 'let', expected one of token or <phrase> sequence:
   <eof>
   .<nat>
-  <exp_nullary(ob)>
+  <deprecated_exp_arg>
   <binop> <exp(ob)>
   ; seplist(<dec>,<semicolon>)
   or <exp_bin(ob)>
@@ -13,5 +13,5 @@ syntax2.mo:2.1-2.4: syntax error, unexpected token 'let', expected one of token 
   <binassign> <exp(ob)>
   and <exp_bin(ob)>
   <unop> <exp_bin(ob)>
-  <inst> <exp_nullary(ob)>
+  <inst> <deprecated_exp_arg>
   [ <exp(ob)> ]
