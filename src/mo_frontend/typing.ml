@@ -1908,7 +1908,7 @@ and infer_dec env dec : T.typ =
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
     let (t, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
-        let c = T.Env.find id.it env.typs in
+      let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in

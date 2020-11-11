@@ -744,7 +744,7 @@ dec_nonvar :
     { let x, efs = cb in
       let efs',tps' =
         if s.it = Type.Actor then
-	  (List.map share_expfield efs, ensure_scope_bind "" tps)
+	    (List.map share_expfield efs, ensure_scope_bind "" tps)
         else (efs, tps)
       in
       ClassD(sp, xf "class" $sloc, tps', p, t, s, x, efs') @? at $sloc }
