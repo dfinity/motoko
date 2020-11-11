@@ -1914,13 +1914,6 @@ and infer_dec env dec : T.typ =
       let env' = adjoin_typs env te ce in
       let t1, ve = infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
       if obj_sort.it = T.Actor then begin
-        (match typ_binds with
-         | { it = { sort =  { it = T.Scope; _ }; _}; _ } :: typ_binds' ->
-           if typ_binds' <> [] then
-             error env
-               { left = (List.hd typ_binds').at.left; right = (Lib.List.last typ_binds').at.right}
-                 "actor class has unexpected type parameter(s)";
-         | _ -> assert false (* actor class must have a scope parameter *));
         if (not (T.shared t1)) then
         error_shared env t1 pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
       end;
@@ -2233,7 +2226,7 @@ and infer_dec_valdecs env dec : Scope.t =
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
           "the constructor function of this actor class is not available for recursive calls, but is available when imported";
       if not (List.length typ_binds = 1) then
-        error env dec.at
+        local_error env dec.at
           "actor classes with type parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
