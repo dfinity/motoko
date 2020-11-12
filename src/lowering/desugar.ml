@@ -680,39 +680,6 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
-(* TBD
-  let find_last_expr (ds, e) =
-    let find_last_actor (ds1, free, e1) =
-      (* if necessary, rename bound ids in e1 to avoid capture of ds1 below *)
-      let e1' = match (ds1, e1.it) with
-        | _ :: _ , ActorE _
-        | _ :: _, FuncE (_, _, _, _, _, _, { it = AsyncE ( _, {it = ActorE _;_}, _);_}) ->
-          Rename.exp Rename.Renaming.empty e1
-        | _ -> e1
-      in
-      match e1'.it with
-      | ActorE (ds2, fs, up, t) ->
-        ActorU (None, ds1 @ ds2, fs, up, t)
-      | FuncE (_name, _sort, _control, _, args, _, { it = AsyncE ( _, {it = ActorE (ds2, fs, up, t);_}, _); _}) when not free ->       (* this rewrite only makes sense if the function does not occur free in ds1 and e1' *)
-        ActorU (Some args, ds1 @ ds2, fs, up, t)
-      | _ ->
-        ProgU (ds @ [ expD e ]) in
-
-    if ds = [] then find_last_actor ([], true, e) else
-    match Lib.List.split_last ds, e with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = PrimE (TupPrim, []); _} ->
-      let (_,fd) = Freevars.decs ds1' in
-      let fe = Freevars.exp e' in
-      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
-      find_last_actor (ds1', free, e')
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), {it = VarE i2; _} when i1 = i2 ->
-      let (_,fd) = Freevars.decs ds1' in
-      let fe = Freevars.exp e' in
-      let free = Freevars.M.mem i1 fd || Freevars.M.mem i1 fe in
-      find_last_actor (ds1', free, e')
-    | _ ->
-      find_last_actor (ds, false, e) in
-*)
 let actor_class_mod_exp id class_typ func =
   let fun_typ = func.note.Note.typ in
   let class_con = Con.fresh id (T.Def([], class_typ)) in
@@ -735,16 +702,6 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     | _ -> assert false
   in
   let fun_typ = T.normalize cub.note.S.note_typ in
-(*
-  let class_typ, fun_typ = match T.normalize cub.note.S.note_typ with
-    | T.Func (sort, control, [], ts1, [t2]) ->
-      t2,
-      T.Func (sort, control, [T.scope_bind],
-              ts1,
-              [T.Async (T.Var (T.default_scope_var, 0), t2)])
-    | _ -> assert false
-  in
- *)
   let s, cntrl, tbs, ts1, ts2 = T.as_func fun_typ in
   let cs = T.open_binds tbs in
   let c, _ = T.as_con (List.hd cs) in
