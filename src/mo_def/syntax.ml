@@ -26,7 +26,7 @@ type typ_id = (string, Type.con option) Source.annotated_phrase
 
 (* Types *)
 
-type obj_sort = (Type.obj_sort, Type.typ) Source.annotated_phrase
+type obj_sort = Type.obj_sort Source.phrase
 type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
@@ -231,20 +231,30 @@ and comp_unit' = (import list * comp_unit_body)
 
 type lib = comp_unit
 
+(*
+let obj_def obj_sort fields at =
+  if obj_sort = Type.Actor then
+    AwaitE
+      (AsyncE(scope_bind (anon "async" a$sloc)),
+	      (ObjE(s, fields) @? at
+       @? at $sloc)
+  else ObjE(s, efs)
+ *)
+
 (* Lib as pair of import decs and body decs *)
 let obj_decs obj_sort at note id_opt fields =
   let open Source in
   match id_opt with
   | None -> [
     { it = ExpD {
-        it = ObjE ({ it = obj_sort; at = no_region; note = Type.Pre (* TBR *)}, fields);
+        it = ObjE ( { it = obj_sort; at; note = () }, fields);
         at;
         note };
       at; note }]
   | Some id -> [
     { it = LetD (
         { it = VarP id; at; note = note.note_typ },
-        { it = ObjE ({ it = obj_sort; at = no_region; note = Type.Pre (* TBR *)}, fields);
+        { it = ObjE ({ it = obj_sort; at; note = () }, fields);
           at; note; });
       at; note
     };
@@ -254,6 +264,23 @@ let obj_decs obj_sort at note id_opt fields =
 
 (* Compilation unit detection *)
 
+let is_actor_def e =
+  let open Source in
+  match e.it with
+  | AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, _fields); _ }) ; _  } -> true
+  | _ -> false
+
+let as_actor_def e =
+  let open Source in
+  match e.it with
+  | AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, fields); note; at }) ; _  } -> fields, note, at
+  | _ -> assert false
+
+(*
+let actor_def fields =
+  AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, fields); note; at }) ; _  } -> fields, note, at
+ *)
+
 (* Happens after parsing, before type checking *)
 let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
@@ -261,6 +288,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
 
   let finish imports u = { it = (imports, u); note = f; at = no_region } in
   let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
+
 
   let rec go imports ds : comp_unit =
     match ds with
@@ -272,16 +300,18 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
-    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
-      finish imports { it = ActorU (None, fields); note = e.note; at = e.at }
+    | [{it = ExpD e; _} ] when is_actor_def e ->
+      let fields, note, at = as_actor_def e in
+      finish imports { it = ActorU (None, fields); note; at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
       assert (List.length tbs = 1);
       finish imports { it = ActorClassU (sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
       finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
-      finish imports { it = ActorU (Some i1, fields); note = e.note; at = e.at }
+    | [{it = LetD ({it = VarP i1; _}, e); _}] when is_actor_def e ->
+      let fields, note, at = as_actor_def e in
+      finish imports { it = ActorU (Some i1, fields); note; at }
 
     (* Everything else is a program *)
     | ds' ->
@@ -315,7 +345,7 @@ let decs_of_comp_unit (cu : comp_unit) =
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
   | ActorClassU (csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (csp, i, tbs, p, t, { it = Type.Actor; at = no_region; note = Type.Pre}, i', efs);
+    [{ it = ClassD (csp, i, tbs, p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
        at = cub.at;
        note = cub.note;}];
   | ActorU (id_opt, fields) ->

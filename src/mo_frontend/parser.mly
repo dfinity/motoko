@@ -268,12 +268,12 @@ seplist1(X, SEP) :
   | VAR { Var @@ at $sloc }
 
 %inline obj_sort :
-  | OBJECT { Type.Object @! at $sloc }
-  | ACTOR { Type.Actor @! at $sloc }
-  | MODULE { Type.Module @! at $sloc }
+  | OBJECT { Type.Object @@ at $sloc }
+  | ACTOR { Type.Actor @@ at $sloc }
+  | MODULE { Type.Module @@ at $sloc }
 
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object @! no_region }
+  | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
 %inline mode_opt :
@@ -322,7 +322,7 @@ typ_nullary :
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
-    { ObjT(Type.Object @! at $sloc, tfs) @! at $sloc }
+    { ObjT(Type.Object @@ at $sloc, tfs) @! at $sloc }
   | tfs=typ_variant
     { VariantT tfs @! at $sloc }
 
@@ -451,7 +451,7 @@ lit :
 
 (* Default {} to block or object, respectively *)
 bl : { fun ds -> BlockE(ds) }
-ob : { fun ds -> ObjE(Type.Object @! no_region,
+ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
 
 text_like :
@@ -466,7 +466,7 @@ exp_nullary(B) :
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
     { e ds @? at $sloc }
   | LCURLY efs=exp_field_list_unamb RCURLY
-    { ObjE(Type.Object @! at $sloc, efs) @? at $sloc }
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | LCURLY ds=dec_list_unamb RCURLY
     { BlockE(ds) @? at $sloc }
   | x=id
@@ -728,9 +728,15 @@ dec_nonvar :
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
-      let efs' =
-        if s.it = Type.Actor then List.map share_expfield efs else efs
-      in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
+      let exp =
+	if s.it = Type.Actor then
+	  AwaitE
+	    (AsyncE(scope_bind (anon "async" (at $sloc)),
+	      (ObjE(s, List.map share_expfield efs) @? (at $sloc)))
+	     @? at $sloc)
+	else ObjE(s, efs)
+      in
+      let_or_exp named x exp (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.

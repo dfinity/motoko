@@ -2,7 +2,6 @@ open Ir_def
 open Mo_def
 open Mo_types
 open Mo_values
-open Mo_frontend
 
 open Source
 open Operator
@@ -86,20 +85,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    let e = {
-      it = obj at s None es note.Note.typ;
-      at = at;
-      note = Note.{
-        def with
-        typ = note.typ;
-        eff = Effect.infer_effect_field_exps es }
-      }
-    in
-    let inst = s.note in
-    if s.it = T.Actor && inst <> T.Pre then
-      I.PrimE (I.AwaitPrim, [asyncE_ e inst at])
-    else
-      e.it
+    obj at s None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it

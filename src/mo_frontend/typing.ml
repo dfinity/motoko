@@ -828,15 +828,15 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (obj_sort, fields) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
+        error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
+(*        
       if not in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
+ *)
     end;
     let env' =
       if obj_sort.it = T.Actor then
-        (if not (in_prog (* && env.async = C.NullCap*) ) then
-           obj_sort.note <- check_AwaitCap env "actor" exp.at; (* note used in desugaring *)
-         {env with async = C.NullCap; in_actor = true})
+        { env with async = C.NullCap; in_actor = true }
       else env
     in
     infer_obj env' obj_sort.it fields exp.at
