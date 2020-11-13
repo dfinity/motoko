@@ -8,118 +8,222 @@
 :toclevels: 3
 
 ////
-* targetting release 0.5.4
-* [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
+TODO
 * [ ] Various inline TBCs and TBRs and TODOs
 * [ ] Typing of patterns
-* [X] Variants
-* [X] Object patterns
-* [X] Import expressions
-* [X] Complete draft of Try/Throw expressions and primitive Error/ErrorCode type
 * [ ] Prelude
 * [ ] Modules and static restriction
-* [X] Type components and paths
 * [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
-* [X] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O. (Actually renamed R to O, and defined ==/!= on _shared_ types.
-* [X] Include actual grammar (extracted from menhir) in appendix?
 * [ ] Prose description of definedness checks
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
-* [X] Queries
-* [X] Remove Shared type
-* [X] Explain dot keys, dot vals and iterators
-* [X] Debug expressions
-* [X] Document punning in type record patterns: https://github.com/dfinity-lab/motoko/pull/964
-* [X] Update ErrorCode section
-* [Floats] Literals type and operations
-* [ ] Re-section so headings appear in content outline
 ////
 
-This section serves as a technical reference for the previous chapters and has specific technical information for readers with specific interests.
-For example, this section provides technical details of interest to the following audiences:
+This section serves as a technical reference for the {proglang} programming language and the examples provided in the _{proglang} Programming Language Guide_.
+It include formal definitions for all language features.  
 
-  - Authors providing the higher-level documentation about the {proglang} programming language.
-  - Compiler experts interested in the details of {proglang} and its compiler.
-  - Advanced programmers who want to learn more about the lower-level details of {proglang}.
+== What's covered and who it's for
 
-The language quick reference is intended to provide complete reference information about {proglang}, but this section does _not_ provide explanatory text or usage information.
-Therefore, this section is typically not suitable for readers who are new to programming languages or who are looking for a general introduction to using {proglang}.
+In addition to basic reference information for general purposes and for programmers without any specialized knowledge, the _{proglang} Quick Reference_ includes specific technical details of interest to specialized audiences, including:
+
+* Contributors responsible for providing the higher-level documentation about features and usage of the {proglang} programming language.
+* Compiler experts interested in the details of {proglang} and its compiler.
+* Advanced programmers who want to learn more about the lower-level details of {proglang}.
+
+The language quick reference is intended to provide complete reference information about {proglang}, but in abbreviated format.
+Therefore, you should not use this reference if you are looking for a general introduction to using {proglang, explanatory text about language features, sample code, or scenario-based usage examples.
+For a less formal but more usage-based discussion of {proglang} and specific {proglang} features, see the link:motoko{outfilesuffix}[_{proglang} Language Guide_].
+
+== Interpreting the notation used 
+
+This quick reference describes many aspects of the {proglang} programming language using Backus–Naur Form (BNF) notation.
+The link:https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form[Backus–Naur form (BNF)] notation is often used to describe language grammars and generally takes the following form:
+
+....
+<identifier> ::= expression 
+....
+
+As illustrated in this example, the BNF notation uses the colon-colon-equals (`+::=+`) separator. In most cases, you can interpret the `+::=+` separator to mean "is defined as" or "is constructed from" when describing a language. 
+Therefore, this notation indicates that the specified `+<identifier>+` is defined as (or is constructed from) the specified `+expression+`.
 
 == Basic language syntax
 
 This section describes the basic language conventions you need to know for programming in {proglang}.
 
 [[syntax-whitespace]]
-=== Whitespace
+== Whitespace
 
-Space, newline, horizontal tab, carriage return, line feed and form feed are considered as whitespace.
-Whitespace is ignored but used to separate adjacent keywords, identifiers and operators.
+Space, newline, horizontal tab, carriage return, line feed, and form feed are considered as whitespace.
+Whitespace is ignored by the compiler but used to separate adjacent keywords, identifiers, and operators.
 
-In the definition of some lexemes, the quick reference uses the symbol `␣` to denote a single whitespace character.
+In the definition of some lexemes, the quick reference uses the symbol `+␣+` to denote a single whitespace character.
 
 [[syntax-comments]]
-=== Comments
+== Comments
 
-Single line comments are all characters following ``//`` until the end of the same line.
+You can use single-line, multi-line, or nested multi-line comments to include descriptive non-executable text in your code. 
+For example, use comments to add context about a code block as a note to yourself or as information you want to share with anyone reviewing or maintaining your code. 
+Properly-formatted comments are treated as whitespace and ignored by the compiler.
 
-  // single line comment
-  x = 1
+Single-line comments begin with two forward-slashes (`+//+`) and consist of the characters following `+//+` to the end of the same line. 
+For example, you can have single-line comments above, below, or on the same line as the code to which the comment applies.
 
-Single or multi-line comments are any sequence of characters delimited by `+/*+` and  `+*/+`:
+For example:
 
-  /* multi-line comments
-     look like this, as in C and friends */
+....
+// single line comment
+x = 1
+....
 
-Comments delimited by `+/*+` and `+*/+` may be nested, provided the nesting is well-bracketed.
+You can also include single-line, multi-line, and nested multi-line comments by enclosing any sequence of characters withing a forward-slash followed by an asterisk (`+/*+`) and ending with an asterisk followed by a forward-slash (`+*/+`.
 
-All comments are treated as whitespace.
+For example:
+
+....
+/* multi-line comments
+   look like this, as in C and friends
+*/
+....
+
+You can also write nested multi-line comments by starting a multi-line comment block, then starting a second multi-line comment within the first block. 
+For example:
+
+....
+/* This is the start of the first multi-line comment block.
+   /* This is the second, nested multi-line comment. */
+This is the end of the first multi-line comment block. 
+*/
+....
 
 [[syntax-keywords]]
-=== Keywords
+== Keywords
 
-The following keywords are reserved and may not be used as identifiers:
+The following keywords are reserved and cannot be used as identifiers or for any other purpose in {proglang} programs:
 
-```bnf
-actor and assert assert await break case
-catch class continue debug debug_show else flexible
-false for func if ignore in import not null object or
-label let loop private public query return
-shared stable system switch true try
-type var while
-```
+[width="95%",cols="15%,80%",options="header",]
+|===
+|This keyword |Is reserved for this purpose
+|`+actor+` |Declare actor identifiers, actor objects and actor classes.
+
+|`+and+` |Boolean conjunction (short-circuiting).
+
+|`+assert+` |Assert a Boolean property (trapping when false).
+
+|`+async+` |Declare an asynchronous function or create a future.
+
+|`+await+` |Await the result of an asynchronous computation.
+
+|`+break+` |Exit from a labelled expression or loop (possibly with a value).
+
+|`+case+` |Case of a preceding `switch` expression, consisting of a pattern and expression.
+
+|`+catch+` |Failure branch of a preceding `try` expression.
+
+|`+class+` |Class declaration (actor, object and module classes).
+
+|`+continue+` |Continue with the next iteration of `loop` or `while` or `for`.
+
+|`+debug+` |Conditional debug expressions, excluded from `release` code.
+
+|`+debug_show+` |Display a debug message.
+
+|`+else+` |False branch of a conditional expression.
+
+|`+false+` |Boolean literal value *false*.
+
+|`+flexible+` |Optional identifier for variables that containing data that can be overwritten or discarded when a program is upgraded.
+
+|`+for+` |Iterate over the items of an iterator.
+
+|`+func+` |Declare a name function or anonymous function value.
+
+|`+if+` | Branch on a Boolean value.
+
+|`+ignore+` |Discard the value of an expression.
+
+|`+import+` |Import a source file or other resource as a named module.
+
+|`+in+` | Indicate the domain of a `for` loop.
+
+|`+label+` |Label an expression for early exit using a `break` keyword.
+
+|`+let+` |Bind an identifier (or pattern) to a value.
+
+|`+loop+` |Enter a loop (possibly with a guarded exit).
+
+|`+module+` |Declare a module identifier or module expression.
+
+|`+not+` |Negate a Boolean value.
+
+|`+null+` |The literal value of type `Null`.
+
+|`+object+` | Declare an object identifier or object expression.
+
+|`+or+` |Boolean disjunction (short-circuiting).
+
+|`+private+` |Restrict the visibility of a declaration to the enclosing actor, object, module or class.
+
+|`+public+` |Publish a declaration as member(s) of the enclosing
+actor, object, module or class.
+
+|`+query+` |A modifier on shared functions that return results without modifying state.
+
+|`+return+` |Exit from a function or async block (possibly with a value).
+
+|`+shared+` |Declare a function that can be called remotely.
+
+|`+stable+` |Identifier for variables that containing data that must be preserved when a program is upgraded.
+
+|`+switch+` |Conditional pattern matching, defined by cases.
+
+|`+system+` |
+
+|`+throw+` |Exit from an expression with an error.
+
+|`+true+` |A Boolean value returned as the result of a comparison.
+
+|`+try+` |Declare a scoped error handler.
+
+|`+type+` |Declare a type abbreviation.
+
+|`+var+` |Specify a (mutable) variable, field or array that can be updated.
+
+|`+while+` |Enter a guarded loop.
+
+|===
 
 [[syntax-ids]]
-=== Identifiers
+== Identifiers
 
-Identifiers are alpha-numeric, start with a letter and may contain underscores:
+Identifiers are alpha-numeric, start with a letter, and may contain underscores:
 
-```bnf
+....
 <id>   ::= Letter (Letter | Digit | _)*
 Letter ::= A..Z | a..z
 Digit  ::= 0..9
-```
+....
 
 [[syntax-integers]]
-=== Integers
+== Integers
 
 Integers are written as decimal or hexadecimal, `Ox`-prefixed natural numbers.
 Subsequent digits may be prefixed a single, semantically irrelevant, underscore.
 
-```bnf
+....
 digit ::= ['0'-'9']
 hexdigit ::= ['0'-'9''a'-'f''A'-'F']
 num ::= digit ('_'? digit)*
 hexnum ::= hexdigit ('_'? hexdigit)*
 nat ::= num | "0x" hexnum
-```
+....
 
 Negative integers may be constructed by applying a prefix negation `-` operation.
 
 [[syntax-floats]]
-=== Floats
+== Floats
 
 Floating point literals are written in decimal or `Ox`-prefixed hexadecimal scientific notation.
 
-```bnf
+....
 let frac = num
 let hexfrac = hexnum
 let float =
@@ -127,16 +231,16 @@ let float =
   | num ('.' frac?)? ('e' | 'E') sign? num
   | "0x" hexnum '.' hexfrac?
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
-```
+....
 
-The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
+The 'e' (or 'E') prefixes a base 10, decimal exponent.
+The 'p' (or 'P') prefixes a base 2, binary exponent.
 In both cases, the exponent is in decimal notation.
 
-Note: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
-
+NOTE: The use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
 
 [[syntax-chars]]
-=== Characters
+== Characters
 
 A character is a single quote (`'`) delimited:
 
@@ -145,7 +249,7 @@ A character is a single quote (`'`) delimited:
 * `\`-prefixed ASCII character (TBR),
 * or  `\u{` hexnum `}` enclosed valid, escaped Unicode character in hexadecimal (TBR).
 
-```bnf
+....
 ascii ::= ['\x00'-'\x7f']
 ascii_no_nl ::= ['\x00'-'\x09''\x0b'-'\x7f']
 utf8cont ::= ['\x80'-'\xbf']
@@ -170,74 +274,78 @@ character ::=
   | "\\u{" hexnum '}'
 
 char := '\'' character '\''
-```
+....
 
 [[syntax-text]]
-=== Text
+== Text
 
-A text literal is `"`-delimited sequence of characters:
+A text literal is a sequence of characters delimited using double quotation (") marks:
 
-```bnf
+....
 text ::= '"' character* '"'
-```
+....
 
 [[syntax-literals]]
-=== Literals
+== Literals
 
-```bnf
+Literals are constant values. The syntactic validity of a literal depends on the precision of the type for which it is used.
+
+....
 <lit> ::=                                     literals
   <nat>                                         natural
   <float>                                       float
   <char>                                        character
   <text>                                        Unicode text
-```
-
-Literals are constant values. The syntactic validity of a literal depends on the precision of the type at which it is used.
+....
 
 [[syntax-ops]]
-== Operators and types
+== Primitive types and operators
 
-[[syntax-ops-cats]]
-To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
+This section describes the all of the available operators and types that {proglang} supports.
+The operators and primitive types described in this section are classified into the following basic categories:
 
 |===
-| Abbreviation | Category | Supported opertions
+| Category and abbreviation | Supported operations
 
-| A            | Arithmetic | arithmetic operations
-| L            | Logical    | logical/Boolean operations
-| B            | Bitwise    | bitwise operations
-| O            | Ordered    | comparison
-| T            | Text       | concatenation
+| Arithmetic (A) | Arithmetic operations
+| Logical (L)    | Logical/Boolean operations
+| Bitwise (B)    | Bitwise operations
+| Ordered (O)    | Comparison operations
+| Text (T)       | Concatenation operations
 |===
 
-Some types have several categories.
-For example, type `Int` is both arithmetic (A) and ordered (O) and supports both arithmetic addition (`+`) and relational less than (`<`) (amongst other operations).
+Although these categories provide a basic framework for discussing the operations associated with different types, keep in mind that some types fit into more than one category.
+For example, the type `Int` is both arithmetic (A) and ordered (O) and, therefore, supports both arithmetic operations such as addition (`+`) and relational operations such as less than (`<`).
 
 [[syntax-ops-unary]]
-=== Unary operators
+== Unary operators
 
+Unary operators are operators that require a single operand and only use that operand to perform computations.
+
+[width="95%",cols="10%,10%,70%",options="header",]
 |===
-| `<unop>`| Category   |
+| Operator | Category   | Description
 
-| `-`  |  A | numeric negation
-| `+`  |  A | numeric identity
-| `^`  |  B | bitwise negation
+| `+-+`    | Arithmetic | Numeric negation.
+| `+++`    | Arithmetic | Numeric identity.
+| `+^+`    | Bitwise    | Bitwise negation.
 |===
-
 
 [[syntax-ops-rel]]
-=== Relational operators
+== Relational operators
 
-|===
-| `<relop>` | Category |
-|  `==` |  | equals
-|  `!=` |  | not equals
-| `␣<␣` | O | less than *(must be enclosed in whitespace)*
-| `␣>␣` | O | greater than *(must be enclosed in whitespace)*
-|  `\<=` | O | less than or equal
-|  `>=` | O | greater than or equal
-|===
+You can use the following relational operators in {proglang} programs.
 
+[width="95%",cols="10%,10%,70%",options="header",]
+|===
+| Operator | Category | Description
+|  `==` | | Equals.
+|  `!=` | | Not equals.
+| `␣<␣` | Ordered | Less than. Note that the operator must be enclosed in whitespace (as indiated by the `+␣+` charactor).
+| `␣>␣` | Ordered | Greater than. Note that the operator must be enclosed in whitespace (as indiated by the `+␣+` charactor).
+|  `\<=` | Ordered | Less than or equal to.
+|  `>=` | Ordered | Greater than or equal to.
+|===
 
 Note that equality (`==`) and inequality (`!=`) do not have categories.
 Instead, equality and inequality are applicable to arguments of all
@@ -250,66 +358,66 @@ Equality and inequality are structural and based on the observable content of th
 === Numeric binary operators
 
 |===
-| `<binop>`| Category    |
+| Operator | Category | Description
 
-|  `+` | A | addition
-|  `-` | A | subtraction
-|  `*` | A | multiplication
-|  `/` | A | division
-|  `%` | A | modulo
-|  `**`| A | exponentiation
+|  `+` | Arithmetic | Addition
+|  `-` | Arithmetic | Subtraction
+|  `*` | Arithmetic | Multiplication
+|  `/` | Arithmetic | Division
+|  `%` | Arithmetic | Modulo
+|  `**`| Arithmetic | Exponentiation
 |===
 
 [[syntax-ops-bitwise]]
 === Bitwise binary operators
 
 |===
-| `<binop>` | Category |
+| Operator | Category | Description
 
-| `&`   | B | bitwise and
-| `\|`   | B | bitwise or
-| `^`   | B | exclusive or
-| `<<`  | B | shift left
-| `␣>>` | B | shift right *(must be preceded by whitespace)*
-| `+>>` | B | signed shift right
-| `<<>` | B | rotate left
-| `<>>` | B | rotate right
+| `&`   | Bitwise operations | Bitwise AND
+| `\|`   | Bitwise operations | Bitwise OR
+| `^`   | Bitwise operations | Exclusive OR
+| `<<`  | Bitwise operations | Shift left
+| `␣>>` | Bitwise operations | Shift right *(must be preceded by whitespace)*
+| `+>>` | Bitwise operations | Signed shift right
+| `<<>` | Bitwise operations | Rotate left
+| `<>>` | Bitwise operations | Rotate right
 |===
 
 [[syntax-ops-string]]
 === Text operators
 
 |===
-|  `<binop>` | Category |
+| Operator | Category | Description
 
-|  `#` | T | concatenation
+|  `#` | Text | Concatenation
 |===
 
 [[syntax-ops-assignment]]
 === Assignment operators
 
-|===
-|`:=`, `<unop>=`, `<binop>=`| Category|
+The category listed for the compound assignment operators in the table is the category associated with unary or binary operator.
 
-| `:=`   | * | assignment (in place update)
-| `+=`   | A | in place add
-| `-=`   | A | in place subtract
-| `*=`   | A | in place multiply
-| `/=`   | A | in place divide
-| `%=`   | A | in place modulo
-| `**=`  | A | in place exponentiation
-| `&=`   | B | in place logical and
-| `\|=`   | B | in place logical or
-| `^=`   | B | in place exclusive or
-| `<\<=`  | B | in place shift left
-| `>>=`  | B | in place shift right
-| `+>>=` | B | in place signed shift right
-| `<<>=` | B | in place rotate left
-| `<>>=` | B | in place rotate right
-| `#=`   | T | in place concatenation
 |===
+| Operator| Category| Description
 
-The category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
+| `:=`   | * | Assignment (in-place update)
+| `+=`   | Arithmetic | In-place addition
+| `-=`   | Arithmetic | In-place subtraction
+| `*=`   | Arithmetic | In-place multiplication
+| `/=`   | Arithmetic | In-place division
+| `%=`   | Arithmetic | In-place modulo
+| `**=`  | Arithmetic | In-place exponentiation
+| `&=`   | Bitwise | In-place logical AND
+| `\|=`  | Bitwise | In-place logical OR
+| `^=`   | Bitwise | In-place exclusive OR
+| `<\<=` | Bitwise | In-place shift left
+| `>>=`  | Bitwise | In-place shift right
+| `+>>=` | Bitwise | In-place signed shift right
+| `<<>=` | Bitwise | In-place rotate left
+| `<>>=` | Bitwise | In-place rotate right
+| `#=`   | Text | In-place concatenation
+|===
 
 [[syntax-precedence]]
 === Operator and keyword precedence
@@ -336,7 +444,6 @@ Tokens on the same line have equal precedence with the indicated associativity.
 | HIGHEST | left | `+**+`
 |===
 
-
 [[syntax-programs]]
 === Programs
 
@@ -353,13 +460,14 @@ The actor or actor class declaration determines the main actor, if any, of the p
 
 For now, compiled programs must obey the following additional restrictions (not imposed on interpreted programs):
 
-* a program may contain at most one actor or actor class declaration, i.e. the final main actor or actor class; and
-* any main actor class declaration should be *anonymous*; if named,
-the name should not be referenced and will be reported as an unavailable identifier.
+* A program can contain only one actor or actor class declaration.
+* All actor class declarations should be *anonymous*.
++
+THe compiler will report any references to a named actor class as an unavailable identifier.
 
 The restrictions are designed to forbid programmatic actor instantiation and recursion, pending compiler support.
 
-Note that the parameters (if any) of an actor class must have shared type (see <<sharability>>).
+Note that the parameters (if any) of an actor class must have a shared type. For more information, see <<sharability>>.
 The parameters of a program's final actor class provide access to the corresponding canister installation argument(s); the {candid} type of this argument is determined by the {candid} projection of the {proglang} type of the class parameter.
 
 [[syntax-imports]]
@@ -399,14 +507,14 @@ A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 Libraries stored in `.{ext}` files may be referenced by `import` declarations.
 
 In a module library, the optional name `<id>?` is only significant within the library and does not determine the name of the library when imported.
-Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to
-choose library names (e.g. to avoid clashes).
+Instead, the imported name of a library is determined by the `+import+` declaration, giving clients of the library the freedom to
+choose library names (for example, to avoid clashes).
 
 An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`.
 The name `<id>` is mandatory and cannot be omitted.
 The imported actor class constructor is asynchronous, with return type `async T`. Here `T` is the inferred or supplied type of the class body.
 Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
-(i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+(that is, in the body of a (non-`query`) `shared` function or `async` expression).
 
 
 [[syntax-decls]]
@@ -529,7 +637,7 @@ The syntax of an _expression_ is as follows:
 
 The syntax of a _pattern_ is as follows:
 
-```bnf
+....
 <pat> ::=                                      patterns
   _                                              wildcard
   <id>                                           variable
@@ -545,8 +653,7 @@ The syntax of a _pattern_ is as follows:
   <id> = <pat>                                   field
   <id>                                           punned field
   <id> : <typ>                                   typed punned field
-```
-
+....
 
 [[syntax-types]]
 == Type syntax
