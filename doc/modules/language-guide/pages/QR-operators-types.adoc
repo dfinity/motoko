@@ -1,4 +1,4 @@
-= Operators and types
+= Primitive types and operators
 :proglang: Motoko
 :candid: Candid
 :sdk-short-name: DFINITY Canister SDK
@@ -50,7 +50,6 @@ You can use the following relational operators in {proglang} programs.
 |  `>=` | Ordered | Greater than or equal to.
 |===
 
-
 Note that equality (`==`) and inequality (`!=`) do not have categories.
 Instead, equality and inequality are applicable to arguments of all
 _shared_ types, including non-primitive, compound types such as
@@ -62,66 +61,66 @@ Equality and inequality are structural and based on the observable content of th
 === Numeric binary operators
 
 |===
-| `<binop>`| Category    |
+| Operator | Category | Description
 
-|  `+` | A | addition
-|  `-` | A | subtraction
-|  `*` | A | multiplication
-|  `/` | A | division
-|  `%` | A | modulo
-|  `**`| A | exponentiation
+|  `+` | Arithmetic | Addition
+|  `-` | Arithmetic | Subtraction
+|  `*` | Arithmetic | Multiplication
+|  `/` | Arithmetic | Division
+|  `%` | Arithmetic | Modulo
+|  `**`| Arithmetic | Exponentiation
 |===
 
 [[syntax-ops-bitwise]]
 === Bitwise binary operators
 
 |===
-| `<binop>` | Category |
+| Operator | Category | Description
 
-| `&`   | B | bitwise and
-| `\|`   | B | bitwise or
-| `^`   | B | exclusive or
-| `<<`  | B | shift left
-| `␣>>` | B | shift right *(must be preceded by whitespace)*
-| `+>>` | B | signed shift right
-| `<<>` | B | rotate left
-| `<>>` | B | rotate right
+| `&`   | Bitwise operations | Bitwise AND
+| `\|`   | Bitwise operations | Bitwise OR
+| `^`   | Bitwise operations | Exclusive OR
+| `<<`  | Bitwise operations | Shift left
+| `␣>>` | Bitwise operations | Shift right *(must be preceded by whitespace)*
+| `+>>` | Bitwise operations | Signed shift right
+| `<<>` | Bitwise operations | Rotate left
+| `<>>` | Bitwise operations | Rotate right
 |===
 
 [[syntax-ops-string]]
 === Text operators
 
 |===
-|  `<binop>` | Category |
+| Operator | Category | Description
 
-|  `#` | T | concatenation
+|  `#` | Text | Concatenation
 |===
 
 [[syntax-ops-assignment]]
 === Assignment operators
 
-|===
-|`:=`, `<unop>=`, `<binop>=`| Category|
+The category listed for the compound assignment operators in the table is the category associated with unary or binary operator.
 
-| `:=`   | * | assignment (in place update)
-| `+=`   | A | in place add
-| `-=`   | A | in place subtract
-| `*=`   | A | in place multiply
-| `/=`   | A | in place divide
-| `%=`   | A | in place modulo
-| `**=`  | A | in place exponentiation
-| `&=`   | B | in place logical and
-| `\|=`   | B | in place logical or
-| `^=`   | B | in place exclusive or
-| `<\<=`  | B | in place shift left
-| `>>=`  | B | in place shift right
-| `+>>=` | B | in place signed shift right
-| `<<>=` | B | in place rotate left
-| `<>>=` | B | in place rotate right
-| `#=`   | T | in place concatenation
 |===
+| Operator| Category| Description
 
-The category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
+| `:=`   | * | Assignment (in-place update)
+| `+=`   | Arithmetic | In-place addition
+| `-=`   | Arithmetic | In-place subtraction
+| `*=`   | Arithmetic | In-place multiplication
+| `/=`   | Arithmetic | In-place division
+| `%=`   | Arithmetic | In-place modulo
+| `**=`  | Arithmetic | In-place exponentiation
+| `&=`   | Bitwise | In-place logical AND
+| `\|=`  | Bitwise | In-place logical OR
+| `^=`   | Bitwise | In-place exclusive OR
+| `<\<=` | Bitwise | In-place shift left
+| `>>=`  | Bitwise | In-place shift right
+| `+>>=` | Bitwise | In-place signed shift right
+| `<<>=` | Bitwise | In-place rotate left
+| `<>>=` | Bitwise | In-place rotate right
+| `#=`   | Text | In-place concatenation
+|===
 
 [[syntax-precedence]]
 === Operator and keyword precedence
@@ -148,7 +147,6 @@ Tokens on the same line have equal precedence with the indicated associativity.
 | HIGHEST | left | `+**+`
 |===
 
-
 [[syntax-programs]]
 === Programs
 
@@ -165,13 +163,14 @@ The actor or actor class declaration determines the main actor, if any, of the p
 
 For now, compiled programs must obey the following additional restrictions (not imposed on interpreted programs):
 
-* a program may contain at most one actor or actor class declaration, i.e. the final main actor or actor class; and
-* any main actor class declaration should be *anonymous*; if named,
-the name should not be referenced and will be reported as an unavailable identifier.
+* A program can contain only one actor or actor class declaration.
+* All actor class declarations should be *anonymous*.
++
+THe compiler will report any references to a named actor class as an unavailable identifier.
 
 The restrictions are designed to forbid programmatic actor instantiation and recursion, pending compiler support.
 
-Note that the parameters (if any) of an actor class must have shared type (see <<sharability>>).
+Note that the parameters (if any) of an actor class must have a shared type. For more information, see <<sharability>>.
 The parameters of a program's final actor class provide access to the corresponding canister installation argument(s); the {candid} type of this argument is determined by the {candid} projection of the {proglang} type of the class parameter.
 
 [[syntax-imports]]
@@ -211,14 +210,14 @@ A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 Libraries stored in `.{ext}` files may be referenced by `import` declarations.
 
 In a module library, the optional name `<id>?` is only significant within the library and does not determine the name of the library when imported.
-Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to
-choose library names (e.g. to avoid clashes).
+Instead, the imported name of a library is determined by the `+import+` declaration, giving clients of the library the freedom to
+choose library names (for example, to avoid clashes).
 
 An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`.
 The name `<id>` is mandatory and cannot be omitted.
 The imported actor class constructor is asynchronous, with return type `async T`. Here `T` is the inferred or supplied type of the class body.
 Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
-(i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+(that is, in the body of a (non-`query`) `shared` function or `async` expression).
 
 
 [[syntax-decls]]
@@ -447,7 +446,7 @@ converted into a text of length 1.
 [[type-text]]
 === Type `Text`
 
-The type `Text` of categories T and O (Text, Ordered) represents sequences of Unicode characters (i.e. strings).
+The type `Text` of categories T and O (Text, Ordered) represents sequences of Unicode characters (that is, strings).
 Function `t.size` returns the number of characters in `Text` value `t`.
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { ... c ... }`.
 
@@ -515,7 +514,7 @@ round-trip property holds modulo *2^n*. The former choose the
 two's-complement representation for negative integers.
 
 Word types are not in subtype relationship with each other or with
-other arithmetic types, and their literals need type annotation, e.g.
+other arithmetic types, and their literals need type annotation, for example
 `(-42 : Word16)`. For negative literals the two's-complement
 representation is applied.
 
@@ -572,7 +571,7 @@ A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.
 
 `Error` values can be thrown and caught within an `async` expression or `shared` function (only). See <<exp-throw>> and <<exp-try>>.
 
-Errors with codes other than `#canister_reject`  (i.e. _system_ errors) may be caught and thrown, but not user-constructed.
+Errors with codes other than `#canister_reject`  (that is, _system_ errors) may be caught and thrown, but not user-constructed.
 
 Note: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
 This prevents programmatic forgery of system errors.
@@ -581,7 +580,7 @@ This prevents programmatic forgery of system errors.
 [[constructed-types]]
 === Constructed types
 
-`<path> <typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type *arguments*.
+`<path> <typ-args>?` is the application of a type identifier or path, either built-in (that is, `Int`) or user defined, to zero or more type *arguments*.
 The type arguments must satisfy the bounds, if any, expected by the type constructor's type parameters (see <<wf-types>>).
 
 Though typically a type identifier, more generally,
@@ -659,7 +658,7 @@ The empty tuple type `()` is called the *unit type*.
 [[any-type]]
 === Any type
 
-Type `Any` is the *top* type, i.e. the super-type of all types. All values have type `Any`.
+Type `Any` is the *top* type, that is, the super-type of all types. All values have type `Any`.
 
 [[none-type]]
 === None type
@@ -984,7 +983,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
+(Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (for example `import C "canister:counter"`), without specifying low-level canister ids (for example `import C "ic:lg264-qjkae"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
 
 
@@ -1033,7 +1032,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
-These system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
+These system methods provide the opportunity to save and restore in-flight data structures (for example caches) that are better represented using non-stable types.
 
 During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
@@ -1126,8 +1125,8 @@ The `<sort>` of the matched object type must be determined by an enclosing type 
 === Variant pattern
 
 The variant pattern `# <id> <pat>?` matches a variant value (of the form `# <id'> v`) against a variant pattern. An absent `<pat>?` is shorthand for the unit pattern (`()`).
-Pattern matching fails if the tag `<id'>` of the value is distinct from the `<id>` of the pattern (i.e. `<id>` <> `<id'>`); or the tags are equal but the value `v` does not match the pattern `<pat>?`.
-Pattern matching succeeds if the tag of the value is `<id>` (i.e. `<id'>` = `<id>`) and the value `v` matches the pattern `<pat>?`.
+Pattern matching fails if the tag `<id'>` of the value is distinct from the `<id>` of the pattern (that is, `<id>` <> `<id'>`); or the tags are equal but the value `v` does not match the pattern `<pat>?`.
+Pattern matching succeeds if the tag of the value is `<id>` (that is, `<id'>` = `<id>`) and the value `v` matches the pattern `<pat>?`.
 The binding returned by a successful match is just the binding returned by the match of `v` against `<pat>?`.
 
 [[pat-anno]]
@@ -1135,7 +1134,7 @@ The binding returned by a successful match is just the binding returned by the m
 
 The annotated pattern `<pat> : <typ>` matches value of `v` type `<typ>` against the pattern `<pat>`.
 
-`<pat> : <typ>` is *not* a dynamic type test, but is used to constrain the types of identifiers bound in `<pat>`, e.g. in the argument pattern to a function.
+`<pat> : <typ>` is *not* a dynamic type test, but is used to constrain the types of identifiers bound in `<pat>`, for example in the argument pattern to a function.
 
 [[pat-option]]
 === Option pattern
