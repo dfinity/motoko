@@ -19,9 +19,10 @@
 ** xref:style.adoc[Motoko style guidelines]
 * xref:language-manual.adoc[Motoko Quick Reference]
 ** xref:QR-basic-syntax.adoc[Basic language syntax]
-** xref:QR-operators-types.adoc[Operators and types]
-** xref:QR-type-syntax.adoc[Type expressions and syntax]
-** xref:QR-semantics.adoc[Static and dymanic semantics]
+** xref:QR-operators-types.adoc[Primitive types and operators]
+** xref:QR-type-syntax.adoc[Type syntax]
+** xref:QR-semantics.adoc[Static and dynamic semantics]
+** xref:QR-ext-refs.adoc[References]
 
 
 

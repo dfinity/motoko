@@ -10,7 +10,6 @@ TODO
 * [ ] Prelude
 * [ ] Modules and static restriction
 * [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
-* [X] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O. (Actually renamed R to O, and defined ==/!= on _shared_ types.
 * [ ] Prose description of definedness checks
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
 ////
