@@ -1,5 +1,17 @@
 = Motoko compiler changelog
 
+== 0.4.6 (2020-11-13)
+
+* Significant documentation improvements
+* Varoius bugfixes
+* Improved error messages
+* Initial DWARF support
+* Candid compliance improvements:
+  - Strict checking of utf8 strings
+  - More liberal parsing of leb128-encoded numbers
+* New motoko-based:
+  - The Random library is added
+
 == 0.4.5 (2020-10-06)
 
 * BREAKING CHANGE: a library containing a single actor class is
