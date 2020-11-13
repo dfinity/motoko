@@ -116,8 +116,7 @@ The following keywords are reserved and cannot be used as identifiers or for any
 
 |`+or+` |Boolean disjunction (short-circuiting).
 
-|`+private+` |Restrict the visibility of a declaration to the enclosing
-actor, object, module or class.
+|`+private+` |Restrict the visibility of a declaration to the enclosing actor, object, module or class.
 
 |`+public+` |Publish a declaration as member(s) of the enclosing
 actor, object, module or class.
@@ -151,7 +150,7 @@ actor, object, module or class.
 [[syntax-ids]]
 == Identifiers
 
-Identifiers are alpha-numeric, start with a letter and may contain underscores:
+Identifiers are alpha-numeric, start with a letter, and may contain underscores:
 
 ....
 <id>   ::= Letter (Letter | Digit | _)*
@@ -190,10 +189,11 @@ let float =
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 ....
 
-The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
+The 'e' (or 'E') prefixes a base 10, decimal exponent.
+The 'p' (or 'P') prefixes a base 2, binary exponent.
 In both cases, the exponent is in decimal notation.
 
-Note: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
+NOTE: The use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
 
 [[syntax-chars]]
 == Characters
@@ -235,13 +235,8 @@ char := '\'' character '\''
 [[syntax-text]]
 == Text
 
-A text literal is a sequence of characters delimited using double quotation (") marks.
+A text literal is a sequence of characters delimited using double quotation (") marks:
 
-For example, the following represents a text literal:
-
-"Hello, World!"
-
-Formal definition:
 ....
 text ::= '"' character* '"'
 ....
