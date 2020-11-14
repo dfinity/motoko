@@ -1273,7 +1273,7 @@ module Opt = struct
        A heap-allocated box for `?v` values. Should only ever contain null or
        another such box.
 
-    3. Anything else (pointer or unboxed scalar): Consituent value, implicitly
+    3. Anything else (pointer or unboxed scalar): Constituent value, implicitly
        injected into the opt type.
 
     This way, `?t` is represented without allocation, with the only exception of
