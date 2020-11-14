@@ -721,7 +721,7 @@ and infer_exp' f env exp : T.typ =
   t'
 
 and infer_exp'' env exp : T.typ =
-  let in_prog = env.in_prog in
+  let context = env.context in
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
@@ -828,11 +828,11 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (obj_sort, fields) ->
     if obj_sort.it = T.Actor then begin
-        error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
-(*        
-      if not in_prog then
+      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
+      match context with
+      | (_ :: AsyncE _ :: AwaitE _ :: _ )->
         error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
- *)
+      | _ -> ()
     end;
     let env' =
       if obj_sort.it = T.Actor then
@@ -2192,7 +2192,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       {it = ObjE (obj_sort, fields); at; _}
-) ->
+    ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -2214,7 +2214,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
-      con_env = T.ConSet.singleton c ;
+      con_env = T.ConSet.singleton c;
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
@@ -2268,7 +2268,8 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
 
 let is_actor_dec d =
   match d.it with
-  | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+  | ExpD e
+  | LetD (_, e) -> Syntax.is_actor_def e
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
     obj_sort.it = T.Actor
   | _ -> false
@@ -2288,7 +2289,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
             if ds <> [] || ds' <> []  then
-              recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
+              error_in [Flags.ICMode; Flags.RefMode] env d.at
                 "an actor or actor class must be the only non-imported declaration in a program"
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
@@ -2304,7 +2305,7 @@ let check_lib scope lib : Scope.t Diag.result =
         (fun lib ->
           let env = env_of_scope msgs scope in
           let (imports, cub) = lib.it in
-          let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+          let (imp_ds, ds) = Syntax.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
@@ -2325,7 +2326,7 @@ let check_lib scope lib : Scope.t Diag.result =
               let fun_typ = typ in
               let class_typ =
                 match T.normalize fun_typ with
-                | T.Func (sort, control, _, ts1, [t2]) -> (* TODO: Revisit *)
+                | T.Func (sort, control, _, ts1, [t2]) ->
                   let t2 = T.normalize (T.open_ cs t2) in
                   (match t2 with
                    | T.Async (_ , class_typ) -> class_typ

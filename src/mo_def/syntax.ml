@@ -241,26 +241,6 @@ let obj_def obj_sort fields at =
   else ObjE(s, efs)
  *)
 
-(* Lib as pair of import decs and body decs *)
-let obj_decs obj_sort at note id_opt fields =
-  let open Source in
-  match id_opt with
-  | None -> [
-    { it = ExpD {
-        it = ObjE ( { it = obj_sort; at; note = () }, fields);
-        at;
-        note };
-      at; note }]
-  | Some id -> [
-    { it = LetD (
-        { it = VarP id; at; note = note.note_typ },
-        { it = ObjE ({ it = obj_sort; at; note = () }, fields);
-          at; note; });
-      at; note
-    };
-    { it = ExpD { it = VarE id; at; note };
-      at; note }
-    ]
 
 (* Compilation unit detection *)
 
@@ -273,13 +253,9 @@ let is_actor_def e =
 let as_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, fields); note; at }) ; _  } -> fields, note, at
+  | AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, fields); note; at }) ; _  } ->
+    fields, note, at
   | _ -> assert false
-
-(*
-let actor_def fields =
-  AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, fields); note; at }) ; _  } -> fields, note, at
- *)
 
 (* Happens after parsing, before type checking *)
 let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
@@ -288,7 +264,6 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
 
   let finish imports u = { it = (imports, u); note = f; at = no_region } in
   let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-
 
   let rec go imports ds : comp_unit =
     match ds with
@@ -324,10 +299,32 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   in
   go [] prog.it
 
+
+(* Lib as decs *)
+let obj_decs obj_sort at note id_opt fields =
+  let open Source in
+  match id_opt with
+  | None -> [
+    { it = ExpD {
+        it = ObjE ( { it = obj_sort; at; note = () }, fields);
+        at;
+        note };
+      at; note }]
+  | Some id -> [
+    { it = LetD (
+        { it = VarP id; at; note = note.note_typ },
+        { it = ObjE ({ it = obj_sort; at; note = () }, fields);
+          at; note; });
+      at; note
+    };
+    { it = ExpD { it = VarE id; at; note };
+      at; note }
+    ]
+
 (* To enable uniform definedness checking, typechecking and interpretation,
    present the unit as a list of declarations.
 *)
-let decs_of_comp_unit (cu : comp_unit) =
+let decs_of_lib (cu : comp_unit) =
   let open Source in
   let (imports, cub) = cu.it in
   let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
@@ -341,15 +338,15 @@ let decs_of_comp_unit (cu : comp_unit) =
   in
   import_decs,
   match cub.it with
-  | ProgU ds -> ds
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
   | ActorClassU (csp, i, tbs, p, t, i', efs) ->
     [{ it = ClassD (csp, i, tbs, p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
        at = cub.at;
        note = cub.note;}];
-  | ActorU (id_opt, fields) ->
-    obj_decs Type.Actor cub.at cub.note id_opt fields
+  | ProgU _
+  | ActorU _ ->
+    assert false
 
 (* a hack to support compiling multiple files *)
 let combine_progs progs : prog =
