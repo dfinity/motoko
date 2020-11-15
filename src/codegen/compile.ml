@@ -5086,6 +5086,9 @@ module Var = struct
 end (* Var *)
 
 (* Calling well-known prelude functions *)
+(* FIX ME: calling into the prelude will not work if we ever need to compile a program
+   that requires top-level cps conversion;
+   use new prims instead *)
 module Prelude = struct
   let call_prelude_function env ae var =
     match Var.get_val env ae var with

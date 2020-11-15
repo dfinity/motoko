@@ -231,17 +231,6 @@ and comp_unit' = (import list * comp_unit_body)
 
 type lib = comp_unit
 
-(*
-let obj_def obj_sort fields at =
-  if obj_sort = Type.Actor then
-    AwaitE
-      (AsyncE(scope_bind (anon "async" a$sloc)),
-	      (ObjE(s, fields) @? at
-       @? at $sloc)
-  else ObjE(s, efs)
- *)
-
-
 (* Compilation unit detection *)
 
 let is_actor_def e =
