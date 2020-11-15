@@ -1,1 +1,1 @@
-issue-874.mo:4.11-4.12: type error, cannot infer type of forward variable a
+issue-874.mo:4.11-4.16: type error, cannot infer type of forward field reference foo

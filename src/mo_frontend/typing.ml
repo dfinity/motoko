@@ -830,7 +830,7 @@ and infer_exp'' env exp : T.typ =
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
       match context with
-      | (_ :: AsyncE _ :: AwaitE _ :: _ )->
+      | (AsyncE _ :: AwaitE _ :: e :: _ )->
         error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
     end;
@@ -2018,7 +2018,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      {it = ObjE (obj_sort, fields); at; _}
+      ({it = ObjE (obj_sort, fields); at; _} |
+       {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
     ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let open Scope in
@@ -2098,7 +2099,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      {it = ObjE (obj_sort, fields); at; _}
+      ( {it = ObjE (obj_sort, fields); at; _} |
+        {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
@@ -2191,7 +2193,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      {it = ObjE (obj_sort, fields); at; _}
+      ( {it = ObjE (obj_sort, fields); at; _} |
+        {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
     ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let obj_scope = T.Env.find id.it env.objs in
