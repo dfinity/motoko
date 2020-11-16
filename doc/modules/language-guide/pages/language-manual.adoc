@@ -404,7 +404,7 @@ choose library names (e.g. to avoid clashes).
 
 An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`.
 The name `<id>` is mandatory and cannot be omitted.
-The imported actor class constructor is asynchronous, with return type `async T`. Here `T` is the inferred or supplied type of the class body.
+An actor class constructor is always asynchronous, with return type `async T` (the inferred type of the class body).
 Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
 (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
@@ -1103,40 +1103,33 @@ A module library evaluates by (transitively) evaluating its imports, binding the
 
 ==== Actor class libraries
 
-////
-This ugly asyncification of actor class imports below will go away once we change actor class definitions to be asynchronous. This is a temporary kludge.
-////
 
 The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
 
-```
+```bnf
   module {
     type <id> = T;
-    <id> : (U1,...,Un) -> async T // asynchronous!
+    <id> : (U1,...,Un) -> async T
   }
 ```
 
 provided that:
 
-* the actor class declaration `<dec>` has function type `(U1, ..., Un) -> T` under the static environment induced by the imports in `<import>;*`.
+* the actor class declaration `<dec>` has function type `(U1, ..., Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
-Notice that the imported type of the function `<id>` is the *asynchronous* version of its declared type.
+Notice that the imported type of the function `<id>` must be asynchronous.
 
 An actor class library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*`, and evaluating the (derived) module:
 
-```
+```bnf
   module {
-    public type <id> = T;
-    public func <id>(a1 : U1, ..., an : Un) : async T { // asynchronous!
-      (<dec>)(a1, ..., an)
-    }
+    <dec>
   }
 ```
 
-The imported module contains an asynchronous implementation of function `<id>`.
-
-On the Internet Computer, calling `await <id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
-as installation arguments, and returns a reference to a (remote) actor of type `T`.
+On the Internet Computer, if this library is imported as identifier `Lib`,
+then calling `await Lib.<id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
+as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`.
 Installation is (necessarily) asynchronous.
 
 [[imports]]
@@ -1496,22 +1489,18 @@ a named `let` or anonymous declaration of a function expression. That is:
   <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent)
 ```
 
-
 Named function definitions are recursive.
 
 [[decl-class]]
 === Class declaration
-
-////
-TODO: revise once actor class declaration async
-////
 
 The _class_ declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>` is sugar for pair of a type and function declaration:
 
 ```bnf
 <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? <class-body> :=
   type <id> <typ-params> = <sort> { <typ-field>;* };
-  <shared-pat>? func <id> <typ-params>? <pat> : <id> <typ-args> = <sort> <id_this>? <obj-body>
+  <shared-pat>? func <id> <typ-params>? <pat> : async? <id> <typ-args> =
+    async? <sort> <id_this>? <obj-body>
 ```
 
 where:
@@ -1521,6 +1510,7 @@ where:
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 * `<obj-body>` is the object body of `<class-body>`.
 * `<id_this>?` is the optional _this_ (a.k.a _self_), parameter of `<class-body>`.
+* `async?` is present, if only if, `<sort>` == `actor`.
 
 Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
 
@@ -1529,10 +1519,18 @@ An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 If `sort` is `actor`, then:
 
 * `<typ-args>?` must be absent or empty (`actor` classes cannot have type parameters);
-* `<pat>`'s type must be shared (see <<sharability>>).
+* ``<pat>``'s type must be shared (see <<sharability>>).
+* `(: <typ>)?`, if present, must be of the form `: async T` for some actor type `T` (actor instantiation is asynchronous).
+
+If `(: <typ>)` is present, then the type `<async?> <sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`.
+In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`.
+
+The class declaration has the same type as function `<id>` and evaluates to the function value `<id>`.
 
 [[eval-identifiers]]
 === Identifiers
+
+The identifier expression `<id>` has type `T` provided `<id>` is in scope, defined and declared with explicit or inferred type `T`.
 
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
