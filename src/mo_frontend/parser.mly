@@ -729,12 +729,12 @@ dec_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let exp =
-	if s.it = Type.Actor then
-	  AwaitE
-	    (AsyncE(scope_bind (anon "async" (at $sloc)),
-	      (ObjE(s, List.map share_expfield efs) @? (at $sloc)))
-	     @? at $sloc)
-	else ObjE(s, efs)
+        if s.it = Type.Actor then
+          AwaitE
+            (AsyncE(scope_bind (anon "async" (at $sloc)),
+              (ObjE(s, List.map share_expfield efs) @? (at $sloc)))
+             @? at $sloc)
+        else ObjE(s, efs)
       in
       let_or_exp named x exp (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
@@ -750,7 +750,7 @@ dec_nonvar :
     { let x, efs = cb in
       let efs',tps' =
         if s.it = Type.Actor then
-	    (List.map share_expfield efs, ensure_scope_bind "" tps)
+            (List.map share_expfield efs, ensure_scope_bind "" tps)
         else (efs, tps)
       in
       ClassD(sp, xf "class" $sloc, tps', p, t, s, x, efs') @? at $sloc }

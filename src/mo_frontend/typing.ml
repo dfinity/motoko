@@ -1912,11 +1912,12 @@ and infer_dec env dec : T.typ =
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
-      let t1, ve = infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
-      if obj_sort.it = T.Actor then begin
-        if (not (T.shared t1)) then
-        error_shared env t1 pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
-      end;
+      let t_pat, ve =
+        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
+      in
+      if obj_sort.it = T.Actor && (not (T.shared t_pat)) then
+        error_shared env t_pat pat.at "shared constructor has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand t_pat);
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in

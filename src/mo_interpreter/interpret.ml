@@ -158,7 +158,6 @@ let reject async v =
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
-    (*    let k' = fun v1 -> set_async async v1 in *)
     let k' = reply async in
     let r  = reject async in
     if env.flags.trace then trace "-> async %s" (string_of_region at);
@@ -188,11 +187,10 @@ let await env at async k =
      let r = Option.get (env.throws) in
      fun v ->
        Scheduler.queue (fun () ->
-           if env.flags.trace then
-             trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
-           incr trace_depth;
-           r v
-         ))
+         if env.flags.trace then
+           trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+         incr trace_depth;
+         r v))
 
 let make_unit_message env id v =
   let open CC in
@@ -434,15 +432,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (obj_sort, fields) ->
-    if obj_sort.it = T.Actor then
-      async env exp.at
-        (fun k' r ->
-          let env' = {env with labs = V.Env.empty; rets = None; throws = Some r; async = true}
-          in interpret_obj env' obj_sort.it fields k')
-        (fun v  ->
-          await env exp.at (V.as_async v) k)
-    else
-      interpret_obj env obj_sort.it fields k
+    interpret_obj env obj_sort.it fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -885,13 +875,15 @@ and interpret_dec env dec (k : V.value V.cont) =
         async env' Source.no_region
           (fun k'' r ->
             let env'' = adjoin_vals env' (declare_id id') in
-            let env''' = {env'' with
-                           labs = V.Env.empty;
-                           rets = Some k'' (* None?*);
-                           throws = Some r; async = true} in
+            let env''' = { env'' with
+              labs = V.Env.empty;
+              rets = Some k'';
+              throws = Some r;
+              async = true }
+            in
             interpret_obj env''' obj_sort.it fields (fun v' ->
-                define_id env''' id' v';
-                k'' v'))
+              define_id env''' id' v';
+              k'' v'))
           k')
     in
     let v = V.Func (CC.call_conv_of_typ dec.note.note_typ, f) in
