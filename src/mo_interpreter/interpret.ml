@@ -35,7 +35,7 @@ type env =
     rets : ret_env;
     throws : throw_env;
     self : V.actor_id;
-    async : bool
+    async : bool (* is this still used? *)
   }
 
 let adjoin_scope scope1 scope2 =
@@ -183,8 +183,7 @@ let await env at async k =
       k v
       )
     )
-    (assert (Option.is_some env.throws);
-     let r = Option.get (env.throws) in
+    (let r = Option.get (env.throws) in
      fun v ->
        Scheduler.queue (fun () ->
          if env.flags.trace then
@@ -955,7 +954,7 @@ let import_lib env lib =
   | Syntax.ModuleU _ ->
     fun v -> v
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _fields) ->
-    fun v -> V.Obj(V.Env.singleton id.it v)
+    fun v -> V.Obj (V.Env.singleton id.it v)
   | _ -> assert false
 
 

@@ -35,7 +35,7 @@ type env =
     throws : throw_env;
     replies : reply_env;
     rejects : reject_env;
-    async : bool;
+    async : bool; (* is this still used? *)
     caller : V.value;
     self : V.actor_id;
     actor_env : actor_env;
