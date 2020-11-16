@@ -54,6 +54,7 @@ enum as_heap_tag {
   TAG_SMALLWORD = 12,
   TAG_BIGINT = 13,
   TAG_CONCAT = 14,
+  TAG_NULL = 15,
   };
 
 /** Functions imported from the Motoko RTS */

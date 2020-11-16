@@ -106,6 +106,8 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_CONCAT => size_of::<Concat>(),
 
+        TAG_NULL => size_of::<Null>(),
+
         _ => {
             rts_trap_with("object_size: invalid object tag\0".as_ptr());
         }
@@ -324,6 +326,10 @@ unsafe fn scav(
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
             // These don't include pointers, skip
+        }
+
+        TAG_NULL => {
+            rts_trap_with("encountered NULL object tag in dynamic object in scav\0".as_ptr());
         }
 
         TAG_FWD_PTR | _ => {

@@ -28,6 +28,8 @@ open Type
    (modulo mixing my left foot with my right)
 *)
 
+exception Bimatch of string
+
 val bi_match_subs :
   scope option -> bind list -> (typ * typ) list ->
-  typ list (* raises Failure *)
+  typ list (* raises Bimatch *)

@@ -5,29 +5,29 @@ import Iter "mo:base/Iter";
 
 actor Registry {
 
-  stable var state : [(Text, Nat)] = [];
+  stable var entries : [(Text, Nat)] = [];
 
-  let dict = Map.fromIter(
-    state.vals(), 10, Text.equal, Text.hash);
+  let map = Map.fromIter(
+    entries.vals(), 10, Text.equal, Text.hash);
 
   public func register(name : Text) : async () {
-    switch (dict.get(name)) {
+    switch (map.get(name)) {
       case null  {
-        dict.put(name, dict.size());
+        map.put(name, map.size());
       };
       case (?id) { };
     }
   };
 
   public func lookup(name : Text) : async ?Nat {
-    dict.get(name);
+    map.get(name);
   };
 
   system func preupgrade() {
-    state := Iter.toArray(dict.entries());
+    entries := Iter.toArray(map.entries());
   };
 
   system func postupgrade() {
-    state := [];
+    entries := [];
   };
 }
