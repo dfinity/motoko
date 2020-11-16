@@ -775,11 +775,11 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
       match fun_typ with
-      | T.Func(_s, _c, bds, _dom, [rng]) ->
+      | T.Func(_s, _c, bds, _dom, [async_rng]) ->
         assert(1 = List.length bds);
         let cs  = T.open_binds bds in
-        let (_, obj_typ) = T.as_async (T.normalize (T.open_ cs rng)) in
-        obj_typ
+        let (_, rng) = T.as_async (T.normalize (T.open_ cs async_rng)) in
+        T.promote rng
       | _ -> assert false
     in
     let e = wrap {
