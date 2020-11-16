@@ -767,7 +767,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) -> (* TODO: use tbs *)
+  | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
@@ -775,9 +775,11 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let obj_typ =
       match fun_typ with
-      | T.Func(s, c, bds, dom, [T.Async (_, rng)]) ->
+      | T.Func(_s, _c, bds, _dom, [rng]) ->
         assert(1 = List.length bds);
-        T.promote rng
+        let cs  = T.open_binds bds in
+        let (_, obj_typ) = T.as_async (T.normalize (T.open_ cs rng)) in
+        obj_typ
       | _ -> assert false
     in
     let e = wrap {
