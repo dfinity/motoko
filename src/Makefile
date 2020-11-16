@@ -25,7 +25,9 @@ SOURCE_ID = source_id/source_id.ml
 
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
-all: $(SOURCE_ID) grammar
+all: exes grammar
+
+exes: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(NATIVE_TARGETS)
 	@ln -fs $(MOC_TARGET) moc
 	@ln -fs $(MO_IDE_TARGET) mo-ide

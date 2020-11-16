@@ -130,6 +130,8 @@ s/ASSIGN/\':=\'/g
 s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+/'return'$/d
+s/'return' <exp>/'return' <exp>?/
 /    '{' <list(<dec_var>, ';')> '}'/d
 s/    '{' <deprecated_exp_field_list_unamb> '}'/    '{' <list(<exp_field>, ';')> '}'/
 s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/

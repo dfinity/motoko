@@ -171,8 +171,7 @@
     <exp_bin>
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
-    'return'
-    'return' <exp>
+    'return' <exp>?
     'async' <exp_nest>
     'await' <exp_nest>
     'assert' <exp_nest>
