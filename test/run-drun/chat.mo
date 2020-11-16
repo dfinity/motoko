@@ -10,7 +10,7 @@ actor class Server() = {
     var next = clients;
     loop {
       switch next {
-        case null return;
+        case null { return };
         case (?l) {
           l.head.send(message);
           next := l.tail;

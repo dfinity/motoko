@@ -1,8 +1,9 @@
 import Prim "mo:prim";
 // a single function that can be evaluated recursively or tail-recursively
 func f (tailCall:Bool, n:Int, acc:Int) : Int {
-    if (n<=0)
+    if (n<=0) {
 	return acc;
+    };
 
     if (tailCall) {
 	f(tailCall, n-1, acc+1)

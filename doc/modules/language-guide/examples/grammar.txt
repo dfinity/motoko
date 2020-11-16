@@ -170,27 +170,34 @@
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ>
 
+<exp_if> ::= 
+    'if' <exp_nullary> <block>
+    'if' <exp_nullary> <block> 'else' <block>
+    'if' <exp_nullary> <block> 'else' <exp_if>
+
+<exp_for> ::= 
+    'for' '(' <pat> 'in' <exp> ')' <block>
+    'for' '(' <pat> 'in' <exp> ')' <exp_for>
+
 <exp_key> ::= 
-    'return'
-    'return' <exp>
-    'async' <exp_nest>
+    <exp_if>
+    <exp_for>
+    'return' <exp>?
+    'async' <block>
     'await' <exp>
     'assert' <exp>
-    'label' <id> (':' <typ>)? <exp_nest>
+    'label' <id> (':' <typ>)? <exp_key>
     'break' <id> <exp_arg>?
     'continue' <id>
-    'debug' <exp_nest>
-    'if' <exp_nullary> <exp_nest>
-    'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
-    'try' <exp_nest> <catch>
+    'debug' <block>
+    'try' <block> <catch>
     'throw' <exp>
     'switch' <exp_nullary> '{' <list(<case>, ';')> '}'
-    'while' <exp_nullary> <exp_nest>
-    'loop' <exp_nest>
-    'loop' <exp_nest> 'while' <exp>
-    'for' '(' <pat> 'in' <exp> ')' <exp_nest>
+    'while' <exp_nullary> <block>
+    'loop' <block>
+    'loop' <block> 'while' <exp>
     'ignore' <exp>
-    'do' <exp_nest>
+    'do' <block>
 
 <exp_nondec> ::= 
     <exp_key>
@@ -206,19 +213,14 @@
     <exp_nonvar>
     <dec_var>
 
-<exp_nest> ::= 
-    <block>
-    <exp_key>
-    <dec_nonexp>
-
 <block> ::= 
     '{' <list(<dec>, ';')> '}'
 
 <case> ::= 
-    'case' <pat_nullary> <exp_nest>
+    'case' <pat_nullary> <block>
 
 <catch> ::= 
-    'catch' <pat_nullary> <exp_nest>
+    'catch' <pat_nullary> <block>
 
 <exp_field> ::= 
     'var'? <id> '=' <exp>

@@ -267,21 +267,21 @@ public func fromList<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
      label profile_trie_fromList_end_empty : (Trie<K,V>) do {
        #empty
      } }
-     else if ( List.lenIsEqLessThan<(Key<K>,V)>(kvs, MAX_LEAF_COUNT - 1) ) 
+     else if ( List.lenIsEqLessThan<(Key<K>,V)>(kvs, MAX_LEAF_COUNT - 1) ) {
      label profile_trie_fromList_end_validleaf : (Trie<K,V>) do {
        let len = List.len<(Key<K>,V)>(kvs);
        #leaf({count=len;keyvals=kvs})
-     }
-     else if ( bitpos >= 31 )
+     } }
+     else if ( bitpos >= 31 ) {
      label profile_trie_fromList_end_bitposIs31 : (Trie<K,V>) do {
        let len = List.len<(Key<K>,V)>(kvs);
        #leaf({count=len;keyvals=kvs})
-     }
-     else /* too many keys for a leaf, so introduce a branch */
+     } }
+     else /* too many keys for a leaf, so introduce a branch */ {
      label profile_trie_fromList_branch : (Trie<K,V>) do {
        let (l, r) = splitAssocList<K,V>(kvs, bitpos);
        branch<K,V>(rec(l, bitpos + 1), rec(r, bitpos + 1))
-     }
+     } }
    };
    rec(kvs, bitpos)
  };
@@ -342,11 +342,14 @@ public func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Tri
    func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) =
      label profile_trie_replace_rec : (Trie<K,V>, ?V) do {
 	   switch t {
-	   case (#empty) label profile_trie_replace_rec_empty : (Trie<K,V>, ?V) do {
+	   case (#empty) {
+          label profile_trie_replace_rec_empty : (Trie<K,V>, ?V) do {
             let (kvs, _) = AssocList.replace<Key<K>,V>(null, k, key_eq, v);
             (leaf<K,V>(kvs, bitpos), null)
-          };
-	   case (#branch(b)) label profile_trie_replace_rec_branch : (Trie<K,V>, ?V) do {
+          }
+        };
+	   case (#branch(b)) {
+          label profile_trie_replace_rec_branch : (Trie<K,V>, ?V) do {
 	          let bit = Hash.getHashBit(k.hash, bitpos);
 	          // rebuild either the left or right path with the inserted (k,v) pair
 	          if (not bit) {
@@ -357,12 +360,15 @@ public func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Tri
 	            let (r, v_) = rec(b.right, bitpos+1);
 	            (branch<K,V>(b.left, r), v_)
 	          }
-	        };
-     case (#leaf(l)) label profile_trie_replace_rec_leaf : (Trie<K,V>, ?V) do {
+	        }
+        };
+     case (#leaf(l)) {
+          label profile_trie_replace_rec_leaf : (Trie<K,V>, ?V) do {
             let (kvs2, old_val) =
               AssocList.replace<Key<K>,V>(l.keyvals, k, key_eq, v);
             (leaf<K,V>(kvs2, bitpos), old_val)
-          };
+          }
+        };
      }
    };
    let (to, vo) = rec(t, 0);
@@ -517,9 +523,10 @@ public func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Tr
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> = label profile_trie_mergeDisjoint_rec : Trie<K,V> do {
       func lf(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
       switch (tl, tr) {
-        case (#empty, _) label profile_trie_mergeDisjoint_rec_emptyL : Trie<K,V> do { return tr };
-        case (_, #empty) label profile_trie_mergeDisjoint_rec_emptyR : Trie<K,V> do { return tl };
-        case (#leaf(l1), #leaf(l2)) label profile_trie_mergeDisjoint_rec_leafPair : Trie<K,V> do {
+        case (#empty, _) { label profile_trie_mergeDisjoint_rec_emptyL : Trie<K,V> do { return tr } };
+        case (_, #empty) { label profile_trie_mergeDisjoint_rec_emptyR : Trie<K,V> do { return tl } };
+        case (#leaf(l1), #leaf(l2)) {
+             label profile_trie_mergeDisjoint_rec_leafPair : Trie<K,V> do {
                lf(
                  AssocList.disjDisjoint<Key<K>,V,V,V>(
                    l1.keyvals, l2.keyvals,
@@ -532,21 +539,28 @@ public func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Tr
                    }
                  )
                )
-             };
-        case (#leaf(l), _) label profile_trie_mergeDisjoint_rec_splitLeafL : Trie<K,V> do {
+             }
+          };
+        case (#leaf(l), _) {
+             label profile_trie_mergeDisjoint_rec_splitLeafL : Trie<K,V> do {
                let (ll, lr) = splitAssocList<K,V>(l.keyvals, bitpos);
                rec(bitpos, br(lf(ll), lf(lr)), tr)
-             };
-        case (_, #leaf(l)) label profile_trie_mergeDisjoint_rec_splitLeafR : Trie<K,V> do {
+             }
+            };
+        case (_, #leaf(l)) {
+             label profile_trie_mergeDisjoint_rec_splitLeafR : Trie<K,V> do {
                let (ll, lr) = splitAssocList<K,V>(l.keyvals, bitpos);
                rec(bitpos, tl, br(lf(ll), lf(lr)))
-             };
-        case (#branch(b1), #branch(b2)) label profile_trie_mergeDisjoint_rec_branchPair : Trie<K,V> do {
+             }
+            };
+        case (#branch(b1), #branch(b2)) {
+             label profile_trie_mergeDisjoint_rec_branchPair : Trie<K,V> do {
                branch<K,V>(
                  rec(bitpos + 1, b1.left, b2.left),
                  rec(bitpos + 1, b1.right, b2.right)
                )
-             };
+             }
+            };
 
       }
     };
@@ -938,15 +952,19 @@ public func disj<K,V,W,X>(
       func rec(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash.Hash, V) = label profile_triebuild_nth_rec : (?(K, ?Hash.Hash, V)) do {
         switch tb {
         case (#skip) { P.unreachable() };
-        case (#insert (k,h,v)) label profile_trie_buildNth_rec_end : (?(K, ?Hash.Hash, V)) do {
+        case (#insert (k,h,v)) {
+             label profile_trie_buildNth_rec_end : (?(K, ?Hash.Hash, V)) do {
                assert(i == 0);
                ?(k,h,v)
-             };
-        case (#seq(s)) label profile_trie_buildNth_rec_seq : (?(K, ?Hash.Hash, V)) do {
+             }
+            };
+        case (#seq(s)) {
+             label profile_trie_buildNth_rec_seq : (?(K, ?Hash.Hash, V)) do {
                let count_left = buildCount<K,V>(s.left);
                if (i < count_left) { rec(s.left,  i) }
                else                { rec(s.right, i - count_left) }
-             };
+             }
+            };
         }
       };
       if (i >= buildCount<K,V>(tb)) {

@@ -62,7 +62,7 @@ actor a {
 
   // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
   func testRefunds(n : Nat64) : async () {
-     if (n == (0 : Nat64)) return;
+     if (n == (0 : Nat64)) { return };
      Funds.add(#icpt, n);
      print("refund(" # debug_show(n) # ")");
      let a = wallet.refund(#icpt, n);

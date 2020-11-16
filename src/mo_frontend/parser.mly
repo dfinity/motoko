@@ -222,7 +222,8 @@ let rec normalize_let p e =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_arg exp_obj exp_key exp_nest deprecated_exp_obj deprecated_exp_arg deprecated_exp_block deprecated_block
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_arg exp_obj exp_if exp_for exp_key deprecated_exp_obj deprecated_exp_arg deprecated_exp_block deprecated_block deprecated_block_or_if deprecated_block_or_for
+%type<(Mo_def.Syntax.exp' -> bool) -> Mo_def.Syntax.exp> deprecated_block_
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -592,18 +593,40 @@ exp_bin(B) :
   | e=exp_bin(B) COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 
+exp_if :
+  | IF b=exp_nullary(ob) e1=deprecated_block %prec IF_NO_ELSE
+    { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
+  | IF b=exp_nullary(ob) e1=deprecated_block ELSE e2=deprecated_block_or_if
+    { IfE(b, e1, e2) @? at $sloc }
+(* Activate once deprecated deprecated_block is removed
+  | IF b=exp_nullary(ob) e1=block ELSE e2=exp_if
+    { IfE(b, e1, e2) @? at $sloc }
+*)
+
+exp_for :
+  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=deprecated_block_or_for
+    { ForE(p, e1, e2) @? at $sloc }
+(* Activate once deprecated deprecated_block is removed
+  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp_for
+    { ForE(p, e1, e2) @? at $sloc }
+*)
+
 exp_key :
+  | e=exp_if
+    { e }
+  | e=exp_for
+    { e }
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp_nest
+  | ASYNC e=deprecated_block
     { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
   | AWAIT e=exp(ob)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(ob)
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=annot_opt e=exp_nest
+  | LABEL x=id rt=annot_opt e=exp_key
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in
       let e' =
@@ -620,33 +643,27 @@ exp_key :
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
-  | DEBUG e=exp_nest
+  | DEBUG e=deprecated_block
     { DebugE(e) @? at $sloc }
-  | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
-    { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
-  | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
-    { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nest c=catch
+  | TRY e1=deprecated_block c=catch
     { TryE(e1, [c]) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
-  | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
+  | TRY e=deprecated_block LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
 *)
   | THROW e=exp(ob)
     { ThrowE(e) @? at $sloc }
   | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
-  | WHILE e1=exp_nullary(ob) e2=exp_nest
+  | WHILE e1=exp_nullary(ob) e2=deprecated_block
     { WhileE(e1, e2) @? at $sloc }
-  | LOOP e=exp_nest %prec LOOP_NO_WHILE
+  | LOOP e=deprecated_block %prec LOOP_NO_WHILE
     { LoopE(e, None) @? at $sloc }
-  | LOOP e1=exp_nest WHILE e2=exp(ob)
+  | LOOP e1=deprecated_block WHILE e2=exp(ob)
     { LoopE(e1, Some e2) @? at $sloc }
-  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp_nest
-    { ForE(p, e1, e2) @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreE(e) @? at $sloc }
-  | DO e=exp_nest
+  | DO e=deprecated_block
     { e }
 
 exp_nondec(B) :
@@ -671,14 +688,6 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp_nest :
-  | e=deprecated_block
-    { e }
-  | e=exp_key
-    { e }
-  | d=dec_nonexp
-    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
-
 block :
 (* Activate once deprecated objects are removed
   | LCURLY ds=seplist(dec, semicolon) RCURLY
@@ -690,11 +699,11 @@ block :
     { BlockE(ds) @? at $sloc }
 
 case :
-  | CASE p=pat_nullary e=exp_nest
+  | CASE p=pat_nullary e=deprecated_block
     { {pat = p; exp = e} @@ at $sloc }
 
 catch :
-  | CATCH p=pat_nullary e=exp_nest
+  | CATCH p=pat_nullary e=deprecated_block
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field_nonvar :
@@ -886,17 +895,39 @@ deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
     { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
 
 deprecated_block :
+  | e=deprecated_block_
+    { e (fun _ -> false) }
+
+deprecated_block_or_if :
+  | e=deprecated_block_
+    { e (function IfE _ -> true | _ -> false) }
+
+deprecated_block_or_for :
+  | e=deprecated_block_
+    { e (function ForE _ -> true | _ -> false) }
+
+deprecated_block_ :
   | e=block
-    { e }
+    { fun _ -> e }
   | e=exp_bin(bl)
     { warn_deprecated_nonblock (at $sloc);
-      e }
+      fun _ -> e }
   | e1=exp_bin(bl) ASSIGN e2=exp(ob)
-    { warn_deprecated_nonblock (at $sloc);
+    { fun _ ->
+      warn_deprecated_nonblock (at $sloc);
       AssignE(e1, e2) @? at $sloc}
   | e1=exp_bin(bl) op=binassign e2=exp(ob)
-    { warn_deprecated_nonblock (at $sloc);
+    { fun _ ->
+      warn_deprecated_nonblock (at $sloc);
       assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
+  | e=exp_key
+    { fun p ->
+      if not (p e.it) then warn_deprecated_nonblock (at $sloc);
+      e }
+  | d=dec_nonexp
+    { fun _ ->
+      warn_deprecated_block (at $sloc);
+      match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 deprecated_exp_block :
   | LCURLY ds=deprecated_dec_list_unamb RCURLY

@@ -30,7 +30,7 @@ shared({caller}) actor class Wallet() {
     amount : Nat64,
     credit : shared Funds.Unit -> async ()
   ) : async () {
-    if (caller != owner) assert false;
+    if (caller != owner) { assert false };
     Funds.add(u, amount);
     await credit(u);
   };

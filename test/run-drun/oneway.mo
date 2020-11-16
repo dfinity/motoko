@@ -62,8 +62,9 @@ actor a {
     Prim.debugPrint("D");
     discardAlt();
     Prim.debugPrint("E");
-    while (pending > 0)
+    while (pending > 0) {
       await async {};
+    }
   };
 
 };

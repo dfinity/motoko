@@ -52,6 +52,9 @@ ignore do {
 
 
 // deprecated
+if true do {};
+ignore (if true object {});
+ignore (if true object { var x = 0 });
 ignore (if true {x = 0});
 ignore (if true {{}} else {x = 0});
 ignore (if true {x = 0}.x);
@@ -63,11 +66,13 @@ ignore (if true ({var x = 0}.x));
 ignore do {
   switch 0 {
     case 1 {x = 0};
+    case 4 do {};
     case 5 ();
     case 6 ({});
     case 7 ({var x = 0});
     case 8 ({x = 0});
-    case _ {x = 0}.x;
+    case 9 {x = 0}.x;
+    case _ object { var x = 0 };
   }
 };
 
@@ -76,12 +81,9 @@ if true {};
 if true { x };
 if true { let x = 0 };
 if true { var x = 0 };  // block
-if true do {};
 ignore (if true { {} });
 ignore (if true { {x = 0} });
 ignore (if true { {var x = 0} });
-ignore (if true object {});
-ignore (if true object { var x = 0 });
 ignore {};
 ignore do {
   switch 0 {
@@ -89,11 +91,9 @@ ignore do {
     case 1 { x };
     case 2 { let x = 0 };
     case 3 { var x = 0 };  // block
-    case 4 do {};
     case 9 { {} };
     case 10 { {var x = 0} };
-    case 11 { {x = 0} };
-    case _ object { var x = 0 };
+    case _ { {x = 0} };
   }
 };
 

@@ -130,6 +130,8 @@ s/ASSIGN/\':=\'/g
 s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+/'return'$/d
+s/'return' <exp>/'return' <exp>?/
 /    '{' <list(<dec_var>, ';')> '}'/d
 s/    '{' <deprecated_exp_field_list_unamb> '}'/    '{' <list(<exp_field>, ';')> '}'/
 s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
@@ -137,6 +139,8 @@ s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
 /^<deprecated_/,$d
 /<exp_field_nonvar>/,+2d
 s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/
+s/<deprecated_block_or_if>/<block>\n    'if' <exp_nullary> <block> 'else' <exp_if>/
+s/<deprecated_block_or_for>/<block>\n    'for' '(' <pat> 'in' <exp> ')' <exp_for>/
 s/<deprecated_block>/<block>/g
 s/<deprecated_exp_arg>/<exp_arg>/g
 s/<deprecated_pat_arg>/<pat_arg>/g

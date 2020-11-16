@@ -11,7 +11,7 @@ actor a {
 
     Prim.debugPrint("a");
 
-    let a = async await f(0);
+    let a = async { await f(0) };
 
     Prim.debugPrint("b");
 
