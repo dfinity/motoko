@@ -324,8 +324,12 @@ unsafe fn scav(
             evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_NULL => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
             // These don't include pointers, skip
+        }
+
+        TAG_NULL => {
+            rts_trap_with("encountered NULL object tag in dynamic object in scav\0".as_ptr());
         }
 
         TAG_FWD_PTR | _ => {
