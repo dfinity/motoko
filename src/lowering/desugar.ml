@@ -43,20 +43,6 @@ let typed_phrase' f x =
   let n' = typ_note x.note in
   { x with it = f x.at n' x.it; note = n' }
 
-let asyncE_ exp inst at =
-  { it = I.AsyncE (
-     { it = { I.con = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound));
-              I.sort = T.Scope;
-              I.bound = T.scope_bound};
-       at = at;
-       note = ()},
-    exp,
-    inst);
-    at = at;
-    note = Note.{ def with typ = T.Async(inst, exp.note.typ) } }
-
-
-
 
 let rec exps es = List.map exp es
 
@@ -488,12 +474,12 @@ and dec' at n d = match d with
     let body = if s.it = T.Actor
       then
         let (_, obj_typ) = T.as_async rng_typ in
-        asyncE_
+        let c = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
+        asyncE (typ_arg c T.Scope T.scope_bound)
           (wrap { it = obj at s (Some self_id) es (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
-          at
       else
        wrap
         { it = obj at s (Some self_id) es rng_typ;
@@ -704,9 +690,9 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let _, t_actor = T.as_async (T.normalize t_async) in
   let wasm_blob = blobE wasm in
   let create_actor_helper = var "@create_actor_helper"
-                              (T.Func (T.Local, T.Returns, [T.scope_bind],
-                                       [T.blob; T.blob],
-                                       [T.Async(T.Var (T.default_scope_var, 0), T.principal)]))
+    (T.Func (T.Local, T.Returns, [T.scope_bind],
+      [T.blob; T.blob],
+      [T.Async(T.Var (T.default_scope_var, 0), T.principal)]))
   in
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
@@ -714,12 +700,12 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     asyncE
       (typ_arg c' T.Scope T.scope_bound)
       (blockE [
-          letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
-          letD principal
-            (awaitE (callE (varE create_actor_helper) cs'
-                (tupE [wasm_blob;  varE arg_blob])))
-        ]
-        (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
+         letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
+         letD principal
+           (awaitE (callE (varE create_actor_helper) cs'
+             (tupE [wasm_blob;  varE arg_blob])))
+         ]
+         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs)
   in
   let func = funcE id T.Local T.Returns
