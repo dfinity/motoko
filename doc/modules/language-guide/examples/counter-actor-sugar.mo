@@ -1,4 +1,5 @@
-actor class Counter(init : Nat) {
+actor Counter {
+
   var count = 0;
 
   public func inc() : async () { count += 1 };
@@ -10,4 +11,3 @@ actor class Counter(init : Nat) {
     count;
   };
 };
-

@@ -1111,10 +1111,14 @@ module Tagged = struct
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
 
-     Attention: This mapping is duplicated in rts/rts.c, so update both!
+     Attention: This mapping is duplicated in these places
+       * here
+       * rts/rts.h
+       * motoko-rts/src/types.rs
+     so update all!
    *)
 
-  type tag =
+  type [@warning "-37"] tag  =
     | Object
     | ObjInd (* The indirection used for object fields *)
     | Array (* Also a tuple *)
@@ -1124,10 +1128,11 @@ module Tagged = struct
     | Some (* For opt *)
     | Variant
     | Blob
-    (* | FwdPtr -- Only used by the GC *)
+    | Indirection (* Only used by the GC *)
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
-    (* | Concat -- String concatenation, used by rts/text.c *)
+    | Concat (* String concatenation, used by rts/text.c *)
+    | Null
     | StableSeen (* Marker that we have seen this thing before *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
@@ -1141,8 +1146,11 @@ module Tagged = struct
     | Some -> 8l
     | Variant -> 9l
     | Blob -> 10l
+    | Indirection -> 11l
     | Bits32 -> 12l
     | BigInt -> 13l
+    | Concat -> 14l
+    | Null -> 15l
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
@@ -1247,29 +1255,83 @@ end
 
 
 module Opt = struct
-  (* The Option type. Not much interesting to see here. Structure for
-     Some:
+  (* The Option type. Optional values are represented as
 
-       ┌─────┬─────────┐
-       │ tag │ payload │
-       └─────┴─────────┘
+    1. ┌──────┐
+       │ null │
+       └──────┘
 
-    A None value is simply an unboxed scalar.
+       A special null value. It is fully static, and because it is unique, can
+       be recognized by pointer comparison (only the GC will care about the heap
+       tag).
+
+
+    2. ┌──────┬─────────┐
+       │ some │ payload │
+       └──────┴─────────┘
+
+       A heap-allocated box for `?v` values. Should only ever contain null or
+       another such box.
+
+    3. Anything else (pointer or unboxed scalar): Constituent value, implicitly
+       injected into the opt type.
+
+    This way, `?t` is represented without allocation, with the only exception of
+    the value `?ⁿnull` for n>0.
+
+    NB: `?ⁿnull` is essentially represented by the unary encoding of the number
+    of n. This could be optimized further, by storing `n` in the Some payload,
+    instead of a pointer, but unlikely worth it.
 
   *)
 
-  let payload_field = Tagged.header_size
+  let some_payload_field = Tagged.header_size
 
-  (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
-  let null_vanilla_lit = 5l
-  let null_lit = compile_unboxed_const null_vanilla_lit
+  (* This relies on the fact that add_static deduplicates *)
+  let null_vanilla_lit env : int32 =
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Null);
+    ]
+  let null_lit env =
+    compile_unboxed_const (null_vanilla_lit env)
 
   let is_some env =
-    null_lit ^^
+    null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
-  let inject env e = Tagged.obj env Tagged.Some [e]
-  let project = Heap.load_field payload_field
+  let inject env e =
+    e ^^
+    Func.share_code1 env "opt_inject" ("x", I32Type) [I32Type] (fun env get_x ->
+      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+        ( get_x ) (* default, no wrapping *)
+        ( get_x ^^ Tagged.branch_default env [I32Type]
+          ( get_x ) (* default, no wrapping *)
+          [ Tagged.Null,
+            (* NB: even ?null does not require allocation: We use a static
+               singleton for that: *)
+            compile_unboxed_const (E.add_static env StaticBytes.[
+              I32 Tagged.(int_of_tag Some);
+              I32 (null_vanilla_lit env)
+            ])
+          ; Tagged.Some,
+            Tagged.obj env Tagged.Some [get_x]
+          ]
+        )
+    )
+
+  let project env =
+    Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
+      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+        ( get_x ) (* default, no wrapping *)
+        ( get_x ^^ Tagged.branch_default env [I32Type]
+          ( get_x ) (* default, no wrapping *)
+          [ Tagged.Some,
+            get_x ^^ Heap.load_field some_payload_field
+          ; Tagged.Null,
+            E.trap_with env "Internal error: opt_project: null!"
+          ]
+        )
+    )
 
 end (* Opt *)
 
@@ -3777,7 +3839,7 @@ module Serialization = struct
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
-        G.if_ [] (get_x ^^ Opt.project ^^ size env t) G.nop
+        G.if_ [] (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t}) continue ->
             get_x ^^
@@ -3966,7 +4028,7 @@ module Serialization = struct
         get_x ^^
         Opt.is_some env ^^
         G.if_ []
-          ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project ^^ write env t )
+          ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t )
           ( write_byte (compile_unboxed_const 0l) )
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t}) continue ->
@@ -4256,14 +4318,14 @@ module Serialization = struct
         BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
       | Prim Null ->
         assert_prim_typ t ^^
-        Opt.null_lit
+        Opt.null_lit env
       | Any ->
         (* Skip values of any possible type *)
         get_data_buf ^^ get_typtbl ^^ get_idltyp ^^ compile_unboxed_const 0l ^^
         E.call_import env "rts" "skip_any" ^^
 
         (* Any vanilla value works here *)
-        Opt.null_lit
+        Opt.null_lit env
       | Prim Blob ->
         assert_blob_typ env ^^
         read_blob ()
@@ -4319,7 +4381,7 @@ module Serialization = struct
                     E.trap_with env (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                   | Memory ->
                     assert (is_opt f.typ);
-                    Opt.null_lit
+                    Opt.null_lit env
                   | _ -> assert false
                 end
           ) (sort_by_hash fs)) ^^
@@ -4360,13 +4422,13 @@ module Serialization = struct
         check_prim_typ (Prim Null) ^^
         G.if_ [I32Type]
           begin
-            Opt.null_lit
+            Opt.null_lit env
           end
           begin
             let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
             with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
             read_byte_tagged
-              [ Opt.null_lit
+              [ Opt.null_lit env
               ; Opt.inject env (get_arg_typ ^^ go env t)
               ]
           end
@@ -5672,7 +5734,7 @@ let nat64_to_int64 n =
   let q, r = quomod_big_int (Value.Nat64.to_big_int n) twoRaised63 in
   if sign_big_int q = 0 then r else sub_big_int r twoRaised63
 
-let const_lit_of_lit : Ir.lit -> Const.lit = function
+let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt n
@@ -5689,16 +5751,16 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 n))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
-  | NullLit       -> Const.Vanilla Opt.null_vanilla_lit
+  | NullLit       -> Const.Vanilla (Opt.null_vanilla_lit env)
   | TextLit t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
-let const_of_lit lit =
-  Const.t_of_v (Const.Lit (const_lit_of_lit lit))
+let const_of_lit env lit =
+  Const.t_of_v (Const.Lit (const_lit_of_lit env lit))
 
 let compile_lit env lit =
-  SR.Const (const_of_lit lit), G.nop
+  SR.Const (const_of_lit env lit), G.nop
 
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
@@ -6970,7 +7032,7 @@ and compile_exp (env : E.t) ae exp =
         (Stabilization.destabilize env ty)
         (let (_, fs) = Type.as_obj ty in
          let fs' = List.map
-           (fun f -> (f.Type.lab, fun () -> Opt.null_lit))
+           (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
             fs in
          Object.lit_raw env fs')
 
@@ -7293,7 +7355,7 @@ and fill_pat env ae pat : patternCode =
         Opt.is_some env ^^
         G.if_ []
           ( get_x ^^
-            Opt.project ^^
+            Opt.project env ^^
             with_fail fail_code (fill_pat env ae p)
           )
           fail_code
@@ -7516,7 +7578,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _, Const.Array cs -> cs
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
-  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
+  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit env l))), (fun _ _ -> ())
   | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->

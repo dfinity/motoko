@@ -137,7 +137,7 @@ main = do
           hoverTestCase
             doc
             (Position 17 11)
-            (plainMarkup "pop : <T>List<T> -> (?T, List<T>)")
+            (plainMarkup "pop : <T>(List<T>) -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)
