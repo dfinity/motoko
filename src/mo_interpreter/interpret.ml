@@ -35,7 +35,6 @@ type env =
     rets : ret_env;
     throws : throw_env;
     self : V.actor_id;
-    async : bool (* is this still used? *)
   }
 
 let adjoin_scope scope1 scope2 =
@@ -58,7 +57,6 @@ let env_of_scope flags scope =
     rets = None;
     throws = None;
     self = V.top_id;
-    async = false;
   }
 
 let context env = V.Blob env.self
@@ -591,7 +589,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     async env
       exp.at
       (fun k' r ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
+        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
   | AwaitE exp1 ->
@@ -877,8 +875,7 @@ and interpret_dec env dec (k : V.value V.cont) =
             let env''' = { env'' with
               labs = V.Env.empty;
               rets = Some k'';
-              throws = Some r;
-              async = true }
+              throws = Some r }
             in
             interpret_obj env''' obj_sort.it fields (fun v' ->
               define_id env''' id' v';
@@ -916,7 +913,6 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
         libs = env.libs;
         labs = V.Env.empty;
         rets = Some k';
-        async = false
       }
     in f env' k'
 
