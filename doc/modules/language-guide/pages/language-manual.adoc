@@ -132,7 +132,7 @@ let float =
 The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
 In both cases, the exponent is in decimal notation.
 
-Note: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
+NOTE: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
 
 
 [[syntax-chars]]
@@ -762,7 +762,7 @@ A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.
 
 Errors with codes other than `#canister_reject`  (i.e. _system_ errors) may be caught and thrown, but not user-constructed.
 
-Note: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
+NOTE: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
 This prevents programmatic forgery of system errors.
 
 
@@ -1426,17 +1426,23 @@ The object declaration has type `T` provided that:
 3. If `<sort>` is `module`, then the declarations in `<dec>;*` must be _static_ (see <<decl-static>>).
 
 Note that requirement 1. imposes further constraints on the field types of `T`.
-In particular:
+In particular, if the sort is `actor` then:
 
-* if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
+* all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
+
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by
+by binding `<id>` (if present), to the eventual value `v`, and
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
 The result of the object declaration is the object `v == sort { <id0> = v1, ..., <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
+
+WARNING: Actor declaration is (implicitly) asynchronous and the state of the enclosing actor may change due to concurrent processing of other incoming actor messages.
+It is the programmer's responsibility to guard against non-synchronized state changes.
 
 [[decl-static]]
 ==== Static declarations
@@ -1673,7 +1679,7 @@ If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
 
-Note: the `chars`, `bytes`, `keys` and `vals` members
+NOTE: the `chars`, `bytes`, `keys` and `vals` members
 produce stateful *iterator objects* than can be
 consumed by `for` expressions (see <<exp-for>>).
 
@@ -1773,7 +1779,7 @@ Matching continues by matching `v1` against `<pat1>`.
 If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
-Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
+NOTE: The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
 
 [[exp-func]]
 === Functions
@@ -1799,7 +1805,7 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
-Note: the context type is a record to allow extension with further fields in future releases.
+NOTE: The context type is a record to allow extension with further fields in future releases.
 
 [[exp-block]]
 === Blocks
@@ -1944,7 +1950,7 @@ where `x` is a fresh identifier.
 
 In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon as `x.next()` traps, or the value of `x.next()` does not match pattern `<pat>`, or when `<exp2>` traps.
 
-Note: although general purpose, `for` loops are commonly used to consume iterators produced by <<exp-dot>> to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
+NOTE: Although general purpose, `for` loops are commonly used to consume iterators produced by <<exp-dot>> to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
 
 [[exp-label]]
 === Label
@@ -2033,7 +2039,7 @@ Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, ev
 If the future is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
 If the `future` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed (if ever).
 
-_WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
+WARNING: between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 
 [[exp-throw]]
 === Throw
@@ -2057,7 +2063,7 @@ The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
 Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
 If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
 
-Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
+NOTE: Because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
 
 See <<type-Error>>.
 
@@ -2083,7 +2089,7 @@ Type annotation may be used to aid the type-checker when it cannot otherwise det
 
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
-Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
+NOTE: Type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
 [[exp-decl]]
 === Declaration
@@ -2129,9 +2135,9 @@ An invalid canister identifier or type may manifest itself, if at all, as a late
 when calling a function on the actor's proclaimed interface,
 which will either fail or be rejected.
 
-Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+NOTE: The argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
 
-Warning: although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
+WARNING: Although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
 Accordingly, actor references should be used sparingly and only when needed.
 
 
