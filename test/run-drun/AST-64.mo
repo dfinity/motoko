@@ -13,6 +13,5 @@ let _ = (actor { public func x() { x() } }) : Any;
 let _ = (object this { public func x() { this.x() } }) : Any;
 let _ = (object { public func x() { x() } }) : Any;
 
-//SKIP run-low
 //SKIP comp
 //SKIP comp-ref

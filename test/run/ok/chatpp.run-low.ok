@@ -1,0 +1,12 @@
+unsubscribe 
+0
+unsubscribe 
++1
+unsubscribe 
++2
+charlie received hello from bob
+alice received hello from bob
+charlie received goodbye from bob
+alice received goodbye from bob
+charlie received hello from alice
+charlie received goodbye from alice

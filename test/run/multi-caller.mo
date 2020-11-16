@@ -96,5 +96,4 @@ actor Pong {
 Pong.test(5);
 
 //no support for multiple-toplevel actors and await
-//SKIP run-low
 //SKIP comp

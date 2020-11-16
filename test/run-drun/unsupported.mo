@@ -72,5 +72,3 @@ func implicit_async() : async () { };
 let _ = shared func() : async () { };
 (shared func() : async () { }) : shared () -> async ();
 
-//contains features that can't be lowered (toplevel awaits, multiple actors)
-//SKIP run-low

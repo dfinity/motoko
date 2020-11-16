@@ -26,5 +26,4 @@ actor Test {
 Test.go();
 
 // no support for top-level await, first-class shared functions anywhere yet
-//SKIP run-low
 //SKIP comp

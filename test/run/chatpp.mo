@@ -113,6 +113,5 @@ alice.go("alice", server);
 charlie.go("charlie", server);
 
 // no support for toplevel-await, first-class shared functions anywhere yet
-//SKIP run-low
 //SKIP comp
 
