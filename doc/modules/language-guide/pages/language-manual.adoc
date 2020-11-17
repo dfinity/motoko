@@ -404,7 +404,7 @@ choose library names (e.g. to avoid clashes).
 
 An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`.
 The name `<id>` is mandatory and cannot be omitted.
-An actor class constructor is always asynchronous, with return type `async T` (the inferred type of the class body).
+An actor class constructor is always asynchronous, with return type `async T`  where `T` is the inferred type of the class body.
 Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
 (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
