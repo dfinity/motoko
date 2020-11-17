@@ -3475,13 +3475,13 @@ module Dfinity = struct
   let cycles_accept env =
     match E.mode env with
     | Flags.ICMode
-    | Flags.RefMode -> 
+    | Flags.RefMode ->
       (match E.mode env with
       |  Flags.ICMode ->
          system_call env "ic0" "msg_cycles_accept"
+         ^^ compile_unboxed_const 666l (* TBD *)
       |  _ ->
-         system_call env "ic0" "msg_cycles_accept" ^^
-         G.i Drop
+         system_call env "ic0" "msg_cycles_accept"
       )
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
@@ -7057,7 +7057,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       Dfinity.cycles_add env
     | SystemCyclesAcceptPrim, [e1] ->
-      SR.unit,
+      SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       Dfinity.cycles_accept env
     | SystemCyclesAvailablePrim, [] ->

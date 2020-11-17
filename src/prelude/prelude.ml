@@ -645,8 +645,8 @@ func cyclesRefunded() : Nat64 {
     @refund
 };
 
-func cyclesAccept(amount: Nat64) : () {
-  (prim "cyclesAccept" : Nat64 -> ()) (amount);
+func cyclesAccept(amount: Nat64) : Nat64 {
+  (prim "cyclesAccept" : Nat64 -> Nat64) (amount);
 };
 
 func cyclesAdd(amount: Nat64) : () {

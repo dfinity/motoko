@@ -585,7 +585,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
       T.nat64 <: t
-    | (SystemCyclesAddPrim | SystemCyclesAcceptPrim), [e1] ->
+    | SystemCyclesAcceptPrim, [e1] ->
+      typ e1 <: T.nat64;
+      T.nat64 <: t
+    | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat64;
       T.unit <: t
     | OtherPrim _, _ -> ()
