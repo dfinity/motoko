@@ -87,6 +87,18 @@ static void check_typearg(int32_t ty, uint32_t n_types) {
   idl_trap_with("invalid type argument");
 }
 
+static void parse_fields(buf *buf, uint32_t n_types) {
+  uint32_t next_valid = 0;
+  for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
+    uint32_t tag = read_u32_of_leb128(buf);
+    if (tag < next_valid) idl_trap_with("variant or record tags out of order");
+    if (tag == -1 && n > 0) idl_trap_with("variant or record tags out of order");
+    next_valid = tag + 1;
+    int32_t t = read_i32_of_sleb128(buf);
+    check_typearg(t, n_types);
+  }
+}
+
 /*
  * This function parses the IDL magic header and type description. It
  *  * traps if the type description is not well-formed. In particular, it traps if
@@ -135,17 +147,9 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
       int32_t t = read_i32_of_sleb128(buf);
       check_typearg(t, n_types);
     } else if (ty == IDL_CON_record) {
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-        read_u32_of_leb128(buf);
-        int32_t t = read_i32_of_sleb128(buf);
-        check_typearg(t, n_types);
-      }
+      parse_fields(buf, n_types);
     } else if (ty == IDL_CON_variant) {
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-        read_u32_of_leb128(buf);
-        int32_t t = read_i32_of_sleb128(buf);
-        check_typearg(t, n_types);
-      }
+      parse_fields(buf, n_types);
     } else if (ty == IDL_CON_func) {
       // arg types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
