@@ -4599,14 +4599,20 @@ module Serialization = struct
           deserialize_go env t
         ) ts ^^
 
-        get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
-        G.if_ []
-          begin
-            ReadBuf.is_empty env get_data_buf ^^
-            E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
-            ReadBuf.is_empty env get_ref_buf ^^
-            E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
-          end G.nop
+        (* Skip any extra arguments *)
+        get_arg_count ^^ compile_sub_const (Int32.of_int (List.length ts)) ^^
+        from_0_to_n env (fun _ ->
+          get_data_buf ^^
+          get_typtbl_ptr ^^ load_unskewed_ptr ^^
+          ReadBuf.read_sleb128 env get_main_typs_buf ^^
+          compile_unboxed_const 0l ^^
+          E.call_import env "rts" "skip_any"
+        ) ^^
+
+        ReadBuf.is_empty env get_data_buf ^^
+        E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
+        ReadBuf.is_empty env get_ref_buf ^^
+        E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
       )))))
     )
 
