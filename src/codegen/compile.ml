@@ -3151,7 +3151,11 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type];
       E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type];
-      E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type];
+      (match E.mode env with
+      |  Flags.ICMode ->
+         E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] []
+      |  _ ->
+         E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type]);
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3471,9 +3475,14 @@ module Dfinity = struct
   let cycles_accept env =
     match E.mode env with
     | Flags.ICMode
-    | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_accept" ^^
-      G.i Drop (* TBC: Don't drop *)
+    | Flags.RefMode -> 
+      (match E.mode env with
+      |  Flags.ICMode ->
+         system_call env "ic0" "msg_cycles_accept"
+      |  _ ->
+         system_call env "ic0" "msg_cycles_accept" ^^
+         G.i Drop
+      )
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
