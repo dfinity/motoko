@@ -92,7 +92,7 @@ static void parse_fields(buf *buf, uint32_t n_types) {
   for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
     uint32_t tag = read_u32_of_leb128(buf);
     if (tag < next_valid) idl_trap_with("variant or record tags out of order");
-    if (tag == -1 && n > 0) idl_trap_with("variant or record tags out of order");
+    if (tag == -1 && n > 1) idl_trap_with("variant or record tags out of order");
     next_valid = tag + 1;
     int32_t t = read_i32_of_sleb128(buf);
     check_typearg(t, n_types);
