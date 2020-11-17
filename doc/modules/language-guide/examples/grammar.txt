@@ -204,6 +204,28 @@
     <exp_bin>
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
+<<<<<<< HEAD
+=======
+    'return' <exp>?
+    'async' <exp_nest>
+    'await' <exp_nest>
+    'assert' <exp_nest>
+    'label' <id> (':' <typ>)? <exp_nest>
+    'break' <id> <exp_nullary>?
+    'continue' <id>
+    'debug' <exp_nest>
+    'if' <exp_nullary> <exp_nest>
+    'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
+    'try' <exp_nest> <catch>
+    'throw' <exp_nest>
+    'switch' <exp_nullary> '{' <list(<case>, ';')> '}'
+    'while' <exp_nullary> <exp_nest>
+    'loop' <exp_nest>
+    'loop' <exp_nest> 'while' <exp_nest>
+    'for' '(' <pat> 'in' <exp> ')' <exp_nest>
+    'ignore' <exp_nest>
+    'do' <exp_nest>
+>>>>>>> records.disjoint
 
 <exp_nonvar> ::= 
     <exp_nondec>
