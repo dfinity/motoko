@@ -95,10 +95,12 @@ static void check_typearg(int32_t ty, uint32_t n_types) {
  *  * returns a pointer to the first byte after the IDL header (via return)
  *  * allocates a type description table, and returns it
  *    (via pointer argument, for lack of multi-value returns in C)
+ *  * returns the size of that type description table
+ *    (again via pointer argument, for lack of multi-value returns in C)
  *  * returns a pointer to the beginning of the list of main types
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
-export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
+export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint32_t *typtbl_size_out, uint8_t **main_types_out) {
   if (buf->p == buf->e) idl_trap_with("empty input");
 
   // Magic bytes (DIDL)
@@ -114,6 +116,9 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
 
   // Early sanity check
   if (&buf->p[n_types] >= buf->e) { idl_trap_with("too many types"); }
+
+  // Let the caller know about the table size
+  *typtbl_size_out = n_types;
 
   // Go through the table
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
