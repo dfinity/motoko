@@ -3138,10 +3138,10 @@ module Dfinity = struct
 
   let import_ic0 env =
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
-      E.add_func_import env "ic0" "call_funds_add" [I32Type; I32Type; I64Type] [];
+      E.add_func_import env "ic0" "call_cycles_add" [I64Type] [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
-      E.add_func_import env "ic0" "canister_balance" (i32s 2) [I64Type];
+      E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
@@ -3149,9 +3149,9 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_funds_available" (i32s 2) [I64Type];
-      E.add_func_import env "ic0" "msg_funds_refunded" (i32s 2) [I64Type];
-      E.add_func_import env "ic0" "msg_funds_accept" [I32Type; I32Type; I64Type] [];
+      E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type];
+      E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type];
+      E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3450,47 +3450,48 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-  (* Funds *)
+  (* Cycles *)
 
-  let funds_balance env =
+  let cycle_balance env =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "canister_balance"
+      system_call env "ic0" "canister_cycle_balance"
     | _ ->
       E.trap_with env "cannot read balance when running locally"
 
-  let funds_add env =
+  let cycles_add env =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "call_funds_add"
+      system_call env "ic0" "call_cycles_add"
     | _ ->
-      E.trap_with env "cannot accept funds when running locally"
+      E.trap_with env "cannot accept cycles when running locally"
 
-  let funds_accept env =
+  let cycles_accept env =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_funds_accept"
+      system_call env "ic0" "msg_cycles_accept" ^^
+      G.i Drop (* TBC: Don't drop *)
     | _ ->
-      E.trap_with env "cannot accept funds when running locally"
+      E.trap_with env "cannot accept cycles when running locally"
 
-  let funds_available env =
+  let cycles_available env =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_funds_available"
+      system_call env "ic0" "msg_cycles_available"
     | _ ->
-      E.trap_with env "cannot get funds available when running locally"
+      E.trap_with env "cannot get cycles available when running locally"
 
-  let funds_refunded env =
+  let cycles_refunded env =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_funds_refunded"
+      system_call env "ic0" "msg_cycles_refunded"
     | _ ->
-      E.trap_with env "cannot get funds refunded when running locally"
+      E.trap_with env "cannot get cycles refunded when running locally"
 
 end (* Dfinity *)
 
@@ -5157,8 +5158,8 @@ module Prelude = struct
           G.i (Call (nr (mk_fi ())))
     | _ -> assert false
 
-  let add_funds env ae = call_prelude_function env ae "@add_funds"
-  let reset_funds env ae = call_prelude_function env ae "@reset_funds"
+  let add_cycles env ae = call_prelude_function env ae "@add_cycles"
+  let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
 end
 
@@ -5210,8 +5211,8 @@ module FuncDec = struct
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       message_start env sort ^^
-      (* funds *)
-      Prelude.reset_funds env outer_ae ^^
+      (* cycles *)
+      Prelude.reset_cycles env outer_ae ^^
       Prelude.reset_refund env outer_ae ^^
       (* reply early for a oneway *)
       (if control = Type.Returns
@@ -5408,7 +5409,7 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5422,8 +5423,8 @@ module FuncDec = struct
       Dfinity.system_call env "ic0" "call_new" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
-      (* the funds *)
-      add_funds ^^
+      (* the cycles *)
+      add_cycles ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
@@ -5432,7 +5433,7 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
-  let ic_call_one_shot env ts get_meth_pair get_arg add_funds =
+  let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5450,8 +5451,8 @@ module FuncDec = struct
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
       Dfinity.system_call env "ic0" "call_data_append" ^^
-      (* the funds *)
-      add_funds ^^
+      (* the cycles *)
+      add_cycles ^^
       Dfinity.system_call env "ic0" "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
@@ -6462,12 +6463,12 @@ and compile_exp (env : E.t) ae exp =
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
           let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
-          let add_funds = Prelude.add_funds env ae in
+          let add_cycles = Prelude.add_cycles env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_funds
+          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
       end
 
     (* Operators *)
@@ -7006,12 +7007,12 @@ and compile_exp (env : E.t) ae exp =
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
-      let add_funds = Prelude.add_funds env ae in
+      let add_cycles = Prelude.add_cycles env ae in
       compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
-      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_funds
+      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
       end
 
     | ICStableRead ty, [] ->
@@ -7038,34 +7039,24 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla e ^^
       Stabilization.stabilize env ty
 
-    (* Funds *)
-    | SystemFundsBalancePrim, [e] ->
+    (* Cycles *)
+    | SystemCyclesBalancePrim, [e] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.Vanilla e ^^
-      Blob.as_ptr_len env ^^
-      Dfinity.funds_balance env
-    | SystemFundsAddPrim, [e1; e2] ->
+      Dfinity.cycle_balance env
+    | SystemCyclesAddPrim, [e1] ->
       SR.unit,
-      compile_exp_as env ae SR.Vanilla e1 ^^
-      Blob.as_ptr_len env ^^
-      compile_exp_as env ae SR.UnboxedWord64 e2 ^^
-      Dfinity.funds_add env
-    | SystemFundsAcceptPrim, [e1; e2] ->
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+      Dfinity.cycles_add env
+    | SystemCyclesAcceptPrim, [e1] ->
       SR.unit,
-      compile_exp_as env ae SR.Vanilla e1 ^^
-      Blob.as_ptr_len env ^^
-      compile_exp_as env ae SR.UnboxedWord64 e2 ^^
-      Dfinity.funds_accept env
-    | SystemFundsAvailablePrim, [e] ->
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+      Dfinity.cycles_accept env
+    | SystemCyclesAvailablePrim, [] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.Vanilla e ^^
-      Blob.as_ptr_len env ^^
-      Dfinity.funds_available env
-    | SystemFundsRefundedPrim, [e] ->
+      Dfinity.cycles_available env
+    | SystemCyclesRefundedPrim, [] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.Vanilla e ^^
-      Blob.as_ptr_len env ^^
-      Dfinity.funds_refunded env
+      Dfinity.cycles_refunded env
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -7157,7 +7148,7 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-    let add_funds = Prelude.add_funds env ae in
+    let add_cycles = Prelude.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
@@ -7169,7 +7160,7 @@ and compile_exp (env : E.t) ae exp =
         Dfinity.actor_public_field env (Dfinity.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
-      get_r add_funds
+      get_r add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->

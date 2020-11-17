@@ -21,7 +21,8 @@
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
+        "rev": "7a994ca9e7c2cc7f3c45693fa01330ade0934cf6",
+	"rev-OLD": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
         "type": "git"
     },
     "esm": {
@@ -33,9 +34,11 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "release-0.11",
+        "ref": "joachim/impl-no-tokens2",
+        "ref-OLD": "release-0.11",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "824fd6d904b0635349820ca52262ce91fd9e695c",
+	"rev": "d99530d178acb7746e670c66b277e8cb44141520",
+        "rev-OLD": "824fd6d904b0635349820ca52262ce91fd9e695c",
         "type": "git"
     },
     "libtommath": {
