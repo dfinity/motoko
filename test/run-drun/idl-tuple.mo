@@ -23,7 +23,9 @@ actor {
 //CALL query len3 0x4449444c016c030071017502760200710548656c6c6f01020304dead05576f726c64
 //  testing third tuple member (recursive option, containing null), gets ignored
 //CALL query len3a 0x4449444c026c030071017502016e000200710548656c6c6f010203040005576f726c64
-//  testing missing field
+//  testing missing tuple field
+//CALL query len3a 0x4449444c016c020071027f0200710548656c6c6f05576f726c64
+//  testing missing optional field
 //CALL query len3a 0x4449444c016c02007101750200710548656c6c6f0102030405576f726c64
 
 //SKIP run
