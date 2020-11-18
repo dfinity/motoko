@@ -4,8 +4,8 @@ debug.print: A balance is {cycle = "<omitted>"; icpt = 2_000}
 debug.print: B balance is {cycle = "<omitted>"; icpt = 1_990}
 debug.print: available: (50, 5)
 debug.print: C balance is {cycle = "<omitted>"; icpt = 1_990}
-debug.print: D balance is {cycle = "<omitted>"; icpt = 1_990}
-debug.print: refunded {cycle = 100; icpt = 0}
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at funds-bug.mo:45.3-45.49
-debug.print: E balance is {cycle = "<omitted>"; icpt = 1_990}
+debug.print: D balance is {cycle = "<omitted>"; icpt = 2_000}
+debug.print: refunded {cycle = 100; icpt = 10}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: E balance is {cycle = "<omitted>"; icpt = 2_000}
 ingress Completed: Reply: 0x4449444c0000
