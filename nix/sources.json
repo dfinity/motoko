@@ -6,16 +6,16 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "d768917c932b2c4a0f85b21eb1e32eaa1faff039",
-        "sha256": "1kq7a3n1612j3dzw1cakj0alxlm0kgcnx8v3c9x8nay63ykr2j9n",
+        "rev": "30f719fadbaccacd6558991ddd17362cdcca2f12",
+        "sha256": "02r63y78lf9vmxp33qppxdmrldnhd07fq10nk7hs455fm6h31ybq",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/d768917c932b2c4a0f85b21eb1e32eaa1faff039.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/30f719fadbaccacd6558991ddd17362cdcca2f12.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "1229aea5fa26675bb54d965223aa472c40e2963d",
+        "rev": "a978aa0e2cfa7ae585f0e173fbcc8b7d80e79220",
         "type": "git"
     },
     "dfinity": {
