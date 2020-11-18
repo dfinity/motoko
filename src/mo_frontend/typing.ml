@@ -859,7 +859,7 @@ and infer_exp'' env exp : T.typ =
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
       match context with
-      | (AsyncE _ :: AwaitE _ :: e :: _ )->
+      | (AsyncE _ :: AwaitE _ :: _ :: _ ) ->
         error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
     end;
@@ -1905,8 +1905,9 @@ and infer_dec env dec : T.typ =
       let t_pat, ve =
         infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
       in
-      if obj_sort.it = T.Actor && (not (T.shared t_pat)) then
-        error_shared env t_pat pat.at "shared constructor has non-shared parameter type\n  %s"
+      if obj_sort.it = T.Actor && not (T.shared t_pat) then
+        error_shared env t_pat pat.at
+          "shared constructor has non-shared parameter type\n  %s"
           (T.string_of_typ_expand t_pat);
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
@@ -2229,10 +2230,9 @@ and infer_dec_valdecs env dec : Scope.t =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 =
-      if obj_sort.it = T.Actor
-      then
-        T.Async(T.Con(List.hd cs, []),
-                T.Con(c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
+      if obj_sort.it = T.Actor then
+        T.Async (T.Con (List.hd cs, []),
+          T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
       else
         T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
     in
