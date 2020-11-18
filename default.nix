@@ -305,7 +305,6 @@ rec {
       checkPhase = ''
 	candid-tests -i ${nixpkgs.sources.candid}/test \
 	  --expect-fail "arg too long" \
-	  --expect-fail "record: tuple" \
 	  --expect-fail "variant: duplicate fields" \
 	  --expect-fail "variant: unsorted" \
 
