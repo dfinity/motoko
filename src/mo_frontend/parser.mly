@@ -730,7 +730,7 @@ dec_nonvar :
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
-      let exp =
+      let e =
         if s.it = Type.Actor then
           AwaitE
             (AsyncE(scope_bind (anon "async" (at $sloc)),
@@ -738,7 +738,7 @@ dec_nonvar :
              @? at $sloc)
         else ObjE(s, efs)
       in
-      let_or_exp named x exp (at $sloc) }
+      let_or_exp named x e (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.

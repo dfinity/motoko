@@ -2036,10 +2036,11 @@ and gather_dec env scope dec : Scope.t =
       | _ -> binds
     in
     let pre_tbs = List.map (fun bind ->
-                      {T.var = bind.it.var.it;
-                       T.sort = T.Type;
-                       T.bound = T.Pre}
-                    ) binds' in
+      { T.var = bind.it.var.it;
+        T.sort = T.Type;
+        T.bound = T.Pre })
+      binds'
+    in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
