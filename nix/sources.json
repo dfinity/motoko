@@ -20,9 +20,9 @@
     },
     "dfinity": {
         "ref-OLD": "master",
-       	"ref": "akhi3030/drun-more-fixes",
+       	"ref": "akhi3030/drun-fix",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "1823a5c49a0cf61223c50f23490eb3149dd0c0d7",
+        "rev": "6297fba3133d4285fedaa25764a7965baa09a9d4",
 	"rev-OLD": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
         "type": "git"
     },
