@@ -15,14 +15,14 @@ actor a {
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting funds");
-  await Funds.dev_set_funds(wallet, 2_000_000_000_000_000, 2000);
+  await Funds.dev_set_funds(wallet, 2_000_000_000_000, 2000);
   await wallet.show();
 
   // debit from the waller, crediting this actor via callback
   print ("debit");
   print("balance " # debug_show(Funds.balance(#icpt)));
   let b = Funds.balance(#icpt);
-  await wallet.debit(#cycle, 1_000_000_000_000_000, credit);
+  await wallet.debit(#cycle, 1000_000_000_000, credit);
   await wallet.debit(#icpt, 1000, credit);
 
   print(debug_show(Funds.balance(#icpt)));
