@@ -303,11 +303,7 @@ rec {
     candid = testDerivation {
       buildInputs = [ moc wasmtime drun candid-tests ];
       checkPhase = ''
-	candid-tests -i ${nixpkgs.sources.candid}/test \
-	  --expect-fail "arg too long" \
-	  --expect-fail "record: tuple" \
-	  --expect-fail "record: empty recursion" \
-	  --expect-fail "vec of empty records"
+	      candid-tests -i ${nixpkgs.sources.candid}/test
       '';
     };
 

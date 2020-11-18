@@ -53,10 +53,14 @@ let write_file f s =
   output_string oc_ s;
   close_out oc_
 
+let print_type = function
+  | [t] -> "(" ^ Type.string_of_typ t ^ ")" (* add parens to make this unary *)
+  | ts -> Type.string_of_typ (Type.Tup ts)
+
 (* Turning a test case into a motoko program *)
 let mo_of_test tenv test : (string * (* should_not_trap *) bool) option =
-  let deser t x =
-    "(prim \"deserialize\" : Blob -> " ^ Type.string_of_typ (Type.seq t) ^ ") " ^
+  let deser ts x =
+    "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
     "\"" ^ Value.Blob.escape x ^ "\"" in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
