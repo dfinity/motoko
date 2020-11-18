@@ -7039,7 +7039,7 @@ and compile_exp (env : E.t) ae exp =
       Stabilization.stabilize env ty
 
     (* Cycles *)
-    | SystemCyclesBalancePrim, [e] ->
+    | SystemCyclesBalancePrim, [] ->
       SR.UnboxedWord64,
       Dfinity.cycle_balance env
     | SystemCyclesAddPrim, [e1] ->

@@ -1,6 +1,6 @@
 import Prim = "mo:prim";
-import Funds = "funds/funds";
-import WalletLib = "funds/wallet";
+import Cycles = "cycles/funds";
+import WalletLib = "cycles/wallet";
 
 actor a {
 
@@ -9,87 +9,82 @@ actor a {
 
  public func go() : async () {
 
-  print(debug_show(Funds.balance(#icpt)));
-  //print(debug_show(Funds.balance(#cycle))); // to volatile to show
+  //print(debug_show(Cycles.balance())); // to volatile to show
 
-  print(debug_show(Funds.available(#icpt)));
-  print(debug_show(Funds.available(#cycle)));
+  print(debug_show(Cycles.available()));
 
-  print(debug_show(Funds.accept(#icpt, 0)));
-  print(debug_show(Funds.accept(#cycle, 0)));
+  print(debug_show(Cycles.accept(0)));
 
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
-  print ("setting funds");
-  await Funds.dev_set_funds(wallet, 1_000_000_000_000_000, 1000);
+  print ("setting cycles");
+  await Cycles.provisional_top_up_actor(wallet, 1_000_000_000_000_000);
   await wallet.show();
 
-  // debit from the waller, crediting this actor via callback
+  // debit from the wallet, crediting this actor via callback
   let amount : Nat64 = 100;
   print ("debit");
-  print("balance" # debug_show(Funds.balance(#icpt)));
-  let b = Funds.balance(#icpt);
-  await wallet.debit(#icpt, amount, credit);
-  print("balance" # debug_show(Funds.balance(#icpt)));
-  assert (Funds.balance(#icpt) == b + amount);
+  print("balance" # debug_show(Cycles.balance()));
+  let b = Cycles.balance();
+  await wallet.debit(amount, credit);
+  print("balance" # debug_show(Cycles.balance()));
+  assert (Cycles.balance() == b + amount);
 
   print("credit-1");
   // transfer half the amount back to the wallet
-  print(debug_show(await wallet.balance(#icpt)));
-  Funds.add(#icpt, amount/4);
-  await wallet.credit(#icpt);
-  print("refunded: " # debug_show(Funds.refunded(#icpt)));
-  print(debug_show(await wallet.balance(#icpt)));
+  print(debug_show(await wallet.balance()));
+  Cycles.add(amount/4);
+  await wallet.credit();
+  print("refunded: " # debug_show(Cycles.refunded()));
+  print(debug_show(await wallet.balance()));
 
 
   print("credit-2");
   // transfer half the amount back to the wallet
-  print(debug_show(await wallet.balance(#icpt)));
-  Funds.add(#icpt, amount/4);
-  await wallet.credit(#icpt);
-  print("refunded: " # debug_show(Funds.refunded(#icpt)));
-  print(debug_show(await wallet.balance(#icpt)));
+  print(debug_show(await wallet.balance()));
+  Cycles.add(amount/4);
+  await wallet.credit();
+  print("refunded: " # debug_show(Cycles.refunded()));
+  print(debug_show(await wallet.balance()));
 
 
   print("refund");
   // transfer half the amount back to the wallet
-  print(debug_show(await wallet.balance(#icpt)));
-  Funds.add(#icpt, amount/2);
-  await wallet.refund(#icpt, amount/4);
-  print("refunded: " # debug_show(Funds.refunded(#icpt)));
-  print(debug_show(await wallet.balance(#icpt)));
+  print(debug_show(await wallet.balance()));
+  Cycles.add(amount/2);
+  await wallet.refund(amount/4);
+  print("refunded: " # debug_show(Cycles.refunded()));
+  print(debug_show(await wallet.balance()));
 
 
   // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
   func testRefunds(n : Nat64) : async () {
      if (n == (0 : Nat64)) return;
-     Funds.add(#icpt, n);
+     Cycles.add(n);
      print("refund(" # debug_show(n) # ")");
-     let a = wallet.refund(#icpt, n);
+     let a = wallet.refund(n);
      await testRefunds( n - (1 : Nat64));
      await a;
-     print("refunded: " # debug_show(Funds.refunded(#icpt)));
-     assert (Funds.refunded(#icpt) == n);
+     print("refunded: " # debug_show(Cycles.refunded()));
+     assert (Cycles.refunded() == n);
   };
 
   await testRefunds(5);
 
-  // try to accept funds that aren't available
+  // try to accept cycles that aren't available
   // this should trap
-  print(debug_show(Funds.accept(#icpt, 1)));
+  print(debug_show(Cycles.accept(1)));
 
  };
 
- // callback for accepting funds from wallet.
- public func credit(u : Funds.Unit) : async () {
-   print("credit:balance " # debug_show(Funds.balance(u)));
-   let b = Funds.balance(u);
-   let a = Funds.available(u);
-   Funds.accept(u, a);
-   print("credit:balance " # debug_show(Funds.balance(u)));
-   if (u == #icpt) {
-     assert (Funds.balance(u) == b + a);
-   };
+ // callback for accepting cycles from wallet.
+ public func credit() : async () {
+   print("credit:balance " # debug_show(Cycles.balance()));
+   let b = Cycles.balance();
+   let a = Cycles.available();
+   ignore Cycles.accept(a);
+   print("credit:balance " # debug_show(Cycles.balance()));
+//     assert (Cycles.balance() == b + a);
  };
 
 
