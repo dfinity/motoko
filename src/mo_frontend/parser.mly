@@ -750,7 +750,7 @@ dec_nonvar :
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, efs = cb in
-      let efs',tps' =
+      let efs', tps' =
         if s.it = Type.Actor then
             (List.map share_expfield efs, ensure_scope_bind "" tps)
         else (efs, tps)
