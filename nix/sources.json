@@ -8,7 +8,7 @@
         "repo": "candid",
         "rev": "d768917c932b2c4a0f85b21eb1e32eaa1faff039",
         "sha256": "1kq7a3n1612j3dzw1cakj0alxlm0kgcnx8v3c9x8nay63ykr2j9n",
-        "type": "tarball",
+       "type": "tarball",
         "url": "https://github.com/dfinity/candid/archive/d768917c932b2c4a0f85b21eb1e32eaa1faff039.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
@@ -19,11 +19,9 @@
         "type": "git"
     },
     "dfinity": {
-        "ref-OLD": "master",
-       	"ref": "akhi3030/drun-fix",
+        "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "6297fba3133d4285fedaa25764a7965baa09a9d4",
-	"rev-OLD": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
+        "rev": "5f1c1fccd49c8c6675cfa2c8bdb7671968b370a1",
         "type": "git"
     },
     "esm": {
