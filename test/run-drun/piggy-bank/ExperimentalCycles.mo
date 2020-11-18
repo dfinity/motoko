@@ -29,10 +29,10 @@ module {
     Prim.nat64ToNat(Prim.cyclesAvailable())
   };
 
-  /// Transfers `amount` from `available()` to `balance()`,
+  /// Transfers `amount` from `available()` to `balance()`, returning `remainder` available.
   /// Traps if trying to accept more cycles than are available.
-  public func accept(amount : Nat) : () {
-    Prim.cyclesAccept(Prim.natToNat64(amount))
+  public func accept(amount : Nat) : (remainder : Nat) {
+    Prim.nat64ToNat(Prim.cyclesAccept(Prim.natToNat64(amount)));
   };
 
   /// Indicates additional `amount` of cycles to be transferred in
