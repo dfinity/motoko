@@ -198,6 +198,16 @@ export void skip_leb128(buf *buf) {
   } while (b & (uint8_t)0x80);
 }
 
+// used for opt, bool, references...
+uint8_t read_byte_tag(buf *buf) {
+  uint8_t b = read_byte(buf);
+  if (b > 1) {
+    idl_trap_with("skip_any: byte tag not 0 or 1");
+  }
+  return b;
+}
+
+
 // Assumes that buf is the encoding of type t, and fast-forwards past that
 // Assumes that all type references in the typtbl are already checked
 //
@@ -213,6 +223,8 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_PRIM_reserved:
         return;
       case IDL_PRIM_bool:
+        read_byte_tag(b);
+        return;
       case IDL_PRIM_nat8:
       case IDL_PRIM_int8:
         advance(b, 1);
@@ -247,7 +259,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         idl_trap_with("skip_any: encountered empty");
       case IDL_REF_principal:
         {
-          if (read_byte(b)) {
+          if (read_byte_tag(b)) {
             uint32_t len = read_u32_of_leb128(b);
             advance(b, len);
           }
@@ -262,7 +274,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
     switch(tc) {
       case IDL_CON_opt: {
         int32_t it = read_i32_of_sleb128(&tb);
-        if (read_byte(b)) {
+        if (read_byte_tag(b)) {
           skip_any(b, typtbl, it, 0);
         }
         return;
@@ -308,7 +320,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_CON_alias: {
         // See Note [mutable stable values] in codegen/compile.ml
         int32_t it = read_i32_of_sleb128(&tb);
-        uint32_t tag = read_byte(b);
+        uint32_t tag = read_byte_tag(b);
         if (tag == 0) {
           advance(b, 8);
           // this is the contents (not a reference)
