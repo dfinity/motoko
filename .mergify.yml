@@ -46,4 +46,4 @@ pull_request_rules:
     actions:
       review:
         type: APPROVE
-        message: A change to Changelog.md? I can can handle that!
+        message: A change to Changelog.md? I can handle that!

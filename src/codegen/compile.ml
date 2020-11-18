@@ -698,12 +698,21 @@ module Func = struct
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
     )
-  let share_code4 env name (p1, p2, p3, p4) retty mk_body =
+  let _share_code4 env name (p1, p2, p3, p4) retty mk_body =
     share_code env name [p1; p2; p3; p4] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
+    )
+  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
+        (G.i (LocalGet (nr 0l)))
+        (G.i (LocalGet (nr 1l)))
+        (G.i (LocalGet (nr 2l)))
+        (G.i (LocalGet (nr 3l)))
+        (G.i (LocalGet (nr 4l)))
+        (G.i (LocalGet (nr 5l)))
     )
 
 end (* Func *)
@@ -714,7 +723,7 @@ module RTS = struct
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
     E.add_func_import env "rts" "read_i32_of_sleb128" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -4079,23 +4088,37 @@ module Serialization = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code4 env name
+    Func.share_code6 env name
       (("data_buffer", I32Type),
        ("ref_buffer", I32Type),
        ("typtbl", I32Type),
-       ("idltyp", I32Type)
+       ("idltyp", I32Type),
+       ("typtbl_size", I32Type),
+       ("depth", I32Type)
       ) [I32Type]
-    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp ->
+    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp get_typtbl_size get_depth ->
 
-      let go env t =
+      (* Check recursion depth (protects against empty record) *)
+      get_depth ^^ get_typtbl_size ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+      E.else_trap_with env ("IDL error: circular record read") ^^
+
+      let go' reset env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
         get_data_buf ^^
         get_ref_buf ^^
         get_typtbl ^^
         get_idlty ^^
+        get_typtbl_size ^^
+        (if reset
+         then compile_unboxed_const 0l
+         else get_depth ^^ compile_add_const 1l) ^^
         deserialize_go env t
       in
+
+      let go = go' true in
+      let go_record = go' false in
 
       let check_prim_typ t =
         get_idltyp ^^
@@ -4350,7 +4373,7 @@ module Serialization = struct
             E.call_import env "rts" "find_field" ^^
             G.if_ [I32Type]
               begin
-                ReadBuf.read_sleb128 env get_typ_buf ^^ go env t
+                ReadBuf.read_sleb128 env get_typ_buf ^^ go_record env t
               end
               begin
                 E.trap_with env "IDL error: did not find tuple field in record"
@@ -4373,7 +4396,7 @@ module Serialization = struct
               E.call_import env "rts" "find_field" ^^
               G.if_ [I32Type]
                 begin
-                  ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+                  ReadBuf.read_sleb128 env get_typ_buf ^^ go_record env f.typ
                 end
                 begin
                   match sort with
@@ -4567,6 +4590,7 @@ module Serialization = struct
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
+      Stack.with_words env "get_typtbl_size_ptr" 1l (fun get_typtbl_size_ptr ->
       Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
       Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
 
@@ -4579,7 +4603,7 @@ module Serialization = struct
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
+      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* set up a dedicated read buffer for the list of main types *)
@@ -4596,6 +4620,8 @@ module Serialization = struct
           get_data_buf ^^ get_ref_buf ^^
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
+          get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
+          compile_unboxed_const 0l ^^ (* initial depth *)
           deserialize_go env t
         ) ts ^^
 
@@ -4613,7 +4639,7 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
         ReadBuf.is_empty env get_ref_buf ^^
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
-      )))))
+      ))))))
     )
 
   let deserialize env ts =
