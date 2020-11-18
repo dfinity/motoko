@@ -4122,6 +4122,10 @@ module Serialization = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
       E.else_trap_with env ("IDL error: circular record read") ^^
 
+      (* This flag is set to return a decode error at the very end
+         (don’t use (G.i Return) for early exit, or we’d leak stack space
+         since some functions here use Stack.with_words
+      *)
       let go' reset env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
@@ -4144,24 +4148,29 @@ module Serialization = struct
         E.call_import env "rts" "skip_any"
       in
 
-      let else_skip_and_return get_typ msg =
-        G.if_ [] G.nop
-        begin
-          skip get_idltyp ^^
-          compile_unboxed_const (decode_error_value env) ^^
-          G.i Return
-        end
+      let (set_failed, get_failed) = new_local env "failed" in
+
+      let remember_failure get_val =
+          get_val ^^ compile_eq_const (decode_error_value env) ^^
+          G.if_ [] (compile_unboxed_const 1l ^^ set_failed) G.nop
       in
 
+      let skip_and_fail get_typ _msg =
+        skip get_idltyp ^^
+        compile_unboxed_const 1l ^^ set_failed ^^
+        compile_unboxed_const (decode_error_value env)
+      in
 
       let check_prim_typ t =
         get_idltyp ^^
         compile_eq_const (Int32.neg (Option.get (to_idl_prim t)))
       in
 
-      let assert_prim_typ t =
+      let with_prim_typ t f =
         check_prim_typ t ^^
-        else_skip_and_return get_idltyp ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+        G.if_ [I32Type]
+          f
+          (skip_and_fail get_idltyp ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t))
       in
 
       let read_byte_tagged = function
@@ -4245,24 +4254,36 @@ module Serialization = struct
         (* make sure index is not negative *)
         get_arg_typ ^^
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        else_skip_and_return get_arg_typ ("IDL error: expected composite type when parsing " ^ string_of_typ t) ^^
-        ReadBuf.alloc env (fun get_typ_buf ->
-          (* Update typ_buf *)
-          ReadBuf.set_ptr get_typ_buf (
-            get_typtbl ^^
-            get_arg_typ ^^ compile_mul_const Heap.word_size ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            load_unskewed_ptr
-          ) ^^
-          ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
-          (* read sleb128 *)
-          ReadBuf.read_sleb128 env get_typ_buf ^^
-          (* Check it is the expected value *)
-          compile_eq_const idl_tycon_id ^^
-          else_skip_and_return get_arg_typ ("IDL error: wrong composite type when parsing " ^ string_of_typ t) ^^
-          (* to the work *)
-          f get_typ_buf
-        ) in
+        G.if_ [I32Type]
+        begin
+          ReadBuf.alloc env (fun get_typ_buf ->
+            (* Update typ_buf *)
+            ReadBuf.set_ptr get_typ_buf (
+              get_typtbl ^^
+              get_arg_typ ^^ compile_mul_const Heap.word_size ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              load_unskewed_ptr
+            ) ^^
+            ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
+            (* read sleb128 *)
+            ReadBuf.read_sleb128 env get_typ_buf ^^
+            (* Check it is the expected type constructor *)
+            compile_eq_const idl_tycon_id ^^
+            G.if_ [I32Type]
+            begin
+              f get_typ_buf
+            end
+            begin
+              skip_and_fail get_idltyp
+                ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+            end
+          )
+        end
+        begin
+          skip_and_fail get_idltyp
+            ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+        end
+      in
 
       let with_composite_typ idl_tycon_id f =
         with_composite_arg_typ get_idltyp idl_tycon_id f
@@ -4277,11 +4298,15 @@ module Serialization = struct
         )
       ) in
 
-      let assert_blob_typ env =
+      let with_blob_typ env f =
         with_composite_typ idl_vec (fun get_typ_buf ->
           ReadBuf.read_sleb128 env get_typ_buf ^^
           compile_eq_const (-5l) (* Nat8 *) ^^
-          else_skip_and_return get_idltyp ("IDL error: blob not a vector of nat8")
+          G.if_ [I32Type]
+            f
+            begin
+            skip_and_fail get_idltyp "IDL error: blob not a vector of nat8"
+            end
         )
       in
 
@@ -4351,9 +4376,11 @@ module Serialization = struct
       begin match t with
       (* Primitive types *)
       | Prim Nat ->
-        assert_prim_typ t ^^
-        get_data_buf ^^
-        BigNum.compile_load_from_data_buf env false
+        with_prim_typ t
+        begin
+          get_data_buf ^^
+          BigNum.compile_load_from_data_buf env false
+        end
       | Prim Int ->
         (* Subtyping with nat *)
         check_prim_typ (Prim Nat) ^^
@@ -4363,75 +4390,94 @@ module Serialization = struct
             BigNum.compile_load_from_data_buf env false
           end
           begin
-            assert_prim_typ t ^^
-            get_data_buf ^^
-            BigNum.compile_load_from_data_buf env true
+            with_prim_typ t
+            begin
+              get_data_buf ^^
+              BigNum.compile_load_from_data_buf env true
+            end
           end
       | Prim Float ->
-        assert_prim_typ t ^^
-        ReadBuf.read_float64 env get_data_buf ^^
-        Float.box env
+        with_prim_typ t
+        begin
+          ReadBuf.read_float64 env get_data_buf ^^
+          Float.box env
+        end
       | Prim (Int64|Nat64|Word64) ->
-        assert_prim_typ t ^^
-        ReadBuf.read_word64 env get_data_buf ^^
-        BoxedWord64.box env
+        with_prim_typ t
+        begin
+          ReadBuf.read_word64 env get_data_buf ^^
+          BoxedWord64.box env
+        end
       | Prim (Int32|Nat32|Word32) ->
-        assert_prim_typ t ^^
-        ReadBuf.read_word32 env get_data_buf ^^
-        BoxedSmallWord.box env
+        with_prim_typ t
+        begin
+          ReadBuf.read_word32 env get_data_buf ^^
+          BoxedSmallWord.box env
+        end
       | Prim Char ->
         let set_n, get_n = new_local env "len" in
-        assert_prim_typ t ^^
-        ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
-        TaggedSmallWord.check_and_tag_codepoint env get_n
+        with_prim_typ t
+        begin
+          ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
+          TaggedSmallWord.check_and_tag_codepoint env get_n
+        end
       | Prim (Int16|Nat16|Word16) ->
-        assert_prim_typ t ^^
-        ReadBuf.read_word16 env get_data_buf ^^
-        TaggedSmallWord.msb_adjust Word16
+        with_prim_typ t
+        begin
+          ReadBuf.read_word16 env get_data_buf ^^
+          TaggedSmallWord.msb_adjust Word16
+        end
       | Prim (Int8|Nat8|Word8) ->
-        assert_prim_typ t ^^
-        ReadBuf.read_byte env get_data_buf ^^
-        TaggedSmallWord.msb_adjust Word8
+        with_prim_typ t
+        begin
+          ReadBuf.read_byte env get_data_buf ^^
+          TaggedSmallWord.msb_adjust Word8
+        end
       | Prim Bool ->
-        assert_prim_typ t ^^
-        read_byte_tagged
-          [ Bool.lit false
-          ; Bool.lit true
-          ] ^^
-        BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
+        with_prim_typ t
+        begin
+          read_byte_tagged
+            [ Bool.lit false
+            ; Bool.lit true
+            ] ^^
+          BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
+        end
       | Prim Null ->
-        assert_prim_typ t ^^
-        Opt.null_lit env
+        with_prim_typ t (Opt.null_lit env)
       | Any ->
         (* Skip values of any possible type *)
         skip get_idltyp ^^
         (* Any vanilla value works here *)
         Opt.null_lit env
       | Prim Blob ->
-        assert_blob_typ env ^^
-        read_blob ()
+        with_blob_typ env (read_blob ())
       | Prim Principal ->
-        assert_prim_typ t ^^
-        read_byte_tagged
-          [ E.trap_with env "IDL error: unexpected principal reference"
+        with_prim_typ t
+        begin
+          read_byte_tagged
+            [ E.trap_with env "IDL error: unexpected principal reference"
             ; read_blob ()
-          ]
+            ]
+        end
       | Prim Text ->
-        assert_prim_typ t ^^
-        read_text ()
+        with_prim_typ t (read_text ())
       | Tup [] -> (* e(()) = null *)
-        assert_prim_typ t ^^
-        Tuple.from_stack env 0
+        with_prim_typ t (Tuple.from_stack env 0)
       (* Composite types *)
       | Tup ts ->
         with_record_typ (fun get_typ_buf get_n_ptr ->
+          let (set_val, get_val) = new_local env "val" in
+
           G.concat_mapi (fun i t ->
             (* skip all possible intermediate extra fields *)
             get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Int32.of_int i) ^^ get_n_ptr ^^
             E.call_import env "rts" "find_field" ^^
             G.if_ [I32Type]
               begin
-                ReadBuf.read_sleb128 env get_typ_buf ^^ go_record env t
+                ReadBuf.read_sleb128 env get_typ_buf ^^
+                go_record env t ^^ set_val ^^
+                remember_failure get_val ^^
+                get_val
               end
               begin
                 match normalize t with
@@ -4448,6 +4494,7 @@ module Serialization = struct
         )
       | Obj ((Object | Memory), fs) ->
         with_record_typ (fun get_typ_buf get_n_ptr ->
+          let (set_val, get_val) = new_local env "val" in
 
           Object.lit_raw env (List.map (fun (h,f) ->
             f.Type.lab, fun () ->
@@ -4456,8 +4503,11 @@ module Serialization = struct
               E.call_import env "rts" "find_field" ^^
               G.if_ [I32Type]
                 begin
-                  ReadBuf.read_sleb128 env get_typ_buf ^^ go_record env f.typ
-                end
+                  ReadBuf.read_sleb128 env get_typ_buf ^^
+                  go_record env f.typ ^^ set_val ^^
+                  remember_failure get_val ^^
+                  get_val
+                  end
                 begin
                   match normalize f.typ with
                   | Opt _ | Any -> Opt.null_lit env
@@ -4473,6 +4523,7 @@ module Serialization = struct
         read_alias env (Array (Mut t)) (fun get_array_typ on_alloc ->
           let (set_len, get_len) = new_local env "len" in
           let (set_x, get_x) = new_local env "x" in
+          let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
@@ -4480,21 +4531,24 @@ module Serialization = struct
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
             get_x ^^ get_i ^^ Arr.idx env ^^
-            get_arg_typ ^^ go env t ^^
-            store_ptr
+            get_arg_typ ^^ go env t ^^ set_val ^^
+            remember_failure get_val ^^
+            get_val ^^ store_ptr
           )
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
+        let (set_val, get_val) = new_local env "val" in
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
         with_composite_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^
-          get_arg_typ ^^ go env t ^^
-          store_ptr
+          get_arg_typ ^^ go env t ^^ set_val ^^
+          remember_failure get_val ^^
+          get_val ^^ store_ptr
         ) ^^
         get_x
       | Opt t ->
@@ -4511,7 +4565,7 @@ module Serialization = struct
               with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
               read_byte_tagged
                 [ Opt.null_lit env
-                ; let (set_val, get_val) = new_local env "opt_val" in
+                ; let (set_val, get_val) = new_local env "val" in
                   get_arg_typ ^^ go env t ^^ set_val ^^
                   get_val ^^ compile_eq_const (decode_error_value env) ^^
                   G.if_ [I32Type]
@@ -4530,7 +4584,7 @@ module Serialization = struct
                 Opt.null_lit env
               | _ ->
                 (* Try consitutient type *)
-                let (set_val, get_val) = new_local env "opt_val" in
+                let (set_val, get_val) = new_local env "val" in
                 get_idltyp ^^ go env t ^^ set_val ^^
                 get_val ^^ compile_eq_const (decode_error_value env) ^^
                 G.if_ [I32Type]
@@ -4598,7 +4652,9 @@ module Serialization = struct
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
-      end
+      end ^^
+      get_failed ^^
+      G.if_ [] (compile_unboxed_const (decode_error_value env) ^^ G.i Return) G.nop
     )
 
   let serialize env ts : G.t =
