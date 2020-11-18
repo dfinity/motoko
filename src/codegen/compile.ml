@@ -3151,11 +3151,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type];
       E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type];
-      (match E.mode env with
-      |  Flags.ICMode ->
-         E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] []
-      |  _ ->
-         E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type]);
+      E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3476,13 +3472,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      (match E.mode env with
-      |  Flags.ICMode ->
-         system_call env "ic0" "msg_cycles_accept"
-         ^^ compile_unboxed_const 666l (* TBD *)
-      |  _ ->
-         system_call env "ic0" "msg_cycles_accept"
-      )
+      system_call env "ic0" "msg_cycles_accept"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
@@ -7066,6 +7056,7 @@ and compile_exp (env : E.t) ae exp =
     | SystemCyclesRefundedPrim, [] ->
       SR.UnboxedWord64,
       Dfinity.cycles_refunded env
+
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
