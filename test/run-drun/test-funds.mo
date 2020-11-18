@@ -1,5 +1,5 @@
 import Prim = "mo:prim";
-import Cycles = "cycles/funds";
+import Cycles = "cycles/cycles";
 import WalletLib = "cycles/wallet";
 
 actor a {

@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Funds "funds";
+import Cycles "cycles";
 
 shared {caller} actor class Wallet() {
 
@@ -14,14 +14,14 @@ shared {caller} actor class Wallet() {
   };
 
   public func balance() : async Nat64 {
-    return Funds.balance();
+    return Cycles.balance();
   };
 
   public func credit() : async () {
-    let bu = Funds.balance();
-    let du = Funds.available();
-    ignore Funds.accept(du);
-    assert Funds.balance() == bu + du;
+    let bu = Cycles.balance();
+    let du = Cycles.available();
+    ignore Cycles.accept(du);
+    assert Cycles.balance() == bu + du;
   };
 
   public shared {caller} func debit(
@@ -29,20 +29,20 @@ shared {caller} actor class Wallet() {
     credit : shared () -> async ())
     : async () {
     if (caller != owner) assert false;
-    Funds.add(amount);
+    Cycles.add(amount);
     await credit();
   };
 
   public shared {caller} func refund(
     amount : Nat64)
     : async () {
-    ignore Funds.accept(Funds.available() - amount);
+    ignore Cycles.accept(Cycles.available() - amount);
     print("refunding: " #  debug_show(amount));
   };
 
   public shared {caller} func available()
     : async Nat64 {
-    let available = Funds.available();
+    let available = Cycles.available();
     print("available: " #  debug_show(available));
     return available;
   };
