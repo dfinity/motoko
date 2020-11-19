@@ -4,7 +4,7 @@ import WalletLib = "cycles/wallet";
 
 actor a {
 
- let print = Prim.debugPrint;
+ func print(t:Text) { Prim.debugPrint("a: " # t); };
 
 
  public func go() : async () {
@@ -18,17 +18,18 @@ actor a {
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");
-  await Cycles.provisional_top_up_actor(wallet, 1_000_000_000_000_000);
+  await Cycles.provisional_top_up_actor(wallet, 1_000_000_000);
   await wallet.show();
 
   // debit from the wallet, crediting this actor via callback
-  let amount : Nat64 = 100;
-  print ("debit");
-  print("balance" # debug_show(Cycles.balance()));
+  let amount : Nat64 = 1000_000;
+  print("debit");
+  print("balance " # debug_show(Cycles.balance()));
   let b = Cycles.balance();
   await wallet.debit(amount, credit);
-  print("balance" # debug_show(Cycles.balance()));
-  assert (Cycles.balance() == b + amount);
+  print("balance " # debug_show(Cycles.balance()));
+  let b1 = Cycles.balance();
+  assert (b <= b1 and b1 <= b + amount);
 
   print("credit-1");
   // transfer half the amount back to the wallet
