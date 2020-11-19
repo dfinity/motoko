@@ -705,14 +705,15 @@ module Func = struct
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
     )
-  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
-    share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
+  let share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6; p7] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
         (G.i (LocalGet (nr 4l)))
         (G.i (LocalGet (nr 5l)))
+        (G.i (LocalGet (nr 6l)))
     )
 
 end (* Func *)
@@ -4107,15 +4108,16 @@ module Serialization = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code6 env name
+    Func.share_code7 env name
       (("data_buffer", I32Type),
        ("ref_buffer", I32Type),
        ("typtbl", I32Type),
        ("idltyp", I32Type),
        ("typtbl_size", I32Type),
-       ("depth", I32Type)
+       ("depth", I32Type),
+       ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp get_typtbl_size get_depth ->
+    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
 
       (* Check recursion depth (protects against empty record) *)
       get_depth ^^ get_typtbl_size ^^
@@ -4126,7 +4128,7 @@ module Serialization = struct
          (don’t use (G.i Return) for early exit, or we’d leak stack space
          since some functions here use Stack.with_words
       *)
-      let go' reset env t =
+      let go' reset can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
         get_data_buf ^^
@@ -4137,11 +4139,15 @@ module Serialization = struct
         (if reset
          then compile_unboxed_const 0l
          else get_depth ^^ compile_add_const 1l) ^^
+        (if can_recover
+         then compile_unboxed_const 1l
+         else get_can_recover) ^^
         deserialize_go env t
       in
 
-      let go = go' true in
-      let go_record = go' false in
+      let go = go' true false in
+      let go_record = go' false false in
+      let go_can_recover = go' false true in
 
       let skip get_typ =
         get_data_buf ^^ get_typtbl ^^ get_typ ^^ compile_unboxed_const 0l ^^
@@ -4149,17 +4155,17 @@ module Serialization = struct
       in
 
       let (set_failed, get_failed) = new_local env "failed" in
+      let set_failure = compile_unboxed_const 1l ^^ set_failed in
+      let when_failed f = get_failed ^^ G.if_ [] f G.nop in
 
       let remember_failure get_val =
           get_val ^^ compile_eq_const (decode_error_value env) ^^
-          G.if_ [] (compile_unboxed_const 1l ^^ set_failed) G.nop
+          G.if_ [] set_failure G.nop
       in
 
-      let skip_and_fail get_typ _msg =
-        skip get_idltyp ^^
-        compile_unboxed_const 1l ^^ set_failed ^^
-        compile_unboxed_const (decode_error_value env)
-      in
+      let note_failure msg =
+        get_can_recover ^^ E.else_trap_with env msg ^^
+        set_failure ^^ compile_unboxed_const (decode_error_value env) in
 
       let check_prim_typ t =
         get_idltyp ^^
@@ -4170,7 +4176,9 @@ module Serialization = struct
         check_prim_typ t ^^
         G.if_ [I32Type]
           f
-          (skip_and_fail get_idltyp ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t))
+          ( skip get_idltyp ^^
+            note_failure ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+          )
       in
 
       let read_byte_tagged = function
@@ -4274,14 +4282,14 @@ module Serialization = struct
               f get_typ_buf
             end
             begin
-              skip_and_fail get_idltyp
-                ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+              skip get_arg_typ ^^
+              note_failure ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
             end
           )
         end
         begin
-          skip_and_fail get_idltyp
-            ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+          skip get_arg_typ ^^
+          note_failure ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
         end
       in
 
@@ -4305,7 +4313,8 @@ module Serialization = struct
           G.if_ [I32Type]
             f
             begin
-            skip_and_fail get_idltyp "IDL error: blob not a vector of nat8"
+              skip get_idltyp ^^
+              note_failure "IDL error: blob not a vector of nat8"
             end
         )
       in
@@ -4482,7 +4491,7 @@ module Serialization = struct
               begin
                 match normalize t with
                 | Opt _ | Any -> Opt.null_lit env
-                | _ -> E.trap_with env "IDL error: did not find tuple field in record"
+                | _ -> note_failure "IDL error: did not find tuple field in record"
               end
           ) ts ^^
 
@@ -4511,7 +4520,7 @@ module Serialization = struct
                 begin
                   match normalize f.typ with
                   | Opt _ | Any -> Opt.null_lit env
-                  | _ -> E.trap_with env (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
+                  | _ -> note_failure (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
 
@@ -4566,7 +4575,7 @@ module Serialization = struct
               read_byte_tagged
                 [ Opt.null_lit env
                 ; let (set_val, get_val) = new_local env "val" in
-                  get_arg_typ ^^ go env t ^^ set_val ^^
+                  get_arg_typ ^^ go_can_recover env t ^^ set_val ^^
                   get_val ^^ compile_eq_const (decode_error_value env) ^^
                   G.if_ [I32Type]
                     (* decoding failed, but this is opt, so: return null *)
@@ -4585,7 +4594,7 @@ module Serialization = struct
               | _ ->
                 (* Try consitutient type *)
                 let (set_val, get_val) = new_local env "val" in
-                get_idltyp ^^ go env t ^^ set_val ^^
+                get_idltyp ^^ go_can_recover env t ^^ set_val ^^
                 get_val ^^ compile_eq_const (decode_error_value env) ^^
                 G.if_ [I32Type]
                   (* decoding failed, but this is opt, so: return null *)
@@ -4627,7 +4636,7 @@ module Serialization = struct
                 continue
             )
             ( sort_by_hash vs )
-            ( E.trap_with env "IDL error: unexpected variant tag" )
+            ( note_failure "IDL error: unexpected variant tag" )
         )
       | Func _ ->
         with_composite_typ idl_func (fun _get_typ_buf ->
@@ -4653,8 +4662,7 @@ module Serialization = struct
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
-      get_failed ^^
-      G.if_ [] (compile_unboxed_const (decode_error_value env) ^^ G.i Return) G.nop
+      when_failed (compile_unboxed_const (decode_error_value env) ^^ G.i Return)
     )
 
   let serialize env ts : G.t =
@@ -4764,6 +4772,7 @@ module Serialization = struct
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
           get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
           compile_unboxed_const 0l ^^ (* initial depth *)
+          compile_unboxed_const 0l ^^ (* initially, cannot recover *)
           deserialize_go env t ^^
           trap_if_error env
         ) ts ^^
