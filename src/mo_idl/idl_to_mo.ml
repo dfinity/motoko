@@ -101,6 +101,11 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
        | M.Con (c, _) -> M.{lab = id; typ = M.Typ c}::fs
        | _ -> assert false) !m_env fs in
      M.Obj (M.Actor, List.sort M.compare_field fs)
+  | Some {it=ClassT (ts, t); _} ->
+     let ts = List.map (check_typ env) ts in
+     let t = check_typ env t in
+     M.Func (M.Local, M.Returns, [], ts, [t])
+  | Some ({it=VarT x; _} as t) -> check_typ env t
   | None -> assert false
   | _ -> assert false
 
