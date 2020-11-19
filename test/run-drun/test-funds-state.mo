@@ -1,9 +1,9 @@
 import Prim = "mo:prim";
-import Funds = "funds/funds";
-import WalletLib = "funds/wallet";
+import Cycles = "cycles/cycles";
+import WalletLib = "cycles/wallet";
 
-// test state behind funds and refunds works as expected, with
-// funds initially zero, additive, reset on context switches
+// test state behind cycles and refunds works as expected, with
+// cycles initially zero, additive, reset on context switches
 // refunds initially zero, reset on context switches, set on await.
 
 actor a {
@@ -14,77 +14,67 @@ actor a {
 
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
-  print ("setting funds");
-  await Funds.dev_set_funds(wallet, 2_000_000_000_000_000, 2000);
+  print ("setting cycles");
+  await Cycles.provisional_top_up_actor(wallet, 2_000_000_000_000);
   await wallet.show();
 
   // debit from the waller, crediting this actor via callback
   print ("debit");
-  print("balance " # debug_show(Funds.balance(#icpt)));
-  let b = Funds.balance(#icpt);
-  await wallet.debit(#cycle, 1_000_000_000_000_000, credit);
-  await wallet.debit(#icpt, 1000, credit);
+  print("balance " # debug_show(Cycles.balance()));
+  let b = Cycles.balance();
+  await wallet.debit(1_000_000_000_000, credit);
 
-  print(debug_show(Funds.balance(#icpt)));
+  print(debug_show(Cycles.balance()));
 
-  { // check funds available
-    Funds.add(#cycle, 100);
-    Funds.add(#icpt, 10);
-    let (cs, is) = await wallet.available();
-    assert (cs == (100: Nat64) and is == (10 : Nat64));
-    assert (Funds.refunded(#cycle) == (100 : Nat64) and Funds.refunded(#icpt) == (10 : Nat64));
+  { // check cycles available
+    Cycles.add(1000_000);
+    let cs = await wallet.available();
+    assert (cs == (1000_000: Nat64));
+    assert (Cycles.refunded() == (1000_000 : Nat64));
   };
   {
-    // check funds reset to zero on send
-    let (cs, is) = await wallet.available();
-    assert (cs == (0: Nat64) and is == (0 : Nat64));
-    assert (Funds.refunded(#cycle) == (0 : Nat64) and Funds.refunded(#icpt) == (0 : Nat64));
+    // check cycles reset to zero on send
+    let cs = await wallet.available();
+    assert (cs == (0: Nat64));
+    assert (Cycles.refunded() == (0 : Nat64));
   };
 
   {
-    // check funds additive to zero on send
-    Funds.add(#cycle, 100);
-    Funds.add(#icpt, 10);
-    Funds.add(#cycle, 200);
-    Funds.add(#icpt, 20);
-    let (cs, is) = await wallet.available();
-    assert (cs == (300 : Nat64) and is == (30 : Nat64));
-    assert (Funds.refunded(#cycle) == (300: Nat64) and Funds.refunded(#icpt) == (30 : Nat64));
+    // check cycles additive to zero on send
+    Cycles.add(1000_000);
+    Cycles.add(2000_000);
+    let cs = await wallet.available();
+    assert (cs == (3000_000 : Nat64));
+    assert (Cycles.refunded() == (3000_000: Nat64));
   };
 
-  // check funds reset on context switch
-  Funds.add(#cycle, 100);
-  Funds.add(#icpt, 10);
+  // check cycles reset on context switch
+  Cycles.add(1000_000);
   await async {
-    assert(Funds.available(#cycle) == (100 : Nat64));
-    assert(Funds.available(#icpt) == (10 : Nat64));
-    // check funds received
-    Funds.add(#cycle, 50);
-    Funds.add(#icpt, 5);
-    let (cs, is) = await wallet.available();
-    assert (cs == (50 : Nat64) and is == (5 : Nat64));
-    assert (Funds.refunded(#cycle) == (50 : Nat64) and Funds.refunded(#icpt) == (5 : Nat64));
+    assert(Cycles.available() == (1000_000 : Nat64));
+    // check cycles received
+    Cycles.add(5000);
+    let cs = await wallet.available();
+    assert (cs == (5000: Nat64));
+    assert (Cycles.refunded() == (5000 : Nat64));
 
-    // add some unconsumed funds
-    Funds.add(#cycle, 200);
-    Funds.add(#icpt, 20);
+    // add some unconsumed cycles
+    Cycles.add(200);
   };
   // check refund from await async ...
-  assert (Funds.refunded(#cycle) == (100 : Nat64) and Funds.refunded(#icpt) == (10 : Nat64));
-  // check unconsumed funds, declared before await, cleared on context switch
-  let (cs, is) = await wallet.available();
-  assert (cs == (0: Nat64) and is == (0 : Nat64));
+  assert (Cycles.refunded() == (1000_000: Nat64));
+  // check unconsumed cycles, declared before await, cleared on context switch
+  let cs = await wallet.available();
+  assert (cs == (0: Nat64));
 
  };
 
- // callback for accepting funds from wallet.
- public func credit(u : Funds.Unit) : async () {
-   let b = Funds.balance(u);
-   let a = Funds.available(u);
-   Funds.accept(u, a);
-   if (u == #icpt) {
-     assert (Funds.balance(u) == b + a);
-   };
+ // callback for accepting cycles from wallet.
+ public func credit() : async () {
+   let b = Cycles.balance();
+   let a = Cycles.available();
+   ignore Cycles.accept(a);
+   assert (Cycles.balance() == b + a);
  };
 
 
