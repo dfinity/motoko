@@ -268,7 +268,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       let fields, note, at = as_actor_def e in
       finish imports { it = ActorU (None, fields); note; at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-      assert (List.length tbs = 1);
+      assert (List.length tbs > 0);
       finish imports { it = ActorClassU (sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->

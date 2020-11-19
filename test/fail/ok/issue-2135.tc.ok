@@ -1,1 +1,1 @@
-Fatal error: exception "Assert_failure mo_def/syntax.ml:271:6"
+lib/generic-actor.mo:1.1-1.21: type error, actor classes with type parameters are not supported yet
