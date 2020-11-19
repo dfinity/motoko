@@ -10,31 +10,41 @@ debug.print: setting funds
 debug.print: wallet: {cycles = "<not_shown>"; icpt = 1_000}
 debug.print: debit
 debug.print: balance0
+debug.print: wallet debit, balance: (#icpt, 1_000)
+debug.print: wallet debit, requested: (#icpt, 100)
 debug.print: credit:balance 0
 debug.print: credit:balance 100
 debug.print: balance100
 debug.print: credit-1
 debug.print: 900
+debug.print: wallet credit, available: (#icpt, 25)
 debug.print: refunded: 0
 debug.print: 925
 debug.print: credit-2
 debug.print: 925
+debug.print: wallet credit, available: (#icpt, 25)
 debug.print: refunded: 0
 debug.print: 950
 debug.print: refund
 debug.print: 950
+debug.print: wallet refund, available: (#icpt, 25)
 debug.print: refunding: 25
 debug.print: refunded: 25
 debug.print: 975
 debug.print: refund(5)
+debug.print: wallet refund, available: (#icpt, 5)
 debug.print: refunding: 5
 debug.print: refund(4)
 debug.print: refund(3)
+debug.print: wallet refund, available: (#icpt, 4)
 debug.print: refunding: 4
+debug.print: wallet refund, available: (#icpt, 3)
 debug.print: refunding: 3
 debug.print: refund(2)
 debug.print: refund(1)
+debug.print: wallet refund, available: (#icpt, 2)
 debug.print: refunding: 2
+debug.print: wallet refund, available: (#icpt, 1)
 debug.print: refunding: 1
 debug.print: refunded: 1
 debug.print: refunded: 2
