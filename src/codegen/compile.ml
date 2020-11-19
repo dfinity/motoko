@@ -4291,7 +4291,7 @@ module Serialization = struct
 
       (* checks that arg_typ is positive, looks it up in the table,
          creates a fresh typ_buf pointing into the type description,
-         reads the type constructor index and traps if it is the wrong one.
+         reads the type constructor index and traps or fails if it is the wrong one.
          and passes the typ_buf to a subcomputation to read the type arguments *)
       let with_composite_arg_typ get_arg_typ idl_tycon_id f =
         (* make sure index is not negative *)
