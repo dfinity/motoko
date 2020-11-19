@@ -20,11 +20,11 @@ actor a {
 
   // debit from the waller, crediting this actor via callback
   print ("debit");
-  print("balance " # debug_show(Cycles.balance()));
+//  print("balance " # debug_show(Cycles.balance()));
   let b = Cycles.balance();
   await wallet.debit(1_000_000_000_000, credit);
 
-  print(debug_show(Cycles.balance()));
+//  print(debug_show(Cycles.balance()));
 
   { // check cycles available
     Cycles.add(1000_000);

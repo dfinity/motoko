@@ -7,8 +7,6 @@ debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: setting cycles
 debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: debit
-debug.print: balance 0
-debug.print: 1_000_000_000_000
 debug.print: available: 1_000_000
 debug.print: available: 0
 debug.print: available: 3_000_000

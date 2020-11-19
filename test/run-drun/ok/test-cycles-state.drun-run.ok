@@ -4,8 +4,6 @@ debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: setting cycles
 debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: debit
-debug.print: balance 98_999_999_596_259
-debug.print: 99_999_999_559_775
 debug.print: available: 1_000_000
 debug.print: available: 0
 debug.print: available: 3_000_000
