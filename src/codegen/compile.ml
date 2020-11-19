@@ -4137,12 +4137,20 @@ module Serialization = struct
       ) [I32Type]
     (fun env get_data_buf get_ref_buf get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
 
-      (* Check recursion depth (protects against empty record) *)
-      get_depth ^^ get_typtbl_size ^^
+      (* Check recursion depth (protects against empty record etc.) *)
+      (* Factor 2 because at each step, the expected type could go through one
+         level of opt that is not present in the value type
+      *)
+      get_depth ^^
+      get_typtbl_size ^^ compile_add_const 1l ^^ compile_mul_const 2l ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
       E.else_trap_with env ("IDL error: circular record read") ^^
 
-      let go' reset can_recover env t =
+      (* Remember data buffer position, to detect progress *)
+      let (set_old_pos, get_old_pos) = new_local env "old_pos" in
+      ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
+
+      let go' can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
         get_data_buf ^^
@@ -4150,18 +4158,21 @@ module Serialization = struct
         get_typtbl ^^
         get_idlty ^^
         get_typtbl_size ^^
-        (if reset
-         then compile_unboxed_const 0l
-         else get_depth ^^ compile_add_const 1l) ^^
+        ( (* Reset depth counter if we made progress *)
+          ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ [I32Type]
+          (get_depth ^^ compile_add_const 1l)
+          (compile_unboxed_const 0l)
+        ) ^^
         (if can_recover
          then compile_unboxed_const 1l
          else get_can_recover) ^^
         deserialize_go env t
       in
 
-      let go = go' true false in
-      let go_record = go' false false in
-      let go_can_recover = go' true true in
+      let go = go' false in
+      let go_can_recover = go' true in
 
       let skip get_typ =
         get_data_buf ^^ get_typtbl ^^ get_typ ^^ compile_unboxed_const 0l ^^
@@ -4506,7 +4517,7 @@ module Serialization = struct
             G.if_ [I32Type]
               begin
                 ReadBuf.read_sleb128 env get_typ_buf ^^
-                go_record env t ^^ set_val ^^
+                go env t ^^ set_val ^^
                 remember_failure get_val ^^
                 get_val
               end
@@ -4535,7 +4546,7 @@ module Serialization = struct
               G.if_ [I32Type]
                 begin
                   ReadBuf.read_sleb128 env get_typ_buf ^^
-                  go_record env f.typ ^^ set_val ^^
+                  go env f.typ ^^ set_val ^^
                   remember_failure get_val ^^
                   get_val
                   end
