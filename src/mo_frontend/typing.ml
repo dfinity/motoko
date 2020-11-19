@@ -726,7 +726,7 @@ let text_obj () =
 (* Expressions *)
 
 let error_duplicate env kind id =
-  match Lib.String.chop_prefix "." id.it with
+  match as_field_id id with
   | None -> error env id.at "duplicate definition for %s%s in block" kind id.it
   | Some x -> error env id.at "duplicate %sfield name %s in object" kind x
 
@@ -960,11 +960,11 @@ and infer_exp'' env exp : T.typ =
         ) ts2;
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
-          if not (is_IgnoreAsync exp1) then
+          if not (is_ignore_asyncE exp1) then
             error env exp1.at
               "shared function with () result type has unexpected body:\n  the body must either be of sugared form '{ ... }' \n  or explicit form '= ignore ((async ...) : async ())'"
         | T.Promises, _ ->
-          if not (is_Async exp1) then
+          if not (is_asyncE exp1) then
             error env exp1.at
               "shared function with async result type has non-async body"
         | _ ->
@@ -2190,7 +2190,7 @@ and infer_dec_valdecs env dec : Scope.t =
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
-      if not (is_anonymous id) then
+      if not (is_anon_id id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
           "the constructor function of this actor class is not available for recursive calls, but is available when imported";
       if not (typ_binds = []) then
@@ -2262,7 +2262,7 @@ let check_lib scope lib : Scope.t Diag.result =
         (fun lib ->
           let env = env_of_scope msgs scope in
           let (imports, cub) = lib.it in
-          let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+          let (imp_ds, ds) = CompUnit.decs_of_comp_unit lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
@@ -2277,7 +2277,7 @@ let check_lib scope lib : Scope.t Diag.result =
               end;
               typ
             | ActorClassU  (sp, id, p, _, self_id, fields) ->
-              if Syntax.is_anonymous id then
+              if is_anon_id id then
                 error env cub.at "bad import: imported actor class cannot be anonymous";
               let class_typ, fun_typ = begin
                 match T.normalize typ with

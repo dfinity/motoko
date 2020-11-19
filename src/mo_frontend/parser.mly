@@ -26,15 +26,34 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let dup_var x = VarE (x.it @@ x.at) @? x.at
 
-let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
+(* Helpers *)
+
+let scope_bind x at =
+  { var = Type.scope_var x @@ at;
+    sort = Type.Scope @@ at;
+    bound = PrimT "Any" @! at
+  } @= at
+
+let ensure_scope_bind var tbs =
+  match tbs with
+  | tb::_ when tb.it.sort.it = Type.Scope -> tbs
+  | _ -> scope_bind var no_region :: tbs
+
+let funcT (sort, tbs, t1, t2) =
+  match sort.it, t2.it with
+  | Type.Local, AsyncT _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
+  | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
+  | _ -> FuncT(sort, tbs, t1, t2)
+
+
+let dup_var x = VarE (x.it @@ x.at) @? x.at
 
 let name_exp e =
   match e.it with
   | VarE x -> [], e, dup_var x
   | _ ->
-    let x = anon "val" e.at @@ e.at in
+    let x = anon_id "val" e.at @@ e.at in
     [LetD (VarP x @! x.at, e) @? e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
@@ -66,6 +85,13 @@ let annot_pat p t_opt =
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
+
+let rec normalize_let p e =
+    match p.it with
+    | AnnotP(p', t) -> p', AnnotE(e, t) @? p.at
+    | ParP p' -> normalize_let p' e
+    | _ -> (p, e)
+
 let let_or_exp named x e' at =
   if named
   then LetD(VarP(x) @! at, e' @? at) @? at
@@ -73,11 +99,10 @@ let let_or_exp named x e' at =
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
-let field_id x = ("." ^ x.it) @@ x.at
 let field_var_dec d =
   match d.it with
   | VarD(x, e) ->
-    let x' = field_id x in
+    let x' = field_id x.it @@ x.at in
     x, x', LetD(VarP(x'.it @@ x'.at) @! x'.at, e) @? d.at
   | _ -> assert false
 
@@ -101,6 +126,27 @@ let is_sugared_func_or_module dec = match dec.it with
     )
   | _ -> false
 
+
+let func_exp f s tbs p t_opt is_sugar e =
+  match s.it, t_opt, e with
+  | Type.Local, Some {it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Shared _, _, _ ->
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, e)
+  | _ ->
+    FuncE(f, s, tbs, p, t_opt, is_sugar, e)
+
+let desugar_func_body sp x t_opt (is_sugar, e) =
+  if not is_sugar then
+    false, e (* body declared as EQ e *)
+  else (* body declared as immediate block *)
+    match sp.it, t_opt with
+    | _, Some {it = AsyncT _; _} ->
+      true, asyncE (scope_bind x.it e.at) e
+    | Type.Shared _, (None | Some { it = TupT []; _}) ->
+      true, ignore_asyncE (scope_bind x.it e.at) e
+    | _, _ -> (true, e)
+
+
 let share_typ t =
   match t.it with
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
@@ -114,9 +160,9 @@ let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as sp), tbs, p,
     ((None | Some { it = TupT []; _ }) as t_opt), true, e) ->
-    funcE (x, {sp with it = Type.Shared (Type.Write, WildP @! sp.at)}, tbs, p, t_opt, true, ignoreAsync x e) @? e.at
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true (ignore_asyncE (scope_bind x e.at) e) @? e.at
   | FuncE (x, ({it = Type.Local; _} as sp), tbs, p, t_opt, s, e) ->
-    funcE (x, {sp with it = Type.Shared (Type.Write, WildP @! sp.at)}, tbs, p, t_opt, s, e) @? e.at
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s e @? e.at
   | _ -> e
 
 let share_dec d =
@@ -149,12 +195,6 @@ let share_expfield (ef : exp_field) =
           | some -> some}
       }
     else ef
-
-let rec normalize_let p e =
-    match p.it with
-    | AnnotP(p', t) -> p', AnnotE(e, t) @? p.at
-    | ParP p' -> normalize_let p' e
-    | _ -> (p, e)
 
 %}
 
@@ -284,11 +324,11 @@ seplist1(X, SEP) :
 
 %inline id_opt :
   | id=id { fun _ _ -> true, id }
-  | (* empty *) { fun sort sloc -> false, anon sort (at sloc) @@ at sloc }
+  | (* empty *) { fun sort sloc -> false, anon_id sort (at sloc) @@ at sloc }
 
 %inline typ_id_opt :
   | id=typ_id { fun _ _ -> id }
-  | (* empty *) { fun sort sloc -> anon sort (at sloc) @= at sloc }
+  | (* empty *) { fun sort sloc -> anon_id sort (at sloc) @= at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -366,7 +406,7 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scope_typ no_region, t) @! at $sloc }
+    { AsyncT(scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -581,7 +621,7 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
+    { AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
@@ -650,11 +690,11 @@ catch :
 
 exp_field_nonvar :
   | x=id EQ e=exp(ob)
-    { let x' = field_id x in
+    { let x' = field_id x.it @@ x.at in
       LetD(VarP(x') @! x'.at, e) @? at $sloc, let_field x x' @@ at $sloc }
-(*
+(* TODO: activate once blocks and objects are no longer ambiguous
   | x=id
-    { let x' = field_id x in
+    { let x' = field_id x.it @@ x.at in
       let e = VarE(x.it @@ x.at) @@ x.at in
       LetD(VarP(x') @! x'.at, e) @? at $sloc, let_field x x' @@ at $sloc }
 *)
@@ -773,8 +813,8 @@ dec_nonvar :
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
       let named, x = xf "func" $sloc in
-      let (sugar, e) = desugar sp x t fb in
-      let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
+      let is_sugar, e = desugar_func_body sp x t fb in
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, efs = cb in
@@ -813,7 +853,7 @@ obj_body :
 
 class_body :
   | EQ xf=id_opt efs=obj_body { snd (xf "object" $sloc), efs }
-  | efs=obj_body { anon "object" (at $sloc) @@ at $sloc, efs }
+  | efs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, efs }
 
 
 (* Programs *)

@@ -198,7 +198,7 @@ let check_lib senv lib : Scope.scope Diag.result =
 
 
 let lib_of_prog f prog : Syntax.lib  =
- { (Syntax.comp_unit_of_prog true prog) with Source.note = f }
+ { (CompUnit.comp_unit_of_prog true prog) with Source.note = f }
 
 
 (* Prelude *)
@@ -611,8 +611,8 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
 
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let imports = compile_libs mode libs in
-  let prog = Syntax.combine_progs progs in
-  let u = Syntax.comp_unit_of_prog false prog in
+  let prog = CompUnit.combine_progs progs in
+  let u = CompUnit.comp_unit_of_prog false prog in
   compile_unit mode do_link imports u
 
 let compile_files mode do_link files : compile_result =
@@ -633,10 +633,10 @@ let import_libs libs : Lowering.Desugar.import_declaration =
   List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
-  let prog = Syntax.combine_progs progs in
+  let prog = CompUnit.combine_progs progs in
   let name = prog.Source.note in
   let imports = import_libs libs in
-  let u = Syntax.comp_unit_of_prog false prog in
+  let u = CompUnit.comp_unit_of_prog false prog in
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;
