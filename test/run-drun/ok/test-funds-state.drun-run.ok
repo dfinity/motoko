@@ -1,13 +1,18 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: wallet: {cycles = "<not_shown>"; icpt = 0}
 debug.print: setting funds
 debug.print: wallet: {cycles = "<not_shown>"; icpt = 2_000}
 debug.print: debit
 debug.print: balance 0
+debug.print: wallet debit, requested: (#cycle, 1_000_000_000)
+debug.print: credit, available: (#cycle, 1_000_000_000)
+debug.print: wallet debit, requested: (#icpt, 1_000)
+debug.print: credit, available: (#icpt, 1_000)
 debug.print: 1_000
 debug.print: available: (100, 10)
 debug.print: available: (0, 0)
 debug.print: available: (300, 30)
 debug.print: available: (50, 5)
-ingress Err: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: assertion failed at test-funds-state.mo:73.3-73.93
+debug.print: available: (0, 0)
+ingress Completed: Reply: 0x4449444c0000
