@@ -57,8 +57,10 @@ let print_type = function
   | [t] -> "(" ^ Type.string_of_typ t ^ ")" (* add parens to make this unary *)
   | ts -> Type.string_of_typ (Type.Tup ts)
 
+type expected_behaviour = ShouldPass | ShouldTrap
+
 (* Turning a test case into a motoko program *)
-let mo_of_test tenv test : (string * (* should_not_trap *) bool, string) result =
+let mo_of_test tenv test : (string * expected_behaviour, string) result =
   let deser ts x =
     "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
     "\"" ^ Value.Blob.escape x ^ "\"" in
@@ -78,13 +80,13 @@ let mo_of_test tenv test : (string * (* should_not_trap *) bool, string) result 
     | ParsesAs (true, BinaryInput i)
     | ParsesEqual (_, BinaryInput i, TextualInput _)
     | ParsesEqual (_, TextualInput _, BinaryInput  i)
-    -> Ok (defs ^ ignore (deser typ i), true)
+    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
     | ParsesAs (false, BinaryInput i)
-    -> Ok (defs ^ ignore (deser typ i), false)
+    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
     | ParsesEqual (true, BinaryInput i1, BinaryInput i2)
-    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), true)
+    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
     | ParsesEqual (false, BinaryInput i1, BinaryInput i2)
-    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), true)
+    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
     | ParsesAs (_, TextualInput _)
     | ParsesEqual (_, TextualInput _, TextualInput _)
     -> Error "all-textual test case"
@@ -240,10 +242,10 @@ let () =
             | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr)
             | (Ok, _, _) ->
               match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with
-              | true, (Ok, _, _) -> WantedPass
-              | false, (Fail, _, _) -> WantedTrap
-              | true, (Fail, stdout, stderr) -> UnwantedTrap (stdout, stderr)
-              | false, (Ok, _, _) -> UnwantedPass
+              | ShouldPass, (Ok, _, _) -> WantedPass
+              | ShouldTrap, (Fail, _, _) -> WantedTrap
+              | ShouldPass, (Fail, stdout, stderr) -> UnwantedTrap (stdout, stderr)
+              | ShouldTrap, (Ok, _, _) -> UnwantedPass
               | _, (Timeout, _, _) -> Timeout
           in
           report_outcome counts (expected_fail testname) outcome
