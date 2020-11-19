@@ -22,7 +22,7 @@ actor a {
   print ("debit");
   print("balance " # debug_show(Funds.balance(#icpt)));
   let b = Funds.balance(#icpt);
-  await wallet.debit(#cycle, 1_000_000_000_000_000, credit);
+  await wallet.debit(#cycle, 1_000_000_000, credit);
   await wallet.debit(#icpt, 1000, credit);
 
   print(debug_show(Funds.balance(#icpt)));
@@ -74,13 +74,13 @@ actor a {
   // check unconsumed funds, declared before await, cleared on context switch
   let (cs, is) = await wallet.available();
   assert (cs == (0: Nat64) and is == (0 : Nat64));
-
  };
 
  // callback for accepting funds from wallet.
  public func credit(u : Funds.Unit) : async () {
    let b = Funds.balance(u);
    let a = Funds.available(u);
+   print("credit, available: " #  debug_show (u, Funds.available(u)));
    Funds.accept(u, a);
    if (u == #icpt) {
      assert (Funds.balance(u) == b + a);

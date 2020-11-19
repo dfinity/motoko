@@ -10,7 +10,8 @@ shared {caller} actor class Wallet() {
   public func show() : async () {
     print("wallet: " # debug_show({
       icpt = Funds.balance(#icpt);
-      cycles = "<not_shown>";// Funds.balance(#cycle)
+      cycles = "<not_shown>";
+      // cycles = Funds.balance(#cycle);
     }));
   };
 
@@ -21,6 +22,7 @@ shared {caller} actor class Wallet() {
   public func credit(u : Funds.Unit) : async () {
     let bu = Funds.balance(u);
     let du = Funds.available(u);
+    print("wallet credit, available: " #  debug_show (u, du));
     Funds.accept(u, du);
     assert Funds.balance(u) == bu + du;
   };
@@ -31,6 +33,7 @@ shared {caller} actor class Wallet() {
     credit : shared Funds.Unit -> async ())
     : async () {
     if (caller != owner) assert false;
+    print("wallet debit, requested: " #  debug_show (u, amount));
     Funds.add(u, amount);
     await credit(u);
   };
@@ -39,6 +42,7 @@ shared {caller} actor class Wallet() {
     u : Funds.Unit,
     amount : Nat64)
     : async () {
+    print("wallet refund, available: " #  debug_show (u, amount));
     Funds.accept(u, Funds.available(u) - amount);
     print("refunding: " #  debug_show(amount));
   };
