@@ -1,7 +1,7 @@
 → update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+← replied: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+← replied: ()
 → update go()
 debug.print: A balance is {cycle = "<omitted>"; icpt = 2_000}
 debug.print: B balance is {cycle = "<omitted>"; icpt = 1_990}
@@ -9,7 +9,7 @@ debug.print: available: (50, 5)
 debug.print: C balance is {cycle = "<omitted>"; icpt = 1_990}
 debug.print: D balance is {cycle = "<omitted>"; icpt = 2_000}
 debug.print: refunded {cycle = 100; icpt = 10}
-← completed: ()
+← replied: ()
 → update showBalance()
 debug.print: E balance is {cycle = "<omitted>"; icpt = 2_000}
-← completed: ()
+← replied: ()
