@@ -33,7 +33,6 @@ shared {caller} actor class Wallet() {
     credit : shared Funds.Unit -> async ())
     : async () {
     if (caller != owner) assert false;
-    print("wallet debit, balance: " #  debug_show (u, Funds.balance(u)));
     print("wallet debit, requested: " #  debug_show (u, amount));
     Funds.add(u, amount);
     await credit(u);

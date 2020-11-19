@@ -5,10 +5,8 @@ debug.print: setting funds
 debug.print: wallet: {cycles = "<not_shown>"; icpt = 2_000}
 debug.print: debit
 debug.print: balance 0
-debug.print: wallet debit, balance: (#cycle, 98_999_999_955_979)
 debug.print: wallet debit, requested: (#cycle, 1_000_000_000)
 debug.print: credit, available: (#cycle, 1_000_000_000)
-debug.print: wallet debit, balance: (#icpt, 2_000)
 debug.print: wallet debit, requested: (#icpt, 1_000)
 debug.print: credit, available: (#icpt, 1_000)
 debug.print: 1_000
