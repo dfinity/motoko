@@ -6,9 +6,9 @@ For example, if you want to deploy a new version of an application to fix an iss
 The orthogonal persistence model allows an application deployed as a canister to save and restore
 state from dedicated _stable_ storage that is retained across an upgrade.
 
-For applications written in {proglang}, the language provides native support for preserving state using stable storage and in a way that accommodates changes to both the application data and to the {proglang} compiler used to produce the application code.
+For applications written in {proglang}, the language provides high-level support for preserving state using stable storage and in a way that accommodates changes to both the application data and to the {proglang} compiler used to produce the application code.
 
-Support for preserving application state depends on you—as the application programmer—anticipating and indicating the data you want to persist after an upgrade. 
+Support for preserving application state depends on you—as the application programmer—anticipating and indicating the data you want to retain after an upgrade. 
 Depending on the application, the data you decide to persist might be some, all, or none of a given actor's state.
 
 ////
@@ -96,7 +96,7 @@ We'd like to make the `+Register+` upgradable, without the upgrade losing any ex
 Unfortunately, its state, `+map+`, has a proper object type that contains member functions (for example, `+map.get+`), so the `+map+` variable cannot, itself, be declared `+stable+`.
 
 For scenarios like this that can't be solved using stable variables alone, {proglang} supports user-defined upgrade hooks that, when provided, run immediately before and after upgrade.
-These upgrade hooks allow you to migrate state between unrestricted flexible variable to more restricted stable variables.
+These upgrade hooks allow you to migrate state between unrestricted flexible variables to more restricted stable variables.
 These hooks are declared as `+system+` functions with special names, `+preugrade+` and `+postupgrade+`. Both functions must have type `: () -> ()`.
 
 The `+preupgrade+` method lets you make a final update to stable variables, before the runtime commits their values to {IC} stable memory, and performs an upgrade.
