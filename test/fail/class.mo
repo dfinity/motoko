@@ -46,7 +46,7 @@ class D2() : {x : Nat} {
 };
 
 class D3() : actor {} = {};
-actor class D4() : {} = {};
+actor class D4() : actor {} = {};
 
 object x { public type T = Nat };
 class D5(x : {}) : {a : x.T} = {

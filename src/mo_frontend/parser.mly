@@ -750,12 +750,19 @@ dec_nonvar :
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, efs = cb in
-      let efs', tps' =
+      let efs', tps', t' =
         if s.it = Type.Actor then
-            (List.map share_expfield efs, ensure_scope_bind "" tps)
-        else (efs, tps)
+          (List.map share_expfield efs,
+	   ensure_scope_bind "" tps,
+	   match t with
+	   | None -> t
+	   | Some { it = AsyncT _; _} -> t
+	   | Some u ->
+	     (* Not declared async: insert AsyncT but deprecate in typing *)
+	     Some (AsyncT(scope_typ no_region, u) @! no_region))
+        else (efs, tps, t)
       in
-      ClassD(sp, xf "class" $sloc, tps', p, t, s, x, efs') @? at $sloc }
+      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 

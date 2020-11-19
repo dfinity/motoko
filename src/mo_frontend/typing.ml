@@ -1923,8 +1923,10 @@ and infer_dec env dec : T.typ =
       let t' = infer_obj env''' obj_sort.it fields dec.at in
       match typ_opt, obj_sort.it with
       | None, _ -> ()
-      | Some { it = AsyncT (_, typ); _}, T.Actor
-      | Some typ, (T.Module | T.Object) ->
+      | Some { it = AsyncT (_, typ); at; _ }, T.Actor
+      | Some ({ at; _ } as typ), (T.Module | T.Object) ->
+        if at = Source.no_region then
+          warn env dec.at "actor classes with non non-async return types are deprecated; please declare the return type as `async ...`";
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error env dec.at
