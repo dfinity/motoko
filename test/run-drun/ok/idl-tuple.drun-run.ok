@@ -5,5 +5,4 @@ Ok: Reply: 0x4449444c00037c7c7c050581848c20
 Ok: Reply: 0x4449444c00037c7c7c050581848c20
 Ok: Reply: 0x4449444c00037c7c7c050581848c20
 Ok: Reply: 0x4449444c00037c7c7c050581848c20
-Ok: Reply: 0x4449444c00037c7c7c050581848c20
 Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: did not find tuple field in record

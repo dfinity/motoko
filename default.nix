@@ -303,10 +303,7 @@ rec {
     candid = testDerivation {
       buildInputs = [ moc wasmtime drun candid-tests ];
       checkPhase = ''
-	candid-tests -i ${nixpkgs.sources.candid}/test \
-	  --expect-fail "variant: duplicate fields" \
-	  --expect-fail "variant: unsorted" \
-
+	      candid-tests -i ${nixpkgs.sources.candid}/test
       '';
     };
 

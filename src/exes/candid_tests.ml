@@ -163,7 +163,7 @@ let () =
           (* generate test program *)
           match mo_of_test tenv test with
           | None ->
-            Printf.printf " ignored (did not compile or not applicable).\n";
+            Printf.printf " ignored (not applicable).\n";
             count_ignored := !count_ignored + 1;
           | Some (src, must_not_trap) ->
             (* Printf.printf "\n%s" src *)
