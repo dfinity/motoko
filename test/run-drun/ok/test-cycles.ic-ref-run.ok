@@ -3,30 +3,19 @@
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← replied: ()
 → update go()
-debug.print: client: balance: 0
 debug.print: client: available: 0
 debug.print: client: accept(0): 0
 debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: client: setting cycles
 debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: client: # debit
-debug.print: client: balance: 0
-debug.print: client: credit: balance 0
-debug.print: client: credit:balance 1_000_000
-debug.print: client: balance: 1_000_000
 debug.print: client: # credit-1
-debug.print: client: 999_000_000
 debug.print: client: refunded: 0
-debug.print: client: 999_250_000
 debug.print: client: # credit-2
-debug.print: client: 999_250_000
 debug.print: client: refunded: 0
-debug.print: client: 999_500_000
 debug.print: client: # refund
-debug.print: client: 999_500_000
 debug.print: refunding: 250_000
 debug.print: client: refunded: 250_000
-debug.print: client: 999_750_000
 debug.print: client: refund(5)
 debug.print: refunding: 5
 debug.print: client: refund(4)

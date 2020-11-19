@@ -8,7 +8,7 @@ actor client {
 
  public func go() : async () {
 
-  print("balance: " # debug_show(Cycles.balance())); // to volatile to show
+//  print("balance: " # debug_show(Cycles.balance()) ); // to volatile to show
 
   print("available: " # debug_show(Cycles.available()));
 
@@ -23,38 +23,38 @@ actor client {
   // debit from the wallet, crediting this actor via callback
   let amount : Nat64 = 1000_000;
   print("# debit");
-  print("balance: " # debug_show(Cycles.balance()));
+//  print("balance: " # debug_show(Cycles.balance()));
   let b = Cycles.balance();
   await wallet.debit(amount, credit);
-  print("balance: " # debug_show(Cycles.balance()));
+//  print("balance: " # debug_show(Cycles.balance()));
   let b1 = Cycles.balance();
   assert (b <= b1 and b1 <= b + amount);
 
   print("# credit-1");
   // transfer half the amount back to the wallet
-  print(debug_show(await wallet.balance()));
+//  print(debug_show(await wallet.balance()));
   Cycles.add(amount/4);
   await wallet.credit();
   print("refunded: " # debug_show(Cycles.refunded()));
-  print(debug_show(await wallet.balance()));
+//  print(debug_show(await wallet.balance()));
 
 
   print("# credit-2");
   // transfer half the amount back to the wallet
-  print(debug_show(await wallet.balance()));
+//  print(debug_show(await wallet.balance()));
   Cycles.add(amount/4);
   await wallet.credit();
   print("refunded: " # debug_show(Cycles.refunded()));
-  print(debug_show(await wallet.balance()));
+//  print(debug_show(await wallet.balance()));
 
 
   print("# refund");
   // transfer half the amount back to the wallet
-  print(debug_show(await wallet.balance()));
+//  print(debug_show(await wallet.balance()));
   Cycles.add(amount/2);
   await wallet.refund(amount/4);
   print("refunded: " # debug_show(Cycles.refunded()));
-  print(debug_show(await wallet.balance()));
+//  print(debug_show(await wallet.balance()));
 
 
   // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
@@ -79,11 +79,11 @@ actor client {
 
  // callback for accepting cycles from wallet.
  public func credit() : async () {
-   print("credit: balance " # debug_show(Cycles.balance()));
+//   print("credit: balance " # debug_show(Cycles.balance()));
    let b = Cycles.balance();
    let a = Cycles.available();
    ignore Cycles.accept(a);
-   print("credit:balance " # debug_show(Cycles.balance()));
+//   print("credit:balance " # debug_show(Cycles.balance()));
 //     assert (Cycles.balance() == b + a);
  };
 
