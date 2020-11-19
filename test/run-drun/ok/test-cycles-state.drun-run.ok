@@ -4,5 +4,11 @@ debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: setting cycles
 debug.print: wallet: {cycles = "<not_shown>"}
 debug.print: debit
-debug.print: balance 99_994_630_887_869
-ingress Completed: Reject: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at test-cycles-state.mo:77.4-77.38
+debug.print: balance 98_999_999_596_259
+debug.print: 99_999_999_559_775
+debug.print: available: 1_000_000
+debug.print: available: 0
+debug.print: available: 3_000_000
+debug.print: available: 5_000
+debug.print: available: 0
+ingress Completed: Reply: 0x4449444c0000
