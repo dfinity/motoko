@@ -754,12 +754,8 @@ dec_nonvar :
         if s.it = Type.Actor then
           (List.map share_expfield efs,
 	   ensure_scope_bind "" tps,
-	   match t with
-	   | None -> t
-	   | Some { it = AsyncT _; _} -> t
-	   | Some u ->
-	     (* Not declared async: insert AsyncT but deprecate in typing *)
-	     Some (AsyncT(scope_typ no_region, u) @! no_region))
+           (* Not declared async: insert AsyncT but deprecate in typing *)
+	   ensure_async_typ t)
         else (efs, tps, t)
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, efs') @? at $sloc }

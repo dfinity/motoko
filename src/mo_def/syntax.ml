@@ -411,6 +411,12 @@ let ensure_scope_bind var tbs =
   | _ ->
     scope_bind var::tbs
 
+let ensure_async_typ t_opt =
+  match t_opt with
+  | None -> t_opt
+  | Some { it = AsyncT _; _} -> t_opt
+  | Some t ->
+    Some (AsyncT(scope_typ no_region, t) @! no_region)
 
 let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
