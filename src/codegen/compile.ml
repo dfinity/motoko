@@ -4161,7 +4161,7 @@ module Serialization = struct
 
       let go = go' true false in
       let go_record = go' false false in
-      let go_can_recover = go' false true in
+      let go_can_recover = go' true true in
 
       let skip get_typ =
         get_data_buf ^^ get_typtbl ^^ get_typ ^^ compile_unboxed_const 0l ^^
