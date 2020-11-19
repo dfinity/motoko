@@ -4625,7 +4625,7 @@ module Serialization = struct
                 skip get_idltyp ^^
                 Opt.null_lit env
               | _ ->
-                (* Try consitutient type *)
+                (* Try constituent type *)
                 let (set_val, get_val) = new_local env "val" in
                 get_idltyp ^^ go_can_recover env t ^^ set_val ^^
                 get_val ^^ compile_eq_const (coercion_error_value env) ^^
