@@ -284,7 +284,7 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.dec list> dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
 %type<Mo_def.Syntax.case> catch case
-%type<Mo_def.Syntax.dec list -> Source.region -> Mo_def.Syntax.exp'> bl ob
+%type<Mo_def.Syntax.exp> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
@@ -523,14 +523,15 @@ lit :
 
 
 (* Default {} to block or object, respectively *)
-bl : { fun ds at -> BlockE(ds) }
-ob : { fun ds at ->
-       let ds', ds = List.fold_right
-         (fun d (ds', efs) ->
-           let x, x', d' = field_var_dec d in
-           d'::ds', (var_field x x' @@ at)::efs
-         ) ds ([], [])
-       in obj ds' ds at }
+bl : LCURLY ds=seplist(dec_var, semicolon) RCURLY
+  { BlockE(ds) @? at $sloc }
+ob : LCURLY ds=seplist(dec_var, semicolon) RCURLY 
+  { let ds', ds = List.fold_right
+      (fun d (ds', efs) ->
+        let x, x', d' = field_var_dec d in
+        d'::ds', (var_field x x' @@ at $sloc)::efs
+      ) ds ([], [])
+    in obj ds' ds (at $sloc) @? at $sloc }
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
@@ -545,8 +546,8 @@ exp_plain :
 exp_nullary(B) :
   | e=exp_plain
     { e }
-  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
-    { e ds (at $sloc) @? at $sloc }
+  | e=B
+    { e }
   | LCURLY efs=exp_field_list_unamb RCURLY
     { let ds', ds = efs in obj ds' ds (at $sloc) @? at $sloc }
   | LCURLY ds=dec_list_unamb RCURLY

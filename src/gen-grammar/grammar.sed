@@ -17,7 +17,7 @@ s/<parse_prog>/<prog>/g
 s/(<bl>)//g
 s/(<ob>)//g
 s/(B)//g
-s/ B$//g
+s/ B$/ '{' <list(<dec_var>, ';')> '}'/g
 s/\[/(/g
 s/\]/)?/g
 s/(\([a-zA-Z_0-9]*\))/\1/g
