@@ -8,8 +8,6 @@
 ← completed: (+5, +5, +67305985)
 → query len3a(record {"Hello"; (67305985 : int32); null}, "World")
 ← completed: (+5, +5, +67305985)
-→ query len3(record {0 = "Hello"; 0 = (-21026 : int16); 1 = (67305985 : …
-← completed: (+5, +5, +67305985)
 → query len3(record {"Hello"; (67305985 : int32); (-21026 : int16)}, "Wo…
 ← completed: (+5, +5, +67305985)
 → query len3a(record {"Hello"; (67305985 : int32); null}, "World")

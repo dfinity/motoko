@@ -43,13 +43,14 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    with today’s date.
 
- * Look at `git log 0.4.1..HEAD` and check that everything relevant is mentioned
-   in the changelog section, and possibly clean it up.
+ * Look at `git log --first-parent 0.4.1..HEAD` and check
+   that everything relevant is mentioned in the changelog section, and possibly
+   clean it up a bit, curating the information for the target audience.
 
  * `git commit -a -m "Releasing 0.4.2"`
  * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
- * Switch to master. The release commit should be your `HEAD`
+ * `git switch master; git pull`. The release commit should be your `HEAD`
  * `git tag 0.4.2 -m "Motoko 0.4.2"`
  * `git branch -f release 0.4.2`
  * `git push origin release 0.4.2`
