@@ -30,7 +30,6 @@ export LANG=C.UTF-8
 EXTRA_BATCHES=1
 
 # drun creates canisters with this ID:
-#ID=ic:0100000000000000000000000000000000012D
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
 
 if [ "${1: -5}" = ".drun" ]

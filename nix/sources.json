@@ -6,22 +6,22 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "d768917c932b2c4a0f85b21eb1e32eaa1faff039",
-        "sha256": "1kq7a3n1612j3dzw1cakj0alxlm0kgcnx8v3c9x8nay63ykr2j9n",
-       "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/d768917c932b2c4a0f85b21eb1e32eaa1faff039.tar.gz",
+        "rev": "30f719fadbaccacd6558991ddd17362cdcca2f12",
+        "sha256": "02r63y78lf9vmxp33qppxdmrldnhd07fq10nk7hs455fm6h31ybq",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/candid/archive/30f719fadbaccacd6558991ddd17362cdcca2f12.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "a978aa0e2cfa7ae585f0e173fbcc8b7d80e79220",
+        "rev": "2dc14c7c3c26f87e59523f0e766e4a8f53822a2b",
         "type": "git"
     },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "5f1c1fccd49c8c6675cfa2c8bdb7671968b370a1",
+        "rev": "298318f109e2f7d0d5f3bdce2de791e181a1aec4",
         "type": "git"
     },
     "esm": {
@@ -33,11 +33,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "joachim/impl-no-tokens2",
-        "ref-OLD": "release-0.11",
+        "ref": "0.14.0",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-	"rev": "d99530d178acb7746e670c66b277e8cb44141520",
-        "rev-OLD": "824fd6d904b0635349820ca52262ce91fd9e695c",
+	"rev": "4f4e3a151b621b902e44e18a860c20493698abc4",
         "type": "git"
     },
     "libtommath": {
