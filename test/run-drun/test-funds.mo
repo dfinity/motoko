@@ -2,18 +2,17 @@ import Prim = "mo:prim";
 import Cycles = "cycles/cycles";
 import WalletLib = "cycles/wallet";
 
-actor a {
+actor client {
 
- func print(t:Text) { Prim.debugPrint("a: " # t); };
-
+ func print(t:Text) { Prim.debugPrint("client: " # t); };
 
  public func go() : async () {
 
-  //print(debug_show(Cycles.balance())); // to volatile to show
+  print("balance: " # debug_show(Cycles.balance())); // to volatile to show
 
-  print(debug_show(Cycles.available()));
+  print("available: " # debug_show(Cycles.available()));
 
-  print(debug_show(Cycles.accept(0)));
+  print("accept(0): " # debug_show(Cycles.accept(0)));
 
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
@@ -23,15 +22,15 @@ actor a {
 
   // debit from the wallet, crediting this actor via callback
   let amount : Nat64 = 1000_000;
-  print("debit");
-  print("balance " # debug_show(Cycles.balance()));
+  print("# debit");
+  print("balance: " # debug_show(Cycles.balance()));
   let b = Cycles.balance();
   await wallet.debit(amount, credit);
-  print("balance " # debug_show(Cycles.balance()));
+  print("balance: " # debug_show(Cycles.balance()));
   let b1 = Cycles.balance();
   assert (b <= b1 and b1 <= b + amount);
 
-  print("credit-1");
+  print("# credit-1");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance()));
   Cycles.add(amount/4);
@@ -40,7 +39,7 @@ actor a {
   print(debug_show(await wallet.balance()));
 
 
-  print("credit-2");
+  print("# credit-2");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance()));
   Cycles.add(amount/4);
@@ -49,7 +48,7 @@ actor a {
   print(debug_show(await wallet.balance()));
 
 
-  print("refund");
+  print("# refund");
   // transfer half the amount back to the wallet
   print(debug_show(await wallet.balance()));
   Cycles.add(amount/2);
@@ -80,7 +79,7 @@ actor a {
 
  // callback for accepting cycles from wallet.
  public func credit() : async () {
-   print("credit:balance " # debug_show(Cycles.balance()));
+   print("credit: balance " # debug_show(Cycles.balance()));
    let b = Cycles.balance();
    let a = Cycles.available();
    ignore Cycles.accept(a);
@@ -91,7 +90,7 @@ actor a {
 
 };
 
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+client.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-ir
