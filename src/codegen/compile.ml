@@ -1144,7 +1144,7 @@ module Tagged = struct
     | Concat (* String concatenation, used by rts/text.c *)
     | Null (* For opt. Static singleton! *)
     | StableSeen (* Marker that we have seen this thing before *)
-    | DecodeFailure (* Used in the Candid decoder. Static singleton! *)
+    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -1162,7 +1162,7 @@ module Tagged = struct
     | BigInt -> 13l
     | Concat -> 14l
     | Null -> 15l
-    | DecodeFailure -> 0xfffffffel
+    | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
@@ -1644,17 +1644,19 @@ module TaggedSmallWord = struct
 
   (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
      ensuring the codepoint range and the absence of surrogates. *)
-  let check_and_tag_codepoint env get_n =
-    get_n ^^ compile_unboxed_const 0xD800l ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
-    get_n ^^ compile_unboxed_const 0xE000l ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-    get_n ^^ compile_unboxed_const 0x10FFFFl ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    E.then_trap_with env "codepoint out of range" ^^
-    get_n ^^ tag_codepoint
+  let check_and_tag_codepoint env =
+    Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type] (fun env get_n ->
+      get_n ^^ compile_unboxed_const 0xD800l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+      get_n ^^ compile_unboxed_const 0xE000l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+      get_n ^^ compile_unboxed_const 0x10FFFFl ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+      E.then_trap_with env "codepoint out of range" ^^
+      get_n ^^ tag_codepoint
+    )
 
   let vanilla_lit ty v =
     Int32.(shift_left (of_int v) (to_int (shift_of_type ty)))
@@ -4087,23 +4089,39 @@ module Serialization = struct
       get_ref_buf
     )
 
-  (* This value is returned by deserialize_go if
-     deserialization fails in a way that should be recovereable by opt parsing.
+  (* This value is returned by deserialize_go if deserialization fails in a way
+     that should be recovereable by opt parsing.
      By virtue of being a deduped static value, it can be detected by pointer
      comparison.
   *)
-  let decode_error_value env : int32 =
+  let coercion_error_value env : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag DecodeFailure);
+      I32 Tagged.(int_of_tag CoercionFailure);
     ]
 
   let trap_if_error env =
-    Func.share_code1 env "trap_if_decode_error" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ compile_eq_const (decode_error_value env) ^^
-      E.then_trap_with env ("IDL error: DecodeFailure encountered") ^^
+    Func.share_code1 env "trap_if_coercion_error" ("x", I32Type) [I32Type] (fun env get_x ->
+      (* This shouldn’t happen, if the `can_recover` flag is correct.
+         Still, better double-check:
+      *)
+      get_x ^^ compile_eq_const (coercion_error_value env) ^^
+      E.then_trap_with env ("IDL error: coercion failure encountered") ^^
       get_x
     )
 
+  (* The main deserialization function, generated once per type hash.
+     Is parameters are:
+       * data_buffer: The current position of the input data buffer
+       * ref_buffer:  The current position of the input references buffer
+       * typtbl:      The type table, as returned by parse_idl_header
+       * idltyp:      The idl type (prim type or table index) to decode now
+       * typtbl_size: The size of the type table, used to limit recursion
+       * depth:       Recursion counter; reset when we make progres on the value
+       * can_recover: Whether coercion errors are recoverable, see coercion_failed below
+
+     It returns the value of type t (vanilla representation) or coercion_error_value,
+     It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
+   *)
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -4124,10 +4142,6 @@ module Serialization = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
       E.else_trap_with env ("IDL error: circular record read") ^^
 
-      (* This flag is set to return a decode error at the very end
-         (don’t use (G.i Return) for early exit, or we’d leak stack space
-         since some functions here use Stack.with_words
-      *)
       let go' reset can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
@@ -4154,19 +4168,31 @@ module Serialization = struct
         E.call_import env "rts" "skip_any"
       in
 
+      (* This flag is set to return a coercion error at the very end
+         We cannot use (G.i Return) for early exit, or we’d leak stack space,
+         as Stack.with_words is used to allocate scratch space.
+      *)
       let (set_failed, get_failed) = new_local env "failed" in
       let set_failure = compile_unboxed_const 1l ^^ set_failed in
       let when_failed f = get_failed ^^ G.if_ [] f G.nop in
 
+      (* This looks at a value and if it is coercion_error_value, sets the failure flag.
+         This propagates the error out of arrays, records, etc.
+       *)
       let remember_failure get_val =
-          get_val ^^ compile_eq_const (decode_error_value env) ^^
+          get_val ^^ compile_eq_const (coercion_error_value env) ^^
           G.if_ [] set_failure G.nop
       in
 
-      let note_failure msg =
+      (* This sets the failure flag and puts coercion_error_value on the stack *)
+      let coercion_failed msg =
+        (* If we know that there is no backtracking `opt t` around, then just trap.
+           This gives a better error message
+        *)
         get_can_recover ^^ E.else_trap_with env msg ^^
-        set_failure ^^ compile_unboxed_const (decode_error_value env) in
+        set_failure ^^ compile_unboxed_const (coercion_error_value env) in
 
+      (* returns true if we are looking at primitive type with this id *)
       let check_prim_typ t =
         get_idltyp ^^
         compile_eq_const (Int32.neg (Option.get (to_idl_prim t)))
@@ -4174,10 +4200,9 @@ module Serialization = struct
 
       let with_prim_typ t f =
         check_prim_typ t ^^
-        G.if_ [I32Type]
-          f
+        G.if_ [I32Type] f
           ( skip get_idltyp ^^
-            note_failure ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+            coercion_failed ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
           )
       in
 
@@ -4234,7 +4259,6 @@ module Serialization = struct
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         G.if_ [I32Type]
         begin
-          (* TODO: Avoid allocation *)
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
             ReadBuf.set_ptr get_typ_buf (
@@ -4283,13 +4307,13 @@ module Serialization = struct
             end
             begin
               skip get_arg_typ ^^
-              note_failure ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+              coercion_failed ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
             end
           )
         end
         begin
           skip get_arg_typ ^^
-          note_failure ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+          coercion_failed ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
         end
       in
 
@@ -4314,7 +4338,7 @@ module Serialization = struct
             f
             begin
               skip get_idltyp ^^
-              note_failure "IDL error: blob not a vector of nat8"
+              coercion_failed "IDL error: blob not a vector of nat8"
             end
         )
       in
@@ -4424,11 +4448,10 @@ module Serialization = struct
           BoxedSmallWord.box env
         end
       | Prim Char ->
-        let set_n, get_n = new_local env "len" in
         with_prim_typ t
         begin
-          ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
-          TaggedSmallWord.check_and_tag_codepoint env get_n
+          ReadBuf.read_word32 env get_data_buf ^^
+          TaggedSmallWord.check_and_tag_codepoint env
         end
       | Prim (Int16|Nat16|Word16) ->
         with_prim_typ t
@@ -4454,7 +4477,6 @@ module Serialization = struct
       | Prim Null ->
         with_prim_typ t (Opt.null_lit env)
       | Any ->
-        (* Skip values of any possible type *)
         skip get_idltyp ^^
         (* Any vanilla value works here *)
         Opt.null_lit env
@@ -4491,7 +4513,7 @@ module Serialization = struct
               begin
                 match normalize t with
                 | Opt _ | Any -> Opt.null_lit env
-                | _ -> note_failure "IDL error: did not find tuple field in record"
+                | _ -> coercion_failed "IDL error: did not find tuple field in record"
               end
           ) ts ^^
 
@@ -4520,7 +4542,7 @@ module Serialization = struct
                 begin
                   match normalize f.typ with
                   | Opt _ | Any -> Opt.null_lit env
-                  | _ -> note_failure (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
+                  | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
 
@@ -4576,7 +4598,7 @@ module Serialization = struct
                 [ Opt.null_lit env
                 ; let (set_val, get_val) = new_local env "val" in
                   get_arg_typ ^^ go_can_recover env t ^^ set_val ^^
-                  get_val ^^ compile_eq_const (decode_error_value env) ^^
+                  get_val ^^ compile_eq_const (coercion_error_value env) ^^
                   G.if_ [I32Type]
                     (* decoding failed, but this is opt, so: return null *)
                     (Opt.null_lit env)
@@ -4595,7 +4617,7 @@ module Serialization = struct
                 (* Try consitutient type *)
                 let (set_val, get_val) = new_local env "val" in
                 get_idltyp ^^ go_can_recover env t ^^ set_val ^^
-                get_val ^^ compile_eq_const (decode_error_value env) ^^
+                get_val ^^ compile_eq_const (coercion_error_value env) ^^
                 G.if_ [I32Type]
                   (* decoding failed, but this is opt, so: return null *)
                   (Opt.null_lit env)
@@ -4636,7 +4658,7 @@ module Serialization = struct
                 continue
             )
             ( sort_by_hash vs )
-            ( note_failure "IDL error: unexpected variant tag" )
+            ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
         with_composite_typ idl_func (fun _get_typ_buf ->
@@ -4662,7 +4684,7 @@ module Serialization = struct
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
-      when_failed (compile_unboxed_const (decode_error_value env) ^^ G.i Return)
+      when_failed (compile_unboxed_const (coercion_error_value env) ^^ G.i Return)
     )
 
   let serialize env ts : G.t =
@@ -6857,8 +6879,7 @@ and compile_exp (env : E.t) ae exp =
       | Word32, Char ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
-        Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
-        TaggedSmallWord.check_and_tag_codepoint
+        TaggedSmallWord.check_and_tag_codepoint env
 
       | Float, Int64 ->
         SR.UnboxedWord64,
