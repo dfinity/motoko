@@ -132,7 +132,7 @@ To run the candid test suite, just run the
 
     candid-tests
 
-comand.
+command.
 
 To run it against a local copy of the test data, pass `-i ../candid/tests/`.
 
