@@ -72,15 +72,15 @@ to translate Candid textual values into morally equivalent Motoko
 source code. See mo_idl/idl_to_mo_value.ml *)
 type value = value' Source.phrase
 and value' =
- | NumV of string (* Candid and Motoko syntax matches, so re-use. Includes floats. *)
- | TextV of string
- | BlobV of string
- | BoolV of bool
- | NullV
- | OptV of value
- | VecV of value list
- | RecordV of field_value list
- | VariantV of field_value
+  | NumV of string (* Candid and Motoko syntax matches, so re-use. Includes floats. *)
+  | TextV of string
+  | BlobV of string
+  | BoolV of bool
+  | NullV
+  | OptV of value
+  | VecV of value list
+  | RecordV of field_value list
+  | VariantV of field_value
 and field_value = (field_label * value) Source.phrase
 
 type args = value list Source.phrase
