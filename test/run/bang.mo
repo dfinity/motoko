@@ -1,0 +1,41 @@
+import Prim "mo:prim";
+
+func print(o : ? Nat) { Prim.debugPrint(debug_show(o));};
+
+let o1 = ? {
+    let oi = ?1;
+    let oj = ?2;
+    oi! + oj!;
+};
+print(o1);
+assert (o1 == ? 3);
+
+
+let o2 = ? {
+    let oi = ?1;
+    let oj : ?Nat = null;
+    oi! + oj!;
+};
+print(o2);
+assert (o2 == null);
+
+
+let o3 = ? {
+   var sum = 0;
+   for(o in [?1, ?2, ?3].vals()) {
+     sum += o!
+   };
+   sum
+};
+print(o3);
+assert (o3 == ? 6);
+
+let o4 = ? {
+   var sum = 0;
+   for(o in [?1, ?2, null].vals()) {
+     sum += o!
+   };
+   sum
+};
+print o4;
+assert (o4 == null);
