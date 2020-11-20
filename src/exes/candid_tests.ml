@@ -13,7 +13,7 @@ open Mo_values
 let name = "candid-tests"
 let version = "0.1"
 let banner = "Candid test suite runner " ^ version ^ ""
-let usage = "Usage: " ^ name ^ " -i path/to/candid/test"
+let usage = "Usage: " ^ name ^ " [ -i path/to/candid/test ]"
 
 (* Argument handling *)
 
@@ -198,7 +198,12 @@ let report_outcome counts expected_fail outcome =
 (* Main *)
 let () =
   Arg.parse argspec (fun _ -> usage_err "no arguments expected") usage;
-  if !test_dir = "" then usage_err "no candid test directory specified";
+  if !test_dir = "" then
+  begin
+    match Sys.getenv_opt "CANDID_TESTS" with
+    | Some path -> test_dir := path
+    | None -> usage_err "no candid test directory specified via -i or $CANDID_TESTS";
+  end;
 
 
   let filter =
