@@ -449,7 +449,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Text env.self)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Value.Nat64.of_int 42))
-      | SystemFundsRefundedPrim, [v1] -> (* faking it *)
+      | SystemCyclesRefundedPrim, [] -> (* faking it *)
         k (V.Nat64 (Value.Nat64.of_int 0))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
