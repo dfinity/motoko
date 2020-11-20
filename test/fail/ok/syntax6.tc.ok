@@ -1,6 +1,7 @@
 syntax6.mo:1.5-1.6: syntax error, unexpected token '}', expected one of token or <phrase> sequence:
   <eof>
   .<nat>
+  !
   <exp_nullary(ob)>
   <binop> <exp(ob)>
   ; seplist(<dec>,<semicolon>)
