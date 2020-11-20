@@ -4099,16 +4099,6 @@ module Serialization = struct
       I32 Tagged.(int_of_tag CoercionFailure);
     ]
 
-  let trap_if_error env =
-    Func.share_code1 env "trap_if_coercion_error" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* This shouldn’t happen, if the `can_recover` flag is correct.
-         Still, better double-check:
-      *)
-      get_x ^^ compile_eq_const (coercion_error_value env) ^^
-      E.then_trap_with env ("IDL error: coercion failure encountered") ^^
-      get_x
-    )
-
   (* The main deserialization function, generated once per type hash.
      Is parameters are:
        * data_buffer: The current position of the input data buffer
@@ -4700,6 +4690,7 @@ module Serialization = struct
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
+      (* Parsed value on the stack, return that, unless the failure flag is set *)
       when_failed (compile_unboxed_const (coercion_error_value env) ^^ G.i Return)
     )
 
@@ -4770,6 +4761,7 @@ module Serialization = struct
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
+      let (set_val, get_val) = new_local env "val" in
 
       get_blob ^^ Heap.load_field Blob.len_field ^^ set_data_size ^^
       get_blob ^^ Blob.payload_ptr_unskewed ^^ set_data_start ^^
@@ -4811,8 +4803,10 @@ module Serialization = struct
           get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
           compile_unboxed_const 0l ^^ (* initial depth *)
           compile_unboxed_const 0l ^^ (* initially, cannot recover *)
-          deserialize_go env t ^^
-          trap_if_error env
+          deserialize_go env t ^^ set_val ^^
+          get_val ^^ compile_eq_const (coercion_error_value env) ^^
+          E.then_trap_with env ("IDL error: coercion failure encountered") ^^
+          get_val
         ) ts ^^
 
         (* Skip any extra arguments *)
