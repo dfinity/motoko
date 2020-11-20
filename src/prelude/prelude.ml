@@ -33,12 +33,12 @@ type Principal = prim "Principal";
 
 type @Iter<T_> = {next : () -> ?T_};
 
-var @cycleFunds : Nat64 = 0; /* TBD */
+var @cycles : Nat64 = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
 func @add_cycles() {
-  let cycles = @cycleFunds;
+  let cycles = @cycles;
   @reset_cycles();
   (prim "cyclesAdd" : (Nat64) -> ()) (cycles);
 };
@@ -46,7 +46,7 @@ func @add_cycles() {
 // Function called by backend to zero cycles on context switch.
 // DO NOT RENAME without modifying compilation.
 func @reset_cycles() {
-  @cycleFunds := 0;
+  @cycles := 0;
 };
 
 
@@ -650,7 +650,7 @@ func cyclesAccept(amount: Nat64) : Nat64 {
 };
 
 func cyclesAdd(amount: Nat64) : () {
-  @cycleFunds += amount;
+  @cycles += amount;
 };
 
 
