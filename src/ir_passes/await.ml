@@ -510,7 +510,20 @@ and define_pats patenv (pats : pat list) : dec list =
 
 and t_comp_unit context = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
-  | ProgU ds -> ProgU (t_decs context ds)
+  | ProgU ds ->
+    begin
+      match infer_effect_decs ds with
+      | T.Triv ->
+        ProgU (t_decs context ds)
+      | T.Await ->
+        let throw = fresh_err_cont () in
+        let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+        let e = fresh_var "e" T.catch in
+        ProgU [
+          funcD throw e (assertE falseE);
+          expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
+        ]
+    end
   | ActorU (as_opt, ds, ids, { pre; post }, t) ->
     ActorU (as_opt, t_decs context ds, ids,
       { pre = t_exp LabelEnv.empty pre;

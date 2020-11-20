@@ -92,7 +92,6 @@ and prim = function
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
-
 and mut = function
   | Const -> Atom "Const"
   | Var   -> Atom "Var"
