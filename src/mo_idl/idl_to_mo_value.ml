@@ -41,7 +41,7 @@ let rec value v = match v.it with
     then "(" ^ String.concat ", " (List.map (fun f -> value (snd f.it)) fs) ^ ")"
     else "{" ^ String.concat "; " (List.map rec_field fs) ^ "}"
   | VariantV f ->
-    parens ("#" ^ Idl_to_mo.check_label (fst f.it) ^ " " ^ value (snd f.it))
+    parens ("#" ^ Idl_to_mo.check_label (fst f.it) ^ parens (value (snd f.it)))
   | NumV n -> n
   | _ -> "TODO"
 and

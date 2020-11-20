@@ -240,11 +240,11 @@ variant_value :
   | n=NAT EQ v=value
     { (Id (Uint32.of_string n) @@ at $loc(n), v ) @@ at $sloc }
   | name=name EQ v=value
-    { (Named name.it  @@ at $loc(name), v) @@ at $sloc }
+    { (Named name.it @@ at $loc(name), v) @@ at $sloc }
   | n=NAT
     { (Id (Uint32.of_string n) @@ at $loc(n), NullV @@ no_region) @@ at $sloc }
   | name=name
-    { (Named name.it  @@ at $loc(name), NullV @@ no_region) @@ at $sloc }
+    { (Named name.it @@ at $loc(name), NullV @@ no_region) @@ at $sloc }
 
 field_value :
   | n=NAT EQ v=value
