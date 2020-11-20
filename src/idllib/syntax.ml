@@ -67,10 +67,12 @@ and prog' = { decs : dec list; actor : typ option }
 
 (* Values *)
 
+(* This value AST is not to be taken serious. It is just good enough
+to translate Candid textual values into morally equivalent Motoko
+source code. See mo_idl/idl_to_mo_value.ml *)
 type value = value' Source.phrase
 and value' =
- | NumV of string (* syntax matches *)
- | FloatV of float
+ | NumV of string (* Candid and Motoko syntax matches, so re-use. Includes floats. *)
  | TextV of string
  | BlobV of string
  | BoolV of bool

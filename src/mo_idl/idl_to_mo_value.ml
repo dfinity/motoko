@@ -43,7 +43,6 @@ let rec value v = match v.it with
   | VariantV f ->
     parens ("#" ^ Idl_to_mo.check_label (fst f.it) ^ parens (value (snd f.it)))
   | NumV n -> n
-  | _ -> "TODO"
 and
   rec_field f = Idl_to_mo.check_label (fst f.it) ^ " = " ^ value (snd f.it)
 
