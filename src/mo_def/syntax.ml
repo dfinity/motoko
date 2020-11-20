@@ -151,6 +151,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
+  | BangE of exp                               (* scoped option projection *)
   | ObjE of obj_sort * exp_field list          (* object *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)

@@ -148,6 +148,7 @@
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
     <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
+    <exp_post> BANG
 
 <exp_un> ::= 
     <exp_post>

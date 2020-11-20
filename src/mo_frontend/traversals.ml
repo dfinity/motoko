@@ -8,6 +8,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | ShowE (x, exp1) -> f { exp with it = ShowE (x, over_exp f exp1) }
   | ProjE (exp1, x) -> f { exp with it = ProjE (over_exp f exp1, x) }
   | OptE exp1 -> f { exp with it = OptE (over_exp f exp1) }
+  | BangE exp1 -> f { exp with it = BangE (over_exp f exp1) }
   | TagE (x, exp1) -> f { exp with it = TagE (x, over_exp f exp1) }
   | DotE (exp1, x) -> f { exp with it = DotE (over_exp f exp1, x) }
   | NotE exp1 -> f { exp with it = NotE (over_exp f exp1) }

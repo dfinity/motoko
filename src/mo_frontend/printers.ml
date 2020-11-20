@@ -49,6 +49,7 @@ let string_of_symbol symbol : string =
   | X (T T_RCURLY) -> "}"
   | X (T T_RBRACKET) -> "]"
   | X (T T_QUEST) -> "?"
+  | X (T T_BANG) -> "!"
   | X (T T_QUERY) -> "query"
   | X (T T_PUBLIC) -> "public"
   | X (T T_PRIVATE) -> "private"

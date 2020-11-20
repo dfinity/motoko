@@ -51,6 +51,7 @@ type token =
   | SUB
   | DOT
   | QUEST
+  | BANG
   | AND
   | OR
   | NOT
@@ -161,6 +162,7 @@ let to_parser_token :
   | SUB -> Ok Parser.SUB
   | DOT -> Ok Parser.DOT
   | QUEST -> Ok Parser.QUEST
+  | BANG -> Ok Parser.BANG
   | AND -> Ok Parser.AND
   | OR -> Ok Parser.OR
   | NOT -> Ok Parser.NOT
@@ -271,6 +273,7 @@ let string_of_parser_token = function
   | Parser.SUB -> "SUB"
   | Parser.DOT -> "DOT"
   | Parser.QUEST -> "QUEST"
+  | Parser.BANG -> "BANG"
   | Parser.AND -> "AND"
   | Parser.OR -> "OR"
   | Parser.NOT -> "NOT"

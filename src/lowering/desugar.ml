@@ -68,7 +68,16 @@ and exp' at note = function
     I.PrimE (I.ShowPrim !ot, [exp e])
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
-  | S.OptE e -> (optE (exp e)).it
+  | S.OptE e ->
+    I.LabelE ("!", note.Note.typ, optE (exp e))
+  | S.BangE e ->
+    let ty = note.Note.typ in
+    let v = fresh_var "v" ty in
+    (switch_optE (exp e)
+      (* case null : *)
+      (breakE "!" (nullE()))
+      (* case ? v : *)
+      (varP v) (varE v) ty).it
   | S.ObjE (s, es) ->
     obj at s.it None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it

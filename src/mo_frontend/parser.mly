@@ -149,7 +149,7 @@ let rec normalize_let p e =
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
-%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
+%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
 %token DEBUG_SHOW
@@ -504,6 +504,8 @@ exp_post(B) :
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(ob) inst=inst e2=exp_nullary(ob)
     { CallE(e1, inst, e2) @? at $sloc }
+  | e1=exp_post(ob) BANG
+    { BangE(e1) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
