@@ -4638,6 +4638,7 @@ module Serialization = struct
           end
         end
       | Variant vs ->
+        let (set_val, get_val) = new_local env "val" in
         with_composite_typ idl_variant (fun get_typ_buf ->
           (* Find the tag *)
           let (set_n, get_n) = new_local env "len" in
@@ -4665,7 +4666,11 @@ module Serialization = struct
           List.fold_right (fun (h, {lab = l; typ = t}) continue ->
               get_tag ^^ compile_eq_const (Lib.Uint32.to_int32 h) ^^
               G.if_ [I32Type]
-                ( Variant.inject env l (get_arg_typ ^^ go env t) )
+                ( Variant.inject env l (
+                  get_arg_typ ^^ go env t ^^ set_val ^^
+                  remember_failure get_val ^^
+                  get_val
+                ))
                 continue
             )
             ( sort_by_hash vs )
