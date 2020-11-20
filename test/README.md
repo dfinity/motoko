@@ -124,3 +124,19 @@ The format is a simple CSV format, as consumed by
 [gipeda](https://github.com/nomeata/gipeda).
 
 Every PR reports a summary of changes to these numbers to the PR. [not yet implemented]
+
+Candid test suite
+-----------------
+
+To run the candid test suite, just run the
+
+    candid-tests
+
+comand.
+
+To run it against a local copy of the test data, pass `-i ../candid/tests/`.
+
+To mark certain tests as known-to-be-failing, pass `--expect-fail` in the
+invocation to `candid-tests` in `default.nix`.
+
+See `candid-tests --help` for instructions.
