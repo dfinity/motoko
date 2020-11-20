@@ -23,7 +23,7 @@ type prim =
   | Null
   | Reserved
   | Empty
-        
+
 type func_mode = func_mode' Source.phrase
 and func_mode' = Oneway | Query
 
@@ -64,6 +64,24 @@ and dec' =
 
 type prog = (prog', string) Source.annotated_phrase
 and prog' = { decs : dec list; actor : typ option }
+
+(* Values *)
+
+type value = value' Source.phrase
+and value' =
+ | NumV of string (* syntax matches *)
+ | FloatV of float
+ | TextV of string
+ | BlobV of string
+ | BoolV of bool
+ | NullV
+ | OptV of value
+ | VecV of value list
+ | RecordV of field_value list
+ | VariantV of field_value
+and field_value = (field_label * value) Source.phrase
+
+type args = value list Source.phrase
 
 (* Tests *)
 

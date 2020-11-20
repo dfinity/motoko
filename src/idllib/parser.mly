@@ -31,7 +31,7 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
 let is_prim_typs t = List.assoc_opt t prim_typs
 
 let hash = IdlHash.idl_hash
-let record_fields fs =
+let record_fields get_label fs =
   let open Uint32 in
   let rec go start fs =
     match fs with
@@ -39,7 +39,7 @@ let record_fields fs =
     | hd :: tl ->
        let field = hd start in
        let next =
-         (match field.it.label.it with
+         (match (get_label field.it).it with
          | Id n -> succ n
          | Named name -> succ (hash name)
          | Unnamed n -> succ n) in
@@ -50,9 +50,9 @@ let record_fields fs =
 %token EOF
 
 %token LPAR RPAR LCURLY RCURLY
-%token ARROW
+%token ARROW MINUS
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
-%token SEMICOLON COMMA COLON EQ
+%token SEMICOLON COMMA PERIOD COLON EQ
 %token NOTCOLON EQQ NOTEQ
 %token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
 %token<string> NAT
@@ -61,6 +61,7 @@ let record_fields fs =
 
 %start<string -> Syntax.prog> parse_prog
 %start<string -> Syntax.tests> parse_tests
+%start<Syntax.args> parse_args
 
 %%
 
@@ -123,7 +124,7 @@ variant_typ :
 
 record_typs :
   | LCURLY fs=seplist(record_typ, SEMICOLON) RCURLY
-    { record_fields fs }
+    { record_fields (fun f -> f.label) fs }
 
 variant_typs :
   | LCURLY fs=seplist(variant_typ, SEMICOLON) RCURLY { fs }
@@ -202,6 +203,63 @@ actor :
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
     { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+
+(* Values *)
+
+(* parses number literals as strings, syntax coincides with motoko’s *)
+(* very liberal parser, but we only care about good input  *)
+num :
+  | n=NAT PERIOD n2=num { n ^ "." ^ n2 }
+  | n=NAT PERIOD { n ^ "." }
+  | n=NAT { n }
+
+signed_num :
+  | MINUS n=num { "-" ^ n }
+  | n=num { n }
+
+value :
+  | n=signed_num { NumV n @@ at $sloc }
+  | OPT v=value { OptV v @@ at $sloc }
+  | VEC LCURLY vs=seplist(value, SEMICOLON) RCURLY
+    { VecV vs @@ at $sloc }
+  | BLOB text=TEXT { BlobV text @@ at $sloc }
+  | text=TEXT { TextV text @@ at $sloc }
+  | RECORD LCURLY fs=seplist(field_value, SEMICOLON) RCURLY
+    { RecordV (record_fields (fun f -> fst f) fs) @@ at $sloc }
+  | VARIANT LCURLY f=variant_value RCURLY
+    { VariantV f @@ at $sloc }
+  | b=id
+    { match b.it with
+      | "null" -> NullV @@ at $sloc
+      | "true" -> BoolV true @@ at $sloc
+      | "false" -> BoolV false @@ at $sloc
+      | _ -> raise (ParseError (at $loc(b), b.it))
+    }
+
+variant_value :
+  | n=NAT EQ v=value
+    { (Id (Uint32.of_string n) @@ at $loc(n), v ) @@ at $sloc }
+  | name=name EQ v=value
+    { (Named name.it  @@ at $loc(name), v) @@ at $sloc }
+  | n=NAT
+    { (Id (Uint32.of_string n) @@ at $loc(n), NullV @@ no_region) @@ at $sloc }
+  | name=name
+    { (Named name.it  @@ at $loc(name), NullV @@ no_region) @@ at $sloc }
+
+field_value :
+  | n=NAT EQ v=value
+    { fun _ -> (Id (Uint32.of_string n) @@ at $loc(n), v) @@ at $sloc }
+  | name=name EQ v=value
+    { fun _ -> (Named name.it @@ at $loc(name), v) @@ at $sloc } 
+  | v=value
+    { fun n -> (Unnamed n @@ no_region, v) @@ at $sloc } 
+
+annval :
+  | v=value { v }
+
+parse_args :
+  | LPAR vs=seplist(annval, COMMA) RPAR EOF { vs @@ at $sloc }
+
 
 (* Test suite *)
 
