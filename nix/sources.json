@@ -1,15 +1,15 @@
 {
     "candid": {
-        "branch": "joachim/test-new-subtyping",
+        "branch": "master",
         "builtin": false,
         "description": "Candid Library for the Internet Computer",
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "eb1547d7e987fea5250be5997dd14f4ea36253ac",
-        "sha256": "0p7dfj4ddg23fflmzzlvpz6dlf5svlawj322ay1hxx1ab1qaw3dq",
+        "rev": "f6f794ffc4a3cdc59abdd12cbebf768a95eca241",
+        "sha256": "19xai34q8w01p1jh7i6npb69s92fvfz0jfmnbcv948n6m8add5qx",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/eb1547d7e987fea5250be5997dd14f4ea36253ac.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/f6f794ffc4a3cdc59abdd12cbebf768a95eca241.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "common": {
