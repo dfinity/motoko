@@ -33,28 +33,20 @@ type Principal = prim "Principal";
 
 type @Iter<T_> = {next : () -> ?T_};
 
-// Blobs identifying fund units
-let @cycleBlob : Blob = "\00";
-let @icptBlob : Blob = "\01";
-
-var @cycleFunds : Nat64 = 0;
-var @icptFunds : Nat64 = 0;
+var @cycles : Nat64 = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
-func @add_funds() {
-  let cycles = @cycleFunds;
-  let icpts = @icptFunds;
-  @reset_funds();
-  (prim "fundsAdd" : (Blob, Nat64) -> ()) (@cycleBlob, cycles);
-  (prim "fundsAdd" : (Blob, Nat64) -> ()) (@icptBlob, icpts);
+func @add_cycles() {
+  let cycles = @cycles;
+  @reset_cycles();
+  (prim "cyclesAdd" : (Nat64) -> ()) (cycles);
 };
 
-// Function called by backend to zero funds on context switch.
+// Function called by backend to zero cycles on context switch.
 // DO NOT RENAME without modifying compilation.
-func @reset_funds() {
-  @cycleFunds := 0;
-  @icptFunds := 0;
+func @reset_cycles() {
+  @cycles := 0;
 };
 
 
@@ -327,24 +319,21 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();
 
-type @Refund = { cycles : Nat64; icpts : Nat64 };
+type @Refund = Nat64;
 type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
 
 type @Waiter<T> = (@Refund,T) -> () ;
 
-var @refund : @Refund = { cycles = 0: Nat64; icpts = 0 : Nat64 };
+var @refund : @Refund = 0;
 
 // Function called by backend to zero refunds on context switch.
 // DO NOT RENAME without modifying compilation.
 func @reset_refund() {
-  @refund := { cycles = 0: Nat64; icpts = 0 : Nat64 };
+  @refund := 0;
 };
 
 func @getSystemRefund() : @Refund {
-  return {
-    cycles = (prim "fundsRefunded" : Blob -> Nat64) @cycleBlob;
-    icpts =  (prim "fundsRefunded" : Blob -> Nat64) @icptBlob;
-  };
+  return (prim "cyclesRefunded" : () -> Nat64) ();
 };
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
@@ -387,14 +376,14 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
         let ws_ = ws;
         ws := func(r : @Refund, t : T) {
           ws_(r, t);
-          @reset_funds();
+          @reset_cycles();
           @refund := r;
           k(t);
         };
         let rs_ = rs;
         rs := func(e : Error) {
           rs_(e);
-          @reset_funds();
+          @reset_cycles();
           @reset_refund();
           r(e) };
       };
@@ -644,43 +633,24 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
-// Funds
-type Unit = {
- #cycle;
- #icpt;
+func cyclesBalance() : Nat64 {
+  (prim "cyclesBalance" : () -> Nat64) ();
 };
 
-func unitToBlob(u: Unit) : Blob {
-  switch u {
-    case (#cycle) @cycleBlob;
-    case (#icpt) @icptBlob;
-  }
+func cyclesAvailable() : Nat64 {
+  (prim "cyclesAvailable" : () -> Nat64) ();
 };
 
-func fundsBalance(u : Unit) : Nat64 {
-  (prim "fundsBalance" : Blob -> Nat64) (unitToBlob u);
+func cyclesRefunded() : Nat64 {
+    @refund
 };
 
-func fundsAvailable(u : Unit) : Nat64 {
-  (prim "fundsAvailable" : Blob -> Nat64) (unitToBlob u);
+func cyclesAccept(amount: Nat64) : Nat64 {
+  (prim "cyclesAccept" : Nat64 -> Nat64) (amount);
 };
 
-func fundsRefunded(u : Unit) : Nat64 {
-  switch u {
-    case (#cycle) @refund.cycles;
-    case (#icpt) @refund.icpts;
-  }
-};
-
-func fundsAccept(u : Unit, amount: Nat64) : () {
-  (prim "fundsAccept" : (Blob, Nat64) -> ()) (unitToBlob u, amount);
-};
-
-func fundsAdd(u : Unit, amount: Nat64) : () {
-  switch u {
-    case (#cycle) (@cycleFunds += amount);
-    case (#icpt) (@icptFunds += amount);
-  }
+func cyclesAdd(amount: Nat64) : () {
+  @cycles += amount;
 };
 
 

@@ -730,9 +730,15 @@ dec_nonvar :
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
-      let efs' =
-        if s.it = Type.Actor then List.map share_expfield efs else efs
-      in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
+      let e =
+        if s.it = Type.Actor then
+          AwaitE
+            (AsyncE(scope_bind (anon "async" (at $sloc)),
+              (ObjE(s, List.map share_expfield efs) @? (at $sloc)))
+             @? at $sloc)
+        else ObjE(s, efs)
+      in
+      let_or_exp named x e (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
@@ -744,9 +750,15 @@ dec_nonvar :
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, efs = cb in
-      let efs' =
-        if s.it = Type.Actor then List.map share_expfield efs else efs
-      in ClassD(sp, xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+      let efs', tps', t' =
+        if s.it = Type.Actor then
+          (List.map share_expfield efs,
+	   ensure_scope_bind "" tps,
+           (* Not declared async: insert AsyncT but deprecate in typing *)
+	   ensure_async_typ t)
+        else (efs, tps, t)
+      in
+      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 

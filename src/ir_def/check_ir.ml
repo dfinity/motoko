@@ -72,7 +72,9 @@ let initial_env flavor : env =
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
-    async = None;
+    async = Async_cap.(match initial_cap() with
+                       | (NullCap | ErrorCap) -> None
+                       | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
   }
 
@@ -582,13 +584,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t1 <: t;
     | SystemTimePrim, [] ->
       T.(Prim Nat64) <: t;
-    (* Funds *)
-    | (SystemFundsBalancePrim | SystemFundsAvailablePrim | SystemFundsRefundedPrim), [e] ->
-      typ e <: T.blob;
+    (* Cycles *)
+    | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
       T.nat64 <: t
-    | (SystemFundsAddPrim | SystemFundsAcceptPrim), [e1; e2] ->
-      typ e1 <: T.blob;
-      typ e2 <: T.nat64;
+    | SystemCyclesAcceptPrim, [e1] ->
+      typ e1 <: T.nat64;
+      T.nat64 <: t
+    | SystemCyclesAddPrim, [e1] ->
+      typ e1 <: T.nat64;
       T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->

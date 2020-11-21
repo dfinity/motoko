@@ -132,7 +132,7 @@ let float =
 The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent.
 In both cases, the exponent is in decimal notation.
 
-Note: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
+NOTE: the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
 
 
 [[syntax-chars]]
@@ -404,7 +404,7 @@ choose library names (e.g. to avoid clashes).
 
 An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`.
 The name `<id>` is mandatory and cannot be omitted.
-The imported actor class constructor is asynchronous, with return type `async T`. Here `T` is the inferred or supplied type of the class body.
+An actor class constructor is always asynchronous, with return type `async T`  where `T` is the inferred type of the class body.
 Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context
 (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
@@ -762,7 +762,7 @@ A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.
 
 Errors with codes other than `#canister_reject`  (i.e. _system_ errors) may be caught and thrown, but not user-constructed.
 
-Note: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
+NOTE: Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message.
 This prevents programmatic forgery of system errors.
 
 
@@ -1103,40 +1103,33 @@ A module library evaluates by (transitively) evaluating its imports, binding the
 
 ==== Actor class libraries
 
-////
-This ugly asyncification of actor class imports below will go away once we change actor class definitions to be asynchronous. This is a temporary kludge.
-////
 
 The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
 
-```
+```bnf
   module {
     type <id> = T;
-    <id> : (U1,...,Un) -> async T // asynchronous!
+    <id> : (U1,...,Un) -> async T
   }
 ```
 
 provided that:
 
-* the actor class declaration `<dec>` has function type `(U1, ..., Un) -> T` under the static environment induced by the imports in `<import>;*`.
+* the actor class declaration `<dec>` has function type `(U1, ..., Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
-Notice that the imported type of the function `<id>` is the *asynchronous* version of its declared type.
+Notice that the imported type of the function `<id>` must be asynchronous.
 
 An actor class library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*`, and evaluating the (derived) module:
 
-```
+```bnf
   module {
-    public type <id> = T;
-    public func <id>(a1 : U1, ..., an : Un) : async T { // asynchronous!
-      (<dec>)(a1, ..., an)
-    }
+    <dec>
   }
 ```
 
-The imported module contains an asynchronous implementation of function `<id>`.
-
-On the Internet Computer, calling `await <id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
-as installation arguments, and returns a reference to a (remote) actor of type `T`.
+On the Internet Computer, if this library is imported as identifier `Lib`,
+then calling `await Lib.<id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
+as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`.
 Installation is (necessarily) asynchronous.
 
 [[imports]]
@@ -1433,17 +1426,23 @@ The object declaration has type `T` provided that:
 3. If `<sort>` is `module`, then the declarations in `<dec>;*` must be _static_ (see <<decl-static>>).
 
 Note that requirement 1. imposes further constraints on the field types of `T`.
-In particular:
+In particular, if the sort is `actor` then:
 
-* if the sort is `actor` then all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
+* all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
+
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by
+by binding `<id>` (if present), to the eventual value `v`, and
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
 The result of the object declaration is the object `v == sort { <id0> = v1, ..., <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
+
+WARNING: Actor declaration is (implicitly) asynchronous and the state of the enclosing actor may change due to concurrent processing of other incoming actor messages.
+It is the programmer's responsibility to guard against non-synchronized state changes.
 
 [[decl-static]]
 ==== Static declarations
@@ -1496,22 +1495,18 @@ a named `let` or anonymous declaration of a function expression. That is:
   <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <exp>               (when <id>? absent)
 ```
 
-
 Named function definitions are recursive.
 
 [[decl-class]]
 === Class declaration
-
-////
-TODO: revise once actor class declaration async
-////
 
 The _class_ declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>` is sugar for pair of a type and function declaration:
 
 ```bnf
 <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? <class-body> :=
   type <id> <typ-params> = <sort> { <typ-field>;* };
-  <shared-pat>? func <id> <typ-params>? <pat> : <id> <typ-args> = <sort> <id_this>? <obj-body>
+  <shared-pat>? func <id> <typ-params>? <pat> : async? <id> <typ-args> =
+    async? <sort> <id_this>? <obj-body>
 ```
 
 where:
@@ -1521,6 +1516,7 @@ where:
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 * `<obj-body>` is the object body of `<class-body>`.
 * `<id_this>?` is the optional _this_ (a.k.a _self_), parameter of `<class-body>`.
+* `async?` is present, if only if, `<sort>` == `actor`.
 
 Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
 
@@ -1529,10 +1525,18 @@ An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 If `sort` is `actor`, then:
 
 * `<typ-args>?` must be absent or empty (`actor` classes cannot have type parameters);
-* `<pat>`'s type must be shared (see <<sharability>>).
+* ``<pat>``'s type must be shared (see <<sharability>>).
+* `(: <typ>)?`, if present, must be of the form `: async T` for some actor type `T` (actor instantiation is asynchronous).
+
+If `(: <typ>)` is present, then the type `<async?> <sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`.
+In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`.
+
+The class declaration has the same type as function `<id>` and evaluates to the function value `<id>`.
 
 [[eval-identifiers]]
 === Identifiers
+
+The identifier expression `<id>` has type `T` provided `<id>` is in scope, defined and declared with explicit or inferred type `T`.
 
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
@@ -1675,7 +1679,7 @@ If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
 
-Note: the `chars`, `bytes`, `keys` and `vals` members
+NOTE: the `chars`, `bytes`, `keys` and `vals` members
 produce stateful *iterator objects* than can be
 consumed by `for` expressions (see <<exp-for>>).
 
@@ -1775,7 +1779,7 @@ Matching continues by matching `v1` against `<pat1>`.
 If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings.
 Otherwise, some pattern match has failed and the call results in `trap`.
 
-Note: the exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
+NOTE: The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see <<exp-func>>).
 
 [[exp-func]]
 === Functions
@@ -1801,7 +1805,7 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
-Note: the context type is a record to allow extension with further fields in future releases.
+NOTE: The context type is a record to allow extension with further fields in future releases.
 
 [[exp-block]]
 === Blocks
@@ -1946,7 +1950,7 @@ where `x` is a fresh identifier.
 
 In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon as `x.next()` traps, or the value of `x.next()` does not match pattern `<pat>`, or when `<exp2>` traps.
 
-Note: although general purpose, `for` loops are commonly used to consume iterators produced by <<exp-dot>> to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
+NOTE: Although general purpose, `for` loops are commonly used to consume iterators produced by <<exp-dot>> to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
 
 [[exp-label]]
 === Label
@@ -2035,7 +2039,7 @@ Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, ev
 If the future is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
 If the `future` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed (if ever).
 
-_WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
+WARNING: between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 
 [[exp-throw]]
 === Throw
@@ -2059,7 +2063,7 @@ The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
 Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
 If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
 
-Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
+NOTE: Because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
 
 See <<type-Error>>.
 
@@ -2085,7 +2089,7 @@ Type annotation may be used to aid the type-checker when it cannot otherwise det
 
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
-Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
+NOTE: Type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
 [[exp-decl]]
 === Declaration
@@ -2131,9 +2135,9 @@ An invalid canister identifier or type may manifest itself, if at all, as a late
 when calling a function on the actor's proclaimed interface,
 which will either fail or be rejected.
 
-Note: the argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+NOTE: The argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
 
-Warning: although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
+WARNING: Although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
 Accordingly, actor references should be used sparingly and only when needed.
 
 

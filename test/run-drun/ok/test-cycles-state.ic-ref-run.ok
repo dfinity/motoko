@@ -1,0 +1,15 @@
+→ update create_canister()
+← replied: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: ()
+→ update go()
+debug.print: wallet: {cycles = "<not_shown>"}
+debug.print: setting cycles
+debug.print: wallet: {cycles = "<not_shown>"}
+debug.print: debit
+debug.print: available: 1_000_000
+debug.print: available: 0
+debug.print: available: 3_000_000
+debug.print: available: 5_000
+debug.print: available: 0
+← replied: ()

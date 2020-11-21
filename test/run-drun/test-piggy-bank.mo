@@ -1,15 +1,15 @@
-import Funds = "piggy-bank/ExperimentalFunds";
-//import Funds = "mo:base/ExperimentalFunds";
+import Cycles = "piggy-bank/ExperimentalCycles";
+//import Cycles = "mo:base/ExperimentalCycles";
 import Lib = "piggy-bank/PiggyBank";
 
 actor Alice {
 
   public func test() : async () {
 
-    let porky = await Lib.PiggyBank(#cycle, 1000_000, Alice.credit);
+    let porky = await Lib.PiggyBank(1000_000, Alice.credit);
     assert (0 == (await porky.getSavings()));
 
-    await { Funds.add(#cycle, 1000); porky.deposit() };
+    await { Cycles.add(1000); porky.deposit() };
     assert (1000 == (await porky.getSavings()));
 
     await porky.withdraw(500);
@@ -18,8 +18,8 @@ actor Alice {
     await porky.withdraw(500);
     assert (0 == (await porky.getSavings()));
 
-    await { Funds.add(#cycle, 2000_000); porky.deposit() };
-    let refund = Funds.refunded(#cycle);
+    await { Cycles.add(2000_000); porky.deposit() };
+    let refund = Cycles.refunded();
     assert (1000_000 == refund);
     assert (1000_000 == (await porky.getSavings()));
 
@@ -27,7 +27,7 @@ actor Alice {
 
    // callback for accepting funds from PiggyBank
   public func credit() : async () {
-    Funds.accept(#cycle, Funds.available(#cycle));
+    ignore Cycles.accept(Cycles.available());
   }
 
 };
