@@ -40,6 +40,8 @@ let o4 = ? {
 print o4;
 assert (o4 == null);
 
+/* nesting */
+
 let o5 = ? {
    let o = ??0;
    o!!
