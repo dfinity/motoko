@@ -39,3 +39,24 @@ let o4 = ? {
 };
 print o4;
 assert (o4 == null);
+
+let o5 = ? {
+   let o = ??0;
+   o!!
+};
+print o5;
+assert (o5 == ?0);
+
+let o6 : ? Nat = ? {
+   let o = ?null;
+   o!!
+};
+print o6;
+assert (o6 == null);
+
+let o7 = ? {
+   let o = (null : ? None);
+   o!!
+};
+print o7;
+assert (o7 == null);
