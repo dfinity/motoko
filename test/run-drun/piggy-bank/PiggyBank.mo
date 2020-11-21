@@ -1,9 +1,8 @@
 import Prim "mo:prim";
-import Funds "ExperimentalFunds";
-//import Funds "mo:base/ExperimentalFunds";
+import Cycles "ExperimentalCycles";
+//import Cycles "mo:base/ExperimentalCycles";
 
 shared {caller = owner} actor class PiggyBank(
-  unit : Funds.Unit,
   capacity: Nat,
   benefit : shared () -> async ()) {
 
@@ -15,12 +14,12 @@ shared {caller = owner} actor class PiggyBank(
   };
 
   public func deposit() : async () {
-    let amount = Funds.available(unit);
+    let amount = Cycles.available();
     let limit = capacity - savings;
     let acceptable =
       if (amount <= limit) amount
       else limit;
-    Funds.accept(unit, acceptable);
+    ignore Cycles.accept(acceptable);
     savings += acceptable;
   };
 
@@ -28,9 +27,9 @@ shared {caller = owner} actor class PiggyBank(
     : async () {
     assert (caller == owner);
     assert (amount <= savings);
-    Funds.add(unit, amount);
+    Cycles.add(amount);
     await benefit();
-    let refund = Funds.refunded(unit);
+    let refund = Cycles.refunded();
     savings -= amount - refund;
   };
 

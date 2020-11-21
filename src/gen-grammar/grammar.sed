@@ -4,6 +4,7 @@ s/<typ_id>/<id>/g
 /^<id> ::=/,+2d
 s/<id>/ID/g
 /^<semicolon> ::=/,+3d
+/^<annot(T)> ::=/,+2d
 /^<start> ::=/,+2d
 /^<parse_prog_interactive> ::=/,+3d
 /^<import_list> ::=/,+2d
@@ -22,6 +23,7 @@ s/\]/)?/g
 s/(\([a-zA-Z_0-9]*\))/\1/g
 s/(\(<[a-z_0-9]*>\))/\1/g
 s/<semicolon>/\';\'/g
+s/<annot_opt>/(':' <typ>)?/g
 s/epsilon/<empty>/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g

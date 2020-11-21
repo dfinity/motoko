@@ -1,5 +1,28 @@
 = Motoko compiler changelog
 
+* BREAKING CHANGE: actor creation is regarded as asynchronous:
+** Actor declarations are asynchronous and can only be used in asynchronous contexts.
+** The return type of an actor class, if specified, must be an
+   async actor type.
+** To support actor declaration, the top-level context of an interpreted program   is an asynchronous context, allowing implicit and explicit await expressions.
+** (Though breaking, this change mostly affects interpreted programs and compiled programs with explicate actor class return types)
+
+* RTS: Injecting a non-null value into an option type (`? <exp>`)
+  is the identity and no longer requires heap allocation.
+  This removes the memory-tax of using iterators.
+
+== 0.4.6 (2020-11-13)
+
+* Significant documentation improvements
+* Various bugfixes
+* Improved error messages
+* Initial DWARF support
+* Candid compliance improvements:
+  - Strict checking of utf8 strings
+  - More liberal parsing of leb128-encoded numbers
+* New motoko-based:
+  - The Random library is added
+
 == 0.4.5 (2020-10-06)
 
 * BREAKING CHANGE: a library containing a single actor class is

@@ -11,7 +11,7 @@ actor class Counter(i : Int) {
 
 func showCounter(c : Int) {};
 
-let c = Counter(10);
+let c = await Counter(10);
 
 actor Test {
   public func go() {
@@ -25,5 +25,5 @@ actor Test {
 
 Test.go();
 
-// no support for first-class shared functions anywhere yet
+// no support for top-level await, first-class shared functions anywhere yet
 //SKIP comp

@@ -30,7 +30,6 @@ let
                 inherit (self) ocamlPackages;
               };
             };
-            wasmtime = self.callPackage ./wasmtime.nix {};
             xargo = self.callPackage ./xargo.nix {};
           }
         )

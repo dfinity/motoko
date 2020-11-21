@@ -191,35 +191,18 @@ struct
     else
       None
 
-  let lightweight_escaped str =
-    let n = ref 0 in
-    for i = 0 to String.length str - 1 do
-      n := !n +
-             (match str.[i] with
-              | '\"' | '\'' | '\\' | '\n' | '\r' | '\b' | '\t' -> 2
-              | _ -> 1)
+  let lightweight_escaped s =
+    let buf = Buffer.create (String.length s) in
+    for i = 0 to String.length s - 1 do
+      match s.[i] with
+      | '\"' | '\'' | '\\' as c ->
+        Buffer.add_char buf '\\'; Buffer.add_char buf c
+      | '\n' -> Buffer.add_string buf "\\n"
+      | '\r' -> Buffer.add_string buf "\\r"
+      | '\t' -> Buffer.add_string buf "\\t"
+      | c -> Buffer.add_char buf c
     done;
-    if !n = String.length str then str else begin
-        let s' = Bytes.create !n in
-        n := 0;
-        for i = 0 to String.length str -1 do
-          begin match str.[i] with
-          | ('\"' | '\'' | '\\') as c ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n c
-          | '\n' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'n'
-          | '\r' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'r'
-          | '\b' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
-          | '\t' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'
-          | c -> Bytes.set s' !n c
-          end;
-          n := !n + 1
-        done;
-        Bytes.unsafe_to_string s'
-      end
+    Buffer.contents buf
 end
 
 module List =
@@ -562,6 +545,7 @@ struct
        /path/tosomething is not a subpath of /path/to*)
     else List.is_prefix (=) (segments base) (segments path)
 
+  (* TODO: this function does not belong here *)
   (* When opening is successful, but there is a case mismatch (because the file
      system is case insensitive), generate a warning. *)
   let open_in path : in_channel * string list =
@@ -572,8 +556,8 @@ struct
     if not (Array.exists (fun name -> name = base) files) then
       begin
         let open Stdlib.String in
-        let base = lowercase_ascii base in
-        if Array.exists (fun name -> lowercase_ascii name = base) files then
+        let lbase = lowercase_ascii base in
+        if Array.exists (fun name -> lowercase_ascii name = lbase) files then
           let message = Printf.sprintf "file %s has been located with a name of different case" base in
           ic, [message]
         else

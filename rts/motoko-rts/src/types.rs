@@ -102,6 +102,7 @@ pub const TAG_FWD_PTR: Tag = 11;
 pub const TAG_BITS32: Tag = 12;
 pub const TAG_BIGINT: Tag = 13;
 pub const TAG_CONCAT: Tag = 14;
+pub const TAG_NULL: Tag = 15;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)]
@@ -216,4 +217,9 @@ pub struct Concat {
     pub n_bytes: u32,
     pub text1: SkewedPtr,
     pub text2: SkewedPtr,
+}
+
+#[repr(C)]
+pub struct Null {
+    pub header: Obj,
 }

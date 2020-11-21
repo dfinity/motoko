@@ -5,6 +5,8 @@ open MakePretty(struct let show_stamps = false end)
 
 (* Bi-Matching *)
 
+exception Bimatch of string
+
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
 (* Types that are denotable (ranged over) by type variables *)
@@ -232,23 +234,24 @@ let bi_match_subs scope_opt tbs subs =
     let lb = string_of_typ lb in
     let c = Con.name c in
     let ub = string_of_typ ub in
-    failwith (Printf.sprintf
-      "under-constrained implicit instantiation %s <: %s <: %s, with %s =/= %s;\nexplicit type instantiation required"
-      lb c ub lb ub)
+    raise (Bimatch (Printf.sprintf
+      "implicit instantiation of type parameter %s is under-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  =/=  %s\nso that explicit type instantiation is required"
+      c lb c ub lb ub))
 
   and fail_over_constrained lb c ub =
     let lb = string_of_typ lb in
     let c = Con.name c in
     let ub = string_of_typ ub in
-    failwith (Printf.sprintf
-      "over-constrained implicit instantiation requires %s <: %s <: %s, but %s </: %s;\nno valid instantiation exists"
-      lb c ub lb ub)
+    raise (Bimatch (Printf.sprintf
+      "implicit instantiation of type parameter %s is over-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  </:  %s\nso that no valid instantiation exists"
+      c lb c ub lb ub))
 
   and fail_open_bound c bd =
     let c = Con.name c in
     let bd = string_of_typ bd in
-    failwith (Printf.sprintf
-      "type parameter %s has an open bound %s mentioning another type parameter;\nexplicit type instantiation required due to limitation of inference" c bd)
+    raise (Bimatch (Printf.sprintf
+      "type parameter %s has an open bound\n  %s\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+      c bd))
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
@@ -260,7 +263,7 @@ let bi_match_subs scope_opt tbs subs =
         ConEnv.singleton c0 c,
         ConEnv.singleton c0 c
       | None, {sort = Scope; _}::tbs ->
-        failwith "scope instantiation required but no scope available"
+        raise (Bimatch "scope instantiation required but no scope available")
       | _, _ ->
         ConEnv.empty,
         ConEnv.empty
@@ -292,15 +295,18 @@ let bi_match_subs scope_opt tbs subs =
       if verify_inst tbs subs us then
         us
       else
-        failwith
+        raise (Bimatch
           (Printf.sprintf
-             "bug: inferred bad instantiation\n  <%s>;\nplease report this error message as a bug and, for now, supply an explicit instantiation instead"
-            (String.concat ", " (List.map string_of_typ us)))
+             "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
+            (String.concat ", " (List.map string_of_typ us))))
     | None ->
-      failwith (Printf.sprintf
-        "no instantiation of %s makes %s"
+      let tts =
+        List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
+      in
+      raise (Bimatch (Printf.sprintf
+        "no instantiation of %s makes\n  %s"
         (String.concat ", " (List.map string_of_con cs))
-        (String.concat " and "
-          (List.map2 (fun t1 t2 ->
-            Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
-            ts1 ts2)))
+        (String.concat "\nand\n  "
+          (List.map (fun (t1, t2) ->
+            Printf.sprintf "%s  <:  %s" (string_of_typ t1) (string_of_typ t2))
+            tts))))

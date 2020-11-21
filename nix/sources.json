@@ -1,14 +1,27 @@
 {
+    "candid": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Candid Library for the Internet Computer",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "candid",
+        "rev": "2abea02457cfd1456f131e3b8704be73d97998dd",
+        "sha256": "1svwa7aw8qxzhalv3b7a8my5s21cxk3ga1srngcs3rih0gai42ai",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/candid/archive/2abea02457cfd1456f131e3b8704be73d97998dd.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "common": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "603c77cf1626bd4c9ab622325c5707755e1d5377",
+        "rev": "974d8a481de15857010a45285f019b7ff799008f",
         "type": "git"
     },
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "5f990cd19d30d129d0cbd4d6df1fdd81b7b366b1",
+        "rev": "298318f109e2f7d0d5f3bdce2de791e181a1aec4",
         "type": "git"
     },
     "esm": {
@@ -20,9 +33,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "branch": "release-0.11",
+        "branch": "release-0.14",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "824fd6d904b0635349820ca52262ce91fd9e695c",
+        "rev": "4f4e3a151b621b902e44e18a860c20493698abc4",
         "type": "git"
     },
     "libtommath": {
@@ -89,10 +102,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "57c8084c7ef41366993909c20491e359bbb90f54",
-        "sha256": "0lchhjys1jj8fdiisd2718sqd63ys7jrj6hq6iq9l1gxj3mz2w81",
+        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
+        "sha256": "1zybp62zz0h077zm2zmqs2wcg3whg6jqaah9hcl1gv4x8af4zhs6",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/57c8084c7ef41366993909c20491e359bbb90f54.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/8c007b60731c07dd7a052cce508de3bb1ae849b4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

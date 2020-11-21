@@ -54,6 +54,7 @@ enum as_heap_tag {
   TAG_SMALLWORD = 12,
   TAG_BIGINT = 13,
   TAG_CONCAT = 14,
+  TAG_NULL = 15,
   };
 
 /** Functions imported from the Motoko RTS */
@@ -103,5 +104,6 @@ export int blob_compare(blob_t s1, blob_t s2);
 export blob_t blob_of_principal(text_t);
 export blob_t base32_to_principal(blob_t);
 
+export void utf8_validate(const char *src, size_t len);
 
 #endif /* RTS_H */

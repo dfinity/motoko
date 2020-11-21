@@ -77,11 +77,11 @@ and prim = function
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
-  | SystemFundsAddPrim -> Atom "SystemFundsAcceptPrim"
-  | SystemFundsAcceptPrim -> Atom "SystemFundsAcceptPrim"
-  | SystemFundsAvailablePrim -> Atom "SystemFundsAvailablePrim"
-  | SystemFundsBalancePrim -> Atom "SystemFundsBalancePrim"
-  | SystemFundsRefundedPrim -> Atom "SystemFundsRefundedPrim"
+  | SystemCyclesAddPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
+  | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
+  | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
@@ -91,7 +91,6 @@ and prim = function
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
-
 
 and mut = function
   | Const -> Atom "Const"

@@ -57,26 +57,29 @@ let abstract_items explanations =
   String.concat "  " (uniq ss)
 
 let error_message error_detail lexeme explanations =
-  let token = String.escaped lexeme in
+  let token =
+    if lexeme = "" then "end of input" else
+    "token '" ^ String.escaped lexeme ^ "'"
+  in
   match error_detail with
   | 1 ->
     Printf.sprintf
-      "unexpected token '%s', \nexpected one of token or <phrase>:\n  %s"
+      "unexpected %s, expected one of token or <phrase>:\n  %s"
       token (abstract_symbols explanations)
   | 2 ->
     Printf.sprintf
-      "unexpected token '%s', \nexpected one of token or <phrase> sequence:\n  %s"
+      "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
       token (abstract_futures explanations)
   | 3 ->
     Printf.sprintf
-      "unexpected token '%s'\n in position marked . of partially parsed item(s):\n%s"
+      "unexpected %s in position marked . of partially parsed item(s):\n%s"
       token (abstract_items explanations)
   | _ ->
-    Printf.sprintf "unexpected token '%s'" token
+    Printf.sprintf "unexpected %s" token
 
 type error_detail = int
 
-exception Error of (string * Lexing.position * Lexing.position)
+exception Error of string * Lexing.position * Lexing.position
 
 (* The lexbuf is a 1024 byte wide window, we need to compute offsets before
    accessing it, because token positions are absolute to the whole input *)
@@ -89,5 +92,12 @@ let slice_lexeme lexbuf i1 i2 =
   else Bytes.sub_string lexbuf.lex_buffer offset len
 
 let parse error_detail checkpoint lexer lexbuf =
-  try E.entry checkpoint lexer with E.Error ((start, end_), explanations) ->
-    raise (Error (error_message error_detail (slice_lexeme lexbuf start end_) explanations, start, end_))
+  try
+    Diag.return (E.entry checkpoint lexer)
+  with E.Error ((start, end_), explanations) ->
+    Diag.error
+      Source.{
+        left = Lexer.convert_pos start;
+        right = Lexer.convert_pos end_;
+      } "syntax"
+      (error_message error_detail (slice_lexeme lexbuf start end_) explanations)
