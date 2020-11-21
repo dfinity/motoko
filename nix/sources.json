@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "47366babdafab32e16e49b2a0ef44d837b675e9f",
-        "sha256": "1kkybpnvlyr3lvrrnlvym18s5asmz4vkgr43cvhqygasqs5zfq24",
+        "rev": "2abea02457cfd1456f131e3b8704be73d97998dd",
+        "sha256": "1svwa7aw8qxzhalv3b7a8my5s21cxk3ga1srngcs3rih0gai42ai",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/47366babdafab32e16e49b2a0ef44d837b675e9f.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/2abea02457cfd1456f131e3b8704be73d97998dd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "common": {
@@ -35,7 +35,7 @@
     "ic-ref": {
         "ref": "0.14.0",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-	"rev": "4f4e3a151b621b902e44e18a860c20493698abc4",
+        "rev": "4f4e3a151b621b902e44e18a860c20493698abc4",
         "type": "git"
     },
     "libtommath": {
@@ -51,7 +51,7 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-	"ref": "next-moc",
+        "ref": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
         "rev": "66795f2f1a9ade7d2fc54215a3feb232366a55c1",
         "type": "git"
