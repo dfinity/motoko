@@ -849,7 +849,7 @@ and infer_exp'' env exp : T.typ =
         T.as_opt_sub t1
       with Invalid_argument _ ->
         error env exp1.at
-          "expected option type, but expression produces type\n  %s"
+          "expected option type before !, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     end
   | TagE (id, exp1) ->
