@@ -13,13 +13,13 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "common": {
-        "ref": "master",
+        "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
         "rev": "974d8a481de15857010a45285f019b7ff799008f",
         "type": "git"
     },
     "dfinity": {
-        "ref": "master",
+        "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
         "rev": "298318f109e2f7d0d5f3bdce2de791e181a1aec4",
         "type": "git"
@@ -33,7 +33,7 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "ref": "0.14.0",
+        "branch": "release-0.14",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
         "rev": "4f4e3a151b621b902e44e18a860c20493698abc4",
         "type": "git"
@@ -51,7 +51,7 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "ref": "next-moc",
+        "branch": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
         "rev": "66795f2f1a9ade7d2fc54215a3feb232366a55c1",
         "type": "git"
