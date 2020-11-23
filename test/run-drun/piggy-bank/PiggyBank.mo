@@ -1,4 +1,3 @@
-import Prim "mo:prim";
 import Cycles "ExperimentalCycles";
 //import Cycles "mo:base/ExperimentalCycles";
 
@@ -19,7 +18,8 @@ shared {caller = owner} actor class PiggyBank(
     let acceptable =
       if (amount <= limit) amount
       else limit;
-    ignore Cycles.accept(acceptable);
+    let accepted = Cycles.accept(acceptable);
+    assert (accepted == acceptable);
     savings += acceptable;
   };
 
