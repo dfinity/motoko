@@ -22,7 +22,7 @@ loss.
 In future, we may see {proglang} adopt dedicated syntax and types to
 support safer programming with cycles.
 For now, we provide a temporary way to manage cycles through a low-level imperative API
-provided by the link:../base-libraries/result{outfilesuffix}[ExperimentalCycles]
+provided by the link:../base-libraries/ExperimentalCycles{outfilesuffix}[ExperimentalCycles]
 library in package `+base+`.
 
 NOTE: This library is subject to change and likely to be replaced by
@@ -89,13 +89,17 @@ observe them.
 
 To illustrate, we will now use the `+ExperimentalCycles+` library to implement a toy _piggy bank_ for saving cycles.
 
-Our piggy bank has an implicit owner, 
+Our piggy bank has an implicit owner,
 a `benefit` callback and a fixed `+capacity+`, all supplied at time of construction.
 The callback is used to transfer _withdrawn_ amounts.
 
 [source,motoko]
 ----
-import Cycles "ExperimentalCycles";
+include::../examples/PiggyBank.mo[]
+----
+
+////
+import Cycles "mo:base/ExperimentalCycles";
 
 shared(msg) actor class PiggyBank(
   benefit : shared () -> async (),
@@ -133,11 +137,11 @@ shared(msg) actor class PiggyBank(
   };
 
 }
-----
+////
 
 The owner of the bank is identified with the (implicit) caller of
 constructor `+PiggyBank()+`, using the shared pattern, `+shared(msg)+`.
-Field `+msg.caller+` is a `+Principal+` and is stored in private variable `+owner+` (for future reference).
+Field `+msg.caller+` is a `+Principal+` and is stored in private variable `+owner+` (for future reference). See link:caller-id{outfilesuffix}[Principals and caller identification] for more explanation of this syntax.
 
 The piggy bank is initially empty, with zero current `+savings+`.
 
@@ -170,8 +174,12 @@ Here's how an owner, `+Alice+`, might use an instance of `+PiggyBank+`:
 
 [source,motoko]
 ----
+include::../examples/Alice.mo[]
+----
+
+////
 import Cycles = "mo:base/ExperimentalCycles";
-import Lib = "piggy-bank/PiggyBank";
+import Lib = "PiggyBank";
 
 actor Alice {
 
@@ -207,7 +215,7 @@ actor Alice {
   }
 
 };
-----
+////
 
 Let's dissect ``Alice``'s code.
 
