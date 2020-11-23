@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 
-// CHECK: func $start
+// CHECK: func $init
 
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
 
@@ -20,8 +20,6 @@ func checkpointJuliett() {};
 {
     func printW64ln(w : Word64) {
       Prim.debugPrintNat(Prim.word64ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word64ToInt w)
     };
 
     let a : Word64 = 4567;
@@ -30,7 +28,8 @@ func checkpointJuliett() {};
     let d : Word64 = -15;
     let e : Word64 = 20000;
 
-// CHECK: local.get $c
+// this is the value of c
+// CHECK: i32.const 17825530
 // CHECK-NOT: call $box_i64
 // CHECK: call $printW64ln
     printW64ln(+c);
@@ -79,8 +78,6 @@ func checkpointJuliett() {};
 {
     func printW32ln(w : Word32) {
       Prim.debugPrintNat(Prim.word32ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word32ToInt w)
     };
 
     let a : Word32 = 4567;
@@ -91,8 +88,9 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointBravo
     checkpointBravo();
-// CHECK: local.get $c
-// CHECK-NOT: call $box_i32
+// this is the value of c
+// CHECK: i32.const 17825530
+// CHECK-NOT: call $box_i64
 // CHECK: call $printW32ln
     printW32ln(+c);
     printW32ln(-c);
@@ -137,8 +135,6 @@ func checkpointJuliett() {};
 {
     func printW16ln(w : Word16) {
       Prim.debugPrintNat(Prim.word16ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word16ToInt w)
     };
 
     let a : Word16 = 4567;
@@ -156,9 +152,11 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointDelta
     checkpointDelta();
-// CHECK: local.get $a
+// this is the value of a
+// CHECK: i32.const 299302912
+// this is the value of b
+// CHECK: i32.const 458752
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 16 bits!
-// CHECK-NEXT: local.get $b
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
@@ -175,7 +173,8 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointEcho
    checkpointEcho();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 16 bits and clamp it to 4 bits!
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
@@ -192,14 +191,16 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // CHECK-NEXT: call $rotl<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <<> b);
 
 // CHECK: call $checkpointGolf
    checkpointGolf();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // CHECK-NEXT: call $rotr<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <>> b);
@@ -221,8 +222,6 @@ func checkpointJuliett() {};
 {
     func printW8ln(w : Word8) {
       Prim.debugPrintNat(Prim.word8ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word8ToInt w)
     };
 
     let a : Word8 = 67;
@@ -239,7 +238,8 @@ func checkpointJuliett() {};
     printW8ln(c - a);
 // CHECK: call $checkpointHotel
     checkpointHotel();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 24 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
@@ -257,7 +257,8 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointIndia
     checkpointIndia();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 24 bits and clamp it to 3 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
@@ -274,11 +275,13 @@ func checkpointJuliett() {};
 
 // CHECK: call $checkpointJuliett
     checkpointJuliett();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // CHECK-NEXT: call $rotl<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <<> b);
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // CHECK-NEXT: call $rotr<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <>> b);

@@ -21,6 +21,5 @@ actor a {
 };
 
 a.foo(); //OR-CALL ingress foo "DIDL\x00\x00"
-// certainly won’t work on drun
 //SKIP comp
-//SKIP comp-stub
+//SKIP comp-ref

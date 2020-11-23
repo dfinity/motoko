@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 /* test tail-position calculation; error would stack overflow in drun*/
 
-//SKIP comp-stub
+//SKIP comp-ref
 
 let bound:Int = 100000;
 

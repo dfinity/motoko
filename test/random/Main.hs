@@ -100,7 +100,7 @@ runner embedder reqOutcome relevant name testCase =
                     else pure (False, res)
     in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 134) not)
     where runEmbedder = runner embedder
 (drunScriptNoFuzz, drunScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
     where runEmbedder = runner Drun
@@ -138,7 +138,7 @@ prop_charToText (UTF8 char) = monadicIO $ do
   runScriptNoFuzz "charToText" testCase
 
 prop_textLength (UTF8 text) = monadicIO $ do
-  let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
+  let testCase = "assert(\"" <> (text >>= escape) <> "\".size() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
 
 data Rope a = EmptyChunk | Chunk a | UTF8Chunk a | LongChunk a | Rope a `Rope` Rope a deriving (Eq, Show, Foldable)
@@ -176,7 +176,7 @@ prop_ropeConcat rope = monadicIO $ do
   runScriptNoFuzz "ropeConcat" testCase
 
 prop_ropeLength rope = monadicIO $ do
-  let testCase = "assert (" <> ropeMot <> ".len() == " <> show len <> ")"
+  let testCase = "assert (" <> ropeMot <> ".size() == " <> show len <> ")"
       len = length (asString rope)
       ropeMot = unparseMO (asMot rope)
   runScriptNoFuzz "ropeLength" testCase
@@ -230,7 +230,7 @@ instance Arbitrary TestCase where
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   let script cases = do Turtle.output "tests.mo" $ msum (pure (withPrim mempty) : cases)
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                 ["-no-system-api", "-no-check-ir", "tests.mo"] empty
+                                 (addCompilerArgs embedder ["-no-check-ir", "tests.mo"]) empty
                         if ExitSuccess == exitCode
                         then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
                         else pure (False, res)

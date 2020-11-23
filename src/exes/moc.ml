@@ -4,8 +4,7 @@ open Mo_config
 open Printf
 
 let name = "moc"
-let version = "0.1"
-let banner = "Motoko " ^ version ^ " interpreter"
+let banner = "Motoko compiler (revision " ^ Source_id.id ^ ")"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -30,6 +29,7 @@ let gen_source_map = ref false
 
 let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
+  "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
@@ -71,9 +71,9 @@ let argspec = Arg.align [
   "-wasi-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
-  "-stub-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
-      " use the future DFINITY system API (ic-stub-run)";
+  "-ref-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+      " use the reference implementation of the DFINITY system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
@@ -82,7 +82,7 @@ let argspec = Arg.align [
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation";
   "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--release",
   Arg.Unit
@@ -92,6 +92,10 @@ let argspec = Arg.align [
   Arg.Unit
     (fun () -> Flags.release_mode := false),
       " respect debug expressions in source (the default)";
+  "--sanity-checks",
+  Arg.Unit
+    (fun () -> Flags.sanity := true),
+    " enable sanity checking in the RTS and generated code";
 ]
 
 
@@ -124,7 +128,6 @@ let process_files files : unit =
   | Idl ->
     set_out_file files ".did";
     let prog = Diag.run (Pipeline.generate_idl files) in
-    ignore (Diag.run (Idllib.Pipeline.check_prog prog));
     let oc = open_out !out_file in
     let idl_code = Idllib.Arrange_idl.string_of_prog prog in
     output_string oc idl_code; close_out oc
@@ -168,6 +171,12 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
-  Flags.compiled := (!mode = Compile);
-  process_profiler_flags () ;
-  process_files !args
+  Flags.compiled := (!mode = Compile || !mode = Idl);
+  process_profiler_flags ();
+  try
+    process_files !args
+  with
+  | Sys_error msg ->
+    (* IO error *)
+    eprintf "%s\n" msg;
+    exit 1

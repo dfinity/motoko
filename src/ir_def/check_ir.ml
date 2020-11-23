@@ -12,8 +12,6 @@ module E = Ir_effect
    consider making it explicit as part of desugaring.
 *)
 
-(* TODO: enforce second-class nature of T.Mut? in check_typ *)
-
 (* TODO: check escape of free mutables via actors *)
 
 (* Helpers *)
@@ -28,7 +26,13 @@ let immute_typ p =
 
 (* Scope *)
 
-type val_env = T.typ T.Env.t
+type val_info = {
+  typ : T.typ;
+  (* see ir_passes/const.ml for the next two *)
+  loc_known : bool;
+  const : bool;
+}
+type val_env = val_info T.Env.t
 
 type scope =
   { val_env : val_env;
@@ -48,8 +52,11 @@ type ret_env = T.typ option
 *)
 type con_env = T.ConSet.t
 
+type lvl = TopLvl | NotTopLvl
+
 type env =
   { flavor : Ir.flavor;
+    lvl  : lvl;
     vals : val_env;
     cons : con_env;
     labs : lab_env;
@@ -58,13 +65,16 @@ type env =
     seen : con_env ref;
   }
 
-let env_of_scope scope flavor : env =
+let initial_env flavor : env =
   { flavor;
-    vals = scope.Scope.val_env;
+    lvl = TopLvl;
+    vals = T.Env.empty;
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
-    async = None;
+    async = Async_cap.(match initial_cap() with
+                       | (NullCap | ErrorCap) -> None
+                       | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
   }
 
@@ -122,6 +132,19 @@ let check_concrete env at t =
   check env at (T.concrete t)
     "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
+let has_prim_eq t =
+  (* Which types have primitive equality implemented in the backend? *)
+  (* Keep in sync with Compile.compileq_eq *)
+  let open T in
+  match normalize t with
+  | Prim Null -> false (* Ir_passes.Eq handles singleton types *)
+  | Prim Error -> false (* should be desugared away *)
+  | Prim _ -> true (* all other prims are fine *)
+  | Non -> true
+  (* references are handled in the back-end: *)
+  | Obj (Actor, _) | Func (Shared _, _, _, _, _) -> true
+  | _ -> false
+
 let check_field_hashes env what at =
   Lib.List.iter_pairs
     (fun x y ->
@@ -154,7 +177,7 @@ let rec check_typ env typ : unit =
   | T.Non -> ()
   | T.Prim _ -> ()
   | T.Array typ ->
-    check_typ env typ
+    check_mut_typ env typ
   | T.Tup typs ->
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
@@ -175,6 +198,8 @@ let rec check_typ env typ : unit =
           "one-shot function cannot have non-unit return types:\n  %s"
           (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
+        check env no_region (binds <> [])
+          "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env no_region (sort <> T.Local)
@@ -211,9 +236,13 @@ let rec check_typ env typ : unit =
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
-    check_typ env typ
+    error env no_region "unexpected T.Mut"
   | T.Typ c ->
-    check_con env c
+    error env no_region "unexpected T.Typ"
+
+and check_mut_typ env = function
+  | T.Mut t -> check_typ env t
+  | t -> check_typ env t
 
 and check_con env c =
   if T.ConSet.mem c !(env.seen) then ()
@@ -221,20 +250,21 @@ and check_con env c =
   begin
     env.seen := T.ConSet.add c !(env.seen);
     let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
+    check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
     check_typ env' (T.open_ ts typ)
   end
 
-and check_typ_field env s typ_field : unit =
-  let T.{lab; typ} = typ_field in
-  check_typ env typ;
-  if not (T.is_typ typ) then begin
-    check env no_region
-      (s <> Some T.Actor || T.is_shared_func typ)
-      "actor field must have shared function type"
-  end
+and check_typ_field env s tf : unit =
+  match tf.T.typ, s with
+  | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
+  | T.Typ c, Some _ -> check_con env c
+  | t, Some T.Actor when not (T.is_shared_func t) ->
+    error env no_region "actor field %s must have shared function type" tf.T.lab
+  | t, _ -> check_typ env t
 
 and check_typ_binds_acyclic env cs ts  =
   let n = List.length cs in
@@ -320,11 +350,17 @@ let isAsyncE exp =
     -> true
   | _ -> false
 
+let store_typ t  =
+  T.stable t &&
+  match t with
+  | T.Obj(T.Memory, fts) ->
+    List.for_all (fun f -> T.is_opt f.T.typ) fts
+  | _ -> false
+
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
-  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;
@@ -332,12 +368,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   check (E.infer_effect_exp exp <= E.eff exp)
     "inferred effect not a subtype of expected effect";
   (* check typing *)
-  match exp.it with
+  begin match exp.it with
   | VarE id ->
-    let t0 = try T.Env.find id env.vals with
-             |  Not_found -> error env exp.at "unbound variable %s" id
+    let { typ; loc_known; const } =
+      try T.Env.find id env.vals
+      with Not_found -> error env exp.at "unbound variable %s" id
     in
-      t0 <~ t
+    T.as_immut typ <: t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -368,6 +405,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       ot <: t
+    | RelPrim (ot,  Operator.NeqOp), _ ->
+      check false "negation operator should be desugared away in IR"
+    | RelPrim (ot,  Operator.EqOp), [exp1; exp2] when (not env.flavor.has_poly_eq) ->
+      check (has_prim_eq ot) "primitive equality is not defined for operand type";
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      T.bool <: t
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
       typ exp1 <: ot;
@@ -403,7 +447,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
                | ActorDotPrim _ -> sort = T.Actor
                | DotPrim _ -> sort <> T.Actor
                | _ -> false) "sort mismatch";
-        try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
+        try T.as_immut (T.lookup_val_field n tfs) <: t with Invalid_argument _ ->
           error env exp1.at "field name %s does not exist in type\n  %s"
             n (T.string_of_typ_expand t1)
       end
@@ -419,7 +463,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
                                          (T.string_of_typ_expand t1)
       in
       typ exp2 <: T.nat;
-      t2 <~ t
+      T.as_immut t2 <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -460,6 +504,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
       T.text <: t
+    | SerializePrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
+      typ exp1 <: T.seq ots;
+      T.blob <: t
+    | DeserializePrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
+      typ exp1 <: T.blob;
+      T.seq ots <: t
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
@@ -495,6 +547,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+    | ICStableRead t1, [] ->
+      check_typ env t1;
+      check (store_typ t1) "Invalid type argument to ICStableRead";
+      t1 <: t
+    | ICStableWrite t1, [exp1] ->
+      check_typ env t1;
+      check (store_typ t1) "Invalid type argument to ICStableWrite";
+      typ exp1 <: t1;
+      T.unit <: t
     | NumConvPrim (p1, p2), [e] ->
       (* we could check if this conversion is supported *)
       typ e <: T.Prim p1;
@@ -504,6 +565,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t2 <: t
     | BlobOfIcUrl, [e] ->
       typ e <: T.text;
+      T.blob <: t
+    | IcUrlOfBlob, [e] ->
+      typ e <: T.blob;
+      T.text <: t
     | ActorOfIdBlob actor_typ, [e] ->
       typ e <: T.blob;
       check_typ env actor_typ;
@@ -517,6 +582,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* We could additionally keep track of the type of the current actor in
          the environment and see if this lines up. *)
       t1 <: t;
+    | SystemTimePrim, [] ->
+      T.(Prim Nat64) <: t;
+    (* Cycles *)
+    | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
+      T.nat64 <: t
+    | SystemCyclesAcceptPrim, [e1] ->
+      typ e1 <: T.nat64;
+      T.nat64 <: t
+    | SystemCyclesAddPrim, [e1] ->
+      typ e1 <: T.nat64;
+      T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -558,7 +634,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: t;
     check_cases env T.catch t cases;
   | LoopE exp1 ->
-    check_exp env exp1;
+    check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;
     T.Non <: t (* vacuously true *)
   | LabelE (id, t0, exp1) ->
@@ -574,22 +650,24 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 = typ exp1 in
     let env' =
       {(adjoin_cons env ce)
-       with labs = T.Env.empty; rets = Some t1; async = Some c} in
+       with labs = T.Env.empty; rets = Some t1; async = Some c; lvl = NotTopLvl} in
     check_exp env' exp1;
     let t1' = T.open_ [t0] (T.close [c] t1)  in
     t1' <: T.Any; (* vacuous *)
     T.Async (t0, t1') <: t
   | DeclareE (id, t0, exp1) ->
-    check_typ env t0;
-    let env' = adjoin_vals env (T.Env.singleton id t0) in
+    check_mut_typ env t0;
+    let val_info = { typ = t0; loc_known = false; const = false } in
+    let env' = adjoin_vals env (T.Env.singleton id val_info) in
     check_exp env' exp1;
-    (typ exp1) <: t
+    typ exp1 <: t
   | DefineE (id, mut, exp1) ->
     check_exp env exp1;
     begin
       match T.Env.find_opt id env.vals with
       | None -> error env exp.at "unbound variable %s" id
-      | Some t0 ->
+      | Some { typ = t0; const; loc_known } ->
+        check (not const) "cannot use DefineE on const variable";
         match mut with
         | Const ->
           typ exp1 <: t0
@@ -612,7 +690,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control (fun () -> List.hd ts) ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some codom; async = None} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = None; lvl = NotTopLvl} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
@@ -626,17 +704,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
     List.iter (check_typ env) ts;
-    check_exp env exp_f;
+    check_exp { env with lvl = NotTopLvl } exp_f;
     check_exp env exp_k;
     check_exp env exp_r;
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, t0) ->
+  | ActorE (ds, fs, { pre; post}, t0) ->
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
+    check_exp env'' pre;
+    check_exp env'' post;
+    typ pre <: T.unit;
+    typ post <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -654,6 +736,47 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1 <: T.Obj (s0, val_tfs0);
 
     t0 <: t
+  end;
+  (* check const annotation *)
+  (* see ir_passes/const.ml for an explanation *)
+  let check_var ctxt v =
+    check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
+  if exp.note.Note.const
+  then begin
+    match exp.it with
+    | VarE id -> check_var "VarE" id
+    | FuncE (x, s, c, tp, as_ , ts, body) ->
+      check (s = T.Local) "constant FuncE cannot be of shared sort";
+      if env.lvl = NotTopLvl then
+      Freevars.M.iter (fun v _ ->
+        if (T.Env.find v env.vals).loc_known then () else
+        check_var "FuncE" v
+      ) (Freevars.exp exp)
+    | NewObjE (Type.(Object | Module), fs, t) when T.is_immutable_obj t ->
+      List.iter (fun f -> check_var "NewObjE" f.it.var) fs
+    | PrimE (ArrayPrim (Const, _), es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant array with non-constant subexpression"
+      ) es
+    | PrimE (TupPrim, es) ->
+      List.iter (fun e1 ->
+        check e1.note.Note.const "constant tuple with non-constant subexpression"
+      ) es
+    | PrimE (DotPrim _, [e1]) ->
+      check e1.note.Note.const "constant DotPrim on non-constant subexpression"
+    | PrimE (ProjPrim _, [e1]) ->
+      check e1.note.Note.const "constant ProjPrim on non-constant subexpression"
+    | BlockE (ds, e) ->
+      List.iter (fun d -> match d.it with
+        | VarD _ -> check false "VarD in constant BlockE"
+        | LetD (p, e1) ->
+          check (Ir_utils.is_irrefutable p) "refutable pattern in constant BlockE";
+          check e1.note.Note.const "non-constant RHS in constant BlockE"
+      ) ds;
+      check e.note.Note.const "non-constant body in constant BlockE"
+    | LitE _ -> ()
+    | _ -> check false "unexpected constant expression"
+  end;
 
 
 and check_lexp env (lexp:Ir.lexp) : unit =
@@ -662,16 +785,21 @@ and check_lexp env (lexp:Ir.lexp) : unit =
   let (<:) t1 t2 = check_sub env lexp.at t1 t2 in
   (* check type annotation *)
   let t = lexp.note in
-  check_typ env t;
+  (match t with
+  | T.Mut t -> check_typ env t
+  | t -> error env lexp.at "lexp with non-mutable type");
   (* check typing *)
   match lexp.it with
   | VarLE id ->
-    let t0 = try T.Env.find id env.vals with
-             |  Not_found -> error env lexp.at "unbound variable %s" id
+    let { typ = t0; const; loc_known } =
+      try T.Env.find id env.vals
+      with Not_found -> error env lexp.at "unbound variable %s" id
     in
-      t0 <: t
+    check (not const) "cannot assign to constant variable";
+    t0 <: t
   | DotLE (exp1, n) ->
     begin
+      check_exp env exp1;
       let t1 = typ exp1 in
       let sort, tfs =
         try T.as_obj_sub [n] t1 with Invalid_argument _ ->
@@ -715,12 +843,14 @@ and check_args env args =
       check env a.at (not (T.Env.mem a.it ve))
         "duplicate binding for %s in argument list" a.it;
       check_typ env a.note;
-      go (T.Env.add a.it a.note ve) as_
+      let val_info = {typ = a.note; const = false; loc_known = env.lvl = TopLvl } in
+      let env' = T.Env.add a.it val_info ve in
+      go env' as_
   in go T.Env.empty args
 
 (* Patterns *)
 
-and gather_pat env ve0 pat : val_env =
+and gather_pat env const ve0 pat : val_env =
   let rec go ve pat =
     match pat.it with
     | WildP
@@ -729,7 +859,8 @@ and gather_pat env ve0 pat : val_env =
     | VarP id ->
       check env pat.at (not (T.Env.mem id ve0))
         "duplicate binding for %s in block" id;
-      T.Env.add id pat.note ve (*TBR*)
+      let val_info = {typ = pat.note; const; loc_known = env.lvl = TopLvl} in
+      T.Env.add id val_info ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
     | ObjP pfs ->
@@ -752,7 +883,7 @@ and check_pat env pat : val_env =
   let t = pat.note in
   match pat.it with
   | WildP -> T.Env.empty
-  | VarP id -> T.Env.singleton id pat.note
+  | VarP id -> T.Env.singleton id { typ = pat.note; const = false; loc_known = env.lvl = TopLvl }
   | LitP NullLit ->
     t <: T.Opt T.Any;
     T.Env.empty
@@ -821,8 +952,9 @@ and type_exp_fields env s fs : T.field list =
 
 and type_exp_field env s f : T.field =
   let {name; var} = f.it in
-  let t = try T.Env.find var env.vals with
-          | Not_found -> error env f.at "field typing for %s not found" name
+  let { typ = t; const; loc_known } =
+    try T.Env.find var env.vals
+    with Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
@@ -870,25 +1002,55 @@ and gather_block_decs env decs =
 and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
-    let ve = gather_pat env scope.val_env pat in
+    let ve = gather_pat env exp.note.Note.const scope.val_env pat in
     { val_env = ve }
   | VarD (id, t, exp) ->
     check_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
-    let ve =  T.Env.add id (T.Mut t) scope.val_env in
-    { val_env = ve}
+    let val_info = {typ = T.Mut t; const = false; loc_known = env.lvl = TopLvl} in
+    let ve = T.Env.add id val_info scope.val_env in
+    { val_env = ve }
 
 (* Programs *)
 
-let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
-  let env = env_of_scope scope flavor in
-  try
+let check_comp_unit env = function
+  | LibU (ds, e) ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds;
-    check_exp env' exp;
+    check_exp env' e;
+  | ProgU ds ->
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds
+  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
+    let check p = check env no_region p in
+    let (<:) t1 t2 = check_sub env no_region t1 t2 in
+    let env' = match as_opt with
+      | None -> { env with async = None }
+      | Some as_ ->
+        let ve = check_args env as_ in
+        List.iter (fun a -> check_shared env no_region a.note) as_;
+        adjoin_vals { env with async = None } ve
+    in
+    let scope1 = gather_block_decs env' ds in
+    let env'' = adjoin env' scope1 in
+    check_decs env'' ds;
+    check_exp env'' pre;
+    check_exp env'' post;
+    typ pre <: T.unit;
+    typ post <: T.unit;
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    let (s0, tfs0) = T.as_obj t0 in
+    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    type_obj env'' T.Actor fs <: T.Obj (s0, val_tfs0);
+    () (* t0 <: t *)
+
+let check_prog verbose phase ((cu, flavor) as prog) : unit =
+  let env = initial_env flavor in
+  try check_comp_unit env cu
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
     if verbose

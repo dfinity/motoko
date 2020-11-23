@@ -4,12 +4,12 @@
 (* 2   :  and expected symbols *)
 (* 3   :  and parsed items *)
 
-type error_detail = int
+type error_detail = int  (* TODO: make this a datatype! *)
 
-exception Error of string
+exception Error of string * Lexing.position * Lexing.position
 
 val parse : error_detail ->
             'a Parser.MenhirInterpreter.checkpoint ->
-            (Lexing.lexbuf -> Parser.token) ->
+            Parser.MenhirInterpreter.supplier ->
             Lexing.lexbuf ->
-            'a
+            'a Diag.result

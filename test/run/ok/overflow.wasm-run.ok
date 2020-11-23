@@ -1,5 +1,10 @@
-Error: failed to process main module `_out/overflow.wasm`
+Error: failed to run main module `_out/overflow.wasm`
 
 Caused by:
-    0: Instantiation failed during setup
-    1: Trap occurred while invoking start function: wasm trap: integer divide by zero, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: integer divide by zero
+       wasm backtrace:
+         0: B+div
+         1: init
+         2: _start
+       

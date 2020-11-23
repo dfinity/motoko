@@ -1,13 +1,13 @@
 import Prim "mo:prim";
 
-class range(x : Nat, y : Nat) {
-  var i = x;
-  public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
-};
-
-
 actor a {
-  public func go() {
+  class range(x : Nat, y : Nat) {
+    var i = x;
+    public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+  };
+
+
+  public func go()  : async () {
     {
       var i = 0;
       i := 0;

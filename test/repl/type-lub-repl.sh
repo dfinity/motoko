@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests that correct lub types are inferred when values appear in arrays
-${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -i lib/type-lub.mo <<__END__
+moc -i lib/type-lub.mo <<__END__
 opts;
 nulls;
 incompatible_objs;
@@ -19,9 +19,6 @@ poly_funcs2;
 poly_funcs2[0]<Int>([1, 2, 3]);
 poly_funcs2[1]<Char>([1, 2, 3]);
 poly_funcs3;
-poly_funcs4;
-poly_funcs4[0]<Nat, Nat>([1, 2, 3], 42);
-poly_funcs4[1]<Nat, Nat>([11, 22, 33], 25);
 
 variant_funcs;
 variant_funcs[0](#bar);

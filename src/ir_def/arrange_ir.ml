@@ -26,12 +26,15 @@ let rec exp e = match e.it with
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
-    "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
+    "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
-  | ActorE (ds, fs, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [typ t]
+  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
+
+and upgrade { pre; post } =
+  "Upgrade" $$ ["Pre" $$ [exp pre]; "Post" $$ [exp post]]
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
@@ -64,12 +67,21 @@ and prim = function
   | AwaitPrim         -> Atom "AwaitPrim"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
-  | ShowPrim t        -> "ShowPrim"   $$ [typ t]
+  | ShowPrim t        -> "ShowPrim" $$ [typ t]
+  | SerializePrim t   -> "SerializePrim" $$ List.map typ t
+  | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
-  | CastPrim (t1, t2) -> "CastPrim"   $$ [typ t1; typ t2]
+  | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
+  | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
+  | SystemTimePrim    -> Atom "SystemTimePrim"
+  | SystemCyclesAddPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
+  | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
+  | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
@@ -77,6 +89,8 @@ and prim = function
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
   | ICCallPrim        -> Atom "ICCallPrim"
+  | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
+  | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
 and mut = function
   | Const -> Atom "Const"
@@ -130,5 +144,10 @@ and dec d = match d.it with
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]
 
+and comp_unit = function
+  | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
+  | ProgU ds -> "ProgU" $$ List.map dec ds
+  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [upgrade u; typ t]
 
-and prog ((ds, e), _flavor)= "BlockE"  $$ List.map dec ds @ [ exp e ]
+and prog (cu, _flavor) = comp_unit cu

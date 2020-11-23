@@ -1,11 +1,11 @@
 // Nothing to run here (but do compile and validate)
 
 //SKIP drun-run
-//SKIP ic-stub-run
+//SKIP ic-ref-run
 
 actor control {
 
-  func condition() : Bool = false;
+  flexible func condition() : Bool = false;
 
   public func testBlock() {
     label l1 {

@@ -1,11 +1,11 @@
 (library
   (name mo_frontend)
-  (libraries menhirLib lib lang_utils mo_config mo_def mo_types mo_values)
+  (libraries menhirLib lib lang_utils mo_config mo_def mo_types mo_values wasm_exts)
 )
 (menhir
   (modules parser)
   (flags --table --inspection -v --strict)
   (infer false)
 )
-(ocamllex lexer)
 
+(ocamllex source_lexer)

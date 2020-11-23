@@ -144,7 +144,7 @@ let rec string_of_desc t = function
   | Obj ldescs ->
     let fields = LabMap.bindings ldescs in
     let _, tfs = T.as_obj_sub (List.map fst fields) t in
-    "{" ^ String.concat "; " (List.map (string_of_ldesc tfs) fields) ^ ")"
+    "{" ^ String.concat "; " (List.map (string_of_ldesc tfs) fields) ^ "}"
   | Opt desc ->
     let t' = T.as_opt_sub t in
     "?(" ^ string_of_desc t' desc ^ ")"
@@ -187,6 +187,7 @@ let value_of_lit = function
   | FloatLit z -> V.Float z
   | CharLit c -> V.Char c
   | TextLit t -> V.Text t
+  | BlobLit b -> V.Blob b
   | PreLit _ -> assert false
 
 
@@ -334,7 +335,7 @@ and skip cases sets : bool =
   | [] ->
     true
   | case::cases' ->
-    sets.cases <- AtSet.add case.at sets.cases;
+    sets.cases <- AtSet.add case.it.pat.at sets.cases;
     skip cases' sets
 
 and fail ctxt desc sets : bool =
@@ -356,25 +357,23 @@ and fail ctxt desc sets : bool =
     (sets.missing <- desc::sets.missing; false)
   | InCase (at, case::cases, t) ->
     T.span t = Some 0 && skip (case::cases) sets ||
-    match_pat (InCase (case.at, cases, t)) desc case.it.pat t sets
+    match_pat (InCase (case.it.pat.at, cases, t)) desc case.it.pat t sets
 
-let warn at fmt =
-	Printf.ksprintf (fun s ->
-    if at <> Source.no_region then
-      Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
-  ) fmt
+
+type uncovered = string
+type unreached = Source.region
 
 let check_cases cases t =
   let sets = make_sets () in
   let _exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
+  let uncovered = List.map (string_of_desc t) (List.rev sets.missing) in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
   let unreached_alts = AtSet.diff sets.alts sets.reached_alts in
-  AtSet.iter (fun at -> warn at "this case is never reached") unreached_cases;
-  AtSet.iter (fun at -> warn at "this pattern is never matched")
-    unreached_alts;
-  List.map (string_of_desc t) (List.rev sets.missing)
+  uncovered, AtSet.elements (AtSet.union unreached_cases unreached_alts)
 
 let (@?) it at = {it; at; note = empty_typ_note}
 
 let check_pat pat t =
-  check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t
+  let uncovered, unreached =
+    check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t
+  in uncovered, List.filter ((<>) pat.at) unreached

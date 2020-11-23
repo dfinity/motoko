@@ -54,4 +54,4 @@ actor Test {
 
 Test.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP comp
-//SKIP comp-stub
+//SKIP comp-ref

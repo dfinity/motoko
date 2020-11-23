@@ -8,6 +8,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
-    - uses: cachix/install-nix-action@v7
+    - uses: cachix/install-nix-action@v12
     - name: "nix-build"
       run: nix-build --arg internal false --max-jobs 1 -A all-systems-go

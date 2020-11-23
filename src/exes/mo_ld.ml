@@ -35,7 +35,7 @@ let argspec = Arg.align
 (* IO *)
 
 let load_file f =
-  let ic = open_in f in
+  let ic = open_in_bin f in
   let n = in_channel_length ic in
   let s = Bytes.create n in
   really_input ic s 0 n;
@@ -59,6 +59,7 @@ let () =
   if !lib_file = "" then usage_err "no library file specified";
   if !out_file = "" then usage_err "no output file specified";
 
+  Mo_config.Flags.debug_info := true; (* linking mode: preserve debug info *)
 
   let base = decode_file !base_file in
   let lib = decode_file !lib_file in

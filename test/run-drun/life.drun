@@ -1,0 +1,21 @@
+# too slow for ic-ref:
+# SKIP ic-ref-run
+
+install $ID life/life-v1.mo ""
+ingress $ID advance "DIDL\x00\x01\x7d\x0F"
+query $ID show "DIDL\x00\x00"
+# self-upgrade from life-v1
+upgrade $ID life/life-v1.mo ""
+query $ID show "DIDL\x00\x00"
+ingress $ID advance "DIDL\x00\x01\x7d\x0F"
+query $ID show "DIDL\x00\x00"
+# upgrade from life-v1 to life-v2
+upgrade $ID life/life-v2.mo ""
+query $ID show "DIDL\x00\x00"
+ingress $ID advance "DIDL\x00\x01\x7d\x01"
+query $ID show "DIDL\x00\x00"
+# self-upgrade from life-v2
+upgrade $ID life/life-v2.mo ""
+query $ID show "DIDL\x00\x00"
+ingress $ID advance "DIDL\x00\x01\x7d\x0F"
+query $ID show "DIDL\x00\x00"

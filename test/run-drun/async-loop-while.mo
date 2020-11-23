@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor a {
-  public func go() {
+  public func go() : async () {
     { var i = 0;
       var j = 0;
       loop {

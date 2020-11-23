@@ -4,7 +4,7 @@ type lab = string
 type var = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module
+type obj_sort = Object | Actor | Module | Memory
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -35,6 +35,7 @@ type prim =
   | Principal
 
 type t = typ
+
 and typ =
   | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
@@ -45,13 +46,14 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ * typ                        (* future *)
+  | Async of scope * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
+and scope = typ
 
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
@@ -72,11 +74,13 @@ val is_shared_sort : 'a shared -> bool
 val unit : typ
 val bool : typ
 val nat : typ
+val nat64 : typ
 val int : typ
 val text : typ
 val blob : typ
 val error : typ
 val char : typ
+val principal : typ
 
 val throwErrorCodes : field list
 val catchErrorCodes : field list
@@ -96,6 +100,8 @@ val prim : string -> prim
 val is_non : typ -> bool
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
+val is_module : typ -> bool
+val is_immutable_obj : typ -> bool
 val is_variant : typ -> bool
 val is_array : typ -> bool
 val is_opt : typ -> bool
@@ -106,6 +112,7 @@ val is_func : typ -> bool
 val is_async : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
+val is_con : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
@@ -120,6 +127,7 @@ val as_async : typ -> typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_typ : typ -> con
+val as_con : typ -> con * typ list
 
 val as_prim_sub : prim -> typ -> unit
 val as_obj_sub : string list -> typ -> obj_sort * field list
@@ -157,6 +165,9 @@ val set_kind : con -> kind -> unit
 module ConEnv : Env.S with type key = con
 module ConSet : Dom.S with type elt = con
 
+(* Sets *)
+
+module S : Set.S with type elt = typ
 
 (* Normalization and Classification *)
 
@@ -172,13 +183,19 @@ val concrete : typ -> bool
 val shared : typ -> bool
 val find_unshared : typ -> typ option
 val is_shared_func : typ -> bool
+
+val stable : typ -> bool
+
 val inhabited : typ -> bool
+val singleton : typ -> bool
 val span : typ -> int option
 
 
-(* Cons occuring in kind *)
+(* Constructor occurrences *)
 
+val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
+
 
 
 (* Equivalence and Subtyping *)
@@ -229,6 +246,7 @@ module type Pretty = sig
   val string_of_typ_expand : typ -> string
 end
 
-module MakePretty(Cfg : sig val show_stamps : bool end) : Pretty
+module MakePretty(_ : sig val show_stamps : bool end) : Pretty
 
 include Pretty
+

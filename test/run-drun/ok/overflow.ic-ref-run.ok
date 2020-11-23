@@ -1,0 +1,12 @@
+→ update create_canister()
+← replied: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: ()
+→ update go()
+debug.print: ok 1
+debug.print: ok 2
+debug.print: ok 3
+debug.print: ok 4
+debug.print: ok 5
+debug.print: ok 6
+← replied: ()

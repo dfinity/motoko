@@ -11,7 +11,6 @@ open Type
    at the loss of some precision in OCaml typing.
 *)
 
-type var = exp
 
 (* Field names *)
 
@@ -20,29 +19,40 @@ val nextN : Type.lab
 
 (* Identifiers *)
 
+type var
+
+val var : string -> typ -> var
+val id_of_var : var -> string
+val typ_of_var : var -> typ
+val arg_of_var : var -> arg
+val var_of_arg : arg -> var
+
 val fresh_id : string -> unit -> id
 val fresh_var : string -> typ -> var
 val fresh_vars : string -> typ list -> var list
 
-val idE : id -> typ -> exp
-val id_of_exp : var -> id
-val arg_of_exp : var -> arg
-val exp_of_arg : arg -> var
+(* type arguments *)
+
+val typ_arg : con -> bind_sort -> typ -> typ_bind
 
 (* Patterns *)
 
 val varP : var -> pat
 val tupP :  pat list -> pat
+val wildP : pat
 
 val seqP : pat list -> pat
 
 (* Expressions *)
 
+val varE : var -> exp
 val primE : Ir.prim -> exp list -> exp
 val selfRefE : typ -> exp
-val asyncE : typ -> typ -> exp -> exp
 val assertE : exp -> exp
-val awaitE : typ -> exp -> exp -> exp
+val asyncE : typ_bind -> exp -> typ -> exp
+val awaitE : exp -> exp
+val cps_asyncE : typ -> typ -> exp -> exp
+val cps_awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
@@ -57,7 +67,11 @@ val ignoreE : exp -> exp
 
 val unitE : exp
 val boolE : bool -> exp
+val nullE : unit -> exp
 
+val funcE : string -> func_sort -> control ->
+  typ_bind list -> arg list -> typ list -> exp ->
+  exp
 val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
@@ -68,12 +82,19 @@ val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp
 val immuteE: exp -> exp
-val assignE : exp -> exp -> exp
+val assignE : var -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp
 val forE : pat -> exp -> exp -> exp
 val loopWhileE : exp -> exp -> exp
 val whileE : exp -> exp -> exp
+
+val falseE : exp
+val trueE : exp
+val notE : exp -> exp
+val andE : exp -> exp -> exp
+val orE : exp -> exp -> exp
+val conjE : exp list -> exp
 
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
@@ -88,7 +109,7 @@ val letD : var -> exp -> dec
 val varD : id -> typ -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
-val nary_funcD : var  -> var list -> exp -> dec
+val nary_funcD : var -> var list -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 
@@ -98,8 +119,6 @@ val answerT : typ
 val contT : typ -> typ
 val err_contT : typ
 val cpsT : typ -> typ
-val fresh_cont : typ -> var
-val fresh_err_cont : unit -> var
 
 (* Sequence expressions *)
 

@@ -2,7 +2,7 @@
    with custom sections that we are interested in
 *)
 
-open Wasm.Ast
+open Ast
 
 type name_section = {
   module_ : string option;
@@ -31,4 +31,4 @@ type extended_module = {
   name : name_section;
   (* dylib section *)
   dylink : dylink_section option;
-  }
+}

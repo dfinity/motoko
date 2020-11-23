@@ -117,7 +117,7 @@ main = do
         <> " --error-detail 0"
         <> " --package mydep " <> (project </> "mydependency")
         <> " --actor-idl " <> (project </> "idlpath")
-        <> " --actor-alias counter ic:00"
+        <> " --actor-alias counter aaaaa-aa"
   putStrLn "Starting server with: "
   putStrLn serverCommand
   handleHUnitFailure project do
@@ -137,7 +137,7 @@ main = do
           hoverTestCase
             doc
             (Position 17 11)
-            (plainMarkup "pop : <T>List<T> -> (?T, List<T>)")
+            (plainMarkup "pop : <T>(List<T>) -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)

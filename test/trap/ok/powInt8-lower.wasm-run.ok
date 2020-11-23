@@ -1,7 +1,11 @@
 arithmetic overflow
-
-Error: failed to process main module `_out/powInt8-lower.wasm`
+Error: failed to run main module `_out/powInt8-lower.wasm`
 
 Caused by:
-    0: Instantiation failed during setup
-    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: pow<Int8>
+         1: init
+         2: _start
+       

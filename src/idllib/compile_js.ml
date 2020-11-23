@@ -12,6 +12,18 @@ type typ_info = {
     is_rec : bool;
   }
 
+let as_tuple fs =
+  let open List in
+  let fs2 = mapi (fun i f -> (i, f)) fs in
+  let is_tuple = length fs > 0 && for_all (fun (i, f) ->
+      match f.it.label.it with
+      | Unnamed id -> Lib.Uint32.to_int id = i
+      | _ -> false) fs2 in
+  if is_tuple then
+    Some (map (fun (f : typ_field) -> f.it.typ) fs)
+  else
+    None
+
 (* Gather type definitions from actor and sort the definitions in topological order *)              
 let chase_env env actor =
   let new_env = ref [] in
@@ -19,6 +31,8 @@ let chase_env env actor =
   let rec chase t =
     match t.it with
     | PrimT _ -> ()
+    | PrincipalT -> ()
+    | BlobT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -32,6 +46,7 @@ let chase_env env actor =
     | RecordT fs -> chase_fields fs
     | VariantT fs -> chase_fields fs
     | FuncT (ms, fs1, fs2) -> List.iter chase fs1; List.iter chase fs2
+    | ClassT _ -> assert false
     | PreT -> assert false
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
@@ -46,6 +61,8 @@ let infer_rec env_list =
   let rec go t =
     match t.it with
     | PrimT _ -> ()
+    | PrincipalT -> ()
+    | BlobT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -57,7 +74,8 @@ let infer_rec env_list =
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
     | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
-    | preT -> assert false
+    | ClassT _ -> assert false
+    | PreT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
   in
@@ -86,7 +104,7 @@ let pp_prim p =
   | Float64 -> "Float64"
   | Bool -> "Bool"
   | Text -> "Text"
-  | Null -> "Unit"
+  | Null -> "Null"
   | Reserved -> "None"
   | Empty -> "None"
 
@@ -106,8 +124,10 @@ let rec pp_typ ppf t =
   (match t.it with
   | VarT s -> id ppf s
   | PrimT p -> str ppf ("IDL."^(pp_prim p))
+  | PrincipalT -> str ppf "IDL.Principal"
   | RecordT ts -> pp_fields ppf ts
   | VecT t -> str ppf "IDL.Vec("; pp_typ ppf t; str ppf ")";
+  | BlobT -> str ppf "IDL.Vec(IDL.Nat8)";
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
@@ -120,11 +140,11 @@ let rec pp_typ ppf t =
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
-     kwd ppf "new";
-     str ppf "IDL.ActorInterface({";
+     str ppf "IDL.Service({";
      concat ppf pp_meth "," ts;
      str ppf "})";
      pp_close_box ppf ();
+  | ClassT _ -> assert false
   | PreT -> assert false
   );
   pp_close_box ppf ()
@@ -145,9 +165,15 @@ and pp_modes ppf modes =
 
 and pp_fields ppf fs =
   pp_open_box ppf 1;
-  str ppf "IDL.Record({";
-  concat ppf pp_field "," fs;
-  str ppf "})";
+  (match as_tuple fs with
+  | None ->
+     str ppf "IDL.Record({";
+     concat ppf pp_field "," fs;
+     str ppf "})";
+  | Some typs ->
+     str ppf "IDL.Tuple(";
+     concat ppf pp_typ "," typs;
+     str ppf ")");
   pp_close_box ppf ()
   
 and pp_field ppf tf =
@@ -197,8 +223,7 @@ let pp_actor ppf t recs =
   kwd ppf "return";
   (match t.it with
    | ServT tp ->
-      kwd ppf "new";
-      str ppf "IDL.ActorInterface({";
+      str ppf "IDL.Service({";
       concat ppf pp_meth "," tp;
       str ppf "});"
    | VarT var ->

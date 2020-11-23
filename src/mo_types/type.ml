@@ -7,7 +7,12 @@ type control =
   | Promises       (* shared function producing a future value upon call *)
   | Replies        (* (IR only): responds asynchronously using `reply` *)
 
-type obj_sort = Object | Actor | Module
+type obj_sort =
+   Object
+ | Actor
+ | Module
+ | Memory          (* (codegen only): stable memory serialization format *)
+
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -96,20 +101,25 @@ let compare_field f1 f2 =
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
+let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text
 let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
+let principal = Prim Principal
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "error"; typ = unit }
+  { lab = "canister_reject"; typ = unit }
 ]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system"; typ = unit}
-      (* TBC *)
+    { lab = "system_fatal"; typ = unit};
+    { lab = "system_transient"; typ = unit};
+    { lab = "destination_invalid"; typ = unit};
+    { lab = "canister_error"; typ = unit};
+    { lab = "future"; typ = Prim Nat32};
   ])
 
 let throw = Prim Error
@@ -339,6 +349,7 @@ let rec promote = function
 let is_non = function Non -> true | _ -> false
 let is_prim p = function Prim p' -> p = p' | _ -> false
 let is_obj = function Obj _ -> true | _ -> false
+let is_module = function Obj (Module, _) -> true | _ -> false
 let is_variant = function Variant _ -> true | _ -> false
 let is_array = function Array _ -> true | _ -> false
 let is_opt = function Opt _ -> true | _ -> false
@@ -349,6 +360,7 @@ let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
+let is_con = function Con _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -365,6 +377,7 @@ let as_async = function Async (t1, t2) -> (t1, t2) | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
+let as_con = function Con (c, ts) -> c,ts | _ -> invalid "as_con"
 
 let as_seq t =
   match normalize t with
@@ -426,6 +439,10 @@ let as_async_sub default_scope t = match promote t with
   | Async (t1, t2) -> (t1, t2)
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
+
+let is_immutable_obj obj_type =
+  let _, fields = as_obj_sub [] obj_type in
+  List.for_all (fun f -> not (is_mut f.typ)) fields
 
 
 let lookup_val_field l tfs =
@@ -520,37 +537,38 @@ let avoid cons t =
 
 (* Collecting type constructors *)
 
-let rec cons t cs =
+let rec cons' t cs =
   match t with
   | Var _ ->  cs
   | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
-    List.fold_right cons ts (ConSet.add c cs)
+    List.fold_right cons' ts (ConSet.add c cs)
   | (Opt t | Mut t | Array t) ->
-    cons t cs
+    cons' t cs
   | Async (t1, t2) ->
-    cons t2 (cons t1 cs)
-  | Tup ts -> List.fold_right cons ts cs
+    cons' t2 (cons' t1 cs)
+  | Tup ts -> List.fold_right cons' ts cs
   | Func (s, c, tbs, ts1, ts2) ->
     let cs = List.fold_right cons_bind tbs  cs in
-    let cs = List.fold_right cons ts1 cs in
-    List.fold_right cons ts2 cs
+    let cs = List.fold_right cons' ts1 cs in
+    List.fold_right cons' ts2 cs
   | (Obj (_, fs) | Variant fs) ->
     List.fold_right cons_field fs cs
   | Typ c -> ConSet.add c cs
 
 and cons_bind tb cs =
-  cons tb.bound cs
+  cons' tb.bound cs
 
 and cons_field {lab; typ} cs =
-  cons typ cs
+  cons' typ cs
 
 let cons_kind k =
   match k with
   | Def (tbs, t)
   | Abs (tbs, t) ->
-    cons t (List.fold_right cons_bind tbs ConSet.empty)
+    cons' t (List.fold_right cons_bind tbs ConSet.empty)
 
+let cons t = cons' t ConSet.empty
 
 (* Checking for concrete types *)
 
@@ -587,7 +605,8 @@ let concrete t =
     end
   in go t
 
-let shared t =
+(* stable or shared *)
+let serializable allow_mut t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -597,7 +616,8 @@ let shared t =
       | Var _ | Pre -> assert false
       | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
-      | Async _ | Mut _ -> false
+      | Async _ -> false
+      | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -606,8 +626,10 @@ let shared t =
       | Array t | Opt t -> go t
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) ->
-        s = Actor ||
-          (not (s = Actor) && List.for_all (fun f -> go f.typ) fs)
+        (match s with
+         | Actor -> true
+         | Module -> false (* TODO(1452) make modules sharable *)
+         | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
@@ -631,12 +653,15 @@ let find_unshared t =
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t -> go t
-      | Tup ts -> Lib.List.first_opt go ts
+      | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
-        if s = Actor
-        then None
-        else Lib.List.first_opt (fun f -> go f.typ) fs
-      | Variant fs -> Lib.List.first_opt (fun f -> go f.typ) fs
+        (match s with
+         | Actor -> None
+         | Module -> Some t (* TODO(1452) make modules sharable *)
+         | Object ->
+           List.find_map (fun f -> go f.typ) fs
+         | Memory -> assert false)
+      | Variant fs -> List.find_map (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         if is_shared_sort s
         then None
@@ -649,9 +674,13 @@ let is_shared_func t =
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
+let shared t = serializable false t
+let stable t = serializable true t
+
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
+
 
 (* Equivalence & Subtyping *)
 
@@ -721,7 +750,7 @@ let rec rel_typ rel eq t1 t2 =
     rel_list rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     s1 = s2 && c1 = c2 &&
-    (match rel_binds rel eq tbs1 tbs2 with
+    (match rel_binds eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
@@ -780,6 +809,7 @@ and rel_binds rel eq tbs1 tbs2 =
   else None
 
 and rel_bind ts rel eq tb1 tb2 =
+  tb1.sort == tb2.sort &&
   rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
@@ -789,6 +819,9 @@ and eq t1 t2 : bool =
 
 and sub t1 t2 : bool =
   rel_typ (ref SS.empty) (ref SS.empty) t1 t2
+
+and eq_binds tbs1 tbs2 =
+  let eq = ref SS.empty in rel_binds eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
@@ -814,6 +847,7 @@ and eq_con eq c1 c2 =
     )
 
 let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
+
 
 (* Compatibility *)
 
@@ -914,6 +948,29 @@ and inhabited_field co tf = inhabited_typ co tf.typ
 
 and inhabited t : bool = inhabited_typ (ref S.empty) t
 
+let rec singleton_typ co t =
+  S.mem t !co || begin
+  co := S.add t !co;
+  match normalize t with
+  | Pre -> assert false
+  | Prim Null | Any -> true
+  | Tup ts -> List.for_all (singleton_typ co) ts
+  | Obj ((Object|Memory|Module), fs) -> List.for_all (singleton_field co) fs
+  | Variant [f] -> singleton_field co f
+
+  | Non -> false
+  | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
+  | Mut t' -> false
+  | Obj (_, _) -> false
+  | Variant _ -> false
+  | Var _ -> false
+  | Con _ -> false
+  end
+
+and singleton_field co tf = singleton_typ co tf.typ
+
+and singleton t : bool = singleton_typ (ref S.empty) t
+
 
 (* Least upper bound and greatest lower bound *)
 
@@ -946,8 +1003,7 @@ let rec lub' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
-        List.for_all2 (fun b1 b2 -> b1.sort = b2.sort) bs1 bs2 &&
+        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1020,8 +1076,7 @@ and glb' lubs glbs t1 t2 =
       | Some fs -> Obj (s1, fs)
       )
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
-        List.for_all2 (fun b1 b2 -> b1.sort = b2.sort) bs1 bs2 &&
+        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1078,10 +1133,8 @@ and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
   let get_con = function | Con (c, []) -> c | _ -> assert false in
   let cs = map get_con ts1 in
   let cl = map (close cs) in
-  let combine_binds =
-    map2 (fun b1 b2 -> {b1 with bound = contra lubs glbs b1.bound b2.bound}) in
   Func (
-    s, c, combine_binds bs1 bs2,
+    s, c, bs1,
     cl (map2 (contra lubs glbs) (op args1) (op args2)),
     cl (map2 (co lubs glbs) (op res1) (op res2))
   )
@@ -1152,6 +1205,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Memory -> "memory "
 
 let string_of_func_sort = function
   | Local -> ""
@@ -1192,12 +1246,11 @@ let rec string_of_typ_nullary vs = function
     sprintf "= (type %s)" (string_of_kind (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
-and string_of_dom vs ts =
+and string_of_dom parens vs ts =
   let dom = string_of_typ_nullary vs (seq ts) in
   match ts with
-  | [Tup _] ->
-     sprintf "(%s)" dom
-  | _ -> dom
+  | [Tup _] -> sprintf "(%s)" dom
+  | _ -> if parens && dom.[0] <> '(' then sprintf "(%s)" dom else dom
 
 and string_of_cod vs ts =
   let cod = string_of_typ' vs (seq ts) in
@@ -1252,26 +1305,29 @@ and string_of_typ' vs t =
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' = List.tl vs', List.tl tbs in
-    begin
-      match tbs with
-      | [tb] ->
-         sprintf "%s%s -> %s" (string_of_func_sort s)
-          (string_of_dom vs ts1)
-          (string_of_control_cod true c vs ts2)
-      | _ ->
-        sprintf "%s%s%s -> %s"
-          (string_of_func_sort s) (string_of_binds (vs' @ vs) vs'' tbs')
-          (string_of_dom (vs' @ vs) ts1) (string_of_control_cod true c (vs' @ vs) ts2)
-    end
+    let vs'vs = vs' @ vs in
+    (match tbs with
+    | [tb] ->
+       sprintf "%s%s -> %s" (string_of_func_sort s)
+        (string_of_dom false (vs'vs) ts1)
+        (string_of_control_cod true c (vs'vs) ts2)
+    | _ ->
+      let bs = string_of_binds (vs'vs) vs'' tbs' in
+      sprintf "%s%s%s -> %s"
+        (string_of_func_sort s) bs (string_of_dom (bs <> "") (vs'vs) ts1)
+        (string_of_control_cod true c (vs'vs) ts2)
+    )
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_dom vs ts1)
+      (string_of_dom false vs ts1)
       (string_of_control_cod false c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
+    let vs'vs = vs' @ vs in
+    let bs = string_of_binds (vs'vs) vs' tbs in
     sprintf "%s%s%s -> %s"
-      (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_dom (vs' @ vs) ts1) (string_of_control_cod false c (vs' @ vs) ts2)
+      (string_of_func_sort s) bs (string_of_dom (bs <> "") (vs'vs) ts1)
+      (string_of_control_cod false c (vs'vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async (t1, t2) ->
@@ -1356,5 +1412,6 @@ module type Pretty = sig
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
 end
+
 
 include MakePretty(struct let show_stamps = true end)

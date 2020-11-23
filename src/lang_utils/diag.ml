@@ -14,6 +14,7 @@ type 'a result = ('a * messages, messages) Stdlib.result
 let return x = Ok (x, [])
 
 let warn at cat text = Ok ((), [{ sev = Warning; at; cat; text}])
+let error at cat text = Stdlib.Error [{ sev = Error; at; cat; text}]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs
@@ -24,6 +25,12 @@ let bind x f = match x with
   | Ok (y, msgs1) -> match f y with
     | Ok (z, msgs2) -> Ok (z, msgs1 @ msgs2)
     | Stdlib.Error msgs2 -> Error (msgs1 @ msgs2)
+
+let finally f r = f (); r
+
+module Syntax = struct
+  let (let*) = bind
+end
 
 let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> function
   | [] -> return []
