@@ -1,14 +1,14 @@
 /// Cycles
 
 /// Usage of the Internet Computer is measured, and paid for, in _cycles_.
-/// Provides imperative operations for observing cycles, transferring cycles and
+/// This library provides imperative operations for observing cycles, transferring cycles and
 /// observing refunds of cycles.
 
 
 /// **WARNING:** This low-level API is **experimental** and likely to change or even disappear.
 /// Dedicated syntactic support for manipulating cycles may be added to the language in future, obsoleting this library.
 ///
-/// **NOTE:** Since cycles measures computation, the value of
+/// **NOTE:** Since cycles measure computational resources, the value of
 /// `balance()` can change from one call to the next.
 
 import Prim "mo:prim";
@@ -29,9 +29,10 @@ module {
     Prim.nat64ToNat(Prim.cyclesAvailable())
   };
 
-  /// Transfers `amount` from `available()` to `balance()`, returning `remainder` available.
-  /// Traps if trying to accept more cycles than are available.
-  public func accept(amount : Nat) : (remainder : Nat) {
+  /// Transfers up to `amount` from `available()` to `balance()`
+  /// Returns the amount actually transferred, which may be less than 
+  /// requested, e.g. if less is available, or if canister balance limits are reached
+  public func accept(amount : Nat) : (accepted : Nat) {
     Prim.nat64ToNat(Prim.cyclesAccept(Prim.natToNat64(amount)));
   };
 
@@ -42,7 +43,7 @@ module {
   /// the last call is deducted from `balance()`.
   /// If this total exceeds `balance()`, the caller traps, aborting the call.
   ///
-  /// Note: the implicit, register of added amounts is reset to zero on entry to
+  /// Note: the implicit register of added amounts is reset to zero on entry to
   /// a shared function and after each shared function call or resume from an await.
   public func add(amount : Nat) : () {
     Prim.cyclesAdd(Prim.natToNat64(amount))
