@@ -1,14 +1,16 @@
 import Cycles "ExperimentalCycles";
 //import Cycles "mo:base/ExperimentalCycles";
 
-shared {caller = owner} actor class PiggyBank(
-  capacity: Nat,
-  benefit : shared () -> async ()) {
+shared(msg) actor class PiggyBank(
+  benefit : shared () -> async (),
+  capacity: Nat) {
+
+  let owner = msg.caller;
 
   var savings = 0;
 
-  public shared {caller} func getSavings() : async Nat {
-    assert (caller == owner);
+  public shared(msg) func getSavings() : async Nat {
+    assert (msg.caller == owner);
     return savings;
   };
 
@@ -23,9 +25,9 @@ shared {caller = owner} actor class PiggyBank(
     savings += acceptable;
   };
 
-  public shared {caller} func withdraw(amount : Nat)
+  public shared(msg) func withdraw(amount : Nat)
     : async () {
-    assert (caller == owner);
+    assert (msg.caller == owner);
     assert (amount <= savings);
     Cycles.add(amount);
     await benefit();
