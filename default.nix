@@ -301,9 +301,9 @@ rec {
     };
 
     candid = testDerivation {
-      buildInputs = [ moc wasmtime drun candid-tests ];
+      buildInputs = [ moc wasmtime candid-tests ];
       checkPhase = ''
-	      candid-tests -i ${nixpkgs.sources.candid}/test
+        candid-tests -i ${nixpkgs.sources.candid}/test
       '';
     };
 
