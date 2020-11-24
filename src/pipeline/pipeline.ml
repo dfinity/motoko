@@ -196,7 +196,6 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
-
 let lib_of_prog f prog : Syntax.lib  =
  { (Syntax.comp_unit_of_prog true prog) with Source.note = f }
 
@@ -563,11 +562,13 @@ let analyze analysis_name analysis prog name =
   then Check_ir.check_prog !Flags.verbose analysis_name prog
 
 let ir_passes mode prog_ir name =
+  (* translations that extend the progam and must be done before await/cps conversion *)
+  let prog_ir = show_translation true prog_ir name in
+  let prog_ir = eq_translation true prog_ir name in
+  (* cps conversion and local transformations *)
   let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
   let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
   let prog_ir = tailcall_optimization true prog_ir name in
-  let prog_ir = show_translation true prog_ir name in
-  let prog_ir = eq_translation true prog_ir name in
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
