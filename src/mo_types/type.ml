@@ -412,6 +412,7 @@ let as_array_sub t = match promote t with
   | _ -> invalid "as_array_sub"
 let as_opt_sub t = match promote t with
   | Opt t -> t
+  | Prim Null -> Non
   | Non -> Non
   | _ -> invalid "as_opt_sub"
 let as_tup_sub n t = match promote t with
