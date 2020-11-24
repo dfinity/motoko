@@ -1,9 +1,9 @@
-import Cycles "ExperimentalCycles";
-//import Cycles "mo:base/ExperimentalCycles";
+import Cycles "mo:base/ExperimentalCycles";
 
 shared(msg) actor class PiggyBank(
   benefit : shared () -> async (),
-  capacity: Nat) {
+  capacity: Nat
+  ) {
 
   let owner = msg.caller;
 

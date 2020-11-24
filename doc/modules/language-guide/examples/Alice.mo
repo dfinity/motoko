@@ -1,6 +1,5 @@
-import Cycles = "piggy-bank/ExperimentalCycles";
-//import Cycles = "mo:base/ExperimentalCycles";
-import Lib = "piggy-bank/PiggyBank";
+import Cycles = "mo:base/ExperimentalCycles";
+import Lib = "PiggyBank";
 
 actor Alice {
 
@@ -36,10 +35,3 @@ actor Alice {
   }
 
 };
-
-Alice.test(); //OR-CALL ingress test "DIDL\x00\x00"
-
-//SKIP run
-//SKIP run-ir
-//SKIP run-low
-//SKIP ic-ref-run
