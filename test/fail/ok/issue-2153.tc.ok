@@ -1,0 +1,8 @@
+issue-2153.mo:2.33-2.34: type error, expression of type
+  Int
+cannot produce expected type
+  Nat
+issue-2153.mo:3.38-3.39: type error, expression of type
+  {}
+cannot produce expected type
+  {x : Nat}
