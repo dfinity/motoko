@@ -126,8 +126,9 @@ left consumes
   {#A : Nat}
 right consumes
   {#A : Any}
-pat-inconsistent.mo:42.9-42.11: type error, variant pattern cannot consume expected type
-  {#A}
+pat-inconsistent.mo:42.8-42.23: warning, this pattern is never matched
+pat-inconsistent.mo:43.8-43.9: warning, this pattern is never matched
+pat-inconsistent.mo:44.8-44.9: warning, this pattern is never matched
 pat-inconsistent.mo:49.8-49.9: type error, literal of type
   Nat
 does not have expected type
