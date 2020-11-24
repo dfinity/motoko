@@ -1,0 +1,2 @@
+as-opt-sub.mo:2.11-2.20: type error, expected iterable type, but expression has type
+  () -> Null
