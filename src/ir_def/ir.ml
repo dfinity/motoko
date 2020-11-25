@@ -130,11 +130,11 @@ and prim =
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
   (* Funds *)
-  | SystemFundsAddPrim
-  | SystemFundsAcceptPrim
-  | SystemFundsAvailablePrim
-  | SystemFundsBalancePrim
-  | SystemFundsRefundedPrim
+  | SystemCyclesAddPrim
+  | SystemCyclesAcceptPrim
+  | SystemCyclesAvailablePrim
+  | SystemCyclesBalancePrim
+  | SystemCyclesRefundedPrim
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)

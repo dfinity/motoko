@@ -13,7 +13,7 @@ open Mo_values
 let name = "candid-tests"
 let version = "0.1"
 let banner = "Candid test suite runner " ^ version ^ ""
-let usage = "Usage: " ^ name ^ " -i path/to/candid/test"
+let usage = "Usage: " ^ name ^ " [ -i path/to/candid/test ]"
 
 (* Argument handling *)
 
@@ -59,11 +59,19 @@ let print_type = function
 
 type expected_behaviour = ShouldPass | ShouldTrap
 
+exception TextualParseError of (string * Diag.messages)
+
 (* Turning a test case into a motoko program *)
 let mo_of_test tenv test : (string * expected_behaviour, string) result =
-  let deser ts x =
-    "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
-    "\"" ^ Value.Blob.escape x ^ "\"" in
+  let deser ts = function
+    | BinaryInput x ->
+      "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
+      "\"" ^ Value.Blob.escape x ^ "\""
+    | TextualInput x ->
+      match Pipeline.parse_values x with
+      | Error msgs -> raise (TextualParseError (x, msgs))
+      | Ok (vals, _) -> Idl_to_mo_value.args vals
+  in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
   let ignore e = "ignore (" ^ e ^ ")\n" in
@@ -77,22 +85,24 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
 
     let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
     match test.it.assertion with
-    | ParsesAs (true, BinaryInput i)
-    | ParsesEqual (_, BinaryInput i, TextualInput _)
-    | ParsesEqual (_, TextualInput _, BinaryInput  i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
-    | ParsesAs (false, BinaryInput i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
-    | ParsesEqual (true, BinaryInput i1, BinaryInput i2)
-    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
-    | ParsesEqual (false, BinaryInput i1, BinaryInput i2)
-    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
     | ParsesAs (_, TextualInput _)
     | ParsesEqual (_, TextualInput _, TextualInput _)
-    -> Error "all-textual test case"
+    -> Error "all-textual test case" (* not interesting to us *)
+    | ParsesAs (true, i)
+    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
+    | ParsesAs (false, i)
+    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
+    | ParsesEqual (true, i1, i2)
+    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
+    | ParsesEqual (false, i1, i2)
+    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
   with
-    Idl_to_mo.UnsupportedCandidFeature what ->
+    | Idl_to_mo.UnsupportedCandidFeature what ->
       Error (what ^ " not supported")
+    | TextualParseError (x, msgs) ->
+      Error (Printf.sprintf "Could not parse %S:\n%s" x
+          (String.concat ", " (List.map Diag.string_of_message msgs))
+      )
 
 type result = Ok | Fail | Timeout
 
@@ -188,7 +198,12 @@ let report_outcome counts expected_fail outcome =
 (* Main *)
 let () =
   Arg.parse argspec (fun _ -> usage_err "no arguments expected") usage;
-  if !test_dir = "" then usage_err "no candid test directory specified";
+  if !test_dir = "" then
+  begin
+    match Sys.getenv_opt "CANDID_TESTS" with
+    | Some path -> test_dir := path
+    | None -> usage_err "no candid test directory specified via -i or $CANDID_TESTS";
+  end;
 
 
   let filter =

@@ -221,7 +221,7 @@ and comp_unit_body' =
  | ActorU of id option * exp_field list      (* main IC actor *)
  | ModuleU of id option * exp_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * pat * typ option * id * exp_field list
+     sort_pat * typ_id * typ_bind list * pat * typ option * id * exp_field list
 
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase

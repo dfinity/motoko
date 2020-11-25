@@ -301,9 +301,9 @@ rec {
     };
 
     candid = testDerivation {
-      buildInputs = [ moc wasmtime drun candid-tests ];
+      buildInputs = [ moc wasmtime candid-tests ];
       checkPhase = ''
-	      candid-tests -i ${nixpkgs.sources.candid}/test
+        candid-tests -i ${nixpkgs.sources.candid}/test
       '';
     };
 
@@ -569,6 +569,7 @@ rec {
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
+    CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell

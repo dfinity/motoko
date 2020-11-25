@@ -123,6 +123,7 @@ let error_in modes env at fmt =
   if diag_in type_error modes env at fmt then
     raise Recover
 
+(* Currently unused *)
 let warn_in modes env at fmt =
   ignore (diag_in type_warning modes env at fmt)
 
@@ -758,7 +759,7 @@ and infer_exp' f env exp : T.typ =
   t'
 
 and infer_exp'' env exp : T.typ =
-  let in_prog = env.in_prog in
+  let context = env.context in
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
@@ -866,10 +867,16 @@ and infer_exp'' env exp : T.typ =
   | ObjE (obj_sort, fields) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
-      if not in_prog then
+      match context with
+      | (AsyncE _ :: AwaitE _ :: _ :: _ ) ->
         error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
+      | _ -> ()
     end;
-    let env' = if obj_sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
+    let env' =
+      if obj_sort.it = T.Actor then
+        { env with async = C.NullCap; in_actor = true }
+      else env
+    in
     infer_obj env' obj_sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -1018,11 +1025,12 @@ and infer_exp'' env exp : T.typ =
       coverage_cases "switch" env cases t1 exp.at;
     t
   | TryE (exp1, cases) ->
-    check_ErrorCap env "try" exp.at;
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
-    if not env.pre then
-      coverage_cases "try handler" env cases T.catch exp.at;
+    if not env.pre then begin
+      check_ErrorCap env "try" exp.at;
+      coverage_cases "try handler" env cases T.catch exp.at
+    end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
@@ -1090,8 +1098,10 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | ThrowE exp1 ->
-    check_ErrorCap env "throw" exp.at;
-    if not env.pre then check_exp env T.throw exp1;
+    if not env.pre then begin
+      check_ErrorCap env "throw" exp.at;
+      check_exp env T.throw exp1
+    end;
     T.Non
   | AsyncE (typ_bind, exp1) ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
@@ -1735,7 +1745,16 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s fields at : T.typ =
-  let env = {env with in_actor = s = T.Actor} in
+  let env =
+    if s <> T.Actor then
+      { env with in_actor = false }
+    else
+      { env with
+        in_actor = true;
+        labs = T.Env.empty;
+        rets = None;
+        async = C.NullCap; }
+  in
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
   let t = object_of_scope env s fields scope at in
@@ -1892,14 +1911,18 @@ and infer_dec env dec : T.typ =
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let cs, _ts, te, ce = check_typ_binds env typ_binds in
+      let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let t_pat, ve =
-        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat in
+        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
+      in
       if obj_sort.it = T.Actor && not (T.shared t_pat) then
-        error_shared env t_pat pat.at "shared constructor has non-shared parameter type\n  %s" (T.string_of_typ_expand t_pat);
+        error_shared env t_pat pat.at
+          "shared constructor has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand t_pat);
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
-      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+      let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
       let env''' =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
@@ -1909,15 +1932,21 @@ and infer_dec env dec : T.typ =
         }
       in
       let t' = infer_obj env''' obj_sort.it fields dec.at in
-      match typ_opt with
-      | None -> ()
-      | Some typ ->
+      match typ_opt, obj_sort.it with
+      | None, _ -> ()
+      | Some { it = AsyncT (_, typ); at; _ }, T.Actor
+      | Some ({ at; _ } as typ), (T.Module | T.Object) ->
+        if at = Source.no_region then
+          warn env dec.at "actor classes with non non-async return types are deprecated; please declare the return type as `async ...`";
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error env dec.at
             "class body of type\n  %s\ndoes not match expected type\n  %s"
             (T.string_of_typ_expand t')
             (T.string_of_typ_expand t'')
+      | Some typ, T.Actor ->
+        local_error env dec.at "actor class has non-async return type"
+      | _, T.Memory -> assert false
     end;
     T.normalize t
   | TypD _ ->
@@ -1994,7 +2023,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      {it = ObjE (obj_sort, fields); at; _}
+      ({it = ObjE (obj_sort, fields); at; _} |
+       {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
     ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let open Scope in
@@ -2015,11 +2045,16 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
+    let binds' = match dec.it with
+      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
+      | _ -> binds
+    in
     let pre_tbs = List.map (fun bind ->
-                      {T.var = bind.it.var.it;
-                       T.sort = T.Type;
-                       T.bound = T.Pre}
-                    ) binds in
+      { T.var = bind.it.var.it;
+        T.sort = T.Type;
+        T.bound = T.Pre })
+      binds'
+    in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
@@ -2070,7 +2105,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      {it = ObjE (obj_sort, fields); at; _}
+      ( {it = ObjE (obj_sort, fields); at; _} |
+        {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
@@ -2126,10 +2162,14 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
-    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+    let tbs', cs' =
+      if obj_sort.it = T.Actor then
+        List.tl tbs, List.tl cs
+      else tbs, cs in
+    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' obj_sort.it fields dec.at in
-    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
+    let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -2159,8 +2199,9 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      {it = ObjE (obj_sort, fields); at; _}
-) ->
+      ( {it = ObjE (obj_sort, fields); at; _} |
+        {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
+    ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -2182,7 +2223,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
-      con_env = T.ConSet.singleton c ;
+      con_env = T.ConSet.singleton c;
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
@@ -2193,8 +2234,8 @@ and infer_dec_valdecs env dec : Scope.t =
       if not (is_anon_id id) then
         warn_in [Flags.ICMode; Flags.RefMode] env dec.at
           "the constructor function of this actor class is not available for recursive calls, but is available when imported";
-      if not (typ_binds = []) then
-        error env dec.at
+      if not (List.length typ_binds = 1) then
+        local_error env dec.at
           "actor classes with type parameters are not supported yet";
     end;
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
@@ -2202,8 +2243,17 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
-    let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
+    let t2 =
+      if obj_sort.it = T.Actor then
+        T.Async (T.Con (List.hd cs, []),
+          T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
+      else
+        T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
+    in
+    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
+      List.map (T.close cs) ts1,
+      [T.close cs t2])
+    in
     Scope.{ empty with
       val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;
@@ -2226,7 +2276,8 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
 
 let is_actor_dec d =
   match d.it with
-  | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+  | ExpD e
+  | LetD (_, e) -> CompUnit.is_actor_def e
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
     obj_sort.it = T.Actor
   | _ -> false
@@ -2246,7 +2297,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
             if ds <> [] || ds' <> []  then
-              recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
+              error_in [Flags.ICMode; Flags.RefMode] env d.at
                 "an actor or actor class must be the only non-imported declaration in a program"
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
@@ -2262,7 +2313,7 @@ let check_lib scope lib : Scope.t Diag.result =
         (fun lib ->
           let env = env_of_scope msgs scope in
           let (imports, cub) = lib.it in
-          let (imp_ds, ds) = CompUnit.decs_of_comp_unit lib in
+          let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
@@ -2276,18 +2327,20 @@ let check_lib scope lib : Scope.t Diag.result =
                 warn env r "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
-            | ActorClassU  (sp, id, p, _, self_id, fields) ->
+            | ActorClassU  (sp, id, tbs, p, _, self_id, fields) ->
               if is_anon_id id then
                 error env cub.at "bad import: imported actor class cannot be anonymous";
-              let class_typ, fun_typ = begin
-                match T.normalize typ with
-                | T.Func (sort, control, [], ts1, [t2]) ->
-                  t2,
-                  T.Func (sort, control, [T.scope_bind],
-                    ts1,
-                    [T.Async (T.Var (T.default_scope_var, 0), t2)])
-                | _ -> assert false
-                end
+              let cs = List.map (fun tbs -> T.Con(Option.get tbs.note, [])) tbs in
+              let fun_typ = typ in
+              let class_typ =
+                match T.normalize fun_typ with
+                | T.Func (sort, control, _, ts1, [t2]) ->
+                  let t2 = T.normalize (T.open_ cs t2) in
+                  (match t2 with
+                   | T.Async (_ , class_typ) -> class_typ
+                   | _ -> assert false)
+                | _ ->
+                  assert false
               in
               let con = Con.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [

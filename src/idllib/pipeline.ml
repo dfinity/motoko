@@ -167,3 +167,16 @@ let parse_test_file filename : parse_test_file_result =
   | Ok prog -> Diag.return prog
   | Error e -> Error e
 
+(* Values *)
+
+let parse_values s =
+  let lexer = Lexing.from_string s in
+  lexer.Lexing.lex_curr_p <-
+      {lexer.Lexing.lex_curr_p with Lexing.pos_fname = "(string)"};
+  try
+    Diag.return (Parser.parse_args Lexer.token lexer)
+  with
+    | Source.ParseError (at, msg) ->
+      error at "syntax" msg
+    | Parser.Error ->
+      error (Lexer.region lexer) "syntax" "unexpected token"
