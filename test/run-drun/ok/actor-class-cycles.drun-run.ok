@@ -4,4 +4,18 @@ debug.print: {balance = 98_999_999_841_618}
 debug.print: {balance = 98_999_999_841_618}
 debug.print: {iteration = 0}
 debug.print: {balance = 98_999_999_841_618}
+debug.print: {initial = 100_000_000_000_000}
+debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
+debug.print: {iteration = 1}
+debug.print: {balance = 98_999_999_656_728}
+debug.print: {initial = 100_000_000_000_000}
+debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
+debug.print: {iteration = 2}
+debug.print: {balance = 98_999_999_471_848}
+debug.print: {initial = 100_000_000_000_000}
+debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
+debug.print: {iteration = 3}
+debug.print: {balance = 98_999_999_286_968}
+debug.print: {initial = 100_000_000_000_000}
+debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
 ingress Completed: Reply: 0x4449444c0000

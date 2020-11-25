@@ -4,7 +4,7 @@ import Lib = "actor-class-cycles/C";
 
 actor a {
 
-  public func go() {
+  public func go() : async () {
     Prim.debugPrint(debug_show({ balance = Cycles.balance()}));
     if (Cycles.balance() == (0 : Nat64))
       await Cycles.provisional_top_up_actor(a, 1_000_000_000);
