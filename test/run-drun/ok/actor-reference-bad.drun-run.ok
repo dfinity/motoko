@@ -1,14 +1,14 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: "bfozs-kwa73-7nadi":
 debug.print: "":
-debug.print: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: RTS error: blob_of_principal: principal too short
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: blob_of_principal: principal too short
 debug.print: "BFOZS-KWA73-7NADI":
-debug.print: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: RTS error: blob_of_principal: invalid principal
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: blob_of_principal: invalid principal
 debug.print: "bfozskwa737nadi":
-debug.print: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: RTS error: blob_of_principal: invalid principal
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: blob_of_principal: invalid principal
 debug.print: "vpgq":
-debug.print: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: RTS error: blob_of_principal: principal too short
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: blob_of_principal: principal too short
 debug.print: "5h74t-uga73-7nadi":
-debug.print: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: RTS error: blob_of_principal: invalid principal
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: blob_of_principal: invalid principal
 ingress Completed: Reply: 0x4449444c0000

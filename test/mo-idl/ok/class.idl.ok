@@ -1,2 +1,0 @@
-class.mo:2.1-5.2: warning, the constructor function of this actor class is not available for recursive calls, but is available when imported
-  (This is a limitation of the current version.)

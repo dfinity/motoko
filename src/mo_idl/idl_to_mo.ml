@@ -3,6 +3,8 @@ open Source
 module M = Mo_types.Type
 module I = Idllib.Typing
 
+exception UnsupportedCandidFeature of string
+
 let m_env = ref M.Env.empty
 
 let check_prim p =
@@ -19,7 +21,7 @@ let check_prim p =
   | Nat16 -> M.Prim M.Nat16
   | Nat32 -> M.Prim M.Nat32
   | Nat64 -> M.Prim M.Nat64
-  | Float32 -> raise (Invalid_argument "float32 not supported")
+  | Float32 -> raise (UnsupportedCandidFeature "float32")
   | Float64 -> M.Prim M.Float
   | Text -> M.Prim M.Text
   | Reserved -> M.Any

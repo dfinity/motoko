@@ -31,5 +31,5 @@
 (executable
  (name candid_tests)
  (modules candid_tests)
- (libraries lib idllib mo_idl mo_values)
+ (libraries lib idllib mo_idl mo_values lang_utils)
 )

@@ -13,7 +13,7 @@ open Mo_values
 let name = "candid-tests"
 let version = "0.1"
 let banner = "Candid test suite runner " ^ version ^ ""
-let usage = "Usage: " ^ name ^ " -i path/to/candid/test"
+let usage = "Usage: " ^ name ^ " [ -i path/to/candid/test ]"
 
 (* Argument handling *)
 
@@ -53,11 +53,25 @@ let write_file f s =
   output_string oc_ s;
   close_out oc_
 
+let print_type = function
+  | [t] -> "(" ^ Type.string_of_typ t ^ ")" (* add parens to make this unary *)
+  | ts -> Type.string_of_typ (Type.Tup ts)
+
+type expected_behaviour = ShouldPass | ShouldTrap
+
+exception TextualParseError of (string * Diag.messages)
+
 (* Turning a test case into a motoko program *)
-let mo_of_test tenv test : (string * (* should_not_trap *) bool) option =
-  let deser t x =
-    "(prim \"deserialize\" : Blob -> " ^ Type.string_of_typ (Type.seq t) ^ ") " ^
-    "\"" ^ Value.Blob.escape x ^ "\"" in
+let mo_of_test tenv test : (string * expected_behaviour, string) result =
+  let deser ts = function
+    | BinaryInput x ->
+      "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
+      "\"" ^ Value.Blob.escape x ^ "\""
+    | TextualInput x ->
+      match Pipeline.parse_values x with
+      | Error msgs -> raise (TextualParseError (x, msgs))
+      | Ok (vals, _) -> Idl_to_mo_value.args vals
+  in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
   let ignore e = "ignore (" ^ e ^ ")\n" in
@@ -71,22 +85,24 @@ let mo_of_test tenv test : (string * (* should_not_trap *) bool) option =
 
     let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
     match test.it.assertion with
-    | ParsesAs (true, BinaryInput i)
-    | ParsesEqual (_, BinaryInput i, TextualInput _)
-    | ParsesEqual (_, TextualInput _, BinaryInput  i)
-    -> Some (defs ^ ignore (deser typ i), true)
-    | ParsesAs (false, BinaryInput i)
-    -> Some (defs ^ ignore (deser typ i), false)
-    | ParsesEqual (true, BinaryInput i1, BinaryInput i2)
-    -> Some (defs ^ equal (deser typ i1) (deser typ i2), true)
-    | ParsesEqual (false, BinaryInput i1, BinaryInput i2)
-    -> Some (defs ^ not_equal (deser typ i1) (deser typ i2), true)
     | ParsesAs (_, TextualInput _)
     | ParsesEqual (_, TextualInput _, TextualInput _)
-    -> None
+    -> Error "all-textual test case" (* not interesting to us *)
+    | ParsesAs (true, i)
+    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
+    | ParsesAs (false, i)
+    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
+    | ParsesEqual (true, i1, i2)
+    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
+    | ParsesEqual (false, i1, i2)
+    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
   with
-    Invalid_argument _ ->
-      None (* because of "float32 not supported"; this should be reported more cleanly *)
+    | Idl_to_mo.UnsupportedCandidFeature what ->
+      Error (what ^ " not supported")
+    | TextualParseError (x, msgs) ->
+      Error (Printf.sprintf "Could not parse %S:\n%s" x
+          (String.concat ", " (List.map Diag.string_of_message msgs))
+      )
 
 type result = Ok | Fail | Timeout
 
@@ -104,11 +120,90 @@ let run_cmd cmd : (result * string * string) =
   | Unix.WEXITED 124 -> (Timeout, stdout, stderr) (* see man timeout *)
   | _ -> (Fail, stdout, stderr)
 
+type counts = {
+  total : int ref;
+  ok : int ref;
+  fail : int ref;
+  unexpected_ok : int ref;
+  expected_fail : int ref;
+  skip : int ref;
+  ignored : int ref;
+  }
+
+let new_counts () : counts = {
+  total = ref 0;
+  ok = ref 0;
+  fail = ref 0;
+  unexpected_ok = ref 0;
+  expected_fail = ref 0;
+  skip = ref 0;
+  ignored = ref 0;
+  }
+
+let bump r = r := !r + 1
+
+type outcome =
+ | WantedPass
+ | WantedTrap
+ | UnwantedPass
+ | UnwantedTrap of (string * string) (* stdout, stderr *)
+ | Timeout
+ | Ignored of string
+ | CantCompile of (string * string) (* stdout, stderr *)
+
+let red s = "\027[31m" ^ s ^ "\027[0m"
+let green s = "\027[32m" ^ s ^ "\027[0m"
+let green2 s = "\027[32;1m" ^ s ^ "\027[0m"
+let grey s = "\027[37m" ^ s ^ "\027[0m"
+
+let report_outcome counts expected_fail outcome =
+  match expected_fail, outcome with
+  | false, WantedPass ->
+    bump counts.ok;
+    Printf.printf " %s\n" (green "ok (pass)");
+  | true, WantedPass ->
+    bump counts.unexpected_ok;
+    Printf.printf " ok (pass) %s\n" (red "(unexpected!)");
+  | false, WantedTrap ->
+    bump counts.ok;
+    Printf.printf " %s\n" (green "ok (trap)");
+  | true, WantedTrap ->
+    bump counts.unexpected_ok;
+    Printf.printf " ok (trap) %s\n" (red "(despite --expect-fail)")
+  | false, UnwantedPass ->
+    bump counts.fail;
+    Printf.printf " %s\n" (red "not ok (unwanted pass)!")
+  | true, UnwantedPass ->
+    bump counts.expected_fail;
+    Printf.printf " not ok (unwanted pass) %s\n" (green2 "(expected)")
+  | false, UnwantedTrap (stdout, stderr) ->
+    bump counts.fail;
+    Printf.printf " %s\n%s%s\n" (red "not ok (unwanted trap)!") stdout stderr
+  | true, UnwantedTrap (stdout, stderr) ->
+    bump counts.expected_fail;
+    Printf.printf " not ok (unwanted trap) %s\n" (green2 "(expected)")
+  | false, Timeout ->
+    bump counts.fail;
+    Printf.printf " %s\n" (red "not ok (timeout)")
+  | true, Timeout  ->
+    bump counts.expected_fail;
+    Printf.printf " not ok (timeout) %s\n" (green2 "(expected)")
+  | _, Ignored why ->
+    bump counts.ignored;
+    Printf.printf " %s\n" (grey (Printf.sprintf "ignored (%s)" why))
+  | _, CantCompile (stdout, stderr) ->
+    bump counts.fail;
+    Printf.printf " %s\n%s%s\n" (red "not ok (cannot compile)") stdout stderr
 
 (* Main *)
 let () =
   Arg.parse argspec (fun _ -> usage_err "no arguments expected") usage;
-  if !test_dir = "" then usage_err "no candid test directory specified";
+  if !test_dir = "" then
+  begin
+    match Sys.getenv_opt "CANDID_TESTS" with
+    | Some path -> test_dir := path
+    | None -> usage_err "no candid test directory specified via -i or $CANDID_TESTS";
+  end;
 
 
   let filter =
@@ -130,13 +225,7 @@ let () =
       ) rs
   in
 
-  let count = ref 0 in
-  let count_ok = ref 0 in
-  let count_fail = ref 0 in
-  let count_unexpected_ok = ref 0 in
-  let count_expected_fail = ref 0 in
-  let count_skip = ref 0 in
-  let count_ignored = ref 0 in
+  let counts = new_counts ()in
 
   let files = Sys.readdir !test_dir in
   Array.sort compare files;
@@ -153,48 +242,30 @@ let () =
           | None -> Printf.sprintf "%s:%d" name test.at.left.line
           | Some n -> Printf.sprintf "%s:%d %s" name test.at.left.line n in
 
-        count := !count + 1;
+        bump counts.total;
         if filter testname then begin
           Printf.printf "%s ...%!" testname;
           (* generate test program *)
+          let outcome =
           match mo_of_test tenv test with
-          | None ->
-            Printf.printf " ignored (did not compile or not applicable).\n";
-            count_ignored := !count_ignored + 1;
-          | Some (src, must_not_trap) ->
+          | Error why -> Ignored why
+          | Ok (src, must_not_trap) ->
             (* Printf.printf "\n%s" src *)
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
             match run_cmd "moc -wasi-system-api tmp.mo -o tmp.wasm" with
-            | ((Fail | Timeout), stdout, stderr) ->
-              count_fail := !count_fail + 1;
-              Printf.printf " compilation failed:\n%s%s\n" stdout stderr
+            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr)
             | (Ok, _, _) ->
-              let expect_fail = expected_fail testname in
-              if expect_fail then Printf.printf " known to not be ok:";
               match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with
-              | true, (Ok, _, _)
-              | false, (Fail, _, _) ->
-                if expect_fail
-                then count_unexpected_ok := !count_unexpected_ok + 1
-                else count_ok := !count_ok + 1;
-                Printf.printf " ok\n";
-              | true, (Fail, stdout, stderr) ->
-                if expect_fail
-                then count_expected_fail := !count_expected_fail + 1
-                else count_fail := !count_fail + 1;
-                Printf.printf " not ok (unexpected trap)!\n%s%s\n" stdout stderr;
-              | false, (Ok, _, _) ->
-                if expect_fail
-                then count_expected_fail := !count_expected_fail + 1
-                else count_fail := !count_fail + 1;
-                Printf.printf " not ok (unexpected pass)!\n";
-              | _, (Timeout, _, _) ->
-                if expect_fail
-                then count_expected_fail := !count_expected_fail + 1
-                else count_fail := !count_fail + 1;
-                Printf.printf " not ok (timeout)!\n";
-        end else count_skip := !count_skip + 1;
+              | ShouldPass, (Ok, _, _) -> WantedPass
+              | ShouldTrap, (Fail, _, _) -> WantedTrap
+              | ShouldPass, (Fail, stdout, stderr) -> UnwantedTrap (stdout, stderr)
+              | ShouldTrap, (Ok, _, _) -> UnwantedPass
+              | _, (Timeout, _, _) -> Timeout
+          in
+          report_outcome counts (expected_fail testname) outcome
+        end else
+          bump counts.skip
       ) tests.it.tests;
     | None ->
       match Lib.String.chop_suffix ".did" base with
@@ -202,9 +273,19 @@ let () =
       | None -> ()
   ) files;
 
-  Printf.printf "%d tests: %d skipped, %d ok, %d failed, %d unexpected ok, %d expected fail, %d ignored\n"
-    !count !count_skip !count_ok !count_fail !count_unexpected_ok !count_expected_fail !count_ignored;
-  if !count_fail + !count_unexpected_ok > 0
+
+  Printf.printf "%d tests:" !(counts.total);
+  let res s r c =
+    if !r > 0 then
+    Printf.printf "  %s" (c (Printf.sprintf "%d %s" !r s)) in
+  res "skipped" counts.skip grey;
+  res "ok" counts.ok green;
+  res "failed" counts.fail red;
+  res "unexpected ok" counts.unexpected_ok red;
+  res "expected fail" counts.expected_fail green2;
+  res "ignored" counts.ignored grey;
+  Printf.printf "\n";
+  if !(counts.fail) + !(counts.unexpected_ok) > 0
   then exit 1
   else exit 0
 
