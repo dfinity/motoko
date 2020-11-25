@@ -1440,7 +1440,7 @@ A declaration is _static_ if it is:
 *   a `class` declaration, or
 *   a `let` declaration with a static pattern and a static expression, or
 *   a module, function or object declaration that desugars to a static `let` declaration, or
-*   a static expression, or
+*   a static expression.
 
 An expression is _static_ if it is:
 
