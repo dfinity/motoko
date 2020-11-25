@@ -417,7 +417,6 @@ The syntax of a _declaration_ is as follows:
 ```bnf
 <dec> ::=                                                                              declaration
   <exp>                                                                                  expression
-  ignore <exp>                                                                           ignore
   let <pat> = <exp>                                                                      immutable
   var <id> (: <typ>)? = <exp>                                                            mutable
   <sort> <id>? =? <obj-body>                                                             object
@@ -519,6 +518,7 @@ The syntax of an _expression_ is as follows:
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration
+  ignore <exp>                                   ignore value
   debug <exp>                                    debug expression
   actor <canister-id-exp>                        actor reference
   ( <exp> )                                      parentheses
@@ -1348,18 +1348,6 @@ Note that if `<exp>` appears within a sequence of declarations, but not as the l
 
 // TBR
 
-[[decl-ignore]]
-=== Ignore declaration
-
-The declaration `ignore <exp>` has type `()` provided the expression `<exp>` has type `Any` . It declares no bindings.
-
-The declaration `ignore <exp>` evaluates `<exp>` (typically for `<exp>`'s side-effect) but discards its value.
-
-The semantics is equivalent to `let _ = <exp> : Any`.
-
-`Ignore` is useful for evaluating an expression within a sequence of declarations
-when that expression has non-`unit` type (and the simpler `<exp>` declaration would be ill-typed).
-
 [[decl-let]]
 === Let declaration
 
@@ -1454,7 +1442,6 @@ A declaration is _static_ if it is:
 *   a `let` declaration with a static pattern and a static expression, or
 *   a module, function or object declaration that desugars to a static `let` declaration, or
 *   a static expression, or
-*   an `ignore` with static expression.
 
 An expression is _static_ if it is:
 
@@ -1467,6 +1454,7 @@ An expression is _static_ if it is:
 *  a module expression, or
 *  a function expression, or
 *  a static declaration, or
+*  an `ignore` of a static expression, or
 *  a block, all of whose declarations are static, or
 *  a type annotation with a static expression.
 
@@ -2099,6 +2087,18 @@ The declaration expression `<dec>` has type `T` provided the declaration `<dec>`
 Evaluating the expression `<dec>` proceeds by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
 
 (The expression `<dec>` is actually shorthand for the block expression `{ <dec> }`.)
+
+[[exp-ignore]]
+=== Ignore
+
+The expression `ignore <exp>` has type `()` provided the expression `<exp>` has type `Any` .
+
+The expression `ignore <exp>` evaluates `<exp>` (typically for `<exp>`'s side-effect) but discards its value.
+
+`Ignore` is useful for evaluating an expression within a sequence of declarations
+when that expression has non-`unit` type (and the simpler `<exp>` declaration would be ill-typed).
+Then the semantics is equivalent to `let _ = <exp> : Any`.
+
 
 [[exp-debug]]
 === Debug
