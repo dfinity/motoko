@@ -84,6 +84,7 @@
     },
     "niv": {
         "branch": "master",
+        "builtin": false,
         "description": "Easy dependency management for Nix projects",
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
