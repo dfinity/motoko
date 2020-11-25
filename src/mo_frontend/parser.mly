@@ -27,12 +27,13 @@ let positions_to_region position1 position2 =
 let at (startpos, endpos) = positions_to_region startpos endpos
 
 
-let warn_deprecated_obj at =
+let warn_deprecated_obj category at =
   Diag.add_msg (Option.get !msg_store) Diag.{
     sev = Warning;
     cat = "syntax";
     at;
-    text = "object syntax is deprecated in this position, use '{ {...} }' or '({...})'"
+    text = "object syntax is deprecated in this position, use"
+      ^ (if category = `Exp then " '{ {...} }' or" else "") ^ " '({...})'"
   }
 
 let warn_deprecated_block at =
@@ -852,12 +853,12 @@ parse_module_header :
 
 deprecated_pat_opt :
   | LCURLY fps=seplist(pat_field, semicolon) RCURLY
-    { warn_deprecated_obj (at $sloc);
+    { warn_deprecated_obj `Pat (at $sloc);
       ObjP(fps) @! at $sloc }
 
 deprecated_exp_obj :
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
-    { warn_deprecated_obj (at $sloc);
+    { warn_deprecated_obj `Exp (at $sloc);
       ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
 
 deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
