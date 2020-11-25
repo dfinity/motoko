@@ -124,7 +124,7 @@ let error_in modes env at fmt =
     raise Recover
 
 (* Currently unused *)
-let warn_in modes env at fmt =
+let _warn_in modes env at fmt =
   ignore (diag_in type_warning modes env at fmt)
 
 
@@ -2231,9 +2231,6 @@ and infer_dec_valdecs env dec : Scope.t =
       if not env.in_prog then
         error_in [Flags.ICMode; Flags.RefMode] env dec.at
           "inner actor classes are not supported yet; any actor class must come last in your program";
-      if not (is_anon_id id) then
-        warn_in [Flags.ICMode; Flags.RefMode] env dec.at
-          "the constructor function of this actor class is not available for recursive calls, but is available when imported";
       if not (List.length typ_binds = 1) then
         local_error env dec.at
           "actor classes with type parameters are not supported yet";
