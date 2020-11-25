@@ -123,8 +123,8 @@ let error_in modes env at fmt =
   if diag_in type_error modes env at fmt then
     raise Recover
 
-let [@warning "-32"]
-  warn_in modes env at fmt =
+(* Currently unused *)
+let _warn_in modes env at fmt =
   ignore (diag_in type_warning modes env at fmt)
 
 (* Context extension *)
