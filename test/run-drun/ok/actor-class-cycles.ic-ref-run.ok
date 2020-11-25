@@ -3,22 +3,22 @@
 → update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
 ← replied: ()
 → update go()
+debug.print: {Principal = cvccv-qqaaq-aaaaa-aaaaa-c}
 debug.print: {balance = 0}
 debug.print: {balance = 1_000_000_000}
-debug.print: {iteration = 0}
-debug.print: {balance = 1_000_000_000}
-debug.print: {initial = 0}
-debug.print: {current = 0; initial = 0}
 debug.print: {iteration = 1}
 debug.print: {balance = 1_000_000_000}
-debug.print: {initial = 0}
-debug.print: {current = 0; initial = 0}
+debug.print: {initial_C = 10_000_000}
+debug.print: {Principal = ai7t5-aibaq-aaaaa-aaaaa-c}
+debug.print: {current = 10_000_000; initial = 10_000_000}
 debug.print: {iteration = 2}
-debug.print: {balance = 1_000_000_000}
-debug.print: {initial = 0}
-debug.print: {current = 0; initial = 0}
+debug.print: {balance = 990_000_000}
+debug.print: {initial_C = 20_000_000}
+debug.print: {Principal = hozae-racaq-aaaaa-aaaaa-c}
+debug.print: {current = 20_000_000; initial = 20_000_000}
 debug.print: {iteration = 3}
-debug.print: {balance = 1_000_000_000}
-debug.print: {initial = 0}
-debug.print: {current = 0; initial = 0}
+debug.print: {balance = 970_000_000}
+debug.print: {initial_C = 30_000_000}
+debug.print: {Principal = fterm-bydaq-aaaaa-aaaaa-c}
+debug.print: {current = 30_000_000; initial = 30_000_000}
 ← replied: ()

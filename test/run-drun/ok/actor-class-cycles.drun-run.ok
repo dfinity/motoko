@@ -1,21 +1,9 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: {Principal = rwlgt-iiaaa-aaaaa-aaaaa-cai}
 debug.print: {balance = 98_999_999_841_618}
 debug.print: {balance = 98_999_999_841_618}
-debug.print: {iteration = 0}
-debug.print: {balance = 98_999_999_841_618}
-debug.print: {initial = 100_000_000_000_000}
-debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
 debug.print: {iteration = 1}
-debug.print: {balance = 98_999_999_656_728}
-debug.print: {initial = 100_000_000_000_000}
-debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
-debug.print: {iteration = 2}
-debug.print: {balance = 98_999_999_471_848}
-debug.print: {initial = 100_000_000_000_000}
-debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
-debug.print: {iteration = 3}
-debug.print: {balance = 98_999_999_286_968}
-debug.print: {initial = 100_000_000_000_000}
-debug.print: {current = 98_999_999_965_216; initial = 100_000_000_000_000}
-ingress Completed: Reply: 0x4449444c0000
+debug.print: {balance = 98_999_999_841_618}
+debug.print: {initial_C = 10_000_000}
+ingress Completed: Reject: Canister rrkah-fqaaa-aaaaa-aaaaq-cai is out of cycles: Currently available cycles 0, but 1000000000000 was requested
