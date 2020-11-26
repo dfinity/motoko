@@ -1885,7 +1885,7 @@ The expression evaluates `<exp0>` to a result `r1`.
 If `r1` is `trap`, the result is `trap`.
 Otherwise, `r1` is some value `v`.
 Let `case <pat> <block-or-exp>;` be the first case in `(case <pat> <block-or-exp>;)+` such that `<pat>` matches `v` for some binding of identifiers to values.
-Then result of the `switch` is the result of evaluating `<block-or-exp>` under those bindings.
+Then result of the `switch` is the result of evaluating `<block-or-exp>` under that binding.
 If no case has a pattern that matches `v`, the result of the switch is `trap`.
 
 [[exp-while]]
