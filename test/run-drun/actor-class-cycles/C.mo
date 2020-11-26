@@ -6,7 +6,6 @@ actor class C() = c {
   Prim.debugPrint(debug_show({ initial_C = initial_}));
   public func balance() : async {initial: Nat64; current: Nat64} {
      Prim.debugPrint(debug_show({ Principal = Prim.principalOfActor c }));
-//     ignore Cycles.accept(Cycles.available());
      return {
        initial = initial_;
        current = Cycles.balance()

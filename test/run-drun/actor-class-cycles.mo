@@ -4,20 +4,25 @@ import Lib = "actor-class-cycles/C";
 
 actor a {
 
+  func round(n : Nat64) : Text = {
+    debug_show((n+(500_000_000_000 : Nat64)) / (1_000_000_000_000 : Nat64)) # "T";
+  };
+
   public func go() : async () {
     Prim.debugPrint(debug_show({ Principal = Prim.principalOfActor a }));
-    Prim.debugPrint(debug_show({ balance = Cycles.balance()}));
+    Prim.debugPrint(debug_show({ balance = round(Cycles.balance())}));
     if (Cycles.balance() == (0 : Nat64))
-      await Cycles.provisional_top_up_actor(a, 1_000_000_000);
-    Prim.debugPrint(debug_show({ balance = Cycles.balance()}));
+      await Cycles.provisional_top_up_actor(a, 10_000_000_000_000);
+    Prim.debugPrint(debug_show({ balance = round(Cycles.balance())}));
     for (i in [/* 0, */ 1,2,3].vals()) {
       Prim.debugPrint(debug_show({ iteration = i}));
-      Prim.debugPrint(debug_show({ balance = Cycles.balance()}));
+      Prim.debugPrint(debug_show({ balance = round(Cycles.balance())}));
       let c = await {
-        Cycles.add(Prim.natToNat64(i*10_000_000));
+        Cycles.add(Prim.natToNat64((i+1)*1_000_000_000_000));
 	Lib.C();
       };
-      Prim.debugPrint(debug_show(await c.balance()));
+      let {current = cur; initial = init} = await c.balance();
+      Prim.debugPrint(debug_show({ current = round(cur); initial = init } ));
     }
   }
 };
