@@ -2065,7 +2065,7 @@ The `try` expression `try <block-or-exp1> catch <pat> <block-or-exp2>` has type 
 * `<pat>` has type `Error` and `<block-or-exp2>` has type `T` in the context extended with `<pat>`, and
 * the `try` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-Expression `try <block-or-exp1> catch <pat> <eblock-or-xp2>` evaluates `<block-or-exp1>` to a result `r`.
+Expression `try <block-or-exp1> catch <pat> <block-or-exp2>` evaluates `<block-or-exp1>` to a result `r`.
 If evaluation of  `<block-or-exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<block-or-exp2>` under the bindings determined by the match of `e` against `pat`.
 
 NOTE: Because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
