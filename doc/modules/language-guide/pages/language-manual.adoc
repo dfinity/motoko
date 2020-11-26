@@ -1824,7 +1824,7 @@ The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in se
 The expression `do <block-or-exp>` allows placing a block in positions where the syntax does not otherwise allow it.
 It has type `T` provided `<block-or-exp>` has type `T`.
 
-A `do` expression evaluates by evaluating `block-or-exp` and returning its result.
+A `do` expression evaluates by evaluating `<block-or-exp>` and returning its result.
 
 
 [[exp-not]]
