@@ -5,5 +5,10 @@ debug.print: {balance = 98_999_999_841_618}
 debug.print: {balance = 98_999_999_841_618}
 debug.print: {iteration = 1}
 debug.print: {balance = 98_999_999_841_618}
-debug.print: {initial_C = 10_000_000}
-ingress Completed: Reject: Canister rrkah-fqaaa-aaaaa-aaaaq-cai is out of cycles: Currently available cycles 0, but 1000000000000 was requested
+debug.print: available: 1_000_000_000_000
+debug.print: accepted: 1_000_000_000_000
+debug.print: created
+debug.print: {initial_C = 1_000_000_000_000}
+debug.print: installed
+debug.print: ping
+ingress Completed: Reject: Canister rrkah-fqaaa-aaaaa-aaaaq-cai is out of cycles: Currently available cycles 991410063392, but 1000000000000 was requested

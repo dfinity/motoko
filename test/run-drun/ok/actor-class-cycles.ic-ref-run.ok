@@ -5,20 +5,29 @@
 → update go()
 debug.print: {Principal = cvccv-qqaaq-aaaaa-aaaaa-c}
 debug.print: {balance = 0}
-debug.print: {balance = 1_000_000_000}
+debug.print: {balance = 10_000_000_000_000}
 debug.print: {iteration = 1}
-debug.print: {balance = 1_000_000_000}
-debug.print: {initial_C = 10_000_000}
-debug.print: {Principal = ai7t5-aibaq-aaaaa-aaaaa-c}
-debug.print: {current = 10_000_000; initial = 10_000_000}
+debug.print: {balance = 10_000_000_000_000}
+debug.print: available: 1_000_000_000_000
+debug.print: accepted: 1_000_000_000_000
+debug.print: created
+debug.print: {initial_C = 1_000_000_000_000}
+debug.print: installed
+debug.print: ping
 debug.print: {iteration = 2}
-debug.print: {balance = 990_000_000}
-debug.print: {initial_C = 20_000_000}
-debug.print: {Principal = hozae-racaq-aaaaa-aaaaa-c}
-debug.print: {current = 20_000_000; initial = 20_000_000}
+debug.print: {balance = 10_000_000_000_000}
+debug.print: available: 2_000_000_000_000
+debug.print: accepted: 2_000_000_000_000
+debug.print: created
+debug.print: {initial_C = 2_000_000_000_000}
+debug.print: installed
+debug.print: ping
 debug.print: {iteration = 3}
-debug.print: {balance = 970_000_000}
-debug.print: {initial_C = 30_000_000}
-debug.print: {Principal = fterm-bydaq-aaaaa-aaaaa-c}
-debug.print: {current = 30_000_000; initial = 30_000_000}
+debug.print: {balance = 10_000_000_000_000}
+debug.print: available: 3_000_000_000_000
+debug.print: accepted: 3_000_000_000_000
+debug.print: created
+debug.print: {initial_C = 3_000_000_000_000}
+debug.print: installed
+debug.print: ping
 ← replied: ()

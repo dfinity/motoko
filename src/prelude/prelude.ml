@@ -402,6 +402,9 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 
 let @ic00 = actor "aaaaa-aa" : actor {
   create_canister : () -> async { canister_id : Principal };
+
+  provisional_create_canister_with_cycles : { amount: ?Nat }  -> async { canister_id : Principal };
+
   install_code : {
     mode : { #install; #reinstall; #upgrade };
     canister_id : Principal;
@@ -416,18 +419,25 @@ let @ic00 = actor "aaaaa-aa" : actor {
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat64) ();
+  (prim "print" : Text -> ()) ("available: " # @text_of_Nat64(available));
   let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
+  (prim "print" : Text -> ()) ("accepted: " # @text_of_Nat64(accepted));
   @cycles += accepted;
   let { canister_id = canister_id_ } =
-    await @ic00.create_canister();
+//    await @ic00.create_canister();
+    await @ic00.provisional_create_canister_with_cycles({
+       amount = ?((prim "num_conv_Nat64_Nat" : Nat64 -> Nat) (accepted))
+    });
+  (prim "print" : Text -> ()) ("created");
   await @ic00.install_code({
     mode = #install;
     canister_id = canister_id_;
     wasm_module = wasm_module_;
     arg = arg_;
     compute_allocation = null;
-    memory_allocation = null;
+    memory_allocation = ?20_000;
   });
+  (prim "print" : Text -> ()) ("installed");
   return canister_id_;
 };
 
