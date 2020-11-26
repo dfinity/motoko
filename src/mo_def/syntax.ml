@@ -179,6 +179,7 @@ and exp' =
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
+  | IgnoreE of exp                             (* ignore *)
 (*
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
@@ -196,7 +197,6 @@ and case' = {pat : pat; exp : exp}
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
   | ExpD of exp                                (* plain unit expression *)
-  | IgnoreD of exp                             (* plain any expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
@@ -302,9 +302,9 @@ let asyncE tbs e =
   AsyncE (tbs, e) @? e.at
 
 let ignore_asyncE tbs e =
-  BlockE [ IgnoreD (
+  IgnoreE (
     AnnotE (AsyncE (tbs, e) @? e.at,
-      AsyncT (scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at] @? e.at
+      AsyncT (scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let is_asyncE e =
   match e.it with
@@ -313,8 +313,8 @@ let is_asyncE e =
 
 let is_ignore_asyncE e =
   match e.it with
-  | BlockE [{it = IgnoreD
+  | IgnoreE
       {it = AnnotE ({it = AsyncE _; _},
-        {it = AsyncT (_, {it = TupT []; _}); _}); _}; _}] ->
+        {it = AsyncT (_, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false

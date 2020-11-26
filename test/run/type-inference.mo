@@ -25,14 +25,14 @@ let _ = [true, [var 5]];
 // Local types (not) escaping.
 
 let x =
-{
+do {
   type T = {};
   let o : T = {};
   o;
 };
 
 let y =
-{
+do {
   class C() {};
   type T<A> = Int;
   let n : T<C> = 5;
@@ -41,7 +41,7 @@ let y =
 
 type T<A> = Int;
 let z =
-{
+do {
   class C() {};
   let n : T<C> = 5;
   n;
@@ -49,7 +49,7 @@ let z =
 
 class C() {};
 let a =
-{
+do {
   let n : T<C> = 5;
   n;
 };
@@ -69,7 +69,7 @@ func top(top : Top) {
 
 // Bottom Type
 
-{
+do {
 type Bot = None;
 func bot(bot : Bot) {
   //let a = bot.1;
@@ -86,9 +86,9 @@ func bot(bot : Bot) {
 // This was an error when classes were subtypes of their
 // representation, but with structural typing throughout it is
 // no longer one
-{
+do {
   let _ =
-  {
+  do {
     class C() {};
     type T = C;
     let o : T = C();

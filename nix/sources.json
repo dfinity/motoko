@@ -53,20 +53,20 @@
     "motoko-base": {
         "branch": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "6d9235d8862117990cd2a75f9882f965a8cd840a",
+        "rev": "5e010560a3f12c85980f61f6fe766eff8c997d57",
         "type": "git"
     },
     "motoko-matchers": {
-        "branch": "v0.0.5",
+        "branch": "v1.0.0",
         "builtin": false,
         "description": null,
         "homepage": "http://kritzcreek.github.io/motoko-matchers",
         "owner": "kritzcreek",
         "repo": "motoko-matchers",
-        "rev": "b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3",
-        "sha256": "0dy29y8r7k6sshbm96g3f6avcbpl55sazqj2wvpvjxz82xq3vfcn",
+        "rev": "e2ecce289dd4c9a687486de387407bf34bf0d3d3",
+        "sha256": "0wlc3lpcmaygsaqb0cvm22az71b9agzrs2q7lhzjklfimsy12qp3",
         "type": "tarball",
-        "url": "https://github.com/kritzcreek/motoko-matchers/archive/b65d3c59c5e3fdc52b5fc806e281d362cc4ec7e3.tar.gz",
+        "url": "https://github.com/kritzcreek/motoko-matchers/archive/e2ecce289dd4c9a687486de387407bf34bf0d3d3.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "musl-wasi": {
@@ -80,6 +80,19 @@
         "sha256": "1ajbbhj0j0npnkyp1lnk3l928xxmn0x96pqz3s3cl87p99akz8z4",
         "type": "tarball",
         "url": "https://github.com/WebAssembly/wasi-libc/archive/9083fe84568fb4de76152757abfd216ba34ad908.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "niv": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Easy dependency management for Nix projects",
+        "homepage": "https://github.com/nmattia/niv",
+        "owner": "nmattia",
+        "repo": "niv",
+        "rev": "ba57d5a29b4e0f2085917010380ef3ddc3cf380f",
+        "sha256": "1kpsvc53x821cmjg1khvp1nz7906gczq8mp83664cr15h94sh8i4",
+        "type": "tarball",
+        "url": "https://github.com/nmattia/niv/archive/ba57d5a29b4e0f2085917010380ef3ddc3cf380f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {

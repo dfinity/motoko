@@ -6,13 +6,12 @@ actor Alice {
 
   public func test() : async () {
 
-    let porky = {
-      Cycles.add(50_000_000);
-      await Lib.PiggyBank(Alice.credit, 1_000_000_000);
-    };
+    Cycles.add(50_000_000);
+    let porky = await Lib.PiggyBank(Alice.credit, 1_000_000_000);
     assert (0 == (await porky.getSavings()));
 
-    await { Cycles.add(1_000_000); porky.deposit() };
+    Cycles.add(1_000_000);
+    await porky.deposit();
     assert (1_000_000 == (await porky.getSavings()));
 
     await porky.withdraw(500_000);
@@ -21,7 +20,8 @@ actor Alice {
     await porky.withdraw(500_000);
     assert (0 == (await porky.getSavings()));
 
-    await { Cycles.add(2_000_000_000); porky.deposit() };
+    Cycles.add(2_000_000_000);
+    await porky.deposit();
     let refund = Cycles.refunded();
     assert (1_000_000_000 == refund);
     assert (1_000_000_000 == (await porky.getSavings()));

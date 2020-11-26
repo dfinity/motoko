@@ -25,8 +25,7 @@ shared(msg) actor class PiggyBank(
     savings += acceptable;
   };
 
-  public shared(msg) func withdraw(amount : Nat)
-    : async () {
+  public shared(msg) func withdraw(amount : Nat) : async () {
     assert (msg.caller == owner);
     assert (amount <= savings);
     Cycles.add(amount);

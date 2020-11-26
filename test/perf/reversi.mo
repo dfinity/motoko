@@ -11,7 +11,7 @@ actor {
     public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
   };
 
-  flexible func unreachable() : None = { assert false ; loop { } };
+  flexible func unreachable() : None { assert false ; loop { } };
 
   flexible func toText(x : Int) : Text {
     if (x == 0) {

@@ -4,7 +4,7 @@ let p = object {public let x = 3; let y = 2; public func get_y() : Int = y};
 assert(p.x == 3);
 assert(p.get_y() == 2);
 
-func nonrec(a : {x : Nat}) = ignore {a = {}; b = a.x};
+func nonrec(a : {x : Nat}) = ignore ({a = {}; b = a.x});
 
 let o : {a : {}; b : Nat} = object {public let a = {x = 0}; public let b = a.x};
 
