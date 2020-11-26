@@ -2325,9 +2325,8 @@ let check_lib scope lib : Scope.t Diag.result =
                   let t2 = T.normalize (T.open_ cs t2) in
                   (match t2 with
                    | T.Async (_ , class_typ) -> class_typ
-                   | _ -> assert false)
-                | _ ->
-                  assert false
+                   | _ -> T.Non)
+                | _ -> T.Non
               in
               let con = Con.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
