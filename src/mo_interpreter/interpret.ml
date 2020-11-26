@@ -603,6 +603,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
+  | IgnoreE exp1 ->
+    interpret_exp env exp1 (fun _v -> k V.unit)
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
@@ -829,7 +831,6 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
-  | IgnoreD _
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
@@ -847,8 +848,6 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | IgnoreD exp ->
-    interpret_exp env exp (fun _v -> k V.unit)
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;

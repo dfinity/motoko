@@ -123,7 +123,7 @@ actor Life {
     };
   };
 
-  stable var state : State = {
+  stable var state : State = do {
     let n = 32;
     let len = (n * n) / 64 + 1;
     let words = P.Array_tabulate<Nat64>(len,

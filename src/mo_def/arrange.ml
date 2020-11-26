@@ -61,6 +61,7 @@ let rec exp e = match e.it with
   | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+  | IgnoreE e           -> "IgnoreE" $$ [exp e]
 
 and inst inst = match inst.it with
   | None -> []
@@ -179,7 +180,6 @@ and typ t = match t.it with
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
-  | IgnoreD e -> "IgnoreD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->

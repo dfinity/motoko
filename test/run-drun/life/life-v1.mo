@@ -83,7 +83,8 @@ actor Life {
   };
 
   stable var state : State =
-    { let n = 32;
+    do {
+      let n = 32;
       #v1 (
       	 P.Array_tabulate<[Cell]>(n,
            func i { P.Array_tabulate<Cell>(n, func j { Random.next(); }) })

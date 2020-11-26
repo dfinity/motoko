@@ -1,4 +1,4 @@
-{
+do {
 module X = {
   public type T = Int;
   public let x : T = 1;
@@ -10,7 +10,7 @@ let y = X.x + 1;
 };
 
 
-{
+do {
 module X = {
   public type T<A> = (A,A);
   public let x : T<Int> = (1, 2);
@@ -26,7 +26,7 @@ assert (x2 == 2);
 };
 
 
-{
+do {
 module X = {
   public module X = {
     public type T<A> = (A, A);
@@ -41,7 +41,7 @@ assert (x1 == 1);
 assert (x2 == 2);
 };
 
-{
+do {
 module X = {
   public module X = {
     public type T<A> = (A, A);

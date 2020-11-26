@@ -26,6 +26,25 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
+
+let warn_deprecated_obj category at =
+  Diag.add_msg (Option.get !msg_store) Diag.{
+    sev = Warning;
+    cat = "syntax";
+    at;
+    text = "object syntax is deprecated in this position, use"
+      ^ (if category = `Exp then " '{ {...} }' or" else "") ^ " '({...})'"
+  }
+
+let warn_deprecated_block at =
+  Diag.add_msg (Option.get !msg_store) Diag.{
+    sev = Warning;
+    cat = "syntax";
+    at;
+    text = "block syntax is deprecated in this position, use 'do { ... }'"
+  }
+
+
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 
 let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
@@ -145,7 +164,7 @@ let rec normalize_let p e =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
+%token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
@@ -188,7 +207,7 @@ let rec normalize_let p e =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -197,7 +216,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.typ_field> typ_field
 %type<Mo_def.Syntax.typ_bind> typ_bind
 %type<Mo_def.Syntax.typ list> typ_args
-%type<Source.region -> Mo_def.Syntax.pat> pat_opt 
+%type<Source.region -> Mo_def.Syntax.pat> pat_opt
 %type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
 %type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
@@ -207,24 +226,24 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body exp_field_list_unamb
+%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin
+%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_opt
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
 %type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
 %type<unit option> option(EQ)
-%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) exp_block exp_bin(ob) exp_bin(bl) exp(bl)
+%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
 %type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar dec_field
-%type<Mo_def.Syntax.dec list> dec_list_unamb
+%type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
 %type<Mo_def.Syntax.case> catch case
-%type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
+%type<Mo_def.Syntax.exp> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
@@ -463,9 +482,27 @@ lit :
 
 
 (* Default {} to block or object, respectively *)
-bl : { fun ds -> BlockE(ds) }
-ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
+bl :
+  | e=deprecated_exp_obj
+    { e }
+
+ob :
+  | e=exp_obj
+    { e }
+  | e=deprecated_exp_block
+    { e }
+
+exp_obj :
+(* Activate when deprecated object syntax is removed
+  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
+*)
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY
+    { ObjE(Type.Object @@ no_region,
+        List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds)
+      @? at $sloc }
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -473,19 +510,11 @@ exp_plain :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
-exp_block :
-  | LCURLY ds=seplist(dec, semicolon) RCURLY
-    { BlockE(ds) @? at $sloc }
-
 exp_nullary(B) :
+  | e=B
+    { e }
   | e=exp_plain
     { e }
-  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
-    { e ds @? at $sloc }
-  | LCURLY efs=exp_field_list_unamb RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
-  | LCURLY ds=dec_list_unamb RCURLY
-    { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
@@ -496,13 +525,13 @@ exp_post(B) :
     { e }
   | LBRACKET m=var_opt es=seplist(exp_nonvar(ob), COMMA) RBRACKET
     { ArrayE(m, es) @? at $sloc }
-  | e1=exp_post(ob) LBRACKET e2=exp(ob) RBRACKET
+  | e1=exp_post(B) LBRACKET e2=exp(ob) RBRACKET
     { IdxE(e1, e2) @? at $sloc }
-  | e=exp_post(ob) s=DOT_NUM
+  | e=exp_post(B) s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
-  | e=exp_post(ob) DOT x=id
+  | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
-  | e1=exp_post(ob) inst=inst e2=exp_nullary(ob)
+  | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
     { CallE(e1, inst, e2) @? at $sloc }
 
 exp_un(B) :
@@ -533,35 +562,35 @@ exp_un(B) :
 exp_bin(B) :
   | e=exp_un(B)
     { e }
-  | e1=exp_bin(ob) op=binop e2=exp_bin(ob)
+  | e1=exp_bin(B) op=binop e2=exp_bin(ob)
     { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin(ob) op=relop e2=exp_bin(ob)
+  | e1=exp_bin(B) op=relop e2=exp_bin(ob)
     { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin(ob) AND e2=exp_bin(ob)
+  | e1=exp_bin(B) AND e2=exp_bin(ob)
     { AndE(e1, e2) @? at $sloc }
-  | e1=exp_bin(ob) OR e2=exp_bin(ob)
+  | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
-  | e=exp_bin(ob) COLON t=typ
+  | e=exp_bin(B) COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 
 exp_nondec(B) :
   | e=exp_bin(B)
     { e }
-  | e1=exp_bin(ob) ASSIGN e2=exp(ob)
+  | e1=exp_bin(B) ASSIGN e2=exp(ob)
     { AssignE(e1, e2) @? at $sloc}
-  | e1=exp_bin(ob) op=binassign e2=exp(ob)
+  | e1=exp_bin(B) op=binassign e2=exp(ob)
     { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp(bl)
+  | ASYNC e=exp_nest
     { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
-  | AWAIT e=exp(bl)
+  | AWAIT e=exp_nest
     { AwaitE(e) @? at $sloc }
-  | ASSERT e=exp(bl)
+  | ASSERT e=exp_nest
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=annot_opt e=exp(bl)
+  | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in
       let e' =
@@ -578,30 +607,34 @@ exp_nondec(B) :
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
-  | DEBUG e=exp(bl)
+  | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
-  | IF b=exp_nullary(ob) e1=exp(bl) %prec IF_NO_ELSE
+  | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
-  | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)
+  | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nullary(ob) c=catch
+  | TRY e1=exp_nest c=catch
     { TryE(e1, [c]) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
-  | TRY e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
+  | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
 *)
-  | THROW e=exp(bl)
+  | THROW e=exp_nest
     { ThrowE(e) @? at $sloc }
   | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
-  | WHILE e1=exp_nullary(ob) e2=exp(bl)
+  | WHILE e1=exp_nullary(ob) e2=exp_nest
     { WhileE(e1, e2) @? at $sloc }
-  | LOOP e=exp(bl) %prec LOOP_NO_WHILE
+  | LOOP e=exp_nest %prec LOOP_NO_WHILE
     { LoopE(e, None) @? at $sloc }
-  | LOOP e1=exp(bl) WHILE e2=exp(bl)
+  | LOOP e1=exp_nest WHILE e2=exp_nest
     { LoopE(e1, Some e2) @? at $sloc }
-  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp(bl)
+  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp_nest
     { ForE(p, e1, e2) @? at $sloc }
+  | IGNORE e=exp_nest
+    { IgnoreE(e) @? at $sloc }
+  | DO e=exp_nest
+    { e }
 
 exp_nonvar(B) :
   | e=exp_nondec(B)
@@ -615,12 +648,28 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
+exp_nest :
+  | e=block
+    { e }
+  | e=exp(bl)
+    { e }
+
+block :
+(* Activate once deprecated objects are removed
+  | LCURLY ds=seplist(dec, semicolon) RCURLY
+    { BlockE(ds) @? at $sloc }
+*)
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY
+    { BlockE(ds) @? at $sloc }
+  | LCURLY ds=deprecated_dec_list_unamb RCURLY
+    { BlockE(ds) @? at $sloc }
+
 case :
-  | CASE p=pat_nullary e=exp(bl)
+  | CASE p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
 catch :
-  | CATCH p=pat_nullary e=exp(bl)
+  | CATCH p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field_nonvar :
@@ -631,14 +680,6 @@ exp_field_nonvar :
 exp_field :
   | ef=exp_field_nonvar { ef }
   | d=dec_var { {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
-
-exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
-  | ef=exp_field_nonvar
-    { [ef] }
-  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
-    { ef::efs }
-  | d=dec_var semicolon efs=exp_field_list_unamb
-    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
 
 dec_field :
   | v=vis s=stab d=dec
@@ -710,10 +751,13 @@ pat_field :
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
-  | p=pat_nullary
+  | p=pat_plain
     { fun sloc -> p }
   | (* empty *)
     { fun sloc -> WildP @! sloc }
+  | p=deprecated_pat_opt
+    { fun sloc -> p }
+
 
 
 (* Declarations *)
@@ -759,8 +803,6 @@ dec_nonvar :
         else (efs, tps, t)
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, efs') @? at $sloc }
-  | IGNORE e=exp(ob)
-    { IgnoreD e @? at $sloc }
 
 dec :
   | d=dec_var
@@ -770,21 +812,9 @@ dec :
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
 
-dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
-  | e=exp_nondec(ob)
-    { [ExpD e @? e.at] }
-  | d=dec_nonvar
-    { [d] }
-  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
-    { (ExpD e @? e.at) :: ds }
-  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
-    { d::ds }
-  | d=dec_var semicolon ds=dec_list_unamb
-    { d::ds }
-
 func_body :
-  | EQ e=exp(bl) { (false, e) }
-  | e=exp_block { (true, e) }
+  | EQ e=exp(ob) { (false, e) }
+  | e=block { (true, e) }
 
 obj_body :
   | LCURLY efs=seplist(dec_field, semicolon) RCURLY { efs }
@@ -817,5 +847,43 @@ import_list :
 
 parse_module_header :
   | start import_list EOF {}
+
+
+(* Deprecated block/object syntax *)
+
+deprecated_pat_opt :
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { warn_deprecated_obj `Pat (at $sloc);
+      ObjP(fps) @! at $sloc }
+
+deprecated_exp_obj :
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
+    { warn_deprecated_obj `Exp (at $sloc);
+      ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
+
+deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
+  | ef=exp_field_nonvar
+    { [ef] }
+  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
+    { ef::efs }
+  | d=dec_var semicolon efs=deprecated_exp_field_list_unamb
+    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
+
+deprecated_exp_block :
+  | LCURLY ds=deprecated_dec_list_unamb RCURLY
+    { warn_deprecated_block (at $sloc);
+      BlockE(ds) @? at $sloc }
+
+deprecated_dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
+  | e=exp_nondec(ob)
+    { [ExpD e @? e.at] }
+  | d=dec_nonvar
+    { [d] }
+  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
+    { (ExpD e @? e.at) :: ds }
+  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
+    { d::ds }
+  | d=dec_var semicolon ds=deprecated_dec_list_unamb
+    { d::ds }
 
 %%

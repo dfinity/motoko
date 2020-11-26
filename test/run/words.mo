@@ -17,7 +17,7 @@ func checkpointIndia() {};
 func checkpointJuliett() {};
 
 // Word64 operations
-{
+do {
     func printW64ln(w : Word64) {
       Prim.debugPrintNat(Prim.word64ToNat w);
     };
@@ -75,7 +75,7 @@ func checkpointJuliett() {};
 
 
 // Word32 operations
-{
+do {
     func printW32ln(w : Word32) {
       Prim.debugPrintNat(Prim.word32ToNat w);
     };
@@ -132,7 +132,7 @@ func checkpointJuliett() {};
 };
 
 // Word16 operations
-{
+do {
     func printW16ln(w : Word16) {
       Prim.debugPrintNat(Prim.word16ToNat w);
     };
@@ -219,7 +219,7 @@ func checkpointJuliett() {};
 };
 
 // Word8 operations
-{
+do {
     func printW8ln(w : Word8) {
       Prim.debugPrintNat(Prim.word8ToNat w);
     };

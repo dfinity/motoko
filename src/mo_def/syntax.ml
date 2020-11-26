@@ -179,6 +179,7 @@ and exp' =
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
+  | IgnoreE of exp                             (* ignore *)
 (*
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
@@ -196,7 +197,6 @@ and case' = {pat : pat; exp : exp}
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
   | ExpD of exp                                (* plain unit expression *)
-  | IgnoreD of exp                             (* plain any expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
@@ -434,9 +434,9 @@ let is_Async e =
 
 let is_IgnoreAsync e =
   match e.it with
-  | BlockE [ { it = IgnoreD
+  | IgnoreE
       { it = AnnotE ({ it = AsyncE _; _},
-        { it = AsyncT (_, { it = TupT[]; _}); _}); _}; _}] ->
+        { it = AsyncT (_, { it = TupT []; _}); _}); _} ->
     true
   | _ -> false
 
@@ -444,9 +444,9 @@ let async f e =
   AsyncE (scope_bind f, e)  @? e.at
 
 let ignoreAsync f e =
-  BlockE [ IgnoreD (
+  IgnoreE (
     AnnotE (AsyncE (scope_bind f, e)  @? e.at,
-      AsyncT (scope_typ e.at,TupT[] @! e.at) @! e.at) @? e.at ) @? e.at] @? e.at
+      AsyncT (scope_typ e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let desugar sp f t_opt (sugar, e) =
   match sugar, e with

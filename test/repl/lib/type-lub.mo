@@ -56,14 +56,14 @@ let c1s = [async ?4, async ?-42];
 
 // recursive objects
 
-// { need global types due to https://dfinity.atlassian.net/browse/AST-34
+// do { need global types due to https://dfinity.atlassian.net/browse/AST-34
 type A = {x : A};
 type B = {x : B};
 
 func f(v : {x : {x : B}; b : B}, x : A, y : B, z : {x : B; a : A}) : [A] { ignore([v, x, y, z]); [v, x, y, z] };
 // };
 
-// {
+// do {
 type A1 = {x : B1};
 type B1 = {x : A1};
 
