@@ -1,0 +1,4 @@
+issue-2158.mo:9.5-9.16: type error, expression of type
+  C = actor {g : shared () -> ()}
+cannot produce expected type
+  ()
