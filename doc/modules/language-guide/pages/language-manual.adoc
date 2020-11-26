@@ -2054,7 +2054,7 @@ The `throw` expression `throw <exp>` has type `None` provided:
 * `<exp>` has type `Error`,
 * the `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <exp> catch <pat> <exp>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invocation.
+Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <block-or-exp1> catch <pat> <block-or-exp2>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invocation.
 
 [[exp-try]]
 === Try
