@@ -7,7 +7,7 @@ actor Alice {
   public func test() : async () {
 
     let porky = {
-      Cycles.add(50_000_000);
+      Cycles.add(10_000_000_000_000);
       await Lib.PiggyBank(Alice.credit, 1_000_000_000);
     };
     assert (0 == (await porky.getSavings()));
