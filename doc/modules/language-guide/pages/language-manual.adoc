@@ -1950,7 +1950,7 @@ for ( <pat> in <exp1> ) <block-or-exp2> :=
   }
 ```
 
-where `x` is a fresh identifier.
+where `x` and `l` are fresh identifiers.
 
 
 In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon as `x.next()` traps, or the value of `x.next()` does not match pattern `<pat>`, or when `<block-or-exp2>` traps.
