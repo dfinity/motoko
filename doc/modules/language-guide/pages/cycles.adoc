@@ -98,47 +98,6 @@ The callback is used to transfer _withdrawn_ amounts.
 include::../examples/PiggyBank.mo[]
 ----
 
-////
-import Cycles "mo:base/ExperimentalCycles";
-
-shared(msg) actor class PiggyBank(
-  benefit : shared () -> async (),
-  capacity: Nat
-  ) {
-
-  let owner = msg.caller;
-
-  var savings = 0;
-
-  public shared(msg) func getSavings() : async Nat {
-    assert (msg.caller == owner);
-    return savings;
-  };
-
-  public func deposit() : async () {
-    let amount = Cycles.available();
-    let limit = capacity - savings;
-    let acceptable =
-      if (amount <= limit) amount
-      else limit;
-    let accepted = Cycles.accept(acceptable);
-    assert (accepted == acceptable);
-    savings += acceptable;
-  };
-
-  public shared(msg) func withdraw(amount : Nat)
-    : async () {
-    assert (msg.caller == owner);
-    assert (amount <= savings);
-    Cycles.add(amount);
-    await benefit();
-    let refund = Cycles.refunded();
-    savings -= amount - refund;
-  };
-
-}
-////
-
 The owner of the bank is identified with the (implicit) caller of
 constructor `+PiggyBank()+`, using the shared pattern, `+shared(msg)+`.
 Field `+msg.caller+` is a `+Principal+` and is stored in private variable `+owner+` (for future reference). See link:caller-id{outfilesuffix}[Principals and caller identification] for more explanation of this syntax.
@@ -177,45 +136,6 @@ Here's how an owner, `+Alice+`, might use an instance of `+PiggyBank+`:
 include::../examples/Alice.mo[]
 ----
 
-////
-import Cycles = "mo:base/ExperimentalCycles";
-import Lib = "PiggyBank";
-
-actor Alice {
-
-  public func test() : async () {
-
-    let porky = {
-      Cycles.add(50_000_000);
-      await Lib.PiggyBank(Alice.credit, 1_000_000_000);
-    };
-    assert (0 == (await porky.getSavings()));
-
-    await { Cycles.add(1_000_000); porky.deposit() };
-    assert (1_000_000 == (await porky.getSavings()));
-
-    await porky.withdraw(500_000);
-    assert (500_000 == (await porky.getSavings()));
-
-    await porky.withdraw(500_000);
-    assert (0 == (await porky.getSavings()));
-
-    await { Cycles.add(2_000_000_000); porky.deposit() };
-    let refund = Cycles.refunded();
-    assert (1_000_000_000 == refund);
-    assert (1_000_000_000 == (await porky.getSavings()));
-
-  };
-
-  // Callback for accepting cycles from PiggyBank
-  public func credit() : async () {
-    let available = Cycles.available();
-    let accepted = Cycles.accept(available);
-    assert (accepted == available);
-  }
-
-};
-////
 
 Let's dissect ``Alice``'s code.
 
@@ -224,11 +144,11 @@ a new `+PiggyBank+` actor on demand.
 
 Most of the action occurs in  ``Alice``'s `+test()+` function:
 
-Alice dedicates `50_000_000` of her own cycles for running the piggy
-bank, by calling `Cycles.add(50_000_000)` just before creating a new instance, `+porky+`, of the
+Alice dedicates `10_000_000_000_000` of her own cycles for running the piggy
+bank, by calling `Cycles.add(10_000_000_000_000)` just before creating a new instance, `+porky+`, of the
 `+PiggyBank+`, passing callback `+Alice.credit+` and capacity (`+1_000_000_000+`).  Passing `+Alice.credit+` nominates `+Alice+` as
 the beneficiary of withdrawals.
-The `+50_000_000+` cycles, minus a
+The `+10_000_000_000_000+` cycles, minus a
 small installation fee, are credited to ``porky``'s balance without any
 further action by `porky` initialization code.  You can think of this as an
 electric piggy bank, that consumes its own resources as its used.
