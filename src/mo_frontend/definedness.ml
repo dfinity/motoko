@@ -126,6 +126,7 @@ let rec exp msgs e : f = match e.it with
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
   | TagE (_, e)         -> exp msgs e
+  | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -161,7 +162,7 @@ and exp_fields msgs efs =
   decs msgs (List.map (fun ef -> ef.it.dec) efs)
 
 and dec msgs d = match d.it with
-  | ExpD e | IgnoreD e -> (exp msgs e, S.empty)
+  | ExpD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)

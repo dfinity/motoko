@@ -26,20 +26,20 @@ actor a {
 
 //  print(debug_show(Cycles.balance()));
 
-  { // check cycles available
+  do { // check cycles available
     Cycles.add(1000_000);
     let cs = await wallet.available();
     assert (cs == (1000_000: Nat64));
     assert (Cycles.refunded() == (1000_000 : Nat64));
   };
-  {
+  do {
     // check cycles reset to zero on send
     let cs = await wallet.available();
     assert (cs == (0: Nat64));
     assert (Cycles.refunded() == (0 : Nat64));
   };
 
-  {
+  do {
     // check cycles additive to zero on send
     Cycles.add(1000_000);
     Cycles.add(2000_000);

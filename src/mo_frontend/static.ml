@@ -55,7 +55,7 @@ let rec exp m e = match e.it with
   | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
-  | AnnotE (exp1, _) -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
   (* Clearly non-static *)
@@ -88,7 +88,7 @@ and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
-  | ExpD e | IgnoreD e -> exp m e
+  | ExpD e -> exp m e
   | LetD (p, e) -> triv m p; exp m e
   | VarD _ -> err m d.at
 

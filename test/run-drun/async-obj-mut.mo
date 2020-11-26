@@ -7,7 +7,7 @@ actor a {
       // private b = (x := await { async (x + 1) });
       let b = (x := x + 1);
       let c = Prim.debugPrintNat(x);
-      public func foo() = { x := x + 1 };
+      public func foo() { x := x + 1 };
       let e = foo();
       let f = Prim.debugPrintNat(x);
     };

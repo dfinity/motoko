@@ -13,28 +13,28 @@ let _ = func(#A(5) or #A(_ : Int)) {};
 let _ = func(#A or #B(_ : Nat)) {};
 
 // Bogus joins
-{ let _ = func(1 or 1.0) {} };
-{ let _ = func(1 or "") {} };
-{ let _ = func(true or "") {} };
-{ let _ = func(1 or ()) {} };
-{ let _ = func(1 or {}) {} };
-{ let _ = func(1 or (_ : Text)) {} };
-{ let _ = func({a = _ : Int} or {b = _ : Nat}) {} };
-{ let _ = func((_ : Int8) or (_ : Nat8)) {} };
-{ let _ = func(("", 1) or ("", 1.0)) {} };
-{ let _ = func((_ : Int16, "") or (_ : Nat16, "")) {} };
-{ let _ = func(#A or #A("")) {}; };
-{ let _ = func(#A(0) or #A("")) {}; };
+do { let _ = func(1 or 1.0) {} };
+do { let _ = func(1 or "") {} };
+do { let _ = func(true or "") {} };
+do { let _ = func(1 or ()) {} };
+do { let _ = func(1 or {}) {} };
+do { let _ = func(1 or (_ : Text)) {} };
+do { let _ = func({a = _ : Int} or {b = _ : Nat}) {} };
+do { let _ = func((_ : Int8) or (_ : Nat8)) {} };
+do { let _ = func(("", 1) or ("", 1.0)) {} };
+do { let _ = func((_ : Int16, "") or (_ : Nat16, "")) {} };
+do { let _ = func(#A or #A("")) {}; };
+do { let _ = func(#A(0) or #A("")) {}; };
 
-{ let _ = func(1 or (_ : Any)) {} };
-{ let _ = func((_ : Any) or 1.4) {} };
-{ let _ = func(() or (_ : Any)) {} };
-{ let _ = func<A>("" or (_ : A)) {} };
-{ let _ = func((_ : Any) or (_ : [Nat])) {} };
-{ let _ = func((_ : Any) or (_ : () -> ())) {} };
-{ let _ = func(("", 1) or ("", _ : Any)) {} };
-{ let _ = func(#A or #A(_ : Any)) {}; };
-{ let _ = func(#A(5) or #A(_ : Any)) {}; };
+do { let _ = func(1 or (_ : Any)) {} };
+do { let _ = func((_ : Any) or 1.4) {} };
+do { let _ = func(() or (_ : Any)) {} };
+do { let _ = func<A>("" or (_ : A)) {} };
+do { let _ = func((_ : Any) or (_ : [Nat])) {} };
+do { let _ = func((_ : Any) or (_ : () -> ())) {} };
+do { let _ = func(("", 1) or ("", _ : Any)) {} };
+do { let _ = func(#A or #A(_ : Any)) {}; };
+do { let _ = func(#A(5) or #A(_ : Any)) {}; };
 
 // No coverage check for ill-typed cases
 switch (#A : {#A}) {
