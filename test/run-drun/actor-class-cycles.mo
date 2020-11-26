@@ -5,7 +5,7 @@ import Lib = "actor-class-cycles/C";
 // test cycle transfer on class instantiation
 actor a {
 
-  func round(n : Nat64) : Text = {
+  func round(n : Nat64) : Text {
     debug_show((n+(500_000_000_000 : Nat64)) / (1_000_000_000_000 : Nat64)) # "T";
   };
 
