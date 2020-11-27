@@ -31,8 +31,8 @@ let warn_deprecated_obj category at =
     sev = Warning;
     cat = "syntax";
     at;
-    text = "object syntax is deprecated in this position, use"
-      ^ (if category = `Exp then " '{ {...} }' or" else "") ^ " '({...})'"
+    text = "object syntax is deprecated in this position, use "
+      ^ (if category = `Exp then "'{ {...} }'" else "'({...})'")
   }
 
 let warn_deprecated_block at =
