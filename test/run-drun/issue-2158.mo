@@ -5,8 +5,9 @@ import T "issue-2158/Types";
 import C "issue-2158/C";
 
 actor a {
+  1 + false;
   shared func f () : async() {
-    await C.C();
+    let x : actor { X : () -> async ()} = await C.C();
   }
 }
 

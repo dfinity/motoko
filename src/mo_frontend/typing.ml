@@ -1885,7 +1885,7 @@ and infer_block_exps env decs : T.typ =
   | [dec] -> infer_dec env dec
   | dec::decs' ->
     if not env.pre then recover (check_dec env T.unit) dec;
-    recover_with T.Non (infer_block_exps env) decs'
+    infer_block_exps env decs'
 
 and infer_dec env dec : T.typ =
   let t =
@@ -2325,8 +2325,8 @@ let check_lib scope lib : Scope.t Diag.result =
                   let t2 = T.normalize (T.open_ cs t2) in
                   (match t2 with
                    | T.Async (_ , class_typ) -> class_typ
-                   | _ -> T.Non)
-                | _ -> T.Non
+                   | _ -> assert false)
+                | _ -> assert false
               in
               let con = Con.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
