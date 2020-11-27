@@ -518,9 +518,9 @@ The syntax of an _expression_ is as follows:
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration
   ignore <block-or-exp>                          ignore value
+  do <block-or-exp>                              block as expression
   debug <block-or-exp>                           debug expression
   actor <exp>                                    actor reference
-  do <block-or-exp>                              block as expression
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -1228,7 +1228,6 @@ During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `po
 [[decl-seq]]
 === Sequence of declarations
 
-
 A sequence of declarations `<dec>;*` occurring in a block, a program or embedded in the `<dec-field>;*` sequence of an object body has type `T`
 provided:
 
@@ -1631,7 +1630,8 @@ Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list
 ```bnf
 <exp-field> ::= var? <id> = <exp>
 ```
-Such an object literal is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
+Such an object literal, sometimes called a *record*, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
+However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
 
 [[exp-proj]]
 === Object projection (member access)
