@@ -1,5 +1,16 @@
 = Motoko compiler changelog
 
+== 0.5.1 (2020-11-27)
+
+* BREAKING CHANGE: Simple object literals of the form `{a = foo(); b = bar()}`
+  no longer bind the field names locally. This enables writing expressions
+  like `func foo(a : Nat) { return {x = x} }`.
+
+  However, this breaks expressions like `{a = 1; b = a + 1}`. Such object
+  shorthands now have to be written differently, e.g., with an auxiliary
+  declaration, as in `let a = 1; {a = a; b = a + 1}`, or by using the "long"
+  object syntax `object {public let a = 1; public let b = a + 1}`.
+
 == 0.5.0 (2020-11-27)
 
 * BREAKING CHANGE: Free-standing blocks are disallowed

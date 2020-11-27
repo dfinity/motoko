@@ -127,6 +127,7 @@ let error_in modes env at fmt =
 let _warn_in modes env at fmt =
   ignore (diag_in type_warning modes env at fmt)
 
+
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
@@ -584,6 +585,7 @@ and check_inst_bounds env tbs inst at =
   check_typ_bounds env tbs ts ats at;
   ts
 
+
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -691,6 +693,7 @@ let check_lit env t lit at =
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
+
 (* Coercions *)
 
 let array_obj t =
@@ -722,6 +725,11 @@ let text_obj () =
 
 
 (* Expressions *)
+
+let error_duplicate env kind id =
+  match as_field_id id with
+  | None -> error env id.at "duplicate definition for %s%s in block" kind id.it
+  | Some x -> error env id.at "duplicate %sfield name %s in object" kind x
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -959,11 +967,11 @@ and infer_exp'' env exp : T.typ =
         ) ts2;
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
-          if not (is_IgnoreAsync exp1) then
+          if not (is_ignore_asyncE exp1) then
             error env exp1.at
               "shared function with () result type has unexpected body:\n  the body must either be of sugared form '{ ... }' \n  or explicit form '= ignore ((async ...) : async ())'"
         | T.Promises, _ ->
-          if not (is_Async exp1) then
+          if not (is_asyncE exp1) then
             error env exp1.at
               "shared function with async result type has non-async body"
         | _ ->
@@ -1347,6 +1355,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
+
 (* Cases *)
 
 and infer_cases env t_pat t cases : T.typ =
@@ -1678,6 +1687,7 @@ and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
 
 and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
+
 
 (* Object/Scope transformations *)
 
@@ -2019,7 +2029,7 @@ and gather_dec env scope dec : Scope.t =
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
-      error env dec.at "duplicate definition for value %s in block" id.it;
+      error_duplicate env "" id;
     let scope' = gather_block_decs env decs in
     let ve' = T.Env.add id.it (object_of_scope env obj_sort.it fields scope' at) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
@@ -2034,7 +2044,7 @@ and gather_dec env scope dec : Scope.t =
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
-      error env dec.at "duplicate definition for type %s in block" id.it;
+      error_duplicate env "type " id;
     let binds' = match dec.it with
       | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
       | _ -> binds
@@ -2053,7 +2063,7 @@ and gather_dec env scope dec : Scope.t =
     let val_env = match dec.it with
       | ClassD _ ->
         if T.Env.mem id.it scope.val_env then
-          error env id.at "duplicate definition for %s in block" id.it;
+          error_duplicate env "" id;
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
@@ -2078,7 +2088,7 @@ and gather_pat_field env ve pf : Scope.val_env =
 
 and gather_id env ve id : Scope.val_env =
   if T.Env.mem id.it ve then
-    error env id.at "duplicate definition for %s in block" id.it;
+    error_duplicate env "" id;
   T.Env.add id.it T.Pre ve
 
 (* Pass 2 and 3: infer type definitions *)
@@ -2264,7 +2274,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
 let is_actor_dec d =
   match d.it with
   | ExpD e
-  | LetD (_, e) -> Syntax.is_actor_def e
+  | LetD (_, e) -> CompUnit.is_actor_def e
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, fields) ->
     obj_sort.it = T.Actor
   | _ -> false
@@ -2300,7 +2310,7 @@ let check_lib scope lib : Scope.t Diag.result =
         (fun lib ->
           let env = env_of_scope msgs scope in
           let (imports, cub) = lib.it in
-          let (imp_ds, ds) = Syntax.decs_of_lib lib in
+          let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
@@ -2315,7 +2325,7 @@ let check_lib scope lib : Scope.t Diag.result =
               end;
               typ
             | ActorClassU  (sp, id, tbs, p, _, self_id, fields) ->
-              if Syntax.is_anonymous id then
+              if is_anon_id id then
                 error env cub.at "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tbs -> T.Con(Option.get tbs.note, [])) tbs in
               let fun_typ = typ in
