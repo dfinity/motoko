@@ -960,7 +960,7 @@ let interpret_lib flags scope lib : scope =
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
     let import = import_lib env lib in
-    let (imp_decs, decs) = Syntax.decs_of_lib lib in
+    let (imp_decs, decs) = CompUnit.decs_of_lib lib in
     interpret_block env (imp_decs @ decs) (Some ve) (fun v ->
       vo := Some (import v))
   );

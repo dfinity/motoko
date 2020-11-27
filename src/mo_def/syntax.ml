@@ -210,12 +210,10 @@ type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
 
-(* Imports *)
+(* Compilation units *)
 
 type import = (import', Type.typ) Source.annotated_phrase
 and import' = id * string * resolved_import ref
-
-(* Compilation units *)
 
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
@@ -227,134 +225,18 @@ and comp_unit_body' =
 
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase
-and comp_unit' = (import list * comp_unit_body)
+and comp_unit' = import list * comp_unit_body
 
 type lib = comp_unit
 
-(* Compilation unit detection *)
 
-let is_actor_def e =
-  let open Source in
-  match e.it with
-  | AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, _fields); _ }) ; _  } -> true
-  | _ -> false
+(* Helpers *)
 
-let as_actor_def e =
-  let open Source in
-  match e.it with
-  | AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _}, fields); note; at }) ; _  } ->
-    fields, note, at
-  | _ -> assert false
+let (@@) = Source.(@@)
+let (@?) it at = Source.({it; at; note = empty_typ_note})
+let (@!) it at = Source.({it; at; note = Type.Pre})
+let (@=) it at = Source.({it; at; note = None})
 
-(* Happens after parsing, before type checking *)
-let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
-  let open Source in
-  let f = prog.note in
-
-  let finish imports u = { it = (imports, u); note = f; at = no_region } in
-  let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-
-  let rec go imports ds : comp_unit =
-    match ds with
-    (* imports *)
-    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
-      let i : import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
-      go (imports @ [i]) ds'
-
-    (* terminal expressions *)
-    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
-      finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
-    | [{it = ExpD e; _} ] when is_actor_def e ->
-      let fields, note, at = as_actor_def e in
-      finish imports { it = ActorU (None, fields); note; at }
-    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-      assert (List.length tbs > 0);
-      finish imports { it = ActorClassU (sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
-    (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
-      finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, e); _}] when is_actor_def e ->
-      let fields, note, at = as_actor_def e in
-      finish imports { it = ActorU (Some i1, fields); note; at }
-
-    (* Everything else is a program *)
-    | ds' ->
-      if as_lib
-      then
-        (* Deprecated syntax, see Typing.check_lib *)
-        let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
-        finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
-      else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
-  in
-  go [] prog.it
-
-
-(* Lib as decs *)
-let obj_decs obj_sort at note id_opt fields =
-  let open Source in
-  match id_opt with
-  | None -> [
-    { it = ExpD {
-        it = ObjE ( { it = obj_sort; at; note = () }, fields);
-        at;
-        note };
-      at; note }]
-  | Some id -> [
-    { it = LetD (
-        { it = VarP id; at; note = note.note_typ },
-        { it = ObjE ({ it = obj_sort; at; note = () }, fields);
-          at; note; });
-      at; note
-    };
-    { it = ExpD { it = VarE id; at; note };
-      at; note }
-    ]
-
-(* To enable uniform definedness checking, typechecking and interpretation,
-   present the unit as a list of declarations.
-*)
-let decs_of_lib (cu : comp_unit) =
-  let open Source in
-  let (imports, cub) = cu.it in
-  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
-    { it = LetD (
-      { it = VarP id; at; note; },
-      { it = ImportE (fp, ri);
-        at;
-        note = { note_typ = note; note_eff = Type.Triv} });
-      at;
-      note = { note_typ = note; note_eff = Type.Triv } }) imports
-  in
-  import_decs,
-  match cub.it with
-  | ModuleU (id_opt, fields) ->
-    obj_decs Type.Module cub.at cub.note id_opt fields
-  | ActorClassU (csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (csp, i, tbs, p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
-       at = cub.at;
-       note = cub.note;}];
-  | ProgU _
-  | ActorU _ ->
-    assert false
-
-(* a hack to support compiling multiple files *)
-let combine_progs progs : prog =
-  let open Source in
-  if progs = []
-  then { it = []; at = no_region; note = "empty" }
-  else { it = List.concat_map (fun p -> p.it) progs
-       ; at = (Lib.List.last progs).at
-       ; note = (Lib.List.last progs).note
-       }
-
-(* n-ary arguments/result sequences *)
-
-let arity t =
-  match t.Source.it with
-  | TupT ts -> List.length ts
-  | _ -> 1
-
-(* Literals *)
 
 (* NB: This function is currently unused *)
 let string_of_lit = function
@@ -382,95 +264,57 @@ let string_of_lit = function
   | PreLit _      -> assert false
 
 
+
+(* Miscellaneous *)
+(* TODO: none of what follows should probably be in this file *)
+
 open Source
-let (@@) = Source.(@@)
-let (@?) it at = Source.({it; at; note = empty_typ_note})
-let (@!) it at = Source.({it; at; note = Type.Pre})
-let (@=) it at = Source.({it; at; note = None})
 
-let scope_typ region =
-  Source.(
-    { it = PathT (
-      { it = IdH { it = Type.default_scope_var; at = region; note = () };
-        at = no_region;
-        note = Type.Pre },
-      []);
-    at = region;
-    note = Type.Pre })
 
-let scope_bind var =
-  { var = Type.scope_var var @@ no_region;
-    sort = Type.Scope @@ no_region;
-    bound = PrimT "Any" @! no_region
-  } @= no_region
+(* Identifiers *)
 
-let ensure_scope_bind var tbs =
-  match tbs with
-  | tb::_ when tb.it.sort.it = Type.Scope ->
-    tbs
-  | _ ->
-    scope_bind var::tbs
+let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
+let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
 
-let ensure_async_typ t_opt =
-  match t_opt with
-  | None -> t_opt
-  | Some { it = AsyncT _; _} -> t_opt
-  | Some t ->
-    Some (AsyncT(scope_typ no_region, t) @! no_region)
+let field_id s = "." ^ s
+let as_field_id id = Lib.String.chop_prefix "." id.it
 
-let funcT (sort, tbs, t1, t2) =
-  match sort.it, t2.it with
-  | Type.Local, AsyncT _ ->
-    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
-  | Type.Shared _, _ ->
-    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
-  | _ ->
-    FuncT(sort, tbs, t1, t2)
 
-let is_Async e =
-  match e.it with
-  | AsyncE _ -> true
-  | _ -> false
+(* Types & Scopes *)
 
-let is_IgnoreAsync e =
-  match e.it with
-  | IgnoreE
-      { it = AnnotE ({ it = AsyncE _; _},
-        { it = AsyncT (_, { it = TupT []; _}); _}); _} ->
-    true
-  | _ -> false
-
-let async f e =
-  AsyncE (scope_bind f, e)  @? e.at
-
-let ignoreAsync f e =
-  IgnoreE (
-    AnnotE (AsyncE (scope_bind f, e)  @? e.at,
-      AsyncT (scope_typ e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
-
-let desugar sp f t_opt (sugar, e) =
-  match sugar, e with
-  | (false, e) -> false, e (* body declared as EQ e *)
-  | (true, e) -> (* body declared as immediate block *)
-    match sp.it, t_opt with
-    | _, Some {it = AsyncT _; _} ->
-      true, async f.it e
-    | Type.Shared _, (None | Some { it = TupT []; _}) ->
-      true, ignoreAsync f.it e
-    | _, _ -> (true, e)
-
-let funcE (f, s, tbs, p, t_opt, sugar, e) =
-  match s.it, t_opt, e with
-  | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
-  | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, sugar, e)
-  | _ ->
-    FuncE(f, s, tbs, p, t_opt, sugar, e)
+let arity t =
+  match t.Source.it with
+  | TupT ts -> List.length ts
+  | _ -> 1
 
 let is_any t =
   match t.it with
   | PrimT "Any" -> true
   | _ -> false
 
-let is_anonymous id =
-  Lib.(String.chop_prefix "anon-" id.it <> None)
+let scopeT at =
+  PathT (IdH {it = Type.default_scope_var; at; note = ()} @! at, []) @! at
+
+
+(* Expressions *)
+
+let asyncE tbs e =
+  AsyncE (tbs, e) @? e.at
+
+let ignore_asyncE tbs e =
+  IgnoreE (
+    AnnotE (AsyncE (tbs, e) @? e.at,
+      AsyncT (scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
+
+let is_asyncE e =
+  match e.it with
+  | AsyncE _ -> true
+  | _ -> false
+
+let is_ignore_asyncE e =
+  match e.it with
+  | IgnoreE
+      {it = AnnotE ({it = AsyncE _; _},
+        {it = AsyncT (_, {it = TupT []; _}); _}); _} ->
+    true
+  | _ -> false
