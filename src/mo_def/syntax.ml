@@ -265,7 +265,7 @@ let string_of_lit = function
 
 
 
-(* Arbitrary stuff *)
+(* Miscellaneous *)
 (* TODO: none of what follows should probably be in this file *)
 
 open Source
