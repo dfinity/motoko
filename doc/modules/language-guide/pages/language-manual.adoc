@@ -1631,7 +1631,7 @@ Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list
 <exp-field> ::= var? <id> = <exp>
 ```
 Such an object literal, sometimes called a *record*, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
-However, unlike declarations, the field list does not bind the `<id>` as a local name within the literal, i.e., the field names are not in scope in the right-hand side expressions.
+However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
 
 [[exp-proj]]
 === Object projection (member access)
