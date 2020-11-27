@@ -700,11 +700,17 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   in
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
+  let available = fresh_var "available" T.nat64 in
+  let accepted = fresh_var "accepted" T.nat64 in
+  let cycles = var "@cycles" (T.Mut (T.nat64)) in
   let body =
     asyncE
       (typ_arg c' T.Scope T.scope_bound)
       (blockE [
          letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
+         letD available (primE Ir.SystemCyclesAvailablePrim []);
+         letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
+         expD (assignE cycles (varE accepted));
          letD principal
            (awaitE (callE (varE create_actor_helper) cs'
              (tupE [wasm_blob;  varE arg_blob])))
