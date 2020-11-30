@@ -23,7 +23,7 @@ The full definition of all types and helpers we'll use in this document is inclu
 ====
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="1..33"]
+include::../examples/todo-error.mo[lines="1..34"]
 ----
 ====
 
@@ -47,12 +47,12 @@ One particularly easy and _bad_ way of reporting errors is through the use of a 
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="35..45"]
+include::../examples/todo-error.mo[lines="36..46"]
 ----
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="82..90"]
+include::../examples/todo-error.mo[lines="98..105"]
 ----
 
 === Prefer Option/Result over Exceptions where possible ===
@@ -71,12 +71,12 @@ Here's what that looks like for our `markDone` function:
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="47..58"]
+include::../examples/todo-error.mo[lines="48..59"]
 ----
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="91..98"]
+include::../examples/todo-error.mo[lines="107..114"]
 ----
 
 The primary downside of this approach is that it flattens all possible errors into the singular `null` value.
@@ -99,7 +99,7 @@ So we'll define a `TodoError` type our `markDone` function will use to signal er
 
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="59..59"]
+include::../examples/todo-error.mo[lines="60..60"]
 ----
 
 This lets us now write the third version of `markDone`:
@@ -107,12 +107,12 @@ This lets us now write the third version of `markDone`:
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="61..73"]
+include::../examples/todo-error.mo[lines="62..74"]
 ----
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[lines="100..111"]
+include::../examples/todo-error.mo[lines="116..127"]
 ----
 
 And as we can see we can now give the user a useful error message.
@@ -154,6 +154,19 @@ For these situations `base` provides the `fromOption` and `toOption` functions i
 
 == Asynchronous Exceptions ==
 
-=== Never use exceptions for control flow ===
+The last way of dealing with errors in Motoko is to use exceptions.
+_But_ unlike in other languages with exceptions these can only be caught and handled at asynchronous boundaries.
+This means you can `try` calling a function on another canister and it may fail, but you can't use exceptions to handle errors within the context of a single message call.
 
-=== Catch what you can handle ===
+Exceptions should generally only be used to signal unexpected failures that you cannot recover from, and that you don't expect many consumers of your API to handle. If a failure should be handled by your caller you should make it explicit in your signature by returning a `Result` instead. For completeness here is the `markDone` example with exceptions:
+
+Definition:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="75..89"]
+----
+Callsite:
+[source,motoko]
+----
+include::../examples/todo-error.mo[lines="129..136"]
+----

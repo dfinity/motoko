@@ -3,6 +3,7 @@ import Hash "mo:base/Hash";
 import Map "mo:base/HashMap";
 import Time "mo:base/Time";
 import Result "mo:base/Result";
+import Error "mo:base/Error";
 
 type Time = Int;
 type Seconds = Int;
@@ -71,6 +72,21 @@ public shared func markDone3(id : TodoId) : async Result.Result<Seconds, TodoErr
             #err(#notFound);
     }
 };
+public shared func markDone4(id : TodoId) : async Seconds {
+    switch (todos.get(id)) {
+        case (?(#todo(todo))) {
+            let now = Time.now();
+            todos.put(id, #done(now));
+            secondsBetween(todo.opened, now)
+        };
+        case (?(#done(time))) {
+            throw Error.reject("Already done")
+        };
+        case null {
+            throw Error.reject("Not Found")
+        };
+    }
+};
 };
 
 actor TodoCaller {
@@ -108,5 +124,14 @@ public shared func doneTodo3(id : Todo.TodoId) : async Text {
       case (#ok(seconds))
           "Congrats! That took " # Int.toText(seconds) # " seconds.";
     };
+};
+
+public shared func doneTodo4(id : Todo.TodoId) : async Text {
+    try {
+      let seconds = await Todo.markDone4(id);
+      "Congrats! That took " # Int.toText(seconds) # " seconds.";
+    } catch (e) {
+      "Something went wrong.";
+    }
 };
 };
