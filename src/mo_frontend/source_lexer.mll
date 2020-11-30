@@ -197,6 +197,7 @@ rule token mode = parse
   | "class" { CLASS }
   | "continue" { CONTINUE }
   | "debug" { DEBUG }
+  | "do" { DO }
   | "else" { ELSE }
   | "false" { BOOL false }
   | "flexible" { FLEXIBLE }

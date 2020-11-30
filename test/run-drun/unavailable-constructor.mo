@@ -1,14 +1,14 @@
-func f() { ignore C(); };
+func f() : async () { ignore await C(); };
 
 actor class C() {
 
   let _ : Any = C;
 
   public shared ctxt func m () : async () {
-     let _ : actor {} = C();
+     let _ : actor {} = await C();
   };
 
 };
 
-ignore C().m() //OR-CALL ingress m 0x4449444C0000
+ignore (await C()).m() //OR-CALL ingress m 0x4449444C0000
 

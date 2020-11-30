@@ -12,5 +12,7 @@
 ← replied: (+5, +5, +67305985)
 → query len3a(record {"Hello"; (67305985 : int32); null}, "World")
 ← replied: (+5, +5, +67305985)
-→ query len3a(record {"Hello"; (67305985 : int32)}, "World")
+→ query len3a(record {0 = "Hello"; 2 = null}, "World")
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: did not find tuple field in record"
+→ query len3a(record {"Hello"; (67305985 : int32)}, "World")
+← replied: (+5, +5, +67305985)

@@ -196,9 +196,8 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
-
 let lib_of_prog f prog : Syntax.lib  =
- { (Syntax.comp_unit_of_prog true prog) with Source.note = f }
+ { (CompUnit.comp_unit_of_prog true prog) with Source.note = f }
 
 
 (* Prelude *)
@@ -563,11 +562,13 @@ let analyze analysis_name analysis prog name =
   then Check_ir.check_prog !Flags.verbose analysis_name prog
 
 let ir_passes mode prog_ir name =
+  (* translations that extend the progam and must be done before await/cps conversion *)
+  let prog_ir = show_translation true prog_ir name in
+  let prog_ir = eq_translation true prog_ir name in
+  (* cps conversion and local transformations *)
   let prog_ir = await_lowering !Flags.await_lowering prog_ir name in
   let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
   let prog_ir = tailcall_optimization true prog_ir name in
-  let prog_ir = show_translation true prog_ir name in
-  let prog_ir = eq_translation true prog_ir name in
   analyze "constness analysis" Const.analyze prog_ir name;
   prog_ir
 
@@ -611,8 +612,8 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
 
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let imports = compile_libs mode libs in
-  let prog = Syntax.combine_progs progs in
-  let u = Syntax.comp_unit_of_prog false prog in
+  let prog = CompUnit.combine_progs progs in
+  let u = CompUnit.comp_unit_of_prog false prog in
   compile_unit mode do_link imports u
 
 let compile_files mode do_link files : compile_result =
@@ -633,10 +634,10 @@ let import_libs libs : Lowering.Desugar.import_declaration =
   List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
-  let prog = Syntax.combine_progs progs in
+  let prog = CompUnit.combine_progs progs in
   let name = prog.Source.note in
   let imports = import_libs libs in
-  let u = Syntax.comp_unit_of_prog false prog in
+  let u = CompUnit.comp_unit_of_prog false prog in
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;

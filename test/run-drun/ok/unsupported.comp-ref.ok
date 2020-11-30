@@ -8,7 +8,7 @@ unsupported.mo:54.3-54.42: type error, inner actor classes are not supported yet
   (This is a limitation of the current version and flag -ref-system-api.)
 unsupported.mo:58.45-58.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:62.37-62.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.mo:62.39-62.47: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version and flag -ref-system-api.)
 unsupported.mo:72.34-72.37: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version and flag -ref-system-api.)

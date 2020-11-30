@@ -91,6 +91,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ELSE -> ELSE
       | T_DOT_NUM -> DOT_NUM "<num>"
       | T_DOT -> DOT
+      | T_DO -> DO
       | T_DIVOP -> DIVOP
       | T_DIVASSIGN -> DIVASSIGN
       | T_DEBUG_SHOW -> DEBUG_SHOW

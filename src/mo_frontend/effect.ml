@@ -49,6 +49,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | BreakE (_, exp1)
   | RetE exp1
   | AnnotE (exp1, _)
+  | IgnoreE exp1
   | LoopE (exp1, None) ->
     effect_exp exp1
   | BinE (_, exp1, _, exp2)
@@ -73,8 +74,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | BlockE decs ->
     let es = List.map effect_dec decs in
     List.fold_left max_eff T.Triv es
-  | ObjE (_, efs) ->
-    effect_field_exps efs
+  | ObjE (sort, efs) ->
+    infer_effect_field_exps efs
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
@@ -99,7 +100,7 @@ and effect_cases cases =
     let e = effect_exp exp in
     max_eff e (effect_cases cases')
 
-and effect_field_exps efs =
+and infer_effect_field_exps efs =
   List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_dec fld.it.dec)) T.Triv efs
 
 and effect_dec dec =
@@ -108,7 +109,6 @@ and effect_dec dec =
 and infer_effect_dec dec =
   match dec.it with
   | ExpD e
-  | IgnoreD e
   | LetD (_,e)
   | VarD (_, e) ->
     effect_exp e

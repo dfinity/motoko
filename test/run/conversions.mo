@@ -25,12 +25,12 @@ assert(Prim.word32ToNat 4294967295 == 4294967295); // 2**32 - 1
 
 func forall<T> (f : T -> (), l : [T]) = for (e in l.vals()) { f e };
 
-{
+do {
     func roundtrip(n : Nat) = assert (Prim.word32ToNat (Prim.natToWord32 n) == n);
     forall<Nat>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 };
 
-{
+do {
     func roundtrip(w : Word32) = assert (Prim.natToWord32 (Prim.word32ToNat w) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 
@@ -116,14 +116,14 @@ assert(Prim.intToWord32 4294967295 == (4294967295 : Word32)); // 2**32 - 1
 
 func println(i : Int) { Prim.debugPrintInt(i) };
 
-{
+do {
     func roundtrip(i : Int) = assert (Prim.int32ToInt (Prim.word32ToInt32 (Prim.intToWord32 i)) == i);
     forall<Int>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF]);
 
     forall<Int>(roundtrip, [-10, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000, -2147483648]);
 };
 
-{
+do {
     func roundtrip(w : Word32) = assert (Prim.intToWord32 (Prim.int32ToInt (Prim.word32ToInt32 w)) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 
@@ -142,7 +142,7 @@ assert(Prim.charToWord32 'П' == (1055 : Word32));
 assert(Prim.charToWord32 '\u{ffff}' == (65535 : Word32)); // 2**16 - 1
 assert(Prim.charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
 
-{
+do {
     func roundtrip(w : Word32) = assert (Prim.charToWord32 (Prim.word32ToChar w) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 0x10FFFF]);  // largest code point
 };
