@@ -40,7 +40,7 @@ public shared func newTodo(txt : Text) : async TodoId {
 // end::intro[]
 
 // tag::sentinel-definition[]
-public shared func markDone1(id : TodoId) : async Seconds {
+public shared func markDoneBad(id : TodoId) : async Seconds {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
       let now = Time.now();
@@ -53,7 +53,7 @@ public shared func markDone1(id : TodoId) : async Seconds {
 // end::sentinel-definition[]
 
 // tag::option-definition[]
-public shared func markDone2(id : TodoId) : async ?Seconds {
+public shared func markDoneOption(id : TodoId) : async ?Seconds {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
       let now = Time.now();
@@ -70,7 +70,7 @@ public type TodoError = { #notFound; #alreadyDone : Time };
 // end::todo-error[]
 
 // tag::result-definition[]
-public shared func markDone3(id : TodoId) : async Result.Result<Seconds, TodoError> {
+public shared func markDoneResult(id : TodoId) : async Result.Result<Seconds, TodoError> {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
       let now = Time.now();
@@ -87,7 +87,7 @@ public shared func markDone3(id : TodoId) : async Result.Result<Seconds, TodoErr
 };
 // end::result-definition[]
 // tag::exception-definition[]
-public shared func markDone4(id : TodoId) : async Seconds {
+public shared func markDoneException(id : TodoId) : async Seconds {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
       let now = Time.now();
@@ -112,7 +112,7 @@ public shared func mkTodo() : async Todo.TodoId {
 };
 // tag::sentinel-caller[]
 public shared func doneTodo1(id : Todo.TodoId) : async Text {
-  let seconds = await Todo.markDone1(id);
+  let seconds = await Todo.markDoneBad(id);
   if (seconds != -1) {
     "Congrats! That took " # Int.toText(seconds) # " seconds.";
   } else {
@@ -123,7 +123,7 @@ public shared func doneTodo1(id : Todo.TodoId) : async Text {
 
 // tag::option-caller[]
 public shared func doneTodo2(id : Todo.TodoId) : async Text {
-  switch (await Todo.markDone2(id)) {
+  switch (await Todo.markDoneOption(id)) {
     case null {
       "Something went wrong."
     };
@@ -136,7 +136,7 @@ public shared func doneTodo2(id : Todo.TodoId) : async Text {
 
 // tag::result-caller[]
 public shared func doneTodo3(id : Todo.TodoId) : async Text {
-  switch (await Todo.markDone3(id)) {
+  switch (await Todo.markDoneResult(id)) {
     case (#err(#notFound)) {
       "There is no Todo with that ID."
     };
@@ -153,7 +153,7 @@ public shared func doneTodo3(id : Todo.TodoId) : async Text {
 // tag::exception-caller[]
 public shared func doneTodo4(id : Todo.TodoId) : async Text {
   try {
-    let seconds = await Todo.markDone4(id);
+    let seconds = await Todo.markDoneException(id);
     "Congrats! That took " # Int.toText(seconds) # " seconds.";
   } catch (e) {
     "Something went wrong.";
