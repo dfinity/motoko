@@ -99,10 +99,7 @@ let darwin_standalone = drv:
 
 let ocaml_exe = name: bin: rts:
   let
-    profile =
-      if is_static
-      then "release-static"
-      else "release";
+    profile = "release";
 
     drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
