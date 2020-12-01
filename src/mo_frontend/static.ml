@@ -55,7 +55,7 @@ let rec exp m e = match e.it with
   | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
-  | AnnotE (exp1, _) | IgnoreE exp1 -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1   | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
   (* Clearly non-static *)

@@ -425,8 +425,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | TupE exps ->
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
+    interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
+  | DoOptE exp1 ->
     let env' = { env with labs = V.Env.add "!" k env.labs } in
-    interpret_exp env' exp1 (fun v1 -> k (V.Opt v1))
+    interpret_exp env' exp1 k
   | BangE exp1 ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with

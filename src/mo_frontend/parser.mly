@@ -691,8 +691,11 @@ exp_nondec(B) :
     { ForE(p, e1, e2) @? at $sloc }
   | IGNORE e=exp_nest
     { IgnoreE(e) @? at $sloc }
-  | DO e=exp_nest
+  | DO e=block
     { e }
+  | DO QUEST e=block
+    { DoOptE(e) @? at $sloc }
+
 
 exp_nonvar(B) :
   | e=exp_nondec(B)

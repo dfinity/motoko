@@ -189,7 +189,8 @@
     'loop' <exp_nest> 'while' <exp_nest>
     'for' '(' <pat> 'in' <exp> ')' <exp_nest>
     'ignore' <exp_nest>
-    'do' <exp_nest>
+    'do' <block>
+    'do' '?' <block>
 
 <exp_nonvar> ::= 
     <exp_nondec>
