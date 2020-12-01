@@ -87,7 +87,7 @@ let darwin_standalone = drv:
       for file in $out/bin/*; do
         dylibbundler \
           -b \
-          -x "$out/bin/$file" \
+          -x "$file" \
           -d $out/bin \
           -p '@executable_path' \
           -i /usr/lib/system \
