@@ -70,10 +70,31 @@ let commonBuildInputs = pkgs:
     pkgs.perl
   ]; in
 
-let darwin_standalone =
-  let common = import (nixpkgs.sources.common + "/pkgs")
-    { inherit (nixpkgs) system; repoRoot = ./.; }; in
-  common.lib.standaloneRust; in
+let darwin_standalone = drv:
+ nixpkgs.stdenv.mkDerivation {
+    name = "${drv.name}-bundle";
+    buildInputs = [ nixpkgs.macdylibbundler ];
+    inherit drv;
+    allowedRequisites = [];
+
+    # can be rewritten to use a simple runCommandNoCC once
+    # https://github.com/NixOS/nixpkgs/pull/103163 reaches our nixpkgs
+    builder = nixpkgs.writeScript "run-dylibbundler.sh" ''
+      source ${nixpkgs.stdenv}/setup
+
+      mkdir -p $out/bin/
+      cp ${drv}/bin/* $out/bin/*
+      for file in $out/bin/*; do
+      dylibbundler \
+        -b \
+        -x $out/bin/* \
+        -d $out/bin \
+        -p '@executable_path' \
+        -i /usr/lib/system \
+        -i ${nixpkgs.darwin.Libsystem}/lib
+      find $out
+    '';
+  }; in
 
 let ocaml_exe = name: bin: rts:
   let
@@ -108,9 +129,7 @@ let ocaml_exe = name: bin: rts:
     };
   in
     # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
-    else drv;
+    if nixpkgs.stdenv.isDarwin then darwin_standalone drv else drv;
 
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
