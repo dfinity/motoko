@@ -85,13 +85,14 @@ let darwin_standalone = drv:
       mkdir -p $out/bin/
       cp -v ${drv}/bin/* $out/bin/
       for file in $out/bin/*; do
-      dylibbundler \
-        -b \
-        -x $out/bin/* \
-        -d $out/bin \
-        -p '@executable_path' \
-        -i /usr/lib/system \
-        -i ${nixpkgs.darwin.Libsystem}/lib
+        dylibbundler \
+          -b \
+          -x $out/bin/* \
+          -d $out/bin \
+          -p '@executable_path' \
+          -i /usr/lib/system \
+          -i ${nixpkgs.darwin.Libsystem}/lib
+      done
       find $out
     '';
   }; in
