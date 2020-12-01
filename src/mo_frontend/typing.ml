@@ -849,25 +849,26 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp env exp1 in
     T.Opt t1
   | DoOptE exp1 ->
-    let env' = add_lab env "!" (T.Prim T.Null) in
-    let t1 = infer_exp env' exp1 in
-    (try
-      ignore (T.as_opt_sub t1)
-     with Invalid_argument _ ->
-       error env' exp1.at
-         "expected option type afer do ?, but body produces type\n  %s"
-         (T.string_of_typ_expand t1));
-    t1
+    begin
+      let env' = add_lab env "!" (T.Prim T.Null) in
+      let t1 = infer_exp env' exp1 in
+      try
+        T.Opt (T.as_opt_sub t1)
+      with Invalid_argument _ ->
+        error env' exp1.at
+          "expected option type afer do '?', but body produces type\n  %s"
+          (T.string_of_typ_expand t1)
+    end
   | BangE exp1 ->
     begin
       let t1 = infer_exp_promote env exp1 in
       if Option.is_none (T.Env.find_opt "!" env.labs) then
-        local_error env exp.at "misplaced ! (no enclosing ? expression)";
+        local_error env exp.at "misplaced '!' (no enclosing 'do ? { ... }' expression)";
       try
         T.as_opt_sub t1
       with Invalid_argument _ ->
         error env exp1.at
-          "expected option type before !, but expression produces type\n  %s"
+          "expected option type before '!', but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     end
   | TagE (id, exp1) ->
@@ -1221,7 +1222,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | BangE exp1, t ->
     if Option.is_none (T.Env.find_opt "!" env.labs) then
-      local_error env exp.at "misplaced ! (no enclosing ? expression)";
+      local_error env exp.at "misplaced '!' (no enclosing 'do ? { }' expression)";
     check_exp env (T.Opt t) exp1;
     t
   | ArrayE (mut, exps), T.Array t' ->
