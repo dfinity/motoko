@@ -107,6 +107,12 @@ public shared func markDoneException(id : TodoId) : async Seconds {
 
 actor TodoCaller {
 
+type Time = Int;
+type Seconds = Int;
+
+func secondsBetween(start : Time, end : Time) : Seconds =
+  (end - start) / 1_000_000_000;
+
 public shared func mkTodo() : async Todo.TodoId {
   await Todo.newTodo("Write error handling tutorial")
 };
