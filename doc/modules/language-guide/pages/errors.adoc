@@ -1,7 +1,4 @@
 = Errors and Options =
-Christoph Hegemann
-
-
 == Different ways to represent errors in Motoko ==
 . Option
 . Result
@@ -43,7 +40,6 @@ We'll now talk about the different ways to communicate these errors in Motoko an
 
 
 == What error type to prefer ==
-
 
 === How _not_ to do things ===
 
