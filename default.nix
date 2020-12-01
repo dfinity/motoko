@@ -83,7 +83,7 @@ let darwin_standalone = drv:
       source ${nixpkgs.stdenv}/setup
 
       mkdir -p $out/bin/
-      cp ${drv}/bin/* $out/bin/*
+      cp -v ${drv}/bin/* $out/bin/
       for file in $out/bin/*; do
       dylibbundler \
         -b \
