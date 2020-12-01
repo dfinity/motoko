@@ -5,12 +5,14 @@ import Time "mo:base/Time";
 import Result "mo:base/Result";
 import Error "mo:base/Error";
 
+actor Todo {
+
 type Time = Int;
 type Seconds = Int;
+
 func secondsBetween(start : Time, end : Time) : Seconds =
   (end - start) / 1_000_000_000;
 
-actor Todo {
 public type TodoId = Nat;
 
 type Todo = { #todo : { text : Text; opened : Time }; #done : Time };
