@@ -1,4 +1,3 @@
-
 type Exp = { #Lit : Nat;
              #Div : (Exp, Exp);
              #IfZero: (Exp, Exp, Exp)
