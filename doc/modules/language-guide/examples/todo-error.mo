@@ -1,12 +1,15 @@
+// tag::imports[]
 import Int "mo:base/Int";
 import Hash "mo:base/Hash";
 import Map "mo:base/HashMap";
 import Time "mo:base/Time";
 import Result "mo:base/Result";
 import Error "mo:base/Error";
+// end::imports[]
 
 actor Todo {
 
+// tag::intro[]
 type Time = Int;
 type Seconds = Int;
 
@@ -34,7 +37,9 @@ public shared func newTodo(txt : Text) : async TodoId {
   todos.put(id, #todo({ text = txt; opened = now }));
   id
 };
+// end::intro[]
 
+// tag::sentinel-definition[]
 public shared func markDone1(id : TodoId) : async Seconds {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
@@ -45,7 +50,9 @@ public shared func markDone1(id : TodoId) : async Seconds {
     case _ { -1 };
   }
 };
+// end::sentinel-definition[]
 
+// tag::option-definition[]
 public shared func markDone2(id : TodoId) : async ?Seconds {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
@@ -56,9 +63,13 @@ public shared func markDone2(id : TodoId) : async ?Seconds {
     case _ { null };
   }
 };
+// end::option-definition[]
 
+// tag::todo-error[]
 public type TodoError = { #notFound; #alreadyDone : Time };
+// end::todo-error[]
 
+// tag::result-definition[]
 public shared func markDone3(id : TodoId) : async Result.Result<Seconds, TodoError> {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
@@ -74,6 +85,8 @@ public shared func markDone3(id : TodoId) : async Result.Result<Seconds, TodoErr
     };
   }
 };
+// end::result-definition[]
+// tag::exception-definition[]
 public shared func markDone4(id : TodoId) : async Seconds {
   switch (todos.get(id)) {
     case (?(#todo(todo))) {
@@ -89,6 +102,7 @@ public shared func markDone4(id : TodoId) : async Seconds {
     };
   }
 };
+// end::exception-definition[]
 };
 
 actor TodoCaller {
@@ -96,7 +110,7 @@ actor TodoCaller {
 public shared func mkTodo() : async Todo.TodoId {
   await Todo.newTodo("Write error handling tutorial")
 };
-
+// tag::sentinel-caller[]
 public shared func doneTodo1(id : Todo.TodoId) : async Text {
   let seconds = await Todo.markDone1(id);
   if (seconds != -1) {
@@ -105,7 +119,9 @@ public shared func doneTodo1(id : Todo.TodoId) : async Text {
     "Something went wrong.";
   };
 };
+// end::sentinel-caller[]
 
+// tag::option-caller[]
 public shared func doneTodo2(id : Todo.TodoId) : async Text {
   switch (await Todo.markDone2(id)) {
     case null {
@@ -116,7 +132,9 @@ public shared func doneTodo2(id : Todo.TodoId) : async Text {
     };
   };
 };
+// end::option-caller[]
 
+// tag::result-caller[]
 public shared func doneTodo3(id : Todo.TodoId) : async Text {
   switch (await Todo.markDone3(id)) {
     case (#err(#notFound)) {
@@ -131,7 +149,8 @@ public shared func doneTodo3(id : Todo.TodoId) : async Text {
     };
   };
 };
-
+// end::result-caller[]
+// tag::exception-caller[]
 public shared func doneTodo4(id : Todo.TodoId) : async Text {
   try {
     let seconds = await Todo.markDone4(id);
@@ -140,4 +159,5 @@ public shared func doneTodo4(id : Todo.TodoId) : async Text {
     "Something went wrong.";
   }
 };
+// end::exception-caller[]
 };
