@@ -87,7 +87,7 @@ let darwin_standalone = drv:
       for file in $out/bin/*; do
         dylibbundler \
           -b \
-          -x $out/bin/* \
+          -x "$out/bin/$file" \
           -d $out/bin \
           -p '@executable_path' \
           -i /usr/lib/system \
@@ -99,7 +99,10 @@ let darwin_standalone = drv:
 
 let ocaml_exe = name: bin: rts:
   let
-    profile = "release";
+    profile =
+      if is_static
+      then "release-static"
+      else "release";
 
     drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
