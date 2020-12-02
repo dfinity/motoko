@@ -849,16 +849,9 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp env exp1 in
     T.Opt t1
   | DoOptE exp1 ->
-    begin
-      let env' = add_lab env "!" (T.Prim T.Null) in
-      let t1 = infer_exp env' exp1 in
-      try
-        T.Opt (T.as_opt_sub t1)
-      with Invalid_argument _ ->
-        error env' exp1.at
-          "expected option type afer do '?', but body produces type\n  %s"
-          (T.string_of_typ_expand t1)
-    end
+    let env' = add_lab env "!" (T.Prim T.Null) in
+    let t1 = infer_exp env' exp1 in
+    T.Opt t1
   | BangE exp1 ->
     begin
       let t1 = infer_exp_promote env exp1 in
@@ -1218,7 +1211,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | DoOptE exp1, _ when T.is_opt t ->
     let env' = add_lab env "!" (T.Prim T.Null) in
-    check_exp env' t exp1;
+    check_exp env' (T.as_opt t) exp1;
     t
   | BangE exp1, t ->
     if Option.is_none (T.Env.find_opt "!" env.labs) then

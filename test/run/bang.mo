@@ -5,16 +5,16 @@ func print(o : ? Nat) { Prim.debugPrint(debug_show(o));};
 let o1 = do ? {
     let oi = ?1;
     let oj = ?2;
-    ? (oi! + oj!);
+    oi! + oj!;
 };
 print(o1);
 assert (o1 == ? 3);
 
 
 let o2 = do ? {
-    let oi = ?1;
-    let oj : ?Nat = null;
-    ? (oi! + oj!);
+   let oi = ?1;
+   let oj : ?Nat = null;
+   oi! + oj!;
 };
 print(o2);
 assert (o2 == null);
@@ -25,7 +25,7 @@ let o3 = do ? {
    for(o in [?1, ?2, ?3].vals()) {
      sum += o!
    };
-   ? sum
+   sum
 };
 print(o3);
 assert (o3 == ? 6);
@@ -35,7 +35,7 @@ let o4 = do ? {
    for(o in [?1, ?2, null].vals()) {
      sum += o!
    };
-   ? sum
+   sum
 };
 print o4;
 assert (o4 == null);
@@ -44,14 +44,14 @@ assert (o4 == null);
 
 let o5 = do ? {
    let o = ??0;
-   ? (o!!)
+   o!!
 };
 print o5;
 assert (o5 == ?0);
 
 let o6 : ? Nat = do ? {
    let o = ?null;
-   ? (o!!)
+   o!!
 };
 print o6;
 assert (o6 == null);

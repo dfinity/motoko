@@ -71,7 +71,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.DoOptE e ->
-    I.LabelE ("!", note.Note.typ, exp e)
+    I.LabelE ("!", note.Note.typ, optE (exp e))
   | S.BangE e ->
     let ty = note.Note.typ in
     let v = fresh_var "v" ty in

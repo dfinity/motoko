@@ -4,21 +4,21 @@ type Exp = { #Lit : Nat;
            };
 
 func eval( e: Exp) : ? Nat {
-  do ? {
+  do ? { 
     switch e {
-       case (#Lit(n)) { ? n };
+       case (#Lit(n)) { n };
        case (#Div (e1, e2)) {
          let v1 = eval e1 !;
          let v2 = eval e2 !;
          if (v2 == 0)
-           null // no silly bang
-         else ? (v1 / v2);
+           null ! // silly bang
+         else (v1 / v2);
        };
        case (#IfZero (e1, e2, e3)) {
          if (eval e1 ! == 0)
-           eval e2   // tail recursive
+           eval e2 !  // tail recursive?
          else
-           eval e3  // tail recursive
+           eval e3 ! // tail recursive?
        }
     }
   }
@@ -26,23 +26,23 @@ func eval( e: Exp) : ? Nat {
 
 /* Similar, for Results
 func eval( e: Exp) : Result<Nat,Text> {
-  // label "!" { ... }
+  // label "!" { #Ok (...) }
   do #Ok {
-    // e ! =def= let v = e in case v of #Ok _ -> v | other -> break "!" other;
+    // e ! =def= case e of #Ok v -> v | #Err e -> break "!" (#Err e);
     switch e {
-       case (#Lit(n)) { #Ok n };
+       case (#Lit(n)) { n };
        case (#Div (e1, e2)) {
          let v1 = eval e1 !;
          let v2 = eval e2 !;
          if (v2 == 0)
-           #Err "DIV/0"
-         else #Ok (v1 / v2);
+           (#Err "DIV/0") !
+         else (v1 / v2);
        };
        case (#IfZero (e1, e2, e3)) {
          if (eval e1 ! == 0)
-           eval e2
+           eval e2 !
          else
-           eval e3
+           eval e3 !
        }
     }
   }

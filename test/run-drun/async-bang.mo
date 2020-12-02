@@ -9,7 +9,7 @@ actor a {
         let oi = ?1;
         let oj = ?2;
         await async {};
-        ? (oi! + oj!);
+        oi! + oj!;
     };
     print(o1);
     assert (o1 == ? 3);
@@ -19,7 +19,7 @@ actor a {
         let oi = ?1;
         let oj : ?Nat = null;
         await async {};
-        ? (oi! + oj!);
+        oi! + oj!;
     };
     print(o2);
     assert (o2 == null);
@@ -31,7 +31,7 @@ actor a {
        for(o in [?1, ?2, ?3].vals()) {
          sum += o!
        };
-       ? sum
+       sum
     };
     print(o3);
     assert (o3 == ? 6);
@@ -42,7 +42,7 @@ actor a {
        for(o in [?1, ?2, null].vals()) {
          sum += o!
        };
-       ? sum
+       sum
     };
     print o4;
     assert (o4 == null);
@@ -52,7 +52,7 @@ actor a {
     let o5 = do ? {
        let o = ??0;
        await async {};
-       ? (o!!)
+       o!!
     };
     print o5;
     assert (o5 == ?0);
@@ -60,7 +60,7 @@ actor a {
     let o6 : ? Nat = do ? {
        let o = ?null;
        await async {};
-       ? (o!!)
+       o!!
     };
     print o6;
     assert (o6 == null);
@@ -68,7 +68,7 @@ actor a {
     let o7 = do ? {
        let o = (null : ? None);
        await async {};
-       ? (o!!)
+       o!!
     };
     print o7;
     assert (o7 == null);
