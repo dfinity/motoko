@@ -1,4 +1,6 @@
 = Errors and Options =
+:proglang: Motoko
+:base: https://github.com/dfinity/motoko-base[base]
 == Different ways to represent errors in Motoko ==
 . Option
 . Result
@@ -43,7 +45,7 @@ We'll now talk about the different ways to communicate these errors in Motoko an
 
 === How _not_ to do things ===
 
-One particularly easy and _bad_ way of reporting errors is through the use of a _sentinel_ value. For example, for our `markDone` function we might decide to use the value `-1` to signal that something failed. The callsite then has to check the return value against this special value and report the error. But it's way too easy to not check for that error condition and continue to work with that value in our code. 
+One particularly easy and _bad_ way of reporting errors is through the use of a _sentinel_ value. For example, for our `markDone` function we might decide to use the value `-1` to signal that something failed. The callsite then has to check the return value against this special value and report the error. But it's way too easy to not check for that error condition and continue to work with that value in our code.
 This can lead to delayed or even missing error detection and is strongly discouraged.
 
 Definition:
@@ -146,13 +148,13 @@ include::../examples/error-examples.mo[tag=greet-result]
 === Higher-Order functions ===
 
 Pattern matching can become tedious and verbose, especially when dealing with multiple optional values.
-The base(TODO: link base here) library exposes a collection of higher-order functions from the `Optional` and `Result` modules to improve the ergonomics of error handling.
+The {base} library exposes a collection of higher-order functions from the `Optional` and `Result` modules to improve the ergonomics of error handling.
 
 === Converting back and forth between Option/Result ===
 Sometimes you'll want to move between Options and Results.
 A Hashmap lookup returns `+null+` on failure and that's fine, but maybe the caller has more context and can turn that lookup failure into a meaningful `+Result+`.
 At other times you don't need the additional information a `+Result+ provides and just want to convert all `#err` cases into `null`.
-For these situations `base` provides the `fromOption` and `toOption` functions in the `Result` module.
+For these situations {base} provides the `fromOption` and `toOption` functions in the `Result` module.
 
 == Asynchronous Exceptions ==
 
