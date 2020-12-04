@@ -1103,6 +1103,34 @@ and infer_exp'' env exp : T.typ =
       check_exp env T.throw exp1
     end;
     T.Non
+  | DoAsyncE (typ_bind, exp1) ->
+    begin
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
+    let t1, next_cap = check_AsyncCap env "async expression" exp.at in
+    let c, tb, ce, cs = check_typ_bind env typ_bind in
+    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
+    let env' =
+      {(adjoin_typs env ce_scope cs) with
+        labs = T.Env.empty;
+        rets = Some T.Pre;
+        async = next_cap c;
+        scopes = T.ConEnv.add c exp.at env.scopes } in
+    let t2 = infer_exp env' exp1 in
+    try
+       let (t21, t22) = T.as_async_sub t1 t2 in
+       if not (T.eq t21 (T.Con(c,[]))) then
+           error env exp1.at "scope violation, expecting\n  %s\n  %s "
+             (T.string_of_typ_expand (T.Con(c,[])))
+             (T.string_of_typ_expand t21);
+       if not (T.shared t22) then
+         error_shared env t22 exp1.at "async type has non-shared content type\n  %s"
+           (T.string_of_typ_expand t22);
+       T.Async (t1, t22)
+    with Invalid_argument _ ->
+      error env exp1.at
+        "expect async type after 'do async' but body produces types\n  %s"
+        (T.string_of_typ_expand t2)
+    end
   | AsyncE (typ_bind, exp1) ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
@@ -1200,6 +1228,29 @@ and check_exp' env0 t exp : T.typ =
         (if mut.it = Const then "im" else "")
         (T.string_of_typ_expand (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps;
+    t
+  | DoAsyncE (tb, exp1), T.Async (t1', t') ->
+        error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
+    let t1, next_cap = check_AsyncCap env "async expression" exp.at in
+    if not (T.eq t1 t1') then begin
+      local_error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
+        (T.string_of_typ_expand t1)
+        (T.string_of_typ_expand t1')
+        (associated_region env t1 exp.at)
+        (associated_region env t1' exp.at);
+      scope_info env t1 exp.at;
+      scope_info env t1' exp.at
+    end;
+    let c, tb, ce, cs = check_typ_bind env tb in
+    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
+    let env' =
+      {(adjoin_typs env ce_scope cs) with
+        labs = T.Env.empty;
+        rets = Some t';
+        async = next_cap c;
+        scopes = T.ConEnv.add c exp.at env.scopes;
+      } in
+    check_exp env' (T.Async(T.Con(c,[]),t')) exp1;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";

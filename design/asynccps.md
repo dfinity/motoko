@@ -71,9 +71,9 @@ C r [ let x = t1 in e2 ] =
 C r [ let x = e1 in e2 ] =
    \\k.C r [ t1 ] @ (\\x. C r [e2] @ k)
 C r [ await t ] =
-   \\k.await(T[t1], (k, r) )
+   \\k.await(T[t1], (k, r.reject) )
 C r [ await e ] =
-   \\k.C r [e] @ (\\v.await(v,(k,r))
+   \\k.C r [e] @ (\\v.await(v,(k,r.reject))
 C r [ if e1 then e2 else e3 ]  =
    \\k.C r [e1] @ (\\b.if b then C r [e1]@k else C r [e2]@k)
 C r [ if t1 then e2 else e3 ]  =
@@ -121,6 +121,59 @@ T[ label l t ] =
    label l T[t]
 T[ return T[t] ] =
    return T[t]
+
+T r [ do async e ] =
+	(DO[e] @ ((\v.CompletedAsync(v)),(\e.RejectedAsync(e)))
+
+DO[e] = \\r. C r [e] @ r.reply
+CompletedAsync(v) =  { result = Completed v; waiters = [] }
+CompletedAsync(e) =  { result = Error e; waiters =  [] }
+Await(t,(k,r)) = match t with
+  | {result = Completed v} -> k v
+  | {result = Rejected e} -> r e
+  | {result = Pending} ->
+    t with waiters = (k,r)::t.waiters
+
+D r [ t ] =
+   \\k. k @ T[ t ]
+D r [ t1 e2 ] =
+   \\k. let f = T[ t1 ] in D r [ e2 ] @ \\v. k @ (f @ v))
+D r [ e1 e2 ] =
+   \\k. D r [ e1 ] @ (\\f.D r [ e2 ] @ (\\v. k @ (f @ v))
+D r [ let x = t1 in e2 ] =
+   \\k.let x = T[t1] in D r [e2] @ k
+D r [ let x = e1 in e2 ] =
+   \\k.D r [ t1 ] @ (\\x. D r [e2] @ k)
+D r [ await t ] =
+   \\k.Await(T[t1], (k, r.reject) )
+D r [ await e ] =
+   \\k.D r [e] @ (\\v.Await(v,(k,r.reject))
+D r [ if e1 then e2 else e3 ]  =
+   \\k.D r [e1] @ (\\b.if b then D r [e1]@k else D r [e2]@k)
+D r [ if t1 then e2 else e3 ]  =
+   \\k.if T[t1] then D r [e1] @ k else D r [e2] @ k
+D r [ if e1 then t2 else t3 ]  =
+   \\k.D r [e1] @ (\\b.k @ (if b then T[t1] else T[t2])))
+D r [ while t1 do e2 ] =
+  \\k.
+    let rec l = \u. if T[t1] then D r [e2]@l else k@u in
+    l@()
+D r [ while e1 do t2 ] =
+  \\k.
+    let rec l = \u. D r [e1](\\v.if v then T[t2] ; l@u else k@u) in
+    l@()
+D r [ while e1 do e2 ] =
+  \\k.
+    let rec l = \u. D r [e1] (\\v.if v then D r [e2]@l else k@()) in
+    l@()
+D r [ label l e ] = \\l. D r [e] @ l            // we use label l to name the success continuation
+D r [ break l e ] = \\k. D r [e] @ l            // discard k, continue from l
+D r [ return e ] = \\k. D r [e] @ r.reply      // discard k, exit via r.reply
+D r [ try e1 with x -> e2 ] =
+  let reject' = \\x. D r [e2] @ k in
+  \\k. D (r.reply,reject') [e1] @ k
+D r [ throw e] = \\k. D r [e] @ r.reject      // discard k, exit async or try via reject
+
 ```
 
 We use the following primitives for scheduling actions (that complete asyncs).
@@ -141,9 +194,9 @@ spawn(f) = let t = async { result = Pending; waiters = [] } in
            schedule (\u.f(t));
            t
 
-await(t,reply,reject) = match t with
-             | {result = Completed v} -> reply v
-             | {result = Rejected e} -> reject e
+await(t,(k,r)) = match t with
+             | {result = Completed v} -> k v
+             | {result = Rejected e} -> r e
              | {result = Pending} ->
 			   t.waiters <- (k,r)::t.waiters;
 			   yield()

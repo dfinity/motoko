@@ -16,6 +16,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | BreakE (x, exp1) -> f { exp with it = BreakE (x, over_exp f exp1) }
   | RetE exp1 -> f { exp with it = RetE (over_exp f exp1) }
   | AnnotE (exp1, x) -> f { exp with it = AnnotE (over_exp f exp1, x) }
+  | DoAsyncE (tb, exp1) -> f { exp with it = DoAsyncE (tb, over_exp f exp1) }
   | AsyncE (tb, exp1) -> f { exp with it = AsyncE (tb, over_exp f exp1) }
   | AwaitE exp1 -> f { exp with it = AwaitE (over_exp f exp1) }
   | ThrowE exp1 -> f { exp with it = ThrowE (over_exp f exp1) }

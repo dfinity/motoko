@@ -173,6 +173,7 @@ and exp' =
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
   | AsyncE of typ_bind * exp                   (* async *)
+  | DoAsyncE of typ_bind * exp                 (* do async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
