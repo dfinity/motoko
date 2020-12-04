@@ -114,6 +114,7 @@ struct
 
   let queue work = Queue.add work q
   let yield () =
+    Printf.printf "!"; (* TODO: delete me *)
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
       Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
