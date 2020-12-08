@@ -1,2 +1,6 @@
 name: docs
 version: 'master'
+asciidoc:
+  attributes:
+    page-repl: true
+    page-moc-base-tag: dfx-0.6.12
