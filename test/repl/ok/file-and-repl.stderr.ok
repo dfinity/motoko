@@ -1,4 +1,1 @@
-/dev/fd/63:1.12-1.40: warning, this switch of type
-  Bool
-does not cover value
-  false
+../run.sh: ./file-and-repl.sh: /bin/bash: bad interpreter: No such file or directory

@@ -1,4 +1,1 @@
-lib/c.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class
-lib/b.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class
-lib/a.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class
-lib/triangle.mo:0.1: warning, deprecated syntax: an imported library should be a module or named actor class
+../run.sh: ./triangle-import.sh: /bin/bash: bad interpreter: No such file or directory
