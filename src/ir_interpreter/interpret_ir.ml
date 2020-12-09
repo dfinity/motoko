@@ -115,7 +115,7 @@ struct
   let yield () =
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
-      Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
+      Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
 
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
