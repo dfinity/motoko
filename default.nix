@@ -360,7 +360,8 @@ rec {
         '';
         installPhase = ''
           mkdir -p $out
-          cp -v ${n}.js $out
+          mkdir -p $out/bin
+          cp --verbose --dereference ${n}.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
