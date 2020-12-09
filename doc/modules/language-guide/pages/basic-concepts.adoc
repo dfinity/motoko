@@ -159,7 +159,8 @@ x * y + x
 A declaration list is not itself (immediately) an _expression_, so we cannot (immediately) declare another variable with its final value (`3`).
 
 [[intro-exp-block]]
-**Block expressions.** We can form a _block expression_ from this list of declarations by enclosing it with matching _curly braces_. To disambiguate with record type, we use `do { ... }` to represent block expression.
+**Block expressions.** We can form a _block expression_ from this list of declarations by enclosing it with matching _curly braces_. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. In all other places,
+we use `do { ... }` to represent block expression, to disambiguate with object literal.
 
 [source, motoko]
 ....
