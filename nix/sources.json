@@ -35,7 +35,7 @@
     "ic-ref": {
         "branch": "release-0.14",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "7876956343f2306da640e6a40c75e6bee7d42984",
+        "rev": "fedd4e6da5b4daad6a271e811290f5997e70af3d",
         "type": "git"
     },
     "libtommath": {
