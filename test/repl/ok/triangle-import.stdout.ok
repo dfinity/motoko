@@ -1,0 +1,47 @@
+Motoko compiler (revision XXX)
+-- Parsing stdin:
+> -- Parsing lib/b.mo:
+-- Parsing lib/c.mo:
+-- Checking c.mo:
+-- Definedness c.mo:
+-- Checking b.mo:
+-- Definedness b.mo:
+-- Checking stdin:
+-- Definedness stdin:
+-- Interpreting c.mo:
+-- Interpreting b.mo:
+-- Interpreting stdin:
+-- Finished stdin:
+let anon-import-1.1 : module {...}
+
+-- Parsing stdin:
+> -- Parsing lib/a.mo:
+-- Checking a.mo:
+-- Definedness a.mo:
+-- Checking stdin:
+-- Definedness stdin:
+-- Interpreting a.mo:
+-- Interpreting stdin:
+-- Finished stdin:
+let anon-import-2.1 : module {...}
+
+-- Parsing stdin:
+> -- Checking stdin:
+-- Definedness stdin:
+-- Interpreting stdin:
+-- Finished stdin:
+let anon-import-3.1 : module {...}
+
+-- Parsing stdin:
+> -- Parsing lib/triangle.mo:
+-- Checking triangle.mo:
+-- Definedness triangle.mo:
+-- Checking stdin:
+-- Definedness stdin:
+-- Interpreting triangle.mo:
+-- Interpreting stdin:
+-- Finished stdin:
+let anon-import-4.1 : module {...}
+
+-- Parsing stdin:
+> 

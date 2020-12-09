@@ -1,1 +1,0 @@
-../run.sh: ./print-deps.sh: /bin/bash: bad interpreter: No such file or directory

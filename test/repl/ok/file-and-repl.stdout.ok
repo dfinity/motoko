@@ -1,0 +1,13 @@
+Motoko compiler (revision XXX)
+-- Parsing /dev/fd/63:
+-- Checking /dev/fd/63:
+-- Definedness /dev/fd/63:
+-- Interpreting /dev/fd/63:
+-- Parsing stdin:
+> -- Checking stdin:
+-- Definedness stdin:
+-- Interpreting stdin:
+-- Finished stdin:
+
+-- Parsing stdin:
+> 
