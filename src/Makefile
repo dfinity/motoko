@@ -61,7 +61,7 @@ moc.js: $(SOURCE_ID)
 
 moc_interpreter.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MOC_INTERPRETER_TARGET)
-	@ln -fs $(MOC_INTERPRETER_TARGET) moc.js
+	@ln -fs $(MOC_INTERPRETER_TARGET) moc_interpreter.js
 	ls -al $(MOC_INTERPRETER_TARGET)
 
 didc.js: $(SOURCE_ID)
