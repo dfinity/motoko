@@ -9,6 +9,7 @@ let () =
   Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
   Flags.check_ir := false;
   Flags.debug_info := false;
+  Flags.compiled := false;
   Flags.actor_idl_path := Some "idl/";
   Js.export "Motoko"
     (object%js
@@ -16,6 +17,5 @@ let () =
       method addPackage package dir = add_package package dir
       method clearPackage () = clear_package ()
       method setActorAliases entries = set_actor_aliases entries
-      method run list s = Flags.compiled := false; wrap_output (fun _ -> js_run list s)
-      method candid s = Flags.compiled := true; js_candid s
+      method run list s = wrap_output (fun _ -> js_run list s)
      end);
