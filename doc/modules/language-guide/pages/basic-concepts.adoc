@@ -392,7 +392,7 @@ Above, we print the text string using the library function `print`:
 
 [source.no-repl, motoko]
 ....
-func print: Text -> ()
+print: Text -> ()
 ....
 
 The function `print` accepts a text string (of type `Text`) as input, and produces the _unit value_ (of _unit type_, or `()`) as its output.

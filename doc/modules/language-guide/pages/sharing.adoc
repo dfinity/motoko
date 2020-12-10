@@ -23,9 +23,9 @@ To see the complete code for a working project that uses this pattern, see the l
 
 The following `Subscriber` actor type provides a possible interface for the subscriber actor and the publisher actor to expose and to call, respectively:
 
-[source,motoko]
+[source#sub,motoko]
 ----
-public type Subscriber = actor {
+type Subscriber = actor {
   notify : () -> ()
 };
 ----
@@ -43,8 +43,10 @@ For example, the subscriber might return a change to its subscription settings b
 The publisher side of the code stores an array of subscribers.
 For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function.
 
-[source,motoko]
+[source.include_sub,motoko]
 ----
+import Array "mo:base/Array";
+
 actor Publisher {
     var subs: [Subscriber] = [];
 
@@ -72,7 +74,17 @@ In the simplest case, the subscriber actor has the following methods:
 
 The following code illustrates implementing these methods:
 
-[source,motoko]
+++++
+<script>
+function pub(list, code) {
+  Motoko.setActorAliases([["pub", "aaaaa-aa"]]);
+  Motoko.saveFile("idl/aaaaa-aa.did", "service : { subscribe : () -> () }");
+  Motoko.saveFile("stdin", code);
+  return Motoko.run(list, "stdin");
+}
+</script>
+++++
+[source.hook_pub, motoko]
 ----
 import Publisher "canister:pub";
 
