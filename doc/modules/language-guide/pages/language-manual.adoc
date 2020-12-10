@@ -6,6 +6,7 @@
 :ext: mo
 :toc:
 :toclevels: 3
+:!page-repl:
 
 ////
 * targetting release 0.5.4

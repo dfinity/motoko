@@ -31,10 +31,13 @@ Any of these can be prefixed with a `label ⟨name⟩` qualifier to give the loo
 
 In the following example, the `for` expression loops over characters of some text and abandons iteration as soon as an exclamation sign is encountered.
 
+[source, motoko]
 ....
-label letters for (c in someText.chars()) {
+import Debug "mo:base/Debug";
+label letters for (c in "ran!!dom".chars()) {
+  Debug.print(debug_show(c));
   if (c == '!') { break letters };
-  ...
+  // ...
 }
 ....
 
@@ -49,13 +52,22 @@ The syntax for type-annotated labels is `label ⟨name⟩ : ⟨type⟩ ⟨expr�
 
 Judicious use of these constructs allows the programmer to focus on the primary program logic and handle exceptional case via `break`
 
+[source, motoko]
 ....
-let address = label exit : ?(Text, IPAddr) {
-  let splitted = split('@', formInput);
-  if splitted == null { break exit(null) };
-  let ?(account, host) = splitted;
-  if (not (parseAccount(account))) { break exit(null) };
-  ...
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+type Host = Text;
+let formInput = "user@dfinity.ic0.app";
+
+let address = label exit : ?(Text, Host) {
+  let splitted = Text.split(formInput, #char '@');
+  let array = Iter.toArray<Text>(splitted);
+  if (array.size() != 2) { break exit(null) };
+  let account = array[0];
+  let host = array[1];
+  // if (not (parseAccount(account))) { break exit(null) };
+  ?(account, host)
 }
 ....
 
@@ -66,6 +78,7 @@ Naturally, labeled common expressions don't allow `continue`. In terms of typing
 
 The simplest way to indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
 
+[source.no-repl, motoko]
 ....
 loop { ⟨expr1⟩; ⟨expr2⟩; ... }
 ....
@@ -81,6 +94,7 @@ The body of such a loop is always executed at least once.
 
 Sometimes an entry condition is needed to guard the first execution of a loop. For this kind of repetition the `while ⟨cond⟩ ⟨body⟩`-flavor is available
 
+[source.no-repl, motoko]
 ....
 while (earned < need) { earned += earn() };
 ....
@@ -92,6 +106,7 @@ Unlike a `loop`, the body of a `while` loop may never be executed.
 
 An iteration over elements of some homogeneous collection can be performed using a `for` loop. The values are drawn from an iterator and bound to the loop pattern in turn.
 
+[source, motoko]
 ....
 let carsInStock = [
   ("Buick", 2020, 23.000),
@@ -101,7 +116,8 @@ let carsInStock = [
 var inventory : { var value : Float } = { var value = 0.0 };
 for ((model, year, price) in carsInStock.vals()) {
   inventory.value += price;
-}
+};
+inventory
 ....
 
 [[intro-range]]
@@ -111,10 +127,13 @@ The `range` function produces an iterator (of type `Iter<Nat>`) with the given l
 
 The following loop example prints the numbers `0` through `10` over its _eleven_ iterations:
 
+[source, motoko]
 ....
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 var i = 0;
-for (j in range(0, 10)) {
- printNat(j);
+for (j in Iter.range(0, 10)) {
+ Debug.print(debug_show(j));
  assert(j == i);
  i += 1;
 };
@@ -126,12 +145,14 @@ More generally, the function `range` is a `class` that constructs iterators over
 
 As a constructor function, `range` has a function type:
 
+[source.no-repl, motoko]
 ....
 (lower:Nat, upper:Nat) -> Iter<Nat>
 ....
 
 Where `Iter<Nat>` is an iterator object type with a `next` method that produces optional elements, each of type `?Nat`:
 
+[source.no-repl, motoko]
 ....
 type Iter<A> = {next : () -> ?A};
 ....
@@ -149,6 +170,7 @@ Until reaching `null`, each non-`null` value, of the form ``?``__n__ for some nu
 Like `range`, the function `revrange` is a `class` that constructs iterators (each of type `Iter<Nat>`).
 As a constructor function, it has a function type:
 
+[source.no-repl, motoko]
 ....
 (upper:Nat, lower:Nat) -> Iter<Nat>
 ....

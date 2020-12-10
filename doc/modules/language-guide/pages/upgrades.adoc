@@ -34,6 +34,7 @@ Concretely, you use the following syntax to declare stable or flexible variables
 The following is a simple example of how to declare a stable counter
 that can be upgraded while preserving the counter's value:
 
+[source, motoko]
 ....
 include::../examples/StableCounter.mo[]
 ....
@@ -41,6 +42,7 @@ include::../examples/StableCounter.mo[]
 ////
 The representation for stable variable signatures looks like a {proglang} actor type:
 
+[source.no-repl, motoko]
 ....
 actor {
   stable x : Nat;
