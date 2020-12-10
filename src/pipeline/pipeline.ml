@@ -495,11 +495,12 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
-let run_stdin_from_file file =
+let run_stdin_from_file files file =
   let open Lib.Option.Syntax in
+  let* (senv, denv) = interpret_files initial_env files in
   let* (libs, prog, senv', t, sscope) =
-    Diag.flush_messages (load_decl (parse_file Source.no_region file) initial_stat_env) in
-  let denv' = interpret_libs initial_dyn_env libs in
+    Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
+  let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
   printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
   Some ()
