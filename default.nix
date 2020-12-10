@@ -366,7 +366,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
         '';
       };
     in
