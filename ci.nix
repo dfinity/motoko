@@ -10,8 +10,9 @@ let
     { pkgs = nixpkgs;
       inherit releaseVersion;
       derivations = {
-        linux = with linux; [ mo-ide mo-doc moc js.moc js.moc_interpreter ];
+        linux = with linux; [ mo-ide mo-doc moc ];
         darwin = with darwin; [ mo-ide mo-doc moc ];
+        js = with linux; [ js.moc js.moc_interpreter ];
       };
     };
 

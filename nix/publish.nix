@@ -51,7 +51,6 @@ let
       tar -czf "$out" -C $tmp/ .
     '';
 
-
 in
 rec {
   tarballs = builtins.mapAttrs (_: mkMotokoTarball) derivations;
@@ -69,6 +68,8 @@ rec {
       s3cp "${tarballs.linux}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
 
       s3cp "${tarballs.darwin}" "$dir/x86_64-darwin/$file" "application/gzip" "$cache_long"
+
+      s3cp "${tarballs.js}" "$dir/js/$file" "application/gzip" "$cache_long"
 
       slack "$SLACK_CHANNEL_BUILD_NOTIFICATIONS_WEBHOOK" <<EOI
       *motoko-$v* has been published to DFINITY's CDN :champagne:!
