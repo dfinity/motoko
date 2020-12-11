@@ -1,6 +1,7 @@
 = Errors and Options =
 :proglang: Motoko
 :base: https://github.com/dfinity/motoko-base[base]
+:!page-repl:
 
 == Different ways to represent errors in Motoko ==
 . Option
@@ -22,18 +23,14 @@ The full definition of all types and helpers we'll use in this document is inclu
 
 [%collapsible]
 ====
-[source#import,motoko]
+[source,motoko]
 ----
 include::../examples/todo-error.mo[tag=imports]
 ----
 [%collapsible]
-[source.include_import,motoko]
+[source,motoko]
 ----
-actor Todo {
-
 include::../examples/todo-error.mo[tag=intro]
-
-}
 ----
 ====
 

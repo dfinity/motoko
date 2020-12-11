@@ -58,7 +58,7 @@ import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
 type Host = Text;
-let formInput = "user@dfinity.ic0.app";
+let formInput = "us@dfn"; // stack overflow if longer 
 
 let address = label exit : ?(Text, Host) {
   let splitted = Text.split(formInput, #char '@');
