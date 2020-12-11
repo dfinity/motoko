@@ -77,16 +77,16 @@ The following code illustrates implementing these methods:
 [source.include_tsub_pub, motoko]
 ----
 actor Subscriber {
-    var count: Nat = 0;
-    public func init() {
-        Publisher.subscribe(Subscriber);
-    };
-    public func notify() {
-        count += 1;
-    };
-    public func get() : async Nat {
-        count
-    };
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe(Subscriber);
+  };
+  public func notify() {
+    count += 1;
+  };
+  public func get() : async Nat {
+    count
+  };
 }
 ----
 
@@ -147,16 +147,16 @@ By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose 
 [source#newsub.include_submessage_newpub,motoko]
 ----
 actor Subscriber {
-    var count: Nat = 0;
-    public func init() {
-        Publisher.subscribe({callback = incr;});
-    };
-    public func incr() {
-        count += 1;
-    };
-    public query func get(): async Nat {
-        count
-    };
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe({callback = incr;});
+  };
+  public func incr() {
+    count += 1;
+  };
+  public query func get(): async Nat {
+    count
+  };
 };
 ----
 
@@ -168,14 +168,14 @@ Likewise, we can update the publisher to have a matching interface:
 ----
 import Array "mo:base/Array";
 actor Publisher {
-    var subs: [SubscribeMessage] = [];
-    public func subscribe(sub: SubscribeMessage) {
-         subs := Array.append<SubscribeMessage>(subs, [sub]);
+  var subs: [SubscribeMessage] = [];
+  public func subscribe(sub: SubscribeMessage) {
+    subs := Array.append<SubscribeMessage>(subs, [sub]);
+  };
+  public func publish() {
+    for (sub in subs.vals()) {
+      sub.callback();
     };
-    public func publish() {
-        for (sub in subs.vals()) {
-            sub.callback();
-         };
-    };
+  };
 };
 ----
