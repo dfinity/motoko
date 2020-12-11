@@ -18,3 +18,6 @@ actor Registry {
     map.get(name);
   };
 };
+
+await Registry.register("hello");
+(await Registry.lookup("hello"), await Registry.lookup("world"))

@@ -226,7 +226,7 @@ higher-order_ array-allocation function `Array.tabulate`, which
 allocates a new array by consulting a user-provided "generation
 function" `gen` for each element.
 
-[source.no_repl, motoko]
+[source.no-repl, motoko]
 ....
 func tabulate<T>(size : Nat,  gen : Nat -> T) : [T]
 ....

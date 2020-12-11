@@ -58,7 +58,7 @@ import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
 type Host = Text;
-let formInput = "us@dfn"; // stack overflow if longer 
+let formInput = "us@dfn";
 
 let address = label exit : ?(Text, Host) {
   let splitted = Text.split(formInput, #char '@');
@@ -66,7 +66,7 @@ let address = label exit : ?(Text, Host) {
   if (array.size() != 2) { break exit(null) };
   let account = array[0];
   let host = array[1];
-  // if (not (parseAccount(account))) { break exit(null) };
+  // if (not (parseHost(host))) { break exit(null) };
   ?(account, host)
 }
 ....
