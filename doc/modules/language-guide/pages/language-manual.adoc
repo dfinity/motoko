@@ -600,7 +600,7 @@ The category of a type determines the operators (unary, binary, relational and i
 |===
 | Identifier | Category | Description
 
-| `Bool` | L, O | Boolean values `true` and `false` and logical operators
+| `Bool` | L | Boolean values `true` and `false` and logical operators
 | `Char` | O | Unicode characters
 | `Text` | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
 | `Float` | A, O | 64-bit floating point values
