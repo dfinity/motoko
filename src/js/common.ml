@@ -45,8 +45,10 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
 let js_check source =
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
 
-let js_run source =
-  ignore (Pipeline.run_stdin_from_file (Js.to_string source))
+let js_run list source =
+  let list = Array.to_list (Js.to_array list) in
+  let list = List.map Js.to_string list in
+  ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
 let js_candid source =
   js_result (Pipeline.generate_idl [Js.to_string source])
@@ -92,29 +94,14 @@ let wrap_output f =
     val result = result
   end
 
-let () =
-  Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
-  Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
-  Flags.check_ir := false;
-  Flags.debug_info := false;
-  Flags.actor_idl_path := Some "idl/";
-  Js.export "Motoko"
-    (object%js
-      method saveFile name content = js_save_file name content
-      (* TODO set package flags all at once *)
-      method addPackage package dir =
-        let libs = Flags.package_urls in
-        libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
-      method clearPackage () =
-        Flags.package_urls := Flags.M.empty
-      method setActorAliases entries =
-        let entries = Array.map (fun kv ->
-                          let kv = Js.to_array kv in
-                          Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
-        let aliases = Flags.actor_aliases in
-        aliases := Flags.M.of_seq (Array.to_seq entries)
-      method check s = Flags.compiled := false; js_check s
-      method candid s = Flags.compiled := true; js_candid s
-      method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
-      method run s = Flags.compiled := false; wrap_output (fun _ -> js_run s)
-    end);
+let add_package package dir =
+  let libs = Flags.package_urls in
+  libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
+let clear_package () = Flags.package_urls := Flags.M.empty
+let set_actor_aliases entries =
+  let entries = Array.map (fun kv ->
+                    let kv = Js.to_array kv in
+                    Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
+  let aliases = Flags.actor_aliases in
+  aliases := Flags.M.of_seq (Array.to_seq entries)  
+

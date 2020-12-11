@@ -6,13 +6,40 @@ let
   linux = import ./default.nix { system = "x86_64-linux"; };
   darwin = import ./default.nix { system = "x86_64-darwin"; };
 
+  as_tarball = dir: derivations:
+    nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz" {
+      allowedRequisites = [];
+      meta = {
+        path = "${dir}/motoko-${releaseVersion}.tar.gz";
+        content-type = "application/gzip";
+      };
+    } ''
+      tmp=$(mktemp -d)
+      ${nixpkgs.lib.concatMapStringsSep "\n" (d: "cp -v ${d}/bin/* $tmp") derivations}
+      chmod 0755 $tmp/*
+      tar -czf "$out" -C $tmp/ .
+    '';
+
+  as_js = name: derivation:
+    nixpkgs.runCommandNoCC "${name}-${releaseVersion}.js" {
+      allowedRequisites = [];
+      meta = {
+        path = "js/${name}-${releaseVersion}.js";
+        content-type = "application/javascript";
+      };
+    } ''
+      cp -v ${derivation}/bin/* $out
+    '';
+
   release = import ./nix/publish.nix
     { pkgs = nixpkgs;
       inherit releaseVersion;
-      derivations = {
-        linux = with linux; [ mo-ide mo-doc moc ];
-        darwin = with darwin; [ mo-ide mo-doc moc ];
-      };
+      derivations = [
+        (as_tarball "x86_64-linux" (with linux; [ mo-ide mo-doc moc ]))
+        (as_tarball "x86_64-darwin"(with darwin; [ mo-ide mo-doc moc ]))
+        (as_js "moc" linux.js.moc)
+        (as_js "moc-interpreter" linux.js.moc_interpreter)
+      ];
     };
 
 
