@@ -93,7 +93,7 @@ Our piggy bank has an implicit owner,
 a `benefit` callback and a fixed `+capacity+`, all supplied at time of construction.
 The callback is used to transfer _withdrawn_ amounts.
 
-[source,motoko]
+[source#PiggyBank,motoko]
 ----
 include::../examples/PiggyBank.mo[]
 ----
@@ -131,7 +131,7 @@ that rewards a beneficiary distinct from `+owner+`.
 
 Here's how an owner, `+Alice+`, might use an instance of `+PiggyBank+`:
 
-[source,motoko]
+[source.include_PiggyBank,motoko]
 ----
 include::../examples/Alice.mo[]
 ----

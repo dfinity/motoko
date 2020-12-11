@@ -4,4 +4,4 @@ asciidoc:
   attributes:
     page-repl: true@
     page-moc-version: 0.5.3
-    page-moc-base-tag: dfx-0.6.12
+    page-moc-base-tag: dfx-0.6.16

@@ -54,6 +54,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
  * `git tag 0.4.2 -m "Motoko 0.4.2"`
  * `git branch -f release 0.4.2`
  * `git push origin release 0.4.2`
+ * After the release, update the version number in `doc/antora.yml` to load the latest interpreter for documentation.
 
 The `release` branch should thus always reference the latest release commit.
 
