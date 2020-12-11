@@ -1,5 +1,13 @@
 = Motoko compiler changelog
 
+== 0.5.3 (2020-12-10)
+
+* Nothing new, just release moc.js to CDN
+
+== 0.5.2 (2020-12-04)
+
+* Bugfix: gracefully handle importing ill-typed actor classes
+
 == 0.5.1 (2020-11-27)
 
 * BREAKING CHANGE: Simple object literals of the form `{a = foo(); b = bar()}`

@@ -6,22 +6,22 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "b2b37456b9edbcda360ec1685252c6d73706fae8",
-        "sha256": "1mkik09m9xncm6wmm5bhmhgh6v04kvmn584g7mdmwyl2b987qx8b",
+        "rev": "41589d66d1af394825455b346a22ef727cdd8d7a",
+        "sha256": "0p0x5qyb58xd9qawv6971dfngsavjic8w5jbj7c7sc4y4ixwygwi",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/b2b37456b9edbcda360ec1685252c6d73706fae8.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/41589d66d1af394825455b346a22ef727cdd8d7a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "common": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "a97edcd5b05a5898a8daf69a0ca00969252dc784",
+        "rev": "56d83f81dfe2c45106e38b82821b5e5ec2bb5b61",
         "type": "git"
     },
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "79c1f09c8048ad0ca0215015dd8782eae6300132",
+        "rev": "7769f3f7f2a0ca518053ae8007cbeb40357c63bc",
         "type": "git"
     },
     "esm": {
@@ -35,7 +35,7 @@
     "ic-ref": {
         "branch": "release-0.14",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "53ae77f5baad27365d6f4166184fa9fa2182808f",
+        "rev": "fedd4e6da5b4daad6a271e811290f5997e70af3d",
         "type": "git"
     },
     "libtommath": {
@@ -76,10 +76,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "9083fe84568fb4de76152757abfd216ba34ad908",
-        "sha256": "1ajbbhj0j0npnkyp1lnk3l928xxmn0x96pqz3s3cl87p99akz8z4",
+        "rev": "378fd4b21aab6d390f3a1c1817d53c422ad00a62",
+        "sha256": "0h5g0q5j9cni7jab0b6bzkw5xm1b1am0dws2skq3cc9c9rnbn1ga",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/9083fe84568fb4de76152757abfd216ba34ad908.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/378fd4b21aab6d390f3a1c1817d53c422ad00a62.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {

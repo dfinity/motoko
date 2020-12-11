@@ -360,17 +360,19 @@ rec {
         '';
         installPhase = ''
           mkdir -p $out
-          cp -v ${n}.js $out
+          mkdir -p $out/bin
+          cp --verbose --dereference ${n}.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
         '';
       };
     in
     {
       moc = mk "moc";
+      moc_interpreter = mk "moc_interpreter";
       didc = mk "didc";
     };
 

@@ -6,7 +6,7 @@
 ** xref:mutable-state.adoc[Mutable state]
 ** xref:local-objects-classes.adoc[Local objects and classes]
 ** xref:actors-async.adoc[Actors and async data]
-** xref:errors-and-options.adoc[Errors and optional results]
+** xref:errors.adoc[Error Handling]
 ** xref:pattern-matching.adoc[Pattern matching]
 ** xref:sharing.adoc[Sharing data and behavior]
 ** xref:modules-and-imports.adoc[Modules and imports]
