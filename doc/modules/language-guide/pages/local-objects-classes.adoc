@@ -233,7 +233,7 @@ let y = c2.inc();
 (x, y)
 ....
 
-We could accomplish the same effect by writing a function that returns an object:
+We could achieve the same results by writing a function that returns an object:
 
 [source, motoko]
 ....

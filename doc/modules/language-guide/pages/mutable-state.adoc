@@ -245,9 +245,9 @@ For instance, we can first allocate `array1` consisting of some initial constant
 let array1 : [Nat] = [1, 2, 3, 4, 6, 7, 8] ;
 
 let array2 : [Nat] = Array.tabulate<Nat>(7, func(i:Nat) : Nat {
-               if ( i == 2 or i == 5 ) { array1[i] * i } // change 3rd and 6th entries
-               else { array1[i] } // no change to other entries
-             }) ;
+    if ( i == 2 or i == 5 ) { array1[i] * i } // change 3rd and 6th entries
+    else { array1[i] } // no change to other entries
+  }) ;
 ....
 
 Even though we "changed" `array1` into `array2` in a functional sense, notice that both arrays and both variables are immutable.
@@ -316,4 +316,3 @@ There are two reasons for this.
 First, as with all mutable state, mutable arrays require different rules for sound subtyping.
 In particular, mutable arrays have a less flexible subtyping definition, necessarily.
 Second, {proglang} forbids uses of mutable arrays across link:actors-async{outfilesuffix}[asynchronous communication], where mutable state is never shared.
-

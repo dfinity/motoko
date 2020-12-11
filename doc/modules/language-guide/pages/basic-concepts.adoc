@@ -103,7 +103,7 @@ Each expression can be thought of as a declaration where necessary since the lan
 
 When the expression appears as the final declaration, this expression may have any type.  Here, the expression `x * y + x` has type `Nat`.
 
-Expressions that do not appear at the end, but rather _within_ the list of declarations must have unit type.
+Expressions that do not appear at the end, but rather _within_ the list of declarations must have unit type `()`.
 
 === Ignoring non-unit-typed expressions in declaration lists
 
@@ -160,7 +160,7 @@ A declaration list is not itself (immediately) an _expression_, so we cannot (im
 
 [[intro-exp-block]]
 **Block expressions.** We can form a _block expression_ from this list of declarations by enclosing it with matching _curly braces_. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. In all other places,
-we use `do { ... }` to represent block expression, to disambiguate with object literal.
+we use `do { ... }` to represent block expression, to distinguish blocks from object literals. For example, `do {}` is the empty block of type `()`, while `{}` is an empty record of record type `{}`.
 
 [source, motoko]
 ....
@@ -388,7 +388,7 @@ We specify the `base/` path, followed by the module's file name `Debug.mo` minus
 [[intro-printing]]
 === Printing using `Debug.print` and `debug_show`
 
-Above, we print the text string using the library function `print`:
+Above, we print the text string using the function `print` in library `Debug.mo`:
 
 [source.no-repl, motoko]
 ....
@@ -397,8 +397,8 @@ print: Text -> ()
 
 The function `print` accepts a text string (of type `Text`) as input, and produces the _unit value_ (of _unit type_, or `()`) as its output.
 
-In a sense, there is no output.
-The function `print` is impure, and rather than producing an output value, it produces the _effect_ of emitting the text string in a human-readable form to the output terminal.
+Because unit values carry no information, all values of type unit are identical,  so the `print` function doesn't actually produce an interesting result. Instead of a result, it has a _side effect_.
+The function `print` has the effect of emitting the text string in a human-readable form to the output terminal. Functions that have side effects, such as emitting output, or modifying state, are often called _impure_. Functions that just return values, without further side-effects, are called _pure_.
 We discuss the return value (the unit value) <<intro-unit-type, in detail below>>, and relate it to the `void` type for readers more familiar with that concept.
 
 Finally, we can transform most {proglang} values into human-readable text strings for debugging purposes, _without_ having to write those transformations by hand.
