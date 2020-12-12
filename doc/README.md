@@ -15,17 +15,17 @@ In asciidoc, we support the following language sources:
 
 * `[source, motoko]` adds a run button
 * `[source.run, motoko]` adds a run button and show the result.
-* `[source.no-repl, motoko]` syntax-highlight only.
-* `[source#filename, motoko]` save the code as `filename.mo` so that it can be imported or referenced from other code block
+* `[source.no-repl, motoko]` syntax-highlight only. If you want to put `no-repl` for the whole page, you can disable the page attributes `:!page-repl:`, and use just `[source, motoko]`. 
+* `[source#filename, motoko]` save the code as `filename.mo` so that it can be imported or referenced from other code block. Without given a filename, it defaults to `stdin`.
 * `[source.include_f1_f2, motoko]` run `f1.mo`, `f2.mo` before running the current code, equivalent to `moc -i f1.mo f2.mo current_code.mo`. It will fetch the updated code each time we click run. Note that if the code `import "f1"` but doesn't use `include_f1`, the code won't be updated until we click the run button for `f1.mo`.
 * `[source, candid]` syntax-highlights candid file without run button.
 
 The control flags can be used in any order with any combinations, e.g. `[source.run#main.include_f1_f2, motoko]`.
 
-## Customize behavior
+## Customization
 
 If you have more advanced needs beyond what is provided, you can hook a JS function to the `Run` button. 
-For example, the following code concats `include` code with the current code block before running the code, 
+For example, the following code wraps the `include` code in an actor before running, 
 and format the output.
 
 ```
@@ -33,12 +33,15 @@ and format the output.
 <script>
 function myRun(includes, current_code) {
   const code = `
-    ${includes["f1.mo"]}
-    ${includes["f2.mo"]}
+    actor {
+      ${includes["f1.mo"]}
+      ${includes["f2.mo"]}
+    };
     ${current_code}
   `;
   Motoko.saveFile("myMain.mo", code);
-  const res = Motoko.run([], "myMain.mo");
+  Motoko.saveFile("type.mo", 'type Num = Nat;');
+  const res = Motoko.run(["type.mo"], "myMain.mo");
   if (res.stderr) {
     res.stderr = "ERROR: " + res.stderr;
   }
@@ -49,7 +52,7 @@ function myRun(includes, current_code) {
 }
 </script>
 ++++
-[source.include_f1_f2, motoko]
+[source.include_f1_f2.hook_myRun, motoko]
 ----
 code here
 ----
