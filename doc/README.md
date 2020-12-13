@@ -2,12 +2,17 @@
 
 ## Page attributes
 
-The interpreter is controlled by the following page attributes: `page-repl`, `page-moc-version` and `page-moc-base-tag`.
-This is set globally in `antora.yml`, which means the interpreter is enabled for all pages in Motoko docs.
+The interpreter is controlled by the following page attributes: 
+ * `page-repl` controls if the page needs to load the interpreter (1.2M) 
+ * `page-moc-version` specifies the moc version
+ * `page-moc-base-tag` specifies the base library version
+ 
+`page-moc-version` and `page-moc-base-tag` are set globally in [antora-playbook.yml](https://github.com/dfinity/dfinity-docs-playbook/blob/master/antora-playbook.yml), and `page-repl` is set in `antora.yml` in Motoko component, which means 
+the interpreter is enabled for all pages in Motoko docs by default.
 If you want to disable the interpreter for a particular page, use `:!page-repl:` at the top of the page 
 (syntax highlighting still works).
 
-After each release, remember to bump the version in `antora.yml`.
+After each release, remember to bump the version in [antora-playbook.yml](https://github.com/dfinity/dfinity-docs-playbook/blob/master/antora-playbook.yml).
 
 ## Source flags
 
