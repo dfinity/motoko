@@ -35,7 +35,7 @@
     "ic-ref": {
         "branch": "release-0.14",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "fedd4e6da5b4daad6a271e811290f5997e70af3d",
+        "rev": "e76bd62e3216fef8a23a236352d8732d5f621cf8",
         "type": "git"
     },
     "libtommath": {
@@ -76,10 +76,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "378fd4b21aab6d390f3a1c1817d53c422ad00a62",
-        "sha256": "0h5g0q5j9cni7jab0b6bzkw5xm1b1am0dws2skq3cc9c9rnbn1ga",
+        "rev": "5ccfab77b097a5d0184f91184952158aa5904c8d",
+        "sha256": "1kxcy616vnqw4q2xkng9q67mgmq3gw2h4z6hkcwrqw1fjjp5qnbz",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/378fd4b21aab6d390f3a1c1817d53c422ad00a62.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/5ccfab77b097a5d0184f91184952158aa5904c8d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
