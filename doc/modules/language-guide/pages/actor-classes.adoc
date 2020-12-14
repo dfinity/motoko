@@ -14,6 +14,7 @@ The ``i``th bucket (`+i+` in ``[0..n)``)  receives a dedicated actor to store te
 The actor responsible for bucket `+i+` is obtained as an instance of the actor class `+Bucket(i)+`, defined in the sample `+Buckets.mo+` file, as follows:
 
 .Buckets.mo
+[source#Buckets, motoko]
 ....
 include::../examples/Buckets.mo[]
 ....
@@ -28,6 +29,7 @@ Both functions use the class parameters `n` and `i` to verify that the key is ap
 
 Clients of the map can then communicate with a coordinating `+Map+` actor, implemented as follows:
 
+[source.include_Buckets, motoko]
 ....
 include::../examples/Map.mo[]
 ....
@@ -54,6 +56,7 @@ On `+put(k, v)+`, the `+Map+` actor:
 While this example sets the number of buckets to `+8+`, you can easily
 generalize the example by making the `+Map+` actor an actor _class_, adding a parameter `+(n : Nat)+` and omitting the declaration `+let n = 8;+`. For example:
 
+[source.no-repl, motoko]
 ....
 actor class Map(n : Nat) {
 

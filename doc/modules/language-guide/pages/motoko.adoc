@@ -32,7 +32,7 @@ Keep checking back for updates and for the announcement of the {proglang} becomi
 
 Motoko has native support for Internet Computer software canisters, which are expressed as actors, autonomous objects that encapsulate their state and communicate through asynchronous messages.
 
-[source,motoko]
+[source#counter,motoko]
 ----
 include::../examples/Counter.mo[]
 ----
@@ -42,7 +42,7 @@ include::../examples/Counter.mo[]
 
 On the Internet Computer, software canisters call into other canisters asynchronously, but Motoko enables you to program your systems sequentially in direct style. Asynchronous messages are function calls that return a future, and the await constructs allows chaining calls as if they were synchronous.
 
-[source,motoko]
+[source.include_counter,motoko]
 ----
 include::../examples/factorial.mo[lines=9..-1]
 ----
@@ -65,6 +65,7 @@ The SDK exports your interface definition in a language neutral format called `+
 
 For example, the previous `+Counter+` actor produces the following `+Candid+` IDL:
 
+[source,candid]
 ....
 service Counter : {
   inc : () -> (nat);

@@ -1,6 +1,8 @@
 = Errors and Options =
 :proglang: Motoko
 :base: https://github.com/dfinity/motoko-base[base]
+:!page-repl:
+
 == Different ways to represent errors in Motoko ==
 . Option
 . Result
@@ -12,6 +14,7 @@ To keep it simple we'll accept a `TodoId` and return an `Int` that represents ho
 We're also assuming we're running in our own canister so we return an async value.
 If nothing would ever go wrong that would leave us with the following API:
 
+[source.no-repl, motoko]
 ----
 func markDone(id : TodoId) : async Int
 ----

@@ -17,4 +17,7 @@ actor Registry {
   public func lookup(name : Text) : async ?Nat {
     map.get(name);
   };
-}
+};
+
+await Registry.register("hello");
+(await Registry.lookup("hello"), await Registry.lookup("world"))

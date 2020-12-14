@@ -14,4 +14,8 @@ actor Factorial {
     last *= await Counter.inc();
     return last;
   }
-}
+};
+
+ignore await Factorial.next();
+ignore await Factorial.next();
+await Factorial.next();
