@@ -1215,7 +1215,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | BangE exp1, t ->
     if Option.is_none (T.Env.find_opt "!" env.labs) then
-      local_error env exp.at "misplaced '!' (no enclosing 'do ? { }' expression)";
+      local_error env exp.at "misplaced '!' (no enclosing 'do ? { ... }' expression)";
     check_exp env (T.Opt t) exp1;
     t
   | ArrayE (mut, exps), T.Array t' ->
