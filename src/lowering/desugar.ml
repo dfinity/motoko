@@ -70,6 +70,16 @@ and exp' at note = function
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
+  | S.DoOptE e ->
+    I.LabelE ("!", note.Note.typ, optE (exp e))
+  | S.BangE e ->
+    let ty = note.Note.typ in
+    let v = fresh_var "v" ty in
+    (switch_optE (exp e)
+      (* case null : *)
+      (breakE "!" (nullE()))
+      (* case ? v : *)
+      (varP v) (varE v) ty).it
   | S.ObjE (s, es) ->
     obj at s None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it

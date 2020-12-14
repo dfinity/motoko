@@ -22,7 +22,7 @@ f(do { let x = 0 });
 // deprecated
 { x };
 { let x = 0 };
-ignore (do {x = 0});
+//ignore (do {x = 0});
 ignore {
   { x };
 };
@@ -32,8 +32,8 @@ do {};
 do { x };
 do { let x = 0 };
 do { var x = 0 };
-ignore (do object {});
-ignore (do object { var x = 0 });
+//ignore (do object {});
+//ignore (do object { var x = 0 });
 ignore {
   {};  // object
 };

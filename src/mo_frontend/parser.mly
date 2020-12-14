@@ -229,7 +229,7 @@ let share_expfield (ef : exp_field) =
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
-%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
+%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
 %token DEBUG_SHOW
@@ -589,6 +589,8 @@ exp_post(B) :
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
     { CallE(e1, inst, e2) @? at $sloc }
+  | e1=exp_post(B) BANG
+    { BangE(e1) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -689,8 +691,11 @@ exp_nondec(B) :
     { ForE(p, e1, e2) @? at $sloc }
   | IGNORE e=exp_nest
     { IgnoreE(e) @? at $sloc }
-  | DO e=exp_nest
+  | DO e=block
     { e }
+  | DO QUEST e=block
+    { DoOptE(e) @? at $sloc }
+
 
 exp_nonvar(B) :
   | e=exp_nondec(B)
