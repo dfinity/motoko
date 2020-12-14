@@ -19,11 +19,11 @@ After each release, remember to bump the version in [antora-playbook.yml](https:
 In asciidoc, we support the following language sources:
 
 * `[source, motoko]` adds a run button
-* `[source.run, motoko]` adds a run button and show the result.
-* `[source.no-repl, motoko]` syntax-highlight only. If you want to put `no-repl` for the whole page, you can disable the page attributes `:!page-repl:`, and use just `[source, motoko]`. 
-* `[source#filename, motoko]` save the code as `filename.mo` so that it can be imported or referenced from other code block. Without given a filename, it defaults to `stdin`.
+* `[source.run, motoko]` adds a run button and displays the result.
+* `[source.no-repl, motoko]` syntax-highlight only. If you want to set `no-repl` for the whole page, you can disable the page attributes `:!page-repl:`, and use just `[source, motoko]`. 
+* `[source#filename, motoko]` save the code as `filename.mo` so that it can be imported or referenced from another code block. An absent filename defaults to `stdin`.
 * `[source.include_f1_f2, motoko]` run `f1.mo`, `f2.mo` before running the current code, equivalent to `moc -i f1.mo f2.mo current_code.mo`. It will fetch the updated code each time we click run. Note that if the code `import "f1"` but doesn't use `include_f1`, the code won't be updated until we click the run button for `f1.mo`.
-* `[source, candid]` syntax-highlights candid file without run button.
+* `[source, candid]` syntax-highlights a Candid block or file without a run button.
 
 The control flags can be used in any order with any combinations, e.g. `[source.run#main.include_f1_f2, motoko]`.
 
