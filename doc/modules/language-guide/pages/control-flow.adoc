@@ -64,7 +64,7 @@ Naturally, labeled common expressions don't allow `continue`. In terms of typing
 [[option-blocks]]
 == Option blocks and null breaks
 
-Unlike many other languages, {proglang} lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`.
+Like many other high-level languages, {proglang} lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`.
 This is to both to encourage you to avoid using `null` values when possible, and to consider the possiblity of `null` values when necessary.
 
 The latter could be cumbersome, if the only way to test a value for `null` were with a verbose `switch` expression, but
