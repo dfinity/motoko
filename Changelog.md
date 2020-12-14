@@ -1,5 +1,15 @@
 = Motoko compiler changelog
 
+* _Option blocks_ `do ? <block>` and _null breaks_ `<exp> !`.
+  The option block `do ? <block>` exits with `null` when a nested null break, `<exp> !`, evaluates `<exp>` to null.
+  This can simplify null handling by avoiding verbose `switch` expressions.
+
+* BREAKING CHANGE (Minor):
+  The light-weight `do <exp>` form of the recently added, more general `do <block-or-exp>` form,
+  is no longer legal syntax.
+  That is, the argument to a `do` or `do ?` expression *must* be a block `{ ... }`,
+  never a simple expression.
+
 == 0.5.3 (2020-12-10)
 
 * Nothing new, just release moc.js to CDN
@@ -27,7 +37,7 @@
   if`, `loop`, `case`, etc. In all other places, braces are always considered
   to start an object literal.
 
-  To use blocks in other positions, the new `do {<block>}` expression can be
+  To use blocks in other positions, the new `do <block>` expression can be
   used.
 
   The more liberal syntax is still allowed for now but deprecated, i.e.,
