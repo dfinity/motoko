@@ -7838,14 +7838,46 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
 
   | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
 
+and do_gc_testing env ae =
+    if !Flags.gc_testing
+    then begin
+      (*
+      This implements the --gc-testing flag, which is a hack to allow
+      testing the GC from WASI programs.
+
+      This flag assumes the program to have a top-level function definitions
+
+          func post_gc() : bool { … }
+
+      of precisely that type. With this flag, it will, after running the normal
+      program, essentially do this loop:
+
+          do { rts.collect() } while (post_gc ())
+
+      *)
+      if (not (E.mode env = Flags.WasmMode || E.mode env = Flags.WASIMode))
+      then fatal "compile_start_func: cannot use --gc-testing without wasi or plain api mode ";
+      G.loop_ [] begin
+        E.call_import env "rts" "collect" ^^
+        match VarEnv.lookup_var ae "post_gc" with
+        | Some (VarEnv.Const (_, Const.Fun mk_fi)) ->
+          compile_unboxed_zero ^^ (* A dummy closure *)
+          G.i (Call (nr (mk_fi ()))) ^^
+          G.if_ [] (G.i (Br (nr 1l))) G.nop
+        | _ ->
+          fatal "Running with --gc-testint, but did not find top-level closed function post_gc"
+      end
+    end else G.nop
+
 and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
   match cu with
   | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
-    Func.define_built_in mod_env "init" [] [] (fun env ->
-      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
-      codeW G.nop
-    )
+      Func.define_built_in mod_env "init" [] [] (fun env ->
+        let ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+        codeW G.nop ^^
+        do_gc_testing env ae
+      )
   | ActorU (as_opt, ds, fs, up, _t) ->
     main_actor as_opt mod_env ds fs up
 

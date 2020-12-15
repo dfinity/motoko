@@ -96,6 +96,10 @@ let argspec = Arg.align [
   Arg.Unit
     (fun () -> Flags.sanity := true),
     " enable sanity checking in the RTS and generated code";
+  "--gc-testing",
+  Arg.Unit
+    (fun () -> Flags.gc_testing := true),
+    " run program twice, with GHC in between (only wasi or no system api mode)";
 ]
 
 
