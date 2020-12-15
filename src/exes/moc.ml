@@ -109,7 +109,7 @@ let set_out_file files ext =
     | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
     | ns -> eprintf "moc: no output file specified"; exit 1
   end
-  
+
 (* Main *)
 
 let exit_on_none = function
@@ -176,6 +176,13 @@ let () =
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
+  if !Flags.gc_testing then begin
+    if not (!mode = Compile)
+    then (eprintf "--gc-testing only makes sense when compiling\n"; exit 1);
+    if not Flags.(!compile_mode = WasmMode || !compile_mode = WASIMode)
+    then (eprintf "--gc-testing only makes sense with no or wasi system api\n"; exit 1)
+  end;
+
   process_profiler_flags ();
   try
     process_files !args
