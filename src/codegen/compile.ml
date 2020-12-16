@@ -7997,6 +7997,7 @@ and conclude_module env start_fi_o =
         locals_names =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
       };
+      source_mapping_url = None;
     } in
 
   match E.get_rts env with
