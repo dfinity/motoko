@@ -99,7 +99,7 @@ let argspec = Arg.align [
   "--gc-testing",
   Arg.Unit
     (fun () -> Flags.gc_testing := true),
-    " run program twice, with GHC in between (only wasi or no system api mode)";
+    " run program twice, with GC in between (only wasi or no system api mode)";
 ]
 
 
