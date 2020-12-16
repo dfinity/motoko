@@ -179,18 +179,13 @@ var runWasmModule = () => {
   window.alert("Module not (yet) loaded")
 };
 
+var memory = null;
+
 function importWasmModule(moduleName, wasiPolyfill) {
 
-  var memory = new WebAssembly.Memory({
-    initial: 2,
-    maximum: 10
-  });
   const moduleImports = {
     wasi_unstable: wasiPolyfill,
     env: {},
-    js: {
-      mem: memory
-    }
   };
 
   (async () => {
@@ -207,6 +202,7 @@ function importWasmModule(moduleName, wasiPolyfill) {
     runWasmModule = (async () => {
       const instance = await WebAssembly.instantiate(module, moduleImports);
       wasiPolyfill.setModuleInstance(instance);
+      memory = instance.exports.memory;
 
       document.getElementById("output").value = "Running _start()\n";
       instance.exports._start();
@@ -215,6 +211,48 @@ function importWasmModule(moduleName, wasiPolyfill) {
     await runWasmModule()
   })();
 }
+
+// From https://github.com/bma73/hexdump-js, with fixes
+const hexdump = (function () {
+    var _fillUp = function (value, count, fillWith) {
+            var l = count - value.length;
+            var ret = "";
+            while (--l > -1)
+                ret += fillWith;
+            return ret + value;
+        },
+        hexdump = function (arrayBuffer, offset, length) {
+
+            var view = new DataView(arrayBuffer);
+            offset = offset || 0;
+            length = length || arrayBuffer.byteLength;
+
+            var out = _fillUp("Offset", 8, " ") + "  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n";
+            var row = "";
+            for (var i = 0; i < length; i += 16) {
+                row += _fillUp(offset.toString(16).toUpperCase(), 8, "0") + "  ";
+                var n = Math.min(16, length - offset);
+                var string = "";
+                for (var j = 0; j < 16; ++j) {
+                    if (j < n) {
+                        var value = view.getUint8(offset);
+                        string += value >= 32 && value < 0x7f ? String.fromCharCode(value) : ".";
+                        row += _fillUp(value.toString(16).toUpperCase(), 2, "0") + " ";
+                        offset++;
+                    }
+                    else {
+                        row += "   ";
+                        string += " ";
+                    }
+                }
+                row += " " + string + "\n";
+            }
+            out += row;
+            return out;
+        };
+
+    return hexdump;
+})();
 
 var wasiPolyfill = new barebonesWASI();
 
@@ -243,4 +281,13 @@ function loadTest() {
   if (test == "none") return;
   document.getElementById("output").value = "Loading " + test + "… (see console for errors)";
   importWasmModule("run/_out/" + test, wasiPolyfill);
+}
+
+function updateHexDump() {
+  document.getElementById("memory").value = "Loading…";
+  if (memory) {
+    document.getElementById("memory").value = hexdump(memory.buffer);
+  } else {
+    document.getElementById("memory").value = "No memory yet";
+  }
 }

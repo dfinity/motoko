@@ -12,8 +12,10 @@
   </select>
   <button onClick="loadTest()" title="Load wasm from disk">Reload</button>
   <button onClick="runWasmModule()" title="Do not load" >Rerun</button>
+  <button onClick="updateHexDump()" title="Updates the hex dump view">Dump memory</button>
   Tip: Open debugger before loading the test!
   <br/>
-  <textarea cols="120" rows="25" id="output" readonly="">(Output will appear here.)</textarea>
+  <textarea cols="80" rows="25" id="output" readonly="">(Output will appear here.)</textarea>
+  <textarea cols="80" rows="25" id="memory" readonly="">(Memory content will appear here, when you request it. Cannot be used while debugging, unfortunately.)</textarea>
  </body>
 </html>
