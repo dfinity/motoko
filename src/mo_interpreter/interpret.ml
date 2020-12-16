@@ -366,8 +366,44 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
+(* exception Return of V.value *)
+
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
+
+(*
+and k_continue env pat next exp2 k v =
+  V.as_unit v;
+  try
+    Printf.printf ".";
+    next (context env) V.unit (fun v' -> raise (Return v'))
+  with Return v' ->
+      match v' with
+      | V.Opt v1 ->
+        (match match_pat pat v1 with
+         | None ->
+           trap pat.at "value %s does not match pattern" (string_of_val env v')
+         | Some ve ->
+           interpret_exp (adjoin_vals env ve) exp2 (k_continue env pat next exp2 k)
+        )
+      | V.Null -> k V.unit
+      | _ -> assert false
+ *)
+
+and k_continue env pat next exp2 k v =
+  V.as_unit v;
+  Printf.printf ".";
+  next (context env) V.unit (fun v' ->
+      match v' with
+      | V.Opt v1 ->
+        (match match_pat pat v1 with
+         | None ->
+           trap pat.at "value %s does not match pattern" (string_of_val env v')
+         | Some ve ->
+           interpret_exp (adjoin_vals env ve) exp2 (fun v -> k_continue env pat next exp2 k v)
+        )
+      | V.Null -> k V.unit
+      | _ -> assert false)
 
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
@@ -561,7 +597,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         then interpret_exp env exp k
         else k V.unit
       )
-    )
+      )
+(*
   | ForE (pat, exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
@@ -579,9 +616,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             )
           | V.Null -> k V.unit
           | _ -> assert false
-        )
-      in k_continue V.unit
+          )
+      in k_continue V.unit)
+ *)
+  | ForE (pat, exp1, exp2) ->
+    interpret_exp env exp1 (fun v1 ->
+      let fs = V.as_obj v1 in
+      let _, next = V.as_func (find "next" fs) in
+      k_continue env pat next exp2 k V.unit
     )
+
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id.it k env.labs} in
     Profiler.bump_label id.at id.it ;
