@@ -1,33 +1,39 @@
-import Funds = "piggy-bank/ExperimentalFunds";
-//import Funds = "mo:base/ExperimentalFunds";
+import Cycles = "piggy-bank/ExperimentalCycles";
+//import Cycles = "mo:base/ExperimentalCycles";
 import Lib = "piggy-bank/PiggyBank";
 
 actor Alice {
 
   public func test() : async () {
 
-    let porky = await Lib.PiggyBank(#cycle, 1000_000, Alice.credit);
+    Cycles.add(10_000_000_000_000);
+    let porky = await Lib.PiggyBank(Alice.credit, 1_000_000_000);
+
     assert (0 == (await porky.getSavings()));
 
-    await { Funds.add(#cycle, 1000); porky.deposit() };
-    assert (1000 == (await porky.getSavings()));
+    Cycles.add(1_000_000);
+    await porky.deposit();
+    assert (1_000_000 == (await porky.getSavings()));
 
-    await porky.withdraw(500);
-    assert (500 == (await porky.getSavings()));
+    await porky.withdraw(500_000);
+    assert (500_000 == (await porky.getSavings()));
 
-    await porky.withdraw(500);
+    await porky.withdraw(500_000);
     assert (0 == (await porky.getSavings()));
 
-    await { Funds.add(#cycle, 2000_000); porky.deposit() };
-    let refund = Funds.refunded(#cycle);
-    assert (1000_000 == refund);
-    assert (1000_000 == (await porky.getSavings()));
+    Cycles.add(2_000_000_000);
+    await porky.deposit();
+    let refund = Cycles.refunded();
+    assert (1_000_000_000 == refund);
+    assert (1_000_000_000 == (await porky.getSavings()));
 
   };
 
-   // callback for accepting funds from PiggyBank
+  // Callback for accepting cycles from PiggyBank
   public func credit() : async () {
-    Funds.accept(#cycle, Funds.available(#cycle));
+    let available = Cycles.available();
+    let accepted = Cycles.accept(available);
+    assert (accepted == available);
   }
 
 };

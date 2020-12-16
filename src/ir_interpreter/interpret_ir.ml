@@ -35,7 +35,6 @@ type env =
     throws : throw_env;
     replies : reply_env;
     rejects : reject_env;
-    async : bool;
     caller : V.value;
     self : V.actor_id;
     actor_env : actor_env;
@@ -56,7 +55,6 @@ let env_of_scope flags flavor ae ve =
     rejects = None;
     caller = V.Text V.top_id;
     self = V.top_id;
-    async = false;
     actor_env = ae;
   }
 
@@ -117,7 +115,7 @@ struct
   let yield () =
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
-      Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
+      Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
 
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
@@ -158,31 +156,29 @@ let reject async v =
   | _ -> assert false
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
-    let async = make_async () in
-    let k' = reply async in
-    let r = reject async in
-    if env.flags.trace then trace "-> async %s" (string_of_region at);
-    Scheduler.queue (fun () ->
-      if env.flags.trace then trace "<- async %s" (string_of_region at);
-      incr trace_depth;
-      f (fun v ->
-        if env.flags.trace then trace "<= %s" (string_of_val env v);
-        decr trace_depth;
-        k' v)
-        r
+  let async = make_async () in
+  let k' = reply async in
+  let r = reject async in
+  if env.flags.trace then trace "-> async %s" (string_of_region at);
+  Scheduler.queue (fun () ->
+    if env.flags.trace then trace "<- async %s" (string_of_region at);
+    incr trace_depth;
+    f (fun v ->
+      if env.flags.trace then trace "<= %s" (string_of_val env v);
+      decr trace_depth;
+      k' v) r
     );
-    k (V.Async async)
+  k (V.Async async)
 
 let await env at async k =
   if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-      Scheduler.queue (fun () ->
-          if env.flags.trace then
-            trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
-          incr trace_depth;
-          k v
-        )
+    Scheduler.queue (fun () ->
+      if env.flags.trace then
+        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
+      incr trace_depth;
+      k v)
     )
 
 
@@ -453,7 +449,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Text env.self)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Value.Nat64.of_int 42))
-      | SystemFundsRefundedPrim, [v1] -> (* faking it *)
+      | SystemCyclesRefundedPrim, [] -> (* faking it *)
         k (V.Nat64 (Value.Nat64.of_int 0))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
@@ -491,7 +487,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     async env
       exp.at
       (fun k' r ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
+        let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
         in interpret_exp env' exp1 k')
       k
   | DeclareE (id, typ, exp1) ->
@@ -818,7 +814,6 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
       vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
-      async = false;
       caller = caller;
     }
   in f env' k'
@@ -846,7 +841,6 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
       replies = Some (fun v -> reply (context env) v V.as_unit);
       rejects = Some (fun v -> reject (context env) v V.as_unit);
       caller = v_caller;
-      async = false
     }
   in f env' k'
 
@@ -878,7 +872,10 @@ and interpret_comp_unit env cu k = match cu with
 let interpret_prog flags (cu, flavor) =
   let state = initial_state () in
   let scope = empty_scope in
-  let env = env_of_scope flags flavor state scope in
+  let env =
+    { (env_of_scope flags flavor state scope) with
+      throws = Some (fun v -> trap !last_region "uncaught throw") }
+  in
   trace_depth := 0;
   try
     Scheduler.queue (fun () ->

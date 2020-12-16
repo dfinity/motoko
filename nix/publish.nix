@@ -38,42 +38,29 @@ let
     ]' | curl -X POST --data @- "$slack_channel_webhook" \
            --header "Content-Type: application/json" --silent --show-error
   '';
-
-  v = releaseVersion;
-
-  mkMotokoTarball = derivations:
-    pkgs.runCommandNoCC "motoko-${v}.tar.gz" {
-      allowedRequisites = [];
-    } ''
-      tmp=$(mktemp -d)
-      ${pkgs.lib.concatMapStringsSep "\n" (d: "cp -v ${d}/bin/* $tmp") derivations}
-      chmod 0755 $tmp/*
-      tar -czf "$out" -C $tmp/ .
-    '';
-
-
 in
 rec {
-  tarballs = builtins.mapAttrs (_: mkMotokoTarball) derivations;
   motoko =
-    pkgs.writeShellScriptBin "activate" ''
+    pkgs.writeShellScriptBin "activate" (''
       set -eu
       PATH="${pkgs.lib.makeBinPath [ s3cp slack ]}"
 
-      v="${v}"
+      v="${releaseVersion}"
       cache_long="max-age=31536000" # 1 year
 
       file="motoko-$v.tar.gz"
       dir="motoko/$v"
-
-      s3cp "${tarballs.linux}" "$dir/x86_64-linux/$file" "application/gzip" "$cache_long"
-
-      s3cp "${tarballs.darwin}" "$dir/x86_64-darwin/$file" "application/gzip" "$cache_long"
+      '' +
+      pkgs.lib.concatMapStrings (d: ''
+        s3cp "${d}" "$dir/${d.meta.path}" "${d.meta.content-type}" "$cache_long"
+     '') derivations + ''
 
       slack "$SLACK_CHANNEL_BUILD_NOTIFICATIONS_WEBHOOK" <<EOI
       *motoko-$v* has been published to DFINITY's CDN :champagne:!
-      - https://$DFINITY_DOWNLOAD_DOMAIN/$dir/x86_64-linux/$file
-      - https://$DFINITY_DOWNLOAD_DOMAIN/$dir/x86_64-darwin/$file
+      '' +
+      pkgs.lib.concatMapStrings (d: ''
+      - https://$DFINITY_DOWNLOAD_DOMAIN/$dir/${d.meta.path}
+      '') derivations + ''
       EOI
-    '';
+    '');
 }

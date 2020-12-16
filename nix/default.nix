@@ -1,8 +1,8 @@
 { system ? builtins.currentSystem }:
 let
   sourcesnix = builtins.fetchurl {
-    url = https://raw.githubusercontent.com/nmattia/niv/v0.2.16/nix/sources.nix;
-    sha256 = "03fl8wfm2nhdiws7pmfz2kcbf47mv2f8gk30fzg4m07gb5zdv6gv";
+    url = https://raw.githubusercontent.com/nmattia/niv/v0.2.18/nix/sources.nix;
+    sha256 = "0vsjk1dj88kb40inlhb9xgfhm5dfhb6g3vyca62glk056sn4504l";
   };
   nixpkgs_src = (import sourcesnix { sourcesFile = ./sources.json; inherit pkgs; }).nixpkgs;
 
@@ -13,6 +13,11 @@ let
         # add nix/sources.json
         (self: super: {
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
+        })
+
+	# add a newer version of niv
+        (self: super: {
+           niv = (import self.sources.niv { pkgs = super; }).niv;
         })
 
         # Selecting the ocaml version

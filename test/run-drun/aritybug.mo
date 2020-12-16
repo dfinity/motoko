@@ -8,7 +8,7 @@ import Prim "mo:prim";
 // aren't distinguished after arity raising, since Type.mo_seq Int = Type.mo_seq (Tup[Int]),
 // eventhough Int != Tup[Int]
 
-{
+do {
 let t = "u_u";
 shared func fu_u(a:Int,) : async (Int,) {
    return (2*a,);

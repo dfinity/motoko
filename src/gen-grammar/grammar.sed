@@ -4,6 +4,8 @@ s/<typ_id>/<id>/g
 /^<id> ::=/,+2d
 s/<id>/ID/g
 /^<semicolon> ::=/,+3d
+/^<annot(T)> ::=/,+2d
+/^<pat_opt> ::=/,+3d
 /^<start> ::=/,+2d
 /^<parse_prog_interactive> ::=/,+3d
 /^<import_list> ::=/,+2d
@@ -16,12 +18,14 @@ s/<parse_prog>/<prog>/g
 s/(<bl>)//g
 s/(<ob>)//g
 s/(B)//g
-s/ B$//g
+s/ B$/ <exp_obj>/g
 s/\[/(/g
 s/\]/)?/g
 s/(\([a-zA-Z_0-9]*\))/\1/g
 s/(\(<[a-z_0-9]*>\))/\1/g
 s/<semicolon>/\';\'/g
+s/<annot_opt>/(':' <typ>)?/g
+s/<pat_opt>/<pat_plain>?/g
 s/epsilon/<empty>/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
@@ -123,5 +127,15 @@ s/ARROW/\'->\'/g
 s/ANDOP/\'\&\'/g
 s/ADDOP/\'+\'/g
 s/ASSIGN/\':=\'/g
+s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+/'return'$/d
+s/'return' <exp>/'return' <exp>?/
+/    '{' <list(<dec_var>, ';')> '}'/d
+s/    '{' <deprecated_exp_field_list_unamb> '}'/    '{' <list(<exp_field>, ';')> '}'/
+s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
+/    <deprecated_pat_opt>/d
+/^<deprecated_/,$d
+/<exp_field_nonvar>/,+2d
+s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/

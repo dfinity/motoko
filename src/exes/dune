@@ -28,3 +28,8 @@
  (modules deser)
  (libraries stdio num source_id)
 )
+(executable
+ (name candid_tests)
+ (modules candid_tests)
+ (libraries lib idllib mo_idl mo_values lang_utils)
+)

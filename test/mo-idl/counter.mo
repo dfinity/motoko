@@ -11,4 +11,3 @@ actor class (i : Int, step : Nat) {
   // Read counter, asynchronous
   public func read() : async Int { c };
 };
-

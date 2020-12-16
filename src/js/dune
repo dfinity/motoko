@@ -1,7 +1,23 @@
+(library
+ (name common)
+ (modules common)
+ (libraries checkseum.ocaml mo_config pipeline idllib)
+ (preprocess (pps js_of_ocaml-ppx))
+)
+
 (executable
- (name mo_js)
- (modules mo_js)
- (libraries checkseum.ocaml mo_config pipeline)
+ (name moc_js)
+ (modules moc_js)
+ (libraries common mo_config idllib)
+ (js_of_ocaml (flags --no-extern-fs --no-source-map))
+ (preprocess (pps js_of_ocaml-ppx))
+)
+
+(executable
+ (name moc_interpreter)
+ (modules moc_interpreter)
+ (libraries common mo_config)
+ (js_of_ocaml (flags --no-extern-fs --no-source-map))
  (preprocess (pps js_of_ocaml-ppx))
 )
 

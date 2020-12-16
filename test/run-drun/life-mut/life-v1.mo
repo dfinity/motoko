@@ -15,7 +15,7 @@ actor Life {
      #v1 : [[var Cell]];
   };
 
-  class Grid((#v1 state) : State) {
+  class Grid(#v1 state : State) {
 
     let n = state.size();
 
@@ -80,7 +80,8 @@ actor Life {
   };
 
   stable var state : State =
-    { let n = 32;
+    do {
+      let n = 32;
       #v1 (
       	 P.Array_tabulate<[var Cell]>(n,
            func i { 

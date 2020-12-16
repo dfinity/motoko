@@ -87,6 +87,18 @@ static void check_typearg(int32_t ty, uint32_t n_types) {
   idl_trap_with("invalid type argument");
 }
 
+static void parse_fields(buf *buf, uint32_t n_types) {
+  uint32_t next_valid = 0;
+  for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
+    uint32_t tag = read_u32_of_leb128(buf);
+    if (tag < next_valid) idl_trap_with("variant or record tags out of order");
+    if (tag == 0xFFFFFFFF && n > 1) idl_trap_with("variant or record tags out of order");
+    next_valid = tag + 1;
+    int32_t t = read_i32_of_sleb128(buf);
+    check_typearg(t, n_types);
+  }
+}
+
 /*
  * This function parses the IDL magic header and type description. It
  *  * traps if the type description is not well-formed. In particular, it traps if
@@ -95,10 +107,12 @@ static void check_typearg(int32_t ty, uint32_t n_types) {
  *  * returns a pointer to the first byte after the IDL header (via return)
  *  * allocates a type description table, and returns it
  *    (via pointer argument, for lack of multi-value returns in C)
+ *  * returns the size of that type description table
+ *    (again via pointer argument, for lack of multi-value returns in C)
  *  * returns a pointer to the beginning of the list of main types
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
-export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
+export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint32_t *typtbl_size_out, uint8_t **main_types_out) {
   if (buf->p == buf->e) idl_trap_with("empty input");
 
   // Magic bytes (DIDL)
@@ -114,6 +128,9 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
 
   // Early sanity check
   if (&buf->p[n_types] >= buf->e) { idl_trap_with("too many types"); }
+
+  // Let the caller know about the table size
+  *typtbl_size_out = n_types;
 
   // Go through the table
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
@@ -135,17 +152,9 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
       int32_t t = read_i32_of_sleb128(buf);
       check_typearg(t, n_types);
     } else if (ty == IDL_CON_record) {
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-        read_u32_of_leb128(buf);
-        int32_t t = read_i32_of_sleb128(buf);
-        check_typearg(t, n_types);
-      }
+      parse_fields(buf, n_types);
     } else if (ty == IDL_CON_variant) {
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-        read_u32_of_leb128(buf);
-        int32_t t = read_i32_of_sleb128(buf);
-        check_typearg(t, n_types);
-      }
+      parse_fields(buf, n_types);
     } else if (ty == IDL_CON_func) {
       // arg types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
@@ -193,6 +202,16 @@ export void skip_leb128(buf *buf) {
   } while (b & (uint8_t)0x80);
 }
 
+// used for opt, bool, references...
+uint8_t read_byte_tag(buf *buf) {
+  uint8_t b = read_byte(buf);
+  if (b > 1) {
+    idl_trap_with("skip_any: byte tag not 0 or 1");
+  }
+  return b;
+}
+
+
 // Assumes that buf is the encoding of type t, and fast-forwards past that
 // Assumes that all type references in the typtbl are already checked
 //
@@ -208,6 +227,8 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_PRIM_reserved:
         return;
       case IDL_PRIM_bool:
+        read_byte_tag(b);
+        return;
       case IDL_PRIM_nat8:
       case IDL_PRIM_int8:
         advance(b, 1);
@@ -233,14 +254,16 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_PRIM_text:
         {
           uint32_t len = read_u32_of_leb128(b);
-          advance(b, len);
+	  const char *p = (const char *)b->p;
+          advance(b, len); // advance first; does the bounds check
+	  utf8_validate(p, len);
         }
         return;
       case IDL_PRIM_empty:
         idl_trap_with("skip_any: encountered empty");
       case IDL_REF_principal:
         {
-          if (read_byte(b)) {
+          if (read_byte_tag(b)) {
             uint32_t len = read_u32_of_leb128(b);
             advance(b, len);
           }
@@ -255,7 +278,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
     switch(tc) {
       case IDL_CON_opt: {
         int32_t it = read_i32_of_sleb128(&tb);
-        if (read_byte(b)) {
+        if (read_byte_tag(b)) {
           skip_any(b, typtbl, it, 0);
         }
         return;
@@ -301,7 +324,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_CON_alias: {
         // See Note [mutable stable values] in codegen/compile.ml
         int32_t it = read_i32_of_sleb128(&tb);
-        uint32_t tag = read_byte(b);
+        uint32_t tag = read_byte_tag(b);
         if (tag == 0) {
           advance(b, 8);
           // this is the contents (not a reference)

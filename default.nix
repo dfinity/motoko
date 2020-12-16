@@ -190,6 +190,7 @@ rec {
   mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
   didc = ocaml_exe "didc" "didc" null;
   deser = ocaml_exe "deser" "deser" null;
+  candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
@@ -298,6 +299,13 @@ rec {
       '';
     };
 
+    candid = testDerivation {
+      buildInputs = [ moc wasmtime candid-tests ];
+      checkPhase = ''
+        candid-tests -i ${nixpkgs.sources.candid}/test
+      '';
+    };
+
     fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
     );
@@ -316,7 +324,7 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit;
+      inherit qc lsp unit candid;
     };
 
   samples = stdenv.mkDerivation {
@@ -333,7 +341,7 @@ rec {
   };
 
   js =
-    let mk = n: with_rts:
+    let mk = n:
       stdenv.mkDerivation {
         name = "${n}.js";
         src = subpath ./src;
@@ -344,24 +352,27 @@ rec {
         ];
         buildPhase = ''
           patchShebangs .
-          make ${n}.js
+          '' + nixpkgs.lib.optionalString (rts != null)''
+          ./rts/gen.sh ${rts}/rts/
+          '' + ''
+          make DUNE_OPTS="--profile=release" ${n}.js
         '';
         installPhase = ''
           mkdir -p $out
-          cp -v ${n}.js $out
-        '' + (if with_rts then ''
-          cp -vr ${rts}/rts $out
-        '' else "");
+          mkdir -p $out/bin
+          cp --verbose --dereference ${n}.js $out/bin
+        '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
         '';
       };
     in
     {
-      moc = mk "moc" true;
-      didc = mk "didc" false;
+      moc = mk "moc";
+      moc_interpreter = mk "moc_interpreter";
+      didc = mk "didc";
     };
 
   inherit drun;
@@ -564,6 +575,7 @@ rec {
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
+    CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell

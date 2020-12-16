@@ -9,11 +9,17 @@ type message = {
 }
 type messages = message list
 
+let info_message at cat text = {sev = Info; at; cat; text}
+let warning_message at cat text = {sev = Warning; at; cat; text}
+let error_message at cat text = {sev = Error; at; cat; text}
+
 type 'a result = ('a * messages, messages) Stdlib.result
 
 let return x = Ok (x, [])
 
-let warn at cat text = Ok ((), [{ sev = Warning; at; cat; text}])
+let info at cat text = Ok ((), [info_message at cat text])
+let warn at cat text = Ok ((), [warning_message at cat text])
+let error at cat text = Stdlib.Error [error_message at cat text]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs
@@ -24,6 +30,8 @@ let bind x f = match x with
   | Ok (y, msgs1) -> match f y with
     | Ok (z, msgs2) -> Ok (z, msgs1 @ msgs2)
     | Stdlib.Error msgs2 -> Error (msgs1 @ msgs2)
+
+let finally f r = f (); r
 
 module Syntax = struct
   let (let*) = bind
@@ -48,8 +56,6 @@ let get_msgs s = List.rev !s
 
 let has_errors : messages -> bool =
   List.fold_left (fun b msg -> b || msg.sev == Error) false
-
-let fatal_error at text = { sev = Error; at; cat = "fatal"; text }
 
 let string_of_message msg =
   let label = match msg.sev with

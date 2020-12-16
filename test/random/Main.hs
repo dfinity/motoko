@@ -313,7 +313,7 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func do () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
+  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func go () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
 
       eval'd = unparse v
       typed = unparseType v
@@ -323,19 +323,19 @@ mobile (tm, v) = monadicIO $ do
 
 prop_matchActorNat :: Neuralgic Natural -> Property
 prop_matchActorNat nat = monadicIO $ do
-    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
+    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func go () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
         eval'd = evalN nat
     drunScriptNoFuzz "matchActorNat" (Data.Text.unpack testCase)
 
 prop_matchActorInt :: Neuralgic Integer -> Property
 prop_matchActorInt int = monadicIO $ do
-    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
+    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func go () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
         eval'd = evalN int
     drunScriptNoFuzz "matchActorInt" (Data.Text.unpack testCase)
 
 prop_matchActorText :: UTF8 String -> Property
 prop_matchActorText (UTF8 text) = monadicIO $ do
-    let testCase = format ("actor { public func match (i : Text) : async () { assert (switch i { case (\""%s%"\") true; case _ false }) }; public func do () : async () { let res = await match (\""%s%"\" : Text); return res } };") eval'd eval'd
+    let testCase = format ("actor { public func match (i : Text) : async () { assert (switch i { case (\""%s%"\") true; case _ false }) }; public func go () : async () { let res = await match (\""%s%"\" : Text); return res } };") eval'd eval'd
         eval'd = Data.Text.pack $ text >>= escape
     drunScriptNoFuzz "matchActorText" (Data.Text.unpack testCase)
 

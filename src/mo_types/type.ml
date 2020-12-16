@@ -412,6 +412,7 @@ let as_array_sub t = match promote t with
   | _ -> invalid "as_array_sub"
 let as_opt_sub t = match promote t with
   | Opt t -> t
+  | Prim Null -> Non
   | Non -> Non
   | _ -> invalid "as_opt_sub"
 let as_tup_sub n t = match promote t with
@@ -1246,12 +1247,11 @@ let rec string_of_typ_nullary vs = function
     sprintf "= (type %s)" (string_of_kind (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
-and string_of_dom vs ts =
+and string_of_dom parens vs ts =
   let dom = string_of_typ_nullary vs (seq ts) in
   match ts with
-  | [Tup _] ->
-     sprintf "(%s)" dom
-  | _ -> dom
+  | [Tup _] -> sprintf "(%s)" dom
+  | _ -> if parens && dom.[0] <> '(' then sprintf "(%s)" dom else dom
 
 and string_of_cod vs ts =
   let cod = string_of_typ' vs (seq ts) in
@@ -1307,27 +1307,28 @@ and string_of_typ' vs t =
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' = List.tl vs', List.tl tbs in
     let vs'vs = vs' @ vs in
-    begin
-      match tbs with
-      | [tb] ->
-         sprintf "%s%s -> %s" (string_of_func_sort s)
-          (string_of_dom (vs'vs) ts1)
-          (string_of_control_cod true c (vs'vs) ts2)
-      | _ ->
-        sprintf "%s%s%s -> %s"
-          (string_of_func_sort s) (string_of_binds (vs'vs) vs'' tbs')
-          (string_of_dom (vs'vs) ts1) (string_of_control_cod true c (vs'vs) ts2)
-    end
+    (match tbs with
+    | [tb] ->
+       sprintf "%s%s -> %s" (string_of_func_sort s)
+        (string_of_dom false (vs'vs) ts1)
+        (string_of_control_cod true c (vs'vs) ts2)
+    | _ ->
+      let bs = string_of_binds (vs'vs) vs'' tbs' in
+      sprintf "%s%s%s -> %s"
+        (string_of_func_sort s) bs (string_of_dom (bs <> "") (vs'vs) ts1)
+        (string_of_control_cod true c (vs'vs) ts2)
+    )
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_dom vs ts1)
+      (string_of_dom false vs ts1)
       (string_of_control_cod false c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     let vs'vs = vs' @ vs in
+    let bs = string_of_binds (vs'vs) vs' tbs in
     sprintf "%s%s%s -> %s"
-      (string_of_func_sort s) (string_of_binds (vs'vs) vs' tbs)
-      (string_of_dom (vs'vs) ts1) (string_of_control_cod false c (vs'vs) ts2)
+      (string_of_func_sort s) bs (string_of_dom (bs <> "") (vs'vs) ts1)
+      (string_of_control_cod false c (vs'vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async (t1, t2) ->
