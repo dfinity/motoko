@@ -134,5 +134,17 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
+    },
+    "wasm-profiler": {
+        "branch": "main",
+        "description": "A (hacky) wasm instruction profiler",
+        "homepage": null,
+        "owner": "dfinity",
+        "repo": "wasm-profiler",
+        "rev": "856ccd0af3fca142e3c62ad15b897efd2efe3d85",
+        "sha256": "0ivm4h9dl8qwsf55mcrslvxiwb0f4ipgkbisfmra17zpggmw25qg",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/wasm-profiler/archive/856ccd0af3fca142e3c62ad15b897efd2efe3d85.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
