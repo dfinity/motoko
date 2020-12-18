@@ -229,9 +229,8 @@ rec {
         };
         buildInputs =
           deps ++
-          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
-          [ filecheck
-            wasmtime
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x llvm_10 sources.esm ]) ++
+          [ wasmtime
           ] ++
           rtsBuildInputs;
 
@@ -377,8 +376,6 @@ rec {
     };
 
   inherit drun;
-  filecheck = nixpkgs.linkFarm "FileCheck"
-    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
   xargo = nixpkgs.xargo;
@@ -566,6 +563,13 @@ rec {
       export PATH="${toString ./bin}:$PATH"
     '';
     ESM=nixpkgs.sources.esm;
+    GUI_FLAGS = ''
+      "-DCURSES_INCLUDE_DIRS=${nixpkgs.ncurses.dev}/include"
+      "-DCURSES_LIBRARIES=${nixpkgs.ncurses}/lib/libncurses.so"
+      "-DPANEL_LIBRARIES=${nixpkgs.ncurses}/lib/libpanel.so"
+      "-DLibEdit_INCLUDE_DIRS=${nixpkgs.libedit.dev}/include"
+      "-DLibEdit_LIBRARIES=${nixpkgs.libedit}/lib/libedit.so"
+    '';
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
