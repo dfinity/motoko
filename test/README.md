@@ -101,6 +101,34 @@ You can also run individual directories via, say,
 $ nix-build -A tests.run-drun
 ```
 
+Running WASI tests in the browser
+---------------------------------
+
+The browsers provide a developer console that supports some support for
+stepping through wasm (including pretty-printing WASM, breakpoints, stepping).
+Together with the ability to print, this can be useful for debugging.
+
+You can easily run any of the tests in `test/run` in the browser as follows:
+
+* Make sure they are built:
+  ```
+  make -C run
+  ```
+  (or just `./run.sh run/empty.mo` to just build a single one.)
+
+* Run the python web server:
+  ```
+  python3 -m http.server
+  ```
+  (It likely has to be this one, as the script parses the directory listing)
+
+* Open the URL that this command tells you, likely http://0.0.0.0:8000/
+
+Now you can select the test you are interested from the drop down. It will load the wasm and run it. You can open the debugger, insepct the wasm, set breakpoints.
+
+Use the _Reload_ button if you have changed the `.wasm.`;
+use the _Rerun_ button if you want to rerun from the beginning without reloading, e.g. after setting break points.
+
 Randomised testing
 ------------------
 

@@ -129,16 +129,29 @@ let encode (em : extended_module) =
   (* modify reference *)
   let modif r f = r := f !r in
 
-  let rec add_source x = function (* FIXME: use add_string *)
+  let rec add_source filename = function (* FIXME: use add_string *)
     | [] ->
-      sources := !sources @ [ x ];
-      sourcesContent := !sourcesContent @ [ "" ];
+      sources := !sources @ [ filename ];
+      let source_code =
+        try
+          if filename = "prelude" then Prelude.prelude else
+          if filename = "prim" then Prelude.prim_module else
+          (*
+          Here we opportunistically see if we can find the source file
+          mentioned in the source location, and if we can, include its source
+          verbatim in the source map
+          *)
+          let ic = Stdlib.open_in filename in
+          let n = in_channel_length ic in
+          let s = Bytes.create n in
+          really_input ic s 0 n;
+          close_in ic;
+          Bytes.to_string s
+        with _ -> "" in
+      sourcesContent := !sourcesContent @ [ source_code ];
       0
-    | h :: t -> if x = h then 0 else 1 + add_source x t
+    | h :: t -> if filename = h then 0 else 1 + add_source filename t
   in
-
-  sources := !sources @ [ "prelude" ];
-  sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
   let add_string gen strings str = (* FIXME: perform suffix compression? *)
     let strs = !strings in
@@ -789,6 +802,13 @@ let encode (em : extended_module) =
     let data_section data =
       section 11 (vec memory_segment) data (data <> [])
 
+    (* sourceMappingURL section *)
+
+    let source_mapping_url_section smu =
+      match smu with
+      | Some smu -> custom_section "sourceMappingURL" string smu true
+      | None -> ()
+
     (* Name section *)
 
     let assoc_list : 'a. ('a -> unit) -> (int32 * 'a) list -> unit = fun f xs ->
@@ -1172,6 +1192,7 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then
         begin
           debug_abbrev_section ();
