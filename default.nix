@@ -323,7 +323,7 @@ rec {
       installPhase = ''
         mv _profile $out;
         mkdir -p $out/nix-support
-        echo "report \"Profiling Report\" $out index.html" >> $out/nix-support/hydra-build-products
+        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
       '';
     };
 
