@@ -20,7 +20,7 @@ let adoc_header : Buffer.t -> int -> string -> unit =
 
 let adoc_signature : Buffer.t -> (unit -> unit) -> unit =
  fun buf f ->
-  bprintf buf "[source,motoko]\n----\n";
+  bprintf buf "[source.no-repl,motoko]\n----\n";
   f ();
   bprintf buf "\n----\n\n"
 
