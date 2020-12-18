@@ -142,7 +142,9 @@ The same can be achieved with
 
     nix-build -A tests.profiling-graphs ..
 
-and the latest report is visible at <https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/tests.profiling-graphs/latest/download/1/index.html>.
+and Hyra serves [the latest report].
+
+[the latest report]: https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/tests.profiling-graphs/latest/download/1/index.html
 
 Also see this script for inspiration if you want to profile other programs or
 do other things.
