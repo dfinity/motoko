@@ -312,7 +312,7 @@ rec {
     profiling-graphs = testDerivation {
       src = test_src "perf";
       buildInputs =
-        (with nixpkgs; [ wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
         [ moc drun ];
       checkPhase = ''
         patchShebangs .
