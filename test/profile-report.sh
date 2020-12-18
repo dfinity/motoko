@@ -38,8 +38,8 @@ for file in perf/*.mo; do
   base="$(basename "$file" .mo)"
   cat >> _profile/index.html <<__END__
   <h2>$base.mo</h1>
-  <img src="$base.svg"></img>
-  <img src="$base-reverse.svg"></img>
+  <a href="$base.svg"><img src="$base.svg"></img></a>
+  <a href="$base-reverse.svg"><img src="$base-reverse.svg"></img></a>
 __END__
 done
 
@@ -53,11 +53,14 @@ for file in perf/*.mo; do
   echo "Profiling $base..."
   moc -g "$file" -o "_profile_build/$base.wasm"
   wasm-profiler-instrument --ic-system-api -i "_profile_build/$base.wasm" -o "_profile_build/$base.instrumented.wasm"
-  # qr.mo takes far too long with profiling instrumentation.
-  # so limit to 60s and 30MB
-  timeout 60s ./drun-wrapper.sh "_profile_build/$base.instrumented.wasm" "$file" |&
-    head -c $((100*1024*1024)) |
-    wasm-profiler-postproc flamegraph "_profile_build/$base.instrumented.wasm" > "_profile_build/$base.flamegraph"
-  flamegraph --title "$base.mo" < "_profile_build/$base.flamegraph" > "_profile/$base.svg"
-  flamegraph --title "$base.mo (reverse)" --reverse < "_profile_build/$base.flamegraph" > "_profile/$base-reverse.svg"
+
+  # qr.mo takes far too long with profiling instrumentation, so limit runtime
+  timeout 20s ./drun-wrapper.sh "_profile_build/$base.instrumented.wasm" "$file" |&
+    wasm-profiler-postproc flamegraph "_profile_build/$base.instrumented.wasm" \
+    > "_profile_build/$base.flamegraph"
+
+  flamegraph --title "$base.mo" \
+    < "_profile_build/$base.flamegraph" > "_profile/$base.svg"
+  flamegraph --title "$base.mo (reverse)" --reverse \
+    < "_profile_build/$base.flamegraph" > "_profile/$base-reverse.svg"
 done
