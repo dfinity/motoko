@@ -47,14 +47,14 @@ let rec adoc_of_declaration :
           Plain.sep_by buf ", " (adoc_of_function_arg buf) function_doc.args;
           bprintf buf ")";
           Plain.opt_typ buf function_doc.typ);
-      doc_comment ()      
+      doc_comment ()
   | Value value_doc ->
       bprintf buf "[[value.%s]]\n" value_doc.name;
       header value_doc.name;
       signature (fun _ ->
           bprintf buf "let %s" value_doc.name;
           Plain.opt_typ buf value_doc.typ);
-      doc_comment ()      
+      doc_comment ()
   | Type type_doc ->
       bprintf buf "[[type.%s]]\n" type_doc.name;
       header type_doc.name;
@@ -64,7 +64,7 @@ let rec adoc_of_declaration :
             type_doc.type_args;
           bprintf buf " = ";
           adoc_of_doc_type buf type_doc.typ);
-      doc_comment ()      
+      doc_comment ()
   | Class class_doc ->
       bprintf buf "[[class.%s]]\n" class_doc.name;
       header class_doc.name;
@@ -75,7 +75,7 @@ let rec adoc_of_declaration :
           bprintf buf "(";
           Plain.sep_by buf ", " (adoc_of_function_arg buf) class_doc.constructor;
           bprintf buf ")");
-      doc_comment ();      
+      doc_comment ();
       bprintf buf "\n\n";
       List.iter (adoc_of_doc buf (lvl + 1)) class_doc.fields
   | Unknown unknown ->
