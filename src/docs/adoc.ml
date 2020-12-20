@@ -20,7 +20,7 @@ let adoc_header : Buffer.t -> int -> string -> unit =
 
 let adoc_signature : Buffer.t -> (unit -> unit) -> unit =
  fun buf f ->
-  bprintf buf "[source,motoko]\n----\n";
+  bprintf buf "[source.no-repl,motoko]\n----\n";
   f ();
   bprintf buf "\n----\n\n"
 
@@ -39,7 +39,6 @@ let rec adoc_of_declaration :
   | Function function_doc ->
       bprintf buf "[[value.%s]]\n" function_doc.name;
       header function_doc.name;
-      doc_comment ();
       signature (fun _ ->
           bprintf buf "func %s" function_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
@@ -47,28 +46,28 @@ let rec adoc_of_declaration :
           bprintf buf "(";
           Plain.sep_by buf ", " (adoc_of_function_arg buf) function_doc.args;
           bprintf buf ")";
-          Plain.opt_typ buf function_doc.typ)
+          Plain.opt_typ buf function_doc.typ);
+      doc_comment ()
   | Value value_doc ->
       bprintf buf "[[value.%s]]\n" value_doc.name;
       header value_doc.name;
-      doc_comment ();
       signature (fun _ ->
           bprintf buf "let %s" value_doc.name;
-          Plain.opt_typ buf value_doc.typ)
+          Plain.opt_typ buf value_doc.typ);
+      doc_comment ()
   | Type type_doc ->
       bprintf buf "[[type.%s]]\n" type_doc.name;
       header type_doc.name;
-      doc_comment ();
       signature (fun _ ->
           bprintf buf "type %s" type_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
             type_doc.type_args;
           bprintf buf " = ";
-          adoc_of_doc_type buf type_doc.typ)
+          adoc_of_doc_type buf type_doc.typ);
+      doc_comment ()
   | Class class_doc ->
       bprintf buf "[[class.%s]]\n" class_doc.name;
       header class_doc.name;
-      doc_comment ();
       signature (fun _ ->
           bprintf buf "class %s" class_doc.name;
           Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
@@ -76,6 +75,7 @@ let rec adoc_of_declaration :
           bprintf buf "(";
           Plain.sep_by buf ", " (adoc_of_function_arg buf) class_doc.constructor;
           bprintf buf ")");
+      doc_comment ();
       bprintf buf "\n\n";
       List.iter (adoc_of_doc buf (lvl + 1)) class_doc.fields
   | Unknown unknown ->
