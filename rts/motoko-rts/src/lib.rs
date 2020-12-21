@@ -8,6 +8,7 @@
 mod print;
 
 mod alloc;
+mod buf;
 mod closure_table;
 mod debug;
 mod gc;
