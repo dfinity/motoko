@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 
+use crate::closure_table;
 use crate::print::*;
 use crate::types::*;
-use crate::{closure_table, gc};
+
+#[cfg(feature = "gc")]
+use crate::gc;
 
 use core::fmt::Write;
 
@@ -12,7 +15,7 @@ unsafe extern "C" fn print_closure(p: usize) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
-    if gc::is_tagged_scalar(SkewedPtr(p)) {
+    if SkewedPtr(p).is_tagged_scalar() {
         print_tagged_scalar(&mut write_buf, p);
     } else {
         print_boxed_object(&mut write_buf, SkewedPtr(p).unskew());
@@ -21,6 +24,7 @@ unsafe extern "C" fn print_closure(p: usize) {
     print(&write_buf);
 }
 
+#[cfg(feature = "gc")]
 pub(crate) unsafe fn dump_heap() {
     print_closure_table();
     print_static_roots();
@@ -50,7 +54,7 @@ pub(crate) unsafe fn print_closure_table() {
 
     for i in 0..len {
         let elem = arr.get(i);
-        if !gc::is_tagged_scalar(elem) {
+        if !elem.is_tagged_scalar() {
             let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, elem.unskew());
             print_boxed_object(&mut write_buf, elem.unskew());
             print(&write_buf);
@@ -60,6 +64,7 @@ pub(crate) unsafe fn print_closure_table() {
     println!(50, "End of closure table");
 }
 
+#[cfg(feature = "gc")]
 pub(crate) unsafe fn print_static_roots() {
     let static_roots = gc::get_static_roots().unskew() as *const Array;
     let len = (*static_roots).len;
@@ -85,6 +90,7 @@ pub(crate) unsafe fn print_static_roots() {
     println!(50, "End of static roots");
 }
 
+#[cfg(feature = "gc")]
 unsafe fn print_heap() {
     let heap_begin = gc::get_heap_base();
     let heap_end = gc::HP;
@@ -107,7 +113,7 @@ unsafe fn print_heap() {
         print(&write_buf);
         write_buf.reset();
 
-        p += gc::object_size(p as usize).to_bytes().0;
+        p += object_size(p as usize).to_bytes().0;
     }
 }
 
@@ -136,7 +142,7 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 let val = (*payload_addr.offset(i as isize)).0;
                 let _ = write!(buf, "{:#x}", val);
 
-                if !gc::is_tagged_scalar(SkewedPtr(val)) {
+                if !SkewedPtr(val).is_tagged_scalar() {
                     let indirectee_ptr = SkewedPtr(val).unskew();
                     let _ = write!(buf, " (indirectee=");
                     print_boxed_object(buf, indirectee_ptr);

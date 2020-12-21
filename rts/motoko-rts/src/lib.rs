@@ -7,11 +7,13 @@
 #[macro_use]
 mod print;
 
+#[cfg(feature = "gc")]
+mod gc;
+
 mod alloc;
 mod buf;
 mod closure_table;
 mod debug;
-mod gc;
 mod types;
 
 extern "C" {

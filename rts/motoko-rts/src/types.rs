@@ -1,5 +1,7 @@
 use core::ops::{Add, AddAssign};
 
+use crate::rts_trap_with;
+
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
 }
@@ -77,6 +79,11 @@ pub struct SkewedPtr(pub usize);
 impl SkewedPtr {
     pub fn unskew(self) -> usize {
         self.0.wrapping_add(1)
+    }
+
+    /// This is for sanity checking: a skewed pointer can't be a tagged scalar
+    pub fn is_tagged_scalar(&self) -> bool {
+        self.0 & 0b1 == 0
     }
 }
 
@@ -243,4 +250,59 @@ pub struct Bits64 {
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
+}
+
+/// Returns object size in words
+pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
+    let obj = obj as *const Obj;
+    match (*obj).tag {
+        TAG_OBJECT => {
+            let object = obj as *const Object;
+            let size = (*object).size;
+            size_of::<Object>() + Words(size)
+        }
+
+        TAG_OBJ_IND => size_of::<ObjInd>(),
+
+        TAG_ARRAY => {
+            let array = obj as *const Array;
+            let size = (*array).len;
+            size_of::<Array>() + Words(size)
+        }
+
+        TAG_BITS64 => Words(3),
+
+        TAG_MUTBOX => size_of::<MutBox>(),
+
+        TAG_CLOSURE => {
+            let closure = obj as *const Closure;
+            let size = (*closure).size;
+            size_of::<Closure>() + Words(size)
+        }
+
+        TAG_SOME => size_of::<Some>(),
+
+        TAG_VARIANT => size_of::<Variant>(),
+
+        TAG_BLOB => {
+            let blob = obj as *const Blob;
+            size_of::<Blob>() + (*blob).len.to_words()
+        }
+
+        TAG_FWD_PTR => {
+            rts_trap_with("object_size: forwarding pointer\0".as_ptr());
+        }
+
+        TAG_BITS32 => Words(2),
+
+        TAG_BIGINT => size_of::<BigInt>(),
+
+        TAG_CONCAT => size_of::<Concat>(),
+
+        TAG_NULL => size_of::<Null>(),
+
+        _ => {
+            rts_trap_with("object_size: invalid object tag\0".as_ptr());
+        }
+    }
 }

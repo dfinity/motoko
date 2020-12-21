@@ -164,7 +164,7 @@ _build/wasm/libmotoko_rts.a: | _build/wasm
 	# NB. codegen-units=1 is to make debugging easier, not strictly
 	# necessary
 	cd motoko-rts && \
-	    xargo -v rustc --target=wasm32-unknown-emscripten --release -- \
+	    xargo -v rustc --target=wasm32-unknown-emscripten --release --features gc -- \
 		-Crelocation-model=pic -Ccodegen-units=1
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 

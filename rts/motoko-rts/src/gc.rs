@@ -57,65 +57,6 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
 }
 
-/// Returns object size in words
-pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
-    let obj = obj as *const Obj;
-    match (*obj).tag {
-        TAG_OBJECT => {
-            let object = obj as *const Object;
-            let size = (*object).size;
-            size_of::<Object>() + Words(size)
-        }
-
-        TAG_OBJ_IND => size_of::<ObjInd>(),
-
-        TAG_ARRAY => {
-            let array = obj as *const Array;
-            let size = (*array).len;
-            size_of::<Array>() + Words(size)
-        }
-
-        TAG_BITS64 => Words(3),
-
-        TAG_MUTBOX => size_of::<MutBox>(),
-
-        TAG_CLOSURE => {
-            let closure = obj as *const Closure;
-            let size = (*closure).size;
-            size_of::<Closure>() + Words(size)
-        }
-
-        TAG_SOME => size_of::<Some>(),
-
-        TAG_VARIANT => size_of::<Variant>(),
-
-        TAG_BLOB => {
-            let blob = obj as *const Blob;
-            size_of::<Blob>() + (*blob).len.to_words()
-        }
-
-        TAG_FWD_PTR => {
-            rts_trap_with("object_size: forwarding pointer\0".as_ptr());
-        }
-
-        TAG_BITS32 => Words(2),
-
-        TAG_BIGINT => size_of::<BigInt>(),
-
-        TAG_CONCAT => size_of::<Concat>(),
-
-        TAG_NULL => size_of::<Null>(),
-
-        _ => {
-            rts_trap_with("object_size: invalid object tag\0".as_ptr());
-        }
-    }
-}
-
-pub(crate) fn is_tagged_scalar(p: SkewedPtr) -> bool {
-    p.0 & 0b1 == 0
-}
-
 unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
     libc::memcpy(to as *mut _, from as *const _, n.to_bytes().0 as usize);
 }
@@ -154,7 +95,7 @@ unsafe fn evac(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
-    if is_tagged_scalar(*ptr_loc) {
+    if (*ptr_loc).is_tagged_scalar() {
         return;
     }
 
