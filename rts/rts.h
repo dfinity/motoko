@@ -87,7 +87,7 @@ from_rts __attribute__ ((noreturn)) void bigint_trap();
 typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
-as_ptr alloc_array(uint32_t n_elems);
+extern as_ptr alloc_array(uint32_t n_elems);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
 as_ptr text_of_cstr(const char *buf);
 int text_compare(as_ptr s1, as_ptr s2);

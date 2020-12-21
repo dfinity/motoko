@@ -14,9 +14,22 @@ as_ptr alloc_bytes(size_t n) {
     if (ptr == NULL) { printf("OOM\n"); exit(1); };
     return ((as_ptr)ptr) - 1;
 };
+
 as_ptr alloc_words(size_t n) {
     return alloc_bytes(sizeof(uint32_t) * n);
 };
+
+export as_ptr alloc_array(uint32_t len) {
+  // Array payload should not be larger than half of the memory.
+  if (len > 1 << (32 - 2 - 1)) { // 2 for word size, 1 to divide by two
+    rts_trap_with("Array allocation too large");
+  }
+
+  as_ptr a = alloc_words(ARRAY_HEADER_SIZE + len);
+  TAG(a) = TAG_ARRAY;
+  ARRAY_LEN(a) = len;
+  return a;
+}
 
 void rts_trap(const char* str, size_t n) {
    printf("RTS trap: %.*s\n", (int)n, str);

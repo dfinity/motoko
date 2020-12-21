@@ -4,7 +4,7 @@ use core::arch::wasm32;
 
 use crate::gc;
 use crate::rts_trap_with;
-use crate::types::{skew, Bytes, SkewedPtr, Words};
+use crate::types::{size_of, skew, Array, Bytes, SkewedPtr, Words, TAG_ARRAY};
 
 #[no_mangle]
 unsafe extern "C" fn alloc_bytes(n: Bytes<u32>) -> SkewedPtr {
@@ -26,6 +26,23 @@ unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
     grow_memory(new_hp as usize);
 
     skew(old_hp as usize)
+}
+
+#[no_mangle]
+unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
+    // Array payload should not be larger than half of the memory
+    if len > 1 << (32 - 2 - 1) {
+        // 2 for word size, 1 to divide by two
+        rts_trap_with("Array allocation too large\0".as_ptr());
+    }
+
+    let skewed_ptr = alloc_words(size_of::<Array>() + Words(len));
+
+    let ptr: *mut Array = skewed_ptr.unskew() as *mut Array;
+    (*ptr).header.tag = TAG_ARRAY;
+    (*ptr).len = len;
+
+    skewed_ptr
 }
 
 /// Page allocation. Ensures that the memory up to the given pointer is allocated.
