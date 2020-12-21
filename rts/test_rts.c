@@ -209,6 +209,7 @@ int main () {
   /*
    * Testing the closure table
    */
+  /*
   printf("Testing Closuretable ...\n");
 
   extern uint32_t remember_closure(as_ptr cls);
@@ -239,6 +240,7 @@ int main () {
      assert((i<<2)-1 == recall_closure(reference[i]), "Recall went wrong\n");
      assert(closure_count() == i, "Closure count wrong\n");
   }
+  */
 
   /*
    * Testing crc32

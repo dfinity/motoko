@@ -29,7 +29,7 @@ unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
+pub unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
     // Array payload should not be larger than half of the memory
     if len > 1 << (32 - 2 - 1) {
         // 2 for word size, 1 to divide by two

@@ -1,17 +1,15 @@
 use crate::alloc;
+use crate::closure_table::closure_table_loc;
 use crate::rts_trap_with;
 use crate::types::*;
 
 extern "C" {
     /// Get __heap_base. Provided by the code generator (src/codegen/compile.ml).
-    fn get_heap_base() -> u32;
-
-    /// Skewed pointer to a skewed pointer to an array. See closure-table.c for details.
-    fn closure_table_loc() -> SkewedPtr;
+    pub(crate) fn get_heap_base() -> u32;
 
     /// Get pointer to the static memory with an array to the static roots. Provided by the
     /// generated code.
-    fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
 /// Maximum live data retained in a GC.
@@ -60,7 +58,7 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 }
 
 /// Returns object size in words
-unsafe fn object_size(obj: usize) -> Words<u32> {
+pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
@@ -114,7 +112,7 @@ unsafe fn object_size(obj: usize) -> Words<u32> {
     }
 }
 
-fn is_tagged_scalar(p: SkewedPtr) -> bool {
+pub(crate) fn is_tagged_scalar(p: SkewedPtr) -> bool {
     p.0 & 0b1 == 0
 }
 
@@ -377,7 +375,7 @@ unsafe extern "C" fn collect() {
         begin_from_space,
         begin_to_space,
         &mut end_to_space,
-        closure_table_loc().unskew(),
+        closure_table_loc() as usize,
     );
 
     // Scavenge to-space

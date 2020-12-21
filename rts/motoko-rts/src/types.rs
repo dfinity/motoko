@@ -130,6 +130,15 @@ impl Array {
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const SkewedPtr)
     }
+
+    pub unsafe fn set(self: *mut Self, idx: u32, ptr: SkewedPtr) {
+        let slot_addr = (self as *const Array).payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        *(slot_addr as *mut SkewedPtr) = ptr;
+    }
+
+    pub unsafe fn len(self: *const Self) -> u32 {
+        (*self).len
+    }
 }
 
 #[repr(C)]

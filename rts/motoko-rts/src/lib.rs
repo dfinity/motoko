@@ -5,6 +5,7 @@
 #![feature(arbitrary_self_types)]
 
 mod alloc;
+mod closure_table;
 mod gc;
 mod types;
 
