@@ -4,8 +4,12 @@
 #![no_std]
 #![feature(arbitrary_self_types)]
 
+#[macro_use]
+mod print;
+
 mod alloc;
 mod closure_table;
+mod debug;
 mod gc;
 mod types;
 

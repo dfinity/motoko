@@ -232,3 +232,15 @@ pub struct Concat {
 pub struct Null {
     pub header: Obj,
 }
+
+#[repr(C)]
+pub struct Bits64 {
+    pub header: Obj,
+    pub bits: u64,
+}
+
+#[repr(C)]
+pub struct Bits32 {
+    pub header: Obj,
+    pub bits: u32,
+}
