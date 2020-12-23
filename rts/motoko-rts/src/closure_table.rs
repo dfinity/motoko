@@ -69,7 +69,7 @@ unsafe fn double_closure_table() {
 }
 
 #[no_mangle]
-unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
     if TABLE.0 == 0 {
         crate_closure_table();
     }
@@ -93,7 +93,7 @@ unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
+pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
     if TABLE.0 == 0 {
         rts_trap_with("recall_closure: Closure table not allocated\0".as_ptr());
     }
@@ -117,7 +117,7 @@ unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn closure_count() -> u32 {
+pub unsafe extern "C" fn closure_count() -> u32 {
     N_CLOSURES
 }
 

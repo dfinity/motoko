@@ -12,9 +12,9 @@ mod gc;
 
 mod alloc;
 mod buf;
-mod closure_table;
+pub mod closure_table;
 mod debug;
-mod types;
+pub mod types;
 
 extern "C" {
     pub(crate) fn rts_trap_with(msg: *const u8) -> !;

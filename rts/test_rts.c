@@ -207,42 +207,6 @@ int main () {
   }
 
   /*
-   * Testing the closure table
-   */
-  /*
-  printf("Testing Closuretable ...\n");
-
-  extern uint32_t remember_closure(as_ptr cls);
-  extern uint32_t recall_closure(as_ptr cls);
-  extern uint32_t closure_count();
-
-  static int N = 2000; // >256, to exercise double_closure_table()
-  // We remember and recall a bunch of closures,
-  // and compare against a reference array.
-  uint32_t reference[N];
-  if (closure_count() != 0) {
-    printf("Initial count wrong\n");
-    ret = EXIT_FAILURE;
-  }
-  for (int i = 0; i<N; i++) {
-     reference[i] = remember_closure((i<<2)-1);
-     assert(closure_count() == i+1, "Closure count wrong\n");
-  }
-  for (int i = 0; i<N/2; i++) {
-     assert((i<<2)-1 == recall_closure(reference[i]), "Recall went wrong\n");
-     assert(closure_count() == N-i-1, "Closure count wrong\n");
-  }
-  for (int i = 0; i<N/2; i++) {
-     reference[i] = remember_closure((i<<2)-1);
-     assert(closure_count() == N/2 + i+1, "Closure count wrong\n");
-  }
-  for (int i = N-1; i>=0; i--) {
-     assert((i<<2)-1 == recall_closure(reference[i]), "Recall went wrong\n");
-     assert(closure_count() == i, "Closure count wrong\n");
-  }
-  */
-
-  /*
    * Testing crc32
    */
   printf("Testing crc32...\n");
