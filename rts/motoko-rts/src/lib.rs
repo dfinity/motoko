@@ -20,6 +20,7 @@ extern "C" {
     pub(crate) fn rts_trap_with(msg: *const u8) -> !;
 }
 
+#[cfg(feature = "panic_handler")]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe {

@@ -164,8 +164,8 @@ _build/wasm/libmotoko_rts.a: | _build/wasm
 	# NB. codegen-units=1 is to make debugging easier, not strictly
 	# necessary
 	cd motoko-rts && \
-	    xargo -v rustc --target=wasm32-unknown-emscripten --release --features gc -- \
-		-Crelocation-model=pic -Ccodegen-units=1
+	    xargo -v rustc --lib --target=wasm32-unknown-emscripten --release --features gc,panic_handler -- \
+		-Crelocation-model=pic -Ccodegen-units=1 --crate-type staticlib
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
 .PHONY: _build/wasm/libmotoko_rts_debug.a
@@ -173,8 +173,8 @@ _build/wasm/libmotoko_rts_debug.a: | _build/wasm
 	# NB. codegen-units=1 is to make debugging easier, not strictly
 	# necessary
 	cd motoko-rts && \
-	    xargo -v rustc --target=wasm32-unknown-emscripten -- \
-		-Crelocation-model=pic -Ccodegen-units=1
+	    xargo -v rustc --lib --target=wasm32-unknown-emscripten --features gc,panic_handler -- \
+		-Crelocation-model=pic -Ccodegen-units=1 --crate-type staticlib
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
