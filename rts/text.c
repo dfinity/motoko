@@ -44,111 +44,13 @@ tag to know the size of the text.
 // e.g. for debugging
 #define MIN_CONCAT_SIZE (9)
 
-static blob_t alloc_text_blob(size_t n) {
-  if (n > MAX_STR_SIZE) {
-    rts_trap_with("alloc_blob: Text too large");
-  }
-  return alloc_blob(n);
-}
-
-// Create
-export text_t text_of_ptr_size(const char *buf, size_t n) {
-  as_ptr r = alloc_text_blob(n);
-  memcpy(BLOB_PAYLOAD(r), buf, n);
-  return r;
-}
-
 text_t text_of_cstr(const char * const s) {
   size_t l = strlen(s);
   return text_of_ptr_size(s, l);
 }
 
-
-// Concat
-export text_t text_concat(text_t s1, text_t s2) {
-  // empty strings are ignored
-  if (BLOB_LEN(s1) == 0) return s2;
-  if (BLOB_LEN(s2) == 0) return s1;
-  uint32_t n1 = BLOB_LEN(s1);
-  uint32_t n2 = BLOB_LEN(s2);
-  uint32_t n = n1 + n2;
-  // short texts are copied into a single blob
-  if (n < MIN_CONCAT_SIZE) {
-    as_ptr r = alloc_text_blob(n1 + n2);
-    memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
-    memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
-    return r;
-  }
-  // Check max size
-  if (n > MAX_STR_SIZE) {
-    rts_trap_with("text_concat: Text too large");
-  }
-  // Create concat node
-  as_ptr r = alloc_words(CONCAT_WORDS);
-  TAG(r) = TAG_CONCAT;
-  CONCAT_LEN(r) = n;
-  CONCAT_ARG1(r) = s1;
-  CONCAT_ARG2(r) = s2;
-  return r;
-}
-
-// Leaving breadcrumps in the destination buffer about where to continue
-// the destination is implicitly the location of the crumb struct
-typedef struct crumb {
-  text_t t;
-  struct crumb *next;
-} crumb;
-
-
-
-// write all data into a buffer (must have the right size)
-export void text_to_buf(text_t s, char *buf) {
-  crumb *next_crumb = NULL; // what do do after we are done with s
-  while (true) {
-    if (TAG(s) == TAG_BLOB) {
-      memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
-
-      // return if we are done
-      if (next_crumb == NULL) return;
-
-      // else load text from crumb
-      s = next_crumb->t;
-      buf = (char *)next_crumb;
-      next_crumb = next_crumb->next;
-    } else {
-      as_ptr s1 = CONCAT_ARG1(s);
-      as_ptr s2 = CONCAT_ARG2(s);
-      if (CONCAT_LEN(s2) < sizeof(crumb)) {
-        // if the second leg is too small to leave a crumb, just do it directly
-        text_to_buf(s2, buf + BLOB_LEN(s1));
-        s = s1;
-      } else {
-        // else we use the space where the second leg will be written to
-        // to remember a text to write there
-        crumb *new_crumb = (crumb *)(buf + BLOB_LEN(s1));
-        new_crumb->t = s2;
-        new_crumb->next = next_crumb;
-        next_crumb = new_crumb;
-        s = s1;
-      }
-    }
-  }
-}
-
-// straighten into contiguous memory, if needed (e.g. for system calls)
-export blob_t blob_of_text(text_t s) {
-  if (TAG(s) == TAG_BLOB) {
-    return s;
-  } else {
-    as_ptr r = alloc_text_blob(CONCAT_LEN(s));
-    text_to_buf(s, BLOB_PAYLOAD(r));
-    return r;
-  }
-}
-
-export uint32_t text_size(text_t s) {
-  return BLOB_LEN(s);
-}
+extern void text_to_buf(text_t s, char *buf);
+extern blob_t alloc_text_blob(size_t n);
 
 // Compare
 export int blob_compare(text_t s1, text_t s2) {
@@ -163,51 +65,6 @@ export int blob_compare(text_t s1, text_t s2) {
   } else {
     return r;
   }
-}
-
-// compares the texts from the given offset on for the given number of bytes
-// all assumed to be in range
-static int text_compare_range(text_t s1, size_t offset1, text_t s2, size_t offset2, size_t n) {
-  // strip off left legs if range is in the right leg
-  if (TAG(s1) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s1)) <= offset1) {
-    return text_compare_range(CONCAT_ARG2(s1), offset1 - BLOB_LEN(CONCAT_ARG1(s1)), s2, offset2, n);
-  }
-  if (TAG(s2) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s2)) <= offset2) {
-    return text_compare_range(s1, offset1, CONCAT_ARG2(s2), offset2 - BLOB_LEN(CONCAT_ARG1(s2)), n);
-  }
-  // strip off rights legs if range is in the left leg
-  if (TAG(s1) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s1)) >= offset1 + n ) {
-    return text_compare_range(CONCAT_ARG1(s1), offset1, s2, offset2, n);
-  }
-  if (TAG(s2) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s2)) >= offset2 + n) {
-    return text_compare_range(s1, offset1, CONCAT_ARG1(s2), offset2, n);
-  }
-  // Decompose concats
-  if (TAG(s1) == TAG_CONCAT) {
-    uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s1)) - offset1;
-    int r1 = text_compare_range(CONCAT_ARG1(s1), offset1, s2, offset2, n1);
-    if (r1 != 0) return r1;
-    else return text_compare_range(CONCAT_ARG2(s1), 0, s2, offset2 + n1, n - n1);
-  }
-  if (TAG(s2) == TAG_CONCAT) {
-    uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s2)) - offset2;
-    int r1 = text_compare_range(s1, offset1, CONCAT_ARG1(s2), offset2, n1);
-    if (r1 != 0) return r1;
-    else return text_compare_range(s1, offset1 + n1, CONCAT_ARG2(s2), 0, n - n1);
-  }
-  // now both are blobs
-  return memcmp(BLOB_PAYLOAD(s1) + offset1, BLOB_PAYLOAD(s2) + offset2, n);
-}
-
-export int text_compare(text_t s1, text_t s2) {
-  uint32_t n1 = BLOB_LEN(s1);
-  uint32_t n2 = BLOB_LEN(s2);
-  uint32_t n = n1 < n2 ? n1 : n2;
-  int r = text_compare_range(s1, 0, s2, 0, n);
-  if (r != 0) return r;
-  if (n1 > n) return 1;
-  if (n2 > n) return -1;
-  return 0;
 }
 
 // Stuff that deals with characters

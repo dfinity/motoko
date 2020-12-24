@@ -1,4 +1,4 @@
-use core::ops::{Add, AddAssign};
+use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::rts_trap_with;
 
@@ -60,9 +60,23 @@ impl<A: Add<Output = A>> Add for Bytes<A> {
     }
 }
 
+impl<A: Sub<Output = A>> Sub for Bytes<A> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Bytes(self.0 - rhs.0)
+    }
+}
+
 impl<A: AddAssign> AddAssign for Bytes<A> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
+    }
+}
+
+impl<A: SubAssign> SubAssign for Bytes<A> {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
     }
 }
 
@@ -115,6 +129,12 @@ pub const TAG_NULL: Tag = 15;
 #[repr(C)]
 pub struct Obj {
     pub tag: Tag,
+}
+
+impl Obj {
+    pub unsafe fn tag(self: *const Self) -> Tag {
+        (*self).tag
+    }
 }
 
 #[repr(C)]
@@ -189,6 +209,16 @@ pub struct Blob {
     // data follows ..
 }
 
+impl Blob {
+    pub unsafe fn payload_addr(self: *const Self) -> *const u8 {
+        self.add(1) as *const u8 // skip closure header
+    }
+
+    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
+        (*self).len
+    }
+}
+
 /// A forwarding pointer placed by the GC in place of an evacuated object.
 #[repr(C)]
 pub struct FwdPtr {
@@ -230,7 +260,7 @@ pub struct Variant {
 #[repr(C)]
 pub struct Concat {
     pub header: Obj,
-    pub n_bytes: u32,
+    pub n_bytes: Bytes<u32>,
     pub text1: SkewedPtr,
     pub text2: SkewedPtr,
 }

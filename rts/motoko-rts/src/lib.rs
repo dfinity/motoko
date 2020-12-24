@@ -14,6 +14,8 @@ mod alloc;
 mod buf;
 pub mod closure_table;
 mod debug;
+mod mem;
+mod text;
 pub mod types;
 
 extern "C" {

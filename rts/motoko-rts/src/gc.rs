@@ -1,5 +1,6 @@
 use crate::alloc;
 use crate::closure_table::closure_table_loc;
+use crate::mem::{memcpy_bytes, memcpy_words};
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -55,14 +56,6 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
-}
-
-unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
-    libc::memcpy(to as *mut _, from as *const _, n.to_bytes().0 as usize);
-}
-
-unsafe fn memcpy_bytes(to: usize, from: usize, n: Bytes<u32>) {
-    libc::memcpy(to as *mut _, from as *const _, n.0 as usize);
 }
 
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
