@@ -110,7 +110,7 @@ WASM_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128
+all: mo-rts.wasm mo-rts-debug.wasm
 
 _build/wasm _build/native:
 	mkdir -p $@
@@ -209,11 +209,11 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(RTS_DEBUG_WASM_O) $(TOMMATH_WASM_O
 # A simple program to do simple tests of rts.c, using native compilation
 #
 
-test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-	$(CLANG) -o $@ $+
+# test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+# 	$(CLANG) -o $@ $+
 
-test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-	$(CLANG) -o $@ $+
+# test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+# 	$(CLANG) -o $@ $+
 
 clean:
 	rm -rf _build mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128 motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home

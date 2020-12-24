@@ -12,7 +12,7 @@ pub use alloc_impl::alloc_words;
 pub(crate) use alloc_impl::grow_memory;
 
 use crate::rts_trap_with;
-use crate::types::{size_of, Array, Bytes, SkewedPtr, Words, TAG_ARRAY};
+use crate::types::{size_of, Array, Blob, Bytes, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB};
 
 #[no_mangle]
 pub unsafe extern "C" fn alloc_bytes(n: Bytes<u32>) -> SkewedPtr {
@@ -34,4 +34,13 @@ pub unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
     (*ptr).len = len;
 
     skewed_ptr
+}
+
+#[no_mangle]
+pub(crate) unsafe extern "C" fn alloc_blob(size: Bytes<u32>) -> SkewedPtr {
+    let ptr = alloc_bytes(size_of::<Blob>().to_bytes() + size);
+    let blob = ptr.unskew() as *mut Blob;
+    (*blob).header.tag = TAG_BLOB;
+    (*blob).len = size;
+    ptr
 }
