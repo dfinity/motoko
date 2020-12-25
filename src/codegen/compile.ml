@@ -725,8 +725,8 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
-    E.add_func_import env "rts" "read_i32_of_sleb128" [I32Type] [I32Type];
+    E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -1770,10 +1770,10 @@ module ReadBuf = struct
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
   let read_leb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "read_u32_of_leb128"
+    get_buf ^^ E.call_import env "rts" "leb128_decode"
 
   let read_sleb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "read_i32_of_sleb128"
+    get_buf ^^ E.call_import env "rts" "sleb128_decode"
 
   let check_space env get_buf get_delta =
     get_delta ^^

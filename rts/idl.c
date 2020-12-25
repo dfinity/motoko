@@ -1,47 +1,8 @@
 #include "rts.h"
 #include "buf.h"
 
-/* Code to read (S)LEB128 to ints (traps if does not fit in return type) */
-
-export uint32_t read_u32_of_leb128(buf *buf) {
-  uint32_t r = 0;
-  unsigned int s = 0;
-  uint8_t b;
-  do {
-    b = read_byte(buf);
-    if (s == 28 && !((b & (uint8_t)0xF0) == 0x00)) {
-        // the 5th byte needs to be the last, and it must contribute at most 4 bits
-        // else we have an int overflow
-        idl_trap_with("int overflow");
-    }
-    r += (b & (uint8_t)0x7f) << s;
-    s += 7;
-  } while (b & (uint8_t)0x80);
-  return r;
-}
-
-export int32_t read_i32_of_sleb128(buf *buf) {
-  uint32_t r = 0;
-  unsigned int s = 0;
-  uint8_t b;
-  bool last_sign_bit_set = 0;
-  do {
-    b = read_byte(buf);
-    if (s == 28 && !((b & (uint8_t)0xF0) == 0x00 || (b & (uint8_t)0xF0) == 0x70)) {
-        // the 5th byte needs to be the last, and it must contribute at most 4 bits
-        // else we have an int overflow
-        idl_trap_with("int overflow");
-    }
-    last_sign_bit_set = (b & (uint8_t)0x40);
-    r += (b & (uint8_t)0x7f) << s;
-    s += 7;
-  } while (b & (uint8_t)0x80);
-  // sign extend
-  if (s < 32 && last_sign_bit_set) {
-    r |= ((~(uint32_t)0) << s);
-  }
-  return r;
-}
+uint32_t leb128_decode(buf *buf);
+int32_t sleb128_decode(buf *buf);
 
 /*
  * IDL constants
@@ -89,12 +50,12 @@ static void check_typearg(int32_t ty, uint32_t n_types) {
 
 static void parse_fields(buf *buf, uint32_t n_types) {
   uint32_t next_valid = 0;
-  for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-    uint32_t tag = read_u32_of_leb128(buf);
+  for (uint32_t n = leb128_decode(buf); n > 0; n--) {
+    uint32_t tag = leb128_decode(buf);
     if (tag < next_valid) idl_trap_with("variant or record tags out of order");
     if (tag == 0xFFFFFFFF && n > 1) idl_trap_with("variant or record tags out of order");
     next_valid = tag + 1;
-    int32_t t = read_i32_of_sleb128(buf);
+    int32_t t = sleb128_decode(buf);
     check_typearg(t, n_types);
   }
 }
@@ -119,9 +80,9 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
   if (read_word(buf) != 0x4C444944) idl_trap_with("missing magic bytes");
 
   // Create a table for the type description
-  int32_t n_types = read_u32_of_leb128(buf);
+  int32_t n_types = leb128_decode(buf);
 
-  // read_u32_of_leb128 returns an uint32_t, we want an int32_t here so that the
+  // leb128_decode returns an uint32_t, we want an int32_t here so that the
   // comparisons below work, so let's make sure we did not wrap around in the
   // conversion.
   if (n_types < 0) { idl_trap_with("overflow in number of types"); }
@@ -136,20 +97,20 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
-    int32_t ty = read_i32_of_sleb128(buf);
+    int32_t ty = sleb128_decode(buf);
     if (extended && ty == IDL_CON_alias) { // internal
       // See Note [mutable stable values] in codegen/compile.ml
-      int32_t t = read_i32_of_sleb128(buf);
+      int32_t t = sleb128_decode(buf);
       check_typearg(t, n_types);
     } else if (ty >= 0) {
       idl_trap_with("illegal type table"); // illegal
     } else if (is_primitive_type(ty)) {
       idl_trap_with("primitive type in type table"); // illegal
     } else if (ty == IDL_CON_opt) {
-      int32_t t = read_i32_of_sleb128(buf);
+      int32_t t = sleb128_decode(buf);
       check_typearg(t, n_types);
     } else if (ty == IDL_CON_vec) {
-      int32_t t = read_i32_of_sleb128(buf);
+      int32_t t = sleb128_decode(buf);
       check_typearg(t, n_types);
     } else if (ty == IDL_CON_record) {
       parse_fields(buf, n_types);
@@ -157,37 +118,37 @@ export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uin
       parse_fields(buf, n_types);
     } else if (ty == IDL_CON_func) {
       // arg types
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-        int32_t t = read_i32_of_sleb128(buf);
+      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
+        int32_t t = sleb128_decode(buf);
         check_typearg(t, n_types);
       }
       // ret types
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-        int32_t t = read_i32_of_sleb128(buf);
+      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
+        int32_t t = sleb128_decode(buf);
         check_typearg(t, n_types);
       }
       // annotations
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
         (buf->p)++;
       }
     } else if (ty == IDL_CON_service) {
-      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
         // name
-        uint32_t size = read_u32_of_leb128(buf);
+        uint32_t size = leb128_decode(buf);
         (buf->p) += size;
         // type
-        int32_t t = read_i32_of_sleb128(buf);
+        int32_t t = sleb128_decode(buf);
         check_typearg(t, n_types);
       }
     } else { // future type
-      uint32_t n = read_u32_of_leb128(buf);
+      uint32_t n = leb128_decode(buf);
       advance(buf, n);
     }
   }
   // Now read the main types
   *main_types_out = buf->p;
-  for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
-    int32_t t = read_i32_of_sleb128(buf);
+  for (uint32_t n = leb128_decode(buf); n > 0; n--) {
+    int32_t t = sleb128_decode(buf);
     check_typearg(t, n_types);
   }
 
@@ -253,7 +214,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         return;
       case IDL_PRIM_text:
         {
-          uint32_t len = read_u32_of_leb128(b);
+          uint32_t len = leb128_decode(b);
 	  const char *p = (const char *)b->p;
           advance(b, len); // advance first; does the bounds check
 	  utf8_validate(p, len);
@@ -264,7 +225,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       case IDL_REF_principal:
         {
           if (read_byte_tag(b)) {
-            uint32_t len = read_u32_of_leb128(b);
+            uint32_t len = leb128_decode(b);
             advance(b, len);
           }
           return;
@@ -274,26 +235,26 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
     }
   } else {
     buf tb = { typtbl[t], b->e };
-    int32_t tc = read_i32_of_sleb128(&tb);
+    int32_t tc = sleb128_decode(&tb);
     switch(tc) {
       case IDL_CON_opt: {
-        int32_t it = read_i32_of_sleb128(&tb);
+        int32_t it = sleb128_decode(&tb);
         if (read_byte_tag(b)) {
           skip_any(b, typtbl, it, 0);
         }
         return;
       }
       case IDL_CON_vec: {
-        int32_t it = read_i32_of_sleb128(&tb);
-        for (uint32_t n = read_u32_of_leb128(b); n > 0; n--) {
+        int32_t it = sleb128_decode(&tb);
+        for (uint32_t n = leb128_decode(b); n > 0; n--) {
           skip_any(b, typtbl, it, 0);
         }
         return;
       }
       case IDL_CON_record: {
-        for (uint32_t n = read_u32_of_leb128(&tb); n > 0; n--) {
+        for (uint32_t n = leb128_decode(&tb); n > 0; n--) {
           skip_leb128(&tb);
-          int32_t it = read_i32_of_sleb128(&tb);
+          int32_t it = sleb128_decode(&tb);
           // This is just a quick check; we should be keeping
           // track of all enclosing records to detect larger loops
           if (it == t) idl_trap_with("skip_any: recursive record");
@@ -302,15 +263,15 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         return;
       }
       case IDL_CON_variant: {
-        uint32_t n = read_u32_of_leb128(&tb);
-        uint32_t i = read_u32_of_leb128(b);
+        uint32_t n = leb128_decode(&tb);
+        uint32_t i = leb128_decode(b);
         if (i >= n) idl_trap_with("skip_any: variant tag too large");
         for (; i > 0; i--) {
           skip_leb128(&tb);
           skip_leb128(&tb);
         }
         skip_leb128(&tb);
-        int32_t it = read_i32_of_sleb128(&tb);
+        int32_t it = sleb128_decode(&tb);
         skip_any(b, typtbl, it, 0);
         return;
       }
@@ -323,7 +284,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
 
       case IDL_CON_alias: {
         // See Note [mutable stable values] in codegen/compile.ml
-        int32_t it = read_i32_of_sleb128(&tb);
+        int32_t it = sleb128_decode(&tb);
         uint32_t tag = read_byte_tag(b);
         if (tag == 0) {
           advance(b, 8);
@@ -336,8 +297,8 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
       }
 
       default: { // future type
-        uint32_t n_data = read_u32_of_leb128(b);
-        uint32_t n_ref = read_u32_of_leb128(b);
+        uint32_t n_data = leb128_decode(b);
+        uint32_t n_ref = leb128_decode(b);
         advance(b, n_data);
         if (n_ref > 0) {
           idl_trap_with("skip_any: skipping references");
@@ -377,9 +338,9 @@ If the tag does not exist:
 export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t *n) {
   while (*n > 0) {
     uint8_t *last_p = tb->p;
-    uint32_t this_tag = read_u32_of_leb128(tb);
+    uint32_t this_tag = leb128_decode(tb);
     if (this_tag < tag) {
-      int32_t it = read_i32_of_sleb128(tb);
+      int32_t it = sleb128_decode(tb);
       skip_any(b, typtbl, it, 0);
       (*n)--;
     } else if (tag == this_tag) {
@@ -397,7 +358,7 @@ export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint
 export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint8_t *n) {
   while (*n > 0) {
     skip_leb128(tb);
-    int32_t it = read_i32_of_sleb128(tb);
+    int32_t it = sleb128_decode(tb);
     skip_any(b, typtbl, it, 0);
     (*n)--;
   }

@@ -1,7 +1,7 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
 #[repr(C)]
-struct Buf {
+pub(crate) struct Buf {
     /// Pointer into the buffer
     ptr: *mut u8,
     /// Pointer to the end of the buffer
@@ -15,7 +15,7 @@ extern "C" {
 
 /// Read a single byte
 #[no_mangle]
-unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
+pub(crate) unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
     if (*buf).ptr >= (*buf).end {
         idl_trap_with("byte read out of buffer\0".as_ptr());
     }
