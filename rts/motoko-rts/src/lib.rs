@@ -18,10 +18,18 @@ pub mod closure_table;
 mod debug;
 mod leb128;
 mod mem;
+mod principal_id;
 mod text;
 mod text_iter;
 pub mod types;
 mod utf8;
+
+use types::SkewedPtr;
+
+#[no_mangle]
+unsafe extern "C" fn version() -> SkewedPtr {
+    text::text_of_str("0.1")
+}
 
 extern "C" {
     pub(crate) fn rts_trap_with(msg: *const u8) -> !;

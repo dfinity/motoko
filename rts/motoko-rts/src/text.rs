@@ -56,12 +56,10 @@ unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPt
     blob
 }
 
-/*
 pub(crate) unsafe fn text_of_str(s: &str) -> SkewedPtr {
     // TODO (osa): How are Motoko strings encoded? Rust strings are UTF-8
     text_of_ptr_size(s.as_ptr(), Bytes(s.len() as u32))
 }
-*/
 
 #[no_mangle]
 unsafe extern "C" fn text_of_cstr(s: *const libc::c_char) -> SkewedPtr {
