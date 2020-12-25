@@ -27,6 +27,7 @@ mod mem;
 mod principal_id;
 mod text;
 mod text_iter;
+mod tommath;
 pub mod types;
 mod utf8;
 

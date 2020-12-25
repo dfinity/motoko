@@ -28,44 +28,6 @@ pointer to a data array.
    We can also support shrinking via mp_realloc, but then we have to drop that check.
 */
 
-void* mp_alloc(size_t l) {
-  return alloc(l);
-}
-
-export void* mp_calloc(size_t n, size_t size) {
-  size_t l = n * size; // check overflow?
-  void *payload = mp_alloc(l);
-  char *tmp = (char *)payload;
-  for (size_t i = 0; i < l; i++) {
-    *tmp++ = 0;
-  }
-  return payload;
-}
-
-export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
-  as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
-
-  if (TAG(r) != TAG_BLOB) bigint_trap(); // assert block type
-
-  if (new_size > BLOB_LEN(r)) {
-    void *newptr = mp_alloc(new_size);
-    if (old_size != BLOB_LEN(r)) bigint_trap();
-    memcpy(newptr, ptr, old_size);
-    return newptr;
-  } else if (new_size == BLOB_LEN(r)) {
-    // No need to grow
-    return ptr;
-  } else {
-    // libtommath only shrinks on explicit demand via mp_shrink
-    // and we do not use that function
-    // so this should not happen.
-    bigint_trap();
-  }
-}
-
-export void mp_free(void *ptr, size_t size) {
-}
-
 /* Wrapper functions for libtommath */
 
 #include <tommath.h>

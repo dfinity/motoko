@@ -41,7 +41,7 @@ impl From<Bytes<u32>> for Words<u32> {
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
 #[repr(C)]
-#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
 impl Bytes<u32> {
