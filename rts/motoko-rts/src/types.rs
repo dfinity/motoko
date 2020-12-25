@@ -251,6 +251,10 @@ impl Blob {
         (*self).len
     }
 
+    pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
+        *self.payload_addr().add(idx as usize)
+    }
+
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
         *self.payload_addr().add(idx as usize) = byte;
     }

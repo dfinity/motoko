@@ -1,6 +1,6 @@
 //! Text iterators need to point to a specific position in the tree
 //!
-//! This is currently a simple triple (arraY):
+//! This is currently a simple triple (array):
 //!
 //! 1. a pointer to a current leaf (must be a BLOB)
 //! 2. Position in that blob (shifted by two for GC's sake)

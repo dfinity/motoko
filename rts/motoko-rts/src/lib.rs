@@ -11,6 +11,7 @@ mod print;
 mod gc;
 
 mod alloc;
+mod blob_iter;
 mod buf;
 mod char;
 pub mod closure_table;
