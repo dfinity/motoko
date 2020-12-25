@@ -18,30 +18,22 @@ unsafe extern "C" fn char_to_lower(c: u32) -> u32 {
     }
 }
 
-fn bool_to_u32(b: bool) -> u32 {
-    if b {
-        1
-    } else {
-        0
-    }
-}
-
 #[no_mangle]
 unsafe extern "C" fn char_is_whitespace(c: u32) -> u32 {
-    bool_to_u32(core::char::from_u32_unchecked(c).is_whitespace())
+    core::char::from_u32_unchecked(c).is_whitespace().into()
 }
 
 #[no_mangle]
 unsafe extern "C" fn char_is_uppercase(c: u32) -> u32 {
-    bool_to_u32(core::char::from_u32_unchecked(c).is_uppercase())
+    core::char::from_u32_unchecked(c).is_uppercase().into()
 }
 
 #[no_mangle]
 unsafe extern "C" fn char_is_lowercase(c: u32) -> u32 {
-    bool_to_u32(core::char::from_u32_unchecked(c).is_lowercase())
+    core::char::from_u32_unchecked(c).is_lowercase().into()
 }
 
 #[no_mangle]
 unsafe extern "C" fn char_is_alphabetic(c: u32) -> u32 {
-    bool_to_u32(core::char::from_u32_unchecked(c).is_alphabetic())
+    core::char::from_u32_unchecked(c).is_alphabetic().into()
 }
