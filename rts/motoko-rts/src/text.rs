@@ -49,7 +49,7 @@ unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
+pub(crate) unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
     let blob = alloc_text_blob(n);
     let payload_addr = blob.as_blob().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);

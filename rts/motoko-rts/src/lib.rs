@@ -2,7 +2,12 @@
 //! utilities.
 
 #![no_std]
-#![feature(arbitrary_self_types, panic_info_message, assoc_char_funcs)]
+#![feature(
+    arbitrary_self_types,
+    panic_info_message,
+    assoc_char_funcs,
+    core_intrinsics
+)]
 
 #[macro_use]
 mod print;
@@ -16,6 +21,7 @@ mod buf;
 mod char;
 pub mod closure_table;
 mod debug;
+mod float;
 mod leb128;
 mod mem;
 mod principal_id;

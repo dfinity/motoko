@@ -11,6 +11,8 @@ panic_handler = []
 
 [dependencies]
 libc = { version = "0.2.73", default_features = false }
+utf8-width = "0.1.4"
+libm = "0.2.1"
 
 [dependencies.compiler_builtins]
 version = "0.1.32"
