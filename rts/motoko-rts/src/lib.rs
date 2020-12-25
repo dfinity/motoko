@@ -20,6 +20,7 @@ mod mem;
 mod text;
 mod text_iter;
 pub mod types;
+mod utf8;
 
 extern "C" {
     pub(crate) fn rts_trap_with(msg: *const u8) -> !;
