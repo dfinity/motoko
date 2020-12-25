@@ -12,6 +12,7 @@ mod gc;
 
 mod alloc;
 mod buf;
+mod char;
 pub mod closure_table;
 mod debug;
 mod mem;
