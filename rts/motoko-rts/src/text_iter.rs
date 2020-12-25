@@ -19,19 +19,18 @@ const TODO_LINK_IDX: u32 = 1;
 
 /// Find the left-most leaf of a text, putting all the others onto a list. Used to enforce the
 /// invariant about TEXT_ITER_BLOB to be a blob.
-#[no_mangle]
-unsafe extern "C" fn find_leaf(mut text: SkewedPtr, todo: *mut SkewedPtr) -> SkewedPtr {
+unsafe fn find_leaf(mut text: SkewedPtr, todo: *mut SkewedPtr) -> SkewedPtr {
     while text.tag() == TAG_CONCAT {
         let concat = text.as_concat();
 
         // Add right node to TODOs
-        let c = alloc_words(size_of::<Array>() + Words(2));
-        let c_array = c.unskew() as *mut Array;
-        (*c_array).header.tag = TAG_ARRAY;
-        (*c_array).len = 2;
-        c_array.set(TODO_TEXT_IDX, (*concat).text2);
-        c_array.set(TODO_LINK_IDX, *todo);
-        *todo = c;
+        let new_todo = alloc_words(size_of::<Array>() + Words(2));
+        let new_todo_array = new_todo.unskew() as *mut Array;
+        (*new_todo_array).header.tag = TAG_ARRAY;
+        (*new_todo_array).len = 2;
+        new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
+        new_todo_array.set(TODO_LINK_IDX, *todo);
+        *todo = new_todo;
 
         // Follow left node
         text = (*concat).text1;
@@ -85,7 +84,6 @@ extern "C" {
     fn decode_code_point(s: *const u8, n: *mut u32) -> u32;
 }
 
-/*
 /// Returns next character in the iterator, advances the iterator
 #[no_mangle]
 unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
@@ -105,7 +103,7 @@ unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
 
         let todo_array = todo.as_array();
 
-        let next = iter_array.get(TODO_LINK_IDX);
+        let next = todo_array.get(TODO_TEXT_IDX);
 
         if next.tag() == TAG_CONCAT {
             // If next one is a concat node re-use both the iterator and the todo objects (avoids
@@ -118,6 +116,7 @@ unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
             text_iter_next(iter)
         } else {
             // Otherwise remove the entry from the chain
+            debug_assert_eq!(next.tag(), TAG_BLOB);
             iter_array.set(ITER_BLOB_IDX, next);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
             iter_array.set(ITER_TODO_IDX, iter_array.get(TODO_LINK_IDX));
@@ -132,4 +131,3 @@ unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
         char
     }
 }
-*/

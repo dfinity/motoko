@@ -49,7 +49,6 @@ text_t text_of_cstr(const char * const s) {
   return text_of_ptr_size(s, l);
 }
 
-extern void text_to_buf(text_t s, char *buf);
 extern blob_t alloc_text_blob(size_t n);
 
 // Stuff that deals with characters
@@ -105,63 +104,4 @@ export text_t text_singleton(uint32_t code) {
     p++;
   }
   return r;
-}
-
-
-
-// Iterators
-
-// The iterator needs to point to a specific position in the tree
-//
-// This is currently a simple triple:
-// 1. a pointer to a current leaf (must be a BLOB)
-// 2. index into that blob (shifted by two for GC's sake)
-// 3. 0, or a pointer to a linked list of non-empty text values to do next
-//
-// The linked list (text_cont_t) is a tuple with
-// 1. a pointer to the text_t
-// 2. 0, or a pointer to the next list entry
-//
-
-typedef as_ptr text_iter_cont_t;
-#define TEXT_CONT_TEXT(p) (TUPLE_FIELD(p,0,text_t))
-#define TEXT_CONT_NEXT(p) (TUPLE_FIELD(p,1,text_iter_cont_t))
-
-typedef as_ptr text_iter_t; // the data structure used to iterate a text value
-#define TEXT_ITER_BLOB(p) (TUPLE_FIELD(p,0,blob_t))
-#define TEXT_ITER_POS(p) (TUPLE_FIELD(p,1,uint32_t))
-#define TEXT_ITER_TODO(p) (TUPLE_FIELD(p,2,text_iter_cont_t))
-
-export uint32_t text_iter_next(text_iter_t i) {
-  size_t n = TEXT_ITER_POS(i) >> 2;
-  text_t s = TEXT_ITER_BLOB(i);
-
-  // If we are at the end, find the next iterator to use
-  if (n >= BLOB_LEN(s)) {
-    // this one is done, try next
-    text_iter_cont_t c = TEXT_ITER_TODO(i);
-    // are we done?
-    if (c == 0) rts_trap_with("text_iter_next: Iter already done");
-    text_t s2 = TEXT_CONT_TEXT(c);
-    // if next one is a concat node, re-use both text iterator structures
-    // (avoids an allocation)
-    if (TAG(s2) == TAG_CONCAT) {
-      TEXT_CONT_TEXT(c) = CONCAT_ARG2(s2);
-      TEXT_ITER_POS(i) = 0;
-      TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s2), &TEXT_ITER_TODO(i));
-      return text_iter_next(i);
-    // else remove that entry from the chain
-    } else {
-      TEXT_ITER_BLOB(i) = s2;
-      TEXT_ITER_POS(i) = 0;
-      TEXT_ITER_TODO(i) = TEXT_CONT_NEXT(c);
-      return text_iter_next(i);
-    }
-  } else {
-  // We are not at the end, so read the next character
-    size_t step = 0;
-    uint32_t c = decode_code_point(BLOB_PAYLOAD(s) + n, &step);
-    TEXT_ITER_POS(i) = (n+step) << 2;
-    return c;
-  }
 }
