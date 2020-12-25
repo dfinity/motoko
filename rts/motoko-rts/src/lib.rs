@@ -16,6 +16,7 @@ mod buf;
 mod char;
 pub mod closure_table;
 mod debug;
+mod leb128;
 mod mem;
 mod text;
 mod text_iter;
