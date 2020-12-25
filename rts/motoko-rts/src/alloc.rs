@@ -38,6 +38,9 @@ pub unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn alloc_blob(size: Bytes<u32>) -> SkewedPtr {
+    // NOTE: alloc_bytes rounds the size up to the next word and allocates words, but we initialize
+    // blob length as `size` instead of `round_up_to_word(size)`. This is fine as as GC knows that
+    // we can only allocate words and looks for objects in word boundaries.
     let ptr = alloc_bytes(size_of::<Blob>().to_bytes() + size);
     let blob = ptr.unskew() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
