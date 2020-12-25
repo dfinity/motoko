@@ -4,10 +4,13 @@ version = "0.1.0"
 authors = ["Ömer Sinan Ağacan <omeragacan@gmail.com>"]
 edition = "2018"
 
+[lib]
+crate-type = ["rlib"]
+path = "../src/lib.rs"
+
 [features]
 default = []
 gc = []
-panic_handler = []
 
 [dependencies]
 libc = { version = "0.2.73", default_features = false }
@@ -17,10 +20,6 @@ libm = "0.2.1"
 [dependencies.compiler_builtins]
 version = "0.1.32"
 features = ["mangled-names"]
-
-[lib]
-crate-type = ["rlib"]
-path = "../src/lib.rs"
 
 [profile.dev]
 panic = "abort"

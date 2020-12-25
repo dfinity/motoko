@@ -4,8 +4,11 @@ version = "0.1.0"
 authors = ["Ömer Sinan Ağacan <omeragacan@gmail.com>"]
 edition = "2018"
 
+[lib]
+crate-type = ["staticlib"]
+
 [features]
-default = []
+default = ["panic_handler"]
 
 # Enables garbage collector and bump allocator. Without this the GC module is
 # disabled (not compiled) and allocation routines use `malloc`.
@@ -33,9 +36,6 @@ version = "0.1.32"
 # It seems like we're linking multiple versions of compiler_builtins in the same
 # shared library, which we should fix at some point. TODO
 features = ["mangled-names"]
-
-[lib]
-crate-type = ["staticlib"]
 
 [profile.dev]
 panic = "abort"
