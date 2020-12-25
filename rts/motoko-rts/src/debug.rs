@@ -39,7 +39,7 @@ pub(crate) unsafe fn print_closure_table() {
         return;
     }
 
-    let arr = (*closure_tbl).unskew() as *const Array;
+    let arr = (*closure_tbl).unskew() as *mut Array;
     let len = (*arr).len;
 
     if len == 0 {
@@ -66,7 +66,7 @@ pub(crate) unsafe fn print_closure_table() {
 
 #[cfg(feature = "gc")]
 pub(crate) unsafe fn print_static_roots() {
-    let static_roots = gc::get_static_roots().unskew() as *const Array;
+    let static_roots = gc::get_static_roots().unskew() as *mut Array;
     let len = (*static_roots).len;
 
     if len == 0 {
@@ -160,7 +160,7 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.0);
         }
         TAG_ARRAY => {
-            let array = obj as *const Array;
+            let array = obj as *mut Array;
             let _ = write!(buf, "<Array len={:#x}", (*array).len);
 
             for i in 0..::core::cmp::min(10, (*array).len) {

@@ -87,10 +87,14 @@ impl From<Words<u32>> for Bytes<u32> {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct SkewedPtr(pub usize);
 
 impl SkewedPtr {
+    pub unsafe fn tag(self) -> Tag {
+        (self.unskew() as *mut Obj).tag()
+    }
+
     pub fn unskew(self) -> usize {
         self.0.wrapping_add(1)
     }
@@ -98,6 +102,25 @@ impl SkewedPtr {
     /// This is for sanity checking: a skewed pointer can't be a tagged scalar
     pub fn is_tagged_scalar(&self) -> bool {
         self.0 & 0b1 == 0
+    }
+
+    pub unsafe fn as_obj(self) -> *mut Obj {
+        self.unskew() as *mut Obj
+    }
+
+    pub unsafe fn as_array(self) -> *mut Array {
+        debug_assert_eq!(self.tag(), TAG_ARRAY);
+        self.unskew() as *mut Array
+    }
+
+    pub unsafe fn as_concat(self) -> *mut Concat {
+        debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self.unskew() as *mut Concat
+    }
+
+    pub unsafe fn as_blob(self) -> *mut Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.unskew() as *mut Blob
     }
 }
 
@@ -132,8 +155,18 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub unsafe fn tag(self: *const Self) -> Tag {
+    pub unsafe fn tag(self: *mut Self) -> Tag {
         (*self).tag
+    }
+
+    pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self as *mut Blob
+    }
+
+    pub unsafe fn as_concat(self: *mut Self) -> *mut Concat {
+        debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self as *mut Concat
     }
 }
 
@@ -149,21 +182,21 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
-        self.offset(1) as *const SkewedPtr // skip array header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
+        self.offset(1) as *mut SkewedPtr // skip array header
     }
 
-    pub unsafe fn get(self: *const Self, idx: u32) -> SkewedPtr {
+    pub unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const SkewedPtr)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, ptr: SkewedPtr) {
-        let slot_addr = (self as *const Array).payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *mut SkewedPtr) = ptr;
     }
 
-    pub unsafe fn len(self: *const Self) -> u32 {
+    pub unsafe fn len(self: *mut Self) -> u32 {
         (*self).len
     }
 }
@@ -210,11 +243,11 @@ pub struct Blob {
 }
 
 impl Blob {
-    pub unsafe fn payload_addr(self: *const Self) -> *const u8 {
-        self.add(1) as *const u8 // skip closure header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
+        self.add(1) as *mut u8 // skip closure header
     }
 
-    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
+    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         (*self).len
     }
 }

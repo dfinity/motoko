@@ -42,25 +42,25 @@ unsafe fn crate_closure_table() {
     FREE_SLOT = 0;
     N_CLOSURES = 0;
 
-    let table: *mut Array = TABLE.unskew() as *mut Array;
+    let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
         table.set(i, SkewedPtr((i as usize + 1) << 2));
     }
 }
 
 unsafe fn double_closure_table() {
-    let old_array = TABLE.unskew() as *mut Array;
-    let old_size = (old_array as *const Array).len();
+    let old_array = TABLE.as_array();
+    let old_size = old_array.len();
 
     assert_eq!(FREE_SLOT, old_size);
 
     let new_size = old_size * 2;
 
     TABLE = alloc_array(new_size);
-    let new_array = TABLE.unskew() as *mut Array;
+    let new_array = TABLE.as_array();
 
     for i in 0..old_size {
-        new_array.set(i, (old_array as *const Array).get(i));
+        new_array.set(i, old_array.get(i));
     }
 
     for i in old_size..new_size {
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
         crate_closure_table();
     }
 
-    if FREE_SLOT == (TABLE.unskew() as *const Array).len() {
+    if FREE_SLOT == TABLE.as_array().len() {
         double_closure_table();
     }
 
@@ -85,8 +85,8 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
 
     let idx = FREE_SLOT;
 
-    FREE_SLOT = ((TABLE.unskew() as *const Array).get(idx).0 >> 2) as u32;
-    (TABLE.unskew() as *mut Array).set(idx, ptr);
+    FREE_SLOT = (TABLE.as_array().get(idx).0 >> 2) as u32;
+    TABLE.as_array().set(idx, ptr);
     N_CLOSURES += 1;
 
     idx
@@ -98,13 +98,15 @@ pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
         rts_trap_with("recall_closure: Closure table not allocated\0".as_ptr());
     }
 
-    if idx >= (TABLE.unskew() as *const Array).len() {
+    if idx >= TABLE.as_array().len() {
         rts_trap_with("recall_closure: Closure index out of range\0".as_ptr());
     }
 
-    let ptr = (TABLE.unskew() as *const Array).get(idx);
+    let ptr = TABLE.as_array().get(idx);
 
-    (TABLE.unskew() as *mut Array).set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
+    TABLE
+        .as_array()
+        .set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
     FREE_SLOT = idx;
 
     N_CLOSURES -= 1;
@@ -130,6 +132,6 @@ unsafe extern "C" fn closure_table_size() -> u32 {
     if TABLE.0 == 0 {
         0
     } else {
-        (TABLE.unskew() as *const Array).len()
+        TABLE.as_array().len()
     }
 }

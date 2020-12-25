@@ -187,7 +187,7 @@ unsafe fn scav(
         }
 
         TAG_ARRAY => {
-            let array = obj as *const Array;
+            let array = obj as *mut Array;
             let array_payload = array.payload_addr();
             for i in 0..(*array).len as isize {
                 evac(
@@ -277,7 +277,7 @@ unsafe fn evac_static_roots(
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
-    roots: *const Array,
+    roots: *mut Array,
 ) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
@@ -295,7 +295,7 @@ unsafe extern "C" fn collect() {
     let begin_to_space = end_from_space;
     let mut end_to_space = begin_to_space;
 
-    let static_roots = get_static_roots().unskew() as *const Array;
+    let static_roots = get_static_roots().as_array();
 
     // Evacuate roots
     evac_static_roots(

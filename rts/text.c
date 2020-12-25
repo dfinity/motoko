@@ -52,26 +52,11 @@ text_t text_of_cstr(const char * const s) {
 extern void text_to_buf(text_t s, char *buf);
 extern blob_t alloc_text_blob(size_t n);
 
-// Compare
-export int blob_compare(text_t s1, text_t s2) {
-  uint32_t n1 = BLOB_LEN(s1);
-  uint32_t n2 = BLOB_LEN(s2);
-  uint32_t n = n1 < n2 ? n1 : n2;
-  uint32_t r = memcmp(BLOB_PAYLOAD(s1), BLOB_PAYLOAD(s2), n);
-  if (r == 0) {
-    if (n1 < n2) { return -1; }
-    else if (n1 > n2) { return 1; }
-    else return 0;
-  } else {
-    return r;
-  }
-}
-
 // Stuff that deals with characters
 
 // decodes the character at pointer
 // returns the character, the size via the out parameter
-static uint32_t decode_code_point(char *s, size_t *n) {
+export uint32_t decode_code_point(char *s, size_t *n) {
   *n = 0;
   int k = s[*n] ? __builtin_clz(~(s[*n] << 24)) : 0; // Count # of leading 1 bits.
   int mask = (1 << (8 - k)) - 1;                     // All 1's with k leading 0's.
@@ -146,38 +131,6 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 #define TEXT_ITER_BLOB(p) (TUPLE_FIELD(p,0,blob_t))
 #define TEXT_ITER_POS(p) (TUPLE_FIELD(p,1,uint32_t))
 #define TEXT_ITER_TODO(p) (TUPLE_FIELD(p,2,text_iter_cont_t))
-
-
-// Find the leftmost leaf of a text, putting all the others onto a list,
-// used to enforce the invariant about TEXT_ITER_BLOB to be a blob.
-static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
-  while (TAG(s) == TAG_CONCAT) {
-    as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
-    TAG(c) = TAG_ARRAY;
-    TUPLE_LEN(c) = 2;
-    TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
-    TEXT_CONT_NEXT(c) = *todo;
-    *todo = c;
-    s = CONCAT_ARG1(s);
-  }
-  return s;
-}
-
-export text_iter_t text_iter(text_t s) {
-  as_ptr i = alloc_words(TUPLE_HEADER_SIZE + 3);
-  TAG(i) = TAG_ARRAY;
-  TUPLE_LEN(i) = 3;
-  TEXT_ITER_POS(i) = 0;
-  TEXT_ITER_TODO(i) = 0;
-  TEXT_ITER_BLOB(i) = find_leaf(s, &TEXT_ITER_TODO(i));
-  return i;
-}
-
-export uint32_t text_iter_done(text_iter_t i) {
-  size_t n = TEXT_ITER_POS(i) >> 2;
-  text_t s = TEXT_ITER_BLOB(i);
-  return n >= BLOB_LEN(s) && TEXT_ITER_TODO(i) == 0;
-}
 
 export uint32_t text_iter_next(text_iter_t i) {
   size_t n = TEXT_ITER_POS(i) >> 2;

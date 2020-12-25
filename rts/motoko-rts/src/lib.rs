@@ -2,7 +2,7 @@
 //! utilities.
 
 #![no_std]
-#![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types, panic_info_message)]
 
 #[macro_use]
 mod print;
@@ -16,6 +16,7 @@ pub mod closure_table;
 mod debug;
 mod mem;
 mod text;
+mod text_iter;
 pub mod types;
 
 extern "C" {
@@ -24,8 +25,20 @@ extern "C" {
 
 #[cfg(feature = "panic_handler")]
 #[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
+fn panic(info: &core::panic::PanicInfo) -> ! {
     unsafe {
+        if let Some(msg) = info.payload().downcast_ref::<&str>() {
+            println!(1000, "RTS panic: {}", msg);
+        } else if let Some(args) = info.message() {
+            use core::fmt::{write, Write};
+
+            let mut buf = [0 as u8; 1000];
+            let mut fmt = print::WriteBuf::new(&mut buf);
+            let _ = write(&mut fmt, *args);
+            print::print(&fmt);
+        } else {
+            println!(1000, "RTS panic: weird payload");
+        }
         rts_trap_with("RTS panicked\0".as_ptr());
     }
 }

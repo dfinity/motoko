@@ -52,7 +52,7 @@ unsafe extern "C" fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
     let blob = alloc_text_blob(n);
-    let payload_addr = (blob.unskew() as *const Blob).payload_addr();
+    let payload_addr = blob.as_blob().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
     blob
 }
@@ -64,11 +64,8 @@ pub(crate) unsafe fn text_of_str(s: &str) -> SkewedPtr {
 
 #[no_mangle]
 unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
-    let blob1 = s1.unskew() as *const Blob;
-    let blob2 = s2.unskew() as *const Blob;
-
-    let blob1_len = blob1.len();
-    let blob2_len = blob2.len();
+    let blob1_len = text_size(s1);
+    let blob2_len = text_size(s2);
 
     if blob1_len == Bytes(0) {
         return s2;
@@ -82,14 +79,20 @@ unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
 
     // Short texts are copied into a single blob
     if new_len < MIN_CONCAT_SIZE {
+        // Because lengths of texts are smaller than MIN_CONCAT_SIZE we know both are blobs so the
+        // casts are safe
+        let blob1 = s1.as_blob();
+        let blob2 = s2.as_blob();
+
         let r = alloc_text_blob(new_len);
-        let r_payload: *const u8 = (r.unskew() as *const Blob).payload_addr();
+        let r_payload: *const u8 = r.as_blob().payload_addr();
         memcpy_bytes(r_payload as usize, blob1.payload_addr() as usize, blob1_len);
         memcpy_bytes(
             r_payload.add(blob1_len.0 as usize) as usize,
             blob2.payload_addr() as usize,
             blob2_len,
         );
+
         return r;
     }
 
@@ -123,9 +126,9 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
     let mut next_crumb: *const Crumb = core::ptr::null();
 
     loop {
-        let s_ptr = s.unskew() as *const Obj;
+        let s_ptr = s.as_obj();
         if (*s_ptr).tag == TAG_BLOB {
-            let blob = s_ptr as *const Blob;
+            let blob = s_ptr.as_blob();
             memcpy_bytes(buf as usize, blob.payload_addr() as usize, blob.len());
 
             if next_crumb.is_null() {
@@ -163,23 +166,24 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[no_mangle]
 unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
-    let obj = s.unskew() as *const Obj;
-    if (*obj).tag == TAG_BLOB {
+    let obj = s.as_obj();
+    if obj.tag() == TAG_BLOB {
         s
     } else {
-        debug_assert_eq!((*obj).tag, TAG_CONCAT);
-        let concat = obj as *const Concat;
+        let concat = obj.as_concat();
         let r = alloc_text_blob((*concat).n_bytes);
-        text_to_buf(s, (r.unskew() as *const Blob).payload_addr() as *mut u8);
+        text_to_buf(s, r.as_blob().payload_addr());
         r
     }
 }
 
+/// Size of the text, in bytes
 #[no_mangle]
 unsafe extern "C" fn text_size(s: SkewedPtr) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
-    (s.unskew() as *const Blob).len()
+    // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
+    (s.unskew() as *mut Blob).len()
 }
 
 /// Compares texts from given offset on for the given number of bytes. All assumed to be in range.
@@ -190,23 +194,16 @@ unsafe fn text_compare_range(
     offset2: Bytes<u32>,
     n: Bytes<u32>,
 ) -> Ordering {
-    // println!(
-    //     100,
-    //     "text_compare_range(offset1={}, offset2={}, n={})", offset1.0, offset2.0, n.0
-    // );
-
     // Follow the left/right strings of concat nodes until we reach to blobs or concats that cannot
     // be split further (the range spans left and right strings)
     let (s1, offset1) = text_get_range(s1, offset1, n);
     let (s2, offset2) = text_get_range(s2, offset2, n);
 
-    let s1_obj = s1.unskew() as *const Obj;
-    let s2_obj = s2.unskew() as *const Obj;
+    let s1_obj = s1.as_obj();
+    let s2_obj = s2.as_obj();
 
     // Decompose concats
     if s1_obj.tag() == TAG_CONCAT {
-        // println!(50, "Decomposing s1");
-
         let s1_concat = s1_obj as *const Concat;
         let n_compared = text_size((*s1_concat).text1) - offset1;
         let cmp = text_compare_range((*s1_concat).text1, offset1, s2, offset2, n_compared);
@@ -221,8 +218,6 @@ unsafe fn text_compare_range(
             ),
         }
     } else if s2_obj.tag() == TAG_CONCAT {
-        // println!(50, "Decomposing s2");
-
         let s2_concat = s2_obj as *const Concat;
         let n_compared = text_size((*s2_concat).text1) - offset2;
         let cmp = text_compare_range(s1, offset1, (*s2_concat).text1, offset2, n_compared);
@@ -237,13 +232,11 @@ unsafe fn text_compare_range(
             ),
         }
     } else {
-        // println!(20, "memcpy(n={})", n.0);
-
         debug_assert_eq!(s1_obj.tag(), TAG_BLOB);
         debug_assert_eq!(s2_obj.tag(), TAG_BLOB);
 
-        let s1_blob = s1_obj as *const Blob;
-        let s2_blob = s2_obj as *const Blob;
+        let s1_blob = s1_obj.as_blob();
+        let s2_blob = s2_obj.as_blob();
 
         let cmp = libc::memcmp(
             s1_blob.payload_addr().add(offset1.0 as usize) as *const _,
@@ -268,27 +261,23 @@ unsafe fn text_get_range(
     mut offset: Bytes<u32>,
     n: Bytes<u32>,
 ) -> (SkewedPtr, Bytes<u32>) {
-    // println!(100, "text_get_range(offset={}, n={})", offset.0, n.0);
-
     loop {
-        let s_obj = s.unskew() as *const Obj;
+        let s_obj = s.as_obj();
 
         if s_obj.tag() == TAG_CONCAT {
-            let s_concat = s_obj as *const Concat;
+            let s_concat = s_obj.as_concat();
 
             let left = (*s_concat).text1;
             let left_size = text_size(left);
 
             // Follow left node?
             if left_size >= offset + n {
-                // println!(50, "Following left");
                 s = left;
                 continue;
             }
 
             // Follow right node?
             if offset >= left_size {
-                // println!(50, "Following right");
                 s = (*s_concat).text2;
                 offset -= left_size;
                 continue;
@@ -321,5 +310,29 @@ unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
                 0
             }
         }
+    }
+}
+
+// TODO: This will be called by Rust after porting principal.c, return Ordering
+#[no_mangle]
+unsafe extern "C" fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+    let n1 = text_size(s1);
+    let n2 = text_size(s2);
+    let n = min(n1, n2);
+
+    let payload1 = s1.as_blob().payload_addr();
+    let payload2 = s2.as_blob().payload_addr();
+    let cmp = libc::memcmp(payload1 as *const _, payload2 as *const _, n.0 as usize);
+
+    if cmp == 0 {
+        if n1 < n2 {
+            -1
+        } else if n1 > n2 {
+            1
+        } else {
+            0
+        }
+    } else {
+        cmp
     }
 }
