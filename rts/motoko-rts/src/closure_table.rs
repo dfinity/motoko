@@ -23,7 +23,7 @@
 
 use crate::alloc::alloc_array;
 use crate::rts_trap_with;
-use crate::types::{Array, SkewedPtr};
+use crate::types::SkewedPtr;
 
 const INITIAL_SIZE: u32 = 256;
 

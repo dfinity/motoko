@@ -250,6 +250,10 @@ impl Blob {
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         (*self).len
     }
+
+    pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
+        *self.payload_addr().add(idx as usize) = byte;
+    }
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
@@ -296,6 +300,16 @@ pub struct Concat {
     pub n_bytes: Bytes<u32>,
     pub text1: SkewedPtr,
     pub text2: SkewedPtr,
+}
+
+impl Concat {
+    pub unsafe fn text1(self: *mut Self) -> SkewedPtr {
+        (*self).text1
+    }
+
+    pub unsafe fn text2(self: *mut Self) -> SkewedPtr {
+        (*self).text2
+    }
 }
 
 #[repr(C)]

@@ -2,7 +2,7 @@
 //! utilities.
 
 #![no_std]
-#![feature(arbitrary_self_types, panic_info_message)]
+#![feature(arbitrary_self_types, panic_info_message, assoc_char_funcs)]
 
 #[macro_use]
 mod print;
@@ -30,11 +30,9 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
         if let Some(msg) = info.payload().downcast_ref::<&str>() {
             println!(1000, "RTS panic: {}", msg);
         } else if let Some(args) = info.message() {
-            use core::fmt::{write, Write};
-
             let mut buf = [0 as u8; 1000];
             let mut fmt = print::WriteBuf::new(&mut buf);
-            let _ = write(&mut fmt, *args);
+            let _ = core::fmt::write(&mut fmt, *args);
             print::print(&fmt);
         } else {
             println!(1000, "RTS panic: weird payload");

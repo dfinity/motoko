@@ -28,9 +28,10 @@
 use crate::alloc::{alloc_blob, alloc_words};
 use crate::mem::memcpy_bytes;
 use crate::rts_trap_with;
-use crate::types::{Blob, Bytes, Concat, Obj, SkewedPtr, Words, TAG_BLOB, TAG_CONCAT};
+use crate::types::{Blob, Bytes, Concat, SkewedPtr, Words, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
+use core::{slice, str};
 
 const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 // Strings smaller than this must be blobs
@@ -40,9 +41,7 @@ const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 // tag, n_bytes, text1, text2
 const CONCAT_WORDS: Words<u32> = Words(4);
 
-// TODO: remove no_mangle after porting the whole text.c
-#[no_mangle]
-unsafe extern "C" fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
+unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_bloc: Text too large\0".as_ptr());
     }
@@ -57,9 +56,17 @@ unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPt
     blob
 }
 
+/*
 pub(crate) unsafe fn text_of_str(s: &str) -> SkewedPtr {
     // TODO (osa): How are Motoko strings encoded? Rust strings are UTF-8
     text_of_ptr_size(s.as_ptr(), Bytes(s.len() as u32))
+}
+*/
+
+#[no_mangle]
+unsafe extern "C" fn text_of_cstr(s: *const libc::c_char) -> SkewedPtr {
+    let len = libc::strlen(s);
+    text_of_ptr_size(s as *const _, Bytes(len as u32))
 }
 
 #[no_mangle]
@@ -335,4 +342,55 @@ unsafe extern "C" fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     } else {
         cmp
     }
+}
+
+/// Length in characters
+#[no_mangle]
+unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
+    if text.tag() == TAG_BLOB {
+        let blob = text.as_blob();
+        let payload_addr = blob.payload_addr();
+        let len = blob.len();
+
+        str::from_utf8_unchecked(slice::from_raw_parts(
+            payload_addr as *const u8,
+            len.0 as usize,
+        ))
+        .chars()
+        .count() as u32
+    } else {
+        let concat = text.as_concat();
+        text_len(concat.text1()) + text_len(concat.text2())
+    }
+}
+
+/// Decodes the character at the pointer. Returns the character, the size via the `out` parameter
+#[no_mangle]
+unsafe extern "C" fn decode_code_point(s: *const u8, out: *mut u32) -> u32 {
+    let char_len = utf8_width::get_width(*s);
+
+    let char = str::from_utf8_unchecked(slice::from_raw_parts(s, char_len))
+        .chars()
+        .next()
+        .unwrap();
+
+    *out = char_len as u32;
+    char as u32
+}
+
+/// Allocate a text from a character
+#[no_mangle]
+unsafe extern "C" fn text_singleton(char: u32) -> SkewedPtr {
+    let mut buf = [0u8; 4];
+    let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
+
+    let blob_ptr = alloc_text_blob(Bytes(str_len));
+
+    let blob = blob_ptr.as_blob();
+
+    for i in 0..str_len {
+        blob.set(i, buf[i as usize]);
+    }
+
+    blob_ptr
 }
