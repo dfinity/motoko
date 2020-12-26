@@ -282,9 +282,11 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    /// Returns pointer to the blob payload that holds the `mp_int` data
-    pub unsafe fn data_ptr(self: *mut BigInt) -> *mut u8 {
-        (*self).mp_int.dp as *mut _
+    /// Returns location of the pointer to the blob payload that holds the `mp_int` data. The GC
+    /// finds the blob header from this pointer, copies it, and updates this location to point to
+    /// the new blob payload.
+    pub unsafe fn data_ptr(self: *mut BigInt) -> *mut *mut u8 {
+        &mut (*self).mp_int.dp as *mut _ as *mut _
     }
 
     /// Returns pointer to the `mp_int` struct
