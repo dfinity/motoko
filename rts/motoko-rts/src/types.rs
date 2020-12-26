@@ -122,6 +122,11 @@ impl SkewedPtr {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         self.unskew() as *mut Blob
     }
+
+    pub unsafe fn as_bigint(self) -> *mut BigInt {
+        debug_assert_eq!(self.tag(), TAG_BIGINT);
+        self.unskew() as *mut BigInt
+    }
 }
 
 pub fn skew(ptr: usize) -> SkewedPtr {
@@ -270,13 +275,22 @@ pub struct FwdPtr {
 #[repr(C)]
 pub struct BigInt {
     pub header: Obj,
-    // the data following now must describe the `mp_int` struct
-    // (https://github.com/libtom/libtommath/blob/44ee82cd34d0524c171ffd0da70f83bba919aa38/tommath.h#L174-L179)
-    pub size: u32,
-    pub alloc: u32,
-    pub sign: u32,
-    // Unskewed pointer to a blob payload. data_ptr - 2 (words) gives us the blob header.
-    pub data_ptr: usize,
+    /// The data following now must describe is the `mp_int` struct. The data pointer (mp_int.dp)
+    /// is an unskewed pointer to a blob payload. `mp_int.dp - blob header size` gives us the blob
+    /// header.
+    pub mp_int: crate::tommath_bindings::mp_int,
+}
+
+impl BigInt {
+    /// Returns pointer to the blob payload that holds the `mp_int` data
+    pub unsafe fn data_ptr(self: *mut BigInt) -> *mut u8 {
+        (*self).mp_int.dp as *mut _
+    }
+
+    /// Returns pointer to the `mp_int` struct
+    pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *mut crate::tommath_bindings::mp_int {
+        &mut (*self).mp_int
+    }
 }
 
 #[repr(C)]

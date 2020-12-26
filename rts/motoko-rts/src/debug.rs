@@ -211,13 +211,14 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
         }
         TAG_BIGINT => {
-            let bigint = obj as *const BigInt;
+            let bigint = obj as *mut BigInt;
             let _ = write!(
                 buf,
-                "<BigInt size={:#x} alloc={:#x} data_ptr={:#x}>",
-                (*bigint).size,
-                (*bigint).alloc,
-                (*bigint).data_ptr
+                "<BigInt used={:#x} alloc={:#x} sign={} data_ptr={:#x}>",
+                (*bigint).mp_int.used,
+                (*bigint).mp_int.alloc,
+                (*bigint).mp_int.sign,
+                bigint.data_ptr() as usize,
             );
         }
         TAG_CONCAT => {

@@ -232,7 +232,7 @@ unsafe fn scav(
 
         TAG_BIGINT => {
             let bigint = obj as *mut BigInt;
-            let data_ptr_addr = (&mut (*bigint).data_ptr) as *mut _;
+            let data_ptr_addr = bigint.data_ptr() as *mut _;
 
             evac_bigint_blob(
                 begin_from_space,

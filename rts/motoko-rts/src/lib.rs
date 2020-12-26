@@ -16,6 +16,7 @@ mod print;
 mod gc;
 
 mod alloc;
+mod bigint;
 mod blob_iter;
 mod buf;
 mod char;
@@ -27,7 +28,7 @@ mod mem;
 mod principal_id;
 mod text;
 mod text_iter;
-mod tommath;
+mod tommath_bindings;
 pub mod types;
 mod utf8;
 

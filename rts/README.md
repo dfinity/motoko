@@ -46,6 +46,49 @@ We have to make libtommath’s memory management (which expects C-like functions
 `alloc`, `calloc` and `realloc`) work with the Motoko runtime. See the
 comment next to `mp_alloc` in `rts.c` for the techical details.
 
+Generating libtommath bindings
+------------------------------
+
+Use [bindgen](https://github.com/rust-lang/rust-bindgen) with these parameters:
+
+```
+bindgen <path to tommath.h> \
+    -o tommath_bindings.rs \
+    --use-core --ctypes-prefix=libc --no-layout-tests \
+    --whitelist-function mp_init \
+    --whitelist-function mp_set_u32 \
+    --whitelist-function mp_set_i32 \
+    --whitelist-function mp_get_i32 \
+    --whitelist-function mp_set_u64 \
+    --whitelist-function mp_set_i64 \
+    --whitelist-function mp_get_i64 \
+    --whitelist-function mp_isneg \
+    --whitelist-function mp_count_bits \
+    --whitelist-function mp_get_mag_u32 \
+    --whitelist-function mp_get_mag_u64 \
+    --whitelist-function mp_cmp \
+    --whitelist-function mp_add \
+    --whitelist-function mp_sub \
+    --whitelist-function mp_mul \
+    --whitelist-function mp_div \
+    --whitelist-function mp_neg \
+    --whitelist-function mp_abs \
+    --whitelist-function mp_mul_2d \
+    --whitelist-function mp_expt_u32 \
+    --whitelist-function mp_2expt \
+    --blacklist-type __int32_t \
+    --blacklist-type __int64_t \
+    --blacklist-type __uint32_t \
+    --blacklist-type __uint64_t
+```
+
+Whitelist parameters used as libtommath.h has lots of definitions that we don't
+need. Blacklist parameters are used because bindgen still generates unused type
+definition with the whitelist parameters.
+
+Note that bindgen can't generate Rust macros or functions for CPP macros, so
+macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
+
 C tests
 -------
 
