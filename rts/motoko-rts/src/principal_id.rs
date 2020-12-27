@@ -1,6 +1,7 @@
 //! Principal ID encoding and decoding, with integrity checking
 
-use crate::types::{SkewedPtr, TAG_BLOB};
+use crate::alloc::alloc_blob;
+use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
@@ -57,3 +58,70 @@ static CRC_TABLE: [u32; 256] = [
     0xbdbdf21c, 0xcabac28a, 0x53b39330, 0x24b4a3a6, 0xbad03605, 0xcdd70693, 0x54de5729, 0x23d967bf,
     0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
 ];
+
+struct Pump {
+    inp_gran: u32,
+    out_gran: u32,
+    dest: *mut u8,
+    pending_data: u32,
+    pending_bits: u32,
+}
+
+static BASE32_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+unsafe fn stash_enc_base32(d: u8, dest: *mut u8) {
+    *dest = BASE32_CHARS[(d & 0b0001_1111) as usize];
+}
+
+unsafe fn enc_stash(pump: &mut Pump, data: u8) {
+    pump.pending_data <<= pump.inp_gran;
+    pump.pending_data |= data as u32;
+    pump.pending_bits += pump.inp_gran;
+
+    while pump.pending_bits >= pump.out_gran {
+        pump.pending_bits -= pump.out_gran;
+        stash_enc_base32((pump.pending_data >> pump.pending_bits) as u8, pump.dest);
+        pump.dest = pump.dest.add(1);
+        pump.pending_data &= (1 << pump.pending_bits) - 1;
+    }
+}
+
+/// Encode a blob into an checksum-prepended base32 representation
+#[no_mangle]
+unsafe extern "C" fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
+    let checksum = compute_crc32(b);
+    let n = b.as_blob().len();
+    let mut data = b.as_blob().payload_addr();
+    let r = alloc_blob(Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
+    let dest = r.as_blob().payload_addr();
+
+    let mut pump = Pump {
+        inp_gran: 8,
+        out_gran: 5,
+        dest,
+        pending_data: 0,
+        pending_bits: 0,
+    };
+    enc_stash(&mut pump, (checksum >> 24) as u8); // checksum is serialized as big-endian
+    enc_stash(&mut pump, (checksum >> 16) as u8);
+    enc_stash(&mut pump, (checksum >> 8) as u8);
+    enc_stash(&mut pump, checksum as u8);
+
+    for _ in 0..n.0 {
+        enc_stash(&mut pump, *data);
+        data = data.add(1);
+    }
+
+    if pump.pending_bits != 0 {
+        // Flush odd bits
+        pump.pending_data <<= pump.out_gran - pump.pending_bits;
+        stash_enc_base32(pump.pending_data as u8, pump.dest);
+        pump.dest = pump.dest.add(1);
+        // Discount padding
+        // TODO FIXME (osa): This will break stuff if the difference between the original blob len
+        // and the new value here is more than a word
+        (*r.as_blob()).len = Bytes(pump.dest as u32 - dest as u32);
+    }
+
+    r
+}
