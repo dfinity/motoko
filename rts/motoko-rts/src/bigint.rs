@@ -395,11 +395,11 @@ unsafe extern "C" fn bigint_count_bits(a: SkewedPtr) -> i32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_leb128_size(a: SkewedPtr) -> i32 {
+unsafe extern "C" fn bigint_leb128_size(a: SkewedPtr) -> u32 {
     if mp_iszero(a.as_bigint().mp_int_ptr()) {
         1
     } else {
-        (bigint_count_bits(a) + 6) / 7 // divide by 7, round up
+        (bigint_count_bits(a) as u32 + 6) / 7 // divide by 7, round up
     }
 }
 
@@ -412,7 +412,7 @@ unsafe fn bigint_leb128_encode_go(tmp: *mut mp_int, mut buf: *mut u8, add_bit: b
     loop {
         let byte = mp_get_u32(tmp) as u8;
         check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
-        if !mp_iszero(tmp) || (add_bit && (*buf) & (1 << 6) != 0) {
+        if !mp_iszero(tmp) || (add_bit && byte & (1 << 6) != 0) {
             *buf = byte | (1 << 7);
             buf = buf.add(1);
         } else {
