@@ -16,6 +16,9 @@ extern "C" {
     pub fn mp_init(a: *mut mp_int) -> mp_err;
 }
 extern "C" {
+    pub fn mp_zero(a: *mut mp_int);
+}
+extern "C" {
     pub fn mp_get_i32(a: *const mp_int) -> i32;
 }
 extern "C" {
@@ -38,6 +41,12 @@ extern "C" {
 }
 extern "C" {
     pub fn mp_get_mag_u64(a: *const mp_int) -> u64;
+}
+extern "C" {
+    pub fn mp_init_copy(a: *mut mp_int, b: *const mp_int) -> mp_err;
+}
+extern "C" {
+    pub fn mp_div_2d(a: *const mp_int, b: libc::c_int, c: *mut mp_int, d: *mut mp_int) -> mp_err;
 }
 extern "C" {
     pub fn mp_mul_2d(a: *const mp_int, b: libc::c_int, c: *mut mp_int) -> mp_err;
@@ -65,6 +74,9 @@ extern "C" {
 }
 extern "C" {
     pub fn mp_div(a: *const mp_int, b: *const mp_int, c: *mut mp_int, d: *mut mp_int) -> mp_err;
+}
+extern "C" {
+    pub fn mp_incr(a: *mut mp_int) -> mp_err;
 }
 extern "C" {
     pub fn mp_expt_u32(a: *const mp_int, b: u32, c: *mut mp_int) -> mp_err;

@@ -56,6 +56,8 @@ bindgen <path to tommath.h> \
     -o tommath_bindings.rs \
     --use-core --ctypes-prefix=libc --no-layout-tests \
     --whitelist-function mp_init \
+    --whitelist-function mp_zero \
+    --whitelist-function mp_init_copy \
     --whitelist-function mp_set_u32 \
     --whitelist-function mp_set_i32 \
     --whitelist-function mp_get_i32 \
@@ -71,11 +73,13 @@ bindgen <path to tommath.h> \
     --whitelist-function mp_sub \
     --whitelist-function mp_mul \
     --whitelist-function mp_div \
+    --whitelist-function mp_div_2d \
     --whitelist-function mp_neg \
     --whitelist-function mp_abs \
     --whitelist-function mp_mul_2d \
     --whitelist-function mp_expt_u32 \
     --whitelist-function mp_2expt \
+    --whitelist-function mp_incr \
     --blacklist-type __int32_t \
     --blacklist-type __int64_t \
     --blacklist-type __uint32_t \

@@ -25,6 +25,7 @@ array.
 */
 
 use crate::alloc::{alloc_blob, alloc_words};
+use crate::buf::{read_byte, Buf};
 use crate::mem::memcpy_bytes;
 use crate::types::{size_of, BigInt, Blob, Bytes, SkewedPtr, TAG_BIGINT, TAG_BLOB};
 
@@ -79,16 +80,18 @@ unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
 Note on libtommath error handling
 ---------------------------------
 
-Most libtommath operations return an int to signal error codes. These are (see tommath.h):
+Most libtommath operations return an enum to signal error codes. These are (see tommath.h):
 
-   #define MP_OKAY       0   / * ok result * /
-   #define MP_MEM        -2  / * out of mem * /
-   #define MP_VAL        -3  / * invalid input * /
-   #define MP_RANGE      MP_VAL
-   #define MP_ITER       -4  / * Max. iterations reached * /
+   MP_OKAY  = 0,   /* no error */
+   MP_ERR   = -1,  /* unknown error */
+   MP_MEM   = -2,  /* out of mem */
+   MP_VAL   = -3,  /* invalid input */
+   MP_ITER  = -4,  /* maximum iterations reached */
+   MP_BUF   = -5   /* buffer overflow, supplied buffer too small */
 
 We will never hit MP_MEM, because our allocation functions trap if they cannot allocate. But the
-others can happen (e.g. division by 0). In that case, we call a trap function provided by the RTS.
+others can happen (e.g. division by 0). In that case, we call a trap function provided by the
+compiler.
 */
 
 // TODO (osa): Why generate this in the compiler?
@@ -113,6 +116,10 @@ unsafe fn mp_get_u64(p: *const mp_int) -> u64 {
 
 unsafe fn mp_isneg(p: *const mp_int) -> bool {
     (*p).sign == 1
+}
+
+unsafe fn mp_iszero(p: *const mp_int) -> bool {
+    (*p).used == 0
 }
 
 #[no_mangle]
@@ -385,4 +392,137 @@ unsafe extern "C" fn bigint_lsh(a: SkewedPtr, b: i32) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_count_bits(a: SkewedPtr) -> i32 {
     mp_count_bits(a.as_bigint().mp_int_ptr())
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_leb128_size(a: SkewedPtr) -> i32 {
+    if mp_iszero(a.as_bigint().mp_int_ptr()) {
+        1
+    } else {
+        (bigint_count_bits(a) + 6) / 7 // divide by 7, round up
+    }
+}
+
+// TODO (osa): I don't understand what `add_bit` means
+unsafe fn bigint_leb128_encode_go(tmp: *mut mp_int, mut buf: *mut u8, add_bit: bool) {
+    if mp_isneg(tmp) {
+        bigint_trap();
+    }
+
+    loop {
+        let byte = mp_get_u32(tmp) as u8;
+        check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
+        if !mp_iszero(tmp) || (add_bit && (*buf) & (1 << 6) != 0) {
+            *buf = byte | (1 << 7);
+            buf = buf.add(1);
+        } else {
+            *buf = byte;
+            break;
+        }
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_leb128_encode(n: SkewedPtr, buf: *mut u8) {
+    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
+    bigint_leb128_encode_go(&mut tmp, buf, false)
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_2complement_bits(n: SkewedPtr) -> u32 {
+    let mp_int = n.as_bigint().mp_int_ptr();
+    if mp_isneg(mp_int) {
+        let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+        check(mp_init_copy(&mut tmp, mp_int));
+        check(mp_incr(&mut tmp));
+        1 + mp_count_bits(&tmp) as u32
+    } else {
+        1 + mp_count_bits(mp_int) as u32
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_sleb128_size(n: SkewedPtr) -> u32 {
+    (bigint_2complement_bits(n) + 6) / 7 // divide by 7, ruond up
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_sleb128_encode(n: SkewedPtr, buf: *mut u8) {
+    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
+
+    if mp_isneg(&tmp) {
+        // Turn negatiave numbers into the two's complement of the right size
+        let bytes = bigint_sleb128_size(n);
+        let mut big: mp_int = core::mem::zeroed();
+        check(mp_init(&mut big));
+        check(mp_2expt(&mut big, 7 * bytes as i32));
+        check(mp_add(&mut tmp, &big, &mut tmp));
+        bigint_leb128_encode_go(&mut tmp, buf, false)
+    } else {
+        bigint_leb128_encode_go(&mut tmp, buf, true)
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
+    let r = bigint_alloc();
+
+    let r_mp_int = r.as_bigint().mp_int_ptr();
+    mp_zero(r_mp_int);
+
+    let mut tmp: mp_int = core::mem::zeroed();
+    check(mp_init(&mut tmp));
+
+    let mut shift = 0;
+    loop {
+        let byte = read_byte(buf);
+        mp_set_u32(&mut tmp, (byte & 0b0111_1111) as u32);
+        check(mp_mul_2d(&mut tmp, shift, &mut tmp));
+        check(mp_add(r_mp_int, &tmp, r_mp_int));
+        shift += 7;
+
+        if byte & 0b1000_0000 == 0 {
+            break;
+        }
+    }
+
+    r
+}
+
+#[no_mangle]
+unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> SkewedPtr {
+    let r = bigint_alloc();
+
+    let r_mp_int = r.as_bigint().mp_int_ptr();
+    mp_zero(r_mp_int);
+
+    let mut tmp: mp_int = core::mem::zeroed();
+    check(mp_init(&mut tmp));
+
+    let mut shift = 0;
+    let mut last_sign_bit_set;
+    loop {
+        let byte = read_byte(buf);
+        mp_set_u32(&mut tmp, (byte & 0b0111_1111) as u32);
+        check(mp_mul_2d(&mut tmp, shift, &mut tmp));
+        check(mp_add(r_mp_int, &tmp, r_mp_int));
+        last_sign_bit_set = byte & 0b0100_0000 != 0;
+        shift += 7;
+
+        if byte & 0b1000_0000 == 0 {
+            break;
+        }
+    }
+
+    if last_sign_bit_set {
+        // Negative number, un-2-complement it
+        let mut big: mp_int = core::mem::zeroed();
+        check(mp_init(&mut big));
+        check(mp_2expt(&mut big, shift));
+        check(mp_sub(r_mp_int, &big, r_mp_int));
+    }
+
+    r
 }
