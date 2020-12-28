@@ -387,7 +387,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         }
 
         TAG_FWD_PTR => {
-            rts_trap_with("object_size: forwarding pointer\0".as_ptr());
+            rts_trap_with("object_size: forwarding pointer");
         }
 
         TAG_BITS32 => Words(2),
@@ -399,7 +399,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_NULL => size_of::<Null>(),
 
         _ => {
-            rts_trap_with("object_size: invalid object tag\0".as_ptr());
+            rts_trap_with("object_size: invalid object tag");
         }
     }
 }

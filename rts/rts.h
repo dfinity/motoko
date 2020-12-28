@@ -81,7 +81,6 @@ from_rts as_ptr alloc_words(size_t n);
 
 /* IDL code */
 /*@ assigns \nothing; ensures \false ; */
-from_rts __attribute__ ((noreturn)) void rts_trap(const char* str, size_t n);
 from_rts __attribute__ ((noreturn)) void bigint_trap();
 
 typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
@@ -94,6 +93,8 @@ int text_compare(as_ptr s1, as_ptr s2);
 
 export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
+
+__attribute__ ((noreturn)) void rts_trap(char *msg, uint32_t len);
 
 export as_ptr blob_of_text(as_ptr);
 export uint32_t compute_crc32(blob_t);

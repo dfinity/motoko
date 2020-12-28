@@ -1,5 +1,9 @@
 #include "rts.h"
 
+// Copied these from musl source, for some reason it's not easily possible to include string.h
+void *memcpy (void *__restrict, const void *__restrict, size_t);
+size_t strlen (const char *);
+
 char *alloc(size_t n);
 
 export void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {
@@ -13,8 +17,4 @@ export void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, cons
 
 void __attribute__ ((noreturn)) idl_trap_with(const char *str) {
   trap_with_prefix("IDL error: ", str);
-}
-
-void __attribute__ ((noreturn)) rts_trap_with(const char *str) {
-  trap_with_prefix("RTS error: ", str);
 }

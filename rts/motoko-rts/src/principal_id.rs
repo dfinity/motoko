@@ -153,7 +153,7 @@ fn conv(b: u8) -> u8 {
 
 unsafe fn accum_base32(pump: &mut Pump, c: u8) {
     if c > b'z' {
-        rts_trap_with("accum_base32: Base32 symbol out of range\0".as_ptr());
+        rts_trap_with("accum_base32: Base32 symbol out of range");
     }
 
     let v = conv(c & 0b0111_1111) - 1; // 0..31
@@ -262,7 +262,7 @@ unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
     // Strip first four bytes
     let bytes_len = bytes.as_blob().len();
     if bytes_len < Bytes(4) {
-        rts_trap_with("blob_of_principal: principal too short\0".as_ptr());
+        rts_trap_with("blob_of_principal: principal too short");
     }
 
     let stripped = alloc_blob(bytes_len - Bytes(4));
@@ -275,7 +275,7 @@ unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
     // Check encoding
     let expected = principal_of_blob(stripped);
     if blob_compare(b0, expected) != 0 {
-        rts_trap_with("blob_of_principal: invalid principal\0".as_ptr());
+        rts_trap_with("blob_of_principal: invalid principal");
     }
 
     stripped

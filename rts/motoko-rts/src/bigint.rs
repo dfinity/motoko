@@ -29,7 +29,7 @@ use crate::buf::{read_byte, Buf};
 use crate::mem::memcpy_bytes;
 use crate::types::{size_of, BigInt, Blob, Bytes, SkewedPtr, TAG_BIGINT, TAG_BLOB};
 
-use crate::tommath_bindings::*;
+use crate::{rts_trap, tommath_bindings::*};
 
 unsafe fn mp_alloc(n: Bytes<u32>) -> *mut u8 {
     let blob = alloc_blob(n);
@@ -97,7 +97,6 @@ compiler.
 // TODO (osa): Why generate this in the compiler?
 extern "C" {
     fn bigint_trap() -> !;
-    fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
 }
 
 unsafe fn check(err: mp_err) {

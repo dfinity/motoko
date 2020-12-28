@@ -261,12 +261,12 @@ unsafe fn scav(
         }
 
         TAG_NULL => {
-            rts_trap_with("encountered NULL object tag in dynamic object in scav\0".as_ptr());
+            rts_trap_with("encountered NULL object tag in dynamic object in scav");
         }
 
         TAG_FWD_PTR | _ => {
             // Any other tag is a bug
-            rts_trap_with("invalid object tag in scav\0".as_ptr());
+            rts_trap_with("invalid object tag in scav");
         }
     }
 }

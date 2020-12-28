@@ -24,7 +24,7 @@ pub unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
     // Array payload should not be larger than half of the memory
     if len > 1 << (32 - 2 - 1) {
         // 2 for word size, 1 to divide by two
-        rts_trap_with("Array allocation too large\0".as_ptr());
+        rts_trap_with("Array allocation too large");
     }
 
     let skewed_ptr = alloc_words(size_of::<Array>() + Words(len));

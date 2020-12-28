@@ -30,7 +30,7 @@ pub(crate) unsafe fn grow_memory(ptr: usize) {
     let new_pages_needed = total_pages_needed - current_pages;
     if new_pages_needed > 0 {
         if wasm32::memory_grow(0, new_pages_needed as usize) == core::usize::MAX {
-            rts_trap_with("Cannot grow memory\0".as_ptr());
+            rts_trap_with("Cannot grow memory");
         }
     }
 }

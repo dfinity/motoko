@@ -43,7 +43,7 @@ const CONCAT_WORDS: Words<u32> = Words(4);
 
 unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
     if size > MAX_STR_SIZE {
-        rts_trap_with("alloc_text_bloc: Text too large\0".as_ptr());
+        rts_trap_with("alloc_text_bloc: Text too large");
     }
     alloc_blob(size)
 }
@@ -103,7 +103,7 @@ unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
 
     // Check max size
     if new_len > MAX_STR_SIZE {
-        rts_trap_with("text_concat: Text too large\0".as_ptr());
+        rts_trap_with("text_concat: Text too large");
     }
 
     // Create concat node

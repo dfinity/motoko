@@ -98,7 +98,7 @@ unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
 
         if todo == SkewedPtr(0) {
             // TODO (osa): Are we assuming the caller should've checked with `text_iter_done`?
-            rts_trap_with("text_iter_next: Iter already done\0".as_ptr());
+            rts_trap_with("text_iter_next: Iter already done");
         }
 
         let todo_array = todo.as_array();

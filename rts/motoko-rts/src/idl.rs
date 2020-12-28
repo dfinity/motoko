@@ -3,7 +3,7 @@
 use crate::alloc::alloc_blob;
 use crate::buf::{read_word, Buf};
 use crate::leb128::{leb128_decode, sleb128_decode};
-use crate::rts_trap_with;
+use crate::trap_with_prefix;
 use crate::types::Words;
 
 //
@@ -41,6 +41,10 @@ const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
 
+unsafe fn idl_trap_with(msg: &str) -> ! {
+    trap_with_prefix("IDL error: ", msg);
+}
+
 #[no_mangle]
 unsafe extern "C" fn is_primitive_type(ty: i32) -> bool {
     ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
@@ -50,7 +54,7 @@ unsafe extern "C" fn is_primitive_type(ty: i32) -> bool {
 unsafe extern "C" fn check_typearg(ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
     if !(is_primitive_type(ty) || (ty >= 0 && (ty as u32) < n_types)) {
-        rts_trap_with("IDL error: invalid type argument\0".as_ptr());
+        idl_trap_with("invalid type argument");
     }
 }
 
@@ -60,7 +64,7 @@ unsafe extern "C" fn parse_fields(buf: *mut Buf, n_types: u32) {
     for n in (1..=leb128_decode(buf)).rev() {
         let tag = leb128_decode(buf);
         if (tag < next_valid) || (tag == 0xFFFFFFFF && n > 1) {
-            rts_trap_with("IDL error: variant or record tag out of order\0".as_ptr());
+            idl_trap_with("variant or record tag out of order");
         }
         next_valid = tag + 1;
         let t = sleb128_decode(buf);
@@ -102,12 +106,12 @@ unsafe extern "C" fn parse_idl_header(
     main_types_out: *mut *mut u8,
 ) {
     if (*buf).ptr == (*buf).end {
-        rts_trap_with("IDL error: empty input\0".as_ptr());
+        idl_trap_with("empty input");
     }
 
     // Magic bytes (DIDL)
     if read_word(buf) != 0x4C444944 {
-        rts_trap_with("IDL error: missing magic bytes\0".as_ptr());
+        idl_trap_with("missing magic bytes");
     }
 
     // Create a table for the type description
@@ -115,7 +119,7 @@ unsafe extern "C" fn parse_idl_header(
 
     // Early sanity check
     if (*buf).ptr.add(n_types as usize) >= (*buf).end {
-        rts_trap_with("IDL error: too many types\0".as_ptr());
+        idl_trap_with("too many types");
     }
 
     // Let the caller know about the table size
@@ -135,10 +139,10 @@ unsafe extern "C" fn parse_idl_header(
             let t = sleb128_decode(buf);
             check_typearg(t, n_types);
         } else if ty >= 0 {
-            rts_trap_with("IDL error: illegal type table\0".as_ptr()); // illegal
+            idl_trap_with("illegal type table"); // illegal
         } else if is_primitive_type(ty) {
             // illegal
-            rts_trap_with("IDL error: primitive type in type table\0".as_ptr());
+            idl_trap_with("primitive type in type table");
         } else if ty == IDL_CON_opt {
             let t = sleb128_decode(buf);
             check_typearg(t, n_types);

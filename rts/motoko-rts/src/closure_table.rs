@@ -80,7 +80,7 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
 
     // Just as a sanity check make sure the ptr is really skewed
     if ptr.0 & 0b1 != 1 {
-        rts_trap_with("remember_closure: Argument is not a skewed pointer\0".as_ptr());
+        rts_trap_with("remember_closure: Argument is not a skewed pointer");
     }
 
     let idx = FREE_SLOT;
@@ -95,11 +95,11 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
 #[no_mangle]
 pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
     if TABLE.0 == 0 {
-        rts_trap_with("recall_closure: Closure table not allocated\0".as_ptr());
+        rts_trap_with("recall_closure: Closure table not allocated");
     }
 
     if idx >= TABLE.as_array().len() {
-        rts_trap_with("recall_closure: Closure index out of range\0".as_ptr());
+        rts_trap_with("recall_closure: Closure index out of range");
     }
 
     let ptr = TABLE.as_array().get(idx);
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
     N_CLOSURES -= 1;
 
     if ptr.0 & 0b1 != 1 {
-        rts_trap_with("recall_closure: Closure index not in table\0".as_ptr());
+        rts_trap_with("recall_closure: Closure index not in table");
     }
 
     ptr
