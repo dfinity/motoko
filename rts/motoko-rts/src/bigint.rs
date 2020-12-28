@@ -130,7 +130,7 @@ unsafe fn bigint_alloc() -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_of_word32(w: u32) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_of_word32(w: u32) -> SkewedPtr {
     let r = bigint_alloc();
     mp_set_u32(r.as_bigint().mp_int_ptr(), w);
     r
@@ -254,7 +254,7 @@ unsafe extern "C" fn bigint_of_word64_signed(i: i64) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_eq(a: SkewedPtr, b: SkewedPtr) -> bool {
+pub unsafe extern "C" fn bigint_eq(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) == 0
 }
 
@@ -301,7 +301,7 @@ unsafe extern "C" fn bigint_sub(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_mul(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_mul(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     check(mp_mul(
         a.as_bigint().mp_int_ptr(),
@@ -312,7 +312,7 @@ unsafe extern "C" fn bigint_mul(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let exp = bigint_to_word32_trap(b);
     let r = bigint_alloc();
     check(mp_expt_u32(
@@ -393,7 +393,7 @@ unsafe extern "C" fn bigint_count_bits(a: SkewedPtr) -> i32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_leb128_size(a: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn bigint_leb128_size(a: SkewedPtr) -> u32 {
     if mp_iszero(a.as_bigint().mp_int_ptr()) {
         1
     } else {

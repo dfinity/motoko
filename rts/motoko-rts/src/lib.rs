@@ -15,7 +15,7 @@ mod print;
 mod gc;
 
 mod alloc;
-mod bigint;
+pub mod bigint;
 mod blob_iter;
 mod buf;
 mod char;

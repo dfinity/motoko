@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 motoko-rts = { path = "../motoko-rts/native" }
+
+[build-dependencies]
+cc = "1.0"

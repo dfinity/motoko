@@ -100,14 +100,6 @@ int main () {
    */
   printf("Testing BigInt...\n");
 
-  printf("70**32 = 70**31 * 70: %s\n",
-   bigint_eq(
-    bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
-    bigint_mul(
-      bigint_pow(bigint_of_word32(70), bigint_of_word32(31)),
-      bigint_of_word32(70)
-	       )) ? "ok" : (ret = EXIT_FAILURE, "not ok"));
-
   /*
    * Testing BigInt (s)leb128 encoding
    */
