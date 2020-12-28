@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Ömer Sinan Ağacan <omeragacan@gmail.com>"]
 edition = "2018"
 
+# For rlib use native/Cargo.toml
 [lib]
 crate-type = ["staticlib"]
 

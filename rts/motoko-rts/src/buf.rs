@@ -1,5 +1,7 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
+use crate::idl::idl_trap_with;
+
 #[repr(C)]
 pub(crate) struct Buf {
     /// Pointer into the buffer
@@ -14,16 +16,11 @@ impl Buf {
     }
 }
 
-extern "C" {
-    // TODO: Why not rts_trap_with?
-    fn idl_trap_with(msg: *const u8) -> !;
-}
-
 /// Read a single byte
 #[no_mangle]
 pub(crate) unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
     if (*buf).ptr >= (*buf).end {
-        idl_trap_with("byte read out of buffer\0".as_ptr());
+        idl_trap_with("byte read out of buffer");
     }
 
     let byte = *(*buf).ptr;
@@ -36,7 +33,7 @@ pub(crate) unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
 #[no_mangle]
 pub(crate) unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
     if (*buf).ptr.add(3) >= (*buf).end {
-        idl_trap_with("word read out of buffer\0".as_ptr());
+        idl_trap_with("word read out of buffer");
     }
 
     let p = (*buf).ptr;
@@ -50,7 +47,7 @@ pub(crate) unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
 #[no_mangle]
 unsafe extern "C" fn advance(buf: *mut Buf, n: u32) {
     if (*buf).ptr.add(n as usize) > (*buf).end {
-        idl_trap_with("advance out of buffer\0".as_ptr());
+        idl_trap_with("advance out of buffer");
     }
 
     (*buf).ptr = (*buf).ptr.add(n as usize);
@@ -58,7 +55,7 @@ unsafe extern "C" fn advance(buf: *mut Buf, n: u32) {
 
 /// Can also be used for sleb
 #[no_mangle]
-unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
+pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
     loop {
         let byte = read_byte(buf);
         if byte & 0b1000_0000 == 0 {

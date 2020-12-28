@@ -139,8 +139,6 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl
-
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
 
@@ -177,9 +175,6 @@ _build/wasm/libmotoko_rts_debug.a: | _build/wasm
 		-Crelocation-model=pic -Ccodegen-units=1 --crate-type staticlib
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
-RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
-RTS_DEBUG_WASM_O=$(RTSFILES:%=_build/wasm/%_debug.o)
-RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
 
@@ -187,7 +182,7 @@ RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
 # The actual RTS, as we ship it with the compiler
 #
 
-mo-rts.wasm: $(RTS_RUST_WASM_O) $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts.wasm: $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
@@ -196,7 +191,7 @@ mo-rts.wasm: $(RTS_RUST_WASM_O) $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 		--whole-archive \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(RTS_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
