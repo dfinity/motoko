@@ -1,5 +1,4 @@
-//! Implements bits and pieces of Motoko runtime system. Currently garbage collection and a few
-//! utilities.
+//! Implements Motoko runtime system
 
 #![no_std]
 #![feature(
@@ -29,6 +28,7 @@ mod mem;
 mod principal_id;
 mod text;
 mod text_iter;
+#[allow(non_camel_case_types)]
 mod tommath_bindings;
 pub mod types;
 mod utf8;
