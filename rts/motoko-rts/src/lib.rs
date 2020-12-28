@@ -23,6 +23,7 @@ mod char;
 pub mod closure_table;
 mod debug;
 mod float;
+mod idl;
 mod leb128;
 mod mem;
 mod principal_id;

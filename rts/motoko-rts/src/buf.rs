@@ -3,9 +3,15 @@
 #[repr(C)]
 pub(crate) struct Buf {
     /// Pointer into the buffer
-    ptr: *mut u8,
+    pub(crate) ptr: *mut u8,
     /// Pointer to the end of the buffer
-    end: *mut u8,
+    pub(crate) end: *mut u8,
+}
+
+impl Buf {
+    pub(crate) unsafe fn advance(self: *mut Self, n: u32) {
+        advance(self, n)
+    }
 }
 
 extern "C" {
@@ -28,7 +34,7 @@ pub(crate) unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
 
 /// Read a little-endian word
 #[no_mangle]
-unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
+pub(crate) unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
     if (*buf).ptr.add(3) >= (*buf).end {
         idl_trap_with("word read out of buffer\0".as_ptr());
     }
@@ -42,10 +48,21 @@ unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn advance(buf: *mut Buf, n: i32) {
+unsafe extern "C" fn advance(buf: *mut Buf, n: u32) {
     if (*buf).ptr.add(n as usize) > (*buf).end {
         idl_trap_with("advance out of buffer\0".as_ptr());
     }
 
     (*buf).ptr = (*buf).ptr.add(n as usize);
+}
+
+/// Can also be used for sleb
+#[no_mangle]
+unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
+    loop {
+        let byte = read_byte(buf);
+        if byte & 0b1000_0000 == 0 {
+            break;
+        }
+    }
 }

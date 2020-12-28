@@ -34,7 +34,7 @@ unsafe extern "C" fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn leb128_decode(buf: *mut Buf) -> u32 {
+pub(crate) unsafe extern "C" fn leb128_decode(buf: *mut Buf) -> u32 {
     let mut result = 0;
     let mut shift = 0;
 
@@ -60,7 +60,7 @@ unsafe extern "C" fn leb128_decode(buf: *mut Buf) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn sleb128_decode(buf: *mut Buf) -> i32 {
+pub(crate) unsafe extern "C" fn sleb128_decode(buf: *mut Buf) -> i32 {
     let mut result = 0;
     let mut shift = 0;
 

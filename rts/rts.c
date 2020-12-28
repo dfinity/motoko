@@ -1,11 +1,8 @@
 #include "rts.h"
 
-char *alloc(size_t n) {
-  as_ptr r = alloc_blob(n);
-  return BLOB_PAYLOAD(r);
-}
+char *alloc(size_t n);
 
-void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {
+export void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {
   int len1 = strlen(prefix);
   int len2 = strlen(str);
   char msg[len1 + len2];

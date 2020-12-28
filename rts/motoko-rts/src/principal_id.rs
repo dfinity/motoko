@@ -1,6 +1,9 @@
 //! Principal ID encoding and decoding, with integrity checking
 
 use crate::alloc::alloc_blob;
+use crate::mem::memcpy_bytes;
+use crate::rts_trap_with;
+use crate::text::{blob_compare, blob_of_text};
 use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
@@ -124,4 +127,156 @@ unsafe extern "C" fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
     }
 
     r
+}
+
+// tolerant conversion
+// accepts lower case and fillers/padding '-', '='
+// values are one more than base32 value
+// 0 elements signify invalid alphabet letter
+// fillers/padding have upper bit set
+// Returns in range [1,32]
+fn conv(b: u8) -> u8 {
+    if b == b'-' {
+        0xF0
+    } else if b == b'=' {
+        0xF1
+    } else if b >= b'A' && b <= b'Z' {
+        b - b'A' + 1
+    } else if b >= b'a' && b <= b'z' {
+        b - b'a' + 1
+    } else if b >= b'2' && b <= b'7' {
+        b - b'2' + 27
+    } else {
+        0
+    }
+}
+
+unsafe fn accum_base32(pump: &mut Pump, c: u8) {
+    if c > b'z' {
+        rts_trap_with("accum_base32: Base32 symbol out of range\0".as_ptr());
+    }
+
+    let v = conv(c & 0b0111_1111) - 1; // 0..31
+
+    if v < 32 {
+        // excludes '-' and '='
+        pump.pending_bits += pump.inp_gran;
+        pump.pending_data <<= pump.inp_gran;
+        pump.pending_data |= v as u32;
+    }
+}
+
+unsafe fn dec_stash(pump: &mut Pump, data: u8) {
+    accum_base32(pump, data);
+
+    while pump.pending_bits >= pump.out_gran {
+        pump.pending_bits -= pump.out_gran;
+        *pump.dest = (pump.pending_data >> pump.pending_bits) as u8;
+        pump.dest = pump.dest.add(1);
+        pump.pending_data &= (1 << pump.pending_bits) - 1;
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
+    let n = b.as_blob().len();
+    let mut data = b.as_blob().payload_addr();
+
+    // TODO (osa): I don't understand the size argument
+    let r = alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
+    let dest = r.as_blob().payload_addr();
+
+    let mut pump = Pump {
+        inp_gran: 5,
+        out_gran: 8,
+        dest,
+        pending_bits: 0,
+        pending_data: 0,
+    };
+
+    for _ in 0..n.0 {
+        dec_stash(&mut pump, *data);
+        data = data.add(1);
+    }
+
+    // Adjust resulting blob len
+    // TODO (osa): This is also going to break if the new len passes word boundary
+    (*r.as_blob()).len = Bytes(pump.dest as u32 - dest as u32);
+    r
+}
+
+/// Encode a blob into its textual representation
+#[no_mangle]
+unsafe extern "C" fn principal_of_blob(b: SkewedPtr) -> SkewedPtr {
+    base32_to_principal(base32_of_checksummed_blob(b))
+}
+
+/// Convert a checksum-prepended base32 representation blob into the public principal name format
+/// by hyphenating and lowercasing
+#[no_mangle]
+unsafe extern "C" fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
+    let blob = b.as_blob();
+
+    let n = blob.len();
+    let mut data = blob.payload_addr();
+
+    // TODO (osa): Explain the size argument
+    let r = alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
+    let mut dest = r.as_blob().payload_addr();
+
+    let mut n_written = 0;
+    for i in 0..n.0 {
+        let mut byte = *data;
+        data = data.add(1);
+
+        // If uppercase, convert to lowercase
+        if byte >= b'A' && byte <= b'Z' {
+            byte += b'a' - b'A'
+        }
+
+        *dest = byte;
+        dest = dest.add(1);
+        n_written += 1;
+
+        // If quintet done, add hyphen
+        if n_written % 5 == 0 && i + 1 < n.0 {
+            n_written = 0;
+            *dest = b'-';
+            dest = dest.add(1);
+        }
+    }
+
+    // Adjust result length
+    // TODO (osa): Same issue as other blob len sets above
+    (*r.as_blob()).len = Bytes(dest as u32 - r.as_blob().payload_addr() as u32);
+
+    r
+}
+
+// Decode an textual principal representation into a blob
+#[no_mangle]
+unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
+    let b0 = blob_of_text(t);
+    let bytes = base32_to_blob(b0);
+
+    // Strip first four bytes
+    let bytes_len = bytes.as_blob().len();
+    if bytes_len < Bytes(4) {
+        rts_trap_with("blob_of_principal: principal too short\0".as_ptr());
+    }
+
+    let stripped = alloc_blob(bytes_len - Bytes(4));
+    memcpy_bytes(
+        stripped.as_blob().payload_addr() as usize,
+        bytes.as_blob().payload_addr().add(4) as usize,
+        bytes_len - Bytes(4),
+    );
+
+    // Check encoding
+    let expected = principal_of_blob(stripped);
+    if blob_compare(b0, expected) != 0 {
+        rts_trap_with("blob_of_principal: invalid principal\0".as_ptr());
+    }
+
+    stripped
 }

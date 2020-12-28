@@ -36,135 +36,15 @@ int32_t sleb128_decode(buf *buf);
 
 #define IDL_CON_alias     (1)
 
-static bool is_primitive_type(int32_t ty) {
-  static const int32_t IDL_PRIM_lowest = -17;
-  return ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal);
-}
-
-static void check_typearg(int32_t ty, uint32_t n_types) {
-  // arguments to type constructors can be:
-  if (is_primitive_type(ty)) return;  // primitive types
-  if (ty >=0 && ty < n_types) return; // type indices.
-  idl_trap_with("invalid type argument");
-}
-
-static void parse_fields(buf *buf, uint32_t n_types) {
-  uint32_t next_valid = 0;
-  for (uint32_t n = leb128_decode(buf); n > 0; n--) {
-    uint32_t tag = leb128_decode(buf);
-    if (tag < next_valid) idl_trap_with("variant or record tags out of order");
-    if (tag == 0xFFFFFFFF && n > 1) idl_trap_with("variant or record tags out of order");
-    next_valid = tag + 1;
-    int32_t t = sleb128_decode(buf);
-    check_typearg(t, n_types);
-  }
-}
-
-/*
- * This function parses the IDL magic header and type description. It
- *  * traps if the type description is not well-formed. In particular, it traps if
- *    any index into the type description table is out of bounds, so that
- *    subsequent code can trust these values
- *  * returns a pointer to the first byte after the IDL header (via return)
- *  * allocates a type description table, and returns it
- *    (via pointer argument, for lack of multi-value returns in C)
- *  * returns the size of that type description table
- *    (again via pointer argument, for lack of multi-value returns in C)
- *  * returns a pointer to the beginning of the list of main types
- *    (again via pointer argument, for lack of multi-value returns in C)
- */
-export void parse_idl_header(bool extended, buf *buf, uint8_t ***typtbl_out, uint32_t *typtbl_size_out, uint8_t **main_types_out) {
-  if (buf->p == buf->e) idl_trap_with("empty input");
-
-  // Magic bytes (DIDL)
-  if (read_word(buf) != 0x4C444944) idl_trap_with("missing magic bytes");
-
-  // Create a table for the type description
-  int32_t n_types = leb128_decode(buf);
-
-  // leb128_decode returns an uint32_t, we want an int32_t here so that the
-  // comparisons below work, so let's make sure we did not wrap around in the
-  // conversion.
-  if (n_types < 0) { idl_trap_with("overflow in number of types"); }
-
-  // Early sanity check
-  if (&buf->p[n_types] >= buf->e) { idl_trap_with("too many types"); }
-
-  // Let the caller know about the table size
-  *typtbl_size_out = n_types;
-
-  // Go through the table
-  uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
-  for (int i = 0; i < n_types; i++) {
-    typtbl[i] = buf->p;
-    int32_t ty = sleb128_decode(buf);
-    if (extended && ty == IDL_CON_alias) { // internal
-      // See Note [mutable stable values] in codegen/compile.ml
-      int32_t t = sleb128_decode(buf);
-      check_typearg(t, n_types);
-    } else if (ty >= 0) {
-      idl_trap_with("illegal type table"); // illegal
-    } else if (is_primitive_type(ty)) {
-      idl_trap_with("primitive type in type table"); // illegal
-    } else if (ty == IDL_CON_opt) {
-      int32_t t = sleb128_decode(buf);
-      check_typearg(t, n_types);
-    } else if (ty == IDL_CON_vec) {
-      int32_t t = sleb128_decode(buf);
-      check_typearg(t, n_types);
-    } else if (ty == IDL_CON_record) {
-      parse_fields(buf, n_types);
-    } else if (ty == IDL_CON_variant) {
-      parse_fields(buf, n_types);
-    } else if (ty == IDL_CON_func) {
-      // arg types
-      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
-        int32_t t = sleb128_decode(buf);
-        check_typearg(t, n_types);
-      }
-      // ret types
-      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
-        int32_t t = sleb128_decode(buf);
-        check_typearg(t, n_types);
-      }
-      // annotations
-      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
-        (buf->p)++;
-      }
-    } else if (ty == IDL_CON_service) {
-      for (uint32_t n = leb128_decode(buf); n > 0; n--) {
-        // name
-        uint32_t size = leb128_decode(buf);
-        (buf->p) += size;
-        // type
-        int32_t t = sleb128_decode(buf);
-        check_typearg(t, n_types);
-      }
-    } else { // future type
-      uint32_t n = leb128_decode(buf);
-      advance(buf, n);
-    }
-  }
-  // Now read the main types
-  *main_types_out = buf->p;
-  for (uint32_t n = leb128_decode(buf); n > 0; n--) {
-    int32_t t = sleb128_decode(buf);
-    check_typearg(t, n_types);
-  }
-
-  *typtbl_out = typtbl;
-}
+bool is_primitive_type(int32_t ty);
+void check_typearg(int32_t ty, uint32_t n_types);
+void parse_fields(buf *buf, uint32_t n_types);
 
 // can also be used for sleb
-export void skip_leb128(buf *buf) {
-  uint8_t b;
-  do {
-    b = read_byte(buf);
-  } while (b & (uint8_t)0x80);
-}
+void skip_leb128(buf *buf);
 
 // used for opt, bool, references...
-uint8_t read_byte_tag(buf *buf) {
+static uint8_t read_byte_tag(buf *buf) {
   uint8_t b = read_byte(buf);
   if (b > 1) {
     idl_trap_with("skip_any: byte tag not 0 or 1");

@@ -170,7 +170,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[no_mangle]
-unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
+pub(crate) unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
     let obj = s.as_obj();
     if obj.tag() == TAG_BLOB {
         s
@@ -320,7 +320,7 @@ unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
 
 // TODO: This will be called by Rust after porting principal.c, return Ordering
 #[no_mangle]
-unsafe extern "C" fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+pub(crate) unsafe extern "C" fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
