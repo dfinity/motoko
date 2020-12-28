@@ -65,25 +65,40 @@ unsafe extern "C" fn float_rem(a: f64, b: f64) -> f64 {
 
 #[no_mangle]
 unsafe extern "C" fn float_tan(a: f64) -> f64 {
-    libm::tan(a)
+    extern "C" {
+        fn tan(a: f64) -> f64;
+    }
+    tan(a)
 }
 
 #[no_mangle]
 unsafe extern "C" fn float_arcsin(a: f64) -> f64 {
-    libm::asin(a)
+    extern "C" {
+        fn asin(a: f64) -> f64;
+    }
+    asin(a)
 }
 
 #[no_mangle]
 unsafe extern "C" fn float_arccos(a: f64) -> f64 {
-    libm::acos(a)
+    extern "C" {
+        fn acos(a: f64) -> f64;
+    }
+    acos(a)
 }
 
 #[no_mangle]
 unsafe extern "C" fn float_arctan(a: f64) -> f64 {
-    libm::atan(a)
+    extern "C" {
+        fn atan(a: f64) -> f64;
+    }
+    atan(a)
 }
 
 #[no_mangle]
 unsafe extern "C" fn float_arctan2(a: f64, b: f64) -> f64 {
-    libm::atan2(a, b)
+    extern "C" {
+        fn atan2(a: f64, b: f64) -> f64;
+    }
+    atan2(a, b)
 }
