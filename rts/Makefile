@@ -179,6 +179,17 @@ mo-rts.wasm: $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 		--export=__wasm_call_ctors \
 		--export=memcpy \
 		--export=memcmp \
+		--export=tan \
+		--export=asin \
+		--export=acos \
+		--export=atan \
+		--export=atan2 \
+		--export=pow \
+		--export=sin \
+		--export=cos \
+		--export=exp \
+		--export=fmod \
+		--export=log \
 		--whole-archive \
 		$+
 
@@ -188,6 +199,17 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 		--export=__wasm_call_ctors \
 		--export=memcpy \
 		--export=memcmp \
+		--export=tan \
+		--export=asin \
+		--export=acos \
+		--export=atan \
+		--export=atan2 \
+		--export=pow \
+		--export=sin \
+		--export=cos \
+		--export=exp \
+		--export=fmod \
+		--export=log \
 		--whole-archive \
 		$+
 
