@@ -18,11 +18,4 @@ version = "0.1.0"
 dependencies = [
  "compiler_builtins",
  "libc",
- "utf8-width",
 ]
-
-[[package]]
-name = "utf8-width"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9071ac216321a4470a69fb2b28cfc68dcd1a39acd877c8be8e014df6772d8efa"

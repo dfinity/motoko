@@ -357,7 +357,7 @@ unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
 
 /// Decodes the character at the pointer. Returns the character, the size via the `out` parameter
 pub(crate) unsafe fn decode_code_point(s: *const u8, out: *mut u32) -> u32 {
-    let char_len = utf8_width::get_width(*s);
+    let char_len = core::cmp::max((*s).leading_ones() as usize, 1);
 
     let char = str::from_utf8_unchecked(slice::from_raw_parts(s, char_len))
         .chars()
