@@ -158,12 +158,12 @@ _build/wasm/musl_%.o: %.c | _build/wasm
 
 .PHONY: _build/wasm/libmotoko_rts.a
 _build/wasm/libmotoko_rts.a: | _build/wasm
-	cd motoko-rts && xargo rustc --lib --target=wasm32-unknown-emscripten
+	cd motoko-rts && xargo rustc --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 .PHONY: _build/wasm/libmotoko_rts_debug.a
 _build/wasm/libmotoko_rts_debug.a: | _build/wasm
-	cd motoko-rts && xargo rustc --lib --target=wasm32-unknown-emscripten
+	cd motoko-rts && xargo rustc --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
