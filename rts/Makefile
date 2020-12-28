@@ -213,15 +213,5 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 		--whole-archive \
 		$+
 
-#
-# A simple program to do simple tests of rts.c, using native compilation
-#
-
-# test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-# 	$(CLANG) -o $@ $+
-
-# test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-# 	$(CLANG) -o $@ $+
-
 clean:
-	rm -rf _build mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128 motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home
+	rm -rf _build mo-rts.wasm mo-rts-debug.wasm motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home

@@ -167,7 +167,8 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-        ./test_rts
+        # ./test_rts
+        # TODO: Run motoko-rts-tests here
       '';
 
       installPhase = ''
