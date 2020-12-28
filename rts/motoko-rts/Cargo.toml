@@ -9,7 +9,7 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [features]
-default = ["panic_handler"]
+default = ["panic_handler", "gc"]
 
 # Enables garbage collector and bump allocator. Without this the GC module is
 # disabled (not compiled) and allocation routines use `malloc`.
@@ -43,5 +43,5 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
-codegen-units = 1
-opt-level = "s"
+codegen-units = 1 # makes debugging easier
+opt-level = "s" # optimize for size
