@@ -90,8 +90,7 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 }
 
 /// Encode a blob into an checksum-prepended base32 representation
-#[no_mangle]
-unsafe extern "C" fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
+unsafe fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
@@ -177,8 +176,7 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
     }
 }
 
-#[no_mangle]
-unsafe extern "C" fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
+unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
@@ -213,8 +211,7 @@ unsafe extern "C" fn principal_of_blob(b: SkewedPtr) -> SkewedPtr {
 
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
-#[no_mangle]
-unsafe extern "C" fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
+unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
     let blob = b.as_blob();
 
     let n = blob.len();

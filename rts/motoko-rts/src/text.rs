@@ -62,12 +62,6 @@ pub(crate) unsafe fn text_of_str(s: &str) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn text_of_cstr(s: *const libc::c_char) -> SkewedPtr {
-    let len = libc::strlen(s);
-    text_of_ptr_size(s as *const _, Bytes(len as u32))
-}
-
-#[no_mangle]
 unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
     let blob1_len = text_size(s1);
     let blob2_len = text_size(s2);
@@ -319,8 +313,7 @@ unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
 }
 
 // TODO: This will be called by Rust after porting principal.c, return Ordering
-#[no_mangle]
-pub(crate) unsafe extern "C" fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+pub(crate) unsafe fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
@@ -363,8 +356,7 @@ unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
 }
 
 /// Decodes the character at the pointer. Returns the character, the size via the `out` parameter
-#[no_mangle]
-unsafe extern "C" fn decode_code_point(s: *const u8, out: *mut u32) -> u32 {
+pub(crate) unsafe fn decode_code_point(s: *const u8, out: *mut u32) -> u32 {
     let char_len = utf8_width::get_width(*s);
 
     let char = str::from_utf8_unchecked(slice::from_raw_parts(s, char_len))

@@ -12,6 +12,7 @@
 
 use crate::alloc::alloc_words;
 use crate::rts_trap_with;
+use crate::text::decode_code_point;
 use crate::types::{size_of, Array, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB, TAG_CONCAT};
 
 const TODO_TEXT_IDX: u32 = 0;
@@ -78,10 +79,6 @@ unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
     } else {
         0
     }
-}
-
-extern "C" {
-    fn decode_code_point(s: *const u8, n: *mut u32) -> u32;
 }
 
 /// Returns next character in the iterator, advances the iterator

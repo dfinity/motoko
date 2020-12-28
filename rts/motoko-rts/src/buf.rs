@@ -17,8 +17,7 @@ impl Buf {
 }
 
 /// Read a single byte
-#[no_mangle]
-pub(crate) unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
+pub(crate) unsafe fn read_byte(buf: *mut Buf) -> u8 {
     if (*buf).ptr >= (*buf).end {
         idl_trap_with("byte read out of buffer");
     }
@@ -30,8 +29,7 @@ pub(crate) unsafe extern "C" fn read_byte(buf: *mut Buf) -> u8 {
 }
 
 /// Read a little-endian word
-#[no_mangle]
-pub(crate) unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
+pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
     if (*buf).ptr.add(3) >= (*buf).end {
         idl_trap_with("word read out of buffer");
     }
@@ -44,8 +42,7 @@ pub(crate) unsafe extern "C" fn read_word(buf: *mut Buf) -> u32 {
     word
 }
 
-#[no_mangle]
-unsafe extern "C" fn advance(buf: *mut Buf, n: u32) {
+unsafe fn advance(buf: *mut Buf, n: u32) {
     if (*buf).ptr.add(n as usize) > (*buf).end {
         idl_trap_with("advance out of buffer");
     }

@@ -20,7 +20,6 @@ TOMMATHFILES = \
 
 MUSLFILES = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  towctrans iswspace iswupper iswlower iswalpha wcschr wcslen \
   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \

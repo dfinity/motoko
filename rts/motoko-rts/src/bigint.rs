@@ -121,8 +121,7 @@ unsafe fn mp_iszero(p: *const mp_int) -> bool {
     (*p).used == 0
 }
 
-#[no_mangle]
-unsafe extern "C" fn bigint_alloc() -> SkewedPtr {
+unsafe fn bigint_alloc() -> SkewedPtr {
     let r = alloc_words(size_of::<BigInt>());
     let r_ptr = r.unskew() as *mut BigInt;
     (*r_ptr).header.tag = TAG_BIGINT;

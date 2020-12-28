@@ -46,21 +46,18 @@ pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
     trap_with_prefix("IDL error: ", msg);
 }
 
-#[no_mangle]
-unsafe extern "C" fn is_primitive_type(ty: i32) -> bool {
+unsafe fn is_primitive_type(ty: i32) -> bool {
     ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
 }
 
-#[no_mangle]
-unsafe extern "C" fn check_typearg(ty: i32, n_types: u32) {
+unsafe fn check_typearg(ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
     if !(is_primitive_type(ty) || (ty >= 0 && (ty as u32) < n_types)) {
         idl_trap_with("invalid type argument");
     }
 }
 
-#[no_mangle]
-unsafe extern "C" fn parse_fields(buf: *mut Buf, n_types: u32) {
+unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
     let mut next_valid = 0;
     for n in (1..=leb128_decode(buf)).rev() {
         let tag = leb128_decode(buf);
@@ -74,8 +71,7 @@ unsafe extern "C" fn parse_fields(buf: *mut Buf, n_types: u32) {
 }
 
 // TODO (osa): This will cause problems at some point
-#[no_mangle]
-unsafe extern "C" fn alloc(size: Words<u32>) -> *mut u8 {
+unsafe fn alloc(size: Words<u32>) -> *mut u8 {
     alloc_blob(size.to_bytes()).as_blob().payload_addr()
 }
 
