@@ -86,8 +86,8 @@ pub unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
 pub unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
-    let pos = (iter_array.get(ITER_POS_IDX).0 >> 2) as u32;
     let blob = iter_array.get(ITER_BLOB_IDX).as_blob();
+    let pos = (iter_array.get(ITER_POS_IDX).0 >> 2) as u32;
 
     // If we are at the end of the current blob, find the next blob
     if pos >= blob.len().0 {
@@ -100,12 +100,12 @@ pub unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
 
         let todo_array = todo.as_array();
 
-        let next = todo_array.get(TODO_TEXT_IDX);
+        let text = todo_array.get(TODO_TEXT_IDX);
 
-        if next.tag() == TAG_CONCAT {
+        if text.tag() == TAG_CONCAT {
             // If next one is a concat node re-use both the iterator and the todo objects (avoids
             // allocation)
-            let concat = next.as_concat();
+            let concat = text.as_concat();
             todo_array.set(TODO_TEXT_IDX, (*concat).text2);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
@@ -113,10 +113,10 @@ pub unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
             text_iter_next(iter)
         } else {
             // Otherwise remove the entry from the chain
-            debug_assert_eq!(next.tag(), TAG_BLOB);
-            iter_array.set(ITER_BLOB_IDX, next);
+            debug_assert_eq!(text.tag(), TAG_BLOB);
+            iter_array.set(ITER_BLOB_IDX, text);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
-            iter_array.set(ITER_TODO_IDX, iter_array.get(TODO_LINK_IDX));
+            iter_array.set(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX));
             text_iter_next(iter)
         }
     } else {
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
         let blob_payload = blob.payload_addr();
         let mut step: u32 = 0;
         let char = decode_code_point(blob_payload.add(pos as usize), &mut step as *mut u32);
-        iter_array.set(ITER_POS_IDX, SkewedPtr((pos + step << 2) as usize));
+        iter_array.set(ITER_POS_IDX, SkewedPtr(((pos + step) << 2) as usize));
         char
     }
 }

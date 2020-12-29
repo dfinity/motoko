@@ -240,7 +240,7 @@ unsafe fn text_compare_range(
             s1_blob.payload_addr().add(offset1.0 as usize) as *const _,
             s2_blob.payload_addr().add(offset2.0 as usize) as *const _,
             n.0 as usize,
-       );
+        );
 
         if cmp < 0 {
             Ordering::Less
@@ -354,22 +354,35 @@ pub unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
     }
 }
 
-/// Decodes the character at the pointer. Returns the character, the size via the `out` parameter
-pub(crate) unsafe fn decode_code_point(s: *const u8, out: *mut u32) -> u32 {
-    let char_len = core::cmp::max((*s).leading_ones() as usize, 1);
+/// Decodes the character at the pointer. Returns the character, the size via the `size` parameter
+pub unsafe fn decode_code_point(s: *const u8, size: *mut u32) -> u32 {
+    // 0xxxxxxx
+    // 110xxxxx 10xxxxxx
+    // 1110xxxx 10xxxxxx 10xxxxxx
+    // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-    let char = str::from_utf8_unchecked(slice::from_raw_parts(s, char_len))
-        .chars()
-        .next()
-        .unwrap();
+    let (size, mut value) = {
+        let leading_ones = (*s).leading_ones();
+        if leading_ones == 0 {
+            *size = 1;
+            return *s as u32;
+        } else {
+            *size = leading_ones;
+            (leading_ones, ((*s << leading_ones) >> leading_ones) as u32)
+        }
+    };
 
-    *out = char_len as u32;
-    char as u32
+    for i in 1..size {
+        value <<= 6;
+        value += ((*s.add(i as usize)) & 0b00111111) as u32;
+    }
+
+    value
 }
 
 /// Allocate a text from a character
 #[no_mangle]
-unsafe extern "C" fn text_singleton(char: u32) -> SkewedPtr {
+pub unsafe extern "C" fn text_singleton(char: u32) -> SkewedPtr {
     let mut buf = [0u8; 4];
     let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
 

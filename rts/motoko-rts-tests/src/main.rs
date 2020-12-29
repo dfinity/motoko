@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate quickcheck;
-
 mod bigint;
 mod closure_table;
 mod crc32;
@@ -36,4 +33,11 @@ extern "C" fn rts_trap(_msg: *const u8, _len: Bytes<u32>) -> ! {
 #[no_mangle]
 extern "C" fn bigint_trap() -> ! {
     panic!("bigint_trap called");
+}
+
+// Called by the RTS for debug prints
+#[no_mangle]
+unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
+    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
+    println!("[RTS] {}", String::from_utf8_lossy(str));
 }

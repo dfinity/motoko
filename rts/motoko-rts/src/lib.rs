@@ -20,7 +20,7 @@ mod blob_iter;
 pub mod buf;
 mod char;
 pub mod closure_table;
-mod debug;
+pub mod debug;
 mod float;
 mod idl;
 mod leb128;
