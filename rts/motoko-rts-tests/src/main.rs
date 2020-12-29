@@ -1,7 +1,11 @@
+#[macro_use]
+extern crate quickcheck;
+
 mod bigint;
 mod closure_table;
 mod crc32;
 mod principal_id;
+mod text;
 mod utf8;
 
 use motoko_rts::types::*;
@@ -18,6 +22,7 @@ fn main() {
         utf8::test();
         crc32::test();
         principal_id::test();
+        text::test();
     }
 }
 

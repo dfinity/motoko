@@ -61,7 +61,7 @@ pub unsafe fn text_of_str(s: &str) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
     let blob1_len = text_size(s1);
     let blob2_len = text_size(s2);
 
@@ -163,7 +163,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[no_mangle]
-pub(crate) unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
     let obj = s.as_obj();
     if obj.tag() == TAG_BLOB {
         s
@@ -177,7 +177,7 @@ pub(crate) unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
 
 /// Size of the text, in bytes
 #[no_mangle]
-unsafe extern "C" fn text_size(s: SkewedPtr) -> Bytes<u32> {
+pub unsafe extern "C" fn text_size(s: SkewedPtr) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
@@ -240,7 +240,7 @@ unsafe fn text_compare_range(
             s1_blob.payload_addr().add(offset1.0 as usize) as *const _,
             s2_blob.payload_addr().add(offset2.0 as usize) as *const _,
             n.0 as usize,
-        );
+       );
 
         if cmp < 0 {
             Ordering::Less
@@ -336,7 +336,7 @@ pub(crate) unsafe fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
 
 /// Length in characters
 #[no_mangle]
-unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
     if text.tag() == TAG_BLOB {
         let blob = text.as_blob();
         let payload_addr = blob.payload_addr();

@@ -47,7 +47,7 @@ const ITER_TODO_IDX: u32 = 2;
 
 /// Returns a new iterator for the text
 #[no_mangle]
-unsafe extern "C" fn text_iter(text: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn text_iter(text: SkewedPtr) -> SkewedPtr {
     let iter = alloc_words(size_of::<Array>() + Words(3));
     let array = iter.unskew() as *mut Array;
     (*array).header.tag = TAG_ARRAY;
@@ -68,7 +68,7 @@ unsafe extern "C" fn text_iter(text: SkewedPtr) -> SkewedPtr {
 
 /// Returns whether the iterator is finished
 #[no_mangle]
-unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
     let array = iter.as_array();
     let pos = array.get(ITER_POS_IDX).0 >> 2;
     let blob = array.get(ITER_BLOB_IDX).as_blob();
@@ -83,7 +83,7 @@ unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
 
 /// Returns next character in the iterator, advances the iterator
 #[no_mangle]
-unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let pos = (iter_array.get(ITER_POS_IDX).0 >> 2) as u32;
