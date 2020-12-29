@@ -1,6 +1,7 @@
 mod bigint;
 mod closure_table;
 mod crc32;
+mod principal_id;
 mod utf8;
 
 use motoko_rts::types::*;
@@ -16,6 +17,7 @@ fn main() {
         bigint::test();
         utf8::test();
         crc32::test();
+        principal_id::test();
     }
 }
 

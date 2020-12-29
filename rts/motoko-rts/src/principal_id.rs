@@ -205,7 +205,7 @@ pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
 
 /// Encode a blob into its textual representation
 #[no_mangle]
-unsafe extern "C" fn principal_of_blob(b: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn principal_of_blob(b: SkewedPtr) -> SkewedPtr {
     base32_to_principal(base32_of_checksummed_blob(b))
 }
 
@@ -252,7 +252,7 @@ unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
 
 // Decode an textual principal representation into a blob
 #[no_mangle]
-unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
     let b0 = blob_of_text(t);
     let bytes = base32_to_blob(b0);
 
