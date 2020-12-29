@@ -94,13 +94,7 @@ CLANG_FLAGS = \
    --compile \
    -fpic \
    -fvisibility=hidden \
-   --std=c11
-
-#
-# clang flags only used during Wasm compilation
-#
-
-WASM_FLAGS = \
+   --std=c11 \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
@@ -121,7 +115,7 @@ _build/wasm:
 #
 
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
@@ -137,16 +131,16 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 #
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
 
 _build/wasm/%_debug.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
 
 _build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
 
 .PHONY: _build/wasm/libmotoko_rts.a
 _build/wasm/libmotoko_rts.a: | _build/wasm
