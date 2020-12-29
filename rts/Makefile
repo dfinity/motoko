@@ -87,7 +87,7 @@ MUSL_FLAGS = \
   -Dfabs=__builtin_fabs
 
 #
-# clang flags used both for Wasm compilation and native (i.e. test suite) compilation
+# clang flags
 #
 
 CLANG_FLAGS = \
@@ -113,21 +113,17 @@ WASM_FLAGS = \
 
 all: mo-rts.wasm mo-rts-debug.wasm
 
-_build/wasm _build/native:
+_build/wasm:
 	mkdir -p $@
 
 #
-# Building the libtommath files, Wasm and native
+# Building the libtommath files
 #
 
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
-_build/native/tommath_%.o: bn_%.c | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
-TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 
 #
@@ -137,7 +133,7 @@ MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
 
 #
-# Our part of the RTS, Wasm and native
+# Our part of the RTS
 #
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
@@ -146,14 +142,8 @@ _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 _build/wasm/%_debug.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
 
-_build/native/%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
-
 _build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
-_build/native/tommath_%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
