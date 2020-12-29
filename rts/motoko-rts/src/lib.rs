@@ -23,7 +23,7 @@ pub mod closure_table;
 pub mod debug;
 mod float;
 mod idl;
-mod leb128;
+pub mod leb128;
 mod mem;
 pub mod principal_id;
 pub mod text;

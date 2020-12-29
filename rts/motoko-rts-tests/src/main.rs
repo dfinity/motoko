@@ -1,6 +1,7 @@
 mod bigint;
 mod closure_table;
 mod crc32;
+mod leb128;
 mod principal_id;
 mod text;
 mod utf8;
@@ -20,6 +21,7 @@ fn main() {
         crc32::test();
         principal_id::test();
         text::test();
+        leb128::test();
     }
 }
 

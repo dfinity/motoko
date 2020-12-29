@@ -131,22 +131,3 @@ If you change dependencies (e.g. bump versions, add more crates),
 
 Warning: nix will happily use a stale verion of the dependencies if you do not
 do step 3.
-
-AFL tests
----------
-
-Some tests are best run by AFL (American Fuzzy Lop), which is a whitebox
-fuzzer that instruments the code to get more coverage.
-
-You can install `afl` using `nix-env -i afl`.
-
-You need to compile the code with instrumentation and then run it using the
-helper script provided:
-
-```
-make clean
-CLANG=afl-gcc make test_leb128
-./run-afl-leb128.sh
-```
-
-
