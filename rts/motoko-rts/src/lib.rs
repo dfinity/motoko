@@ -25,8 +25,8 @@ mod float;
 mod idl;
 mod leb128;
 mod mem;
-mod principal_id;
-mod text;
+pub mod principal_id;
+pub mod text;
 mod text_iter;
 #[allow(non_camel_case_types)]
 mod tommath_bindings;

@@ -49,7 +49,7 @@ unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
 }
 
 #[no_mangle]
-pub(crate) unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
+pub unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
     let blob = alloc_text_blob(n);
     let payload_addr = blob.as_blob().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
@@ -292,7 +292,7 @@ unsafe fn text_get_range(
 }
 
 #[no_mangle]
-unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+pub unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);

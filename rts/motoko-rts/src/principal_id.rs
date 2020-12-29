@@ -9,7 +9,7 @@ use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
 #[no_mangle]
-unsafe extern "C" fn compute_crc32(blob: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn compute_crc32(blob: SkewedPtr) -> u32 {
     if blob.tag() != TAG_BLOB {
         panic!("compute_crc32: Blob expected");
     }
@@ -90,7 +90,7 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 }
 
 /// Encode a blob into an checksum-prepended base32 representation
-unsafe fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
@@ -176,7 +176,7 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
     }
 }
 
-unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
