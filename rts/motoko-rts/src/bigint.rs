@@ -279,7 +279,7 @@ unsafe extern "C" fn bigint_ge(a: SkewedPtr, b: SkewedPtr) -> bool {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_add(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_add(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     check(mp_add(
         a.as_bigint().mp_int_ptr(),
@@ -290,7 +290,7 @@ unsafe extern "C" fn bigint_add(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_sub(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_sub(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     check(mp_sub(
         a.as_bigint().mp_int_ptr(),
@@ -352,7 +352,7 @@ unsafe extern "C" fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_neg(a: SkewedPtr) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_neg(a: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     check(mp_neg(
         a.as_bigint().mp_int_ptr(),
@@ -421,7 +421,7 @@ unsafe fn bigint_leb128_encode_go(tmp: *mut mp_int, mut buf: *mut u8, add_bit: b
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_leb128_encode(n: SkewedPtr, buf: *mut u8) {
+pub unsafe extern "C" fn bigint_leb128_encode(n: SkewedPtr, buf: *mut u8) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     bigint_leb128_encode_go(&mut tmp, buf, false)
@@ -441,12 +441,12 @@ unsafe extern "C" fn bigint_2complement_bits(n: SkewedPtr) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_sleb128_size(n: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn bigint_sleb128_size(n: SkewedPtr) -> u32 {
     (bigint_2complement_bits(n) + 6) / 7 // divide by 7, ruond up
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_sleb128_encode(n: SkewedPtr, buf: *mut u8) {
+pub unsafe extern "C" fn bigint_sleb128_encode(n: SkewedPtr, buf: *mut u8) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 
@@ -464,7 +464,7 @@ unsafe extern "C" fn bigint_sleb128_encode(n: SkewedPtr, buf: *mut u8) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
     let r = bigint_alloc();
 
     let r_mp_int = r.as_bigint().mp_int_ptr();
@@ -490,7 +490,7 @@ unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> SkewedPtr {
+pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> SkewedPtr {
     let r = bigint_alloc();
 
     let r_mp_int = r.as_bigint().mp_int_ptr();

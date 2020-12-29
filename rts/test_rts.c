@@ -94,43 +94,6 @@ void test_bigint_sleb128(as_ptr n) {
 int main () {
   printf("Motoko RTS test suite\n");
 
-
-  /*
-   * Testing BigInt
-   */
-  printf("Testing BigInt...\n");
-
-  /*
-   * Testing BigInt (s)leb128 encoding
-   */
-  as_ptr one = bigint_of_word32(1);
-  as_ptr two = bigint_of_word32(2);
-  for (uint32_t i = 0; i < 100; i++){
-    as_ptr two_pow_i = bigint_pow(two, bigint_of_word32(i));
-    printf("leb128 2^%u-1: ", i);
-    test_bigint_leb128(bigint_sub(two_pow_i, one));
-    printf("leb128 2^%u:   ", i);
-    test_bigint_leb128(two_pow_i);
-    printf("leb128 2^%u+1: ", i);
-    test_bigint_leb128(bigint_add(two_pow_i, one));
-  }
-
-  for (uint32_t i = 0; i < 100; i++){
-    as_ptr two_pow_i = bigint_pow(two, bigint_of_word32(i));
-    printf("sleb128  2^%u-1: ", i);
-    test_bigint_sleb128(bigint_sub(two_pow_i, one));
-    printf("sleb128  2^%u:   ", i);
-    test_bigint_sleb128(two_pow_i);
-    printf("sleb128  2^%u+1: ", i);
-    test_bigint_sleb128(bigint_add(two_pow_i, one));
-    printf("sleb128 -2^%u-1: ", i);
-    test_bigint_sleb128(bigint_neg(bigint_sub(two_pow_i, one)));
-    printf("sleb128 -2^%u:   ", i);
-    test_bigint_sleb128(bigint_neg(two_pow_i));
-    printf("sleb128 -2^%u+1: ", i);
-    test_bigint_sleb128(bigint_neg(bigint_add(two_pow_i, one)));
-  }
-
   /*
    * Testing UTF8
    */

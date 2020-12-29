@@ -17,7 +17,7 @@ mod gc;
 mod alloc;
 pub mod bigint;
 mod blob_iter;
-mod buf;
+pub mod buf;
 mod char;
 pub mod closure_table;
 mod debug;

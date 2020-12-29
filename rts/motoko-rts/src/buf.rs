@@ -3,11 +3,11 @@
 use crate::idl::idl_trap_with;
 
 #[repr(C)]
-pub(crate) struct Buf {
+pub struct Buf {
     /// Pointer into the buffer
-    pub(crate) ptr: *mut u8,
+    pub ptr: *mut u8,
     /// Pointer to the end of the buffer
-    pub(crate) end: *mut u8,
+    pub end: *mut u8,
 }
 
 impl Buf {
