@@ -1,5 +1,6 @@
 mod bigint;
 mod closure_table;
+mod utf8;
 
 use motoko_rts::types::*;
 
@@ -10,7 +11,9 @@ fn main() {
     }
 
     unsafe {
-        main_();
+        closure_table::test();
+        bigint::test();
+        utf8::test();
     }
 }
 
@@ -24,9 +27,4 @@ extern "C" fn rts_trap(_msg: *const u8, _len: Bytes<u32>) -> ! {
 #[no_mangle]
 extern "C" fn bigint_trap() -> ! {
     panic!("bigint_trap called");
-}
-
-unsafe fn main_() {
-    closure_table::test();
-    bigint::test();
 }

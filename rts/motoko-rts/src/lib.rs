@@ -31,7 +31,7 @@ mod text_iter;
 #[allow(non_camel_case_types)]
 mod tommath_bindings;
 pub mod types;
-mod utf8;
+pub mod utf8;
 
 use types::{Bytes, SkewedPtr};
 
