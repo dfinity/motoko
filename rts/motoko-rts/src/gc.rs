@@ -158,7 +158,7 @@ unsafe fn evac_bigint_blob(
 
     // blob_obj_addr_field now has the new location of the blob, get the payload address
     let blob_new_addr = (*blob_obj_addr_field).unskew();
-    let blob_new_payload_addr = blob_new_addr + 2 * (WORD_SIZE as usize);
+    let blob_new_payload_addr = blob_new_addr + size_of::<Blob>().to_bytes().0 as usize;
 
     // Update evacuated field
     *ptr_loc = blob_new_payload_addr; // not skewed!
