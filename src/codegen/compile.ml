@@ -59,13 +59,13 @@ module StaticBytes = struct
 
   let i32s is = Seq (List.map (fun i -> I32 i) is)
 
-  let rec add : Buffer.t -> t_ -> unit = fun buf -> function
+  let rec add (buf : Buffer.t) : t_ -> unit = function
     | I32 i -> Buffer.add_int32_le buf i
     | I64 i -> Buffer.add_int64_le buf i
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
 
-  let as_bytes : t -> string = fun xs ->
+  let as_bytes (xs : t) : string =
     let buf = Buffer.create 16 in
     List.iter (add buf) xs;
     Buffer.contents buf
@@ -1166,7 +1166,7 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
-  let header_size = 1l
+  let header_size = 2l (* tag, link *)
   let tag_field = 0l
 
   (* Assumes a pointer to the object on the stack *)
@@ -1244,7 +1244,8 @@ module Tagged = struct
 
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
-      compile_unboxed_const (int_of_tag tag) ::
+      compile_unboxed_const (int_of_tag tag) :: (* tag *)
+      compile_unboxed_const 0l :: (* link *)
       element_instructions
 
 end (* Tagged *)
@@ -1302,7 +1303,8 @@ module Opt = struct
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Null);
+      I32 Tagged.(int_of_tag Null); (* tag *)
+      I32 0l; (* link *)
     ]
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
@@ -1322,7 +1324,8 @@ module Opt = struct
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
             compile_unboxed_const (E.add_static env StaticBytes.[
-              I32 Tagged.(int_of_tag Some);
+              I32 Tagged.(int_of_tag Some); (* tag *)
+              I32 0l; (* link *)
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
@@ -1416,7 +1419,8 @@ module Closure = struct
 
   let static_closure env fi : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Closure);
+      I32 Tagged.(int_of_tag Closure); (* tag *)
+      I32 0l; (* link *)
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -1445,13 +1449,14 @@ module BoxedWord64 = struct
     then BitTagged.tag_const i
     else
       E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits64);
+        I32 Tagged.(int_of_tag Bits64); (* tag *)
+        I32 0l; (* link *)
         I64 i
       ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Heap.alloc env 3l ^^
+    Heap.alloc env 4l ^^
     set_i ^^
     get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
@@ -1534,13 +1539,14 @@ module BoxedSmallWord = struct
     then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
       E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits32);
+        I32 Tagged.(int_of_tag Bits32); (* tag *)
+        I32 0l; (* link *)
         I32 i
       ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Heap.alloc env 2l ^^
+    Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.(store Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
@@ -1714,13 +1720,14 @@ module Float = struct
 
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Bits64);
+      I32 Tagged.(int_of_tag Bits64); (* tag *)
+      I32 0l; (* link *)
       I64 (Wasm.F64.to_bits f)
     ]
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Heap.alloc env 3l ^^
+    Heap.alloc env 4l ^^
     set_i ^^
     get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
@@ -2404,7 +2411,8 @@ module BigNumLibtommath : BigNumType = struct
     let size = Int32.of_int (List.length limbs) in
 
     let data_blob = E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Blob);
+      I32 Tagged.(int_of_tag Blob); (* tag *)
+      I32 0l; (* link *)
       I32 Int32.(mul Heap.word_size size);
       i32s limbs
     ] in
@@ -2412,7 +2420,8 @@ module BigNumLibtommath : BigNumType = struct
 
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag BigInt);
+      I32 Tagged.(int_of_tag BigInt); (* tag *)
+      I32 0l; (* link *)
       I32 size;
       I32 size; (* alloc *)
       I32 sign;
@@ -2540,7 +2549,8 @@ module Object = struct
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Object);
+      I32 Tagged.(int_of_tag Object); (* tag *)
+      I32 0l; (* link *)
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -2636,7 +2646,7 @@ module Object = struct
     then Func.share_code2 env "obj_idx_ind" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env ^^
-      load_ptr ^^ compile_add_const Heap.word_size
+      load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
     else idx_hash_raw env
 
@@ -2686,7 +2696,8 @@ module Blob = struct
 
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Blob);
+      I32 Tagged.(int_of_tag Blob); (* tag *)
+      I32 0l; (* link *)
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -2936,7 +2947,8 @@ module Arr = struct
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Array);
+      I32 Tagged.(int_of_tag Array); (* tag *)
+      I32 0l; (* link *)
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
@@ -4096,7 +4108,8 @@ module Serialization = struct
   *)
   let coercion_error_value env : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag CoercionFailure);
+      I32 Tagged.(int_of_tag CoercionFailure); (* tag *)
+      I32 0l; (* link *)
     ]
 
   (* The main deserialization function, generated once per type hash.
@@ -4981,7 +4994,7 @@ module GC = struct
 
   let register env static_roots =
 
-    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env -> 
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
       compile_unboxed_const static_roots
     )) in
 

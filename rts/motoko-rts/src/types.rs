@@ -157,6 +157,7 @@ pub const TAG_NULL: Tag = 15;
 #[repr(C)]
 pub struct Obj {
     pub tag: Tag,
+    pub link: *mut Obj,
 }
 
 impl Obj {

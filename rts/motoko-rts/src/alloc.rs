@@ -39,6 +39,7 @@ pub(crate) unsafe extern "C" fn alloc_blob(size: Bytes<u32>) -> SkewedPtr {
     let ptr = alloc_words(size_of::<Blob>() + size.to_words());
     let blob = ptr.unskew() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
+    (*blob).header.link = core::ptr::null_mut();
     (*blob).len = size;
     ptr
 }
