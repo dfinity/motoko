@@ -16,6 +16,7 @@ mod gc;
 
 mod alloc;
 pub mod bigint;
+pub mod bitmap;
 mod blob_iter;
 pub mod buf;
 mod char;

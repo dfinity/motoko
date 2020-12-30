@@ -1,4 +1,5 @@
 mod bigint;
+mod bitmap;
 mod closure_table;
 mod crc32;
 mod leb128;
@@ -22,6 +23,7 @@ fn main() {
         principal_id::test();
         text::test();
         leb128::test();
+        bitmap::test();
     }
 }
 
