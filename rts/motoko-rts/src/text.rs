@@ -28,18 +28,16 @@
 use crate::alloc::{alloc_blob, alloc_words};
 use crate::mem::memcpy_bytes;
 use crate::rts_trap_with;
-use crate::types::{Blob, Bytes, Concat, SkewedPtr, Words, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
 
 const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
+
 // Strings smaller than this must be blobs
 // Make this MAX_STR_SIZE to disable the use of ropes completely, e.g. for debugging
 const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
-
-// tag, n_bytes, text1, text2
-const CONCAT_WORDS: Words<u32> = Words(4);
 
 unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
     if size > MAX_STR_SIZE {
@@ -100,7 +98,7 @@ pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr 
     }
 
     // Create concat node
-    let r = alloc_words(CONCAT_WORDS);
+    let r = alloc_words(size_of::<Concat>());
     let r_concat = r.unskew() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).n_bytes = new_len;
