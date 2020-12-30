@@ -367,7 +367,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
             size_of::<Array>() + Words(size)
         }
 
-        TAG_BITS64 => Words(3),
+        TAG_BITS64 => size_of::<Bits64>(),
 
         TAG_MUTBOX => size_of::<MutBox>(),
 
@@ -390,7 +390,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
             rts_trap_with("object_size: forwarding pointer");
         }
 
-        TAG_BITS32 => Words(2),
+        TAG_BITS32 => size_of::<Bits32>(),
 
         TAG_BIGINT => size_of::<BigInt>(),
 
