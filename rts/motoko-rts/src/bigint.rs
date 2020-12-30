@@ -55,7 +55,7 @@ unsafe extern "C" fn mp_realloc(
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
 ) -> *mut libc::c_void {
-    let blob = (ptr as *mut u32).sub(2) as *mut Blob;
+    let blob = (ptr as *mut u32).sub(size_of::<Blob>().0 as usize) as *mut Blob;
 
     assert_eq!((*blob).header.tag, TAG_BLOB);
     assert_eq!(blob.len(), old_size);
