@@ -94,8 +94,10 @@ pub unsafe fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
+
     let r = alloc_blob(Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
-    let dest = r.as_blob().payload_addr();
+    let blob = r.as_blob();
+    let dest = blob.payload_addr();
 
     let mut pump = Pump {
         inp_gran: 8,
@@ -120,9 +122,13 @@ pub unsafe fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
         stash_enc_base32(pump.pending_data as u8, pump.dest);
         pump.dest = pump.dest.add(1);
         // Discount padding
-        // TODO FIXME (osa): This will break stuff if the difference between the original blob len
-        // and the new value here is more than a word
-        (*r.as_blob()).len = Bytes(pump.dest as u32 - dest as u32);
+        let old_len = blob.len();
+        let new_len = Bytes(pump.dest.offset_from(dest) as u32);
+        // Zero the slop, for debug functions
+        for i in new_len.0..old_len.0 {
+            blob.set(i, 0);
+        }
+        (*blob).len = new_len;
     }
 
     r
@@ -182,7 +188,8 @@ pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
 
     // TODO (osa): I don't understand the size argument
     let r = alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
-    let dest = r.as_blob().payload_addr();
+    let blob = r.as_blob();
+    let dest = blob.payload_addr();
 
     let mut pump = Pump {
         inp_gran: 5,
@@ -198,8 +205,13 @@ pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
     }
 
     // Adjust resulting blob len
-    // TODO (osa): This is also going to break if the new len passes word boundary
-    (*r.as_blob()).len = Bytes(pump.dest as u32 - dest as u32);
+    let old_len = blob.len();
+    let new_len = Bytes(pump.dest.offset_from(dest) as u32);
+    // Zero the slop, for debug functions
+    for i in new_len.0..old_len.0 {
+        blob.set(i, 0);
+    }
+    (*blob).len = new_len;
     r
 }
 
@@ -219,7 +231,8 @@ unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
 
     // TODO (osa): Explain the size argument
     let r = alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
-    let mut dest = r.as_blob().payload_addr();
+    let blob = r.as_blob();
+    let mut dest = blob.payload_addr();
 
     let mut n_written = 0;
     for i in 0..n.0 {
@@ -244,9 +257,13 @@ unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
     }
 
     // Adjust result length
-    // TODO (osa): Same issue as other blob len sets above
-    (*r.as_blob()).len = Bytes(dest as u32 - r.as_blob().payload_addr() as u32);
-
+    let old_len = blob.len();
+    let new_len = Bytes(dest as u32 - blob.payload_addr() as u32);
+    // Zero the slop, for debug functions
+    for i in new_len.0..old_len.0 {
+        blob.set(i, 0);
+    }
+    (*blob).len = new_len;
     r
 }
 
