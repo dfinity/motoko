@@ -209,9 +209,8 @@ impl Array {
 #[repr(C)]
 pub struct Object {
     pub header: Obj,
-    pub size: u32,
-    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important
-                       // for GC (does not contain pointers).
+    pub size: u32,     // Number of elements
+    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important for GC (does not contain pointers).
 }
 
 impl Object {
@@ -225,6 +224,10 @@ impl Object {
 
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         *self.payload_addr().add(idx as usize)
+    }
+
+    pub unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
     }
 }
 
@@ -253,6 +256,10 @@ impl Closure {
 
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         *self.payload_addr().add(idx as usize)
+    }
+
+    pub unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
     }
 }
 
@@ -370,16 +377,16 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
-            let object = obj as *const Object;
-            let size = (*object).size;
+            let object = obj as *mut Object;
+            let size = object.size();
             size_of::<Object>() + Words(size)
         }
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
         TAG_ARRAY => {
-            let array = obj as *const Array;
-            let size = (*array).len;
+            let array = obj as *mut Array;
+            let size = array.len();
             size_of::<Array>() + Words(size)
         }
 
@@ -388,8 +395,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_MUTBOX => size_of::<MutBox>(),
 
         TAG_CLOSURE => {
-            let closure = obj as *const Closure;
-            let size = (*closure).size;
+            let closure = obj as *mut Closure;
+            let size = closure.size();
             size_of::<Closure>() + Words(size)
         }
 
@@ -398,8 +405,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_VARIANT => size_of::<Variant>(),
 
         TAG_BLOB => {
-            let blob = obj as *const Blob;
-            size_of::<Blob>() + (*blob).len.to_words()
+            let blob = obj as *mut Blob;
+            size_of::<Blob>() + blob.len().to_words()
         }
 
         TAG_FWD_PTR => {
@@ -413,6 +420,12 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_CONCAT => size_of::<Concat>(),
 
         TAG_NULL => size_of::<Null>(),
+
+        0 => {
+            // This can happens when we shrink a blob in principal id functions. The slop between
+            // new size and old size is filled with zeros.
+            Words(1)
+        }
 
         _ => {
             rts_trap_with("object_size: invalid object tag");
