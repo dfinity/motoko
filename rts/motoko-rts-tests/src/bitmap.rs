@@ -1,16 +1,22 @@
-use motoko_rts::bitmap::{alloc_bitmap, free_bitmap, get_bit, set_bit};
+use motoko_rts::bitmap::{get_and_set_bit, get_bit, set_bit, BITMAP_PTR};
 
 use quickcheck::{quickcheck, TestResult};
 
+use std::collections::HashSet;
+
 pub unsafe fn test() {
-    println!("Testing bitmap ... (QuickCheck)");
-    quickcheck(test_ as fn(Vec<u16>) -> TestResult);
+    println!("Testing bitmap ...");
+    println!("  Testing set_bit/get_bit (QuickCheck)");
+    quickcheck(test_set_get as fn(Vec<u16>) -> TestResult);
+    println!("  Testing get_or_set_bit (QuickCheck)");
+    quickcheck(test_get_and_set_bit as fn(HashSet<u16>) -> TestResult);
 }
 
-fn test_(mut bits: Vec<u16>) -> TestResult {
+fn test_set_get(mut bits: Vec<u16>) -> TestResult {
+    let mut vec: Vec<u8> = vec![0u8; 65535];
+
     unsafe {
-        free_bitmap();
-        alloc_bitmap();
+        BITMAP_PTR = vec.as_mut_ptr();
 
         for bit in &bits {
             set_bit(*bit as u32);
@@ -37,6 +43,26 @@ fn test_(mut bits: Vec<u16>) -> TestResult {
             }
 
             last_bit = Some(bit);
+        }
+    }
+
+    TestResult::passed()
+}
+
+fn test_get_and_set_bit(bits: HashSet<u16>) -> TestResult {
+    let mut vec: Vec<u8> = vec![0u8; 65535];
+
+    unsafe {
+        BITMAP_PTR = vec.as_mut_ptr();
+
+        for bit in bits.iter() {
+            if get_and_set_bit(*bit as u32) {
+                return TestResult::error("get_and_set_bit of unset bit is true");
+            }
+
+            if !get_bit(*bit as u32) {
+                return TestResult::error("get_bit of bit set with get_and_set_bit is false");
+            }
         }
     }
 

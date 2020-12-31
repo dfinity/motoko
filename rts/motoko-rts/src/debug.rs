@@ -130,16 +130,15 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
 
     match tag {
         TAG_OBJECT => {
-            let object = obj as *const Object;
+            let object = obj as *mut Object;
             let _ = write!(
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
                 (*object).size,
                 (*object).hash_ptr
             );
-            let payload_addr = object.payload_addr();
-            for i in 0..(*object).size {
-                let val = (*payload_addr.offset(i as isize)).0;
+            for i in 0..object.size() {
+                let val = object.get(i).0;
                 let _ = write!(buf, "{:#x}", val);
 
                 if !SkewedPtr(val).is_tagged_scalar() {

@@ -3,6 +3,7 @@ mod bitmap;
 mod closure_table;
 mod crc32;
 mod leb128;
+mod mark_stack;
 mod principal_id;
 mod text;
 mod utf8;
@@ -24,6 +25,7 @@ fn main() {
         text::test();
         leb128::test();
         bitmap::test();
+        mark_stack::test();
     }
 }
 

@@ -215,8 +215,16 @@ pub struct Object {
 }
 
 impl Object {
-    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
-        self.offset(1) as *const SkewedPtr // skip object header
+    pub unsafe fn payload_addr(self: *mut Self) -> *const SkewedPtr {
+        self.add(1) as *const SkewedPtr // skip object header
+    }
+
+    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
+    }
+
+    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+        *self.payload_addr().add(idx as usize)
     }
 }
 
@@ -235,8 +243,16 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
-        self.offset(1) as *const SkewedPtr // skip closure header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
+        self.offset(1) as *mut SkewedPtr // skip closure header
+    }
+
+    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
+    }
+
+    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+        *self.payload_addr().add(idx as usize)
     }
 }
 

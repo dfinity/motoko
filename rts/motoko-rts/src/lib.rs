@@ -14,6 +14,9 @@ mod print;
 #[cfg(feature = "gc")]
 mod gc;
 
+#[cfg(feature = "gc")]
+mod mark_compact;
+
 mod alloc;
 pub mod bigint;
 pub mod bitmap;
@@ -25,6 +28,7 @@ pub mod debug;
 mod float;
 mod idl;
 pub mod leb128;
+pub mod mark_stack;
 mod mem;
 pub mod principal_id;
 pub mod text;

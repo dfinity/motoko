@@ -170,18 +170,18 @@ unsafe fn scav(
     end_to_space: &mut usize,
     obj: usize,
 ) {
-    let obj = obj as *const Obj;
+    let obj = obj as *mut Obj;
 
-    match (*obj).tag {
+    match obj.tag() {
         TAG_OBJECT => {
-            let obj = obj as *const Object;
+            let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
-            for i in 0..(*obj).size as isize {
+            for i in 0..obj.size() {
                 evac(
                     begin_from_space,
                     begin_to_space,
                     end_to_space,
-                    obj_payload.offset(i) as usize,
+                    obj_payload.add(i as usize) as usize,
                 );
             }
         }
@@ -189,12 +189,12 @@ unsafe fn scav(
         TAG_ARRAY => {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
-            for i in 0..(*array).len as isize {
+            for i in 0..array.len() {
                 evac(
                     begin_from_space,
                     begin_to_space,
                     end_to_space,
-                    array_payload.offset(i) as usize,
+                    array_payload.add(i as usize) as usize,
                 );
             }
         }
@@ -206,14 +206,14 @@ unsafe fn scav(
         }
 
         TAG_CLOSURE => {
-            let closure = obj as *const Closure;
+            let closure = obj as *mut Closure;
             let closure_payload = closure.payload_addr();
-            for i in 0..(*closure).size as isize {
+            for i in 0..closure.size() {
                 evac(
                     begin_from_space,
                     begin_to_space,
                     end_to_space,
-                    closure_payload.offset(i) as usize,
+                    closure_payload.add(i as usize) as usize,
                 );
             }
         }
@@ -281,7 +281,7 @@ unsafe fn evac_static_roots(
 ) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
-    for i in 0..(*roots).len {
+    for i in 0..roots.len() {
         let obj = roots.get(i);
         scav(begin_from_space, begin_to_space, end_to_space, obj.unskew());
     }
