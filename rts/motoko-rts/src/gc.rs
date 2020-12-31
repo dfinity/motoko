@@ -290,6 +290,8 @@ unsafe fn evac_static_roots(
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
+    crate::mark_compact::mark_compact();
+
     let begin_from_space = get_heap_base() as usize;
     let end_from_space = HP as usize;
     let begin_to_space = end_from_space;
@@ -337,4 +339,6 @@ unsafe extern "C" fn collect() {
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     HP = new_hp as u32;
+
+    crate::mark_compact::finish_mark_compact();
 }
