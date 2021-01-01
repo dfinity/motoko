@@ -1,59 +1,58 @@
 //! A stack for marking heap objects (for GC). There should be no allocation after the stack
 //! otherwise things will break as we push.
 
-use crate::alloc::alloc_words;
-use crate::types::Words;
+use crate::alloc::{alloc_blob, alloc_words};
+use crate::types::{size_of, Blob, Words};
 
 /// Initial stack size
-const INIT_STACK_SIZE: usize = 1024;
+const INIT_STACK_SIZE: Words<u32> = Words(1024);
 
 /// Current stack
-/// This is public for testing purposes
-static mut STACK_PTR: *mut usize = core::ptr::null_mut();
-
-/// Current capacity
-static mut STACK_CAP: usize = 0;
+static mut STACK_PTR: *mut Blob = core::ptr::null_mut();
 
 /// Current length
-static mut STACK_LEN: usize = 0;
+static mut STACK_LEN: Words<u32> = Words(0);
 
 pub unsafe fn alloc_mark_stack() {
     debug_assert!(STACK_PTR.is_null());
 
-    STACK_PTR = alloc_words(Words(INIT_STACK_SIZE as u32)).unskew() as *mut usize;
-    STACK_CAP = INIT_STACK_SIZE;
-    STACK_LEN = 0;
+    // Allocating an actual object here to not break dump_heap
+    STACK_PTR = alloc_blob(INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
+    STACK_LEN = Words(0);
 }
 
 pub unsafe fn free_mark_stack() {
     STACK_PTR = core::ptr::null_mut();
-    STACK_CAP = 0;
-    STACK_LEN = 0;
+    STACK_LEN = Words(0);
 }
 
 /// Doubles the stack size
 unsafe fn grow_stack() {
-    let p = alloc_words(Words(STACK_CAP as u32)).unskew() as *mut usize;
+    let stack_cap: Words<u32> = STACK_PTR.len().to_words();
+    let new_cap: Words<u32> = Words(stack_cap.0 * 2);
+    let p = alloc_words(new_cap).unskew() as *mut usize;
+
     // Make sure nothing was allocated after the stack
-    assert_eq!(STACK_PTR.add(STACK_CAP), p);
-    STACK_CAP += STACK_CAP;
+    assert_eq!((size_of::<Blob>() + STACK_PTR.len().to_words()).0, p as u32);
+
+    (*STACK_PTR).len = new_cap.to_bytes();
 }
 
 pub unsafe fn push_mark_stack(obj: usize) {
-    if STACK_LEN == STACK_CAP {
+    if STACK_LEN == (*STACK_PTR).len.to_words() {
         grow_stack();
     }
 
-    *STACK_PTR.add(STACK_LEN) = obj;
-    STACK_LEN += 1;
+    *(STACK_PTR.payload_addr() as *mut usize).add(STACK_LEN.0 as usize) = obj;
+    STACK_LEN += Words(1);
 }
 
 pub unsafe fn pop_mark_stack() -> Option<usize> {
-    if STACK_LEN == 0 {
+    if STACK_LEN.0 == 0 {
         None
     } else {
-        STACK_LEN -= 1;
-        let p = *STACK_PTR.add(STACK_LEN);
+        STACK_LEN -= Words(1);
+        let p = *(STACK_PTR.payload_addr() as *mut usize).add(STACK_LEN.0 as usize);
         Some(p)
     }
 }

@@ -106,6 +106,11 @@ unsafe fn evac(
         return;
     }
 
+    let obj_idx = (obj as u32 - get_heap_base()) / WORD_SIZE;
+    if !crate::bitmap::get_bit(obj_idx) {
+        panic!("Object {:#x} (idx={}) is evacuated but not marked", obj as usize, obj_idx);
+    }
+
     let obj_size = object_size(obj as usize);
     let obj_size_bytes = obj_size.to_bytes();
 
@@ -318,8 +323,9 @@ unsafe extern "C" fn collect() {
     let mut p = begin_to_space;
     while p < end_to_space {
         // NB: end_to_space keeps changing within this loop
+        let size = object_size(p);
         scav(begin_from_space, begin_to_space, &mut end_to_space, p);
-        p += object_size(p).to_bytes().0 as usize;
+        p += size.to_bytes().0 as usize;
     }
 
     // Note the stats

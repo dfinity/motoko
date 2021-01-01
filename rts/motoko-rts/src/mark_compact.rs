@@ -1,5 +1,6 @@
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, set_bit};
-use crate::gc::{get_heap_base, get_static_roots, HP};
+use crate::closure_table::closure_table_loc;
+use crate::gc::{get_heap_base, get_static_roots};
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::{rts_trap_with, types::*};
 
@@ -9,6 +10,10 @@ pub(crate) unsafe extern "C" fn mark_compact() {
     alloc_mark_stack();
 
     mark_static_roots();
+
+    // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
+    push_mark_stack(*closure_table_loc());
+
     mark_stack();
 
     // free_bitmap();
@@ -25,7 +30,8 @@ unsafe fn mark_static_roots() {
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..roots.len() {
-        mark_fields(roots.get(i).unskew());
+        let obj = roots.get(i).unskew();
+        mark_fields(obj);
     }
 }
 

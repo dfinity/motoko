@@ -27,9 +27,23 @@ impl<A: Add<Output = A>> Add for Words<A> {
     }
 }
 
+impl<A: Sub<Output = A>> Sub for Words<A> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Words(self.0 - rhs.0)
+    }
+}
+
 impl<A: AddAssign> AddAssign for Words<A> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
+    }
+}
+
+impl<A: SubAssign> SubAssign for Words<A> {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
     }
 }
 
@@ -225,10 +239,6 @@ impl Object {
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         *self.payload_addr().add(idx as usize)
     }
-
-    pub unsafe fn size(self: *mut Self) -> u32 {
-        (*self).size
-    }
 }
 
 #[repr(packed)]
@@ -256,10 +266,6 @@ impl Closure {
 
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         *self.payload_addr().add(idx as usize)
-    }
-
-    pub unsafe fn size(self: *mut Self) -> u32 {
-        (*self).size
     }
 }
 
@@ -427,7 +433,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
             Words(1)
         }
 
-        _ => {
+        other => {
+            println!(100, "weird object tag: {}", other);
             rts_trap_with("object_size: invalid object tag");
         }
     }

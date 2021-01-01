@@ -1,6 +1,6 @@
-use crate::alloc::alloc_words;
+use crate::alloc::alloc_blob;
 use crate::mem::memzero;
-use crate::types::{Bytes, WORD_SIZE};
+use crate::types::{Blob, Bytes, WORD_SIZE};
 
 /// Current bitmap
 /// NOTE: This is public for testing purposes, do not read or modify this directly, use the
@@ -15,12 +15,13 @@ pub(crate) unsafe fn alloc_bitmap() {
     let max_objects = heap_size / WORD_SIZE;
 
     let bitmap_bytes = Bytes(max_objects / 8);
-    let bitmap_words = bitmap_bytes.to_words();
 
-    let ptr = alloc_words(bitmap_words).unskew();
-    memzero(ptr, bitmap_words);
+    // Allocating an actual object here as otherwise dump_heap gets confused by this stuff
+    let ptr = alloc_blob(bitmap_bytes).unskew();
+    // alloc_blob already rounds up to words so this is fine
+    memzero(ptr, bitmap_bytes.to_words());
 
-    BITMAP_PTR = ptr as *mut u8;
+    BITMAP_PTR = (ptr as *mut Blob).payload_addr()
 }
 
 #[cfg(feature = "gc")]
