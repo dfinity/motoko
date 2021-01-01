@@ -105,6 +105,15 @@ unsafe fn mark_fields(obj: usize) {
             push_mark_stack((*variant).field);
         }
 
+        TAG_BIGINT => {
+            let bigint = obj as *mut BigInt;
+            let data_ptr = *bigint.data_ptr();
+            let blob =
+                ((data_ptr as usize) - (size_of::<Blob>().to_bytes().0 as usize)) as *mut Blob;
+            assert_eq!((*blob).header.tag, TAG_BLOB);
+            push_mark_stack(skew(blob as usize));
+        }
+
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             push_mark_stack(concat.text1());
