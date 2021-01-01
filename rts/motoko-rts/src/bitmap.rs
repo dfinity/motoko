@@ -39,7 +39,7 @@ pub unsafe fn set_bit(idx: u32) {
 
 /// Get mark bit of an object, set it if it's not set. More efficient version of
 ///
-/// ````
+/// ```
 /// let current_mark = get_bit(x);
 /// if !current_mark {
 ///     set_bit(x);

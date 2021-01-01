@@ -306,14 +306,14 @@ unsafe fn evac_static_roots(
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
-    let begin_from_space = get_heap_base() as usize;
-    let end_from_space = HP as usize;
+    let begin_from_space = get_heap_base();
+    let end_from_space = HP;
 
     // println!(100, "########## heap dump");
     // crate::debug::dump_heap();
 
     // println!(100, "mark_compact begin");
-    crate::mark_compact::mark_compact(Bytes((end_from_space - begin_from_space) as u32));
+    crate::mark_compact::mark_compact(begin_from_space, end_from_space);
     // println!(100, "mark_compact end");
 
     let begin_from_space = get_heap_base() as usize;
