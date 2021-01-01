@@ -99,6 +99,13 @@ unsafe fn evac(
 
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
+    // println!(
+    //     200,
+    //     "evacuating {:#x} (idx={})",
+    //     obj as usize,
+    //     (((obj as u32) - get_heap_base()) / WORD_SIZE)
+    // );
+
     // Update the field if the object is already evacauted
     if (*obj).tag == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
@@ -108,7 +115,11 @@ unsafe fn evac(
 
     let obj_idx = (obj as u32 - get_heap_base()) / WORD_SIZE;
     if !crate::bitmap::get_bit(obj_idx) {
-        panic!("Object {:#x} (idx={}) is evacuated but not marked", obj as usize, obj_idx);
+        println!(
+            500,
+            "Object {:#x} (idx={}) is evacuated but not marked", obj as usize, obj_idx
+        );
+        rts_trap_with("--");
     }
 
     let obj_size = object_size(obj as usize);
@@ -295,7 +306,15 @@ unsafe fn evac_static_roots(
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
-    crate::mark_compact::mark_compact();
+    let begin_from_space = get_heap_base() as usize;
+    let end_from_space = HP as usize;
+
+    // println!(100, "########## heap dump");
+    // crate::debug::dump_heap();
+
+    // println!(100, "mark_compact begin");
+    crate::mark_compact::mark_compact(Bytes((end_from_space - begin_from_space) as u32));
+    // println!(100, "mark_compact end");
 
     let begin_from_space = get_heap_base() as usize;
     let end_from_space = HP as usize;
@@ -324,6 +343,12 @@ unsafe extern "C" fn collect() {
     while p < end_to_space {
         // NB: end_to_space keeps changing within this loop
         let size = object_size(p);
+        // println!(
+        //     200,
+        //     "scavenging {:#x} (idx={})",
+        //     p,
+        //     ((p as u32 - get_heap_base()) / WORD_SIZE)
+        // );
         scav(begin_from_space, begin_to_space, &mut end_to_space, p);
         p += size.to_bytes().0 as usize;
     }

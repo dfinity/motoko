@@ -5,8 +5,8 @@ use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack}
 use crate::{rts_trap_with, types::*};
 
 #[no_mangle]
-pub(crate) unsafe extern "C" fn mark_compact() {
-    alloc_bitmap();
+pub(crate) unsafe extern "C" fn mark_compact(heap_size: Bytes<u32>) {
+    alloc_bitmap(heap_size);
     alloc_mark_stack();
 
     mark_static_roots();
@@ -135,6 +135,12 @@ unsafe fn mark_fields(obj: usize) {
 
         TAG_FWD_PTR | _ => {
             // Any other tag is a bug
+            // println!(
+            //     500,
+            //     "invalid object tag {} at {:#x}",
+            //     obj.tag(),
+            //     obj as usize
+            // );
             rts_trap_with("invalid object tag in mark_fields");
         }
     }
