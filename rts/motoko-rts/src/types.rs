@@ -9,7 +9,7 @@ pub fn size_of<T>() -> Words<u32> {
 pub const WORD_SIZE: u32 = 4;
 
 /// The unit "words": `Words(123u32)` means 123 words.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Words<A>(pub A);
 
@@ -40,7 +40,7 @@ impl From<Bytes<u32>> for Words<u32> {
 }
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
@@ -86,7 +86,7 @@ impl From<Words<u32>> for Bytes<u32> {
     }
 }
 
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct SkewedPtr(pub usize);
 
@@ -154,7 +154,7 @@ pub const TAG_CONCAT: Tag = 14;
 pub const TAG_NULL: Tag = 15;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(C)]
+#[repr(packed)]
 pub struct Obj {
     pub tag: Tag,
 }
@@ -175,7 +175,7 @@ impl Obj {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[rustfmt::skip]
 pub struct Array {
     pub header: Obj,
@@ -206,7 +206,7 @@ impl Array {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Object {
     pub header: Obj,
     pub size: u32,     // Number of elements
@@ -223,13 +223,13 @@ impl Object {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct ObjInd {
     pub header: Obj,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -247,7 +247,7 @@ impl Closure {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -273,13 +273,13 @@ impl Blob {
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(C)]
+#[repr(packed)]
 pub struct FwdPtr {
     pub header: Obj,
     pub fwd: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
     /// The data following now must describe is the `mp_int` struct. The data pointer (mp_int.dp)
@@ -302,26 +302,26 @@ impl BigInt {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct MutBox {
     pub header: Obj,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Some {
     pub header: Obj,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -339,18 +339,18 @@ impl Concat {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Null {
     pub header: Obj,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Bits64 {
     pub header: Obj,
     pub bits: u64,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
