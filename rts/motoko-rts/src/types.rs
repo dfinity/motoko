@@ -9,7 +9,7 @@ pub fn size_of<T>() -> Words<u32> {
 pub const WORD_SIZE: u32 = 4;
 
 /// The unit "words": `Words(123u32)` means 123 words.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Words<A>(pub A);
 
@@ -40,7 +40,7 @@ impl From<Bytes<u32>> for Words<u32> {
 }
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
@@ -86,7 +86,7 @@ impl From<Words<u32>> for Bytes<u32> {
     }
 }
 
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct SkewedPtr(pub usize);
 
@@ -154,7 +154,7 @@ pub const TAG_CONCAT: Tag = 14;
 pub const TAG_NULL: Tag = 15;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(C)]
+#[repr(packed)]
 pub struct Obj {
     pub tag: Tag,
     pub link: *mut Obj,
@@ -176,7 +176,7 @@ impl Obj {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[rustfmt::skip]
 pub struct Array {
     pub header: Obj,
@@ -207,27 +207,30 @@ impl Array {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Object {
     pub header: Obj,
-    pub size: u32,
-    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important
-                       // for GC (does not contain pointers).
+    pub size: u32,     // Number of elements
+    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important for GC (does not contain pointers).
 }
 
 impl Object {
     pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
         self.offset(1) as *const SkewedPtr // skip object header
     }
+
+    pub unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
+    }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct ObjInd {
     pub header: Obj,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -239,9 +242,13 @@ impl Closure {
     pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
         self.offset(1) as *const SkewedPtr // skip closure header
     }
+
+    pub unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
+    }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -267,13 +274,13 @@ impl Blob {
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(C)]
+#[repr(packed)]
 pub struct FwdPtr {
     pub header: Obj,
     pub fwd: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
     /// The data following now must describe is the `mp_int` struct. The data pointer (mp_int.dp)
@@ -296,26 +303,26 @@ impl BigInt {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct MutBox {
     pub header: Obj,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Some {
     pub header: Obj,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: SkewedPtr,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -333,18 +340,18 @@ impl Concat {
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Null {
     pub header: Obj,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Bits64 {
     pub header: Obj,
     pub bits: u64,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
@@ -355,16 +362,16 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     let obj = obj as *const Obj;
     match (*obj).tag {
         TAG_OBJECT => {
-            let object = obj as *const Object;
-            let size = (*object).size;
+            let object = obj as *mut Object;
+            let size = object.size();
             size_of::<Object>() + Words(size)
         }
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
         TAG_ARRAY => {
-            let array = obj as *const Array;
-            let size = (*array).len;
+            let array = obj as *mut Array;
+            let size = array.len();
             size_of::<Array>() + Words(size)
         }
 
@@ -373,8 +380,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_MUTBOX => size_of::<MutBox>(),
 
         TAG_CLOSURE => {
-            let closure = obj as *const Closure;
-            let size = (*closure).size;
+            let closure = obj as *mut Closure;
+            let size = closure.size();
             size_of::<Closure>() + Words(size)
         }
 
@@ -383,8 +390,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_VARIANT => size_of::<Variant>(),
 
         TAG_BLOB => {
-            let blob = obj as *const Blob;
-            size_of::<Blob>() + (*blob).len.to_words()
+            let blob = obj as *mut Blob;
+            size_of::<Blob>() + blob.len().to_words()
         }
 
         TAG_FWD_PTR => {
@@ -398,6 +405,12 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_CONCAT => size_of::<Concat>(),
 
         TAG_NULL => size_of::<Null>(),
+
+        0 => {
+            // This can happens when we shrink a blob in principal id functions. The slop between
+            // new size and old size is filled with zeros.
+            Words(1)
+        }
 
         _ => {
             rts_trap_with("object_size: invalid object tag");

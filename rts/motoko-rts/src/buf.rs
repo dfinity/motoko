@@ -2,7 +2,7 @@
 
 use crate::idl::idl_trap_with;
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Buf {
     /// Pointer into the buffer
     pub ptr: *mut u8,

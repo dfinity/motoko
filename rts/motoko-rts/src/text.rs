@@ -109,7 +109,7 @@ pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr 
 
 // Leaving breadcrumbs in the destination buffer for which concat node/blob to continue
 // serializing
-#[repr(C)]
+#[repr(packed)]
 struct Crumb {
     /// Pointer to the concat node/blob to serialize
     t: SkewedPtr,
