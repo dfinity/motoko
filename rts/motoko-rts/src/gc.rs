@@ -273,7 +273,7 @@ unsafe fn scav(
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
-            // These don't include pointers, skip
+            // These don't have pointers, skip
         }
 
         TAG_NULL => {
