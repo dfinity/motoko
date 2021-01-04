@@ -305,6 +305,7 @@ let dw_FORM_addrx4 = 0x2c
 
 (* FIXME: we cheat for now *)
 let dw_LANG_C99 = 0x000c
+let dw_LANG_C_plus_plus = 0x0004
 let dw_LANG_Swift = 0x001e
 let dw_LANG_Motoko = 0x0027
 

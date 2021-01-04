@@ -995,10 +995,15 @@ let encode (em : extended_module) =
     let debug_info_section () =
       let section_body abs =
         unit(fun info_start ->
-            write16 0x0005; (* version *)
-            u8 Dwarf5.dw_UT_compile; (* unit_type *)
+(*            
+            write16 0x0005; (* version *) 
+            u8 Dwarf5.dw_UT_compile; (* unit_type *) 
             u8 4; (* address_size *)
             write32 0x0000; (* debug_abbrev_offset *)
+ *)
+            write16 0x0004; (* version *)
+            write32 0x0000; (* debug_abbrev_offset *)
+            u8 4; (* address_size *)
             info_section_start := info_start;
 
             match !dwarf_tags with
@@ -1079,12 +1084,14 @@ let encode (em : extended_module) =
     let debug_line_section fs =
       let debug_line_section_body () =
 
+(*        
         unit(fun start ->
             (* see "6.2.4 The Line Number Program Header" *)
             write16 0x0005;
             u8 4;
             u8 0; (* segment_selector_size *)
             unit(fun _ ->
+
                 u8 1; (* min_inst_length *)
                 u8 1; (* max_ops_per_inst *)
                 u8 (if Dwarf5.Machine.default_is_stmt then 1 else 0); (* default_is_stmt *)
@@ -1114,6 +1121,66 @@ let encode (em : extended_module) =
                 vec_uleb128
                   (fun (pos, indx) -> write32 pos; uleb128 indx)
                   (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
+            );
+ *)
+        unit(fun start ->
+            (* see "6.2.4 The Line Number Program Header" *)
+            write16 0x0005;
+(*          u8 4;
+            u8 0; (* segment_selector_size *) *)
+            unit(fun _ ->
+                u8 1; (* min_inst_length *)
+                u8 1; (* max_ops_per_inst *)
+                u8 (if Dwarf5.Machine.default_is_stmt then 1 else 0); (* default_is_stmt *)
+                u8 0; (* line_base *)
+                u8 12; (* line_range *)
+                u8 13; (* opcode_base *)
+
+                let open List in
+               (* DW_LNS_copy .. DW_LNS_set_isa usage *)
+                iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
+(*
+
+                let format (l, f) = uleb128 l; uleb128 f in
+                let vec_format = vec_by u8 format in
+
+                (* directory_entry_format_count, directory_entry_formats *)
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp];
+
+
+                (* directories_count, directories *)
+                vec_uleb128 write32 (rev_map (fun (_, (p, _)) -> Promise.value p) !dir_names);
+ *)
+                begin
+                  iter (fun (d, (p, _)) ->
+                      Printf.printf "%s" d;
+                      zero_terminated d) (List.tl (List.rev !dir_names));
+                  u8 0
+                end;
+(*                (* file_name_entry_format_count, file_name_entry_formats *)
+                vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp; dw_LNCT_directory_index, dw_FORM_udata];
+ *)
+
+(*
+                (* The first entry in the sequence is the primary source file whose file name exactly
+                   matches that given in the DW_AT_name attribute in the compilation unit debugging
+                   information entry. This is ensured by the heuristics, that the last noted source file
+                   will be placed at position 0 in the table *)
+                vec_uleb128
+                  (fun (pos, indx) -> write32 pos; uleb128 indx)
+                  (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
+ *)
+               begin
+                 iter (fun (f, (p, dir_indx)) ->
+                     zero_terminated f;
+                     Printf.printf "%s;%i" f dir_indx;
+                     uleb128 dir_indx; (* directory index *)
+                     uleb128 0; (* optional time of last modification *)
+                     uleb128 0; (* optional file length in bytes *)
+                   )
+                   !source_names;
+                 u8 0
+               end
             );
 
             (* build the statement loc -> addr map *)

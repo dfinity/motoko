@@ -438,7 +438,7 @@ let tag_open : dw_TAG -> die list =
     [unreferencable_tag dw_TAG_compile_unit
        (dw_attrs
           [ Producer (Printf.sprintf "DFINITY Motoko compiler, revision %s" Source_id.id);
-            Language dw_LANG_Motoko; Name file; Stmt_list 0;
+            Language dw_LANG_C_plus_plus; Name file; Stmt_list 0;
             Comp_dir dir; Use_UTF8 true; Low_pc; Addr_base 8; Ranges ] @
         base_types @ builtin_types)]
   | Subprogram (name, [retty], pos) ->

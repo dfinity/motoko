@@ -310,7 +310,8 @@ do
 	then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+#            run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc_with_flags -g -wasi-system-api --hide-warnings -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -374,7 +375,8 @@ do
            fi
         fi
 
-	rm -f $mangled
+	# rm -f $mangled
+	mv -f $mangled $out/$mangled
       fi
     fi
   ;;
