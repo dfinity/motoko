@@ -16,13 +16,15 @@ mod print;
 #[cfg(feature = "gc")]
 mod gc;
 
+#[cfg(debug_assertions)]
+pub mod debug;
+
 mod alloc;
 pub mod bigint;
 mod blob_iter;
 pub mod buf;
 mod char;
 pub mod closure_table;
-pub mod debug;
 mod float;
 mod idl;
 pub mod leb128;
