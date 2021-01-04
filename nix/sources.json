@@ -21,7 +21,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "ed728b44134dfab657a5e22ff78b0c8ac115d5cb",
+        "rev": "a0e13c56d52f6f5752c2724126944a9e035e1ea3",
         "type": "git"
     },
     "esm": {
