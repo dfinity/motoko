@@ -85,7 +85,7 @@ function normalize () {
     # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/:0.1/g' |
+    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
