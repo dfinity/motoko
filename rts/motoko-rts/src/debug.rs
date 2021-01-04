@@ -125,8 +125,8 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: usize) {
 unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-    let obj = p as *const Obj;
-    let tag = (*obj).tag;
+    let obj = p as *mut Obj;
+    let tag = obj.tag();
 
     match tag {
         TAG_OBJECT => {

@@ -100,7 +100,7 @@ unsafe fn evac(
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
     // Update the field if the object is already evacauted
-    if (*obj).tag == TAG_FWD_PTR {
+    if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;
@@ -170,9 +170,9 @@ unsafe fn scav(
     end_to_space: &mut usize,
     obj: usize,
 ) {
-    let obj = obj as *const Obj;
+    let obj = obj as *mut Obj;
 
-    match (*obj).tag {
+    match obj.tag() {
         TAG_OBJECT => {
             let obj = obj as *const Object;
             let obj_payload = obj.payload_addr();
