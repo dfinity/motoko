@@ -472,7 +472,7 @@ module E = struct
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
 
-  let add_static_root (env : t) ptr =
+  let add_static_root (env : t) (ptr : int32) =
     env.static_roots := ptr :: !(env.static_roots)
 
   let get_static_roots (env : t) =
@@ -1260,8 +1260,9 @@ module MutBox = struct
 
   let static env =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let link = bytes_of_int32 0l in
     let zero = bytes_of_int32 0l in
-    let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+    let ptr = E.add_mutable_static_bytes env (tag ^ link ^ zero) in
     E.add_static_root env ptr;
     ptr
 end
