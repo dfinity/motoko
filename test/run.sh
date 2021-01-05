@@ -85,7 +85,7 @@ function normalize () {
     # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/:0.1/g' |
+    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -310,7 +310,7 @@ do
 	then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $moc_with_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
