@@ -24,7 +24,7 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
 
     mark_stack();
 
-    thread_roots();
+    thread_roots(heap_base);
     update_fwd_refs(heap_base, heap_end);
     update_bwd_refs(heap_base, heap_end);
 
@@ -151,11 +151,11 @@ unsafe fn mark_fields(obj: *mut Obj) {
     }
 }
 
-unsafe fn thread_roots() {
+unsafe fn thread_roots(heap_base: u32) {
     // Static roots
     let roots = get_static_roots().as_array();
     for i in 0..roots.len() {
-        thread_obj_fields(roots.get(i).unskew() as *mut Obj);
+        thread_obj_fields(roots.get(i).unskew() as *mut Obj, heap_base);
     }
     // No need to thread closure table here as it's on heap and we already marked it
 }
@@ -164,7 +164,7 @@ unsafe fn thread_roots() {
 /// and forward references will be updated, pointing to the object's new location.
 unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
     let mut p = heap_base;
-    let mut free = p;
+    let mut free = heap_base;
     while p < heap_end {
         let p_bit_idx = (p - heap_base) / WORD_SIZE;
 
@@ -174,7 +174,7 @@ unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
             unthread(p as *mut Obj, free);
 
             // Thread fields
-            thread_obj_fields(p as *mut Obj);
+            thread_obj_fields(p as *mut Obj, heap_base);
 
             let p_size_bytes = object_size(p as usize).to_bytes().0;
             free += p_size_bytes;
@@ -189,7 +189,7 @@ unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
 /// locations.
 unsafe fn update_bwd_refs(heap_base: u32, heap_end: u32) {
     let mut p = heap_base;
-    let mut free = p;
+    let mut free = heap_base;
     while p < heap_end {
         let p_bit_idx = (p - heap_base) / WORD_SIZE;
 
@@ -212,13 +212,13 @@ unsafe fn update_bwd_refs(heap_base: u32, heap_end: u32) {
     crate::gc::HP = free;
 }
 
-unsafe fn thread_obj_fields(obj: *mut Obj) {
+unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
     match obj.tag() {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
-                thread(obj_payload.add(i as usize));
+                thread(obj_payload.add(i as usize), heap_base);
             }
         }
 
@@ -226,34 +226,34 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
-                thread(array_payload.add(i as usize));
+                thread(array_payload.add(i as usize), heap_base);
             }
         }
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            thread(field_addr);
+            thread(field_addr, heap_base);
         }
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
-                thread(closure_payload.add(i as usize));
+                thread(closure_payload.add(i as usize), heap_base);
             }
         }
 
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            thread(field_addr);
+            thread(field_addr, heap_base);
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            thread(field_addr);
+            thread(field_addr, heap_base);
         }
 
         TAG_BIGINT => {
@@ -263,15 +263,15 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            thread(field1_addr);
+            thread(field1_addr, heap_base);
             let field2_addr = &mut (*concat).text2;
-            thread(field2_addr);
+            thread(field2_addr, heap_base);
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            thread(field_addr);
+            thread(field_addr, heap_base);
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
@@ -288,9 +288,14 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
     }
 }
 
-unsafe fn thread(field: *mut SkewedPtr) {
+unsafe fn thread(field: *mut SkewedPtr, heap_base: u32) {
     if (*field).is_tagged_scalar() {
         // Field has a scalar value, skip
+        return;
+    }
+
+    if (*field).unskew() < heap_base as usize {
+        // Field doesn't point to heap. The pointee won't be moved so no need to thread the field
         return;
     }
 
