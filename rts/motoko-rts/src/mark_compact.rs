@@ -41,7 +41,7 @@ unsafe fn mark_static_roots() {
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..roots.len() {
-        let obj = roots.get(i).unskew();
+        let obj = roots.get(i).unskew() as *mut Obj;
         mark_fields(obj);
     }
 }
@@ -72,13 +72,11 @@ unsafe fn push_mark_stack(obj: SkewedPtr) {
 
 unsafe fn mark_stack() {
     while let Some(obj) = pop_mark_stack() {
-        mark_fields(obj);
+        mark_fields(obj as *mut Obj);
     }
 }
 
-unsafe fn mark_fields(obj: usize) {
-    let obj = obj as *mut Obj;
-
+unsafe fn mark_fields(obj: *mut Obj) {
     match obj.tag() {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
@@ -176,12 +174,12 @@ unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
         let p_size_bytes = object_size(p as usize).to_bytes();
 
         if get_bit(p_bit_idx) {
-            // Thread fields
-            thread_obj_fields(p as *mut Obj);
-
             // Update forward references to the object to the object's new location and restore
             // object header
             unthread(p as *mut Obj, free);
+
+            // Thread fields
+            thread_obj_fields(p as *mut Obj);
 
             free += p_size_bytes.0;
         }
@@ -212,32 +210,52 @@ unsafe fn update_bwd_refs(heap_base: u32, heap_end: u32) {
 
         p += p_size_bytes.0;
     }
+
+    crate::gc::HP = free;
 }
 
 unsafe fn thread_obj_fields(obj: *mut Obj) {
     match obj.tag() {
         TAG_OBJECT => {
-            todo!()
+            let obj = obj as *mut Object;
+            let obj_payload = obj.payload_addr();
+            for i in 0..obj.size() {
+                thread(obj_payload.add(i as usize));
+            }
         }
 
         TAG_ARRAY => {
-            todo!()
+            let array = obj as *mut Array;
+            let array_payload = array.payload_addr();
+            for i in 0..array.len() {
+                thread(array_payload.add(i as usize));
+            }
         }
 
         TAG_MUTBOX => {
-            todo!()
+            let mutbox = obj as *mut MutBox;
+            let field_addr = (&mut (*mutbox).field) as *mut _;
+            thread(field_addr);
         }
 
         TAG_CLOSURE => {
-            todo!()
+            let closure = obj as *mut Closure;
+            let closure_payload = closure.payload_addr();
+            for i in 0..closure.size() {
+                thread(closure_payload.add(i as usize));
+            }
         }
 
         TAG_SOME => {
-            todo!()
+            let some = obj as *mut Some;
+            let field_addr = (&mut (*some).field) as *mut _;
+            thread(field_addr);
         }
 
         TAG_VARIANT => {
-            todo!()
+            let variant = obj as *mut Variant;
+            let field_addr = (&mut (*variant).field) as *mut _;
+            thread(field_addr);
         }
 
         TAG_BIGINT => {
@@ -245,11 +263,17 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
         }
 
         TAG_CONCAT => {
-            todo!()
+            let concat = obj as *mut Concat;
+            let field1_addr = (&mut (*concat).text1) as *mut _;
+            thread(field1_addr);
+            let field2_addr = (&mut (*concat).text2) as *mut _;
+            thread(field2_addr);
         }
 
         TAG_OBJ_IND => {
-            todo!()
+            let obj_ind = obj as *mut ObjInd;
+            let field_addr = (&mut (*obj_ind).field) as *mut _;
+            thread(field_addr);
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {

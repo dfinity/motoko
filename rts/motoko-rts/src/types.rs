@@ -228,8 +228,8 @@ pub struct Object {
 }
 
 impl Object {
-    pub unsafe fn payload_addr(self: *mut Self) -> *const SkewedPtr {
-        self.add(1) as *const SkewedPtr // skip object header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
+        self.add(1) as *mut SkewedPtr // skip object header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
