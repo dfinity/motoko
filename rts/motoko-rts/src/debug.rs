@@ -224,7 +224,7 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let concat = obj as *const Concat;
             let _ = write!(
                 buf,
-                "<Concat n_bytes={:#x} obj1={:#x} obj2{:#x}>",
+                "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
                 (*concat).n_bytes.0,
                 (*concat).text1.0,
                 (*concat).text2.0
