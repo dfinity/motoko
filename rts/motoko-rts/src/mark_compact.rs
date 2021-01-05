@@ -232,7 +232,7 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
-            let field_addr = (&mut (*mutbox).field) as *mut _;
+            let field_addr = &mut (*mutbox).field;
             thread(field_addr);
         }
 
@@ -246,13 +246,13 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
 
         TAG_SOME => {
             let some = obj as *mut Some;
-            let field_addr = (&mut (*some).field) as *mut _;
+            let field_addr = &mut (*some).field;
             thread(field_addr);
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
-            let field_addr = (&mut (*variant).field) as *mut _;
+            let field_addr = &mut (*variant).field;
             thread(field_addr);
         }
 
@@ -262,15 +262,15 @@ unsafe fn thread_obj_fields(obj: *mut Obj) {
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
-            let field1_addr = (&mut (*concat).text1) as *mut _;
+            let field1_addr = &mut (*concat).text1;
             thread(field1_addr);
-            let field2_addr = (&mut (*concat).text2) as *mut _;
+            let field2_addr = &mut (*concat).text2;
             thread(field2_addr);
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
-            let field_addr = (&mut (*obj_ind).field) as *mut _;
+            let field_addr = &mut (*obj_ind).field;
             thread(field_addr);
         }
 
