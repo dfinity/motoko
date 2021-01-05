@@ -291,3 +291,44 @@ function updateHexDump() {
     document.getElementById("memory").value = "No memory yet";
   }
 }
+
+function decode(view, v) {
+  if ((v & 1) === 0) return v >> 1;
+  let p = v + 1;
+  let tag = view.getUint32(p, true);
+  switch (tag) {
+    case 1 : return "OBJ";
+    case 2 : return "OBJ_IND";
+    case 3 : return "ARRAY";
+    //    case 4 :
+    case 5 : return "BITS64";
+    case 6 : return "MUTBOX";
+    case 7 : return "CLOSURE";
+    case 8 : return "SOME";
+    case 9 : return "VARIANT";
+    case 10 : return "BLOB";
+    case 11 : return "FWD_PTR";
+    case 12 : return "BITS32";
+    case 13 : return "BIGINT";
+    case 14 : return "CONCAT";
+    case 15 : return null;
+    default : return "UNKOWN";
+  };
+}
+
+function show(v) {
+    const view = new DataView(memory.buffer);
+    return decode(view, v);
+}
+
+// https://www.mattzeunert.com/2016/02/19/custom-chrome-devtools-object-formatters.html
+/*
+window.devtoolsFormatters = [{
+    header: function(obj){
+        return ["div", {}, "value"]
+    },
+    hasBody: function(){
+        return false;
+    }
+}]
+*/
