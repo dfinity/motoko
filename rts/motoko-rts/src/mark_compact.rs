@@ -165,13 +165,12 @@ unsafe fn thread_roots() {
 }
 
 /// Scan the heap, update forward references. At the end of this pass all fields will be threaded
-/// and forward references will be unthreaded, pointing to the object's new location.
+/// and forward references will be updated, pointing to the object's new location.
 unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
     let mut p = heap_base;
     let mut free = p;
     while p < heap_end {
         let p_bit_idx = (p - heap_base) / WORD_SIZE;
-        let p_size_bytes = object_size(p as usize).to_bytes();
 
         if get_bit(p_bit_idx) {
             // Update forward references to the object to the object's new location and restore
@@ -181,34 +180,37 @@ unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
             // Thread fields
             thread_obj_fields(p as *mut Obj);
 
-            free += p_size_bytes.0;
+            let p_size_bytes = object_size(p as usize).to_bytes().0;
+            free += p_size_bytes;
+            p += p_size_bytes;
+        } else {
+            p += object_size(p as usize).to_bytes().0;
         }
-
-        p += p_size_bytes.0;
     }
 }
 
-/// Assumes all fields all threaded. Updates backward references and move objects to their new
+/// Expects all fields to be threaded. Updates backward references and moves objects to their new
 /// locations.
 unsafe fn update_bwd_refs(heap_base: u32, heap_end: u32) {
     let mut p = heap_base;
     let mut free = p;
     while p < heap_end {
         let p_bit_idx = (p - heap_base) / WORD_SIZE;
-        let p_size_words = object_size(p as usize);
-        let p_size_bytes = p_size_words.to_bytes();
 
         if get_bit(p_bit_idx) {
             // Update backward references to the object's new location and restore object header
             unthread(p as *mut Obj, free);
 
-            // Move the object to its new location
+            // All references to the object now point to the new location, move the object
+            let p_size_words = object_size(p as usize);
             move_(p, free, p_size_words);
 
-            free += p_size_bytes.0;
+            let p_size_bytes = p_size_words.to_bytes().0;
+            free += p_size_bytes;
+            p += p_size_bytes;
+        } else {
+            p += object_size(p as usize).to_bytes().0;
         }
-
-        p += p_size_bytes.0;
     }
 
     crate::gc::HP = free;
@@ -309,19 +311,21 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     // headers. Currently this holds. TODO: Document this better.
     let mut header = (*obj).tag;
     while header > TAG_NULL {
+        // TODO: is `header > TAG_NULL` the best way to distinguish a tag from a pointer?
         let tmp = (*(header as *mut Obj)).tag;
         (*(header as *mut SkewedPtr)) = skew(new_loc as usize);
         header = tmp;
     }
     // At the end of the chain is the original header for the object
+    assert!(header >= TAG_OBJECT && header <= TAG_NULL);
     (*obj).tag = header;
 }
 
-unsafe fn move_(obj: u32, new_loc: u32, size: Words<u32>) {
-    let obj = obj as *const u32;
+unsafe fn move_(old_loc: u32, new_loc: u32, size: Words<u32>) {
+    let old_loc = old_loc as *const u32;
     let new_loc = new_loc as *mut u32;
 
     for i in 0..size.0 as usize {
-        *new_loc.add(i) = *obj.add(i);
+        *new_loc.add(i) = *old_loc.add(i);
     }
 }
