@@ -20,11 +20,13 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
     mark_static_roots();
 
     // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
-    push_mark_stack(*closure_table_loc());
+    let closure_table_loc = closure_table_loc();
+    push_mark_stack(*closure_table_loc);
 
     mark_stack();
 
     thread_roots(heap_base);
+    thread(closure_table_loc, heap_base);
     update_fwd_refs(heap_base, heap_end);
     update_bwd_refs(heap_base, heap_end);
 
