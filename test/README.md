@@ -170,7 +170,7 @@ The same can be achieved with
 
     nix-build -A tests.profiling-graphs ..
 
-and Hyra serves [the latest report].
+and Hydra serves [the latest report].
 
 [the latest report]: https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/tests.profiling-graphs/latest/download/1/index.html
 
