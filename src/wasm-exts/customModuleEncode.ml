@@ -1064,6 +1064,26 @@ let encode (em : extended_module) =
         in
       custom_section ".debug_rnglists" debug_rnglists_section_body () true
 
+
+    (* 7.28 Range List Table *)
+    let debug_ranges sequence_bounds =
+
+      let debug_ranges_section_body () =
+        unit(fun start ->
+            Promise.fulfill rangelists (pos s - start);
+            DW_Sequence.iter (fun (st, _, en) ->
+                write32 st;
+                write32 en)
+              sequence_bounds;
+            write32 0;
+            write32 0;
+            (* extract the subprogram sizes to an array *)
+            Promise.fulfill subprogram_sizes (Array.of_seq (Seq.map (fun (st, _, en) -> en - st) (DW_Sequence.to_seq sequence_bounds)))
+        );
+
+        in
+      custom_section ".debug_ranges" debug_ranges_section_body () true
+
     (* Debug strings for line machine section, used by DWARF5: "6.2.4 The Line Number Program Header" *)
 
     let debug_line_str_section () =
@@ -1125,7 +1145,8 @@ let encode (em : extended_module) =
  *)
         unit(fun start ->
             (* see "6.2.4 The Line Number Program Header" *)
-            write16 0x0005;
+            (*            write16 0x0005; *)
+            write16 0x0004; 
 (*          u8 4;
             u8 0; (* segment_selector_size *) *)
             unit(fun _ ->
@@ -1153,7 +1174,6 @@ let encode (em : extended_module) =
  *)
                 begin
                   iter (fun (d, (p, _)) ->
-                      Printf.printf "%s" d;
                       zero_terminated d) (List.tl (List.rev !dir_names));
                   u8 0
                 end;
@@ -1173,7 +1193,6 @@ let encode (em : extended_module) =
                begin
                  iter (fun (f, (p, dir_indx)) ->
                      zero_terminated f;
-                     Printf.printf "%s;%i" f dir_indx;
                      uleb128 dir_indx; (* directory index *)
                      uleb128 0; (* optional time of last modification *)
                      uleb128 0; (* optional file length in bytes *)
@@ -1201,7 +1220,7 @@ let encode (em : extended_module) =
               let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               let addr' = rel addr in
-              Dwarf5.Machine.{ ip = addr'; loc = { file = file'; line; col = column + 1 }; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
+              Dwarf5.Machine.{ ip = addr'; loc = { file = file' +1  (*HACK*); line; col = column + 1 }; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
             in
 
             let joining (prg, state) state' : int list list * Dwarf5.Machine.state =
@@ -1264,7 +1283,8 @@ let encode (em : extended_module) =
         begin
           debug_abbrev_section ();
           debug_addr_section !sequence_bounds;
-          debug_rnglists_section !sequence_bounds;
+          (*          debug_rnglists_section !sequence_bounds; *)
+          debug_ranges !sequence_bounds;
           debug_line_str_section ();
           debug_line_section m.funcs;
           debug_info_section ();
