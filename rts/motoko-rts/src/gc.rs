@@ -1,7 +1,7 @@
-use crate::alloc;
-use crate::closure_table::closure_table_loc;
-use crate::mem::{memcpy_bytes, memcpy_words};
-use crate::rts_trap_with;
+// use crate::alloc;
+// use crate::closure_table::closure_table_loc;
+// use crate::mem::{memcpy_bytes, memcpy_words};
+// use crate::rts_trap_with;
 use crate::types::*;
 
 extern "C" {
@@ -30,18 +30,18 @@ unsafe extern "C" fn init() {
     HP = get_heap_base() as u32;
 }
 
-unsafe fn note_live_size(live: Bytes<u32>) {
-    MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
-}
+// unsafe fn note_live_size(live: Bytes<u32>) {
+//     MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
+// }
 
 #[no_mangle]
 unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
     MAX_LIVE
 }
 
-unsafe fn note_reclaimed(reclaimed: Bytes<u32>) {
-    RECLAIMED += Bytes(reclaimed.0 as u64);
-}
+// unsafe fn note_reclaimed(reclaimed: Bytes<u32>) {
+//     RECLAIMED += Bytes(reclaimed.0 as u64);
+// }
 
 #[no_mangle]
 unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
@@ -58,6 +58,7 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
 }
 
+/*
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
 /// already evacuated end_to_space is not changed.
 ///
@@ -111,15 +112,6 @@ unsafe fn evac(
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;
-    }
-
-    let obj_idx = (obj as u32 - get_heap_base()) / WORD_SIZE;
-    if !crate::bitmap::get_bit(obj_idx) {
-        println!(
-            500,
-            "Object {:#x} (idx={}) is evacuated but not marked", obj as usize, obj_idx
-        );
-        rts_trap_with("--");
     }
 
     let obj_size = object_size(obj as usize);
@@ -306,16 +298,6 @@ unsafe fn evac_static_roots(
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
-    let begin_from_space = get_heap_base();
-    let end_from_space = HP;
-
-    // println!(100, "########## heap dump");
-    // crate::debug::dump_heap();
-
-    // println!(100, "mark_compact begin");
-    crate::mark_compact::mark_compact(begin_from_space, end_from_space);
-    // println!(100, "mark_compact end");
-
     let begin_from_space = get_heap_base() as usize;
     let end_from_space = HP as usize;
     let begin_to_space = end_from_space;
@@ -370,6 +352,10 @@ unsafe extern "C" fn collect() {
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     HP = new_hp as u32;
+}
+*/
 
-    crate::mark_compact::finish_mark_compact();
+#[no_mangle]
+unsafe extern "C" fn collect() {
+    crate::mark_compact::mark_compact(get_heap_base(), HP);
 }

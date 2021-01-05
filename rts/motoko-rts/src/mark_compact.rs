@@ -7,6 +7,7 @@ use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, set_bit};
 use crate::closure_table::closure_table_loc;
 use crate::gc::{get_heap_base, get_static_roots};
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
+use crate::mem::memcpy_words;
 use crate::{rts_trap_with, types::*};
 
 #[no_mangle]
@@ -27,11 +28,6 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
     update_fwd_refs(heap_base, heap_end);
     update_bwd_refs(heap_base, heap_end);
 
-    // free_bitmap();
-    // free_mark_stack();
-}
-
-pub(crate) unsafe fn finish_mark_compact() {
     free_bitmap();
     free_mark_stack();
 }
@@ -203,7 +199,7 @@ unsafe fn update_bwd_refs(heap_base: u32, heap_end: u32) {
 
             // All references to the object now point to the new location, move the object
             let p_size_words = object_size(p as usize);
-            move_(p, free, p_size_words);
+            memcpy_words(free as usize, p as usize, p_size_words);
 
             let p_size_bytes = p_size_words.to_bytes().0;
             free += p_size_bytes;
@@ -319,13 +315,4 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     // At the end of the chain is the original header for the object
     assert!(header >= TAG_OBJECT && header <= TAG_NULL);
     (*obj).tag = header;
-}
-
-unsafe fn move_(old_loc: u32, new_loc: u32, size: Words<u32>) {
-    let old_loc = old_loc as *const u32;
-    let new_loc = new_loc as *mut u32;
-
-    for i in 0..size.0 as usize {
-        *new_loc.add(i) = *old_loc.add(i);
-    }
 }
