@@ -108,7 +108,7 @@ unsafe fn evac(
     // );
 
     // Update the field if the object is already evacauted
-    if (*obj).tag == TAG_FWD_PTR {
+    if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;

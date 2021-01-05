@@ -123,7 +123,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 
     loop {
         let s_ptr = s.as_obj();
-        if (*s_ptr).tag == TAG_BLOB {
+        if s_ptr.tag() == TAG_BLOB {
             let blob = s_ptr.as_blob();
             memcpy_bytes(buf as usize, blob.payload_addr() as usize, blob.len());
 
@@ -135,7 +135,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
             s = (*next_crumb).t;
             next_crumb = (*next_crumb).next;
         } else {
-            debug_assert_eq!((*s_ptr).tag, TAG_CONCAT);
+            debug_assert_eq!(s_ptr.tag(), TAG_CONCAT);
             let concat = s_ptr as *const Concat;
             let s1 = (*concat).text1;
             let s2 = (*concat).text2;

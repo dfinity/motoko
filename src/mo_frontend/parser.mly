@@ -668,7 +668,7 @@ exp_nondec(B) :
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
-    { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
+    { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
   | TRY e1=exp_nest c=catch

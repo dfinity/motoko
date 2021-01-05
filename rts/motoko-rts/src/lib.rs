@@ -19,6 +19,9 @@ mod gc;
 #[cfg(feature = "gc")]
 mod mark_compact;
 
+#[cfg(debug_assertions)]
+pub mod debug;
+
 mod alloc;
 pub mod bigint;
 pub mod bitmap;
@@ -26,7 +29,6 @@ mod blob_iter;
 pub mod buf;
 mod char;
 pub mod closure_table;
-pub mod debug;
 mod float;
 mod idl;
 pub mod leb128;
