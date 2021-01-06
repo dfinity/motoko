@@ -2,7 +2,7 @@
 
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
 use crate::closure_table::closure_table_loc;
-use crate::gc::{get_heap_base, get_static_roots};
+use crate::gc::get_static_roots;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::{rts_trap_with, types::*};
@@ -14,13 +14,13 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
     alloc_bitmap(heap_size);
     alloc_mark_stack();
 
-    mark_static_roots();
+    mark_static_roots(heap_base);
 
     // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
     let closure_table_loc = closure_table_loc();
-    push_mark_stack(*closure_table_loc);
+    push_mark_stack(*closure_table_loc, heap_base);
 
-    mark_stack();
+    mark_stack(heap_base);
 
     thread_roots(heap_base);
     thread(closure_table_loc, heap_base);
@@ -31,17 +31,17 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
     free_mark_stack();
 }
 
-unsafe fn mark_static_roots() {
+unsafe fn mark_static_roots(heap_base: u32) {
     let roots = get_static_roots().as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..roots.len() {
         let obj = roots.get(i).unskew() as *mut Obj;
-        mark_fields(obj);
+        mark_fields(obj, heap_base);
     }
 }
 
-unsafe fn push_mark_stack(obj: SkewedPtr) {
+unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
     if obj.is_tagged_scalar() {
         // Not a boxed object, skip
         return;
@@ -49,12 +49,12 @@ unsafe fn push_mark_stack(obj: SkewedPtr) {
 
     let obj = obj.unskew() as u32;
 
-    if obj < get_heap_base() {
+    if obj < heap_base {
         // Static objects are not collected and not marked
         return;
     }
 
-    let obj_idx = (obj - get_heap_base()) / WORD_SIZE;
+    let obj_idx = (obj - heap_base) / WORD_SIZE;
 
     if get_bit(obj_idx) {
         // Already marked
@@ -65,48 +65,48 @@ unsafe fn push_mark_stack(obj: SkewedPtr) {
     mark_stack::push_mark_stack(obj as usize);
 }
 
-unsafe fn mark_stack() {
+unsafe fn mark_stack(heap_base: u32) {
     while let Some(obj) = pop_mark_stack() {
-        mark_fields(obj as *mut Obj);
+        mark_fields(obj as *mut Obj, heap_base);
     }
 }
 
-unsafe fn mark_fields(obj: *mut Obj) {
+unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
     match obj.tag() {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             for i in 0..obj.size() {
-                push_mark_stack(obj.get(i));
+                push_mark_stack(obj.get(i), heap_base);
             }
         }
 
         TAG_ARRAY => {
             let array = obj as *mut Array;
             for i in 0..array.len() {
-                push_mark_stack(array.get(i));
+                push_mark_stack(array.get(i), heap_base);
             }
         }
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
-            push_mark_stack((*mutbox).field);
+            push_mark_stack((*mutbox).field, heap_base);
         }
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
             for i in 0..closure.size() {
-                push_mark_stack(closure.get(i));
+                push_mark_stack(closure.get(i), heap_base);
             }
         }
 
         TAG_SOME => {
             let some = obj as *mut Some;
-            push_mark_stack((*some).field);
+            push_mark_stack((*some).field, heap_base);
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
-            push_mark_stack((*variant).field);
+            push_mark_stack((*variant).field, heap_base);
         }
 
         TAG_BIGINT => {
@@ -115,18 +115,18 @@ unsafe fn mark_fields(obj: *mut Obj) {
             let blob =
                 ((data_ptr as usize) - (size_of::<Blob>().to_bytes().0 as usize)) as *mut Blob;
             assert_eq!((*blob).header.tag, TAG_BLOB);
-            push_mark_stack(skew(blob as usize));
+            push_mark_stack(skew(blob as usize), heap_base);
         }
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
-            push_mark_stack(concat.text1());
-            push_mark_stack(concat.text2());
+            push_mark_stack(concat.text1(), heap_base);
+            push_mark_stack(concat.text2(), heap_base);
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
-            push_mark_stack((*obj_ind).field);
+            push_mark_stack((*obj_ind).field, heap_base);
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
