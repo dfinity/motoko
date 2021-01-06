@@ -30,18 +30,18 @@ unsafe extern "C" fn init() {
     HP = get_heap_base() as u32;
 }
 
-// unsafe fn note_live_size(live: Bytes<u32>) {
-//     MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
-// }
+unsafe fn note_live_size(live: Bytes<u32>) {
+    MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
+}
 
 #[no_mangle]
 unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
     MAX_LIVE
 }
 
-// unsafe fn note_reclaimed(reclaimed: Bytes<u32>) {
-//     RECLAIMED += Bytes(reclaimed.0 as u64);
-// }
+unsafe fn note_reclaimed(reclaimed: Bytes<u32>) {
+    RECLAIMED += Bytes(reclaimed.0 as u64);
+}
 
 #[no_mangle]
 unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
@@ -357,5 +357,14 @@ unsafe extern "C" fn collect() {
 
 #[no_mangle]
 unsafe extern "C" fn collect() {
-    crate::mark_compact::mark_compact(get_heap_base(), HP);
+    let old_hp = HP;
+    let heap_base = get_heap_base();
+
+    crate::mark_compact::mark_compact(heap_base, old_hp);
+
+    let reclaimed = old_hp - HP;
+    note_reclaimed(Bytes(reclaimed));
+
+    let new_live_size = HP - heap_base;
+    note_live_size(Bytes(new_live_size));
 }
