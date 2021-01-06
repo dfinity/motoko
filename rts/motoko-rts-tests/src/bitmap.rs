@@ -1,4 +1,4 @@
-use motoko_rts::bitmap::{alloc_bitmap, get_and_set_bit, get_bit, iter_bits, set_bit};
+use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit};
 use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 
 use quickcheck::{quickcheck, TestResult};
@@ -10,8 +10,6 @@ pub unsafe fn test() {
     println!("  Testing set_bit/get_bit");
     test_set_get(vec![0, 33]).unwrap();
     quickcheck(test_set_get_qc as fn(Vec<u16>) -> TestResult);
-    println!("  Testing get_or_set_bit");
-    quickcheck(test_get_and_set_bit as fn(HashSet<u16>) -> TestResult);
     println!("  Testing bit iteration");
     quickcheck(test_bit_iter as fn(HashSet<u16>) -> TestResult);
 }
@@ -63,30 +61,6 @@ fn test_set_get(mut bits: Vec<u16>) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-fn test_get_and_set_bit(bits: HashSet<u16>) -> TestResult {
-    if bits.is_empty() {
-        return TestResult::passed();
-    }
-
-    unsafe {
-        alloc_bitmap(Bytes(
-            u32::from(*bits.iter().max().unwrap() + 1) * WORD_SIZE,
-        ));
-
-        for bit in bits.iter() {
-            if get_and_set_bit(u32::from(*bit)) {
-                return TestResult::error("get_and_set_bit of unset bit is true");
-            }
-
-            if !get_bit(u32::from(*bit)) {
-                return TestResult::error("get_bit of bit set with get_and_set_bit is false");
-            }
-        }
-    }
-
-    TestResult::passed()
 }
 
 fn test_bit_iter(bits: HashSet<u16>) -> TestResult {

@@ -39,27 +39,6 @@ pub unsafe fn set_bit(idx: u32) {
     *BITMAP_PTR.add(byte_idx as usize) = new_byte;
 }
 
-/// Get mark bit of an object, set it if it's not set. More efficient version of
-///
-/// ```
-/// let current_mark = get_bit(x);
-/// if !current_mark {
-///     set_bit(x);
-/// }
-/// ```
-pub unsafe fn get_and_set_bit(idx: u32) -> bool {
-    let byte_idx = idx / 8;
-    let byte = *BITMAP_PTR.add(byte_idx as usize);
-    let bit_idx = idx % 8;
-    // Get current mark
-    let marked = (byte >> bit_idx) & 0b1 == 0b1;
-    // Mark it
-    let new_byte = byte | (0b1 << bit_idx);
-    *BITMAP_PTR.add(byte_idx as usize) = new_byte;
-    // Return old mark
-    marked
-}
-
 pub struct BitmapIter {
     /// Size of the bitmap, in 64-bit words words. Does not change after initialization.
     size: u32,
