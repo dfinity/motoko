@@ -2,19 +2,22 @@
 
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
 use crate::closure_table::closure_table_loc;
-use crate::gc::get_static_roots;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::{rts_trap_with, types::*};
 
 #[no_mangle]
-pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
+pub(crate) unsafe extern "C" fn mark_compact(
+    heap_base: u32,
+    heap_end: u32,
+    static_roots: SkewedPtr,
+) {
     let heap_size = Bytes(heap_end - heap_base);
 
     alloc_bitmap(heap_size);
     alloc_mark_stack();
 
-    mark_static_roots(heap_base);
+    mark_static_roots(static_roots, heap_base);
 
     // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
     let closure_table_loc = closure_table_loc();
@@ -22,7 +25,7 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
 
     mark_stack(heap_base);
 
-    thread_roots(heap_base);
+    thread_roots(static_roots, heap_base);
     thread(closure_table_loc, heap_base);
     update_fwd_refs(heap_base);
     update_bwd_refs(heap_base);
@@ -31,12 +34,12 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
     free_mark_stack();
 }
 
-unsafe fn mark_static_roots(heap_base: u32) {
-    let roots = get_static_roots().as_array();
+unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
+    let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
-    for i in 0..roots.len() {
-        let obj = roots.get(i).unskew() as *mut Obj;
+    for i in 0..root_array.len() {
+        let obj = root_array.get(i).unskew() as *mut Obj;
         mark_fields(obj, heap_base);
     }
 }
@@ -150,11 +153,11 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
     }
 }
 
-unsafe fn thread_roots(heap_base: u32) {
+unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
     // Static roots
-    let roots = get_static_roots().as_array();
-    for i in 0..roots.len() {
-        thread_obj_fields(roots.get(i).unskew() as *mut Obj, heap_base);
+    let root_array = static_roots.as_array();
+    for i in 0..root_array.len() {
+        thread_obj_fields(root_array.get(i).unskew() as *mut Obj, heap_base);
     }
     // No need to thread closure table here as it's on heap and we already marked it
 }

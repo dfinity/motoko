@@ -360,7 +360,7 @@ unsafe extern "C" fn collect() {
     let old_hp = HP;
     let heap_base = get_heap_base();
 
-    crate::mark_compact::mark_compact(heap_base, old_hp);
+    crate::mark_compact::mark_compact(heap_base, old_hp, get_static_roots());
 
     let reclaimed = old_hp - HP;
     note_reclaimed(Bytes(reclaimed));
