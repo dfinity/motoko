@@ -97,8 +97,9 @@ impl Iterator for BitmapIter {
                     self.bits_left -= 1;
                     return Some(bit_idx);
                 } else {
-                    self.current_word >>= 1;
-                    self.bits_left -= 1;
+                    let shift_amt = self.current_word.trailing_zeros();
+                    self.current_word >>= shift_amt;
+                    self.bits_left -= shift_amt;
                 }
             }
 
