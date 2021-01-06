@@ -243,9 +243,7 @@ unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
             thread(field_addr, heap_base);
         }
 
-        TAG_BIGINT => {
-            todo!()
-        }
+        TAG_BIGINT => todo!(),
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
