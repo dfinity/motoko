@@ -296,11 +296,46 @@ function getUint32(view, p) {
   return view.getUint32(p, true)
 }
 
+function decodeOBJ(view, p) {
+  let size = getUint32(view, p + 4);
+  let m = new Map();
+  let h = getUint32(view, p + 8) + 1; //unskew
+  let q = p + 12;
+  for(var i = 0; i < size; i++) {
+    let hash = getUint32(view, h);
+    //TODO: convert hash to label
+    m[hash] = decode(view, getUint32(view, q));
+    q += 4;
+    h += 4;
+  }
+  return m;
+}
 
 function decodeARRAY(view, p) {
   let size = getUint32(view, p + 4);
   let a = new Array(size);
   let q = p + 8;
+  for(var i = 0; i < size; i++) {
+    a[i] = decode(view, getUint32(view, q));
+    q += 4;
+  }
+  return a;
+}
+
+function decodeMUTBOX(view, p) {
+  let a = decode(view, getUint32(view, p+4));
+  return { mut: a };
+}
+
+function decodeOBJ_IND(view, p) {
+  let a = decode(view, getUint32(view, p+4));
+  return { ind: a };
+}
+
+function decodeCONCAT(view, p) {
+  let size = 2;
+  let a = new Array(size);
+  let q = p + 8; // skip n_bytes
   for(var i = 0; i < size; i++) {
     a[i] = decode(view, getUint32(view, q));
     q += 4;
@@ -330,12 +365,12 @@ function decode(view, v) {
   let p = v + 1;
   let tag = getUint32(view, p);
   switch (tag) {
-    case 1 : return "OBJ";
-    case 2 : return "OBJ_IND";
+    case 1 : return decodeOBJ(view, p);
+    case 2 : return decodeOBJ_IND(view, p);
     case 3 : return decodeARRAY(view, p);
     //    case 4 :
     case 5 : return "BITS64";
-    case 6 : return "MUTBOX";
+    case 6 : return decodeMUTBOX(view, p);
     case 7 : return "CLOSURE";
     case 8 : return "SOME";
     case 9 : return "VARIANT";
@@ -343,7 +378,7 @@ function decode(view, v) {
     case 11 : return "FWD_PTR";
     case 12 : return "BITS32";
     case 13 : return "BIGINT";
-    case 14 : return "CONCAT";
+    case 14 : return decodeCONCAT(view, p);
     case 15 : return null;
     default : return "UNKOWN";
   };
