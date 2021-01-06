@@ -2,10 +2,22 @@ open Extract
 
 type output_format = Plain | Adoc | Html
 
+let mkdir_recursive path =
+  let segments = String.split_on_char '/' path in
+  let _ =
+    List.fold_left
+      (fun acc dir ->
+        let next = Filename.concat acc dir in
+        (try Unix.mkdir next 0o777 with _ -> ());
+        next)
+      "." segments
+  in
+  ()
+
 let write_file : string -> string -> unit =
  fun file output ->
   let dirname = Filename.dirname file in
-  (try Unix.mkdir dirname 0o777 with _ -> ());
+  (try mkdir_recursive dirname with _ -> ());
   let oc = open_out file in
   Printf.fprintf oc "%s" output;
   flush oc;
