@@ -11,16 +11,20 @@ let write_file : string -> string -> unit =
   flush oc;
   close_out oc
 
-let extract : string -> string * doc list =
+let extract : string -> (string * doc list) option =
  fun in_file ->
   let parse_result = Pipeline.parse_file_with_trivia Source.no_region in_file in
   match parse_result with
   | Error err ->
+      Printf.eprintf "Skipping %s:\n" in_file;
       Diag.print_messages err;
-      exit 1
-  | Ok ((prog, trivia_table), _) ->
-      let module_docs, imports, docs = extract_docs prog trivia_table in
-      (module_docs, docs)
+      None
+  | Ok ((prog, trivia_table), _) -> (
+      match extract_docs prog trivia_table with
+      | Error err ->
+          Printf.eprintf "Skipping %s:\n%s\n" in_file err;
+          None
+      | Ok (module_docs, imports, docs) -> Some (module_docs, docs) )
 
 let list_files_recursively : string -> string list =
  fun dir ->
@@ -58,11 +62,14 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
  fun source output ->
   let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
-  List.map
+  List.filter_map
     (fun (input, output, current_path) ->
-      let module_comment, declarations = extract input in
-      ( output,
-        Common.{ all_modules; current_path; module_comment; declarations } ))
+      Option.map
+        (fun (module_comment, declarations) ->
+          ( output,
+            Common.{ all_modules; current_path; module_comment; declarations }
+          ))
+        (extract input))
     all_files
 
 let start : output_format -> string -> string -> unit =
