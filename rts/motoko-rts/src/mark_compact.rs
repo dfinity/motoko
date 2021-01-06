@@ -1,9 +1,6 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
-// TODO: Try scanning the bitmap instead of the heap?
-// TODO: Record the highest set bit, stop iteration the object for that bit
-
-use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, set_bit};
+use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
 use crate::closure_table::closure_table_loc;
 use crate::gc::{get_heap_base, get_static_roots};
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
@@ -27,8 +24,8 @@ pub(crate) unsafe extern "C" fn mark_compact(heap_base: u32, heap_end: u32) {
 
     thread_roots(heap_base);
     thread(closure_table_loc, heap_base);
-    update_fwd_refs(heap_base, heap_end);
-    update_bwd_refs(heap_base, heap_end);
+    update_fwd_refs(heap_base);
+    update_bwd_refs(heap_base);
 
     free_bitmap();
     free_mark_stack();
@@ -164,51 +161,39 @@ unsafe fn thread_roots(heap_base: u32) {
 
 /// Scan the heap, update forward references. At the end of this pass all fields will be threaded
 /// and forward references will be updated, pointing to the object's new location.
-unsafe fn update_fwd_refs(heap_base: u32, heap_end: u32) {
-    let mut p = heap_base;
+unsafe fn update_fwd_refs(heap_base: u32) {
     let mut free = heap_base;
-    while p < heap_end {
-        let p_bit_idx = (p - heap_base) / WORD_SIZE;
 
-        if get_bit(p_bit_idx) {
-            // Update forward references to the object to the object's new location and restore
-            // object header
-            unthread(p as *mut Obj, free);
+    for bit in iter_bits() {
+        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
-            // Thread fields
-            thread_obj_fields(p as *mut Obj, heap_base);
+        // Update forward references to the object to the object's new location and restore
+        // object header
+        unthread(p, free);
 
-            let p_size_bytes = object_size(p as usize).to_bytes().0;
-            free += p_size_bytes;
-            p += p_size_bytes;
-        } else {
-            p += object_size(p as usize).to_bytes().0;
-        }
+        // Thread fields
+        thread_obj_fields(p, heap_base);
+
+        free += object_size(p as usize).to_bytes().0;
     }
 }
 
 /// Expects all fields to be threaded. Updates backward references and moves objects to their new
 /// locations.
-unsafe fn update_bwd_refs(heap_base: u32, heap_end: u32) {
-    let mut p = heap_base;
+unsafe fn update_bwd_refs(heap_base: u32) {
     let mut free = heap_base;
-    while p < heap_end {
-        let p_bit_idx = (p - heap_base) / WORD_SIZE;
 
-        if get_bit(p_bit_idx) {
-            // Update backward references to the object's new location and restore object header
-            unthread(p as *mut Obj, free);
+    for bit in iter_bits() {
+        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
-            // All references to the object now point to the new location, move the object
-            let p_size_words = object_size(p as usize);
-            memcpy_words(free as usize, p as usize, p_size_words);
+        // Update backward references to the object's new location and restore object header
+        unthread(p, free);
 
-            let p_size_bytes = p_size_words.to_bytes().0;
-            free += p_size_bytes;
-            p += p_size_bytes;
-        } else {
-            p += object_size(p as usize).to_bytes().0;
-        }
+        // All references to the object now point to the new location, move the object
+        let p_size_words = object_size(p as usize);
+        memcpy_words(free as usize, p as usize, p_size_words);
+
+        free += p_size_words.to_bytes().0;
     }
 
     crate::gc::HP = free;
