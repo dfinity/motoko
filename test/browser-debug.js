@@ -292,21 +292,54 @@ function updateHexDump() {
   }
 }
 
+function getUint32(view, p) {
+  return view.getUint32(p, true)
+}
+
+
+function decodeARRAY(view, p) {
+  let size = getUint32(view, p + 4);
+  let a = new Array(size);
+  let q = p + 8;
+  for(var i = 0; i < size; i++) {
+    a[i] = decode(view, getUint32(view, q));
+    q += 4;
+  }
+  return a;
+}
+
+function decodeBLOB(view, p) {
+  let size = getUint32(view, p + 4);
+  let a = new Uint8Array(size);
+  let q = p + 8;
+  for(var i = 0; i < size; i++) {
+    a[i] = view.getUint8(q);
+    q += 1;
+  };
+  try {
+    let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
+    return textDecoder.decode(a);
+  }
+  catch(err) {
+    return a;
+  }
+}
+
 function decode(view, v) {
   if ((v & 1) === 0) return v >> 1;
   let p = v + 1;
-  let tag = view.getUint32(p, true);
+  let tag = getUint32(view, p);
   switch (tag) {
     case 1 : return "OBJ";
     case 2 : return "OBJ_IND";
-    case 3 : return "ARRAY";
+    case 3 : return decodeARRAY(view, p);
     //    case 4 :
     case 5 : return "BITS64";
     case 6 : return "MUTBOX";
     case 7 : return "CLOSURE";
     case 8 : return "SOME";
     case 9 : return "VARIANT";
-    case 10 : return "BLOB";
+    case 10 : return decodeBLOB(view, p);
     case 11 : return "FWD_PTR";
     case 12 : return "BITS32";
     case 13 : return "BIGINT";
