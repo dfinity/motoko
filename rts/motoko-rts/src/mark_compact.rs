@@ -1,7 +1,6 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
-use crate::closure_table::closure_table_loc;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::rts_trap_with;
@@ -12,6 +11,7 @@ pub(crate) unsafe extern "C" fn mark_compact(
     heap_base: u32,
     heap_end: u32,
     static_roots: SkewedPtr,
+    closure_table_loc: *mut SkewedPtr,
 ) {
     let heap_size = Bytes(heap_end - heap_base);
 
@@ -21,7 +21,6 @@ pub(crate) unsafe extern "C" fn mark_compact(
     mark_static_roots(static_roots, heap_base);
 
     // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
-    let closure_table_loc = closure_table_loc();
     push_mark_stack(*closure_table_loc, heap_base);
 
     mark_stack(heap_base);

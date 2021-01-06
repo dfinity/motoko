@@ -1,3 +1,4 @@
+use crate::closure_table::closure_table_loc;
 // use crate::alloc;
 // use crate::closure_table::closure_table_loc;
 // use crate::mem::{memcpy_bytes, memcpy_words};
@@ -360,7 +361,7 @@ unsafe extern "C" fn collect() {
     let old_hp = HP;
     let heap_base = get_heap_base();
 
-    crate::mark_compact::mark_compact(heap_base, old_hp, get_static_roots());
+    crate::mark_compact::mark_compact(heap_base, old_hp, get_static_roots(), closure_table_loc());
 
     let reclaimed = old_hp - HP;
     note_reclaimed(Bytes(reclaimed));
