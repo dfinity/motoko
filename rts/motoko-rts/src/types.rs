@@ -434,7 +434,6 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         }
 
         other => {
-            println!(100, "weird object tag: {}", other);
             rts_trap_with("object_size: invalid object tag");
         }
     }
