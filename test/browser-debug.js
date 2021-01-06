@@ -311,6 +311,34 @@ function decodeOBJ(view, p) {
   return m;
 }
 
+function decodeVARIANT(view, p) {
+  let m = new Map();
+  let hash = getUint32(view, p+4);
+  //TODO: convert hash to label
+  m[hash] = decode(view, getUint32(view, p+8));
+  return m;
+}
+// stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView 
+const BigInt = window.BigInt, bigThirtyTwo = BigInt(32), bigZero = BigInt(0);
+function getUint64BigInt(dataview, byteOffset, littleEndian) {
+  // split 64-bit number into two 32-bit (4-byte) parts
+  const left = BigInt(dataview.getUint32(byteOffset|0, !!littleEndian)>>>0);
+  const right = BigInt(dataview.getUint32((byteOffset|0) + 4|0, !!littleEndian)>>>0);
+
+  // combine the two 32-bit values and return
+  return littleEndian ? (right<<bigThirtyTwo)|left : (left<<bigThirtyTwo)|right;
+}
+
+function decodeBITS64(view, p) {
+  let bits32 = getUint64BigInt(view, p + 4, littleEndian);
+  return bits32;
+}
+
+function decodeBITS32(view, p) {
+  let bits32 = getUint32(view, p + 4);
+  return bits32;
+}
+
 function decodeARRAY(view, p) {
   let size = getUint32(view, p + 4);
   let a = new Array(size);
@@ -322,13 +350,22 @@ function decodeARRAY(view, p) {
   return a;
 }
 
+function decodeSOME(view, p) {
+  let a = decode(view, getUint32(view, p + 4));
+  return { some: a };
+}
+
+function decodeNULL(view, p) {
+  return null; // Symbol(`null`)?
+}
+
 function decodeMUTBOX(view, p) {
-  let a = decode(view, getUint32(view, p+4));
+  let a = decode(view, getUint32(view, p + 4));
   return { mut: a };
 }
 
 function decodeOBJ_IND(view, p) {
-  let a = decode(view, getUint32(view, p+4));
+  let a = decode(view, getUint32(view, p + 4));
   return { ind: a };
 }
 
@@ -368,18 +405,18 @@ function decode(view, v) {
     case 1 : return decodeOBJ(view, p);
     case 2 : return decodeOBJ_IND(view, p);
     case 3 : return decodeARRAY(view, p);
-    //    case 4 :
-    case 5 : return "BITS64";
+    //    case 4 : unused?
+    case 5 : return decodeBITS64(view, p);
     case 6 : return decodeMUTBOX(view, p);
     case 7 : return "CLOSURE";
-    case 8 : return "SOME";
-    case 9 : return "VARIANT";
+    case 8 : return decodeSOME(view, p);
+    case 9 : return decodeVARIANT(view, p);
     case 10 : return decodeBLOB(view, p);
     case 11 : return "FWD_PTR";
-    case 12 : return "BITS32";
+    case 12 : return decodeBITS32(view, p);
     case 13 : return "BIGINT";
     case 14 : return decodeCONCAT(view, p);
-    case 15 : return null;
+    case 15 : return decodeNULL(view, p);
     default : return "UNKOWN";
   };
 }

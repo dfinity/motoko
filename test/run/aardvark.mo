@@ -11,7 +11,15 @@ func foo(n : Nat8, b: Bool, t: Text ) {
   let i = id(-66 : Int8);
   let c = id("abcdefghijklmnop") # id("qrstuvwxyz");
   let o = id({fa = 666; fb = "hello"; var fc = "state"});
-  let tup = id((x, b1, t2, blob, n2, i));
+  let z = id(null);
+  let sz = id(? z);
+  let ssz = id(? ? z);
+  let sn = id(? 666);
+  let ssn = id(? ? 666);
+
+  let v0 = id(#fa);
+  let v1 = id(#fb "data");
+  let tup = id((x, b1, t2, blob, n2, i, c, o, z, sz, ssz, sn, ssn));
 
   Prim.debugPrint(debug_show(x, b1, t2, blob, n2, i, tup));
 };
