@@ -5,7 +5,7 @@ use quickcheck::{quickcheck, TestResult};
 use std::cmp::min;
 
 pub unsafe fn test() {
-    println!("Testing mark stack ... (QuickCheck)");
+    println!("Testing mark stack ...");
     quickcheck(test_ as fn(Vec<usize>) -> TestResult);
 }
 
