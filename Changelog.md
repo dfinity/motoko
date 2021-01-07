@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+== 0.5.4 (2021-01-07)
+
 * _Option blocks_ `do ? <block>` and _null breaks_ `<exp> !`.
   The option block `do ? <block>` exits with `null` when a nested null break, `<exp> !`, evaluates `<exp>` to null.
   This can simplify null handling by avoiding verbose `switch` expressions.
