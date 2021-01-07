@@ -192,7 +192,9 @@ unsafe fn update_bwd_refs(heap_base: u32) {
 
         // All references to the object now point to the new location, move the object
         let p_size_words = object_size(p as usize);
-        memcpy_words(free as usize, p as usize, p_size_words);
+        if free as usize != p as usize {
+            memcpy_words(free as usize, p as usize, p_size_words);
+        }
 
         free += p_size_words.to_bytes().0;
     }
