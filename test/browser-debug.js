@@ -397,6 +397,26 @@ function decodeBLOB(view, p) {
   }
 }
 
+let bigInt28 = BigInt(28);
+let mask = 2**28-1;
+function decodeBIGINT(view, p) {
+  let size = getUint32(view, p + 4);
+  let _alloc = getUint32(view, p + 8); //?
+  let sign = getUint32(view, p + 12);
+  var a = BigInt(0);
+  let data_ptr = getUint32(view, p + 16);
+  // if skewed, unskew and extract payload past header for compacting GC
+  let q =  (data_ptr & 1 === 1) ? (data_ptr + 1 + 8) : data_ptr
+  for(var r = q + (4 * (size-1)); r >= q; r -= 4) {
+    a = a << bigInt28;
+    a += BigInt(getUint32(view, r) & mask );
+  };
+  if (sign > 0) {
+    return - a;
+  }
+  return a;
+}
+
 function decode(view, v) {
   if ((v & 1) === 0) return v >> 1;
   let p = v + 1;
@@ -414,7 +434,7 @@ function decode(view, v) {
     case 10 : return decodeBLOB(view, p);
     case 11 : return "FWD_PTR";
     case 12 : return decodeBITS32(view, p);
-    case 13 : return "BIGINT";
+    case 13 : return decodeBIGINT(view, p);
     case 14 : return decodeCONCAT(view, p);
     case 15 : return decodeNULL(view, p);
     default : return "UNKOWN";
