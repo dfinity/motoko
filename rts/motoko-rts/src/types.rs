@@ -321,14 +321,28 @@ impl BigInt {
     /// header) then returns the pointer to the `mp_int` struct. Make sure to call
     /// `restore_mp_int_ptr` afterwards.
     unsafe fn mp_int_ptr(self: *mut BigInt) -> *mut crate::tommath_bindings::mp_int {
-        (*self).mp_int.dp = ((*self.blob_field()).unskew() as *mut Blob).add(1) as *mut _;
+        let blob_ptr = *self.blob_field();
+        // Check that the pointer is not already adjusted by an enclosing call. This happens when a
+        // mp_int wrapper function is passed same argument multiple times.
+        //
+        // This works because when unskewed a blob payload pointer always have the least
+        // significant bit 0. So when adjusted, the mp_int data pointer looks like a tagged scalar
+        // (with least significant bit 0).
+        if !blob_ptr.is_tagged_scalar() {
+            (*self).mp_int.dp = ((*self.blob_field()).unskew() as *mut Blob).add(1) as *mut _;
+        }
         &mut (*self).mp_int
     }
 
     /// Reverses the adjustment in `mp_int_ptr`
     unsafe fn restore_mp_int_ptr(self: *mut BigInt) {
-        let blob_header_ptr = ((*self).mp_int.dp as *mut Blob).sub(1);
-        (*self).mp_int.dp = skew(blob_header_ptr as usize).0 as *mut _;
+        let blob_ptr = *self.blob_field();
+        // Check that the pointer is not already restored. See comments in `mp_int_ptr` above for
+        // when this can happen.
+        if blob_ptr.is_tagged_scalar() {
+            let blob_header_ptr = ((*self).mp_int.dp as *mut Blob).sub(1);
+            (*self).mp_int.dp = skew(blob_header_ptr as usize).0 as *mut _;
+        }
     }
 
     pub unsafe fn with_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
