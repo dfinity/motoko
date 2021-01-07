@@ -304,23 +304,49 @@ pub struct FwdPtr {
 #[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
-    /// The data following now must describe is the `mp_int` struct. The data pointer (mp_int.dp)
-    /// is an unskewed pointer to a blob payload. `mp_int.dp - blob header size` gives us the blob
-    /// header.
+    /// The data following now must describe is the `mp_int` struct. The data pointer (`mp_int.dp`)
+    /// is an unskewed pointer to a blob *header*. `mp_int` functions require `mp_int.dp` to point
+    /// to a buffer, so before calling `mp_int` functions we adjust the field, in `mp_int_ptr`, and
+    /// restore the field with `restore_mp_int_ptr` afterwards.
     pub mp_int: crate::tommath_bindings::mp_int,
 }
 
 impl BigInt {
-    /// Returns location of the pointer to the blob payload that holds the `mp_int` data. The GC
-    /// finds the blob header from this pointer, copies it, and updates this location to point to
-    /// the new blob payload.
-    pub unsafe fn data_ptr(self: *mut BigInt) -> *mut *mut u8 {
+    /// TODO document
+    pub unsafe fn blob_field(self: *mut BigInt) -> *mut SkewedPtr {
         &mut (*self).mp_int.dp as *mut _ as *mut _
     }
 
-    /// Returns pointer to the `mp_int` struct
-    pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *mut crate::tommath_bindings::mp_int {
+    /// Adjusts `mp_int_ptr` data pointer so that it points to the `Blob`s payload (instead of
+    /// header) then returns the pointer to the `mp_int` struct. Make sure to call
+    /// `restore_mp_int_ptr` afterwards.
+    unsafe fn mp_int_ptr(self: *mut BigInt) -> *mut crate::tommath_bindings::mp_int {
+        if (*self).mp_int.dp != core::ptr::null_mut() {
+            debug_assert_eq!(
+                (SkewedPtr((*self).mp_int.dp as usize).unskew() as *mut Obj).tag(),
+                TAG_BLOB
+            );
+        }
+
+        (*self).mp_int.dp = ((*self.blob_field()).unskew() as *mut Blob).add(1) as *mut _;
         &mut (*self).mp_int
+    }
+
+    /// Reverses the adjustment in `mp_int_ptr`
+    unsafe fn restore_mp_int_ptr(self: *mut BigInt) {
+        let blob_header_ptr = ((*self).mp_int.dp as *mut Blob).sub(1);
+        debug_assert_eq!((*blob_header_ptr).header.tag, TAG_BLOB);
+        (*self).mp_int.dp = skew(blob_header_ptr as usize).0 as *mut _;
+    }
+
+    pub unsafe fn with_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
+    where
+        F: FnMut(*mut crate::tommath_bindings::mp_int) -> A,
+    {
+        let mp_int_ptr = self.mp_int_ptr();
+        let ret = f(mp_int_ptr);
+        self.restore_mp_int_ptr();
+        ret
     }
 }
 

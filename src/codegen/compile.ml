@@ -2385,10 +2385,6 @@ module BigNumLibtommath : BigNumType = struct
 
     let n = Big_int.abs_big_int n in
 
-    (* copied from Blob *)
-    let header_size = Int32.add Tagged.header_size 1l in
-    let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size)) in
-
     let limbs =
       (* see MP_DIGIT_BIT *)
       let twoto28 = Big_int.power_int_positive_int 2 28 in
@@ -2408,15 +2404,14 @@ module BigNumLibtommath : BigNumType = struct
       I32 Int32.(mul Heap.word_size size);
       i32s limbs
     ] in
-    let data_ptr = Int32.(add data_blob unskewed_payload_offset) in
 
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag BigInt);
-      I32 size;
+      I32 size; (* used *)
       I32 size; (* alloc *)
-      I32 sign;
-      I32 data_ptr;
+      I32 sign; (* sign *)
+      I32 data_blob; (* dp *)
     ] in
     ptr
 

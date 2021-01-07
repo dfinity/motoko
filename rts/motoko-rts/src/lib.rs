@@ -103,6 +103,16 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
         } else {
             println!(1000, "RTS panic: weird payload");
         }
+
+        if let Some(location) = info.location() {
+            println!(
+                1000,
+                "panic occurred in file '{}' at line {}",
+                location.file(),
+                location.line(),
+            );
+        }
+
         rts_trap_with("RTS panicked");
     }
 }

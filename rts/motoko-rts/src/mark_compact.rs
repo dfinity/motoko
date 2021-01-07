@@ -114,11 +114,9 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
 
         TAG_BIGINT => {
             let bigint = obj as *mut BigInt;
-            let data_ptr = *bigint.data_ptr();
-            let blob =
-                ((data_ptr as usize) - (size_of::<Blob>().to_bytes().0 as usize)) as *mut Blob;
-            assert_eq!((*blob).header.tag, TAG_BLOB);
-            push_mark_stack(skew(blob as usize), heap_base);
+            let blob_ptr = *bigint.blob_field();
+            assert_eq!((blob_ptr.unskew() as *mut Obj).tag(), TAG_BLOB);
+            push_mark_stack(blob_ptr, heap_base);
         }
 
         TAG_CONCAT => {
@@ -246,7 +244,11 @@ unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
             thread(field_addr, heap_base);
         }
 
-        TAG_BIGINT => todo!(),
+        TAG_BIGINT => {
+            let bigint = obj as *mut BigInt;
+            let field_addr = bigint.blob_field();
+            thread(field_addr, heap_base);
+        }
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
