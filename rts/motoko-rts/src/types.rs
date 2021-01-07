@@ -321,13 +321,6 @@ impl BigInt {
     /// header) then returns the pointer to the `mp_int` struct. Make sure to call
     /// `restore_mp_int_ptr` afterwards.
     unsafe fn mp_int_ptr(self: *mut BigInt) -> *mut crate::tommath_bindings::mp_int {
-        if (*self).mp_int.dp != core::ptr::null_mut() {
-            debug_assert_eq!(
-                (SkewedPtr((*self).mp_int.dp as usize).unskew() as *mut Obj).tag(),
-                TAG_BLOB
-            );
-        }
-
         (*self).mp_int.dp = ((*self.blob_field()).unskew() as *mut Blob).add(1) as *mut _;
         &mut (*self).mp_int
     }
@@ -335,7 +328,6 @@ impl BigInt {
     /// Reverses the adjustment in `mp_int_ptr`
     unsafe fn restore_mp_int_ptr(self: *mut BigInt) {
         let blob_header_ptr = ((*self).mp_int.dp as *mut Blob).sub(1);
-        debug_assert_eq!((*blob_header_ptr).header.tag, TAG_BLOB);
         (*self).mp_int.dp = skew(blob_header_ptr as usize).0 as *mut _;
     }
 
