@@ -111,7 +111,7 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
     let open Diag.Syntax in
     Diag.print_messages
       (List.map
-        (fun text -> Diag.{ sev = Warning; at; cat = "import"; text })
+        (fun text -> Diag.warning_message at "import" text)
         messages);
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
@@ -306,10 +306,10 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
-        Error [{
-          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s must not depend on itself" f
-        }]
+        Diag.error
+          ri.Source.at
+          "import"
+          (Printf.sprintf "file %s must not depend on itself" f)
       else begin
         pending := add ri.Source.it !pending;
         let open Diag.Syntax in
@@ -328,10 +328,10 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
       if actor_opt = None then
-        Error [Diag.{
-          sev = Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s does not define a service" f
-        }]
+        Diag.error
+          ri.Source.at
+          "import"
+          (Printf.sprintf "file %s does not define a service" f)
       else
         let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
         let sscope = Scope.lib f actor in

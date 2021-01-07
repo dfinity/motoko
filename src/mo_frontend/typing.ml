@@ -74,14 +74,13 @@ let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
 let type_error at text : Diag.message =
-  Diag.{sev = Diag.Error; at; cat = "type"; text}
+  Diag.error_message at "type" text
 
 let type_warning at text : Diag.message =
-  Diag.{sev = Diag.Warning; at; cat = "type"; text}
+  Diag.warning_message at "type" text
 
 let type_info at text : Diag.message =
-  Diag.{sev = Diag.Info; at; cat = "type"; text}
-
+  Diag.info_message at "type" text
 
 let error env at fmt =
   Printf.ksprintf
