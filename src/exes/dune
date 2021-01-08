@@ -1,7 +1,7 @@
 (executable
  (name moc)
  (modules moc)
- (libraries profiler pipeline)
+ (libraries profiler pipeline source_id)
 )
 (executable
  (name mo_ide)
@@ -14,12 +14,22 @@
  (libraries wasm_exts linking)
 )
 (executable
+ (name mo_doc)
+ (modules mo_doc)
+ (libraries docs)
+)
+(executable
  (name didc)
  (modules didc)
- (libraries idllib)
+ (libraries idllib source_id)
 )
 (executable
  (name deser)
  (modules deser)
- (libraries stdio num)
+ (libraries stdio num source_id)
+)
+(executable
+ (name candid_tests)
+ (modules candid_tests)
+ (libraries lib idllib mo_idl mo_values lang_utils)
 )

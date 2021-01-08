@@ -2,23 +2,31 @@ module T = Mo_types.Type
 
 (* Entry point for type checking: *)
 
-let rec can_show t =
+let can_show t =
   let open T in
-  match normalize t with
-  | Prim (Bool|Nat|Int|Text|Char|Null) -> true
-  | Prim (Nat8|Int8|Word8)
-  | Prim (Nat16|Int16|Word16)
-  | Prim (Nat32|Int32|Word32)
-  | Prim (Nat64|Int64|Word64) -> true
-  | Tup ts' -> List.for_all can_show ts'
-  | Opt t' -> can_show t'
-  | Array t' -> can_show (as_immut t')
-  | Obj (Object, fs) ->
-    List.for_all (fun f -> can_show (as_immut f.typ)) fs
-  | Variant cts ->
-    List.for_all (fun f -> can_show f.typ) cts
-  | Non -> true
-  | _ -> false
+  let seen = ref T.S.empty in
+  let rec go t =
+    S.mem t !seen ||
+    begin
+      seen := S.add t !seen;
+      match normalize t with
+      | Prim (Bool|Nat|Int|Text|Blob|Char|Null|Principal) -> true
+      | Prim (Nat8|Int8|Word8)
+      | Prim (Nat16|Int16|Word16)
+      | Prim (Nat32|Int32|Word32)
+      | Prim (Nat64|Int64|Word64) -> true
+      | Prim Float -> true
+      | Tup ts' -> List.for_all go ts'
+      | Opt t' -> go t'
+      | Array t' -> go (as_immut t')
+      | Obj (Object, fs) ->
+        List.for_all (fun f -> go (as_immut f.typ)) fs
+      | Variant cts ->
+        List.for_all (fun f -> go f.typ) cts
+      | Non -> true
+      | _ -> false
+    end
+  in go t
 
 (* Entry point for the interpreter (reference implementation) *)
 
@@ -44,8 +52,11 @@ let rec show_val t v =
   | T.(Prim Word16), Value.Word16 i -> "0x" ^ Value.Word16.to_string i
   | T.(Prim Word32), Value.Word32 i -> "0x" ^ Value.Word32.to_string i
   | T.(Prim Word64), Value.Word64 i -> "0x" ^ Value.Word64.to_string i
+  | T.(Prim Float), Value.Float i -> Value.Float.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
+  | T.(Prim Blob), Value.Blob s -> "\"" ^ Value.Blob.escape s ^ "\""
   | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"
+  | T.(Prim Principal), Value.Blob s -> Ic.Url.encode_principal s
   | T.(Prim Null), Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
   | T.Opt t', Value.Opt v -> "?" ^ parens (show_val t' v)

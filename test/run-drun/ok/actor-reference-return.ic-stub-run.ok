@@ -1,8 +1,0 @@
-→ create
-← completed: canister-id = 0x2a01
-→ install
-← completed
-→ query foo(0x4449444c0000)
-← completed: 0x4449444c01690001000105c0fefed00d
-→ query bar(0x4449444c0000)
-← completed: 0x4449444c0169000100010dc0fefed00dcafebabedeadbeef

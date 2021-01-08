@@ -8,6 +8,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | ShowE (x, exp1) -> f { exp with it = ShowE (x, over_exp f exp1) }
   | ProjE (exp1, x) -> f { exp with it = ProjE (over_exp f exp1, x) }
   | OptE exp1 -> f { exp with it = OptE (over_exp f exp1) }
+  | DoOptE exp1 -> f { exp with it = DoOptE (over_exp f exp1) }
+  | BangE exp1 -> f { exp with it = BangE (over_exp f exp1) }
   | TagE (x, exp1) -> f { exp with it = TagE (x, over_exp f exp1) }
   | DotE (exp1, x) -> f { exp with it = DotE (over_exp f exp1, x) }
   | NotE exp1 -> f { exp with it = NotE (over_exp f exp1) }
@@ -55,19 +57,20 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = TryE (over_exp f exp1, List.map (over_case f) cases) }
   | SwitchE (exp1, cases) ->
      f { exp with it = SwitchE (over_exp f exp1, List.map (over_case f) cases) }
-  | FuncE (a, b, c, d, g, e) ->
-    f { exp with it = FuncE (a, b, c, d, g, over_exp f e) }
+  | FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, exp1) ->
+     f { exp with it = FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, over_exp f exp1) }
+  | IgnoreE exp1 ->
+     f { exp with it = IgnoreE (over_exp f exp1)}
 
 and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
   | TypD _ -> d
   | ExpD e -> { d with it = ExpD (over_exp f e)}
-  | IgnoreD e -> { d with it = IgnoreD (over_exp f e)}
   | VarD (x, e) ->
      { d with it = VarD (x, over_exp f e)}
   | LetD (x, e) ->
      { d with it = LetD (x, over_exp f e)}
-  | ClassD (a, b, c, d1, e, g, efs) ->
-     { d with it = ClassD (a, b, c, d1, e, g, List.map (over_exp_field f) efs)}
+  | ClassD (sp, cid, tbs, p, t_o, s, id, efs) ->
+     { d with it = ClassD (sp, cid, tbs, p, t_o, s, id, List.map (over_exp_field f) efs)}
 
 and over_exp_field (f : exp -> exp) (ef : exp_field) : exp_field =
   { ef with it = { ef.it with dec = over_dec f ef.it.dec } }

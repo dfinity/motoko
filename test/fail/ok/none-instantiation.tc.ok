@@ -1,0 +1,4 @@
+none-instantiation.mo:9.10-9.12: type error, literal of type
+  Nat
+does not have expected type
+  None

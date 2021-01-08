@@ -1,6 +1,0 @@
-→ create
-← completed: canister-id = 0x2a01
-→ install
-← completed
-→ update test(0x4449444c0000)
-← completed: 0x4449444c0000

@@ -30,6 +30,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SHARED -> SHARED
       | T_SEMICOLON_EOL -> SEMICOLON_EOL
       | T_SEMICOLON -> SEMICOLON
+      | T_STABLE -> STABLE
+      | T_SYSTEM -> SYSTEM
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN
@@ -39,6 +41,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_RCURLY -> RCURLY
       | T_RBRACKET -> RBRACKET
       | T_QUEST -> QUEST
+      | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
       | T_PRIVATE -> PRIVATE
@@ -80,6 +83,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_GEOP -> GEOP
       | T_FUNC -> FUNC
       | T_FOR -> FOR
+      | T_FLEXIBLE -> FLEXIBLE
       | T_FLOAT -> FLOAT "<float>"
       | T_EQOP -> EQOP
       | T_EQ -> EQ
@@ -87,6 +91,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ELSE -> ELSE
       | T_DOT_NUM -> DOT_NUM "<num>"
       | T_DOT -> DOT
+      | T_DO -> DO
       | T_DIVOP -> DIVOP
       | T_DIVASSIGN -> DIVASSIGN
       | T_DEBUG_SHOW -> DEBUG_SHOW

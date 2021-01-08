@@ -20,15 +20,16 @@ sig
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
+  val last_opt : 'a list -> 'a option
   val split_last : 'a list -> 'a list * 'a (* raises Failure *)
 
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
-  val first_opt : ('a -> 'b option) -> 'a list -> 'b option
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
   val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
+  val is_prefix : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
 
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 end
@@ -45,6 +46,7 @@ end
 module Array :
 sig
   val compare : ('a -> 'a -> int) -> 'a array -> 'a array -> int
+  val for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool (* raises Failure *)
 end
 
 module Array32 :
@@ -77,6 +79,12 @@ end
 
 module Option :
 sig
+  module Syntax :
+  sig
+    val (let*) : 'a option -> ('a -> 'b option) -> 'b option
+    val (let+) : 'a option -> ('a -> 'b) -> 'b option
+    val (and+) : 'a option -> 'b option -> ('a * 'b) option
+  end
   val get : 'a option -> 'a -> 'a
 end
 
@@ -90,6 +98,15 @@ sig
   val is_fulfilled : 'a t -> bool
   val value : 'a t -> 'a
   val value_opt : 'a t -> 'a option
+  val lazy_value : 'a t -> (unit -> 'a) -> 'a
+end
+
+module AllocOnUse :
+sig
+  type ('a, 'b) t
+  val make : (unit -> ('a * ('b -> unit))) -> ('a, 'b) t
+  val use : ('a, 'b) t -> 'a
+  val def : ('a, 'b) t -> ('b Lazy.t) -> unit
 end
 
 module Int :
@@ -135,6 +152,7 @@ end
 module CRC :
 sig
   val crc8 : string -> int
+  val crc32 : string -> int32
 end
 
 module Hex :
@@ -146,6 +164,12 @@ sig
   val hex_of_byte  : int -> string
   val hex_of_char  : char -> string
   val hex_of_bytes : string -> string
+end
+
+module Base32 :
+sig
+  val decode : string -> (string, string) result
+  val encode : string -> string
 end
 
 module FilePath :
@@ -168,4 +192,29 @@ sig
   val relative_to : string -> string -> string option
 
   val make_absolute : string -> string -> string
+
+  (**
+   * Checks whether one path is nested below another.
+   * Must only be called on two absolute paths!
+   *
+   * Examples:
+   *
+   * is_subpath "/home" "/home/path" = true
+   * is_subpath "/home" "/path" = false
+   * is_subpath "/home/path" "/home" = false
+   * is_subpath "/home" "/homepath" = false
+   *)
+  val is_subpath : string -> string -> bool
+
+
+  (**
+   * Opens a file, and if successful checks whether there were any mismatches
+   * in filename case (in case-insensitive file systems), returning a warning.
+   *
+   * Examples:
+   *
+   * Asked for "Array.mo", opened "array.mo" reports
+   * "warning, file Array.mo has been located with a name of different case"
+   *)
+  val open_in : string -> (in_channel * string list)
 end

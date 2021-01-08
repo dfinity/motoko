@@ -3,7 +3,7 @@
 */
 
 actor a {
-  var x : Bool = false;
+  flexible var x : Bool = false;
 
   public func test(b : Bool) {
     if (b) { assert (x == false); x := true; assert (x == true); }
@@ -16,4 +16,4 @@ actor a {
     test(true);
   }
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+//a.go(); //OR-CALL ingress go "DIDL\x00\x00"

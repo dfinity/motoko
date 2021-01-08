@@ -91,7 +91,7 @@ let rec as_serv env t =
   | ServT _ -> Some t
   | VarT id -> as_serv env (find_type env id)
   | _ -> None
-       
+
 let check_cycle env =
   Env.iter (fun x t ->
       let rec has_cycle seen t =
@@ -111,6 +111,7 @@ let check_cycle env =
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
+  | PrincipalT -> t
   | VarT id -> ignore (find_type env id); t
   | FuncT (ms, t1, t2) ->
      let t1' = List.map (fun t -> check_typ env t) t1 in
@@ -122,6 +123,7 @@ let rec check_typ env t =
      FuncT (ms, t1', t2') @@ t.at
   | OptT t -> OptT (check_typ env t) @@ t.at
   | VecT t -> VecT (check_typ env t) @@ t.at
+  | BlobT -> BlobT @@ t.at
   | RecordT fs ->
      let fs' = check_fields env fs in
      RecordT (List.sort compare_field fs') @@ t.at
@@ -131,6 +133,8 @@ let rec check_typ env t =
   | ServT meths ->
      let ms' = check_meths env meths in
      ServT (List.sort compare_meth ms') @@ t.at
+  | ClassT _ ->
+     error env t.at "service constructor not supported"
   | PreT -> assert false
 
 and check_fields env fs =
@@ -202,19 +206,24 @@ and gather_decs env decs =
     ) env.typs decs
 
 (* Actor *)
-  
-let check_actor env actor_opt =
+
+let check_service env t =
+  match as_serv env t with
+  | None ->
+     error env t.at "%s is a non-service type\n %s" (string_of_typ t) (string_of_typ t)
+  | Some {it=ServT meths; _} ->
+     let meths' = check_meths env meths in
+     ServT (List.sort compare_meth meths') @@ t.at
+  | Some _ -> assert false
+
+let check_main_service env actor_opt =
   match actor_opt with
   | None -> None
-  | Some t ->
-     (match as_serv env t with
-      | None ->
-         error env t.at "%s is a non-service type\n %s" (string_of_typ t) (string_of_typ t)
-      | Some {it=ServT meths; _} ->
-         let meths' = check_meths env meths in
-         Some (ServT (List.sort compare_meth meths') @@ t.at)
-      | Some _ -> assert false
-     )
+  | Some {it=ClassT (args, t); at; _} ->
+     let args = List.map (check_typ env) args in
+     let t = check_service env t in
+     Some (ClassT (args, t) @@ at)
+  | Some t -> Some (check_service env t)
 
 (* Programs *)
 
@@ -225,8 +234,18 @@ let check_prog scope prog : (scope * typ option) Diag.result =
         (fun prog ->
           let env = env_of_scope msgs scope in
           let te = check_decs env prog.it.decs in
-          let actor = check_actor (env_of_scope msgs te) prog.it.actor in
+          let actor = check_main_service (env_of_scope msgs te) prog.it.actor in
           (te, actor)
         )
+        prog
+    )
+
+(* Test declarations *)
+
+let check_tdecs scope decs : scope Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun prog -> check_decs (env_of_scope msgs scope) decs)
         prog
     )

@@ -1,0 +1,260 @@
+= Managing funds
+:proglang: Motoko
+:company-id: DFINITY
+
+The {company-id} platform maintains funds of tokens of various units.
+For now, the supported units are _Cycle_ and _ICPT_ but user-defined units will be available soon.
+Usage of the Internet Computer is measured, and paid for, in cycles.
+_ICPT_  is the unit of Internet Computer Tokens.
+
+Each {company-id} canister or {proglang} actor has a balance of funds,
+one balance per unit.  The ownership of funds can be transferred
+between canisters.  Funds are selectively sent and received through
+messages, i.e. shared function calls.  A caller can choose to transfer
+funds with a call, and a callee can choose to accept funds that are
+made available by the caller.  Unless directed otherwise, no funds of
+any unit are transferred by callers or accepted by callees.  Callees
+can accept all, some or none of the available funds.  Any remaining
+funds are refunded to the caller.  If a call traps, all its
+accompanying funds are automatically refunded to the caller, without
+loss.
+
+In future, we may see {proglang} adopt dedicated syntax and types to
+support safer programming with funds and units.  For now, we provide
+a temporary way to manage funds through a low-level imperative API provided by the
+`ExperimentalFunds` library in package `base`.
+
+
+NOTE: This library is subject to change and likely to be replaced by more high-level support for funds in later versions of Motoko.
+
+== The `ExperimentalFunds` Library
+
+The `ExperimentalFunds` library provides imperative operations for
+observing an actor's current balance of funds, transferring funds and
+observing refunds, on a per-unit basis.
+
+The library provides the following type and operations:
+
+[source,motoko]
+----
+type Unit = { #cycle; #icpt }
+
+func balance(u : Unit) : (amount : Nat)
+
+func available(u : Unit) : (amount : Nat)
+
+func accept(u : Unit, amount : Nat) : ()
+
+func add(u : Unit, amount : Nat) : ()
+
+func refunded(u : Unit) : (amount : Nat)
+----
+
+Type `Unit` is a variant describing the two currently supported units,
+`#cycle` and `#icpt`. This type is likely to be extended in future.
+
+Function `balance(u)` returns the actor's current balance of unit `u` as `amount`.
+Function `balance(u)` is stateful and may return different values after calls to `accept(u,...)`,
+calling a function with added funds of `u`, or resuming from await (reflecting a refund).
+WARNING: Since  `#cycle` measures computation, the value of
+`balance(#cycle)` generally decreases from one call to the next.
+
+Function ``available(u)``, returns the currently available `amount` of unit `u`.
+The amount available is the amount received from the current caller,
+minus the cumulative amount `accept`ed sofar by this call.
+On exit from the current shared function or async expression via `return` or `throw`
+any remaining available amount is automatically
+refunded to the caller/context.
+
+Function `accept(u, amount)` Transfers `amount` from `available(u)` to `balance(u)`,
+The function traps if trying to accept more funds than are available.
+
+Function `add(u, amount)` indicates the additional `amount` of unit `u` to be transferred in
+the remote call, i.e. evaluation of a shared function call or
+async expression.
+Upon the call, but not before, the total amount of units ``add``ed since
+the last call is deducted from `balance(u)`.
+If this total exceeds `balance(u)`, the caller traps, aborting the call.
+
+NOTE: the implicit, per unit register of added amounts is reset to zero on entry to
+a shared function and after each shared function call or on resume from an await.
+
+Function `refunded(u, amount)` reports the `amount` of unit `u`
+refunded in the last `await` of the current context, or `0` if no
+await has occurred yet.  Calling `refunded(u)` is solely informational
+and does not affect `balance(u)`.  Instead, refunds are automatically
+added to the current balance, whether or not `refunded` is used to
+observe them.
+
+=== Example
+
+To illustrate, we will now use the `ExperimentalFunds` library to implement a toy _piggy bank_.
+
+Our piggy bank has an implicit owner, stores one kind of `unit`, has a fixed `capacity`,
+and a `benefit` callback, all supplied at time of construction.
+The callback is used to transfer withdrawn amounts.
+
+[source,motoko]
+----
+import Funds "mo:base/ExperimentalFunds";
+
+shared {caller = owner} actor class PiggyBank(
+  unit : Funds.Unit,
+  capacity: Nat,
+  benefit : shared () -> async ()) {
+
+  var savings = 0;
+
+  public shared {caller} func getSavings() : async Nat {
+    assert (caller == owner);
+    return savings;
+  };
+
+  public func deposit() : async () {
+    let amount = Funds.available(unit);
+    let limit = capacity - savings;
+    let acceptable =
+      if (amount <= limit) amount
+      else limit;
+    Funds.accept(unit, acceptable);
+    savings += acceptable;
+  };
+
+  public shared {caller} func withdraw(amount : Nat)
+    : async () {
+    assert (caller == owner);
+    assert (amount <= savings);
+    Funds.add(unit, amount);
+    await benefit();
+    let refund = Funds.refunded(unit);
+    savings -= amount - refund;
+  };
+
+}
+----
+
+The owner of the bank is identified with the (implicit) caller of
+constructor `PiggyBank()`, using the shared pattern `{caller = owner}`.
+Field caller is a `Principal` and is stored in private binding `owner` (for future reference).
+
+The piggy bank is initially empty, with zero current `savings`.
+
+Only calls from `owner` may:
+
+* query the current `savings` of the piggy bank (function `getSavings()`), or
+* withdraw amounts from the savings (function `withdraw(amount)`).
+
+The restriction on the caller is enforced by the statements `assert (caller ==
+owner)`, whose failure causes the enclosing function to trap, without revealing the balance
+or moving any funds.
+
+Any caller may `deposit` an amount of kind `unit`, provided the savings
+will not exceed `capacity` (breaking the piggy bank).  Because the
+deposit function only accepts a portion of the available
+amount, a caller whose deposit exceeds the limit will receive an
+implicit refund of the unaccepted funds. Refunding is automatic and
+ensured by the platform.
+
+Since transfer of funds is one-directional (from caller to callee),
+retrieving funds requires the use of an explicit callback (the
+`benefit` function, taken by the constructor as an argument).  Here,
+`benefit` is called by the `withdraw` function, but only after
+authenticating the caller as `owner`.
+
+Note that the owner of the `PiggyBank` could, in fact, supply a callback
+that rewards a beneficiary distinct from `owner`.
+
+Here's how an owner, `Alice`, might use an instance of `Piggy Bank`:
+
+[source,motoko]
+----
+import Funds = "mo:base/ExperimentalFunds";
+import Lib = "piggy-bank/PiggyBank";
+
+actor Alice {
+
+  public func test() : async () {
+
+    let porky = await Lib.PiggyBank(#cycle, 1000_000, Alice.credit);
+    assert (0 == (await porky.getSavings()));
+
+    await { Funds.add(#cycle, 1000); porky.deposit() };
+    assert (1000 == (await porky.getSavings()));
+
+    await porky.withdraw(500);
+    assert (500 == (await porky.getSavings()));
+
+    await porky.withdraw(500);
+    assert (0 == (await porky.getSavings()));
+
+    await { Funds.add(#cycle, 2000_000); porky.deposit() };
+    let refund = Funds.refunded(#cycle);
+    assert (1000_000 == refund);
+    assert (1000_000 == (await porky.getSavings()));
+
+  };
+
+   // callback for accepting funds from PiggyBank
+  public func credit() : async () {
+    Funds.accept(#cycle, Funds.available(#cycle));
+  }
+
+};
+----
+
+Let's dissect ``Alice``'s code.
+
+`Alice` imports the `PiggyBank` actor class as a library, so she can create
+a new `PiggyBank` actor on demand.
+
+Most of the action occurs in  ``Alice``'s `test()` function:
+
+Alice asynchronously creates a new instance, `porky`, of the
+`PiggyBank`, passing callback `Alice.credit`, unit `#cycle`,
+and capacity `1000_000`. Choosing `Alice.credit` nominates `Alice` as
+the beneficiary of withdrawals.
+
+Afer constructing `porky`, she first verifies that
+the `Porky.getSavings()` is `0` (using an `assert`).
+
+`Alice` dedicates 1000 of her cycles (`Funds.add(#cycle, 1000)`) to
+transfer to porky with the next call to `porky.deposit()`.  The funds
+are only consumed from Alice's `#cycle` balance if the call to
+`porky.deposit()` succeeds (which it should).
+
+`Alice` now withdraws half the amount (500) and verifies that
+``porky``s savings have halved. `Alice` eventually receives the funds
+via a callback to `credit()`, initiated in ``porky.withdraw()``.  Note
+the received funds are precisely the funds ``add``ed in
+`porky.withdraw()`, before it invokes its `benefit` callback
+(i.e. `Alice.credit`).
+
+`Alice` withdraws another 500 cycles to wipe out her savings.
+
+`Alice` vainly tries to deposit 2000,000 cycles into `porky` but this
+exceeds ``porky``'s capacity by half, so porky accepts 1000,000 and
+refunds the remaining 1000,000 to `Alice`.  `Alice` verifies the
+refund amount (`Fundes.refunded(#cycle)`), which has (already) been
+automatically restored to her balance. She also verifies ``porky``'s
+adjusted savings.
+
+``Alice``'s `credit()` function simply accepts all available `#cycle`
+funds by calling `Funds.accept(#cycle, Funds.available(#cycle))`.
+In addition, it implicitly refunds any available amount of
+other units, notably `#icpt`.
+
+NOTE: For this example, Alice is using her (readily available)
+`#cycle` units (that she already owns), rather than `#icpt` which she
+won't initially have.  Because ``Alice``'s balance of cycles
+steadily decreases with computation, this code does not assert the
+exact balance of Alice's cycles between banking operations.  If she
+had chosen a different unit, `u`, then Alice could predict and assert
+the changes to her balance, reflected in call to
+`Funds.balance(u)`. The volatility of `balance(#cycles)` prevents
+her from doing that directly.
+
+WARNING: Because `porky` consumes cycles in its operation, it is possible
+for `porky` to spend some or even all of Alice's cycle savings before
+she has a chance to retrieve them. This ongoing consumption does not
+apply to other units, but should be taken into consideration when
+dealing with cycles in particular.

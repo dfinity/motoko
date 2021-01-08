@@ -1,8 +1,8 @@
-type List_1 = 
+type List = 
  opt record {
        int;
-       List_1;
+       List;
      };
 service : {
-  "f": (List_1) -> (List_1);
+  f: (List) -> (List);
 }

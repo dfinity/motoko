@@ -14,6 +14,6 @@ a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
 
 // disabled, because hard to use Prim from inner actor
-// a bit sad, because this test is mostly interesting on ic-stub
+// a bit sad, because this test is mostly interesting on ic-ref-run
 
-//SKIP comp-stub
+//SKIP comp-ref

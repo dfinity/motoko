@@ -1,5 +1,0 @@
-ingress System
-debug.print: go1
-debug.print: match_true
-debug.print: go2
-ingress Completed: Canister: Payload: 0x4449444c0000

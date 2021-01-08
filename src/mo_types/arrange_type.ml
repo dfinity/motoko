@@ -12,6 +12,7 @@ let obj_sort s = match s with
   | Object -> Atom "Object"
   | Actor -> Atom "Actor"
   | Module -> Atom "Module"
+  | Memory -> Atom "Memory"
 
 let func_sort s = match s with
   | Local -> "Local"

@@ -1,7 +1,7 @@
-syntax2.mo:2.1-2.4: syntax error, unexpected token 'let', 
-expected one of token or <phrase> sequence:
+syntax2.mo:2.1-2.4: syntax error, unexpected token 'let', expected one of token or <phrase> sequence:
   <eof>
   .<nat>
+  !
   <exp_nullary(ob)>
   <binop> <exp(ob)>
   ; seplist(<dec>,<semicolon>)
@@ -14,5 +14,5 @@ expected one of token or <phrase> sequence:
   <binassign> <exp(ob)>
   and <exp_bin(ob)>
   <unop> <exp_bin(ob)>
-  <typ_args>? <exp_nullary(ob)>
+  <inst> <exp_nullary(ob)>
   [ <exp(ob)> ]

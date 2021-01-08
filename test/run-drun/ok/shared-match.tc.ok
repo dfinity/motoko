@@ -1,4 +1,0 @@
-shared-match.mo:8.25-8.31: warning, this pattern consuming type
-  Bool
-does not cover value
-  false

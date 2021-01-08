@@ -5,7 +5,7 @@ actor a {
     Prim.debugPrint("ping! " # debug_show Prim.rts_callback_table_count());
   };
 
-  public func go() = ignore async {
+  public func go() : async () {
     Prim.debugPrint("go 1: " # debug_show Prim.rts_callback_table_count());
     let a1 = ping();
     Prim.debugPrint("go 1: " # debug_show Prim.rts_callback_table_count());

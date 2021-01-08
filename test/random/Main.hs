@@ -13,7 +13,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
 import Test.QuickCheck.Unicode
 import System.Environment
-import qualified Data.Text (null, unpack)
+import qualified Data.Text (null, pack, unpack)
 import Data.Maybe
 import Data.Bool (bool)
 import Data.Proxy
@@ -23,15 +23,27 @@ import GHC.TypeLits hiding (Text)
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
+import Data.List (intercalate)
 
 import Turtle
 import Embedder
 -- import Debug.Trace (traceShowId, traceShow)
 
 
-main = setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
-  where tests :: TestTree
-        tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
+main = do
+  putStrLn "Probing embedders..."
+  good <- isHealthy embedder
+  goodDrun <- isHealthy Drun
+  putStrLn . ("Found " <>) . (<> ".") . intercalate " and " . map embedderCommand
+               $ [ embedder | good ] <> [ Drun | goodDrun ]
+  let tests :: TestTree
+      tests = testGroup "Motoko tests" . concat
+               $ [ [arithProps, conversionProps, utf8Props, matchingProps] | good ]
+              <> [ [encodingProps] | goodDrun ]
+
+  if not (good || goodDrun)
+  then putStrLn "No embedder available for testing. Done..."
+  else setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
@@ -58,11 +70,17 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
-matchingProps = testGroup "Pattern matching"
-  [ QC.testProperty "intra-actor" $ prop_matchStructured
-  , QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
+matchingProps = testGroup "Pattern matching" $
+  [ QC.testProperty "intra-actor" $ prop_matchStructured ]
+
+
+-- these require messaging
+--
+encodingProps = testGroup "Encoding" $
+  [ QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
   , QC.testProperty "encoded-Nat" $ withMaxSuccess 10 prop_matchActorNat
   , QC.testProperty "encoded-Int" $ withMaxSuccess 10 prop_matchActorInt
+  , QC.testProperty "encoded-Text" $ withMaxSuccess 10 prop_matchActorText
   ]
 
 
@@ -82,7 +100,7 @@ runner embedder reqOutcome relevant name testCase =
                     else pure (False, res)
     in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 134) not)
     where runEmbedder = runner embedder
 (drunScriptNoFuzz, drunScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
     where runEmbedder = runner Drun
@@ -120,7 +138,7 @@ prop_charToText (UTF8 char) = monadicIO $ do
   runScriptNoFuzz "charToText" testCase
 
 prop_textLength (UTF8 text) = monadicIO $ do
-  let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
+  let testCase = "assert(\"" <> (text >>= escape) <> "\".size() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
 
 data Rope a = EmptyChunk | Chunk a | UTF8Chunk a | LongChunk a | Rope a `Rope` Rope a deriving (Eq, Show, Foldable)
@@ -158,7 +176,7 @@ prop_ropeConcat rope = monadicIO $ do
   runScriptNoFuzz "ropeConcat" testCase
 
 prop_ropeLength rope = monadicIO $ do
-  let testCase = "assert (" <> ropeMot <> ".len() == " <> show len <> ")"
+  let testCase = "assert (" <> ropeMot <> ".size() == " <> show len <> ")"
       len = length (asString rope)
       ropeMot = unparseMO (asMot rope)
   runScriptNoFuzz "ropeLength" testCase
@@ -212,7 +230,7 @@ instance Arbitrary TestCase where
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   let script cases = do Turtle.output "tests.mo" $ msum (pure (withPrim mempty) : cases)
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                 ["-no-system-api", "-no-check-ir", "tests.mo"] empty
+                                 (addCompilerArgs embedder ["-no-check-ir", "tests.mo"]) empty
                         if ExitSuccess == exitCode
                         then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
                         else pure (False, res)
@@ -295,7 +313,7 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func do () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
+  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func go () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
 
       eval'd = unparse v
       typed = unparseType v
@@ -305,15 +323,21 @@ mobile (tm, v) = monadicIO $ do
 
 prop_matchActorNat :: Neuralgic Natural -> Property
 prop_matchActorNat nat = monadicIO $ do
-    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
+    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func go () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
         eval'd = evalN nat
     drunScriptNoFuzz "matchActorNat" (Data.Text.unpack testCase)
 
 prop_matchActorInt :: Neuralgic Integer -> Property
 prop_matchActorInt int = monadicIO $ do
-    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
+    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func go () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
         eval'd = evalN int
     drunScriptNoFuzz "matchActorInt" (Data.Text.unpack testCase)
+
+prop_matchActorText :: UTF8 String -> Property
+prop_matchActorText (UTF8 text) = monadicIO $ do
+    let testCase = format ("actor { public func match (i : Text) : async () { assert (switch i { case (\""%s%"\") true; case _ false }) }; public func go () : async () { let res = await match (\""%s%"\" : Text); return res } };") eval'd eval'd
+        eval'd = Data.Text.pack $ text >>= escape
+    drunScriptNoFuzz "matchActorText" (Data.Text.unpack testCase)
 
 -- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have

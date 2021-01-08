@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor a {
-  public func go() = ignore async {
+  public func go() : async () {
     var x = "A";
     Prim.debugPrint x;
     let a = async {

@@ -1,0 +1,5 @@
+install $ID reinstall/a.mo ""
+query $ID check "DIDL\x00\x00"
+reinstall $ID reinstall/b.mo ""
+query $ID check "DIDL\x00\x00"
+

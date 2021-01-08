@@ -2,7 +2,7 @@
    with custom sections that we are interested in
 *)
 
-open Wasm.Ast
+open Ast
 
 type name_section = {
   module_ : string option;
@@ -42,4 +42,6 @@ type extended_module = {
   dylink : dylink_section option;
   (* motoko section *)
   motoko : motoko_section;
-  }
+  (* source map section *)
+  source_mapping_url : string option;
+}

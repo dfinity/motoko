@@ -1,2 +1,0 @@
-self-shadow.mo:5.15-5.51: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
-  (This is a limitation of the current version and flag -stub-system-api.)

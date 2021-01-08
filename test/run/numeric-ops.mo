@@ -71,8 +71,12 @@ func testIntAbs(a : Int) : [Int] {
   [abs1, abs2, abs3, abs4]
 };
 
+verify<Int>([0, 0], testIntAbs(0), intCompare);
+verify<Int>([1, 1], testIntAbs(1), intCompare);
 verify<Int>([4567, 4567], testIntAbs(-4567), intCompare);
-verify<Int>([1073741824, 1073741824], testIntAbs(-1073741824), intCompare);
+verify<Int>([0x40000000, 0x40000000], testIntAbs(-0x40000000), intCompare);
+verify<Int>([0x40000001, 0x40000001], testIntAbs(-0x40000001), intCompare);
+verify<Int>([0x80000000, 0x80000000], testIntAbs(-0x80000000), intCompare);
 
 func testIntNegation(a : Int) : [Int] {
   let neg1 = -a;
@@ -143,8 +147,7 @@ func testFloat(a : Float, b : Float) : [Float] {
   [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, pow1, pow2]
 };
 
-// no Floats yet
-// verify<Float>([3, -3, 8, -2, 15, 0, 3, 243], testFloat(3.0, 5.0), func (a : Float, b : Float) : Bool = a == b);
+verify<Float>([3, -3, 8, -2, 15, 0.6, 243.0], testFloat(3.0, 5.0), func (a : Float, b : Float) : Bool = a == b);
 
 func testWord8(a : Word8, b : Word8) : [Word8] {
   let pos1 = + a;

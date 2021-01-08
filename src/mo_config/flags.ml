@@ -2,7 +2,7 @@
 
 module M = Map.Make(String)
 
-type compile_mode = WasmMode | ICMode | StubMode | WASIMode
+type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
 let trace = ref false
 let verbose = ref false
@@ -10,6 +10,7 @@ let print_warnings = ref true
 let print_depth = ref 2
 let release_mode = ref false
 let compile_mode = ref ICMode
+let debug_info = ref false
 let multi_value = ref false
 let await_lowering = ref true
 let async_lowering = ref true
@@ -26,4 +27,5 @@ let profile_file = ref "profiling-counters.csv"
 let profile_line_prefix = ref ""
 let profile_field_names : string list ref = ref []
 let compiled = ref false
-let error_detail = ref 2;
+let error_detail = ref 2
+let sanity = ref false

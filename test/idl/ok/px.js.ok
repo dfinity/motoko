@@ -12,7 +12,7 @@ export default ({ IDL }) => {
   IDL.Record({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
  const OpEntId = IDL.Opt(EntId)
  const IdErr = IDL.Record({'idErr': OpEntId})
- return new IDL.ActorInterface({
+ return IDL.Service({
   'getInventory':
    IDL.Func([IDL.Nat, UserInfo], [Inventory, IdErr], ['query'])});
 };

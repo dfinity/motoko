@@ -1,8 +1,6 @@
-{-# language OverloadedStrings #-}
-{-# language DuplicateRecordFields #-}
-{-# language ExplicitForAll #-}
-{-# language ScopedTypeVariables #-}
-{-# language BlockArguments #-}
+{-# language OverloadedStrings, DuplicateRecordFields,
+  ExplicitForAll, ScopedTypeVariables, BlockArguments,
+  LambdaCase #-}
 
 module Main where
 
@@ -17,8 +15,9 @@ import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Language.Haskell.LSP.Test hiding (message)
-import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri)
-import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
+import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionDoc(..))
+import qualified Language.Haskell.LSP.Types as LSP
+import           Language.Haskell.LSP.Types.Lens (contents, label, documentation, message, additionalTextEdits, newText)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
@@ -27,6 +26,11 @@ import           System.IO (hPutStr, stderr)
 import           Test.HUnit.Lang (HUnitFailure(..), formatFailureReason)
 import           Test.Hspec (shouldBe, shouldMatchList, shouldContain)
 
+completionDocAsText :: Maybe CompletionDoc -> Maybe Text
+completionDocAsText = fmap \case
+  CompletionDocString t -> t
+  _ -> error "Non-text documentation field"
+
 completionTestCase
   :: TextDocumentIdentifier
   -> Position
@@ -34,7 +38,7 @@ completionTestCase
   -> Session ()
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  liftIO (pred (map (\c -> (c^.label, c^.detail)) actual))
+  liftIO (pred (map (\c -> (c^.label, completionDocAsText (c^.documentation))) actual))
 
 hoverTestCase
   :: TextDocumentIdentifier
@@ -107,12 +111,19 @@ main = do
   project <- makeAbsolute project
   removeFile (project </> "ls.log") `Exception.catch` \(_ :: Exception.SomeException) -> pure ()
   setCurrentDirectory project
-  handleHUnitFailure project $ do
+  let serverCommand = mo_ide
+        <> " --canister-main app.mo"
+        <> " --debug"
+        <> " --error-detail 0"
+        <> " --package mydep " <> (project </> "mydependency")
+        <> " --actor-idl " <> (project </> "idlpath")
+        <> " --actor-alias counter aaaaa-aa"
+  putStrLn "Starting server with: "
+  putStrLn serverCommand
+  handleHUnitFailure project do
     putStrLn "Starting the session"
     runSession
-      (mo_ide
-       <> " --canister-main app.mo --debug --error-detail 0"
-       <> " --package mydep " <> project <> "/mydependency/")
+      serverCommand
       fullCaps
       "." $ do
         log "Initializing"
@@ -126,7 +137,7 @@ main = do
           hoverTestCase
             doc
             (Position 17 11)
-            (plainMarkup "pop : <T>List<T> -> (?T, List<T>)")
+            (plainMarkup "pop : <T>(List<T>) -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)
@@ -155,14 +166,14 @@ main = do
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
 
         log "Completion tests"
-        -- Completing top level definitions:
+        log "Completing top level definitions"
         withDoc "ListClient.mo" \doc -> do
           actual <- getCompletions doc (Position 7 0)
           liftIO
             (shouldBe
-             ([("empty", Just "() -> Stack")])
              (mapMaybe (\c -> guard (c^.label == "empty")
-                         *> pure (c^.label, c^.detail)) actual))
+                              *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
+             ([("empty", Just "() -> Stack")]))
           --     15 | List.push<Int>(x, s);
           -- ==> 15 | List.pus
           let edit = TextEdit (Range (Position 14 11) (Position 14 27)) "pus"
@@ -173,7 +184,7 @@ main = do
             (Position 14 14)
             (`shouldMatchList` [("push",Just "<T>(T, List<T>) -> List<T>")])
 
-        -- Completing primitives:
+        log "Completing primitives"
         withDoc "ListClient.mo" \doc -> do
           let edit = TextEdit (Range (Position 15 0) (Position 15 0)) "Prim."
           _ <- applyEdit doc edit
@@ -181,8 +192,30 @@ main = do
           liftIO
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "word32ToNat")
-                         *> pure (c^.label, c^.detail)) actual)
+                         *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
              ([("word32ToNat", Just "Word32 -> Nat")]))
+
+        log "Completing not-yet-imported modules"
+        withDoc "ListClient.mo" \doc -> do
+          let edit = TextEdit (Range (Position 15 0) (Position 15 0)) "MyDep.print_"
+          _ <- applyEdit doc edit
+          [actual] <- getCompletions doc (Position 15 12)
+          liftIO do
+            shouldBe (actual^.label) "print_hello"
+            shouldBe (completionDocAsText (actual^.documentation)) (Just "() -> Text")
+            let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
+            shouldContain (Text.lines (importEdit^.newText)) ["import MyDep \"mo:mydep/lib\";"]
+
+        log "Completing on not-yet-imported actors"
+        withDoc "ListClient.mo" \doc -> do
+          let edit = TextEdit (Range (Position 15 0) (Position 15 0)) "Counter.add_"
+          _ <- applyEdit doc edit
+          [actual] <- getCompletions doc (Position 15 12)
+          liftIO do
+            shouldBe (actual^.label) "add_counter"
+            shouldBe (completionDocAsText (actual^.documentation)) (Just "shared Nat -> ()")
+            let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
+            shouldContain (Text.lines (importEdit^.newText)) ["import Counter \"canister:counter\";"]
 
         withDoc "ListClient.mo" \doc -> do
           --     1 | import List

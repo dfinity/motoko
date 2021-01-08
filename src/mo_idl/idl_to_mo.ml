@@ -3,6 +3,8 @@ open Source
 module M = Mo_types.Type
 module I = Idllib.Typing
 
+exception UnsupportedCandidFeature of string
+
 let m_env = ref M.Env.empty
 
 let check_prim p =
@@ -19,7 +21,7 @@ let check_prim p =
   | Nat16 -> M.Prim M.Nat16
   | Nat32 -> M.Prim M.Nat32
   | Nat64 -> M.Prim M.Nat64
-  | Float32 -> raise (Invalid_argument "float32 not supported")
+  | Float32 -> raise (UnsupportedCandidFeature "float32")
   | Float64 -> M.Prim M.Float
   | Text -> M.Prim M.Text
   | Reserved -> M.Any
@@ -49,6 +51,7 @@ let is_tuple fs =
 let rec check_typ env t =
   match t.it with
   | PrimT p -> check_prim p
+  | PrincipalT -> M.Prim M.Principal
   | VarT {it=id; _} ->
      (match M.Env.find_opt id !m_env with
       | None ->
@@ -63,6 +66,7 @@ let rec check_typ env t =
      )
   | OptT t -> M.Opt (check_typ env t)
   | VecT t -> M.Array (check_typ env t)
+  | BlobT -> M.Prim M.Blob
   | RecordT fs ->
      if is_tuple fs then
        M.Tup (List.map (fun f -> check_typ env f.it.typ) fs)
@@ -74,11 +78,13 @@ let rec check_typ env t =
      M.Variant (List.sort M.compare_field fs)
   | FuncT (ms, ts1, ts2) ->
      let (s, c) = check_modes ms in
-     M.Func (M.Shared s, c, [M.scope_bind], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
+     M.Func (M.Shared s, c, [M.scope_bind], check_typs env ts1, check_typs env ts2)
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)
+  | ClassT _ -> raise (Invalid_argument "service constructor not supported")
   | PreT -> assert false
+and check_typs env ts = List.map (check_typ env) ts
 and check_field env f =
   M.{lab = check_label f.it.label; typ = check_typ env f.it.typ}
 and check_variant_field env f =

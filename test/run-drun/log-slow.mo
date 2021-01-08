@@ -1,5 +1,5 @@
 // These are rather long-running tests, not advisable for wasm-run!
-//SKIP comp-stub
+//SKIP comp-ref
 
 import Prim "mo:prim";
 
@@ -88,7 +88,7 @@ for (n in range(0, 127)) {
 
 assert (Prim.intToInt8 (-2) ** Prim.intToInt8 7 == Prim.intToInt8 (-128)); // highest exponent
 
-{
+do {
 var n = -128;
 while (n < -1) {
     for (exp in range(0, 127)) {
@@ -119,7 +119,7 @@ for (n in range(0, 127)) {
 
 assert (Prim.intToInt16 (-2) ** Prim.intToInt16 15 == Prim.intToInt16 (-32768)); // highest exponent
 
-{
+do {
 var n = -128;
 while (n < -1) {
     for (exp in range(0, 127)) {
@@ -160,7 +160,7 @@ for (n in range(0, 127)) {
     }
 };
 
-{
+do {
 var n = -128;
 while (n < -1) {
     for (exp in range(0, 127)) {
@@ -206,7 +206,7 @@ for (n in range(0, 127)) {
     }
 };
 
-{
+do {
 var n = -128;
 while (n < -1) {
     for (exp in range(0, 127)) {

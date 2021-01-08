@@ -1,6 +1,6 @@
 open Mo_config
 
-type severity = Warning | Error
+type severity = Warning | Error | Info
 type message = {
   sev : severity;
   at : Source.region;
@@ -9,11 +9,17 @@ type message = {
 }
 type messages = message list
 
+let info_message at cat text = {sev = Info; at; cat; text}
+let warning_message at cat text = {sev = Warning; at; cat; text}
+let error_message at cat text = {sev = Error; at; cat; text}
+
 type 'a result = ('a * messages, messages) Stdlib.result
 
 let return x = Ok (x, [])
 
-let warn at cat text = Ok ((), [{ sev = Warning; at; cat; text}])
+let info at cat text = Ok ((), [info_message at cat text])
+let warn at cat text = Ok ((), [warning_message at cat text])
+let error at cat text = Stdlib.Error [error_message at cat text]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs
@@ -24,6 +30,12 @@ let bind x f = match x with
   | Ok (y, msgs1) -> match f y with
     | Ok (z, msgs2) -> Ok (z, msgs1 @ msgs2)
     | Stdlib.Error msgs2 -> Error (msgs1 @ msgs2)
+
+let finally f r = f (); r
+
+module Syntax = struct
+  let (let*) = bind
+end
 
 let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> function
   | [] -> return []
@@ -45,16 +57,15 @@ let get_msgs s = List.rev !s
 let has_errors : messages -> bool =
   List.fold_left (fun b msg -> b || msg.sev == Error) false
 
-let fatal_error at text = { sev = Error; at; cat = "fatal"; text }
-
 let string_of_message msg =
   let label = match msg.sev with
     | Error -> Printf.sprintf "%s error"  msg.cat
-    | Warning -> "warning" in
+    | Warning -> "warning" 
+    | Info -> "info" in
   Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
 
 let print_message msg =
-  if msg.sev = Warning && not !Flags.print_warnings
+  if msg.sev <> Error && not !Flags.print_warnings
   then ()
   else Printf.eprintf "%s%!" (string_of_message msg)
 

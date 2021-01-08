@@ -1,4 +1,4 @@
 service : {
-  "f": () -> () query;
-  "g": () -> () oneway;
+  f: () -> () query;
+  g: () -> () oneway;
 }

@@ -1,5 +1,3 @@
-import Prim "mo:prim";
-
 class range(x : Nat, y : Nat) {
   var i = x;
   public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };

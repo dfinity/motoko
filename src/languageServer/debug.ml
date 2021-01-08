@@ -1,2 +1,3 @@
-let logger : (string -> unit) ref = ref ignore
-let log : string -> unit = fun msg -> !logger msg
+let logger : (string -> string -> unit) ref = ref (fun _ _ -> ())
+
+let log : string -> string -> unit = fun msg -> !logger msg

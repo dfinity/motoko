@@ -25,6 +25,7 @@ typedef intptr_t as_ptr;
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
 
+typedef as_ptr blob_t;
 #define BLOB_HEADER_SIZE 2
 #define BLOB_LEN(p) (FIELD(p,1))
 #define BLOB_PAYLOAD(p) ((char *)(&FIELD(p,2)))
@@ -35,7 +36,7 @@ typedef intptr_t as_ptr;
 
 #define TUPLE_HEADER_SIZE 2
 #define TUPLE_LEN(p) (FIELD(p,1))
-#define TUPLE_FIELD(p,n,t) (*(t *)(&(FIELD(p,TUPLE_HEADER_SIZE+n))))
+#define TUPLE_FIELD(p,n,t) (*(t *)(&FIELD(p,TUPLE_HEADER_SIZE+n)))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
 enum as_heap_tag {
@@ -53,6 +54,7 @@ enum as_heap_tag {
   TAG_SMALLWORD = 12,
   TAG_BIGINT = 13,
   TAG_CONCAT = 14,
+  TAG_NULL = 15,
   };
 
 /** Functions imported from the Motoko RTS */
@@ -82,13 +84,10 @@ from_rts as_ptr alloc_words(size_t n);
 from_rts __attribute__ ((noreturn)) void rts_trap(const char* str, size_t n);
 from_rts __attribute__ ((noreturn)) void bigint_trap();
 
-/** Functions used in multiple modules of the RTS */
-export void as_memcpy(char *str1, const char *str2, size_t n);
-export int as_memcmp(const char *str1, const char *str2, size_t n);
-export size_t as_strlen(const char *str1);
-
+typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
+as_ptr alloc_array(uint32_t n_elems);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
 as_ptr text_of_cstr(const char *buf);
 int text_compare(as_ptr s1, as_ptr s2);
@@ -97,5 +96,14 @@ export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 
 export as_ptr blob_of_text(as_ptr);
+export uint32_t compute_crc32(blob_t);
+export blob_t base32_of_checksummed_blob(blob_t);
+export blob_t base32_to_blob(blob_t);
+export int blob_compare(blob_t s1, blob_t s2);
+
+export blob_t blob_of_principal(text_t);
+export blob_t base32_to_principal(blob_t);
+
+export void utf8_validate(const char *src, size_t len);
 
 #endif /* RTS_H */

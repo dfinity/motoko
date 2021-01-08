@@ -1,7 +1,7 @@
 // top-level actor objects are supported
 actor Counter {
 
-    shared func bad_private_shared() { }; // unsupported private shared
+    flexible shared func bad_private_shared() { }; // unsupported private shared
 
     public func ok_actorarg(a:actor{}) : async () {};
 
@@ -35,31 +35,31 @@ actor Counter {
 
 shared func bad_shared() { }; // unsupported non actor-member
 
-{
+do {
     // shared function types are sharable
     type wellformed_1 = shared (shared () -> ()) -> async ();
 };
 
-{
+do {
     // actors are shareable
     type wellformed_2 = shared (actor {}) -> async ();
 };
 
 
-{
+do {
   actor class BadActorClass () { }; // no actor classes
 };
 
-{
+do {
   actor class BadActorClass (x : Int) { }; // no actor classes
 };
 
-{
+do {
  let bad_non_top_actor : actor {} = if true actor {} else actor {};
 };
 
-{
-  let bad_nested_actor =  { let _ = actor {}; ()};
+do {
+  let bad_nested_actor = do { let _ = actor {}; ()};
 };
 
 
@@ -71,3 +71,4 @@ func implicit_async() : async () { };
 // anonymous shared functions not supported (inference and checking mode)
 let _ = shared func() : async () { };
 (shared func() : async () { }) : shared () -> async ();
+

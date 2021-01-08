@@ -1,4 +1,0 @@
-data-params.mo:50.30-50.40: warning, this pattern consuming type
-  ?Text
-does not cover value
-  null

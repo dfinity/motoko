@@ -1,0 +1,3 @@
+install $ID tailpositions-actor/actor1.mo ""
+query $ID test_loop1 "DIDL\x00\x00"
+upgrade $ID tailpositions-actor/actor2.mo ""

@@ -1,20 +1,9 @@
 pull_request_rules:
-  - name: Automatic merge
-    conditions:
-      - "#approved-reviews-by>=1"
-      - "#changes-requested-reviews-by=0"
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
-      - base=master
-      - label=automerge
-    actions:
-      merge:
-        method: merge
-        strict: smart
-      delete_head_branch: {}
   - name: Automatic merge (squash)
     conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
+      - status-success=hydra:dfinity-ci-build:evaluation
       - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
       - base=master
       - label=automerge-squash
@@ -22,19 +11,16 @@ pull_request_rules:
       merge:
         method: squash
         strict: smart
+        commit_message: title+body
       delete_head_branch: {}
-  - name: Automatic merge (rebase)
+  - name: Automatic closing succesfull trials
     conditions:
-      - "#approved-reviews-by>=1"
-      - "#changes-requested-reviews-by=0"
+      - status-success=hydra:dfinity-ci-build:evaluation
       - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
-      - base=master
-      - label=automerge-rebase
+      - label=autoclose
     actions:
-      merge:
-        method: rebase
-        strict: smart
-        strict_method: rebase
+      close:
+        message: CI looks good, this dependency bump would not cause problems, hence closing this trial PR.
       delete_head_branch: {}
   - name: Clean up automerge tags
     conditions:
@@ -42,6 +28,22 @@ pull_request_rules:
     actions:
       label:
         remove:
-        - automerge
         - automerge-squash
-        - automerge-rebase
+        - autoclose
+  - name: Auto-approve auto-PRs
+    conditions:
+      - author=dfinity-bot
+      - label=automerge-squash
+    actions:
+      review:
+        type: APPROVE
+        message: This bot trusts that bot
+  - name: Auto-approve changelog/release PR
+    conditions:
+      - files=Changelog.md
+      - "#files=1"
+      - label=automerge-squash
+    actions:
+      review:
+        type: APPROVE
+        message: A change to Changelog.md? I can handle that!
