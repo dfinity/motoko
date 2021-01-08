@@ -211,9 +211,9 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<BigInt used={:#x} alloc={:#x} sign={}>",
-                (*bigint).mp_int.used,
-                (*bigint).mp_int.alloc,
-                (*bigint).mp_int.sign,
+                (*bigint).mp_int_used,
+                (*bigint).mp_int_alloc,
+                (*bigint).mp_int_sign,
             );
         }
         TAG_CONCAT => {

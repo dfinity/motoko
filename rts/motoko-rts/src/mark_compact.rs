@@ -115,7 +115,9 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
         TAG_BIGINT => {
             let bigint = obj as *mut BigInt;
             let blob_ptr = *bigint.blob_field();
-            assert_eq!((blob_ptr.unskew() as *mut Obj).tag(), TAG_BLOB);
+            debug_assert!(
+                blob_ptr.is_tagged_scalar() || (blob_ptr.unskew() as *mut Obj).tag() == TAG_BLOB
+            );
             push_mark_stack(blob_ptr, heap_base);
         }
 

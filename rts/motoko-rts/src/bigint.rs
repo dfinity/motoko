@@ -57,10 +57,10 @@ unsafe extern "C" fn mp_realloc(
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
 ) -> *mut libc::c_void {
-    let blob = (ptr as *mut u32).sub(size_of::<Blob>().0 as usize) as *mut Blob;
+    let blob = (ptr as *mut Blob).sub(1);
 
-    assert_eq!((*blob).header.tag, TAG_BLOB);
-    assert_eq!(blob.len(), old_size);
+    debug_assert_eq!((*blob).header.tag, TAG_BLOB);
+    debug_assert_eq!(blob.len(), old_size);
 
     if new_size > blob.len() {
         let new_ptr = mp_alloc(new_size);
@@ -134,8 +134,14 @@ unsafe fn mp_iszero(p: *const mp_int) -> bool {
 
 unsafe fn bigint_alloc() -> SkewedPtr {
     let r = alloc_words(size_of::<BigInt>());
+
     let r_ptr = r.unskew() as *mut BigInt;
     (*r_ptr).header.tag = TAG_BIGINT;
+    (*r_ptr).mp_int_used = 0;
+    (*r_ptr).mp_int_alloc = 0;
+    (*r_ptr).mp_int_sign = 0;
+    (*r_ptr).mp_int_dp = SkewedPtr(0);
+
     match check((r_ptr as *mut BigInt).with_mp_int_ptr(|p| mp_init(p))) {
         Ok(()) => r,
         Err(()) => bigint_trap(),
@@ -511,7 +517,7 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
             }
         }
 
-        Ok(r)
+        Ok(())
     }));
 
     r
@@ -550,7 +556,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> SkewedPtr {
             check(mp_sub(r, &big, r))?;
         }
 
-        Ok(r)
+        Ok(())
     }));
 
     r

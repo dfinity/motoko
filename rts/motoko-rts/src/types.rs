@@ -1,6 +1,7 @@
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::rts_trap_with;
+use crate::tommath_bindings;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
@@ -304,54 +305,48 @@ pub struct FwdPtr {
 #[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
-    /// The data following now must describe is the `mp_int` struct. The data pointer (`mp_int.dp`)
-    /// is an unskewed pointer to a blob *header*. `mp_int` functions require `mp_int.dp` to point
-    /// to a buffer, so before calling `mp_int` functions we adjust the field, in `mp_int_ptr`, and
-    /// restore the field with `restore_mp_int_ptr` afterwards.
-    pub mp_int: crate::tommath_bindings::mp_int,
+    // The data following is the `mp_int` struct, except `dp` is a skewed pointer to a blob or 0 on
+    // initialization. When calling tommath functions we allocate a `mp_int` struct on stack with
+    // `with_mp_int_ptr` with `dp` pointing to the blob's payload, and update the `dp` field after
+    // the library function in case it reallocates (with `bigint::mp_realloc`) or initializes it
+    // (with `bigint::mp_calloc`).
+    pub mp_int_used: libc::c_int,
+    pub mp_int_alloc: libc::c_int,
+    pub mp_int_sign: libc::c_int,
+    pub mp_int_dp: SkewedPtr,
 }
 
 impl BigInt {
-    /// TODO document
     pub unsafe fn blob_field(self: *mut BigInt) -> *mut SkewedPtr {
-        &mut (*self).mp_int.dp as *mut _ as *mut _
-    }
-
-    /// Adjusts `mp_int_ptr` data pointer so that it points to the `Blob`s payload (instead of
-    /// header) then returns the pointer to the `mp_int` struct. Make sure to call
-    /// `restore_mp_int_ptr` afterwards.
-    unsafe fn mp_int_ptr(self: *mut BigInt) -> *mut crate::tommath_bindings::mp_int {
-        let blob_ptr = *self.blob_field();
-        // Check that the pointer is not already adjusted by an enclosing call. This happens when a
-        // mp_int wrapper function is passed same argument multiple times.
-        //
-        // This works because when unskewed a blob payload pointer always have the least
-        // significant bit 0. So when adjusted, the mp_int data pointer looks like a tagged scalar
-        // (with least significant bit 0).
-        if !blob_ptr.is_tagged_scalar() {
-            (*self).mp_int.dp = ((*self.blob_field()).unskew() as *mut Blob).add(1) as *mut _;
-        }
-        &mut (*self).mp_int
-    }
-
-    /// Reverses the adjustment in `mp_int_ptr`
-    unsafe fn restore_mp_int_ptr(self: *mut BigInt) {
-        let blob_ptr = *self.blob_field();
-        // Check that the pointer is not already restored. See comments in `mp_int_ptr` above for
-        // when this can happen.
-        if blob_ptr.is_tagged_scalar() {
-            let blob_header_ptr = ((*self).mp_int.dp as *mut Blob).sub(1);
-            (*self).mp_int.dp = skew(blob_header_ptr as usize).0 as *mut _;
-        }
+        &mut (*self).mp_int_dp
     }
 
     pub unsafe fn with_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
     where
-        F: FnMut(*mut crate::tommath_bindings::mp_int) -> A,
+        F: FnMut(&mut tommath_bindings::mp_int) -> A,
     {
-        let mp_int_ptr = self.mp_int_ptr();
-        let ret = f(mp_int_ptr);
-        self.restore_mp_int_ptr();
+        let dp = (*self).mp_int_dp;
+
+        let mut mp_int = tommath_bindings::mp_int {
+            used: (*self).mp_int_used,
+            alloc: (*self).mp_int_alloc,
+            sign: (*self).mp_int_sign,
+            dp: if dp.0 == 0 {
+                core::ptr::null_mut()
+            } else {
+                ((*self).mp_int_dp.unskew() as *const Blob).add(1) as *mut _
+            },
+        };
+
+        let ret = f(&mut mp_int);
+
+        (*self).mp_int_used = mp_int.used;
+        (*self).mp_int_alloc = mp_int.alloc;
+        (*self).mp_int_sign = mp_int.sign;
+        if !mp_int.dp.is_null() {
+            (*self).mp_int_dp = skew((mp_int.dp as *const Blob).sub(1) as usize);
+        }
+
         ret
     }
 }
