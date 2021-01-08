@@ -181,6 +181,8 @@ var runWasmModule = () => {
 
 var memory = null;
 
+var motokoSections = null;
+
 function importWasmModule(moduleName, wasiPolyfill) {
 
   const moduleImports = {
@@ -189,7 +191,6 @@ function importWasmModule(moduleName, wasiPolyfill) {
   };
 
   (async () => {
-    var module = null;
 
     if (WebAssembly.compileStreaming) {
       module = await WebAssembly.compileStreaming(fetch(moduleName));
@@ -198,6 +199,8 @@ function importWasmModule(moduleName, wasiPolyfill) {
       const buffer = await response.arrayBuffer();
       module = await WebAssembly.compile(buffer);
     }
+
+    motokoSections = WebAssembly.Module.customSections(module, "motoko");
 
     runWasmModule = (async () => {
       const instance = await WebAssembly.instantiate(module, moduleImports);
@@ -219,7 +222,7 @@ const hexdump = (function () {
             var ret = "";
             while (--l > -1)
                 ret += fillWith;
-            return ret + value;
+           return ret + value;
         },
         hexdump = function (arrayBuffer, offset, length) {
 
