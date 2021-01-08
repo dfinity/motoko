@@ -2,9 +2,13 @@
 
 == 0.5.4 (2021-01-07)
 
-* _Option blocks_ `do ? <block>` and _null breaks_ `<exp> !`.
-  The option block `do ? <block>` exits with `null` when a nested null break, `<exp> !`, evaluates `<exp>` to null.
-  This can simplify null handling by avoiding verbose `switch` expressions.
+* _Option blocks_ `do ? <block>` and _option checks_ `<exp> !`.
+  Inside an option block, an option check validates that its operand expression is not `null`.
+  If it is, the entire option block is aborted and evaluates to `null`.
+  This simplifies consecutive null handling by avoiding verbose `switch` expressions.
+
+  For example, the expression `do? { f(x!, y!) + z!.a }` evaluates to `null` if either `x`, `y` or `z` is `null`;
+  otherwise, it takes the options' contents and ultimately returns `?r`, where `r` is the result of the addition.
 
 * BREAKING CHANGE (Minor):
   The light-weight `do <exp>` form of the recently added, more general `do <block-or-exp>` form,
