@@ -829,7 +829,7 @@ let encode (em : extended_module) =
 
 
     let motoko_section_body labels =
-      section 0 (fun _ -> assoc_list string labels) (labels <> [])
+      section 0 (assoc_list string) labels (labels <> [])
 
     let motoko_sections motoko =
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> [])
