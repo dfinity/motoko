@@ -12,12 +12,6 @@
         "url": "https://github.com/dfinity/candid/archive/25fb8470f9ef6858f74479bfe60a7dc09c54ad19.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "common": {
-        "branch": "master",
-        "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "6ec0b53fe9780cf4d401515e7619b9c697199eeb",
-        "type": "git"
-    },
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
