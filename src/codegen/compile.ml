@@ -2636,7 +2636,7 @@ module Object = struct
     then Func.share_code2 env "obj_idx_ind" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env ^^
-      load_ptr ^^ compile_add_const Heap.word_size
+      load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
     else idx_hash_raw env
 
@@ -7997,6 +7997,7 @@ and conclude_module env start_fi_o =
         locals_names =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
       };
+      source_mapping_url = None;
     } in
 
   match E.get_rts env with

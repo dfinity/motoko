@@ -1,2 +1,2 @@
-create-then-trap.mo:10.5-10.17: execution error, assertion failure
 b.bad() called (should not happen)
+create-then-trap.mo:10.5-10.17: execution error, assertion failure

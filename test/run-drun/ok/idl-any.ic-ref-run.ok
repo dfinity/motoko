@@ -1,6 +1,6 @@
 → update create_canister()
-← replied: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: (record {hymijyo = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → query any(null, "Foo")
 debug.print: ok: Foo
@@ -74,19 +74,19 @@ debug.print: ok: Foo
 → query any(record {}, "Foo")
 debug.print: ok: Foo
 ← replied: ()
-→ query any(record {128 = (-272716322 : int32)}, "Foo")
+→ query any(record {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← replied: ()
-→ query any(record {0 = "☃"; 128 = (-272716322 : int32)}, "Foo")
+→ query any(record {0 = "☃"; dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← replied: ()
-→ query any(variant {128 = (-272716322 : int32)}, "Foo")
+→ query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← replied: ()
 → query any(variant {0 = "☃"}, "Foo")
 debug.print: ok: Foo
 ← replied: ()
-→ query any(variant {128 = (-272716322 : int32)}, "Foo")
+→ query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 ← replied: ()
 → query any(0x4449444c016602abcd0200710400deadbeef03466f6f)

@@ -23,9 +23,9 @@ To see the complete code for a working project that uses this pattern, see the l
 
 The following `Subscriber` actor type provides a possible interface for the subscriber actor and the publisher actor to expose and to call, respectively:
 
-[source,motoko]
+[source#tsub,motoko]
 ----
-public type Subscriber = actor {
+type Subscriber = actor {
   notify : () -> ()
 };
 ----
@@ -43,8 +43,10 @@ For example, the subscriber might return a change to its subscription settings b
 The publisher side of the code stores an array of subscribers.
 For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function.
 
-[source,motoko]
+[source#pub.include_tsub,motoko]
 ----
+import Array "mo:base/Array";
+
 actor Publisher {
     var subs: [Subscriber] = [];
 
@@ -72,21 +74,19 @@ In the simplest case, the subscriber actor has the following methods:
 
 The following code illustrates implementing these methods:
 
-[source,motoko]
+[source.include_tsub_pub, motoko]
 ----
-import Publisher "canister:pub";
-
 actor Subscriber {
-    var count: Nat = 0;
-    public func init() {
-        Publisher.subscribe(Subscriber);
-    };
-    public func notify() {
-        count += 1;
-    };
-    public func get() : async Nat {
-        count
-    };
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe(Subscriber);
+  };
+  public func notify() {
+    count += 1;
+  };
+  public func get() : async Nat {
+    count
+  };
 }
 ----
 
@@ -127,14 +127,14 @@ More generally, a `shared` function is one that is _either_ part of the public i
 Using the `shared` type, we can extend the example above to be more flexible.
 For example:
 
-[source,motoko]
+[source#submessage,motoko]
 ----
 type SubscribeMessage = { callback: shared () -> (); };
 ----
 
 This type differs from the original, in that it describes _a message_ record type with a single field called `callback`, and the original type first shown above describes _an actor_ type with a single method called `notify`:
 
-[source,motoko]
+[source#typesub,motoko]
 ----
 type Subscriber = actor { notify : () -> () };
 ----
@@ -144,19 +144,19 @@ method, which _must_ be called `notify`.
 
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
-[source,motoko]
+[source#newsub.include_submessage_newpub,motoko]
 ----
 actor Subscriber {
-    var count: Nat = 0;
-    public func init() {
-        Publisher.subscribe({callback = incr;});
-    };
-    public func incr() {
-        count += 1;
-    };
-    public query func get(): async Nat {
-        count
-    };
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe({callback = incr;});
+  };
+  public func incr() {
+    count += 1;
+  };
+  public query func get(): async Nat {
+    count
+  };
 };
 ----
 
@@ -164,18 +164,18 @@ Compared to the original version, the only lines that change are those that rena
 
 Likewise, we can update the publisher to have a matching interface:
 
-[source,motoko]
+[source#newpub.include_submessage,motoko]
 ----
-type SubscribeMessage = { callback: shared () -> (); };
+import Array "mo:base/Array";
 actor Publisher {
-    var subs: [SubscribeMessage] = [];
-    public func subscribe(sub: SubscribeMessage) {
-         subs := Array.append<SubscribeMessage>(subs, [sub]);
+  var subs: [SubscribeMessage] = [];
+  public func subscribe(sub: SubscribeMessage) {
+    subs := Array.append<SubscribeMessage>(subs, [sub]);
+  };
+  public func publish() {
+    for (sub in subs.vals()) {
+      sub.callback();
     };
-    public func publish() {
-        for (sub in subs.vals()) {
-            subscriber.callback();
-         };
-    };
+  };
 };
 ----

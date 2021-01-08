@@ -34,7 +34,7 @@ In this scenario, you might place all three files in the same directory and use 
 
 For example, the `+main.mo+` contains the following lines to reference the modules in the same directory:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 import Types "types";
 import Utils "utils";
@@ -52,7 +52,7 @@ You can also import modules from other packages or from directories other than t
 
 For example, the following lines import modules from a `+redraw+` package that is defined as a dependency:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 import Render "mo:redraw/Render";
 import Mono5x5 "mo:redraw/glyph/Mono5x5";
@@ -75,7 +75,13 @@ This module has two components, both named after the actor class:
 
 For example, a {proglang} actor can import and instantiate the `Counter` class described in link:actors-async{outfilesuffix#actor_class[Actors and async data] as follows:
 
-[source,motoko]
+[source#Counters, motoko]
+.Counters.mo
+....
+include::../examples/Counters.mo[]
+....
+
+[source.include_Counters, motoko]
 .CountToTen.mo
 ....
 include::../examples/CountToTen.mo[]
@@ -99,7 +105,7 @@ These three canisters are declared in the project's `+dfx.json+` configuration f
 
 You can then use the following lines to import the functions from the `+BigMap+` and `+Connectd+` canisters in the LinkedUp program:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 import BigMap "canister:BigMap";
 import Connectd "canister:connectd";
@@ -113,7 +119,7 @@ For the imported canister actor, types are derived from the Candid file—the _p
 The translation from {proglang} actor type to Candid service type is mostly, but not entirely, one-to-one, and there are some distinct {proglang} types that map to the same Candid type. For example, the {proglang} `Nat8` and `Word8` types both exported as Candid type `nat8`, but `nat8` is canonically  imported as {proglang} `Nat8`, not `Word8`.
 
 The type of an imported canister function, therefore, might differ from the type of the original {proglang} code that implements it.
-For example, if the {proglang} function had type `+shared Word8 -> async Word64` in the implementation, its exported Candid type would be `+(Nat8) -> Nat64+` but the {proglang} type imported from this Candid type will actually be the correct—but perhaps unexpected—type  `+shared Nat8 -> async Nat64+`.
+For example, if the {proglang} function had type `+shared Word8 -> async Word64+` in the implementation, its exported Candid type would be `+(Nat8) -> Nat64+` but the {proglang} type imported from this Candid type will actually be the correct—but perhaps unexpected—type  `+shared Nat8 -> async Nat64+`.
 
 These type differences are the result of the Candid-to-{proglang} composition layer inherent to the canister abstraction.
 
@@ -124,7 +130,7 @@ For example, you might want to use different names to avoid naming conflicts or 
 
 The following examples illustrate different names you might use when importing the `+List+` base library module, avoiding a clash with another `+List+` library from a fictional `+collections+` package.
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 import List "mo:base/List:";
 import Sequence "mo:collections/List";

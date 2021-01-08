@@ -247,18 +247,20 @@ rec {
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
+    # so include from test/ only the common files, plus everything in test/${dir}/
+    test_src = dir:
+      with nixpkgs.lib;
+      cleanSourceWith {
+        filter = path: type:
+          let relPath = removePrefix (toString ./test + "/") (toString path); in
+          type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+        src = subpath ./test;
+        name = "test-${dir}-src";
+      };
+
     test_subdir = dir: deps:
       testDerivation {
-        # include from test/ only the common files, plus everything in test/${dir}/
-        src =
-          with nixpkgs.lib;
-          cleanSourceWith {
-            filter = path: type:
-              let relPath = removePrefix (toString ./test + "/") (toString path); in
-              type != "directory" || hasPrefix "${dir}/" "${relPath}/";
-            src = subpath ./test;
-            name = "test-${dir}-src";
-        };
+        src = test_src dir;
         buildInputs =
           deps ++
           (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
@@ -339,6 +341,25 @@ rec {
       '';
     };
 
+    profiling-graphs = testDerivation {
+      src = test_src "perf";
+      buildInputs =
+        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+        [ moc drun ];
+      checkPhase = ''
+        patchShebangs .
+        type -p moc && moc --version
+        type -p drun && drun --version
+        ./profile-report.sh
+      '';
+      installPhase = ''
+        mv _profile $out;
+        mkdir -p $out/nix-support
+        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+      '';
+    };
+
+
     fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
     );
@@ -357,7 +378,7 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit candid;
+      inherit qc lsp unit candid profiling-graphs;
     };
 
   samples = stdenv.mkDerivation {
@@ -392,17 +413,19 @@ rec {
         '';
         installPhase = ''
           mkdir -p $out
-          cp -v ${n}.js $out
+          mkdir -p $out/bin
+          cp --verbose --dereference ${n}.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
         '';
       };
     in
     {
       moc = mk "moc";
+      moc_interpreter = mk "moc_interpreter";
       didc = mk "didc";
     };
 

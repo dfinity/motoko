@@ -1,9 +1,9 @@
 → update create_canister()
-← replied: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: (record {hymijyo = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: init'ed
 ← replied: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: init'ed 0
 debug.print: postupgrade 0
 ← replied: ()
@@ -17,7 +17,7 @@ debug.print: aa
 ← replied: ()
 → update inc()
 ← replied: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: preupgrade 0
 debug.print: init'ed 1
 debug.print: postupgrade 1
@@ -32,7 +32,7 @@ debug.print: aaa
 debug.print: 4
 debug.print: aaa
 ← replied: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: preupgrade 1
 debug.print: init'ed 2
 debug.print: postupgrade 2

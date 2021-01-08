@@ -125,6 +125,8 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
+  | DoOptE e            -> exp msgs e
+  | BangE e             -> exp msgs e
   | TagE (_, e)         -> exp msgs e
   | IgnoreE e           -> exp msgs e
 

@@ -793,6 +793,7 @@ let module_ s =
      {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
     dylink;
     name;
+    source_mapping_url = None;
   }
 
 
