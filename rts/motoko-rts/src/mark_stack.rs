@@ -5,7 +5,7 @@ use crate::alloc::{alloc_blob, alloc_words};
 use crate::types::{size_of, Blob, Words};
 
 /// Initial stack size
-const INIT_STACK_SIZE: Words<u32> = Words(1024);
+const INIT_STACK_SIZE: Words<u32> = Words(64);
 
 /// Current stack
 static mut STACK_PTR: *mut Blob = core::ptr::null_mut();
