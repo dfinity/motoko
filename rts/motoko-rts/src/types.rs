@@ -313,6 +313,7 @@ pub struct BigInt {
     pub mp_int_used: libc::c_int,
     pub mp_int_alloc: libc::c_int,
     pub mp_int_sign: libc::c_int,
+    // NULL or skewed pointer to a Blob
     pub mp_int_dp: SkewedPtr,
 }
 
@@ -321,6 +322,7 @@ impl BigInt {
         &mut (*self).mp_int_dp
     }
 
+    /// Allocates a `mp_int` struct on stack, to be passed to tommath functions
     pub unsafe fn with_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
     where
         F: FnMut(&mut tommath_bindings::mp_int) -> A,
@@ -344,6 +346,8 @@ impl BigInt {
         (*self).mp_int_alloc = mp_int.alloc;
         (*self).mp_int_sign = mp_int.sign;
         if !mp_int.dp.is_null() {
+            // We initialize the field as NULL in `bigint_alloc`, so if it's not NULL then it's
+            // changed and we update it
             (*self).mp_int_dp = skew((mp_int.dp as *const Blob).sub(1) as usize);
         }
 

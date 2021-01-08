@@ -5,25 +5,19 @@
 //! - (s)leb128 encoding/decoding for bigints
 
 /*
-TODO (osa): Update this documentation
-
 A libtommath arbitrary precision integer is a struct (`mp_int`) that contains a pointer to a data
 array.
 
- - The libtommath library never allocates the struct, so we are in full control. We can embed the
-   struct in Motoko heap object with a dedicated tag for it.
+ - The libtommath library never allocates the struct, so we are in full control. We embed the
+   struct in `BigInt` heap objects.
 
- - The data array is allocated with mp_calloc and mp_realloc. We provide these calls, allocate
-   Motoko arrays (using the TAG_BLOB tag for byte arrays, not TAG_ARRAY for arrays of pointers) and
-   store the pointer to the _payload_ in the `mp_digit* dp` field of the struct.
+ - The data array is allocated with `mp_calloc` and `mp_realloc`. We provide these calls, allocate
+   Motoko blobs and store the pointer in the `BigInt`s `mp_int_dp` field.
 
-   The GC has special knowledge about the dp field of the struct and understands that this pointer
-   points inside the TAG_BLOB heap object. We can still move them around in the GC without issues.
-
-   The length of the byte array is always equal to the allocation asked for by libtommath (no
-   shrinking via mp_realloc supported). This means we can assert that it matches the old_size
-   passed to mp_realloc as an additional check. We can also support shrinking via mp_realloc, but
-   then we have to drop that check.
+   When calling a libtommath function, we allocate a `mp_int` on stack with correct `dp` pointer
+   (that points to the `Blob`'s payload) and pass the pointer to the struct to the library
+   function. On return we update the `BigInt` fields with the fields of stack-allocated `mp_int`.
+   This is done in `BigInt::with_mp_int_ptr`.
 */
 
 use crate::alloc::{alloc_blob, alloc_words};
