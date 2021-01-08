@@ -73,7 +73,7 @@ let commonBuildInputs = pkgs:
 let darwin_standalone = drv:
  nixpkgs.stdenv.mkDerivation {
     name = "${drv.name}-bundle";
-    buildInputs = [ nixpkgs.macdylibbundler ];
+    buildInputs = [ nixpkgs.macdylibbundler nixpkgs.removeReferencesTo ];
     inherit drv;
     allowedRequisites = [];
 
@@ -93,7 +93,19 @@ let darwin_standalone = drv:
           -i /usr/lib/system \
           -i ${nixpkgs.darwin.Libsystem}/lib
       done
-      find $out
+
+      # there are still plenty of nix store references
+      # but they should not matter
+      remove-references-to \
+        -t ${nixpkgs.darwin.Libsystem} \
+        -t ${nixpkgs.darwin.CF} \
+        -t ${nixpkgs.libiconv} \
+        $out/bin/*
+
+      # sanity check
+      for file in $out/bin/*; do
+        $file --version
+      done
     '';
   }; in
 
