@@ -35,7 +35,6 @@ let
                 inherit (self) ocamlPackages;
               };
             };
-            xargo = self.callPackage ./xargo.nix {};
           }
         )
 
@@ -53,7 +52,11 @@ let
             rustc = rustc-nightly;
             cargo = cargo-nightly;
           };
+          xargo = self.callPackage ./xargo.nix {};
         })
+
+	# wasm-profiler
+	(self: super: import ./wasm-profiler.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {
