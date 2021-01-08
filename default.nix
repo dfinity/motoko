@@ -68,46 +68,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
     pkgs.perl
+    pkgs.removeReferencesTo
   ]; in
-
-let darwin_standalone = drv:
- nixpkgs.stdenv.mkDerivation {
-    name = "${drv.name}-bundle";
-    buildInputs = [ nixpkgs.macdylibbundler nixpkgs.removeReferencesTo ];
-    inherit drv;
-    allowedRequisites = [];
-
-    # can be rewritten to use a simple runCommandNoCC once
-    # https://github.com/NixOS/nixpkgs/pull/103163 reaches our nixpkgs
-    builder = nixpkgs.writeScript "run-dylibbundler.sh" ''
-      source ${nixpkgs.stdenv}/setup
-
-      mkdir -p $out/bin/
-      cp -v ${drv}/bin/* $out/bin/
-      for file in $out/bin/*; do
-        dylibbundler \
-          -b \
-          -x "$file" \
-          -d $out/bin \
-          -p '@executable_path' \
-          -i /usr/lib/system \
-          -i ${nixpkgs.darwin.Libsystem}/lib
-      done
-
-      # there are still plenty of nix store references
-      # but they should not matter
-      remove-references-to \
-        -t ${nixpkgs.darwin.Libsystem} \
-        -t ${nixpkgs.darwin.CF} \
-        -t ${nixpkgs.libiconv} \
-        $out/bin/*
-
-      # sanity check
-      for file in $out/bin/*; do
-        $file --help
-      done
-    '';
-  }; in
 
 let ocaml_exe = name: bin: rts:
   let
@@ -115,11 +77,11 @@ let ocaml_exe = name: bin: rts:
       if is_static
       then "release-static"
       else "release";
-
-    drv = staticpkgs.stdenv.mkDerivation {
+  in
+    staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if is_static then "allowedRequisites" else null} = [];
+      allowedRequisites = [];
 
       src = subpath ./src;
 
@@ -138,11 +100,19 @@ let ocaml_exe = name: bin: rts:
       installPhase = ''
         mkdir -p $out/bin
         cp --verbose --dereference ${bin} $out/bin
+      '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
+        # there are references to darwin system libraries
+        # in the binaries. But curiously, we can remove them
+        # an the binaries still work. They are essentially static otherwise.
+        remove-references-to \
+          -t ${nixpkgs.darwin.Libsystem} \
+          -t ${nixpkgs.darwin.CF} \
+          -t ${nixpkgs.libiconv} \
+          $out/bin/*
+        # sanity check
+        $out/bin/* --help >/dev/null
       '';
     };
-  in
-    # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin then darwin_standalone drv else drv;
 
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
