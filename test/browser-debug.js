@@ -183,6 +183,8 @@ var memory = null;
 
 var motokoSections = null;
 
+var motokoHashMap = null;
+
 function importWasmModule(moduleName, wasiPolyfill) {
 
   const moduleImports = {
@@ -201,6 +203,7 @@ function importWasmModule(moduleName, wasiPolyfill) {
     }
 
     motokoSections = WebAssembly.Module.customSections(module, "motoko");
+    motokoHashMap = (motokoSections.length > 0) ? decodeMotokoSection(motokoSections) : null;
 
     runWasmModule = (async () => {
       const instance = await WebAssembly.instantiate(module, moduleImports);
@@ -299,6 +302,13 @@ function getUint32(view, p) {
   return view.getUint32(p, true)
 }
 
+
+function decodeLabel(hash) {
+  if (motokoHashMap === null) return hash;
+  let lab = motokoHashMap[hash];
+  return (lab === undefined) ? hash : lab;
+}
+
 function decodeOBJ(view, p) {
   let size = getUint32(view, p + 4);
   let m = new Map();
@@ -306,8 +316,8 @@ function decodeOBJ(view, p) {
   let q = p + 12;
   for(var i = 0; i < size; i++) {
     let hash = getUint32(view, h);
-    //TODO: convert hash to label
-    m[hash] = decode(view, getUint32(view, q));
+    let lab = decodeLabel(hash);
+    m[lab] = decode(view, getUint32(view, q));
     q += 4;
     h += 4;
   }
@@ -317,10 +327,11 @@ function decodeOBJ(view, p) {
 function decodeVARIANT(view, p) {
   let m = new Map();
   let hash = getUint32(view, p+4);
-  //TODO: convert hash to label
-  m[hash] = decode(view, getUint32(view, p+8));
+  let lab = decodeLabel(hash);
+  m[lab] = decode(view, getUint32(view, p+8));
   return m;
 }
+
 // stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView 
 const BigInt = window.BigInt, bigThirtyTwo = BigInt(32), bigZero = BigInt(0);
 function getUint64BigInt(dataview, byteOffset, littleEndian) {
@@ -434,14 +445,14 @@ function getULEB128(view, p) {
     return [result, p];
 };
 
-function decodeMotokoSection(customSection) {
+function decodeMotokoSection(customSections) {
   let m = new Map();
-  if (customSection.length === 0) return m;
-  let view = new DataView(customSection[0]);
+  if (customSections.length === 0) return m;
+  let view = new DataView(customSections[0]);
   if (view.byteLength === 0) return m;
   let id = view.getUint8(0);
   if (!(id === 0)) { return m };
-  let [_sec_size, p] = getULEB128(view, 1);
+  let [_sec_size, p] = getULEB128(view, 1); // always 5 bytes as back patched
   let [cnt, p1] = getULEB128(view, 6);
   while (cnt > 0) {
     let [hash, p2] = getULEB128(view, p1);
@@ -480,7 +491,7 @@ function decode(view, v) {
     case 13 : return decodeBIGINT(view, p);
     case 14 : return decodeCONCAT(view, p);
     case 15 : return decodeNULL(view, p);
-    default : return "UNKOWN";
+    default : return "UNKNOWN";
   };
 }
 
