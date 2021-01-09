@@ -420,6 +420,46 @@ function decodeBIGINT(view, p) {
   return a;
 }
 
+// https://en.wikipedia.org/wiki/LEB128
+function getULEB128(view, p) {
+    var result = 0;
+    var shift = 0;
+    while (true) {
+     let byte = view.getUint8(p);
+     p += 1;
+     result |= (byte & 127) << shift;
+     if ((byte & 128) === 0) break;
+     shift += 7;
+    };
+    return [result, p];
+};
+
+function decodeMotokoSection(customSection) {
+  let m = new Map();
+  if (customSection.length === 0) return m;
+  let view = new DataView(customSection[0]);
+  if (view.byteLength === 0) return m;
+  let id = view.getUint8(0);
+  if (!(id === 0)) { return m };
+  let [_sec_size, p] = getULEB128(view, 1);
+  let [cnt, p1] = getULEB128(view, 6);
+  while (cnt > 0) {
+    let [hash, p2] = getULEB128(view, p1);
+    let [size, p3] = getULEB128(view, p2);
+    let a = new Uint8Array(size);
+    for(var i = 0; i < size; i++) {
+      a[i] = view.getUint8(p3);
+      p3 += 1;
+    };
+    p1 = p3;
+    let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
+    let id = textDecoder.decode(a);
+    m[hash] = id;
+    cnt -= 1;
+  };
+  return m;
+}
+
 function decode(view, v) {
   if ((v & 1) === 0) return v >> 1;
   let p = v + 1;

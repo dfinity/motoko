@@ -827,7 +827,6 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
-
     let motoko_section_body labels =
       section 0 (assoc_list string) labels (labels <> [])
 
