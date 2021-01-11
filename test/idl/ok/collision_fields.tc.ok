@@ -1,1 +1,1 @@
-collision_fields.did:3.2-3.3: type error, field name 2 hash collision with field Unnamed 2
+collision_fields.did:3.2-3.3: type error[M0000], field name 2 hash collision with field Unnamed 2

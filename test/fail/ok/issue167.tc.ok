@@ -1,1 +1,1 @@
-issue167.mo:1.13-1.19: type error, too many type arguments
+issue167.mo:1.13-1.19: type error[M0000], too many type arguments

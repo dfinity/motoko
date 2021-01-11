@@ -1,1 +1,1 @@
-dup_import.did:2.6-2.12: type error, duplicate binding for UserId in type definitions
+dup_import.did:2.6-2.12: type error[M0000], duplicate binding for UserId in type definitions

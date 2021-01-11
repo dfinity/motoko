@@ -1,2 +1,2 @@
-func.did:10.3-10.8: type error, p is a non-function type
+func.did:10.3-10.8: type error[M0000], p is a non-function type
  o
