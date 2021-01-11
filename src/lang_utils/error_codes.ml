@@ -7,4 +7,5 @@ let error_codes : (string * string option) list =
     "M0002", None; (* Lexer errors *)
     "M0003", None; (* Self-import *)
     "M0004", None; (* IDL file doesn't define a service *)
+    "M0005", None; (* Case mismatch between import and filename *)
   ]

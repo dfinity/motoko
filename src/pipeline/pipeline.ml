@@ -109,10 +109,10 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
-    Diag.print_messages
-      (List.map
-        (fun text -> Diag.warning_message at "import" text)
-        messages);
+    let* _ =
+      Diag.traverse_
+        (Diag.warn_new "M0005" at "import")
+        messages in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
     let* prog, triv_table = parse_with' mode lexer parse filename in
