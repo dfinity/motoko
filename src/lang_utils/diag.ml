@@ -13,6 +13,7 @@ type messages = message list
 
 let info_message at cat text = {sev = Info; code = "M0000"; at; cat; text}
 let warning_message at cat text = {sev = Warning; code = "M0000"; at; cat; text}
+let warning_message_new code at cat text = {sev = Warning; code; at; cat; text}
 let error_message at cat text = {sev = Error; code = "M0000"; at; cat; text}
 let error_message_new code at cat text = {sev = Error; code; at; cat; text}
 
@@ -22,7 +23,9 @@ let return x = Ok (x, [])
 
 let info at cat text = Ok ((), [info_message at cat text])
 let warn at cat text = Ok ((), [warning_message at cat text])
+let warn_new code at cat text = Ok ((), [warning_message_new code at cat text])
 let error at cat text = Stdlib.Error [error_message at cat text]
+let error_new code at cat text = Stdlib.Error [error_message_new code at cat text]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs

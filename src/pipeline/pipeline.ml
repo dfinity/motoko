@@ -89,7 +89,7 @@ let parse_with' mode lexer parser name : (Syntax.prog * _) Diag.result =
   let* mk_prog =
     try
       Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
-    with Lexer.Error (at, msg) -> Diag.error at "syntax" msg
+    with Lexer.Error (at, msg) -> Diag.error_new "M0002" at "syntax" msg
   in
   let prog = mk_prog name in
   dump_prog Flags.dump_parse prog;

@@ -15,6 +15,7 @@ type messages = message list
 
 val info_message : Source.region -> string -> string -> message
 val warning_message : Source.region -> string -> string -> message
+val warning_message_new : error_code -> Source.region -> string -> string -> message
 val error_message : Source.region -> string -> string -> message
 val error_message_new : error_code -> Source.region -> string -> string -> message
 
@@ -31,7 +32,9 @@ type 'a result = ('a * messages, messages) Stdlib.result
 
 val info : Source.region -> string -> string -> unit result
 val warn : Source.region -> string -> string -> unit result
+val warn_new : string -> Source.region -> string -> string -> unit result
 val error : Source.region -> string -> string -> 'a result
+val error_new : string -> Source.region -> string -> string -> 'a result
 
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result

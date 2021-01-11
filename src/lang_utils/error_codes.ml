@@ -3,5 +3,6 @@
    error. *)
 let error_codes : (string * string option) list =
   [
-    "M0001", None;
+    "M0001", None; (* Parsing errors *)
+    "M0002", None; (* Lexer errors *)
   ]
