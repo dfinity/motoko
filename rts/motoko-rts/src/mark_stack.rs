@@ -29,12 +29,12 @@ pub unsafe fn free_mark_stack() {
 /// Doubles the stack size
 unsafe fn grow_stack() {
     let stack_cap: Words<u32> = STACK_PTR.len().to_words();
-    let new_cap: Words<u32> = Words(stack_cap.0 * 2);
-    let p = alloc_words(new_cap).unskew() as *mut usize;
+    let p = alloc_words(stack_cap).unskew() as *mut usize;
 
     // Make sure nothing was allocated after the stack
     assert_eq!((size_of::<Blob>() + STACK_PTR.len().to_words()).0, p as u32);
 
+    let new_cap: Words<u32> = Words(stack_cap.0 * 2);
     (*STACK_PTR).len = new_cap.to_bytes();
 }
 
