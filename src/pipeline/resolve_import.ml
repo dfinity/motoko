@@ -51,7 +51,11 @@ open Source
 let err_unrecognized_url msgs at url msg =
   let open Diag in
   add_msg msgs
-    (error_message at "import" (Printf.sprintf "cannot parse import URL \"%s\": %s" url msg))
+    (error_message_new
+       "M0006"
+       at
+       "import"
+       (Printf.sprintf "cannot parse import URL \"%s\": %s" url msg))
 
 let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
