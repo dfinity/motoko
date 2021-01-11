@@ -10,10 +10,10 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::alloc::alloc_words;
+use crate::alloc::alloc_array;
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{size_of, Array, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB, TAG_CONCAT};
+use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
 const TODO_TEXT_IDX: u32 = 0;
 const TODO_LINK_IDX: u32 = 1;
@@ -25,10 +25,8 @@ unsafe fn find_leaf(mut text: SkewedPtr, todo: *mut SkewedPtr) -> SkewedPtr {
         let concat = text.as_concat();
 
         // Add right node to TODOs
-        let new_todo = alloc_words(size_of::<Array>() + Words(2));
-        let new_todo_array = new_todo.unskew() as *mut Array;
-        (*new_todo_array).header.tag = TAG_ARRAY;
-        (*new_todo_array).len = 2;
+        let new_todo = alloc_array(2);
+        let new_todo_array = new_todo.as_array();
         new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
         new_todo_array.set(TODO_LINK_IDX, *todo);
         *todo = new_todo;
@@ -48,10 +46,8 @@ const ITER_TODO_IDX: u32 = 2;
 /// Returns a new iterator for the text
 #[no_mangle]
 pub unsafe extern "C" fn text_iter(text: SkewedPtr) -> SkewedPtr {
-    let iter = alloc_words(size_of::<Array>() + Words(3));
-    let array = iter.unskew() as *mut Array;
-    (*array).header.tag = TAG_ARRAY;
-    (*array).len = 3;
+    let iter = alloc_array(3);
+    let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
     let todo_addr = array.payload_addr().add(ITER_TODO_IDX as usize) as *mut _;
