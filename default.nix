@@ -68,12 +68,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
     pkgs.perl
+    pkgs.removeReferencesTo
   ]; in
-
-let darwin_standalone =
-  let common = import (nixpkgs.sources.common + "/pkgs")
-    { inherit (nixpkgs) system; repoRoot = ./.; }; in
-  common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin: rts:
   let
@@ -81,11 +77,11 @@ let ocaml_exe = name: bin: rts:
       if is_static
       then "release-static"
       else "release";
-
-    drv = staticpkgs.stdenv.mkDerivation {
+  in
+    staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if is_static then "allowedRequisites" else null} = [];
+      allowedRequisites = [];
 
       src = subpath ./src;
 
@@ -104,13 +100,19 @@ let ocaml_exe = name: bin: rts:
       installPhase = ''
         mkdir -p $out/bin
         cp --verbose --dereference ${bin} $out/bin
+      '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
+        # there are references to darwin system libraries
+        # in the binaries. But curiously, we can remove them
+        # an the binaries still work. They are essentially static otherwise.
+        remove-references-to \
+          -t ${nixpkgs.darwin.Libsystem} \
+          -t ${nixpkgs.darwin.CF} \
+          -t ${nixpkgs.libiconv} \
+          $out/bin/*
+        # sanity check
+        $out/bin/* --help >/dev/null
       '';
     };
-  in
-    # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
-    else drv;
 
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";

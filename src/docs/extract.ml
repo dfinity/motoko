@@ -48,7 +48,7 @@ and class_doc = {
 
 let un_prog prog =
   let rec go acc = function
-    | { it = Syntax.ExpD { it = Syntax.ObjE (_, m); _ }; _ } :: _ -> (acc, m)
+    | { it = Syntax.ExpD { it = Syntax.ObjE (_, m); _ }; _ } :: _ -> Ok (acc, m)
     | {
         it =
           Syntax.LetD
@@ -59,7 +59,7 @@ let un_prog prog =
         (* TODO Gotta resolve this path so it makes sense somehow *)
         go ((v.it, path) :: acc) tail
     | _ :: tail -> go acc tail
-    | [] -> assert false
+    | [] -> Error "Couldn't find a module expression"
   in
   go [] prog.Source.it
 
@@ -173,8 +173,10 @@ and extract_exp_field find_trivia exp_field =
 
 type imports = (string * string) list
 
-let extract_docs :
-    Syntax.prog -> Lexer.triv_table -> string * imports * doc list =
+type extracted = string * imports * doc list
+
+let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
+    =
  fun prog trivia_table ->
   let lookup_trivia (line, column) =
     Lexer.PosHashtbl.find_opt trivia_table Lexer.{ line; column }
@@ -185,6 +187,8 @@ let extract_docs :
   in
   let module_docs = find_trivia prog.at in
   (* Skip the module header *)
-  let imports, decls = un_prog prog in
-  let docs = List.filter_map (extract_exp_field find_trivia) decls in
-  (string_of_leading module_docs, imports, docs)
+  match un_prog prog with
+  | Ok (imports, decls) ->
+      let docs = List.filter_map (extract_exp_field find_trivia) decls in
+      Ok (string_of_leading module_docs, imports, docs)
+  | Error msg -> Error msg
