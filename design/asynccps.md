@@ -125,7 +125,7 @@ T[ return T[t] ] =
 T r [ do async e ] =
 	(DO[e] @ ((\v.CompletedAsync(v)),(\e.RejectedAsync(e)))
 
-DO[e] = \\r. C r [e] @ r.reply
+DO[e] = \\r. D r [e] @ (\a.a)
 CompletedAsync(v) =  { result = Completed v; waiters = [] }
 CompletedAsync(e) =  { result = Error e; waiters =  [] }
 Await(t,(k,r)) = match t with

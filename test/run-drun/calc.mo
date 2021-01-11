@@ -46,7 +46,7 @@ actor a {
       case (#mul(e1, e2)) return (await evalDoAsync(e1)) * (await evalDoAsync(e2));
       case (#sub(e1, e2)) return (await evalDoAsync(e1)) - (await evalDoAsync(e2));
       case (#pow(e1, e2)) return await (pow(await (evalDoAsync e1), await (evalDoAsync e2)));
-                                          // ^^^^ only real context switch
+                                            // ^^^^ only real context switch on call to asynchronous `pow` query
     }
   };
 
