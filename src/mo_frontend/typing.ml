@@ -1120,7 +1120,6 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | DoAsyncE (typ_bind, exp1) ->
-    begin
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
@@ -1132,21 +1131,10 @@ and infer_exp'' env exp : T.typ =
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes } in
     let t2 = infer_exp env' exp1 in
-    try
-       let (t21, t22) = T.as_async_sub t1 t2 in
-       if not (T.eq t21 (T.Con(c,[]))) then
-           error env exp1.at "scope violation, expecting\n  %s\n  %s "
-             (T.string_of_typ_expand (T.Con(c,[])))
-             (T.string_of_typ_expand t21);
-       if not (T.shared t22) then
-         error_shared env t22 exp1.at "async type has non-shared content type\n  %s"
-           (T.string_of_typ_expand t22);
-       T.Async (t1, t22)
-    with Invalid_argument _ ->
-      error env exp1.at
-        "expect async type after 'do async' but body produces types\n  %s"
-        (T.string_of_typ_expand t2)
-    end
+    if not (T.shared t2) then
+      error_shared env t2 exp1.at "async type has non-shared content type\n  %s"
+        (T.string_of_typ_expand t2);
+    T.Async (t1, t2)
   | AsyncE (typ_bind, exp1) ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
@@ -1275,7 +1263,7 @@ and check_exp' env0 t exp : T.typ =
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
       } in
-    check_exp env' (T.Async(T.Con(c,[]),t')) exp1;
+    check_exp env' t' exp1;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";

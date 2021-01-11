@@ -1,6 +1,7 @@
 import P "mo:prim";
-actor a {
 
+actor a {
+  
   func power(i:Int, n: Int) : Int {
     if (n<=0) i else i*power(i, n-1);
   };
@@ -38,15 +39,15 @@ actor a {
   };
 
   // Use `do async {}` to avoid context switch at each recursive call
-  // Could also just do outermost return instead of in each branch, but return is *not* optional.
+  // Could also just do outermost return instead of in each branch.
   func evalDoAsync(exp : Expression) : async Int = do async {
     switch (exp) {
-      case (#const(n)) return n;
-      case (#add(e1, e2)) return (await evalDoAsync(e1)) + (await evalDoAsync(e2));
-      case (#mul(e1, e2)) return (await evalDoAsync(e1)) * (await evalDoAsync(e2));
-      case (#sub(e1, e2)) return (await evalDoAsync(e1)) - (await evalDoAsync(e2));
-      case (#pow(e1, e2)) return await (pow(await (evalDoAsync e1), await (evalDoAsync e2)));
-                                            // ^^^^ only real context switch on call to asynchronous `pow` query
+      case (#const(n)) n;
+      case (#add(e1, e2)) (await evalDoAsync(e1)) + (await evalDoAsync(e2));
+      case (#mul(e1, e2)) (await evalDoAsync(e1)) * (await evalDoAsync(e2));
+      case (#sub(e1, e2)) (await evalDoAsync(e1)) - (await evalDoAsync(e2));
+      case (#pow(e1, e2)) await pow(await (evalDoAsync e1), await (evalDoAsync e2));
+                              // ^^^ only real context switch on call to asynchronous `pow` query
     }
   };
 
