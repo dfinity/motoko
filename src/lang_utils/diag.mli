@@ -4,6 +4,7 @@ type severity = Warning | Error | Info
 
 type message = {
   sev : severity;
+  code : string;
   at : Source.region;
   cat : string;
   text : string

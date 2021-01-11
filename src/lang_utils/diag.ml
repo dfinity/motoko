@@ -3,15 +3,16 @@ open Mo_config
 type severity = Warning | Error | Info
 type message = {
   sev : severity;
+  code : string;
   at : Source.region;
   cat : string;
   text : string
 }
 type messages = message list
 
-let info_message at cat text = {sev = Info; at; cat; text}
-let warning_message at cat text = {sev = Warning; at; cat; text}
-let error_message at cat text = {sev = Error; at; cat; text}
+let info_message at cat text = {sev = Info; code = "M0000"; at; cat; text}
+let warning_message at cat text = {sev = Warning; code = "M0000"; at; cat; text}
+let error_message at cat text = {sev = Error; code = "M0000"; at; cat; text}
 
 type 'a result = ('a * messages, messages) Stdlib.result
 
@@ -59,10 +60,10 @@ let has_errors : messages -> bool =
 
 let string_of_message msg =
   let label = match msg.sev with
-    | Error -> Printf.sprintf "%s error"  msg.cat
-    | Warning -> "warning" 
+    | Error -> Printf.sprintf "%s error" msg.cat
+    | Warning -> "warning"
     | Info -> "info" in
-  Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
+  Printf.sprintf "%s: %s[%s], %s\n" (Source.string_of_region msg.at) label msg.code msg.text
 
 let print_message msg =
   if msg.sev <> Error && not !Flags.print_warnings
