@@ -306,7 +306,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
-        Diag.error
+        Diag.error_new
+          "E0003"
           ri.Source.at
           "import"
           (Printf.sprintf "file %s must not depend on itself" f)
