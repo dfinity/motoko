@@ -322,8 +322,29 @@ impl BigInt {
         &mut (*self).mp_int_dp
     }
 
-    /// Allocates a `mp_int` struct on stack, to be passed to tommath functions
+    /// Allocates an immutable `mp_int` struct on stack, to be passed to tommath functions
     pub unsafe fn with_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
+    where
+        F: FnMut(&tommath_bindings::mp_int) -> A,
+    {
+        let dp = (*self).mp_int_dp;
+
+        let mut mp_int = tommath_bindings::mp_int {
+            used: (*self).mp_int_used,
+            alloc: (*self).mp_int_alloc,
+            sign: (*self).mp_int_sign,
+            dp: if dp.0 == 0 {
+                core::ptr::null_mut()
+            } else {
+                ((*self).mp_int_dp.unskew() as *const Blob).add(1) as *mut _
+            },
+        };
+
+        f(&mut mp_int)
+    }
+
+    /// Allocates a mutable `mp_int` struct on stack, to be passed to tommath functions
+    pub unsafe fn with_mut_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
     where
         F: FnMut(&mut tommath_bindings::mp_int) -> A,
     {
@@ -342,6 +363,7 @@ impl BigInt {
 
         let ret = f(&mut mp_int);
 
+        // mp_int struct could be modified by the library, update heap value
         (*self).mp_int_used = mp_int.used;
         (*self).mp_int_alloc = mp_int.alloc;
         (*self).mp_int_sign = mp_int.sign;

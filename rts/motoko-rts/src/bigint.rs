@@ -136,7 +136,7 @@ unsafe fn bigint_alloc() -> SkewedPtr {
     (*r_ptr).mp_int_sign = 0;
     (*r_ptr).mp_int_dp = SkewedPtr(0);
 
-    match check((r_ptr as *mut BigInt).with_mp_int_ptr(|p| mp_init(p))) {
+    match check((r_ptr as *mut BigInt).with_mut_mp_int_ptr(|p| mp_init(p))) {
         Ok(()) => r,
         Err(()) => bigint_trap(),
     }
@@ -145,14 +145,14 @@ unsafe fn bigint_alloc() -> SkewedPtr {
 #[no_mangle]
 pub unsafe extern "C" fn bigint_of_word32(w: u32) -> SkewedPtr {
     let r = bigint_alloc();
-    r.as_bigint().with_mp_int_ptr(|p| mp_set_u32(p, w));
+    r.as_bigint().with_mut_mp_int_ptr(|p| mp_set_u32(p, w));
     r
 }
 
 #[no_mangle]
 unsafe extern "C" fn bigint_of_word32_signed(i: i32) -> SkewedPtr {
     let r = bigint_alloc();
-    r.as_bigint().with_mp_int_ptr(|p| mp_set_i32(p, i));
+    r.as_bigint().with_mut_mp_int_ptr(|p| mp_set_i32(p, i));
     r
 }
 
@@ -263,7 +263,7 @@ unsafe extern "C" fn bigint_to_word64_signed_trap(p: SkewedPtr) -> i64 {
 #[no_mangle]
 unsafe extern "C" fn bigint_of_word64(w: u64) -> SkewedPtr {
     let p = bigint_alloc();
-    p.as_bigint().with_mp_int_ptr(|p| mp_set_u64(p, w));
+    p.as_bigint().with_mut_mp_int_ptr(|p| mp_set_u64(p, w));
     p
 }
 
@@ -271,7 +271,7 @@ unsafe extern "C" fn bigint_of_word64(w: u64) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_of_word64_signed(i: i64) -> SkewedPtr {
     let p = bigint_alloc();
-    p.as_bigint().with_mp_int_ptr(|p| mp_set_i64(p, i));
+    p.as_bigint().with_mut_mp_int_ptr(|p| mp_set_i64(p, i));
     p
 }
 
@@ -310,7 +310,7 @@ pub unsafe extern "C" fn bigint_add(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
         b.as_bigint()
-            .with_mp_int_ptr(|b| r.as_bigint().with_mp_int_ptr(|r| mp_add(a, b, r)))
+            .with_mp_int_ptr(|b| r.as_bigint().with_mut_mp_int_ptr(|r| mp_add(a, b, r)))
     })));
     r
 }
@@ -320,7 +320,7 @@ pub unsafe extern "C" fn bigint_sub(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
         b.as_bigint()
-            .with_mp_int_ptr(|b| r.as_bigint().with_mp_int_ptr(|r| mp_sub(a, b, r)))
+            .with_mp_int_ptr(|b| r.as_bigint().with_mut_mp_int_ptr(|r| mp_sub(a, b, r)))
     })));
     r
 }
@@ -330,7 +330,7 @@ pub unsafe extern "C" fn bigint_mul(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
         b.as_bigint()
-            .with_mp_int_ptr(|b| r.as_bigint().with_mp_int_ptr(|r| mp_mul(a, b, r)))
+            .with_mp_int_ptr(|b| r.as_bigint().with_mut_mp_int_ptr(|r| mp_mul(a, b, r)))
     })));
     r
 }
@@ -340,7 +340,8 @@ pub unsafe extern "C" fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let exp = bigint_to_word32_trap(b);
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
-        r.as_bigint().with_mp_int_ptr(|r| mp_expt_u32(a, exp, r))
+        r.as_bigint()
+            .with_mut_mp_int_ptr(|r| mp_expt_u32(a, exp, r))
     })));
     r
 }
@@ -352,8 +353,10 @@ unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     trap_on_err(check(mp_init(&mut rem as *mut _)));
     // TODO: Not possible to pass NULL for rem?
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
-        b.as_bigint()
-            .with_mp_int_ptr(|b| r.as_bigint().with_mp_int_ptr(|r| mp_div(a, b, r, &mut rem)))
+        b.as_bigint().with_mp_int_ptr(|b| {
+            r.as_bigint()
+                .with_mut_mp_int_ptr(|r| mp_div(a, b, r, &mut rem))
+        })
     })));
     r
 }
@@ -367,7 +370,7 @@ unsafe extern "C" fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
         b.as_bigint().with_mp_int_ptr(|b| {
             r.as_bigint()
-                .with_mp_int_ptr(|r| mp_div(a, b, &mut quot, r))
+                .with_mut_mp_int_ptr(|r| mp_div(a, b, &mut quot, r))
         })
     })));
     r
@@ -377,7 +380,7 @@ unsafe extern "C" fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 pub unsafe extern "C" fn bigint_neg(a: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
-        r.as_bigint().with_mp_int_ptr(|r| mp_neg(a, r))
+        r.as_bigint().with_mut_mp_int_ptr(|r| mp_neg(a, r))
     })));
     r
 }
@@ -386,7 +389,7 @@ pub unsafe extern "C" fn bigint_neg(a: SkewedPtr) -> SkewedPtr {
 unsafe extern "C" fn bigint_abs(a: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
-        r.as_bigint().with_mp_int_ptr(|r| mp_abs(a, r))
+        r.as_bigint().with_mut_mp_int_ptr(|r| mp_abs(a, r))
     })));
     r
 }
@@ -400,7 +403,7 @@ unsafe extern "C" fn bigint_isneg(a: SkewedPtr) -> bool {
 unsafe extern "C" fn bigint_lsh(a: SkewedPtr, b: i32) -> SkewedPtr {
     let r = bigint_alloc();
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
-        r.as_bigint().with_mp_int_ptr(|r| mp_mul_2d(a, b, r))
+        r.as_bigint().with_mut_mp_int_ptr(|r| mp_mul_2d(a, b, r))
     })));
     r
 }
@@ -492,7 +495,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: SkewedPtr, buf: *mut u8) {
 pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
     let r = bigint_alloc();
 
-    trap_on_err(r.as_bigint().with_mp_int_ptr(|r| {
+    trap_on_err(r.as_bigint().with_mut_mp_int_ptr(|r| {
         mp_zero(r);
 
         let mut tmp: mp_int = core::mem::zeroed();
@@ -521,7 +524,7 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> SkewedPtr {
 pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> SkewedPtr {
     let r = bigint_alloc();
 
-    trap_on_err(r.as_bigint().with_mp_int_ptr(|r| {
+    trap_on_err(r.as_bigint().with_mut_mp_int_ptr(|r| {
         mp_zero(r);
 
         let mut tmp: mp_int = core::mem::zeroed();
