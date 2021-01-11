@@ -329,7 +329,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
       if actor_opt = None then
-        Diag.error
+        Diag.error_new
+          "M0004"
           ri.Source.at
           "import"
           (Printf.sprintf "file %s does not define a service" f)
