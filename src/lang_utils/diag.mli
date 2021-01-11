@@ -5,7 +5,7 @@ type error_code = string
 
 type message = {
   sev : severity;
-  code : string;
+  code : error_code;
   at : Source.region;
   cat : string;
   text : string
@@ -15,9 +15,9 @@ type messages = message list
 
 val info_message : Source.region -> string -> string -> message
 val warning_message : Source.region -> string -> string -> message
-val warning_message_new : error_code -> Source.region -> string -> string -> message
+val warning_message_new : Source.region -> error_code -> string -> string -> message
 val error_message : Source.region -> string -> string -> message
-val error_message_new : error_code -> Source.region -> string -> string -> message
+val error_message_new : Source.region -> error_code -> string -> string -> message
 
 val string_of_message : message -> string
 val print_message : message -> unit
@@ -32,9 +32,9 @@ type 'a result = ('a * messages, messages) Stdlib.result
 
 val info : Source.region -> string -> string -> unit result
 val warn : Source.region -> string -> string -> unit result
-val warn_new : error_code -> Source.region -> string -> string -> unit result
+val warn_new : Source.region -> error_code -> string -> string -> unit result
 val error : Source.region -> string -> string -> 'a result
-val error_new : error_code -> Source.region -> string -> string -> 'a result
+val error_new : Source.region -> error_code -> string -> string -> 'a result
 
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result

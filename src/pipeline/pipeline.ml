@@ -89,7 +89,7 @@ let parse_with' mode lexer parser name : (Syntax.prog * _) Diag.result =
   let* mk_prog =
     try
       Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
-    with Lexer.Error (at, msg) -> Diag.error_new "M0002" at "syntax" msg
+    with Lexer.Error (at, msg) -> Diag.error_new at"M0002" "syntax" msg
   in
   let prog = mk_prog name in
   dump_prog Flags.dump_parse prog;
@@ -111,7 +111,7 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
     let open Diag.Syntax in
     let* _ =
       Diag.traverse_
-        (Diag.warn_new "M0005" at "import")
+        (Diag.warn_new at "M0005" "import")
         messages in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
@@ -307,8 +307,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
       else if mem ri.Source.it !pending then
         Diag.error_new
-          "E0003"
           ri.Source.at
+          "E0003"
           "import"
           (Printf.sprintf "file %s must not depend on itself" f)
       else begin
@@ -330,8 +330,8 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
       if actor_opt = None then
         Diag.error_new
-          "M0004"
           ri.Source.at
+          "M0004"
           "import"
           (Printf.sprintf "file %s does not define a service" f)
       else
