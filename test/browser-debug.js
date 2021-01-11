@@ -491,7 +491,7 @@ function decode(view, v) {
     case 13 : return decodeBIGINT(view, p);
     case 14 : return decodeCONCAT(view, p);
     case 15 : return decodeNULL(view, p);
-    default : return "UNKNOWN";
+    default : return { address: p, tag: tag};
   };
 }
 
