@@ -326,13 +326,11 @@ pub unsafe extern "C" fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
-    let mut rem: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
-    check(mp_init(&mut rem as *mut _));
     check(mp_div(
         a.as_bigint().mp_int_ptr(),
         b.as_bigint().mp_int_ptr(),
         r.as_bigint().mp_int_ptr(),
-        &mut rem, // TODO: not possible to pass null here?
+        core::ptr::null_mut(),
     ));
     r
 }
@@ -340,12 +338,10 @@ unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
-    let mut quot: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
-    check(mp_init(&mut quot as *mut _));
     check(mp_div(
         a.as_bigint().mp_int_ptr(),
         b.as_bigint().mp_int_ptr(),
-        &mut quot, // TODO: not possible to pass null here?
+        core::ptr::null_mut(),
         r.as_bigint().mp_int_ptr(),
     ));
     r
