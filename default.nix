@@ -68,12 +68,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
     pkgs.perl
+    pkgs.removeReferencesTo
   ]; in
-
-let darwin_standalone =
-  let common = import (nixpkgs.sources.common + "/pkgs")
-    { inherit (nixpkgs) system; repoRoot = ./.; }; in
-  common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin: rts:
   let
@@ -81,11 +77,11 @@ let ocaml_exe = name: bin: rts:
       if is_static
       then "release-static"
       else "release";
-
-    drv = staticpkgs.stdenv.mkDerivation {
+  in
+    staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if is_static then "allowedRequisites" else null} = [];
+      allowedRequisites = [];
 
       src = subpath ./src;
 
@@ -104,13 +100,19 @@ let ocaml_exe = name: bin: rts:
       installPhase = ''
         mkdir -p $out/bin
         cp --verbose --dereference ${bin} $out/bin
+      '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
+        # there are references to darwin system libraries
+        # in the binaries. But curiously, we can remove them
+        # an the binaries still work. They are essentially static otherwise.
+        remove-references-to \
+          -t ${nixpkgs.darwin.Libsystem} \
+          -t ${nixpkgs.darwin.CF} \
+          -t ${nixpkgs.libiconv} \
+          $out/bin/*
+        # sanity check
+        $out/bin/* --help >/dev/null
       '';
     };
-  in
-    # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
-    else drv;
 
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
@@ -216,18 +218,20 @@ rec {
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
+    # so include from test/ only the common files, plus everything in test/${dir}/
+    test_src = dir:
+      with nixpkgs.lib;
+      cleanSourceWith {
+        filter = path: type:
+          let relPath = removePrefix (toString ./test + "/") (toString path); in
+          type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+        src = subpath ./test;
+        name = "test-${dir}-src";
+      };
+
     test_subdir = dir: deps:
       testDerivation {
-        # include from test/ only the common files, plus everything in test/${dir}/
-        src =
-          with nixpkgs.lib;
-          cleanSourceWith {
-            filter = path: type:
-              let relPath = removePrefix (toString ./test + "/") (toString path); in
-              type != "directory" || hasPrefix "${dir}/" "${relPath}/";
-            src = subpath ./test;
-            name = "test-${dir}-src";
-        };
+        src = test_src dir;
         buildInputs =
           deps ++
           (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
@@ -308,6 +312,25 @@ rec {
       '';
     };
 
+    profiling-graphs = testDerivation {
+      src = test_src "perf";
+      buildInputs =
+        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+        [ moc drun ];
+      checkPhase = ''
+        patchShebangs .
+        type -p moc && moc --version
+        type -p drun && drun --version
+        ./profile-report.sh
+      '';
+      installPhase = ''
+        mv _profile $out;
+        mkdir -p $out/nix-support
+        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+      '';
+    };
+
+
     fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
     );
@@ -326,7 +349,7 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit candid;
+      inherit qc lsp unit candid profiling-graphs;
     };
 
   samples = stdenv.mkDerivation {

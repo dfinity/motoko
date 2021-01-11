@@ -349,13 +349,10 @@ pub unsafe extern "C" fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
-    let mut rem: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
-    trap_on_err(check(mp_init(&mut rem as *mut _)));
-    // TODO: Not possible to pass NULL for rem?
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
         b.as_bigint().with_mp_int_ptr(|b| {
             r.as_bigint()
-                .with_mut_mp_int_ptr(|r| mp_div(a, b, r, &mut rem))
+                .with_mut_mp_int_ptr(|r| mp_div(a, b, r, core::ptr::null_mut()))
         })
     })));
     r
@@ -364,13 +361,10 @@ unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let r = bigint_alloc();
-    let mut quot: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
-    trap_on_err(check(mp_init(&mut quot as *mut _)));
-    // TODO: Not possible to pass NULL for quot?
     trap_on_err(check(a.as_bigint().with_mp_int_ptr(|a| {
         b.as_bigint().with_mp_int_ptr(|b| {
             r.as_bigint()
-                .with_mut_mp_int_ptr(|r| mp_div(a, b, &mut quot, r))
+                .with_mut_mp_int_ptr(|r| mp_div(a, b, core::ptr::null_mut(), r))
         })
     })));
     r
