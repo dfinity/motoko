@@ -1,5 +1,6 @@
 open Mo_config
 
+type error_code = string
 type severity = Warning | Error | Info
 type message = {
   sev : severity;
@@ -13,6 +14,7 @@ type messages = message list
 let info_message at cat text = {sev = Info; code = "M0000"; at; cat; text}
 let warning_message at cat text = {sev = Warning; code = "M0000"; at; cat; text}
 let error_message at cat text = {sev = Error; code = "M0000"; at; cat; text}
+let error_message_new code at cat text = {sev = Error; code; at; cat; text}
 
 type 'a result = ('a * messages, messages) Stdlib.result
 

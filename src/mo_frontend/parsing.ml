@@ -102,6 +102,6 @@ let parse error_detail checkpoint lexer lexbuf =
         | _ ->
           Printf.sprintf "unexpected %s" token
       in
-      Diag.add_msg m (Diag.error_message at "syntax" msg);
+      Diag.add_msg m (Diag.error_message_new "M0001" at "syntax" msg);
       None
   )

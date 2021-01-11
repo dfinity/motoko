@@ -1,6 +1,7 @@
 (* A common data type for diagnostic messages *)
 
 type severity = Warning | Error | Info
+type error_code = string
 
 type message = {
   sev : severity;
@@ -15,6 +16,7 @@ type messages = message list
 val info_message : Source.region -> string -> string -> message
 val warning_message : Source.region -> string -> string -> message
 val error_message : Source.region -> string -> string -> message
+val error_message_new : error_code -> Source.region -> string -> string -> message
 
 val string_of_message : message -> string
 val print_message : message -> unit

@@ -3,4 +3,5 @@
    error. *)
 let error_codes : (string * string option) list =
   [
+    "M0001", None;
   ]
