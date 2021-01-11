@@ -9,4 +9,5 @@ let error_codes : (string * string option) list =
     "M0004", None; (* IDL file doesn't define a service *)
     "M0005", None; (* Case mismatch between import and filename *)
     "M0006", None; (* Failed to parse import URL *)
+    "M0007", None; (* Failed to parse actor alias *)
   ]

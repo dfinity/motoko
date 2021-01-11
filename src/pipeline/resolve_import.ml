@@ -60,8 +60,11 @@ let err_unrecognized_url msgs at url msg =
 let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
   add_msg msgs
-    (error_message no_region "actor-alias"
-      (Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg))
+    (error_message_new
+       "M0007"
+       no_region
+       "actor-alias"
+       (Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg))
 
 let err_actor_import_without_idl_path msgs at =
   let open Diag in
