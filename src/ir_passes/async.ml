@@ -301,6 +301,7 @@ let transform mode prog =
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
+    | DoAsyncE _
     | AsyncE _
     | TryE _ -> assert false
     | DeclareE (id, typ, exp1) ->

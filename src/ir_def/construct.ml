@@ -131,6 +131,12 @@ let awaitE e =
     note = Note.{ def with typ = snd (T.as_async (T.normalize (typ e))) ; eff = T.Await }
   }
 
+let cps_do_asyncE typ1 typ2 e =
+  { it = PrimE (CPSDoAsync typ1, [e]);
+    at = no_region;
+    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
+  }
+
 let cps_asyncE typ1 typ2 e =
   { it = PrimE (CPSAsync typ1, [e]);
     at = no_region;

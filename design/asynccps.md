@@ -133,7 +133,14 @@ Await(t,(k,r)) = match t with
   | {result = Rejected e} -> r e
   | {result = Pending} ->
     t with waiters = (k,r)::t.waiters
-
+(* or maybe:	
+Await(t,(k,r)) = match t with
+  | {result = Completed v} -> k v
+  | {result = Rejected e} -> r e
+  | {result = Pending} ->
+    t with waiters = (fun v -> ignore (k v), fun e -> ignore (r e))::t.waiters
+    yield() (i.e. return from message, with pending reply,reject).
+*)
 D r [ t ] =
    \\k. k @ T[ t ]
 D r [ t1 e2 ] =

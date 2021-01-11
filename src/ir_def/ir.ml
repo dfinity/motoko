@@ -140,6 +140,7 @@ and prim =
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
   | CPSAwait
+  | CPSDoAsync of Type.typ
   | CPSAsync of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim

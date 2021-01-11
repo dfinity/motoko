@@ -99,6 +99,18 @@ and t_exp' context exp' =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
+  | DoAsyncE (tb, exp1, typ1) ->
+     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
+     (* add the implicit return/throw label *)
+     let k_ret = fresh_cont (typ exp1) in
+     let k_fail = fresh_err_cont () in
+     let context' =
+       LabelEnv.add Return (Cont (ContVar k_ret))
+         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+     in
+     (cps_do_asyncE typ1 (typ exp1)
+        (forall [tb] ([k_ret; k_fail] -->*
+                       c_exp context' exp1 (ContVar k_ret)))).it
   | AsyncE (tb, exp1, typ1) ->
      let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
      (* add the implicit return/throw label *)
@@ -343,6 +355,18 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     end
+  | DoAsyncE (tb, exp1, typ1) ->
+     (* add the implicit return label *)
+    let k_ret = fresh_cont (typ exp1) in
+    let k_fail = fresh_err_cont () in
+    let context' =
+      LabelEnv.add Return (Cont (ContVar k_ret))
+        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+    in
+    k -@-
+      (cps_do_asyncE typ1 (typ exp1)
+        (forall [tb] ([k_ret; k_fail] -->*
+          (c_exp context' exp1 (ContVar k_ret)))))
   | AsyncE (tb, exp1, typ1) ->
      (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) in
