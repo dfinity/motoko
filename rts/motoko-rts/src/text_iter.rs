@@ -2,12 +2,12 @@
 //!
 //! This is currently a simple triple (array):
 //!
-//! 1. a pointer to a current leaf (must be a BLOB)
+//! 1. A pointer to a leaf (must be a BLOB)
 //! 2. Position in that blob (shifted by two for GC's sake)
 //! 3. 0, or a pointer to a linked list of non-empty text values to do next
 //!
-//! The linked list (text_cont_t) is a tuple (array) with
-//! 1. a pointer to the text
+//! The linked list is a tuple (array) with
+//! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
 use crate::alloc::alloc_words;
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn text_iter_next(iter: SkewedPtr) -> u32 {
         let todo = iter_array.get(ITER_TODO_IDX);
 
         if todo == SkewedPtr(0) {
-            // TODO (osa): Are we assuming the caller should've checked with `text_iter_done`?
+            // Caller should check with text_iter_done
             rts_trap_with("text_iter_next: Iter already done");
         }
 

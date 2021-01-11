@@ -335,7 +335,7 @@ This finds a field in a record.
 Preconditions:
   tb:     points into the type table,
           into the sequence of tags/types that are the argument of IDL_CON_record,
-      at the tag
+          at the tag
   b:      points into the data buffer, at value corresponding to the field
           pointed to by tb
   typtbl: the type table
