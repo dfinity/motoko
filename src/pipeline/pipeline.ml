@@ -308,7 +308,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       else if mem ri.Source.it !pending then
         Diag.error_new
           ri.Source.at
-          "E0003"
+          "M0003"
           "import"
           (Printf.sprintf "file %s must not depend on itself" f)
       else begin
