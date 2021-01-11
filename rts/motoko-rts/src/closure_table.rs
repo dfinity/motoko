@@ -3,9 +3,7 @@
 //!
 //!  1. Adding a closure (any heap pointer) and getting an index (i32)
 //!  2. Looking up a closure by index, which also frees it
-//!  3. GC must be able to traverse and move clsoures in the table
-//!  4. Obtain number of closures registered (TODO (osa): Why?)
-//!  5. Obtain size of table (TODO (osa): Why?)
+//!  3. GC must be able to traverse and move closures in the table
 //!
 //! Current implementation stores the closures in heap-allocated Motoko array.
 //!

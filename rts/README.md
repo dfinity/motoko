@@ -34,7 +34,19 @@ to the `motoko` repository; this is useful if you need to hack on libtommath.
 Exporting and importing functions
 ---------------------------------
 
-TODO
+Import and export as if you are importing from or exporting to a C library. Examples:
+
+```rust
+// Expects bigint_trap to be provided at link time. The function should follow
+// C calling conventions
+extern "C" {
+    fn bigint_trap() -> !;
+}
+
+// Provides bigint_add function. The function follows C calling conventions
+#[no_mangle]
+extern "C" fn bigint_add(...) { ... }
+```
 
 libtommath and memory management
 --------------------------------
