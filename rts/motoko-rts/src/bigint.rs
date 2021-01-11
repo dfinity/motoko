@@ -137,7 +137,7 @@ pub unsafe extern "C" fn bigint_of_word32(w: u32) -> SkewedPtr {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_of_word32_signed(i: i32) -> SkewedPtr {
+unsafe extern "C" fn bigint_of_int32(i: i32) -> SkewedPtr {
     let r = bigint_alloc();
     mp_set_i32(r.as_bigint().mp_int_ptr(), i);
     r
@@ -219,9 +219,8 @@ unsafe extern "C" fn bigint_of_word64(w: u64) -> SkewedPtr {
     p
 }
 
-// TODO (osa): Rename to int64 for consistency?
 #[no_mangle]
-unsafe extern "C" fn bigint_of_word64_signed(i: i64) -> SkewedPtr {
+unsafe extern "C" fn bigint_of_int64(i: i64) -> SkewedPtr {
     let p = bigint_alloc();
     mp_set_i64(p.as_bigint().mp_int_ptr(), i);
     p

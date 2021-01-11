@@ -728,12 +728,12 @@ module RTS = struct
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_int32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_of_word64_signed" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
@@ -2355,8 +2355,8 @@ module BigNumLibtommath : BigNumType = struct
 
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
-  let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
-  let from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
+  let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
+  let from_signed_word64 env = E.call_import env "rts" "bigint_of_int64"
 
   let compile_data_size_unsigned env = E.call_import env "rts" "bigint_leb128_size"
   let compile_data_size_signed env = E.call_import env "rts" "bigint_sleb128_size"
