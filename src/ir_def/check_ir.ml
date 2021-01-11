@@ -643,6 +643,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
+  | DoAsyncE (tb, exp1, t0) -> (* merge with AsyncE *)
+    check env.flavor.has_await "do async expression in non-await flavor";
+    check_typ env t0;
+    let c, tb, ce = check_open_typ_bind env tb in
+    let t1 = typ exp1 in
+    let env' =
+      {(adjoin_cons env ce)
+       with labs = T.Env.empty; rets = Some t1; async = Some c; lvl = NotTopLvl} in
+    check_exp env' exp1;
+    let t1' = T.open_ [t0] (T.close [c] t1)  in
+    t1' <: T.Any; (* vacuous *)
+    T.Async (t0, t1') <: t
   | AsyncE (tb, exp1, t0) ->
     check env.flavor.has_await "async expression in non-await flavor";
     check_typ env t0;

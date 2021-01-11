@@ -183,11 +183,16 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
+  | S.DoAsyncE (tb, e) ->
+    I.DoAsyncE (typ_bind tb, exp e,
+      match note.Note.typ with
+      | T.Async (t, _) -> t
+      | _ -> assert false)
   | S.AsyncE (tb, e) ->
     I.AsyncE (typ_bind tb, exp e,
-              match note.Note.typ with
-              | T.Async (t, _) -> t
-              | _ -> assert false)
+      match note.Note.typ with
+      | T.Async (t, _) -> t
+      | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false

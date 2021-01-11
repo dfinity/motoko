@@ -1,1 +1,1 @@
-!Fatal error: exception "Match_failure lowering/desugar.ml:55:19"
+Fatal error: exception "Assert_failure ir_passes/await.ml:64:2"

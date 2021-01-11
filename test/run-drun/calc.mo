@@ -80,8 +80,6 @@ await a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
 await a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
 await a.evaluateDoAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
 
-
 //SKIP run-low
-//SKIP run-ir
 //SKIP ic-ref
 //SKIP drun
