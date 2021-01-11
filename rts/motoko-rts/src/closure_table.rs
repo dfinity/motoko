@@ -77,7 +77,7 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
     }
 
     // Just as a sanity check make sure the ptr is really skewed
-    if ptr.0 & 0b1 != 1 {
+    if ptr.is_tagged_scalar() {
         rts_trap_with("remember_closure: Argument is not a skewed pointer");
     }
 
