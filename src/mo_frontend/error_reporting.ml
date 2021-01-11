@@ -41,6 +41,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_RCURLY -> RCURLY
       | T_RBRACKET -> RBRACKET
       | T_QUEST -> QUEST
+      | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
       | T_PRIVATE -> PRIVATE

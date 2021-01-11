@@ -40,6 +40,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | ShowE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
+  | DoOptE exp1
+  | BangE exp1
   | TagE (_, exp1)
   | DotE (exp1, _)
   | NotE exp1

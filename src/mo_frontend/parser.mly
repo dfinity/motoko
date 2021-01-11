@@ -230,7 +230,7 @@ let share_expfield (ef : exp_field) =
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
-%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
+%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
 %token DEBUG_SHOW
@@ -590,6 +590,8 @@ exp_post(B) :
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
     { CallE(e1, inst, e2) @? at $sloc }
+  | e1=exp_post(B) BANG
+    { BangE(e1) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -667,7 +669,7 @@ exp_nondec(B) :
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
-    { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
+    { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
   | TRY e1=exp_nest c=catch
@@ -692,6 +694,8 @@ exp_nondec(B) :
     { IgnoreE(e) @? at $sloc }
   | DO e=block
     { e }
+  | DO QUEST e=block
+    { DoOptE(e) @? at $sloc }
   | DO ASYNC e=block
     { DoAsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
 

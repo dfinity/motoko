@@ -126,6 +126,7 @@ rule token mode = parse
   | "<:" { SUB }
   | "." { DOT }
   | "?" { QUEST }
+  | "!" { BANG }
   | "=" { EQ }
   | "<" { LT }
   | ">" { GT }

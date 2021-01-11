@@ -76,7 +76,7 @@ completes the future when it returns a result, either a value or error.
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-[source,motoko]
+[source#counter,motoko]
 ----
 include::../examples/counter-actor-sugar.mo[]
 ----
@@ -95,6 +95,7 @@ as a standalone callback to some other service (see link:sharing{outfilesuffix}[
 Just as objects have object types, actors have _actor types_. The
 `Counter` actor has the following type:
 
+[source.no-repl, motoko]
 ....
 actor {
   inc  : shared () -> async ();
@@ -109,6 +110,7 @@ when authoring an actor type.
 
 Thus the previous type can be expressed more succinctly as:
 
+[source.no-repl, motoko]
 ....
 actor {
   inc  : () -> async ();
@@ -132,7 +134,7 @@ To access the result of an `async` value, the receiver of the future use an  `*a
 For example, to use the result of `Counter.read()` above, we can first bind the
 future to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
 
-[source, motoko]
+[source.include_counter, motoko]
 ----
 let a : async Nat = Counter.read();
 let n : Nat = await a;
@@ -145,7 +147,7 @@ This line may suspend execution until the future has been completed.
 
 Typically, one rolls the two steps into one and one just awaits an asynchronous call directly:
 
-[source, motoko]
+[source.include_counter, motoko]
 ----
 let n : Nat = await Counter.read();
 ----
@@ -172,6 +174,7 @@ non-synchronized state changes.
 For example, the implementation of `bump()` above is guaranteed to increment and read the
 value of `count`, in one atomic step. The alternative implementation:
 
+[source.no-repl, motoko]
 ....
   public shared func bump() : async Nat {
     await inc();
@@ -218,6 +221,7 @@ the efficiency gains of nested query calls will be modest at best.
 
 The `query` modifier is reflected in the type of a query function:
 
+[source.no-repl, motoko]
 ....
   peek : shared query () -> async Nat
 ....
@@ -269,7 +273,7 @@ For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
 .Counters.mo
-[source, motoko]
+[source#Counters, motoko]
 ----
 include::../examples/Counters.mo[]
 ----
@@ -278,12 +282,13 @@ If this class is stored in file `+Counters.mo+`, then
 we can import the file as a module and use it to
 create several actors with different initial values:
 
-[source, motoko]
+[source.include_Counters, motoko]
 ----
 import Counters "Counters";
 
 let C1 = await Counters.Counter(1);
 let C2 = await Counters.Counter(2);
+(await C1.read(), await C2.read())
 ----
 
 The last two lines above _instantiate_ the actor class twice.

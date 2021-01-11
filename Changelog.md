@@ -1,5 +1,27 @@
 = Motoko compiler changelog
 
+* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for reading newline/NUL terminated arguments from `<file>`.
+
+== 0.5.4 (2021-01-07)
+
+* _Option blocks_ `do ? <block>` and _option checks_ `<exp> !`.
+  Inside an option block, an option check validates that its operand expression is not `null`.
+  If it is, the entire option block is aborted and evaluates to `null`.
+  This simplifies consecutive null handling by avoiding verbose `switch` expressions.
+
+  For example, the expression `do? { f(x!, y!) + z!.a }` evaluates to `null` if either `x`, `y` or `z` is `null`;
+  otherwise, it takes the options' contents and ultimately returns `?r`, where `r` is the result of the addition.
+
+* BREAKING CHANGE (Minor):
+  The light-weight `do <exp>` form of the recently added, more general `do <block-or-exp>` form,
+  is no longer legal syntax.
+  That is, the argument to a `do` or `do ?` expression *must* be a block `{ ... }`,
+  never a simple expression.
+
+== 0.5.3 (2020-12-10)
+
+* Nothing new, just release moc.js to CDN
+
 == 0.5.2 (2020-12-04)
 
 * Bugfix: gracefully handle importing ill-typed actor classes
@@ -23,7 +45,7 @@
   if`, `loop`, `case`, etc. In all other places, braces are always considered
   to start an object literal.
 
-  To use blocks in other positions, the new `do {<block>}` expression can be
+  To use blocks in other positions, the new `do <block>` expression can be
   used.
 
   The more liberal syntax is still allowed for now but deprecated, i.e.,

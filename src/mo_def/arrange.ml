@@ -57,6 +57,8 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
+  | DoOptE e            -> "DoOptE"    $$ [exp e]
+  | BangE e             -> "BangE"   $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]

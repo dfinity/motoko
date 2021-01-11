@@ -73,8 +73,12 @@ actor a {
  public func credit() : async () {
    let b = Cycles.balance();
    let a = Cycles.available();
-   ignore Cycles.accept(a);
-   assert (Cycles.balance() == b + a);
+   let acc = Cycles.accept(a);
+   // print("balance before " # debug_show(b));
+   // print("available " # debug_show(a));
+   // print("accepted " # debug_show(acc));
+   // print("balalance after " # debug_show(Cycles.balance()));
+   assert (Cycles.balance() == b + acc);
  };
 
 

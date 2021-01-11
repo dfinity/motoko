@@ -95,8 +95,10 @@ let argspec = Arg.align [
   "--sanity-checks",
   Arg.Unit
     (fun () -> Flags.sanity := true),
-    " enable sanity checking in the RTS and generated code";
-]
+  " enable sanity checking in the RTS and generated code";
+    ]
+  @  Args.inclusion_args
+
 
 
 let set_out_file files ext =
@@ -133,13 +135,20 @@ let process_files files : unit =
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
+    let source_map_file = !out_file ^ ".map" in
     let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
+    let module_ = CustomModule.{ module_ with
+      source_mapping_url =
+        if !gen_source_map
+        then Some (Filename.basename source_map_file)
+        else None
+    } in
+
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !gen_source_map then begin
-      let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
     end
@@ -169,7 +178,7 @@ let () =
   (useful for debugging infinite loops)
   *)
   Printexc.record_backtrace true;
-  Arg.parse argspec add_arg usage;
+  Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
   process_profiler_flags ();

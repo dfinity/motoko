@@ -7,6 +7,6 @@ _build
 target
 
 **/*~
-/result*
+result*
 
 /samples/**/*.txt

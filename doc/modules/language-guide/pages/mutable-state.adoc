@@ -28,32 +28,35 @@ remotely.
 The `var` syntax declares mutable variables in a declaration
 block:
 
+[source#init, motoko]
 ....
-let txt  : Text = "abc"
-let num  : Nat = 30
+let text  : Text = "abc";
+let num  : Nat = 30;
 
-var pair : (Text, Nat) = (txt, num)
-var txt2 : Text = txt
+var pair : (Text, Nat) = (text, num);
+var text2 : Text = text;
 ....
 
 The declaration list above declares four variables.
-The first two variables (`txt` and `num`) are lexically-scoped, _immutable variables_.
-The final two variables (`pair` and `txt2`) are lexically-scoped, *_mutable_* variables.
+The first two variables (`text` and `num`) are lexically-scoped, _immutable variables_.
+The final two variables (`pair` and `text2`) are lexically-scoped, *_mutable_* variables.
 
 [[intro-assignment]]
 == Assignment to mutable memory
 
 Mutable variables permit assignment, and immutable variables do not.
 
-If we try to assign new values to either `txt` or `num` above, we
+If we try to assign new values to either `text` or `num` above, we
 will get static type errors; these variables are immutable.
 
 However, we may freely update the value of mutable variables `pair`
-and `txt2` using the syntax for assignment, written as `:=`, as follows:
+and `text2` using the syntax for assignment, written as `:=`, as follows:
 
+[source.include_init, motoko]
 ....
-text2 := text2 # "xyz"
-pair := (text2, pair.1)
+text2 := text2 # "xyz";
+pair := (text2, pair.1);
+pair
 ....
 
 Above, we update each variable based on applying a simple "`update
@@ -73,17 +76,21 @@ current contents of the assigned variable.
 
 For example, numbers permit a combination of assignment and addition:
 
+[source, motoko]
 ....
 var num2 = 2;
 num2 += 40;
+num2
 ....
 
 After the second line, the variable `num2` holds `42`, as one would expect.
 
 {proglang} includes other combinations as well.  For example, we can rewrite the line above that updates `text2` more concisely as:
 
+[source.include_init, motoko]
 ....
-text2 #= "xyz"
+text2 #= "xyz";
+text2
 ....
 
 As with `+=`, this combined form avoids repeating the assigned
@@ -114,12 +121,14 @@ Below, we explore this point in detail.
 
 Consider the following two variable declarations, which look similar:
 
+[source, motoko]
 ....
 let x : Nat = 0
 ....
 
 and:
 
+[source, motoko]
 ....
 var x : Nat = 0
 ....
@@ -145,6 +154,7 @@ To see why, consider encoding a `var`-bound variable using a one-element, mutabl
 
 For instance, instead of declaring `x` as a mutable variable initially holding `0`, we could instead use `y`, an immutable variable that denotes a mutable array with one entry, holding `0`:
 
+[source, motoko]
 ....
 var x : Nat       = 0 ;
 let y : [var Nat] = [var 0] ;
@@ -167,6 +177,7 @@ Before discussing <<mutable-arrays, mutable arrays>>, we introduce immutable arr
 
 === Allocate an immutable array of constants
 
+[source#array, motoko]
 ....
 let a : [Nat] = [1, 2, 3] ;
 ....
@@ -181,12 +192,25 @@ single common type, in this case `Nat`.
 We can project from (_read from_) an array using the usual bracket
 syntax (`[` and `]`) around the index we want to access:
 
+[source.include_array, motoko]
 ....
 let x : Nat = a[2] + a[0] ;
 ....
 
 Every array access in {proglang} is safe.  Accesses that are out of
 bounds will not access memory unsafely, but instead will cause the program to trap, as with an link:basic-concepts{outfilesuffix}#overview-traps[assertion failure].
+
+== The Array module
+
+The {proglang} standard library provides basic operations for immutable and mutable arrays. It can be imported as follows,
+
+[source#import, motoko]
+....
+import Array "mo:base/Array";
+....
+
+In this section, we discuss some of the most frequently used array operations.
+For more information about using arrays, see the link:stdlib/array{outfilesuffix}[Array] library descriptions.
 
 === Allocate an immutable array with varying content
 
@@ -198,12 +222,13 @@ to specify this family of elements "all at once", in the argument to
 allocation.
 
 To accommodate this need, the {proglang} language provides _the
-higher-order_ array-allocation primitive `Array_tabulate`, which
+higher-order_ array-allocation function `Array.tabulate`, which
 allocates a new array by consulting a user-provided "generation
 function" `gen` for each element.
 
+[source.no-repl, motoko]
 ....
-Array_tabulate<T>(size : Nat,  gen : Nat -> T) : [T]
+func tabulate<T>(size : Nat,  gen : Nat -> T) : [T]
 ....
 
 Function `gen` specifies the array _as a function value_ of arrow
@@ -215,13 +240,14 @@ The allocated output array populates itself based on this specification.
 
 For instance, we can first allocate `array1` consisting of some initial constants, and then functionally-update _some_ of the indices by "changing" them (in a pure, functional way), to produce `array2`, a second array that does not destroy the first.
 
+[source.include_import, motoko]
 ....
 let array1 : [Nat] = [1, 2, 3, 4, 6, 7, 8] ;
 
-let array2 : [Nat] = Array_tabulate<Nat>(7, func(i:Nat) : Nat {
-               if ( i == 2 or i == 5 ) { array1[i] * i } // change 3rd and 6th entries
-               else { array1[i] } // no change to other entries
-             }) ;
+let array2 : [Nat] = Array.tabulate<Nat>(7, func(i:Nat) : Nat {
+    if ( i == 2 or i == 5 ) { array1[i] * i } // change 3rd and 6th entries
+    else { array1[i] } // no change to other entries
+  }) ;
 ....
 
 Even though we "changed" `array1` into `array2` in a functional sense, notice that both arrays and both variables are immutable.
@@ -244,6 +270,7 @@ Unlike immutable arrays, mutable arrays have _non-shareable types_.
 
 To indicate allocation of _mutable_ arrays (in contrast to the forms above, for immutable ones), the mutable array syntax `[var _]` uses the `var` keyword, in both the expression and type forms:
 
+[source, motoko]
 ....
 let a : [var Nat] = [var 1, 2, 3] ;
 ....
@@ -254,15 +281,17 @@ As above, the array `a` above holds three natural numbers, but has type `[var Na
 
 To allocate mutable arrays of non-constant size, use the `Array_init` primitive, and supply an initial value:
 
+[source.no-repl, motoko]
 ....
-func Array_init<T>(size : Nat,  x : T) : [var T]
+func init<T>(size : Nat,  x : T) : [var T]
 ....
 
 For example:
 
+[source.include_import, motoko]
 ....
 var size : Nat = 42 ;
-let x : [var Nat] = Array_init<Nat>(size, 3);
+let x : [var Nat] = Array.init<Nat>(size, 3);
 ....
 
 The variable `size` need not be constant here; the array will have `size` number of entries, each holding the initial value `3`.
@@ -271,9 +300,11 @@ The variable `size` need not be constant here; the array will have `size` number
 
 Mutable arrays, each with type form `[var _]`, permit mutable updates via assignment to an individual element, in this case element index `2` gets updated from holding `3` to instead hold value `42`:
 
+[source, motoko]
 ....
-let a : [var Nat] = [var 1, 2, 3] ;
-a[2] := 42 ;
+let a : [var Nat] = [var 1, 2, 3];
+a[2] := 42;
+a
 ....
 
 [[intro-array-subtyping]]
@@ -285,10 +316,3 @@ There are two reasons for this.
 First, as with all mutable state, mutable arrays require different rules for sound subtyping.
 In particular, mutable arrays have a less flexible subtyping definition, necessarily.
 Second, {proglang} forbids uses of mutable arrays across link:actors-async{outfilesuffix}[asynchronous communication], where mutable state is never shared.
-
-== The Array module
-
-The {proglang} standard library provides additional array operations.
-For more information about using arrays, see the link:stdlib/array{outfilesuffix}[Array] library descriptions.
-
-Many common operations for arrays reside in the standard library, since the the {proglang} language intentionally places features that can be written in {proglang} into this library, and not the set of compiler and language builtin features.

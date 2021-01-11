@@ -146,6 +146,7 @@
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
     <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
+    <exp_post> BANG
 
 <exp_un> ::= 
     <exp_post>
@@ -189,6 +190,7 @@
     'for' '(' <pat> 'in' <exp> ')' <exp_nest>
     'ignore' <exp_nest>
     'do' <block>
+    'do' '?' <block>
     'do' 'async' <block>
 
 <exp_nonvar> ::= 
