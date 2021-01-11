@@ -75,7 +75,6 @@ bindgen <path to tommath.h> \
     --whitelist-function mp_get_i64 \
     --whitelist-function mp_isneg \
     --whitelist-function mp_count_bits \
-    --whitelist-function mp_get_mag_u32 \
     --whitelist-function mp_get_mag_u64 \
     --whitelist-function mp_cmp \
     --whitelist-function mp_add \

@@ -171,32 +171,6 @@ unsafe extern "C" fn bigint_to_word32_trap_with(p: SkewedPtr, msg: SkewedPtr) ->
     mp_get_u32(mp_int)
 }
 
-// TODO (osa): I don't understand the code below, it uses get_mag (magnitude?) but the name
-// suggests it's to convert bigint to u32?
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word32_signed_trap(p: SkewedPtr) -> i32 {
-    let mp_int = p.as_bigint().mp_int_ptr();
-
-    if mp_count_bits(mp_int) > 32 {
-        bigint_trap();
-    }
-
-    let x = mp_get_mag_u32(mp_int) as i32;
-    if mp_isneg(mp_int) {
-        let x = -x;
-        if x >= 0 {
-            // TODO (osa): Why not ==?
-            bigint_trap();
-        }
-        x
-    } else {
-        if x < 0 {
-            bigint_trap();
-        }
-        x
-    }
-}
-
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word64_wrap(p: SkewedPtr) -> u64 {
     mp_get_u64(p.as_bigint().mp_int_ptr())
