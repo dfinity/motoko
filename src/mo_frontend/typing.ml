@@ -246,8 +246,8 @@ and check_obj_path' env path : T.typ =
        error_new env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
      | Some (t, Available) -> t
      | Some (t, Unavailable) ->
-         error env id.at "unavailable variable %s" id.it
-     | None -> error env id.at "unbound variable %s" id.it
+         error_new env id.at "M0025" "unavailable variable %s" id.it
+     | None -> error_new env id.at "M0026" "unbound variable %s" id.it
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in

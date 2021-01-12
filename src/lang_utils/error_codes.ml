@@ -27,4 +27,6 @@ let error_codes : (string * string option) list =
     "M0022", None; (* Imported file not loaded *)
     "M0023", None; (* Path expression is not a module, object, or actor *)
     "M0024", None; (* Cannot infer type of forward variable *)
+    "M0025", None; (* Unavailable variable *)
+    "M0026", None; (* Unbound variable *)
   ]
