@@ -88,7 +88,10 @@ let err_file_does_not_exist msgs at full_path =
 let err_package_not_defined msgs at pkg =
   let open Diag in
   add_msg msgs
-    (error_message at "import"
+    (error_message_new
+       at
+       "M0010"
+       "import"
        (Printf.sprintf "package \"%s\" not defined" pkg))
 
 let err_alias_not_defined msgs at alias =

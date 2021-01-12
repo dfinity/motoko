@@ -12,4 +12,5 @@ let error_codes : (string * string option) list =
     "M0007", None; (* Failed to parse actor alias *)
     "M0008", None; (* Actor import without IDL path *)
     "M0009", None; (* File not found for import *)
+    "M0010", None; (* Imported package was not defined *)
   ]
