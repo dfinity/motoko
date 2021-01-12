@@ -18,7 +18,10 @@ open Syntax
 let err m at =
   let open Diag in
   add_msg m
-    (error_message at "type"
+    (error_message_new
+       at
+       "M0014"
+       "type"
        "non-static expression in library or module")
 
 let pat_err m at =
