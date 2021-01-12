@@ -200,7 +200,10 @@ and group msgs (grp : group) : f =
         else
           Diag.add_msg
             msgs
-            (Diag.error_message at "definedness"
+            (Diag.error_message_new
+               at
+               "M0016"
+               "definedness"
                (Printf.sprintf "cannot use %s before %s has been defined" x y))
       | None ->
         (* External variable, ok for now *)
