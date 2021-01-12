@@ -243,7 +243,7 @@ and check_obj_path' env path : T.typ =
   | IdH id ->
     (match T.Env.find_opt id.it env.vals with
      | Some (T.Pre, _) ->
-       error env id.at "cannot infer type of forward variable reference %s" id.it
+       error_new env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
      | Some (t, Available) -> t
      | Some (t, Unavailable) ->
          error env id.at "unavailable variable %s" id.it
