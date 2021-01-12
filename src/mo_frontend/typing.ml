@@ -234,7 +234,7 @@ let rec check_obj_path env path : T.obj_sort * (T.field list) =
     path.note <- t;
     (s, fs)
   | t ->
-    error env path.at
+    error_new env path.at "M0023"
       "expected module, object, or actor type, but path expression produces type\n  %s"
       (T.string_of_typ_expand t)
 
