@@ -106,7 +106,10 @@ let err_alias_not_defined msgs at alias =
 let err_package_file_does_not_exist msgs f pname =
   let open Diag in
   add_msg msgs
-    (error_message no_region "package"
+    (error_message_new
+       no_region
+       "M0012"
+       "package"
        (Printf.sprintf "file \"%s\" (for package `%s`) does not exist" f pname))
 
 let err_prim_pkg msgs =

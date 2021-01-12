@@ -14,4 +14,5 @@ let error_codes : (string * string option) list =
     "M0009", None; (* File not found for import *)
     "M0010", None; (* Imported package was not defined *)
     "M0011", None; (* Imported canister alias was not defined *)
+    "M0012", None; (* File for package does not exist *)
   ]
