@@ -214,16 +214,16 @@ let system_funcs = [
 let check_import env at f ri =
   let full_path =
     match !ri with
-    | Unresolved -> error env at "unresolved import %s" f
+    | Unresolved -> error_new env at "M0020" "unresolved import %s" f
     | LibPath fp -> fp
     | IDLPath (fp, _) -> fp
     | PrimPath -> "@prim"
   in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
-    error env at "cannot infer type of forward import %s" f
+    error_new env at "M0021" "cannot infer type of forward import %s" f
   | Some t -> t
-  | None -> error env at "imported file %s not loaded" full_path
+  | None -> error_new env at "M0022" "imported file %s not loaded" full_path
 
 
 (* Paths *)

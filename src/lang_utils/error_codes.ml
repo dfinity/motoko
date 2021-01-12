@@ -22,4 +22,7 @@ let error_codes : (string * string option) list =
     "M0017", None; (* Duplicate binding in pattern *)
     "M0018", None; (* Duplicate name in type *)
     "M0019", None; (* Colliding hashes in type *)
+    "M0020", None; (* Unresolved import *)
+    "M0021", None; (* Cannot infer type of forward import *)
+    "M0022", None; (* Imported file not loaded *)
   ]
