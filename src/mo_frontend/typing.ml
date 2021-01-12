@@ -269,7 +269,7 @@ and check_typ_path' env path : T.con =
   | IdH id ->
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
-    | None -> error env id.at "unbound type %s" id.it
+    | None -> error_new env id.at "M0029" "unbound type %s" id.it
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
