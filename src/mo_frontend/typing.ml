@@ -76,6 +76,9 @@ let recover f y = recover_with () f y
 let type_error at text : Diag.message =
   Diag.error_message at "type" text
 
+let type_error_new at code text : Diag.message =
+  Diag.error_message_new at code "type" text
+
 let type_warning at text : Diag.message =
   Diag.warning_message at "type" text
 
@@ -85,6 +88,10 @@ let type_info at text : Diag.message =
 let error env at fmt =
   Printf.ksprintf
     (fun s -> Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
+
+let error_new env at code fmt =
+  Printf.ksprintf
+    (fun s -> Diag.add_msg env.msgs (type_error_new at code s); raise Recover) fmt
 
 let local_error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
@@ -154,9 +161,9 @@ let adjoin_typs env te ce =
     cons = T.ConSet.disjoint_union env.cons ce;
   }
 
-let disjoint_union env at fmt env1 env2 =
+let disjoint_union env at code fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
-  with T.Env.Clash k -> error env at fmt k
+  with T.Env.Clash k -> error_new env at code fmt k
 
 
 (* Coverage *)
@@ -1475,7 +1482,7 @@ and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
   | [] -> List.rev ts, ve
   | pat::pats' ->
     let t, ve1 = infer_pat env pat in
-    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+    let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
 and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_env =
@@ -1483,7 +1490,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   | [] -> (T.Object, List.sort T.compare_field ts), ve
   | pf::pfs' ->
     let typ, ve1 = infer_pat env pf.it.pat in
-    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+    let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
@@ -1636,7 +1643,7 @@ and check_pats env ts pats ve at : Scope.val_env =
   | [], [] -> ve
   | t::ts', pat::pats' ->
     let ve1 = check_pat env t pat in
-    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+    let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     check_pats env ts' pats' ve' at
   | ts, [] ->
     local_error env at "tuple pattern has %i fewer components than expected type"
@@ -1663,7 +1670,7 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
         error env pf.at "cannot pattern match mutable field %s" lab;
       let ve1 = check_pat env typ pf.it.pat in
       let ve' =
-        disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+        disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       match pfs' with
       | pf'::_ when pf'.it.id.it = lab ->
         error env pf'.at "duplicate field %s in object pattern" lab

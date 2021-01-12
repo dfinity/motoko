@@ -19,4 +19,5 @@ let error_codes : (string * string option) list =
     "M0014", None; (* Non-static expression in library or module *)
     "M0015", None; (* Non-trivial pattern in static expression *)
     "M0016", None; (* Usage before definition *)
+    "M0017", None; (* Duplicate binding in pattern *)
   ]
