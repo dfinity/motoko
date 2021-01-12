@@ -76,7 +76,10 @@ let err_actor_import_without_idl_path msgs at =
       (Printf.sprintf "cannot import canister urls without --actor-idl param"))
 
 let err_file_does_not_exist' at full_path =
-  Diag.error_message at "import"
+  Diag.error_message_new
+    at
+    "M0009"
+    "import"
     (Printf.sprintf "file \"%s\" does not exist" full_path)
 
 let err_file_does_not_exist msgs at full_path =

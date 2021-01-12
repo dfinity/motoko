@@ -11,4 +11,5 @@ let error_codes : (string * string option) list =
     "M0006", None; (* Failed to parse import URL *)
     "M0007", None; (* Failed to parse actor alias *)
     "M0008", None; (* Actor import without IDL path *)
+    "M0009", None; (* File not found for import *)
   ]
