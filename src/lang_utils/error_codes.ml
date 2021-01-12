@@ -17,4 +17,5 @@ let error_codes : (string * string option) list =
     "M0012", None; (* File for package does not exist *)
     "M0013", None; (* Tried to map the prim package *)
     "M0014", None; (* Non-static expression in library or module *)
+    "M0015", None; (* Non-trivial pattern in static expression *)
   ]

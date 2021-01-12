@@ -27,7 +27,10 @@ let err m at =
 let pat_err m at =
   let open Diag in
   add_msg m
-    (error_message at "type"
+    (error_message_new
+       at
+       "M0015"
+       "type"
        "only trivial patterns allowed in static expressions")
 
 let rec exp m e = match e.it with
