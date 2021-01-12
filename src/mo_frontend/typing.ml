@@ -190,9 +190,9 @@ let coverage_pat warnOrError env pat t =
 let check_ids env kind member ids = Lib.List.iter_pairs
   (fun x y ->
     if x.it = y.it
-    then error env y.at "duplicate %s name %s in %s type" member y.it kind;
+    then error_new env y.at "M0018" "duplicate %s name %s in %s type" member y.it kind;
     if Hash.hash x.it = Hash.hash y.it
-    then error env y.at "%s names %s and %s in %s type have colliding hashes" member x.it y.it kind;
+    then error_new env y.at "M0019" "%s names %s and %s in %s type have colliding hashes" member x.it y.it kind;
   ) ids
 
 let infer_mut mut : T.typ -> T.typ =

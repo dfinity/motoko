@@ -20,4 +20,6 @@ let error_codes : (string * string option) list =
     "M0015", None; (* Non-trivial pattern in static expression *)
     "M0016", None; (* Usage before definition *)
     "M0017", None; (* Duplicate binding in pattern *)
+    "M0018", None; (* Duplicate name in type *)
+    "M0019", None; (* Colliding hashes in type *)
   ]

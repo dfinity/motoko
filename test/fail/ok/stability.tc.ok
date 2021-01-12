@@ -15,4 +15,4 @@ stability.mo:46.4-46.12: type error[M0000], misplaced stability modifier: expect
 stability.mo:47.4-47.10: type error[M0000], misplaced stability modifier: expected on var or simple let declarations only
 stability.mo:50.15-50.20: type error[M0000], variable wrong is declared stable but has non-stable type
   module {}
-stability.mo:26.15-26.25: type error[M0000], stable variable names foo and nxnnbkddcv in actor type have colliding hashes
+stability.mo:26.15-26.25: type error[M0019], stable variable names foo and nxnnbkddcv in actor type have colliding hashes
