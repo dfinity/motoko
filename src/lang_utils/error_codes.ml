@@ -37,4 +37,6 @@ let error_codes : (string * string option) list =
     "M0032", None; (* Shared function has non-shared return type *)
     "M0033", None; (* Async has non-shared content type *)
     "M0034", None; (* Shared constructor has non-shared parameter type *)
+    "M0035", None; (* Invalid return type for shared function *)
+    "M0036", None; (* Invalid return type for shared query function *)
   ]

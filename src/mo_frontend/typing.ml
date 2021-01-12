@@ -303,8 +303,8 @@ let check_shared_return env at sort c ts =
   match sort, c, ts with
   | T.Shared _, T.Promises,  _ -> ()
   | T.Shared T.Write, T.Returns, [] -> ()
-  | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `async <typ>`"
-  | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
+  | T.Shared T.Write, _, _ -> error_new env at "M0035" "shared function must have syntactic return type `()` or `async <typ>`"
+  | T.Shared T.Query, _, _ -> error_new env at "M0036" "shared query function must have syntactic return type `async <typ>`"
   | _ -> ()
 
 let region_of_scope env typ =
