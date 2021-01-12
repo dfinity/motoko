@@ -69,7 +69,10 @@ let err_unrecognized_alias msgs alias principal msg =
 let err_actor_import_without_idl_path msgs at =
   let open Diag in
   add_msg msgs
-    (error_message at "import"
+    (error_message_new
+       at
+       "M0008"
+       "import"
       (Printf.sprintf "cannot import canister urls without --actor-idl param"))
 
 let err_file_does_not_exist' at full_path =
