@@ -115,7 +115,9 @@ let err_package_file_does_not_exist msgs f pname =
 let err_prim_pkg msgs =
   let open Diag in
   add_msg msgs
-    (error_message no_region
+    (error_message_new
+       no_region
+       "M0013"
        "package" "the \"prim\" package is built-in, and cannot be mapped to a directory")
 
 let append_extension : (string -> bool) -> string -> string =
