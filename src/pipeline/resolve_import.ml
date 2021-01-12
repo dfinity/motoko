@@ -97,7 +97,10 @@ let err_package_not_defined msgs at pkg =
 let err_alias_not_defined msgs at alias =
   let open Diag in
   add_msg msgs
-    (error_message at "import"
+    (error_message_new
+       at
+       "M0011"
+       "import"
        (Printf.sprintf "canister alias \"%s\" not defined" alias))
 
 let err_package_file_does_not_exist msgs f pname =
