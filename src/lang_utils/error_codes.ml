@@ -32,4 +32,5 @@ let error_codes : (string * string option) list =
     "M0027", None; (* Cannot infer type of forward field reference *)
     "M0028", None; (* Field does not exist in type *)
     "M0029", None; (* Unbound type *)
+    "M0030", None; (* Type field does not exist in type *)
   ]

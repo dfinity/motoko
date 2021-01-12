@@ -274,7 +274,7 @@ and check_typ_path' env path : T.con =
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
     try T.lookup_typ_field id.it fs with Invalid_argument _ ->
-      error env id.at "type field %s does not exist in type\n  %s"
+      error_new env id.at "M0030" "type field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
 
