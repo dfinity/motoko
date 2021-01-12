@@ -33,4 +33,8 @@ let error_codes : (string * string option) list =
     "M0028", None; (* Field does not exist in type *)
     "M0029", None; (* Unbound type *)
     "M0030", None; (* Type field does not exist in type *)
+    "M0031", None; (* Shared function has non-shared parameter type *)
+    "M0032", None; (* Shared function has non-shared return type *)
+    "M0033", None; (* Async has non-shared content type *)
+    "M0034", None; (* Shared constructor has non-shared parameter type *)
   ]

@@ -280,13 +280,13 @@ and check_typ_path' env path : T.con =
 
 (* Type helpers *)
 
-let error_shared env t at fmt =
+let error_shared env t at code fmt =
   match T.find_unshared t with
-  | None -> error env at fmt
+  | None -> error_new env at code fmt
   | Some t1 ->
     let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
       (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
-    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error at (s1^s)); raise Recover) fmt
+    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error_new at code (s1^s)); raise Recover) fmt
 
 let as_domT t =
   match t.Source.it with
@@ -429,10 +429,10 @@ and check_typ' env typ : T.typ =
     if not env.pre then begin
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
-        error_shared env t1 typ1.at "shared function has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
+        error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
       List.iter (fun t ->
         if not (T.shared t) then
-          error_shared env t typ.at
+          error_shared env t typ.at "M0032"
             "shared function has non-shared return type\n  %s"
             (T.string_of_typ_expand t);
       ) ts2;
@@ -456,7 +456,7 @@ and check_typ' env typ : T.typ =
     let t0 = check_typ env typ0 in
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
-      error_shared env t typ.at "async has non-shared content type\n  %s"
+      error_shared env t typ.at "M0033" "async has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async (t0, t)
   | ObjT (sort, fields) ->
@@ -978,12 +978,12 @@ and infer_exp'' env exp : T.typ =
       check_exp (adjoin_vals env'' ve2) codom exp1;
       if Type.is_shared_sort sort then begin
         if not (T.shared t1) then
-          error_shared env t1 pat.at
+          error_shared env t1 pat.at "M0031"
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
         List.iter (fun t ->
           if not (T.shared t) then
-            error_shared env t typ.at
+            error_shared env t typ.at "M0032"
               "shared function has non-shared return type\n  %s"
               (T.string_of_typ_expand t);
         ) ts2;
@@ -1139,7 +1139,7 @@ and infer_exp'' env exp : T.typ =
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
     if not (T.shared t') then
-      error_shared env t' exp1.at "async type has non-shared content type\n  %s"
+      error_shared env t' exp1.at "M0033" "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t');
     T.Async (t1, t')
   | AwaitE exp1 ->
@@ -1948,7 +1948,7 @@ and infer_dec env dec : T.typ =
         infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
       in
       if obj_sort.it = T.Actor && not (T.shared t_pat) then
-        error_shared env t_pat pat.at
+        error_shared env t_pat pat.at "M0034"
           "shared constructor has non-shared parameter type\n  %s"
           (T.string_of_typ_expand t_pat);
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in

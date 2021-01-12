@@ -1,6 +1,6 @@
-bad-actor.mo:3.1-3.23: type error[M0000], actor classes with type parameters are not supported yet
-bad-actor.mo:4.1-4.25: type error[M0000], actor classes with type parameters are not supported yet
-bad-actor.mo:6.15-6.28: type error[M0000], shared constructor has non-shared parameter type
+bad-actor.mo:3.1-3.23: type error[M0140], actor classes with type parameters are not supported yet
+bad-actor.mo:4.1-4.25: type error[M0140], actor classes with type parameters are not supported yet
+bad-actor.mo:6.15-6.28: type error[M0034], shared constructor has non-shared parameter type
   [var Int]
 type
   [var Int]
@@ -10,4 +10,4 @@ bad-actor.mo:8.1-8.38: type error[M0000], class body of type
   actor {}
 does not match expected type
   {}
-bad-actor.mo:9.1-9.31: warning[M0000], actor classes with non non-async return types are deprecated; please declare the return type as `async ...`
+bad-actor.mo:9.1-9.31: warning[M0135], actor classes with non non-async return types are deprecated; please declare the return type as `async ...`
