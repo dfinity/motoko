@@ -256,7 +256,7 @@ and check_obj_path' env path : T.typ =
       error_new env id.at "M0027" "cannot infer type of forward field reference %s" id.it
     | t -> t
     | exception Invalid_argument _ ->
-      error env id.at "field %s does not exist in type\n  %s"
+      error_new env id.at "M0028" "field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
 let rec check_typ_path env path : T.con =
