@@ -61,4 +61,5 @@ let error_codes : (string * string option) list =
     "M0056", None; (* Variable is not available in compiled code *)
     "M0057", None; (* Unbound variable *)
     "M0058", None; (* No type can be inferred for actor reference *)
+    "M0059", None; (* Operator is not defined for operand type *)
   ]

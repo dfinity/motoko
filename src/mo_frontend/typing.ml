@@ -797,7 +797,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_unop op t) then
-        error env exp.at "operator is not defined for operand type\n  %s"
+        error_new env exp.at "M0059" "operator is not defined for operand type\n  %s"
           (T.string_of_typ_expand t);
       ot := t;
     end;
