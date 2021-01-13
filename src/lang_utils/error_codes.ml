@@ -143,4 +143,5 @@ let error_codes : (string * string option) list =
     "M0138", None; (* Actor classes are not supported *)
     "M0139", None; (* Inner actor classes are not supported *)
     "M0140", None; (* Actor classes with type parameters are not supported *)
+    "M0141", None; (* Forbidden declaration in program *)
   ]
