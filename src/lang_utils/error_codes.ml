@@ -63,4 +63,6 @@ let error_codes : (string * string option) list =
     "M0058", None; (* No type can be inferred for actor reference *)
     "M0059", None; (* Operator is not defined for operand type *)
     "M0060", None; (* Operator is not defined for operand types *)
+    "M0061", None; (* Comparing abstract type to itself at supertype *)
+    "M0062", None; (* Comparing incompatible type at common supertype *)
   ]

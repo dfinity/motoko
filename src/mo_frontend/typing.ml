@@ -82,6 +82,9 @@ let type_error_new at code text : Diag.message =
 let type_warning at text : Diag.message =
   Diag.warning_message at "type" text
 
+let type_warning_new at code text : Diag.message =
+  Diag.warning_message_new at code "type" text
+
 let type_info at text : Diag.message =
   Diag.info_message at "type" text
 
@@ -101,6 +104,9 @@ let local_error_new env at code fmt =
 
 let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
+
+let warn_new env at code fmt =
+  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning_new at code s)) fmt
 
 let info env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
@@ -829,12 +835,12 @@ and infer_exp'' env exp : T.typ =
         error_bin_op env exp.at t1 t2;
       if not (T.eq t t1 || T.eq t t2) then
         if T.eq t1 t2 then
-          warn env exp.at
+          warn_new env exp.at "M0061"
             "comparing abstract type\n  %s\nto itself at supertype\n  %s"
             (T.string_of_typ_expand t1)
             (T.string_of_typ_expand t)
         else
-          warn env exp.at
+          warn_new env exp.at "M0062"
             "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
             (T.string_of_typ_expand t1)
             (T.string_of_typ_expand t2)
