@@ -1848,7 +1848,7 @@ and infer_obj env s fields at : T.typ =
       List.iter (fun T.{lab; typ} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields fields in
-          error env (T.Env.find lab pub_val)
+          error_new env (T.Env.find lab pub_val) "M0124"
             "public actor field %s has non-shared function type\n  %s"
             lab (T.string_of_typ_expand typ)
       ) tfs;
