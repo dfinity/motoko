@@ -549,10 +549,8 @@ and check_typ_bind env typ_bind : T.con * T.bind * Scope.typ_env * Scope.con_env
 and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
   let pars = List.length tbs in
   let args = List.length ts in
-  if pars > args then
-    error env at "too few type arguments";
-  if pars < args then
-    error env at "too many type arguments";
+  if pars <> args then
+    error_new env at "M0045" "wrong number of type arguments: expected %d but got %d" pars args;
   let rec go tbs' ts' ats' =
     match tbs', ts', ats' with
     | tb::tbs', t::ts', at'::ats' ->

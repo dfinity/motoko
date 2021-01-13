@@ -47,4 +47,5 @@ let error_codes : (string * string option) list =
     "M0042", None; (* Actor field must have shared function type *)
     "M0043", None; (* Type parameter has cyclic bounds *)
     "M0044", None; (* Duplicate name in type parameter list *)
+    "M0045", None; (* Wrong number of type arguments *)
   ]
