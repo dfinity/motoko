@@ -1140,7 +1140,7 @@ and infer_exp'' env exp : T.typ =
         match String.split_on_char ' ' id.it with
         | ["continue"; name] -> name
         | _ -> id.it
-      in local_error env id.at "unbound label %s" name
+      in local_error_new env id.at "M0083" "unbound label %s" name
     );
     T.Non
   | RetE exp1 ->

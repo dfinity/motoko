@@ -85,4 +85,5 @@ let error_codes : (string * string option) list =
     "M0080", None; (* Local class type is contained in inferred block type *)
     "M0081", None; (* If branches have inconsistent types *)
     "M0082", None; (* Expected iterable type *)
+    "M0083", None; (* Unbound label *)
   ]
