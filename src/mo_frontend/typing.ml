@@ -1719,7 +1719,7 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       match pfs' with
       | pf'::_ when pf'.it.id.it = lab ->
-        error env pf'.at "duplicate field %s in object pattern" lab
+        error_new env pf'.at "M0121" "duplicate field %s in object pattern" lab
       | _ -> check_pat_fields env s tfs' pfs' ve' at
 
 and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it

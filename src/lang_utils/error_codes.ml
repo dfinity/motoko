@@ -123,4 +123,5 @@ let error_codes : (string * string option) list =
     "M0118", None; (* Tuple pattern size mismatch *)
     "M0119", None; (* Object field is not contained in type *)
     "M0120", None; (* Cannot pattern match mutable field *)
+    "M0121", None; (* Duplicate field in object pattern *)
   ]
