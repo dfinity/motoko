@@ -140,4 +140,7 @@ let error_codes : (string * string option) list =
     "M0135", None; (* Actor class has non-async return type *)
     "M0136", None; (* Empty block type mismatch *)
     "M0137", None; (* Type definition references type paramater from outer scope *)
+    "M0138", None; (* Actor classes are not supported *)
+    "M0139", None; (* Inner actor classes are not supported *)
+    "M0140", None; (* Actor classes with type parameters are not supported *)
   ]
