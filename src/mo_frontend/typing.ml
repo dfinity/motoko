@@ -740,6 +740,12 @@ let error_duplicate env kind id =
   | None -> error_new env id.at "M0051" "duplicate definition for %s%s in block" kind id.it
   | Some x -> error_new env id.at "M0052" "duplicate %sfield name %s in object" kind x
 
+let error_bin_op env at t1 t2 =
+  error_new env at "M0060"
+    "operator is not defined for operand types\n  %s\nand\n  %s"
+    (T.string_of_typ_expand t1)
+    (T.string_of_typ_expand t2)
+
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
@@ -809,10 +815,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_binop op t) then
-        error env exp.at
-          "operator not defined for operand types\n  %s\nand\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2);
+        error_bin_op env exp.at t1 t2;
       ot := t
     end;
     t
@@ -823,10 +826,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_relop op t) then
-        error env exp.at
-          "operator not defined for operand types\n  %s\nand\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2);
+        error_bin_op env exp.at t1 t2;
       if not (T.eq t t1 || T.eq t t2) then
         if T.eq t1 t2 then
           warn env exp.at
