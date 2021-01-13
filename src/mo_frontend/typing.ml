@@ -361,16 +361,16 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.AsyncCap c -> T.Con(c, []), fun c' -> C.AwaitCap c'
    | C.QueryCap c -> T.Con(c, []), fun _c' -> C.ErrorCap
    | C.ErrorCap
-   | C.NullCap -> error env at "misplaced %s; try enclosing in an async function" s
+   | C.NullCap -> error_new env at "M0037" "misplaced %s; try enclosing in an async function" s
 
 and check_AwaitCap env s at =
    match env.async with
    | C.AwaitCap c -> T.Con(c, [])
    | C.AsyncCap _
    | C.QueryCap _ ->
-     error env at "misplaced %s; try enclosing in an async expression" s
+     error_new env at "M0038" "misplaced %s; try enclosing in an async expression" s
    | C.ErrorCap
-   | C.NullCap -> error env at "misplaced %s" s
+   | C.NullCap -> error_new env at "M0038" "misplaced %s" s
 
 and check_ErrorCap env s at =
    match env.async with
