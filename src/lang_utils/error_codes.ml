@@ -55,4 +55,5 @@ let error_codes : (string * string option) list =
     "M0050", None; (* Literal does not have expected type *)
     "M0051", None; (* Duplicate definition in block *)
     "M0052", None; (* Duplicate definition in object *)
+    "M0053", None; (* Cannot infer expression in class using forward type reference *)
   ]

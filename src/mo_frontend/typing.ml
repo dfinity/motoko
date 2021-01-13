@@ -750,7 +750,7 @@ and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
   let t' = T.promote t in
   if t' = T.Pre then
-    error env exp.at
+    error_new env exp.at "M0053"
       "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
       (T.string_of_typ_expand  t);
   t'
