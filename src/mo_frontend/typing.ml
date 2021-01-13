@@ -1372,7 +1372,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
-      local_error env exp1.at
+      local_error_new env exp1.at "M0097"
         "expected function type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1);
       if inst.it = None then
