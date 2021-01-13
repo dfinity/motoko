@@ -120,4 +120,5 @@ let error_codes : (string * string option) list =
     "M0115", None; (* Option pattern cannot consume type *)
     "M0116", None; (* Variant pattern cannot consume type *)
     "M0117", None; (* Pattern cannot consume type *)
+    "M0118", None; (* Tuple pattern size mismatch *)
   ]
