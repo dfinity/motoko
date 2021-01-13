@@ -888,10 +888,10 @@ and infer_exp'' env exp : T.typ =
       match List.nth_opt ts n with
       | Some t -> t
       | None ->
-        error env exp.at "tuple projection %n is out of bounds for type\n  %s"
+        error_new env exp.at "M0066" "tuple projection %n is out of bounds for type\n  %s"
           n (T.string_of_typ_expand t1)
     with Invalid_argument _ ->
-      error env exp1.at
+      error_new env exp1.at "M0067"
         "expected tuple type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
