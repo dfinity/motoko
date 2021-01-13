@@ -474,7 +474,7 @@ and check_typ_field env s typ_field : T.field =
   let t = infer_mut mut (check_typ env typ) in
   if not env.pre && s = T.Actor then begin
     if not (T.is_shared_func t) then
-      error env typ.at "actor field %s must have shared function type, but has type\n  %s"
+      error_new env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
         id.it (T.string_of_typ_expand t)
   end;
   T.{lab = id.it; typ = t}
