@@ -95,8 +95,10 @@ let argspec = Arg.align [
   "--sanity-checks",
   Arg.Unit
     (fun () -> Flags.sanity := true),
-    " enable sanity checking in the RTS and generated code";
-]
+  " enable sanity checking in the RTS and generated code";
+    ]
+  @  Args.inclusion_args
+
 
 
 let set_out_file files ext =
@@ -176,7 +178,7 @@ let () =
   (useful for debugging infinite loops)
   *)
   Printexc.record_backtrace true;
-  Arg.parse argspec add_arg usage;
+  Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
   process_profiler_flags ();
