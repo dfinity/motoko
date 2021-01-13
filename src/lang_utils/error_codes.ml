@@ -58,4 +58,5 @@ let error_codes : (string * string option) list =
     "M0053", None; (* Cannot infer expression in class using forward type reference *)
     "M0054", None; (* Cannot infer type of primitive *)
     "M0055", None; (* Cannot infer type of forward variable *)
+    "M0056", None; (* Variable is not available in compiled code *)
   ]

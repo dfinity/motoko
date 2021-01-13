@@ -780,7 +780,7 @@ and infer_exp'' env exp : T.typ =
       error_new env id.at "M0055" "cannot infer type of forward variable %s" id.it;
     | Some (t, Unavailable) ->
       if !Flags.compiled then
-        error env id.at "variable %s is in scope but not available in compiled code" id.it
+        error_new env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
     | Some (t, Available) -> t
     | None ->
