@@ -1702,7 +1702,7 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
   | [], pf::_ ->
-    error env pf.at
+    error_new env pf.at "M0119"
       "object field %s is not contained in expected type\n  %s"
       pf.it.id.it (T.string_of_typ (T.Obj (s, tfs)))
   | T.{lab; typ = Typ _}::tfs', _ ->  (* TODO: remove the namespace hack *)

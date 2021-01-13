@@ -1,4 +1,4 @@
-objpat-infer.mo:5.36-5.37: type error[M0000], object field a is not contained in expected type
+objpat-infer.mo:5.36-5.37: type error[M0119], object field a is not contained in expected type
   {}
 objpat-infer.mo:23.13-23.21: type error[M0096], expression of type
   actor {}
