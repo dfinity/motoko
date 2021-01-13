@@ -100,4 +100,5 @@ let error_codes : (string * string option) list =
     "M0095", None; (* Function return type does not match expected return type *)
     "M0096", None; (* Expression can't produce expected type *)
     "M0097", None; (* Expected function type *)
+    "M0098", None; (* Cannot instantiate function type *)
   ]

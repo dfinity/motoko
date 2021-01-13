@@ -1403,7 +1403,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let t_ret' = T.open_ ts t_ret in
         ts, t_arg', t_ret'
       with Bi_match.Bimatch msg ->
-        error env at
+        error_new env at "M0098"
           "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\nbecause %s"
           (T.string_of_typ t1)
           (T.string_of_typ t2)
