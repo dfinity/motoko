@@ -10,17 +10,17 @@ pat-inconsistent.mo:5.13-5.29: warning[M0145], this pattern of type
   Int
 does not cover value
   0 or -1 or _
-pat-inconsistent.mo:6.31-6.44: warning[M0000], this pattern is never matched
-pat-inconsistent.mo:7.34-7.50: warning[M0000], this pattern is never matched
+pat-inconsistent.mo:6.31-6.44: warning[M0146], this pattern is never matched
+pat-inconsistent.mo:7.34-7.50: warning[M0146], this pattern is never matched
 pat-inconsistent.mo:8.13-8.33: warning[M0145], this pattern of type
   (Int, Int)
 does not cover value
   (-1, 0 or 1 or _) or
   (2, 0 or 1 or _) or
   (0 or 1 or _, _)
-pat-inconsistent.mo:9.20-9.22: warning[M0000], this pattern is never matched
-pat-inconsistent.mo:10.20-10.24: warning[M0000], this pattern is never matched
-pat-inconsistent.mo:11.20-11.30: warning[M0000], this pattern is never matched
+pat-inconsistent.mo:9.20-9.22: warning[M0146], this pattern is never matched
+pat-inconsistent.mo:10.20-10.24: warning[M0146], this pattern is never matched
+pat-inconsistent.mo:11.20-11.30: warning[M0146], this pattern is never matched
 pat-inconsistent.mo:16.19-16.27: type error[M0104], pattern branches have incompatible types,
 left consumes
   Nat

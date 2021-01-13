@@ -90,7 +90,7 @@ pat-subtyping-fail.mo:89.9-89.36: type error[M0117], pattern of type
   {a : Nat; b : Nat}
 cannot consume expected type
   {}
-pat-subtyping-fail.mo:94.8-94.13: warning[M0000], this pattern is never matched
+pat-subtyping-fail.mo:94.8-94.13: warning[M0146], this pattern is never matched
 pat-subtyping-fail.mo:97.9-97.20: type error[M0117], pattern of type
   Null
 cannot consume expected type
@@ -113,5 +113,5 @@ pat-subtyping-fail.mo:117.9-117.18: type error[M0117], pattern of type
   {#B}
 cannot consume expected type
   {#A : Nat; #B}
-pat-subtyping-fail.mo:123.8-123.12: warning[M0000], this pattern is never matched
-pat-subtyping-fail.mo:124.8-124.9: warning[M0000], this pattern is never matched
+pat-subtyping-fail.mo:123.8-123.12: warning[M0146], this pattern is never matched
+pat-subtyping-fail.mo:124.8-124.9: warning[M0146], this pattern is never matched

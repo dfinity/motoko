@@ -28,7 +28,7 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Any  </:  None
 so that no valid instantiation exists
-inference.mo:87.20-87.27: warning[M0000], this pattern is never matched
+inference.mo:87.20-87.27: warning[M0146], this pattern is never matched
 inference.mo:94.8-94.20: type error[M0098], cannot implicitly instantiate function of type
   <T <: U, U>(T, T) -> (U, U)
 to argument of type

@@ -148,4 +148,5 @@ let error_codes : (string * string option) list =
     "M0143", None; (* Imported actor class cannot be anonymous *)
     "M0144", None; (* Expected a module or actor class *)
     "M0145", None; (* Pattern does not cover value *)
+    "M0146", None; (* Pattern is never matched *)
   ]

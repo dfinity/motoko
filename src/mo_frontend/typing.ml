@@ -199,7 +199,7 @@ let disjoint_union env at code fmt env1 env2 =
 
 let coverage' warnOrError category env f x t at =
   let uncovered, unreached = f x t in
-  List.iter (fun at -> warn env at "this pattern is never matched") unreached;
+  List.iter (fun at -> warn_new env at "M0146" "this pattern is never matched") unreached;
   if uncovered <> [] then
     warnOrError env at "M0145"
       ("this %s of type\n  %s\ndoes not cover value\n  %s" : (_, _, _, _) format4)
