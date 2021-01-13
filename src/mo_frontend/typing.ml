@@ -1118,7 +1118,7 @@ and infer_exp'' env exp : T.typ =
         let ve = check_pat_exhaustive warn env t2' pat in
         check_exp (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ | Not_found ->
-        local_error env exp1.at
+        local_error_new env exp1.at "M0082"
           "expected iterable type, but expression has type\n  %s"
           (T.string_of_typ_expand t1)
       );
