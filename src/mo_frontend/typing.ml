@@ -440,7 +440,7 @@ and check_typ' env typ : T.typ =
       | T.Returns, [] when sort.it = T.Shared T.Write -> ()
       | T.Promises, _ -> ()
       | _ ->
-        error env typ2.at
+        error_new env typ2.at "M0041"
           "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
       end;
@@ -997,7 +997,7 @@ and infer_exp'' env exp : T.typ =
             error env exp1.at
               "shared function with async result type has non-async body"
         | _ ->
-          error env typ.at "shared function has non-async result type\n  %s"
+          error_new env typ.at "M0041" "shared function has non-async result type\n  %s"
             (T.string_of_typ_expand codom)
       end
     end;
