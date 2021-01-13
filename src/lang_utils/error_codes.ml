@@ -86,4 +86,6 @@ let error_codes : (string * string option) list =
     "M0081", None; (* If branches have inconsistent types *)
     "M0082", None; (* Expected iterable type *)
     "M0083", None; (* Unbound label *)
+    "M0084", None; (* Cannot infer return type *)
+    "M0085", None; (* Misplaced return *)
   ]

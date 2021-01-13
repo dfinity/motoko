@@ -1147,11 +1147,11 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       match env.rets with
       | Some T.Pre ->
-        local_error env exp.at "cannot infer return type"
+        local_error_new env exp.at "M0084" "cannot infer return type"
       | Some t ->
         check_exp env t exp1
       | None ->
-        local_error env exp.at "misplaced return"
+        local_error_new env exp.at "M0085" "misplaced return"
     end;
     T.Non
   | ThrowE exp1 ->
