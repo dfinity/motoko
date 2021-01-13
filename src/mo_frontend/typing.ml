@@ -1854,7 +1854,7 @@ and infer_obj env s fields at : T.typ =
       ) tfs;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
-          local_error env ef.it.dec.at
+          local_error_new env ef.it.dec.at "M0125"
             "public actor field needs to be a manifest function"
       ) fields;
       List.iter (fun ef ->

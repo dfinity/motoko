@@ -127,4 +127,5 @@ let error_codes : (string * string option) list =
     "M0122", None; (* Colliding hashes in object type *)
     "M0123", None; (* Local class type contained in object or actor type *)
     "M0124", None; (* Public actor field has non-shared type *)
+    "M0125", None; (* Public actor field needs to be a manifest function *)
   ]
