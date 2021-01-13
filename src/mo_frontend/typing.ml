@@ -1275,7 +1275,8 @@ and check_exp' env0 t exp : T.typ =
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then begin
-      local_error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
+      local_error_new env exp.at "M0092"
+        "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t1')
         (associated_region env t1 exp.at)
