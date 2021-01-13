@@ -967,7 +967,7 @@ and infer_exp'' env exp : T.typ =
     let ts = List.map (infer_exp env) exps in
     let t1 = List.fold_left T.lub T.Non ts in
     if not env.pre && inconsistent t1 ts then
-      warn env exp.at
+      warn_new env exp.at "M0074"
         "this array has type %s because elements have inconsistent types"
         (T.string_of_typ (T.Array t1));
     T.Array (match mut.it with Const -> t1 | Var -> T.Mut t1)
@@ -978,7 +978,7 @@ and infer_exp'' env exp : T.typ =
       if not env.pre then check_exp env T.nat exp2;
       t
     with Invalid_argument _ ->
-      error env exp1.at
+      error_new env exp1.at "M0075"
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )

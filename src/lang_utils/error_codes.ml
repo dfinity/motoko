@@ -76,4 +76,6 @@ let error_codes : (string * string option) list =
     "M0071", None; (* Cannot infer type of forward field reference *)
     "M0072", None; (* Field does not exist in type *)
     "M0073", None; (* Expected mutable assignment target *)
+    "M0074", None; (* Array elements have inconsistent types *)
+    "M0075", None; (* Expected array type *)
   ]
