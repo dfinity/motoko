@@ -490,7 +490,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
   let chase typ_bind c =
     let rec chase i ts c' =
       if i > n then
-        error env typ_bind.at "type parameter %s has cyclic bounds %s"
+        error_new env typ_bind.at "M0043" "type parameter %s has cyclic bounds %s"
           (T.string_of_con c)
           (String.concat " <: " (List.map T.string_of_typ ts)) (List.rev ts)
       else

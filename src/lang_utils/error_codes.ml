@@ -45,4 +45,5 @@ let error_codes : (string * string option) list =
     "M0040", None; (* Unknowwn primitive type *)
     "M0041", None; (* Shared function has non-async result type *)
     "M0042", None; (* Actor field must have shared function type *)
+    "M0043", None; (* Type parameter has cyclic bounds *)
   ]
