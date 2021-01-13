@@ -1210,7 +1210,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp env T.Any exp1;
       if T.sub exp1.note.note_typ T.unit then
-        warn env exp.at "redundant ignore, operand already has type ()"
+        warn_new env exp.at "M0089" "redundant ignore, operand already has type ()"
     end;
     T.unit
   | ImportE (f, ri) ->

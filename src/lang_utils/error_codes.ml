@@ -91,4 +91,5 @@ let error_codes : (string * string option) list =
     "M0086", None; (* Async expressions are not supported *)
     "M0087", None; (* Ill-scoped await *)
     "M0088", None; (* Expected async type *)
+    "M0089", None; (* Redundant ignore *)
   ]
