@@ -960,7 +960,7 @@ and infer_exp'' env exp : T.typ =
         let t2 = T.as_mut t1 in
         check_exp env t2 exp2
       with Invalid_argument _ ->
-        error env exp.at "expected mutable assignment target";
+        error_new env exp.at "M0073" "expected mutable assignment target";
     end;
     T.unit
   | ArrayE (mut, exps) ->
