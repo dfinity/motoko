@@ -201,14 +201,14 @@ let coverage' warnOrError category env f x t at =
   let uncovered, unreached = f x t in
   List.iter (fun at -> warn env at "this pattern is never matched") unreached;
   if uncovered <> [] then
-    warnOrError env at
+    warnOrError env at "M0145"
       ("this %s of type\n  %s\ndoes not cover value\n  %s" : (_, _, _, _) format4)
       category
       (Type.string_of_typ_expand t)
       (String.concat " or\n  " uncovered)
 
 let coverage_cases category env cases t at =
-  coverage' warn category env Coverage.check_cases cases t at
+  coverage' warn_new category env Coverage.check_cases cases t at
 
 let coverage_pat warnOrError env pat t =
   coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
@@ -999,7 +999,7 @@ and infer_exp'' env exp : T.typ =
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs exp.at in
-    let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
+    let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error_new else warn_new) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
@@ -1115,7 +1115,7 @@ and infer_exp'' env exp : T.typ =
         let t1, t2 = T.as_mono_func_sub t in
         if not (T.sub T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
-        let ve = check_pat_exhaustive warn env t2' pat in
+        let ve = check_pat_exhaustive warn_new env t2' pat in
         check_exp (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ | Not_found ->
         local_error_new env exp1.at "M0082"
@@ -1320,7 +1320,7 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in_new [Flags.ICMode; Flags.RefMode] env exp.at "M0093"
         "a shared function is only allowed as a public field of an actor";
-    let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
+    let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error_new else warn_new) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in
     let t2 = match typ_opt with
@@ -1485,7 +1485,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t1 = T.Prim (infer_lit env lit pat.at) in
     let t = Operator.type_unop op t1 in
     if not (Operator.has_unop op t) then
-      error env pat.at "operator is not defined for operand type\n  %s"
+      error_new env pat.at "M0059" "operator is not defined for operand type\n  %s"
         (T.string_of_typ_expand t);
     t, T.Env.empty
   | TupP pats ->
@@ -1540,7 +1540,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in_new [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
-    T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
+    T.Shared ss, check_pat_exhaustive local_error_new env T.ctxt pat
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
@@ -1554,7 +1554,7 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
       error_in_new [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error_new env shared_pat.at "M0109" "class cannot be a query";
-    check_pat_exhaustive local_error env T.ctxt pat
+    check_pat_exhaustive local_error_new env T.ctxt pat
   | _, T.Memory -> assert false
 
 
@@ -1993,7 +1993,7 @@ and infer_dec env dec : T.typ =
       let cs, _tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let t_pat, ve =
-        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
+        infer_pat_exhaustive (if obj_sort.it = T.Actor then error_new else warn_new) env' pat
       in
       if obj_sort.it = T.Actor && not (T.shared t_pat) then
         error_shared env t_pat pat.at "M0034"
@@ -2295,7 +2295,7 @@ and infer_dec_valdecs env dec : Scope.t =
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive warn env t pat in
+    let ve' = check_pat_exhaustive warn_new env t pat in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
