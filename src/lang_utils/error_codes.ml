@@ -144,4 +144,5 @@ let error_codes : (string * string option) list =
     "M0139", None; (* Inner actor classes are not supported *)
     "M0140", None; (* Actor classes with type parameters are not supported *)
     "M0141", None; (* Forbidden declaration in program *)
+    "M0142", None; (* An imported library should be a module or named actor class *)
   ]
