@@ -109,4 +109,6 @@ let error_codes : (string * string option) list =
     "M0104", None; (* Pattern branches have incompatible types *)
     "M0105", None; (* Variables are not allowed in pattern alternatives *)
     "M0106", None; (* Shared function cannot take a context pattern *)
+    "M0107", None; (* Non-actor class cannot take a context pattern *)
+    "M0108", None; (* Actor class cannot take a context pattern *)
   ]

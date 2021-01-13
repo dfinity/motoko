@@ -1549,9 +1549,9 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
     T.Env.empty (* error instead? That's a breaking change *)
   | T.Shared (mode, pat), sort ->
     if sort <> T.Actor then
-      error env pat.at "non-actor class cannot take a context pattern";
+      error_new env pat.at "M0107" "non-actor class cannot take a context pattern";
     if pat.it <> WildP then
-      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "actor class cannot take a context pattern";
+      error_in_new [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error env shared_pat.at "class cannot be a query";
     check_pat_exhaustive local_error env T.ctxt pat
