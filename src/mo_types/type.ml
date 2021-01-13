@@ -1273,7 +1273,7 @@ and string_of_control_cod sugar c vs ts =
 and can_sugar t = match t with
   | Func(s, Promises, tbs, ts1, ts2)
   | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
-  | Func(s, Returns, tbs, ts1, ([Async (Var(_, 0),_)] as ts2)) ->
+  | Func(s, Returns, (_::_ as tbs), ts1, ([Async (Var(_, 0),_)] as ts2)) ->
     List.for_all (fun tb -> can_omit 0 tb.bound) tbs &&
     List.for_all (can_omit 0) ts1 &&
     List.for_all (can_omit 0) ts2

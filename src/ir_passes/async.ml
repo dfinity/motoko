@@ -61,6 +61,30 @@ let new_asyncT =
 let new_asyncE () =
   varE (var "@new_async" new_asyncT)
 
+let new_fulfilled_asyncT =
+  T.Func (
+      T.Local,
+      T.Returns,
+      [ { var = "T"; sort = T.Type; bound = T.Any } ],
+      [T.Var ("T", 0)],
+      [t_async unary (T.Var ("T", 0))]
+    )
+
+let new_fulfilled_asyncE () =
+  varE (var "@new_fulfilled_async" new_fulfilled_asyncT)
+
+let new_failed_asyncT =
+  T.Func (
+      T.Local,
+      T.Returns,
+      [ { var = "T"; sort = T.Type; bound = T.Any } ],
+      [T.catch],
+      [t_async unary (T.Var ("T", 0))]
+    )
+
+let new_failed_asyncE () =
+  varE (var "@new_failed_async" new_failed_asyncT)
+
 let new_async t1 =
   let call_new_async = callE (new_asyncE ()) [t1] (tupE []) in
   let async = fresh_var "async" (typ (projE call_new_async 0)) in
@@ -243,6 +267,39 @@ let transform mode prog =
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
+    | PrimE (CPSDoAsync t0, [exp1]) ->
+      let t0 = t_typ t0 in
+      let tb, ts1, t2 = match typ exp1 with
+        | Func(_,_, [tb], [Func(_, _, [], ts1, [T.Async(_, t2)]); _], _ (* [T.Async(_, _)]*)) ->
+          tb, List.map t_typ (List.map (T.open_ [t0]) ts1), T.open_ [t0] t2
+        | t ->
+          Printf.printf "t = %s" (T.string_of_typ t);
+          assert false in
+      (*
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
+      (blockE [
+               letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+               let ic_reply = (* flatten v, here and below? *)
+                 let v = fresh_var "v" (T.seq ts1) in
+                 v --> (ic_replyE ts1 (varE v)) in
+               let ic_reject =
+                 let e = fresh_var "e" T.catch in
+                 [e] -->* (ic_rejectE (errorMessageE (varE e))) in
+               let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
+               expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
+               ]
+               (varE nary_async)
+
+      ).it*)
+      (
+        let k_ret = (* flatten v, here and below? *)
+          let v = fresh_var "v" (T.seq ts1) in
+          v --> callE (new_fulfilled_asyncE()) [t2] (varE v)  in
+        let k_fail =
+          let e = fresh_var "e" T.catch in
+          [e] -->* callE (new_failed_asyncE()) [t2] (varE e) in
+        callE (t_exp exp1) [t0] (tupE [k_ret; k_fail])
+      ).it
     | PrimE (CPSAsync t0, [exp1]) ->
       let t0 = t_typ t0 in
       let tb, ts1 = match typ exp1 with

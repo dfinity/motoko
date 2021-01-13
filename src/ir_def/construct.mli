@@ -121,6 +121,11 @@ val contT : typ -> typ
 val err_contT : typ
 val cpsT : typ -> typ
 
+(* Async continuations (for do-async blocks) *)
+val async_contT : typ -> typ -> typ
+val async_err_contT : typ -> typ
+val async_cpsT : typ -> typ -> typ
+
 (* Sequence expressions *)
 
 val seqE : exp list -> exp

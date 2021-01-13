@@ -12,6 +12,10 @@ let fresh_cont typ = fresh_var "k" (contT typ)
 
 let fresh_err_cont ()  = fresh_var "r" (err_contT)
 
+let fresh_async_cont typ ans_typ = fresh_var "k" (async_contT typ ans_typ)
+
+let fresh_async_err_cont ans_typ  = fresh_var "r" (async_err_contT ans_typ)
+
 (* continuations, syntactic and meta-level *)
 
 type kont = ContVar of var
@@ -61,7 +65,7 @@ type label_sort = Cont of kont | Label
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
 let rec t_exp context exp =
-  assert (eff exp = T.Triv);
+  (*  assert (eff exp = T.Triv); *)
   { exp with it = t_exp' context exp.it }
 and t_exp' context exp' =
   match exp' with
@@ -100,28 +104,29 @@ and t_exp' context exp' =
       | None -> assert false
     end
   | DoAsyncE (tb, exp1, typ1) ->
-     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-     (* add the implicit return/throw label *)
-     let k_ret = fresh_cont (typ exp1) in
-     let k_fail = fresh_err_cont () in
-     let context' =
-       LabelEnv.add Return (Cont (ContVar k_ret))
-         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-     in
-     (cps_do_asyncE typ1 (typ exp1)
-        (forall [tb] ([k_ret; k_fail] -->*
+    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
+    (* add the implicit return/throw label *)
+    let ans_typ = T.Async(T.Con(tb.it.con,[]),typ exp1) in
+    let k_ret = fresh_async_cont (typ exp1) ans_typ in
+    let k_fail = fresh_async_err_cont ans_typ in
+    let context' =
+      LabelEnv.add Return (Cont (ContVar k_ret))
+        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+    in
+    (cps_do_asyncE typ1 (typ exp1)
+       (forall [tb] ([k_ret; k_fail] -->*
                        c_exp context' exp1 (ContVar k_ret)))).it
   | AsyncE (tb, exp1, typ1) ->
-     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-     (* add the implicit return/throw label *)
-     let k_ret = fresh_cont (typ exp1) in
-     let k_fail = fresh_err_cont () in
-     let context' =
-       LabelEnv.add Return (Cont (ContVar k_ret))
-         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-     in
-     (cps_asyncE typ1 (typ exp1)
-        (forall [tb] ([k_ret; k_fail] -->*
+    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
+    (* add the implicit return/throw label *)
+    let k_ret = fresh_cont (typ exp1) in
+    let k_fail = fresh_err_cont () in
+    let context' =
+      LabelEnv.add Return (Cont (ContVar k_ret))
+        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+    in
+    (cps_asyncE typ1 (typ exp1)
+       (forall [tb] ([k_ret; k_fail] -->*
                        c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
@@ -356,9 +361,10 @@ and c_exp' context exp k =
       | None -> assert false
     end
   | DoAsyncE (tb, exp1, typ1) ->
-     (* add the implicit return label *)
-    let k_ret = fresh_cont (typ exp1) in
-    let k_fail = fresh_err_cont () in
+    (* add the implicit return label *)
+    let ans_typ = T.Async(T.Con(tb.it.con,[]),typ exp1) in
+    let k_ret = fresh_async_cont (typ exp1) ans_typ in
+    let k_fail = fresh_async_err_cont ans_typ in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)

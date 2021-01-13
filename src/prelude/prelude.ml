@@ -400,6 +400,17 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
+func @new_fulfilled_async<T <: Any>(t : T) : @Async<T> =
+  func (k : @Cont<T>, _ : @Cont<Error>) {
+    @refund := 0;
+    k(t)
+  };
+
+func @new_failed_async<T <: Any>(e : Error) : @Async<T> =
+  func (_ : @Cont<T>, r : @Cont<Error>) {
+    r(e)
+  };
+
 let @ic00 = actor "aaaaa-aa" : actor {
   create_canister : () -> async { canister_id : Principal };
   install_code : {

@@ -516,6 +516,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
       (* TODO: We can check more here, can we *)
+    | CPSDoAsync t, [exp] ->
+      check (not (env.flavor.has_await)) "CPSDoAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSDoAsync in post-async flavor";
+      check_typ env t;
+      (* TODO: We can check more here, can we *)
     | CPSAsync t, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";

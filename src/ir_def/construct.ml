@@ -519,6 +519,16 @@ let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
 
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
 
+
+(* async continuation types *)
+
+let async_contT typ ans_typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [ans_typ])
+
+let async_err_contT ans_typ =  T.Func (T.Local, T.Returns, [], [T.catch], [ans_typ])
+
+let async_cpsT typ ans_typ = T.Func (T.Local, T.Returns, [],
+                             [async_contT typ ans_typ; async_err_contT ans_typ], [ans_typ])
+
 (* Sequence expressions *)
 
 let seqE es =
