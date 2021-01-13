@@ -1264,7 +1264,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | ArrayE (mut, exps), T.Array t' ->
     if (mut.it = Var) <> T.is_mut t' then
-      local_error env exp.at
+      local_error_new env exp.at "M0091"
         "%smutable array expression cannot produce expected type\n  %s"
         (if mut.it = Const then "im" else "")
         (T.string_of_typ_expand (T.Array t'));
