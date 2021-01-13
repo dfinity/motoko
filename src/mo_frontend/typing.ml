@@ -2227,7 +2227,7 @@ and infer_dec_typdecs env dec : Scope.t =
       let cs_k = T.cons_kind k in
       let free_params = T.ConSet.inter typ_params cs_k in
       if not (T.ConSet.is_empty free_params) then
-        error env dec.at
+        error_new env dec.at "M0137"
           "type definition %s %s references type parameter(s) %s from an outer scope"
           id.it
           (T.string_of_kind k)
