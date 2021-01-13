@@ -1859,7 +1859,7 @@ and infer_obj env s fields at : T.typ =
       ) fields;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Private && is_actor_method ef.it.dec then
-          error_in [Flags.ICMode; Flags.RefMode] env ef.it.dec.at
+          error_in_new [Flags.ICMode; Flags.RefMode] env ef.it.dec.at "M0126"
             "a shared function cannot be private"
       ) fields;
     end;
