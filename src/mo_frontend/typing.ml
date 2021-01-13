@@ -1333,7 +1333,7 @@ and check_exp' env0 t exp : T.typ =
         (if sort = T.Local then "non-" else "")
         (if s = T.Local then "non-" else "");
     if not (T.sub t2 codom) then
-      error env exp.at
+      error_new env exp.at "M0095"
         "function return type\n  %s\ndoes not match expected return type\n  %s"
         (T.string_of_typ_expand t2) (T.string_of_typ_expand codom);
     let env' =
