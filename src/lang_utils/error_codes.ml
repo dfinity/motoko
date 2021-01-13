@@ -52,4 +52,5 @@ let error_codes : (string * string option) list =
     "M0047", None; (* Send capability required *)
     "M0048", None; (* Literal out of range *)
     "M0049", None; (* String literal is not valid utf8 *)
+    "M0050", None; (* Literal does not have expected type *)
   ]

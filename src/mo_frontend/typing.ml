@@ -698,7 +698,7 @@ let check_lit env t lit at =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-      error env at
+      error_new env at "M0050"
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
