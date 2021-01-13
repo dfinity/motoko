@@ -1883,18 +1883,18 @@ and check_system_fields env sort scope fields =
             begin
               let t1 = T.Env.find id.it scope.Scope.val_env in
               if not (T.sub t1 t) then
-                local_error env ef.at "system function %s is declared with type\n  %s\ninstead of expected type\n  %s" id.it
+                local_error_new env ef.at "M0127" "system function %s is declared with type\n  %s\ninstead of expected type\n  %s" id.it
                   (T.string_of_typ t1) (T.string_of_typ t)
             end
-          else warn env id.at "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
+          else warn_new env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->
           if vis = System then
-            local_error env id.at "unexpected system method named %s, expected %s"
+            local_error_new env id.at "M0129" "unexpected system method named %s, expected %s"
               id.it (String.concat " or " (List.map fst system_funcs))
           else ()
       end
     | _, System, _ ->
-      local_error env ef.it.vis.at "misplaced system visibility, did you mean private?"
+      local_error_new env ef.it.vis.at "M0130" "misplaced system visibility, did you mean private?"
     | _ -> ())
   fields
 

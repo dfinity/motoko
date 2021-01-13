@@ -129,4 +129,8 @@ let error_codes : (string * string option) list =
     "M0124", None; (* Public actor field has non-shared type *)
     "M0125", None; (* Public actor field needs to be a manifest function *)
     "M0126", None; (* Shared function cannot be private *)
+    "M0127", None; (* System function with wrong type *)
+    "M0128", None; (* Function with system function name but wrong visibility *)
+    "M0129", None; (* Unexpected system method name *)
+    "M0130", None; (* Misplaced system visibility *)
   ]
