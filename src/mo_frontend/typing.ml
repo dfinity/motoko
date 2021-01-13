@@ -1069,7 +1069,7 @@ and infer_exp'' env exp : T.typ =
     let t3 = infer_exp env exp3 in
     let t = T.lub t2 t3 in
     if not env.pre && inconsistent t [t2; t3] then
-      warn env exp.at
+      warn_new env exp.at "M0081"
         "this if has type %s because branches have inconsistent types,\ntrue produces\n  %s\nfalse produces\n  %s"
         (T.string_of_typ t)
         (T.string_of_typ_expand t2)
