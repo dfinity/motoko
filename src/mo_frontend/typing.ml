@@ -1803,7 +1803,7 @@ and object_of_scope env sort fields scope at =
     (fun x y ->
       if not (T.is_typ x.T.typ) && not (T.is_typ y.T.typ) &&
          Hash.hash x.T.lab = Hash.hash y.T.lab
-      then error env at "field names %s and %s in %sobject type have colliding hashes"
+      then error_new env at "M0122" "field names %s and %s in %sobject type have colliding hashes"
         x.T.lab y.T.lab (T.string_of_obj_sort sort);
     ) tfs';
 
