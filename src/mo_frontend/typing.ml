@@ -1539,7 +1539,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Local -> T.Local, T.Env.empty
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
-      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
+      error_in_new [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
     T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
