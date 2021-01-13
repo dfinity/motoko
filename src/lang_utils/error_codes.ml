@@ -138,4 +138,5 @@ let error_codes : (string * string option) list =
     "M0133", None; (* Misplaced stability modifier *)
     "M0134", None; (* Class body type mismatch *)
     "M0135", None; (* Actor class has non-async return type *)
+    "M0136", None; (* Empty block type mismatch *)
   ]

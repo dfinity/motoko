@@ -2046,7 +2046,7 @@ and check_block_exps env t decs at =
   match decs with
   | [] ->
     if not (T.sub T.unit t) then
-      local_error env at "empty block cannot produce expected type\n  %s"
+      local_error_new env at "M0136" "empty block cannot produce expected type\n  %s"
         (T.string_of_typ_expand t)
   | [dec] ->
     check_dec env t dec
