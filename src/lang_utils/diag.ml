@@ -65,10 +65,10 @@ let has_errors : messages -> bool =
 
 let string_of_message msg =
   let label = match msg.sev with
-    | Error -> Printf.sprintf "%s error" msg.cat
-    | Warning -> "warning"
+    | Error -> Printf.sprintf "%s error[%s]" msg.cat msg.code
+    | Warning -> Printf.sprintf "warning[%s]" msg.code
     | Info -> "info" in
-  Printf.sprintf "%s: %s[%s], %s\n" (Source.string_of_region msg.at) label msg.code msg.text
+  Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
 
 let print_message msg =
   if msg.sev <> Error && not !Flags.print_warnings
