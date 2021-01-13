@@ -1439,7 +1439,7 @@ and infer_case env t_pat t case =
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   let t'' = T.lub t t' in
   if not env.pre && inconsistent t'' [t; t'] then
-    warn env case.at
+    warn_new env case.at "M0101"
       "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
       (T.string_of_typ t'')
       (T.string_of_typ_expand t)

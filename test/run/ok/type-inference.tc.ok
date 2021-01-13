@@ -18,17 +18,17 @@ true produces
   ()
 false produces
   {}
-type-inference.mo:13.33-13.41: warning[M0000], the switch has type Any because branches have inconsistent types,
+type-inference.mo:13.33-13.41: warning[M0101], the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
   Nat
-type-inference.mo:14.33-14.47: warning[M0000], the switch has type Any because branches have inconsistent types,
+type-inference.mo:14.33-14.47: warning[M0101], the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
   [var Nat]
-type-inference.mo:15.43-15.56: warning[M0000], the switch has type Any because branches have inconsistent types,
+type-inference.mo:15.43-15.56: warning[M0101], the switch has type Any because branches have inconsistent types,
 this case produces type
   Int
 the previous produce type
