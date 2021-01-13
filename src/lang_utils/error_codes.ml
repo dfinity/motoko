@@ -82,4 +82,5 @@ let error_codes : (string * string option) list =
     "M0077", None; (* Shared function is only allowed as a public field of an actor *)
     "M0078", None; (* Shared function with () result type has unexpected body *)
     "M0079", None; (* Shared function with async result type has non-async body *)
+    "M0080", None; (* Local class type is contained in inferred block type *)
   ]

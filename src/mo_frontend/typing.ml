@@ -1043,7 +1043,7 @@ and infer_exp'' env exp : T.typ =
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
     (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
-      error env exp.at
+      error_new env exp.at "M0080"
         "local class type %s is contained in inferred block type\n  %s"
         (Con.to_string c)
         (T.string_of_typ_expand t)
