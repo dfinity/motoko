@@ -106,4 +106,5 @@ let error_codes : (string * string option) list =
     "M0101", None; (* Switch with inconsistent branch types *)
     "M0102", None; (* Cannot infer type of wildcard *)
     "M0103", None; (* Cannot infer type of variable *)
+    "M0104", None; (* Pattern branches have incompatible types *)
   ]

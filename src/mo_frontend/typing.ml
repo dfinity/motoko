@@ -1505,7 +1505,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t2, ve2 = infer_pat env pat2 in
     let t = T.lub t1 t2 in
     if not (T.compatible t1 t2) then
-      error env pat.at
+      error_new env pat.at "M0104"
         "pattern branches have incompatible types,\nleft consumes\n  %s\nright consumes\n  %s"
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t2);
