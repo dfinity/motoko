@@ -72,4 +72,7 @@ let error_codes : (string * string option) list =
     "M0067", None; (* Expected tuple type *)
     "M0068", None; (* Actors are not supported *)
     "M0069", None; (* Non-toplevel actor *)
+    "M0070", None; (* Expected object type *)
+    "M0071", None; (* Cannot infer type of forward field reference *)
+    "M0072", None; (* Field does not exist in type *)
   ]

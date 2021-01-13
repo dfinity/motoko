@@ -938,17 +938,19 @@ and infer_exp'' env exp : T.typ =
       try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
       try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
       try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
-        error env exp1.at
+        error_new env exp1.at "M0070"
           "expected object type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
     (match T.lookup_val_field id.it tfs with
     | T.Pre ->
-      error env exp.at "cannot infer type of forward field reference %s"
+      error_new env exp.at "M0071"
+        "cannot infer type of forward field reference %s"
         id.it
     | t -> t
     | exception Invalid_argument _ ->
-      error env exp1.at "field %s does not exist in type\n  %s"
+      error_new env exp1.at "M0072"
+        "field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand t1)
     )
   | AssignE (exp1, exp2) ->
