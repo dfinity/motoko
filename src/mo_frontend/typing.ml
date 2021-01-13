@@ -737,8 +737,8 @@ let text_obj () =
 
 let error_duplicate env kind id =
   match as_field_id id with
-  | None -> error env id.at "duplicate definition for %s%s in block" kind id.it
-  | Some x -> error env id.at "duplicate %sfield name %s in object" kind x
+  | None -> error_new env id.at "M0051" "duplicate definition for %s%s in block" kind id.it
+  | Some x -> error_new env id.at "M0052" "duplicate %sfield name %s in object" kind x
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
