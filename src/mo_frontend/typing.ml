@@ -784,7 +784,7 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, Available) -> t
     | None ->
-      error env id.at "unbound variable %s" id.it
+      error_new env id.at "M0057" "unbound variable %s" id.it
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
