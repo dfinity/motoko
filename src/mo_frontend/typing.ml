@@ -1713,7 +1713,7 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
     | +1 -> check_pat_fields env s tfs' pfs ve at
     | _ ->
       if T.is_mut typ then
-        error env pf.at "cannot pattern match mutable field %s" lab;
+        error_new env pf.at "M0120" "cannot pattern match mutable field %s" lab;
       let ve1 = check_pat env typ pf.it.pat in
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
