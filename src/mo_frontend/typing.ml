@@ -2407,7 +2407,7 @@ let check_lib scope lib : Scope.t Diag.result =
               typ
             | ActorClassU  (sp, id, tbs, p, _, self_id, fields) ->
               if is_anon_id id then
-                error env cub.at "bad import: imported actor class cannot be anonymous";
+                error_new env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tbs -> T.Con(Option.get tbs.note, [])) tbs in
               let fun_typ = typ in
               let class_typ =
