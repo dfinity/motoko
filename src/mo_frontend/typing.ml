@@ -852,7 +852,7 @@ and infer_exp'' env exp : T.typ =
     let t = infer_exp_promote env exp1 in
     if not env.pre then begin
       if not (Show.can_show t) then
-        error env exp.at "show is not defined for operand type\n  %s"
+        error_new env exp.at "M0063" "show is not defined for operand type\n  %s"
           (T.string_of_typ_expand t);
       ot := t
     end;
