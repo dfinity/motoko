@@ -89,4 +89,5 @@ let error_codes : (string * string option) list =
     "M0084", None; (* Cannot infer return type *)
     "M0085", None; (* Misplaced return *)
     "M0086", None; (* Async expressions are not supported *)
+    "M0087", None; (* Ill-scoped await *)
   ]
