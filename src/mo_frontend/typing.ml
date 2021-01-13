@@ -777,7 +777,7 @@ and infer_exp'' env exp : T.typ =
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with
     | Some (T.Pre, _) ->
-      error env id.at "cannot infer type of forward variable %s" id.it;
+      error_new env id.at "M0055" "cannot infer type of forward variable %s" id.it;
     | Some (t, Unavailable) ->
       if !Flags.compiled then
         error env id.at "variable %s is in scope but not available in compiled code" id.it

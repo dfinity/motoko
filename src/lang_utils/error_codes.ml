@@ -57,4 +57,5 @@ let error_codes : (string * string option) list =
     "M0052", None; (* Duplicate definition in object *)
     "M0053", None; (* Cannot infer expression in class using forward type reference *)
     "M0054", None; (* Cannot infer type of primitive *)
+    "M0055", None; (* Cannot infer type of forward variable *)
   ]
