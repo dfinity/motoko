@@ -1912,13 +1912,14 @@ and check_stab env sort scope fields =
     | Some t ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
-        local_error env at "variable %s is declared stable but has non-stable type\n  %s" id (T.string_of_typ t1)
+        local_error_new env at "M0131"
+          "variable %s is declared stable but has non-stable type\n  %s" id (T.string_of_typ t1)
   in
   let idss = List.map (fun ef ->
     match sort, ef.it.stab, ef.it.dec.it with
     | (T.Object | T.Module), None, _ -> []
     | (T.Object | T.Module), Some stab, _ ->
-      local_error env stab.at
+      local_error_new env stab.at "M0132"
         "misplaced stability declaration on field of non-actor";
       []
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
@@ -1930,7 +1931,8 @@ and check_stab env sort scope fields =
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | T.Actor, Some stab, _ ->
-      local_error env stab.at "misplaced stability modifier: expected on var or simple let declarations only";
+      local_error_new env stab.at "M0133"
+        "misplaced stability modifier: expected on var or simple let declarations only";
       []
     | _ -> []) fields
   in

@@ -133,4 +133,7 @@ let error_codes : (string * string option) list =
     "M0128", None; (* Function with system function name but wrong visibility *)
     "M0129", None; (* Unexpected system method name *)
     "M0130", None; (* Misplaced system visibility *)
+    "M0131", None; (* Expected stable type *)
+    "M0132", None; (* Misplaced stability declaration *)
+    "M0133", None; (* Misplaced stability modifier *)
   ]
