@@ -984,9 +984,11 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "shared functions are not supported";
+      error_in_new [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
+        "shared functions are not supported";
       if not in_actor then
-        error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+        error_in_new [Flags.ICMode; Flags.RefMode] env exp1.at "M0077"
+          "a shared function is only allowed as a public field of an actor";
     end;
     let typ = match typ_opt with
       | Some typ -> typ

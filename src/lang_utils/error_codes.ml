@@ -78,4 +78,6 @@ let error_codes : (string * string option) list =
     "M0073", None; (* Expected mutable assignment target *)
     "M0074", None; (* Array elements have inconsistent types *)
     "M0075", None; (* Expected array type *)
+    "M0076", None; (* Shared functions are not supported *)
+    "M0077", None; (* Shared function is only allowed as a public field of an actor *)
   ]
