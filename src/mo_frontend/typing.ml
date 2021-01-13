@@ -134,8 +134,28 @@ let diag_in type_diag modes env at fmt =
     end
   else false
 
+let diag_in_new type_diag modes env at code fmt =
+  let mode = !Flags.compile_mode in
+  if !Flags.compiled && List.mem mode modes then
+    begin
+      Printf.ksprintf
+        (fun s ->
+          let s =
+            Printf.sprintf "%s\n  (This is a limitation of the current version%s.)"
+            s
+            (flag_of_compile_mode mode)
+          in
+          Diag.add_msg env.msgs (type_diag at code s)) fmt;
+      true
+    end
+  else false
+
 let error_in modes env at fmt =
   if diag_in type_error modes env at fmt then
+    raise Recover
+
+let error_in_new modes env at code fmt =
+  if diag_in_new type_error_new modes env at code fmt then
     raise Recover
 
 (* Currently unused *)
@@ -897,10 +917,12 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (obj_sort, fields) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "actors are not supported";
+      error_in_new [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
+        "actors are not supported";
       match context with
       | (AsyncE _ :: AwaitE _ :: _ :: _ ) ->
-        error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program"
+         error_in_new [Flags.ICMode; Flags.RefMode] env exp.at "M0069"
+           "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
     end;
     let env' =

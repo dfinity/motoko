@@ -70,4 +70,6 @@ let error_codes : (string * string option) list =
     "M0065", None; (* Expected option type before '!' *)
     "M0066", None; (* Tuple projection is out of bounds *)
     "M0067", None; (* Expected tuple type *)
+    "M0068", None; (* Actors are not supported *)
+    "M0069", None; (* Non-toplevel actor *)
   ]
