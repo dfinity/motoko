@@ -88,4 +88,5 @@ let error_codes : (string * string option) list =
     "M0083", None; (* Unbound label *)
     "M0084", None; (* Cannot infer return type *)
     "M0085", None; (* Misplaced return *)
+    "M0086", None; (* Async expressions are not supported *)
   ]

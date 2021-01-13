@@ -1161,7 +1161,8 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | AsyncE (typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
+    error_in_new [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+      "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1268,7 +1269,8 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "async expressions are not supported";
+    error_in_new [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+      "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then begin
       local_error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
