@@ -1328,7 +1328,7 @@ and check_exp' env0 t exp : T.typ =
       | Some typ -> check_typ env typ
     in
     if sort <> s then
-      error env exp.at
+      error_new env exp.at "M0094"
         "%sshared function does not match expected %sshared function type"
         (if sort = T.Local then "non-" else "")
         (if s = T.Local then "non-" else "");
