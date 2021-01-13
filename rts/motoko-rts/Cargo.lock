@@ -2,9 +2,9 @@
 # It is not intended for manual editing.
 [[package]]
 name = "compiler_builtins"
-version = "0.1.32"
+version = "0.1.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bc4ac2c824d2bfc612cba57708198547e9a26943af0632aff033e0693074d5c"
+checksum = "3748f82c7d366a0b4950257d19db685d4958d2fa27c6d164a3f069fec42b748b"
 
 [[package]]
 name = "libc"
