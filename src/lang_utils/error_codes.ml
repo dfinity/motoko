@@ -80,4 +80,6 @@ let error_codes : (string * string option) list =
     "M0075", None; (* Expected array type *)
     "M0076", None; (* Shared functions are not supported *)
     "M0077", None; (* Shared function is only allowed as a public field of an actor *)
+    "M0078", None; (* Shared function with () result type has unexpected body *)
+    "M0079", None; (* Shared function with async result type has non-async body *)
   ]

@@ -1025,11 +1025,11 @@ and infer_exp'' env exp : T.typ =
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
           if not (is_ignore_asyncE exp1) then
-            error env exp1.at
+            error_new env exp1.at "M0078"
               "shared function with () result type has unexpected body:\n  the body must either be of sugared form '{ ... }' \n  or explicit form '= ignore ((async ...) : async ())'"
         | T.Promises, _ ->
           if not (is_asyncE exp1) then
-            error env exp1.at
+            error_new env exp1.at "M0079"
               "shared function with async result type has non-async body"
         | _ ->
           error_new env typ.at "M0041" "shared function has non-async result type\n  %s"
