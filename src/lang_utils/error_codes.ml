@@ -51,4 +51,5 @@ let error_codes : (string * string option) list =
     "M0046", None; (* Type argument does not match parameter bound *)
     "M0047", None; (* Send capability required *)
     "M0048", None; (* Literal out of range *)
+    "M0049", None; (* String literal is not valid utf8 *)
   ]

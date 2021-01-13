@@ -620,7 +620,7 @@ let check_float env = check_lit_val env T.Float Value.Float.of_string
 
 let check_text env at s =
   (try ignore (Wasm.Utf8.decode s)
-   with Wasm.Utf8.Utf8 -> local_error env at "string literal \"%s\": is not valid utf8" (String.escaped s));
+   with Wasm.Utf8.Utf8 -> local_error_new env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s));
   s
 
 
