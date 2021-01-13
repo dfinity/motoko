@@ -378,8 +378,8 @@ and check_ErrorCap env s at =
    | C.ErrorCap -> ()
    | C.AsyncCap _
    | C.QueryCap _ ->
-     error env at "misplaced %s; try enclosing in an async expression or query function" s
-   | C.NullCap -> error env at "misplaced %s" s
+     error_new env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
+   | C.NullCap -> error_new env at "M0039" "misplaced %s" s
 
 and scope_of_env env =
   match env.async with

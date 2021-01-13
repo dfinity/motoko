@@ -41,4 +41,5 @@ let error_codes : (string * string option) list =
     "M0036", None; (* Invalid return type for shared query function *)
     "M0037", None; (* Misplaced async expression *)
     "M0038", None; (* Misplaced await *)
+    "M0039", None; (* Misplaced try/throw/catch *)
   ]
