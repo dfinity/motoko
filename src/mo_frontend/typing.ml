@@ -790,7 +790,7 @@ and infer_exp'' env exp : T.typ =
     T.Prim (infer_lit env lit exp.at)
   | ActorUrlE exp' ->
     if not env.pre then check_exp env T.text exp';
-    error env exp.at "no type can be inferred for actor reference"
+    error_new env exp.at "M0058" "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
