@@ -1318,7 +1318,8 @@ and check_exp' env0 t exp : T.typ =
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_shared_pat env shared_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
-      error_in [Flags.ICMode; Flags.RefMode] env exp.at "a shared function is only allowed as a public field of an actor";
+      error_in_new [Flags.ICMode; Flags.RefMode] env exp.at "M0093"
+        "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in

@@ -95,4 +95,5 @@ let error_codes : (string * string option) list =
     "M0090", None; (* Actor reference must have an actor type *)
     "M0091", None; (* Mutable array expression cannot produce expected type *)
     "M0092", None; (* Async cannot produce scope *)
+    "M0093", None; (* A shared function is only allowed as public field of an actor *)
   ]
