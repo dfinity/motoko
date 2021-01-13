@@ -1236,7 +1236,7 @@ and check_exp' env0 t exp : T.typ =
     check_exp env T.text exp';
     begin match T.normalize t' with
     | T.(Obj (Actor, _)) -> t'
-    | _ -> error env exp.at "actor reference must have an actor type"
+    | _ -> error_new env exp.at "M0090" "actor reference must have an actor type"
     end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
