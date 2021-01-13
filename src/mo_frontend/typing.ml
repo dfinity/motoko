@@ -1415,11 +1415,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   if not env.pre then begin
     if Type.is_shared_sort sort then begin
       if not (T.concrete t_arg') then
-        error env exp1.at
+        error_new env exp1.at "M0099"
           "shared function argument contains abstract type\n  %s"
           (T.string_of_typ_expand t_arg');
       if not (T.concrete t_ret') then
-        error env exp2.at
+        error_new env exp2.at "M0100"
           "shared function call result contains abstract type\n  %s"
           (T.string_of_typ_expand t_ret');
     end
