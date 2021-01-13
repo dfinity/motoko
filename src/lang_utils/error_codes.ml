@@ -42,4 +42,5 @@ let error_codes : (string * string option) list =
     "M0037", None; (* Misplaced async expression *)
     "M0038", None; (* Misplaced await *)
     "M0039", None; (* Misplaced try/throw/catch *)
+    "M0040", None; (* Unknowwn primitive type *)
   ]

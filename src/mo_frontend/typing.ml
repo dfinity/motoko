@@ -410,7 +410,7 @@ and check_typ' env typ : T.typ =
   | PrimT "None" -> T.Non
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
-      error env typ.at "unknown primitive type"
+      error_new env typ.at "M0040" "unknown primitive type"
     )
   | ArrayT (mut, typ) ->
     let t = check_typ env typ in
