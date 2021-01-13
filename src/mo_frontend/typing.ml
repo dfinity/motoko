@@ -773,7 +773,7 @@ and infer_exp'' env exp : T.typ =
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
   | PrimE _ ->
-    error env exp.at "cannot infer type of primitive"
+    error_new env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with
     | Some (T.Pre, _) ->
