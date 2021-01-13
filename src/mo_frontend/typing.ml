@@ -1510,7 +1510,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t2);
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "variables are not allowed in pattern alternatives";
+      error_new env pat.at "M0105" "variables are not allowed in pattern alternatives";
     t, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
@@ -1632,7 +1632,7 @@ and check_pat' env t pat : Scope.val_env =
     let ve1 = check_pat env t pat1 in
     let ve2 = check_pat env t pat2 in
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "variables are not allowed in pattern alternatives";
+      error_new env pat.at "M0105" "variables are not allowed in pattern alternatives";
     T.Env.empty
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in

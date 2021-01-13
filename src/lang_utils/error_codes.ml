@@ -107,4 +107,5 @@ let error_codes : (string * string option) list =
     "M0102", None; (* Cannot infer type of wildcard *)
     "M0103", None; (* Cannot infer type of variable *)
     "M0104", None; (* Pattern branches have incompatible types *)
+    "M0105", None; (* Variables are not allowed in pattern alternatives *)
   ]
