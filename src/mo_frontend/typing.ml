@@ -2016,7 +2016,8 @@ and infer_dec env dec : T.typ =
       | Some { it = AsyncT (_, typ); at; _ }, T.Actor
       | Some ({ at; _ } as typ), (T.Module | T.Object) ->
         if at = Source.no_region then
-          warn env dec.at "actor classes with non non-async return types are deprecated; please declare the return type as `async ...`";
+          warn_new env dec.at "M0135"
+            "actor classes with non non-async return types are deprecated; please declare the return type as `async ...`";
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error_new env dec.at "M0134"
@@ -2024,7 +2025,7 @@ and infer_dec env dec : T.typ =
             (T.string_of_typ_expand t')
             (T.string_of_typ_expand t'')
       | Some typ, T.Actor ->
-        local_error env dec.at "actor class has non-async return type"
+        local_error_new env dec.at "M0135" "actor class has non-async return type"
       | _, T.Memory -> assert false
     end;
     T.normalize t
