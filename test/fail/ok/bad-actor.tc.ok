@@ -6,7 +6,7 @@ type
   [var Int]
 is or contains non-shared type
   var Int
-bad-actor.mo:8.1-8.38: type error[M0000], class body of type
+bad-actor.mo:8.1-8.38: type error[M0134], class body of type
   actor {}
 does not match expected type
   {}

@@ -2019,7 +2019,7 @@ and infer_dec env dec : T.typ =
           warn env dec.at "actor classes with non non-async return types are deprecated; please declare the return type as `async ...`";
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
-          local_error env dec.at
+          local_error_new env dec.at "M0134"
             "class body of type\n  %s\ndoes not match expected type\n  %s"
             (T.string_of_typ_expand t')
             (T.string_of_typ_expand t'')

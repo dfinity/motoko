@@ -136,4 +136,5 @@ let error_codes : (string * string option) list =
     "M0131", None; (* Expected stable type *)
     "M0132", None; (* Misplaced stability declaration *)
     "M0133", None; (* Misplaced stability modifier *)
+    "M0134", None; (* Class body type mismatch *)
   ]
