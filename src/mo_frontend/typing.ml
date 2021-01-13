@@ -1582,7 +1582,7 @@ and check_pat' env t pat : Scope.val_env =
   | LitP lit ->
     if not env.pre then begin
       if T.opaque t then
-        error env pat.at "literal pattern cannot consume expected type\n  %s"
+        error_new env pat.at "M0110" "literal pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t);
       if T.sub t T.Non
       then ignore (infer_lit env lit pat.at)
@@ -1592,7 +1592,7 @@ and check_pat' env t pat : Scope.val_env =
   | SignP (op, lit) ->
     if not env.pre then begin
       if not (Operator.has_unop op (T.promote t)) then
-        error env pat.at "operator cannot consume expected type\n  %s"
+        error_new env pat.at "M0111" "operator pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t);
       if T.sub t T.Non
       then ignore (infer_lit env lit pat.at)
@@ -1601,7 +1601,7 @@ and check_pat' env t pat : Scope.val_env =
     T.Env.empty
   | TupP pats ->
     let ts = try T.as_tup_sub (List.length pats) t with Invalid_argument _ ->
-      error env pat.at "tuple pattern cannot consume expected type\n  %s"
+      error_new env pat.at "M0112" "tuple pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
     in check_pats env ts pats T.Env.empty pat.at
   | ObjP pfs ->
@@ -1609,7 +1609,7 @@ and check_pat' env t pat : Scope.val_env =
     let s, tfs =
       try T.as_obj_sub (List.map (fun (pf : pat_field) -> pf.it.id.it) pfs') t
       with Invalid_argument _ ->
-        error env pat.at "object pattern cannot consume expected type\n  %s"
+        error_new env pat.at "M0113" "object pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t)
     in
     if not env.pre && s = T.Actor then
