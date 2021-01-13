@@ -104,4 +104,6 @@ let error_codes : (string * string option) list =
     "M0099", None; (* Shared function argument contains abstract type *)
     "M0100", None; (* Shared function call result contains abstract type *)
     "M0101", None; (* Switch with inconsistent branch types *)
+    "M0102", None; (* Cannot infer type of wildcard *)
+    "M0103", None; (* Cannot infer type of variable *)
   ]

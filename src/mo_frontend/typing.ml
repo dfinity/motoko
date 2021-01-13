@@ -1476,9 +1476,9 @@ and infer_pat env pat : T.typ * Scope.val_env =
 and infer_pat' env pat : T.typ * Scope.val_env =
   match pat.it with
   | WildP ->
-    error env pat.at "cannot infer type of wildcard"
+    error_new env pat.at "M0102" "cannot infer type of wildcard"
   | VarP _ ->
-    error env pat.at "cannot infer type of variable"
+    error_new env pat.at "M0103" "cannot infer type of variable"
   | LitP lit ->
     T.Prim (infer_lit env lit pat.at), T.Env.empty
   | SignP (op, lit) ->
