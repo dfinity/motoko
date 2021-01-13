@@ -1814,7 +1814,7 @@ and object_of_scope env sort fields scope at =
     T.avoid_cons inaccessible_cons accessible_cons;
     T.avoid inaccessible_cons t
   with T.Unavoidable c ->
-    error env at "local class type %s is contained in object or actor type\n  %s"
+    error_new env at "M0123" "local class type %s is contained in object or actor type\n  %s"
       (Con.to_string c)
       (T.string_of_typ_expand t)
 

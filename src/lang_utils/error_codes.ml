@@ -125,4 +125,5 @@ let error_codes : (string * string option) list =
     "M0120", None; (* Cannot pattern match mutable field *)
     "M0121", None; (* Duplicate field in object pattern *)
     "M0122", None; (* Colliding hashes in object type *)
+    "M0123", None; (* Local class type contained in object or actor type *)
   ]
