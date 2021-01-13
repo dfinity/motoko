@@ -1195,7 +1195,8 @@ and infer_exp'' env exp : T.typ =
        end;
        t3
     with Invalid_argument _ ->
-      error env exp1.at "expected async type, but expression has type\n  %s"
+      error_new env exp1.at "M0088"
+        "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
     )
   | AssertE exp1 ->
