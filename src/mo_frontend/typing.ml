@@ -599,7 +599,7 @@ and check_inst_bounds env tbs inst at =
 
 let check_lit_val env t of_string at s =
   try of_string s with _ ->
-    error env at "literal out of range for type %s"
+    error_new env at "M0048" "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
 let check_nat env = check_lit_val env T.Nat Value.Nat.of_string
