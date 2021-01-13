@@ -518,7 +518,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
-        error env id.at "duplicate type name %s in type parameter list" id.it;
+        error_new env id.at "M0044" "duplicate type name %s in type parameter list" id.it;
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
   let pre_env' = add_typs {env with pre = true} xs cs  in
