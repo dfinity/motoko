@@ -111,4 +111,5 @@ let error_codes : (string * string option) list =
     "M0106", None; (* Shared function cannot take a context pattern *)
     "M0107", None; (* Non-actor class cannot take a context pattern *)
     "M0108", None; (* Actor class cannot take a context pattern *)
+    "M0109", None; (* Class cannot be a query *)
   ]

@@ -1553,7 +1553,7 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
     if pat.it <> WildP then
       error_in_new [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
-      error env shared_pat.at "class cannot be a query";
+      error_new env shared_pat.at "M0109" "class cannot be a query";
     check_pat_exhaustive local_error env T.ctxt pat
   | _, T.Memory -> assert false
 
@@ -1613,19 +1613,19 @@ and check_pat' env t pat : Scope.val_env =
           (T.string_of_typ_expand t)
     in
     if not env.pre && s = T.Actor then
-      local_error env pat.at "object pattern cannot consume actor type\n  %s"
+      local_error_new env pat.at "M0114" "object pattern cannot consume actor type\n  %s"
         (T.string_of_typ_expand t);
     check_pat_fields env s tfs pfs' T.Env.empty pat.at
   | OptP pat1 ->
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
-      error env pat.at "option pattern cannot consume expected type\n  %s"
+      error_new env pat.at "M0115" "option pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
       try T.lookup_val_field id.it (T.as_variant_sub id.it t)
       with Invalid_argument _ | Not_found ->
-        error env pat.at "variant pattern cannot consume expected type\n  %s"
+        error_new env pat.at "M0116" "variant pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t)
     in check_pat env t1 pat1
   | AltP (pat1, pat2) ->
