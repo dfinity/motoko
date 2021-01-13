@@ -1637,7 +1637,7 @@ and check_pat' env t pat : Scope.val_env =
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
     if not (T.sub t t') then
-      error env pat.at
+      error_new env pat.at "M0117"
         "pattern of type\n  %s\ncannot consume expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
