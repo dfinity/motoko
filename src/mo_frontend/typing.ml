@@ -96,6 +96,9 @@ let error_new env at code fmt =
 let local_error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
 
+let local_error_new env at code fmt =
+  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error_new at code s)) fmt
+
 let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
@@ -557,7 +560,7 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
       if not env.pre then
         let u = T.open_ ts tb.T.bound in
         if not (T.sub t u) then
-          local_error env at'
+          local_error_new env at' "M0046"
             "type argument\n  %s\ndoes not match parameter bound\n  %s"
             (T.string_of_typ_expand t)
             (T.string_of_typ_expand u);

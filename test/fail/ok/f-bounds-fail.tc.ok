@@ -1,16 +1,16 @@
-f-bounds-fail.mo:13.42-13.43: type error[M0000], type argument
+f-bounds-fail.mo:13.42-13.43: type error[M0046], type argument
   A/10
 does not match parameter bound
   C
-f-bounds-fail.mo:14.42-14.43: type error[M0000], type argument
+f-bounds-fail.mo:14.42-14.43: type error[M0046], type argument
   A/11
 does not match parameter bound
   C/1
-f-bounds-fail.mo:15.42-15.43: type error[M0000], type argument
+f-bounds-fail.mo:15.42-15.43: type error[M0046], type argument
   A/12
 does not match parameter bound
   C/2
-f-bounds-fail.mo:3.38-3.41: type error[M0000], type argument
+f-bounds-fail.mo:3.38-3.41: type error[M0046], type argument
   Int
 does not match parameter bound
   Nat
@@ -46,7 +46,7 @@ f-bounds-fail.mo:49.23-49.25: type error[M0000], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:50.14-50.15: type error[M0000], type argument
+f-bounds-fail.mo:50.14-50.15: type error[M0046], type argument
   B/13
 does not match parameter bound
   C/9
@@ -78,7 +78,7 @@ f-bounds-fail.mo:57.23-57.25: type error[M0000], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:58.16-58.17: type error[M0000], type argument
+f-bounds-fail.mo:58.16-58.17: type error[M0046], type argument
   B/13
 does not match parameter bound
   C/9
@@ -110,7 +110,7 @@ f-bounds-fail.mo:65.23-65.25: type error[M0000], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:66.18-66.19: type error[M0000], type argument
+f-bounds-fail.mo:66.18-66.19: type error[M0046], type argument
   B/13
 does not match parameter bound
   C/9
