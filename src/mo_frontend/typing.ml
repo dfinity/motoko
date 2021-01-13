@@ -1347,7 +1347,7 @@ and check_exp' env0 t exp : T.typ =
   | CallE (exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
-      local_error env0 exp.at
+      local_error_new env0 exp.at "M0096"
         "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
@@ -1359,7 +1359,7 @@ and check_exp' env0 t exp : T.typ =
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
-      local_error env0 exp.at
+      local_error_new env0 exp.at "M0096"
         "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
@@ -2054,7 +2054,8 @@ and check_dec env t dec =
   | _ ->
     let t' = infer_dec env dec in
     if not (T.eq t T.unit || T.sub t' t) then
-      local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+      local_error_new env dec.at "M0096"
+        "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t)
 

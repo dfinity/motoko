@@ -31,7 +31,7 @@ illegal-await.mo:33.44: info[M0000], start of scope $Rec mentioned in error at i
 illegal-await.mo:40.1: info[M0000], end of scope $Rec mentioned in error at illegal-await.mo:35.5-35.12
 illegal-await.mo:33.1: info[M0000], start of scope $/3 mentioned in error at illegal-await.mo:35.5-35.12
 illegal-await.mo:40.1: info[M0000], end of scope $/3 mentioned in error at illegal-await.mo:35.5-35.12
-illegal-await.mo:38.20-38.21: type error[M0000], expression of type
+illegal-await.mo:38.20-38.21: type error[M0096], expression of type
   async<$/3> ()
 cannot produce expected type
   async<$Rec> ()

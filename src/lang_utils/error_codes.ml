@@ -98,4 +98,5 @@ let error_codes : (string * string option) list =
     "M0093", None; (* A shared function is only allowed as public field of an actor *)
     "M0094", None; (* Shared functions does not match shared function type *)
     "M0095", None; (* Function return type does not match expected return type *)
+    "M0096", None; (* Expression can't produce expected type *)
   ]
