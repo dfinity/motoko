@@ -20,8 +20,8 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    clang_10 # for native/wasm building
-    lld_10 # for wasm building
+    clang_11 # for native/wasm building
+    lld_11 # for wasm building
     rustc-nightly
     cargo-nightly
     xargo
@@ -31,9 +31,9 @@ let
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-10. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_10}/bin/clang"
-    export WASM_CLANG="clang-10"
+    # there we use plain clang-11. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_11}/bin/clang"
+    export WASM_CLANG="clang-11"
     export WASM_LD=wasm-ld
   '';
 in
