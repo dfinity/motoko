@@ -49,4 +49,5 @@ let error_codes : (string * string option) list =
     "M0044", None; (* Duplicate name in type parameter list *)
     "M0045", None; (* Wrong number of type arguments *)
     "M0046", None; (* Type argument does not match parameter bound *)
+    "M0047", None; (* Send capability required *)
   ]

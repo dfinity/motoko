@@ -578,7 +578,9 @@ and infer_inst env tbs typs at =
     (match env.async with
      | C.ErrorCap
      | C.QueryCap _
-     | C.NullCap -> error env at "send capability required, but not available (need an enclosing async expression or function body)"
+     | C.NullCap ->
+        error_new env at "M0047"
+          "send capability required, but not available (need an enclosing async expression or function body)"
      | C.AwaitCap c
      | C.AsyncCap c ->
       (T.Con(c,[])::ts, at::ats)
