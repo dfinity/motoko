@@ -871,11 +871,11 @@ and infer_exp'' env exp : T.typ =
     begin
       let t1 = infer_exp_promote env exp1 in
       if Option.is_none (T.Env.find_opt "!" env.labs) then
-        local_error env exp.at "misplaced '!' (no enclosing 'do ? { ... }' expression)";
+        local_error_new env exp.at "M0064" "misplaced '!' (no enclosing 'do ? { ... }' expression)";
       try
         T.as_opt_sub t1
       with Invalid_argument _ ->
-        error env exp1.at
+        error_new env exp1.at "M0065"
           "expected option type before '!', but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     end
@@ -1230,7 +1230,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | BangE exp1, t ->
     if Option.is_none (T.Env.find_opt "!" env.labs) then
-      local_error env exp.at "misplaced '!' (no enclosing 'do ? { ... }' expression)";
+      local_error_new env exp.at "M0064" "misplaced '!' (no enclosing 'do ? { ... }' expression)";
     check_exp env (T.Opt t) exp1;
     t
   | ArrayE (mut, exps), T.Array t' ->

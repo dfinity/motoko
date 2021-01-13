@@ -66,4 +66,6 @@ let error_codes : (string * string option) list =
     "M0061", None; (* Comparing abstract type to itself at supertype *)
     "M0062", None; (* Comparing incompatible type at common supertype *)
     "M0063", None; (* Show is not defined for operand type *)
+    "M0064", None; (* Misplaced '!' without enclosing do block *)
+    "M0065", None; (* Expected option type before '!' *)
   ]
