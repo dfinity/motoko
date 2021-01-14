@@ -120,6 +120,7 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
+(* FIX ME: these error reporting functions are eager and will construct unnecessary type strings !*)
 let check_sub env at t1 t2 =
   check env at (T.sub t1 t2) "subtype violation:\n  %s\n  %s\n"
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
@@ -849,7 +850,9 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env pat in
   check_sub env pat.at t_pat pat.note;
   check_exp (adjoin_vals env ve) exp;
-  check env pat.at (T.sub (typ exp) t) "bad case"
+  check env pat.at (T.sub (typ exp) t) "bad case, expected %s, found %s"
+    (T.string_of_typ_expand t)
+    (T.string_of_typ_expand (typ exp))
 
 (* Arguments *)
 

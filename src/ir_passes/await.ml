@@ -34,10 +34,11 @@ let meta typ exp =
 let letcont k scope =
   match k with
   | ContVar k' -> scope k' (* letcont eta-contraction *)
-  | MetaCont (typ, cont) ->
-    let k' = fresh_cont typ in
-    let v = fresh_var "v" typ in
-    blockE [funcD k' v (cont v)] (* at this point, I'm really worried about variable capture *)
+  | MetaCont (typ0, cont) ->
+    let v = fresh_var "v" typ0 in
+    let e = cont v in
+    let k' = fresh_var "k" (T.Func (T.Local, T.Returns, [], T.as_seq typ0, T.as_seq (typ e))) in
+    blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
 (* Named labels for break, special labels for return and throw *)
@@ -61,6 +62,8 @@ module LabelEnv = Env.Make(struct type t = label let compare = compare end)
 module PatEnv = Env.Make(String)
 
 type label_sort = Cont of kont | Label
+
+let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
@@ -219,11 +222,12 @@ and c_if context k e1 e2 e3 =
   in
   let e2 = trans_branch e2 in
   let e3 = trans_branch e3 in
+  let t = T.lub (typ e2) (typ e3) in
   match eff e1 with
   | T.Triv ->
-    ifE (t_exp context e1) e2 e3 answerT
+    ifE (t_exp context e1) e2 e3 t
   | T.Await ->
-    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3 answerT))
+    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3 t))
   )
 
 and c_loop context k e1 =
@@ -283,19 +287,20 @@ and c_exp' context exp k =
         {it = { pat; exp = exp' }; at; note})
       cases
     in
+    let typ' = typ_cases cases' in
     begin
     match eff exp1 with
     | T.Triv ->
       { it = SwitchE(t_exp context exp1, cases');
         at = exp.at;
-        note = Note.{ exp.note with typ = answerT } }
+        note = Note.{ exp.note with typ = typ' } }
     | T.Await ->
        c_exp context exp1
          (meta (typ exp1)
            (fun v1 ->
              { it = SwitchE(varE v1, cases');
                at = exp.at;
-               note = Note.{ exp.note with typ = answerT } }))
+               note = Note.{ exp.note with typ = typ' } }))
     end)
   | TryE (exp1, cases) ->
     (* TODO: do we need to reify f? *)
@@ -327,7 +332,7 @@ and c_exp' context exp k =
           funcD throw e {
             it = SwitchE (varE e, cases');
             at = exp.at;
-            note = Note.{ def with typ = T.unit; eff = T.Await; (* shouldn't matter *) }
+            note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
           }
         ]
         (c_exp context' exp1 (ContVar k))

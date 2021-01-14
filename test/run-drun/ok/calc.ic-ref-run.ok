@@ -1,0 +1,17 @@
+→ update create_canister()
+← replied: (record {hymijyo = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update evaluate()
+debug.print: Sync
+debug.print: +528
+debug.print: +2_048
+← replied: ()
+→ update evaluateAsync()
+debug.print: Async
+debug.print: +528
+debug.print: +2_048
+← replied: ()
+→ update evaluateDoAsync()
+debug.print: DoAsync
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "no cycles refunded"

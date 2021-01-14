@@ -143,11 +143,15 @@ let cps_asyncE typ1 typ2 e =
     note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
   }
 
+(* clean me up *)
 let cps_awaitE typ e1 e2 =
+  match e2.note.Note.typ with
+  | T.Tup[T.Func(_,_,_,_,ts); _] ->
   { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = max_eff (eff e1) (eff e2) }
+    note = Note.{ def with typ = T.seq ts; eff = max_eff (eff e1) (eff e2) }
   }
+  | _ -> assert false
 
 let ic_replyE ts e =
   (match ts with
@@ -278,11 +282,11 @@ let callE exp1 typs exp2 =
     }
   }
 
-let ifE exp1 exp2 exp3 typ =
+let ifE exp1 exp2 exp3 _typ =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
     note = Note.{ def with
-      typ = typ;
+      typ =  (* typ; *) T.lub (typ exp2) (typ exp3);
       eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
     }
   }
@@ -510,8 +514,6 @@ let nary_funcD ((id, typ) as f) xs exp =
   letD f (nary_funcE id typ xs exp)
 
 (* Continuation types *)
-
-let answerT = T.unit
 
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
 

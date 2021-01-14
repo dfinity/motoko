@@ -114,14 +114,13 @@ val nary_funcD : var -> var list -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 
-(* Continuations *)
+(* Continuations with unit return type *)
 
-val answerT : typ
 val contT : typ -> typ
 val err_contT : typ
 val cpsT : typ -> typ
 
-(* Async continuations (for do-async blocks) *)
+(* Continuations with async return type (for do-async blocks) *)
 val async_contT : typ -> typ -> typ
 val async_err_contT : typ -> typ
 val async_cpsT : typ -> typ -> typ

@@ -6,7 +6,7 @@ actor a {
     if (n<=0) i else i*power(i, n-1);
   };
 
-  public query func pow(i :Int, n:Int) : async Int {
+  public /* query */ func pow(i :Int, n:Int) : async Int {
      power(i, n);
   };
 
@@ -78,7 +78,7 @@ actor a {
 
 await a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
 await a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
-await a.evaluateDoAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
+await a.evaluateDoAsync(); //OR-CALL ingress evaluateDoAsync "DIDL\x00\x00"
 
 //SKIP run-low
 //SKIP ic-ref

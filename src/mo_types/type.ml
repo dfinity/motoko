@@ -83,6 +83,7 @@ let set_kind c k =
   | _ -> raise (Invalid_argument "set_kind")
 
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
+
 module ConSet = ConEnv.Dom
 
 
