@@ -536,6 +536,19 @@ rec {
       '';
     };
 
+  check-error-codes = stdenv.mkDerivation {
+      name = "check-error-codes";
+      src = subpath ./test;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.python3 ];
+      buildPhase = ''
+      python ${./test/check-error-codes.py} ${./src/lang_utils/error_codes.ml}
+      '';
+      installPhase = ''
+        touch $out
+      '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -556,6 +569,7 @@ rec {
       check-rts-formatting
       check-generated
       check-grammar
+      check-error-codes
     ] ++
     builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
     builtins.attrValues js;
