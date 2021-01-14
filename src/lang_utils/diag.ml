@@ -11,10 +11,8 @@ type message = {
 }
 type messages = message list
 
-let info_message at cat text = {sev = Info; code = "M0000"; at; cat; text}
-let warning_message at cat text = {sev = Warning; code = "M0000"; at; cat; text}
+let info_message at cat text = {sev = Info; code = ""; at; cat; text}
 let warning_message_new at code cat text = {sev = Warning; code; at; cat; text}
-let error_message at cat text = {sev = Error; code = "M0000"; at; cat; text}
 let error_message_new at code cat text = {sev = Error; code; at; cat; text}
 
 type 'a result = ('a * messages, messages) Stdlib.result
@@ -22,9 +20,7 @@ type 'a result = ('a * messages, messages) Stdlib.result
 let return x = Ok (x, [])
 
 let info at cat text = Ok ((), [info_message at cat text])
-let warn at cat text = Ok ((), [warning_message at cat text])
 let warn_new at code cat text = Ok ((), [warning_message_new at code cat text])
-let error at cat text = Stdlib.Error [error_message at cat text]
 let error_new at code cat text = Stdlib.Error [error_message_new at code cat text]
 
 let map f = function
@@ -64,11 +60,15 @@ let has_errors : messages -> bool =
   List.fold_left (fun b msg -> b || msg.sev == Error) false
 
 let string_of_message msg =
+  let code = match msg.sev, msg.code with
+    | Info, _ -> ""
+    | _, "" -> ""
+    | _, code -> Printf.sprintf "[%s]" code in
   let label = match msg.sev with
-    | Error -> Printf.sprintf "%s error[%s]" msg.cat msg.code
-    | Warning -> Printf.sprintf "warning[%s]" msg.code
+    | Error -> Printf.sprintf "%s error" msg.cat
+    | Warning -> "warning"
     | Info -> "info" in
-  Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
+  Printf.sprintf "%s: %s%s, %s\n" (Source.string_of_region msg.at) label code msg.text
 
 let print_message msg =
   if msg.sev <> Error && not !Flags.print_warnings
