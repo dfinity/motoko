@@ -1,5 +1,5 @@
 import P "mo:prim";
-
+// test lexically nested do async expressions
 actor a {
 
   public func bar() : async Int {
@@ -21,3 +21,4 @@ actor a {
 };
 
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+
