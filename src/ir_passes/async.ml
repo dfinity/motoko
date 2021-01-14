@@ -294,12 +294,10 @@ let transform mode prog =
       | _ -> assert false
       end
     | PrimE (CPSDoAsync t0, [exp1]) ->
-(*      Printf.printf "CPSDoAsync = %s" (T.string_of_typ (typ exp1));
-      Printf.printf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp1)); *)
       let t0 = t_typ t0 in
       let tb, ts1, t2 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, [T.Async(_, t2)]); _], _ (* [T.Async(_, _)]*)) ->
-          tb, List.map t_typ (List.map (T.open_ [t0]) ts1), t_typ (T.open_ [t0] t2)
+          tb, List.map t_typ (List.map (T.open_ [t0]) ts1), t_typ (T.open_ [t0] t2) (* BUG? t0 translated twice? *)
         | t ->
           Printf.printf "t = %s" (T.string_of_typ t);
           assert false
