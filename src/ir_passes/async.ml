@@ -108,7 +108,7 @@ let new_async t1 =
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
   (async, fulfill, fail), call_new_async
 
-let new_nary_async_reply mode ts1 =
+let new_nary_async_reply ts1 =
   (* The async implementation isn't n-ary *)
   let t1 = T.seq ts1 in
   let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
@@ -282,13 +282,16 @@ let transform mode prog =
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
+      (* TODO: clean me up using two prims or otherwise *)
       begin
       match typ kr with
       | T.Tup [Func(_, _, [], [t1], [T.Async(_, t2)]); _] ->
+        (* async answer type *)
         (callE (chain_asyncE ()) [t_typ t2; t_typ t1] (tupE [t_exp a;t_exp kr])).it
       | T.Tup [Func(_, _, [], ts1, []); _] ->
         (* unit answer type *)
         ((t_exp a) -*- (t_exp kr)).it
+      | _ -> assert false
       end
     | PrimE (CPSDoAsync t0, [exp1]) ->
 (*      Printf.printf "CPSDoAsync = %s" (T.string_of_typ (typ exp1));
@@ -316,7 +319,7 @@ let transform mode prog =
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
           tb, List.map t_typ (List.map (T.open_ [t0]) ts1) (* BUG? t0 translated twice? *)
         | t -> assert false in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts1 in
       (blockE [
                letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                let ic_reply = (* flatten v, here and below? *)
@@ -340,7 +343,7 @@ let transform mode prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts2 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts2 in
       let _ = letEta in
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
