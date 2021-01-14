@@ -200,7 +200,7 @@ and group msgs (grp : group) : f =
         else
           Diag.add_msg
             msgs
-            (Diag.error_message_new
+            (Diag.error_message
                at
                "M0016"
                "definedness"

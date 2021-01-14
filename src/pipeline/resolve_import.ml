@@ -51,7 +51,7 @@ open Source
 let err_unrecognized_url msgs at url msg =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        at
        "M0006"
        "import"
@@ -60,7 +60,7 @@ let err_unrecognized_url msgs at url msg =
 let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        no_region
        "M0007"
        "actor-alias"
@@ -69,14 +69,14 @@ let err_unrecognized_alias msgs alias principal msg =
 let err_actor_import_without_idl_path msgs at =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        at
        "M0008"
        "import"
       (Printf.sprintf "cannot import canister urls without --actor-idl param"))
 
 let err_file_does_not_exist' at full_path =
-  Diag.error_message_new
+  Diag.error_message
     at
     "M0009"
     "import"
@@ -88,7 +88,7 @@ let err_file_does_not_exist msgs at full_path =
 let err_package_not_defined msgs at pkg =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        at
        "M0010"
        "import"
@@ -97,7 +97,7 @@ let err_package_not_defined msgs at pkg =
 let err_alias_not_defined msgs at alias =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        at
        "M0011"
        "import"
@@ -106,7 +106,7 @@ let err_alias_not_defined msgs at alias =
 let err_package_file_does_not_exist msgs f pname =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        no_region
        "M0012"
        "package"
@@ -115,7 +115,7 @@ let err_package_file_does_not_exist msgs f pname =
 let err_prim_pkg msgs =
   let open Diag in
   add_msg msgs
-    (error_message_new
+    (error_message
        no_region
        "M0013"
        "package" "the \"prim\" package is built-in, and cannot be mapped to a directory")

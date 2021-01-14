@@ -74,10 +74,10 @@ let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
 let type_error at code text : Diag.message =
-  Diag.error_message_new at code "type" text
+  Diag.error_message at code "type" text
 
 let type_warning at code text : Diag.message =
-  Diag.warning_message_new at code "type" text
+  Diag.warning_message at code "type" text
 
 let type_info at text : Diag.message =
   Diag.info_message at "type" text

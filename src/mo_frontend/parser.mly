@@ -28,13 +28,13 @@ let at (startpos, endpos) = positions_to_region startpos endpos
 
 let warn_deprecated_obj category at =
   Diag.add_msg (Option.get !msg_store)
-    (Diag.warning_message_new at "M0147" "syntax"
+    (Diag.warning_message at "M0147" "syntax"
       ("object syntax is deprecated in this position, use "
       ^ (if category = `Exp then "'{ {...} }'" else "'({...})'")))
 
 let warn_deprecated_block at =
   Diag.add_msg (Option.get !msg_store)
-    (Diag.warning_message_new at "M0148" "syntax"
+    (Diag.warning_message at "M0148" "syntax"
       "block syntax is deprecated in this position, use 'do { ... }'")
 
 

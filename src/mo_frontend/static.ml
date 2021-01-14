@@ -18,7 +18,7 @@ open Syntax
 let err m at =
   let open Diag in
   add_msg m
-    (error_message_new
+    (error_message
        at
        "M0014"
        "type"
@@ -27,7 +27,7 @@ let err m at =
 let pat_err m at =
   let open Diag in
   add_msg m
-    (error_message_new
+    (error_message
        at
        "M0015"
        "type"

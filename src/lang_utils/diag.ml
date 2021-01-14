@@ -12,16 +12,16 @@ type message = {
 type messages = message list
 
 let info_message at cat text = {sev = Info; code = ""; at; cat; text}
-let warning_message_new at code cat text = {sev = Warning; code; at; cat; text}
-let error_message_new at code cat text = {sev = Error; code; at; cat; text}
+let warning_message at code cat text = {sev = Warning; code; at; cat; text}
+let error_message at code cat text = {sev = Error; code; at; cat; text}
 
 type 'a result = ('a * messages, messages) Stdlib.result
 
 let return x = Ok (x, [])
 
 let info at cat text = Ok ((), [info_message at cat text])
-let warn_new at code cat text = Ok ((), [warning_message_new at code cat text])
-let error_new at code cat text = Stdlib.Error [error_message_new at code cat text]
+let warn at code cat text = Ok ((), [warning_message at code cat text])
+let error at code cat text = Stdlib.Error [error_message at code cat text]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs
