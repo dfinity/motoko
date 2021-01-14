@@ -400,35 +400,24 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
-func @new_fulfilled_async<T <: Any>(t : T) : @Async<T> =
-  func (k : @Cont<T>, _ : @Cont<Error>) {
+func @new_fulfilled_async<T_ <: Any>(t : T_) : @Async<T_> =
+  func (k : @Cont<T_>, _ : @Cont<Error>) {
     @refund := 0;
     k(t)
   };
 
-func @new_failed_async<T <: Any>(e : Error) : @Async<T> =
-  func (_ : @Cont<T>, r : @Cont<Error>) {
+func @new_failed_async<T_ <: Any>(e : Error) : @Async<T_> =
+  func (_ : @Cont<T_>, r : @Cont<Error>) {
     r(e)
   };
 
-/*
-func @wrap_async<T <: Any>(a : @Async<T>,  kr : (T -> @Async<T>, Error -> @Async<T>))
-  : @Async<T> {
-  let (k, r) = kr;
-  func k1(v : T) { ignore k(v); };
-  func r1(e : Error) { ignore r(e); };
-  a (k1, r1);
-  a
-};
-*/
-
-func @chain_async<T <: Any, U <: Any>(au : @Async<U>, (k : U -> @Async<T>, f : Error -> @Async<T>))
-     : @Async<T> {
-   let (at, fulfill, fail) = @new_async<T>();
-   func k1(u : U) { k(u) (fulfill, fail) };
-   func f1(e : Error) { f(e) (fulfill, fail) };
-   au (k1, f1);
-   at
+func @chain_async<T_ <: Any, U_ <: Any>(au : @Async<U_>, (k : U_ -> @Async<T_>, f : Error -> @Async<T_>))
+     : @Async<T_> {
+  let (at, fulfill, fail) = @new_async<T_>();
+  func k1(u : U_) { k(u) (fulfill, fail) };
+  func f1(e : Error) { f(e) (fulfill, fail) };
+  au (k1, f1);
+  at
 };
 
 let @ic00 = actor "aaaaa-aa" : actor {
