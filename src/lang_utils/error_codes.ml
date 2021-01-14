@@ -3,6 +3,7 @@
    error. *)
 let error_codes : (string * string option) list =
   [
+    "M0000", None; (* Internal compiler error *)
     "M0001", None; (* Parsing errors *)
     "M0002", None; (* Lexer errors *)
     "M0003", None; (* Self-import *)

@@ -83,7 +83,7 @@ let initial_env flavor : env =
 
 exception CheckFailed of string
 
-let type_error at : string -> Diag.message = Diag.error_message at "IR type"
+let type_error at : string -> Diag.message = Diag.error_message_new at "M0000" "IR type"
 
 let error env at fmt =
     Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
