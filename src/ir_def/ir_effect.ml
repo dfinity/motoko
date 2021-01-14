@@ -49,8 +49,8 @@ let rec infer_effect_prim = function
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | DoAsyncE _ ->
-    T.Triv (* TBR *)
+  | DoAsyncE (_, e1, _) ->
+    T.Await (* TODO: less conservatively: effect_exp e1 when body has effect T.Triv? cf. effect.ml *)
   | AsyncE _ ->
     T.Triv
   | TryE _ ->
