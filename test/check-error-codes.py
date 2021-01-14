@@ -59,6 +59,7 @@ populate_tested_codes()
 untested_codes = registered_codes - tested_codes - known_untested_codes
 unregistered_codes = tested_codes - registered_codes
 ignored_unregistered_codes = known_untested_codes - registered_codes
+supposedly_untested_codes = tested_codes.intersection(known_untested_codes)
 
 print("The last registered error code is {}".format(max(registered_codes)))
 
@@ -72,6 +73,9 @@ if unregistered_codes:
 if ignored_unregistered_codes:
     print("Error: There were known untested codes that weren't registered:\n{}".format(ignored_unregistered_codes))
     print("This likely means you need to remove those codes from the 'known_untested_codes' list in 'check-error-codes.py'")
+if supposedly_untested_codes:
+    print("Error: There were supposedly known untested codes that were tested:\n{}".format(supposedly_untested_codes))
+    print("Great job! This likely means you can remove those codes from the 'known_untested_codes' list in 'check-error-codes.py'")
 
-if untested_codes or unregistered_codes or ignored_unregistered_codes:
+if untested_codes or unregistered_codes or ignored_unregistered_codes or supposedly_untested_codes:
     sys.exit(1)
