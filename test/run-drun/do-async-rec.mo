@@ -7,13 +7,12 @@ actor a {
   };
 
   private func foo(n : Nat) : async Int = do async {
-    P.debugPrint(debug_show(n));
     if (n == 0) { return await bar();}
     else await foo(n-1);
   };
 
-  public func go() : async Int {
-    return await foo(100);
+  public func go() : async () {
+    assert 666 == (await foo(100));
   };
 
 };
