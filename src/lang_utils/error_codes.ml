@@ -149,4 +149,6 @@ let error_codes : (string * string option) list =
     "M0144", None; (* Expected a module or actor class *)
     "M0145", None; (* Pattern does not cover value *)
     "M0146", None; (* Pattern is never matched *)
+    "M0147", None; (* Object syntax is deprecated in this position *)
+    "M0148", None; (* Block syntax is deprecated in this position *)
   ]
