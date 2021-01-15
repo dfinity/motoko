@@ -543,7 +543,8 @@ rec {
       phases = "unpackPhase buildPhase installPhase";
       buildInputs = [ nixpkgs.python3 ];
       buildPhase = ''
-      python ${./test/check-error-codes.py} ${./src/lang_utils/error_codes.ml}
+      patchShebangs .
+      ./check-error-codes.py ${./src/lang_utils/error_codes.ml}
       '';
       installPhase = ''
         touch $out

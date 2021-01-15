@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Checks uniqueness of error codes, and prints out the next available
 # Checks that every registered code is exercised in a test
 # Checks that every code exercised in a test is registered
