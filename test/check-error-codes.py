@@ -51,7 +51,7 @@ def populate_tested_codes():
     for path in paths:
         with open(path) as fp:
             for line in fp:
-                match = re.search(r"(?:error|warning)\[(M\d+)\]", line)
+                match = re.search(r"(?:error|warning) \[(M\d+)\]", line)
                 if match:
                     code = match.group(1)
                     tested_codes.add(code)

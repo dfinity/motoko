@@ -63,7 +63,7 @@ let string_of_message msg =
   let code = match msg.sev, msg.code with
     | Info, _ -> ""
     | _, "" -> ""
-    | _, code -> Printf.sprintf "[%s]" code in
+    | _, code -> Printf.sprintf " [%s]" code in
   let label = match msg.sev with
     | Error -> Printf.sprintf "%s error" msg.cat
     | Warning -> "warning"
