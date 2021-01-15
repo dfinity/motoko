@@ -139,7 +139,7 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait
+  | CPSAwait of Type.typ              (* typ is the current continuation type of cps translation *)
   | CPSDoAsync of Type.typ
   | CPSAsync of Type.typ
   | ICReplyPrim of Type.typ list

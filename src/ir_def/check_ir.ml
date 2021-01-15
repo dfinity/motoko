@@ -513,7 +513,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
       typ exp1 <: T.blob;
       T.seq ots <: t
-    | CPSAwait, [a; kr] ->
+    | CPSAwait cont_typ, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
       (* TODO: We can check more here, can we *)

@@ -84,7 +84,7 @@ and prim = function
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
   | OtherPrim s       -> Atom s
-  | CPSAwait          -> Atom "CPSAwait"
+  | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSDoAsync t      -> "CPSDoAsync" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts

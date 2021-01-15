@@ -281,26 +281,25 @@ let transform mode prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait, [a; kr]) ->
-      (* TODO: clean me up using two prims or otherwise *)
+    | PrimE (CPSAwait cont_typ, [a; kr]) ->
       begin
-      match typ kr with
-      | T.Tup [Func(_, _, [], [t1], [T.Async(_, t2)]); _] ->
-        (* async answer type *)
-        (callE (chain_asyncE ()) [t_typ t2; t_typ t1] (tupE [t_exp a;t_exp kr])).it
-      | T.Tup [Func(_, _, [], ts1, []); _] ->
-        (* unit answer type *)
-        ((t_exp a) -*- (t_exp kr)).it
-      | _ -> assert false
+        match cont_typ with
+        | Func(_, _, [], _, []) ->
+          (* unit answer type, from await in `async {}` *)
+          ((t_exp a) -*- (t_exp kr)).it
+        | Func(_, _, [], [t1], [T.Async(_, t2)]) ->
+          (* async answer type, from await in `do async {}` *)
+          (callE (chain_asyncE ())
+             [t_typ t2; t_typ t1]
+             (tupE [t_exp a; t_exp kr])).it
+        | _ -> assert false
       end
-    | PrimE (CPSDoAsync t0, [exp1]) ->
-      let t0 = t_typ t0 in
+    | PrimE (CPSDoAsync t, [exp1]) ->
+      let t0 = t_typ t in
       let tb, ts1, t2 = match typ exp1 with
-        | Func(_,_, [tb], [Func(_, _, [], ts1, [T.Async(_, t2)]); _], _ (* [T.Async(_, _)]*)) ->
-          tb, List.map t_typ (List.map (T.open_ [t0]) ts1), t_typ (T.open_ [t0] t2) (* BUG? t0 translated twice? *)
-        | t ->
-          Printf.printf "t = %s" (T.string_of_typ t);
-          assert false
+        | Func(_,_, [tb], [Func(_, _, [], ts1, [T.Async(_, t2)]); _], _ ) ->
+          tb, List.map t_typ (List.map (T.open_ [t]) ts1), t_typ (T.open_ [t] t2)
+        | t -> assert false
       in
       let k_ret = (* flatten v, here and below? *)
          let v = fresh_var "v" (T.seq ts1) in
@@ -311,25 +310,25 @@ let transform mode prog =
          [e] -->* callE (new_failed_asyncE()) [t2] (varE e)
       in
       (callE (t_exp exp1) [t0] (tupE [k_ret; k_fail])).it
-    | PrimE (CPSAsync t0, [exp1]) ->
-      let t0 = t_typ t0 in
+    | PrimE (CPSAsync t, [exp1]) ->
+      let t0 = t_typ t in
       let tb, ts1 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
-          tb, List.map t_typ (List.map (T.open_ [t0]) ts1) (* BUG? t0 translated twice? *)
+          tb, List.map t_typ (List.map (T.open_ [t]) ts1)
         | t -> assert false in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts1 in
-      (blockE [
-               letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
-               let ic_reply = (* flatten v, here and below? *)
-                 let v = fresh_var "v" (T.seq ts1) in
-                 v --> (ic_replyE ts1 (varE v)) in
-               let ic_reject =
-                 let e = fresh_var "e" T.catch in
-                 [e] -->* (ic_rejectE (errorMessageE (varE e))) in
-               let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
-               expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
-               ]
-               (varE nary_async)
+      ( blockE [
+          letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+          let ic_reply = (* flatten v, here and below? *)
+            let v = fresh_var "v" (T.seq ts1) in
+            v --> (ic_replyE ts1 (varE v)) in
+          let ic_reject =
+            let e = fresh_var "e" T.catch in
+            [e] -->* (ic_rejectE (errorMessageE (varE e))) in
+          let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
+          expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
+        ]
+        (varE nary_async)
       ).it
     | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
@@ -343,14 +342,15 @@ let transform mode prog =
       let exp2' = t_exp exp2 in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts2 in
       let _ = letEta in
-      (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
-                letEta exp1' (fun v1 ->
-                  letSeq ts1 exp2' (fun vs ->
-                      [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
-                    )
-                  )
-         )
-         (varE nary_async))
+      (blockE (
+        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+        letEta exp1' (fun v1 ->
+          letSeq ts1 exp2' (fun vs ->
+            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+            )
+          )
+        )
+        (varE nary_async))
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
@@ -359,10 +359,9 @@ let transform mode prog =
     | IfE (exp1, exp2, exp3) ->
       IfE (t_exp exp1, t_exp exp2, t_exp exp3)
     | SwitchE (exp1, cases) ->
-      let cases' = List.map
-                     (fun {it = {pat; exp}; at; note} ->
-                       {it = {pat = t_pat pat ;exp = t_exp exp}; at; note})
-                     cases
+      let cases' = List.map (fun {it = {pat; exp}; at; note} ->
+        { it = {pat = t_pat pat ; exp = t_exp exp}; at; note })
+        cases
       in
       SwitchE (t_exp exp1, cases')
     | LoopE exp1 ->
