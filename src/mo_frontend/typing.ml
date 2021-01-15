@@ -1903,7 +1903,7 @@ and check_stab env sort scope fields =
     | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | T.Actor, Some stab, _ ->
       local_error env stab.at "M0133"
-        "misplaced stability modifier: expected on var or simple let declarations only";
+        "misplaced stability modifier: allowed on var or simple let declarations only";
       []
     | _ -> []) fields
   in
