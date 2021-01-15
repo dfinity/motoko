@@ -62,6 +62,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
