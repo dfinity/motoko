@@ -336,7 +336,7 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat64) ();
 };
 
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+func @new_general_async<T <: Any>(getSystemRefund : Bool) : (@Async<T>, @Cont<T>, @Cont<Error>) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
@@ -346,7 +346,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   func fulfill(t : T) {
     switch result {
       case null {
-        let refund = @getSystemRefund();
+        let refund = if (getSystemRefund) @getSystemRefund() else @refund;
         result := ?(#ok (refund, t));
         let ws_ = ws;
         ws := w_null;
@@ -400,9 +400,12 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+  @new_general_async<T>(true);
+};
+
 func @new_fulfilled_async<T_ <: Any>(t : T_) : @Async<T_> =
   func (k : @Cont<T_>, _ : @Cont<Error>) {
-    @refund := 0;
     k(t)
   };
 
@@ -413,7 +416,7 @@ func @new_failed_async<T_ <: Any>(e : Error) : @Async<T_> =
 
 func @chain_async<T_ <: Any, U_ <: Any>(au : @Async<U_>, (k : U_ -> @Async<T_>, f : Error -> @Async<T_>))
      : @Async<T_> {
-  let (at, fulfill, fail) = @new_async<T_>();
+  let (at, fulfill, fail) = @new_general_async<T_>(false);
   func k1(u : U_) { k(u) (fulfill, fail) };
   func f1(e : Error) { f(e) (fulfill, fail) };
   au (k1, f1);
