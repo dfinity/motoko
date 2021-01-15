@@ -14,4 +14,6 @@ debug.print: +2_048
 ← replied: ()
 → update evaluateDoAsync()
 debug.print: DoAsync
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "no cycles refunded"
+debug.print: +528
+debug.print: +2_048
+← replied: ()

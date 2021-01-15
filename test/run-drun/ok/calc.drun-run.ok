@@ -9,4 +9,6 @@ debug.print: +528
 debug.print: +2_048
 ingress Completed: Reply: 0x4449444c0000
 debug.print: DoAsync
-ingress Err: IC0504: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai violated contract: "ic0_msg_cycles_refunded" cannot be executed in update mode
+debug.print: +528
+debug.print: +2_048
+ingress Completed: Reply: 0x4449444c0000
