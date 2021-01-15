@@ -2399,7 +2399,7 @@ let check_lib scope lib : Scope.t Diag.result =
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
-              error env cub.at "M0144" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
+              error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
           Scope.lib lib.note imp_typ
         ) lib
