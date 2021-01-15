@@ -544,7 +544,7 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
   let args = List.length ts in
   if pars <> args then begin
     let consider_scope x = match tbs with
-      | hd :: _ when hd.T.sort == T.Scope -> x - 1
+      | hd :: _ when hd.T.sort = T.Scope -> x - 1
       | _ -> x in
     error env at "M0045"
       "wrong number of type arguments: expected %d but got %d"
