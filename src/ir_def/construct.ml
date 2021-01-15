@@ -282,7 +282,7 @@ let callE exp1 typs exp2 =
     }
   }
 
-let ifE exp1 exp2 exp3 _typ =
+let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
     note = Note.{ def with
@@ -295,8 +295,8 @@ let falseE = boolE false
 let trueE = boolE true
 let notE : Ir.exp -> Ir.exp = fun e ->
   primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE]
-let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 falseE T.bool
-let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 trueE e2 T.bool
+let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 falseE
+let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 trueE e2
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE
   | [x] -> x
@@ -586,13 +586,12 @@ let whileE exp1 exp2 =
   *)
   let lab = fresh_id "done" () in
   labelE lab T.unit (
-      loopE (
-          ifE exp1
-            exp2
-            (breakE lab (tupE []))
-            T.unit
-        )
+    loopE (
+      ifE exp1
+        exp2
+        (breakE lab (tupE []))
     )
+  )
 
 let loopWhileE exp1 exp2 =
   (* loop e1 while e2
@@ -603,15 +602,14 @@ let loopWhileE exp1 exp2 =
    *)
   let lab = fresh_id "done" () in
   labelE lab T.unit (
-      loopE (
-          thenE exp1
-            ( ifE exp2
-               (tupE [])
-               (breakE lab (tupE []))
-               T.unit
-            )
-        )
+    loopE (
+      thenE exp1 (
+        ifE exp2
+          (tupE [])
+          (breakE lab (tupE []))
+      )
     )
+  )
 
 let forE pat exp1 exp2 =
   (* for p in e1 e2

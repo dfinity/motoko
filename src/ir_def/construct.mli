@@ -75,7 +75,7 @@ val funcE : string -> func_sort -> control ->
   exp
 val callE : exp -> typ list -> exp -> exp
 
-val ifE : exp -> exp -> exp -> typ -> exp
+val ifE : exp -> exp -> exp -> exp
 val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp

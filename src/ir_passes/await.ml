@@ -143,6 +143,7 @@ and t_exp' context exp' =
         let context' = LabelEnv.add Return Label LabelEnv.empty in
         t_exp context' exp1
       | T.Await ->
+        (* define k_ret as identity continuation and enter cps *)
         let k_ret = fresh_async_cont (typ exp1) (typ exp1) in
         let v = fresh_var "v" (typ exp1) in
         let context' = LabelEnv.add Return (Cont (ContVar k_ret)) LabelEnv.empty in
@@ -231,12 +232,11 @@ and c_if context k e1 e2 e3 =
   in
   let e2 = trans_branch e2 in
   let e3 = trans_branch e3 in
-  let t = T.lub (typ e2) (typ e3) in
   match eff e1 with
   | T.Triv ->
-    ifE (t_exp context e1) e2 e3 t
+    ifE (t_exp context e1) e2 e3
   | T.Await ->
-    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3 t))
+    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3))
   )
 
 and c_loop context k e1 =
