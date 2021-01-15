@@ -68,7 +68,7 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
 let rec t_exp context exp =
-  (*  assert (eff exp = T.Triv); *)
+  assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp.it }
 and t_exp' context exp' =
   match exp' with
@@ -136,9 +136,18 @@ and t_exp' context exp' =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, s, c, typbinds, pat, typ, exp) ->
-    let context' = LabelEnv.add Return Label LabelEnv.empty in
-    FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
+  | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
+    FuncE (x, s, c, typbinds, pat, typs,
+      match eff exp1 with
+      | T.Triv ->
+        let context' = LabelEnv.add Return Label LabelEnv.empty in
+        t_exp context' exp1
+      | T.Await ->
+        let k_ret = fresh_async_cont (typ exp1) (typ exp1) in
+        let v = fresh_var "v" (typ exp1) in
+        let context' = LabelEnv.add Return (Cont (ContVar k_ret)) LabelEnv.empty in
+        blockE [funcD k_ret v (varE v)]
+          (c_exp context' exp1 (ContVar k_ret)))
   | ActorE (ds, ids, { pre; post }, t) ->
     ActorE (t_decs context ds, ids,
       { pre = t_exp LabelEnv.empty pre;
