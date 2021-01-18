@@ -276,7 +276,7 @@ export text_t text_singleton(uint32_t code) {
 // 2. index into that blob (shifted by two for GC's sake)
 // 3. 0, or a pointer to a linked list of non-empty text values to do next
 //
-// The linked list (text_cont_t) is a tuple with
+// The linked list (text_iter_cont_t) is a tuple with
 // 1. a pointer to the text_t
 // 2. 0, or a pointer to the next list entry
 //
@@ -295,7 +295,7 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 // used to enforce the invariant about TEXT_ITER_BLOB to be a blob.
 static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
-    as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
+    text_iter_cont_t c = alloc_words(TUPLE_HEADER_SIZE + 2);
     TAG(c) = TAG_ARRAY;
     TUPLE_LEN(c) = 2;
     TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
@@ -355,3 +355,51 @@ export uint32_t text_iter_next(text_iter_t i) {
     return c;
   }
 }
+
+static text_iter_t  copy_iter_state(text_iter_t i0) {
+  if (TAG(i0) != TAG_ARRAY) {
+    rts_trap_with("copy_iter_state: not an array");
+  }
+  const uint32_t num_words = ARRAY_HEADER_SIZE + ARRAY_LEN(i0);
+  as_ptr i = alloc_words(num_words);
+  memcpy(i, i0, num_words << 2);
+  // duplicate the worklist, as it might get mutated
+  text_iter_cont_t *c = &TEXT_ITER_TODO(i);
+  while (*c) {
+    const uint32_t num_words = TUPLE_HEADER_SIZE + 2;
+    text_iter_cont_t d = alloc_words(num_words);
+    memcpy(d, *c, num_words << 2);
+    c = &TEXT_CONT_NEXT(d);
+  }
+  return i;
+}
+
+export as_ptr text_iter_copy(as_ptr a0) {
+  if (TAG(a0) != TAG_OBJECT) {
+    rts_trap_with("text_iter_copy: not an object");
+  }
+  if (ARRAY_LEN(a0) != 1) {
+    rts_trap_with("text_iter_copy: more fields?");
+  }
+  const uint32_t num_words = ARRAY_HEADER_SIZE + 1 + ARRAY_LEN(a0);
+  as_ptr a = alloc_words(num_words);
+  memcpy(a, a0, num_words << 2);
+
+  as_ptr closure = FIELD(a, 3);
+
+  if (TAG(closure) != TAG_CLOSURE) {
+    rts_trap_with("text_iter_copy: not a closure?");
+  }
+  if (FIELD(closure, 2) != 1) {
+    rts_trap_with("text_iter_copy: not single captured?");
+  }
+
+  as_ptr closure2 = alloc_words(4);
+  memcpy(closure2, closure, 3 << 2);
+  FIELD(closure2, 3) = copy_iter_state(FIELD(closure, 3));
+
+  FIELD(a, 3) = closure2;
+
+  return a;
+}
+

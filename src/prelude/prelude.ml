@@ -118,7 +118,6 @@ func @text_chars(xs : Text) : () -> @Iter<Char> =
     };
   };
 
-
 // Internal helper functions for the show translation
 
 // The text_of functions do not need to be exposed; the user can just use
@@ -592,6 +591,11 @@ func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> 
 
 func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
 func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
+
+// Shallow iterator copy
+
+func iter_shallow_copy(it : @Iter<Char>) : @Iter<Char> =
+  (prim "copy_text_iterator" : @Iter<Char> -> @Iter<Char>) it;
 
 // Array utilities
 

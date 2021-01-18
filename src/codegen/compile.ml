@@ -778,6 +778,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter_next" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_iter_copy" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_len" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_of_ptr_size" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
@@ -7153,6 +7154,11 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "char_is_alphabetic", [e] ->
       compile_char_to_bool_rts env ae e "char_is_alphabetic"
+
+    | OtherPrim "copy_text_iterator", [a] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae a ^^
+      E.call_import env "rts" "text_iter_copy"
 
     | OtherPrim "print", [e] ->
       SR.unit,
