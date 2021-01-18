@@ -285,7 +285,7 @@ let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
     note = Note.{ def with
-      typ =  (* typ; *) T.lub (typ exp2) (typ exp3);
+      typ = T.lub (typ exp2) (typ exp3);
       eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
     }
   }

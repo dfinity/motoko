@@ -850,9 +850,7 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env pat in
   check_sub env pat.at t_pat pat.note;
   check_exp (adjoin_vals env ve) exp;
-  check env pat.at (T.sub (typ exp) t) "bad case, expected %s, found %s"
-    (T.string_of_typ_expand t)
-    (T.string_of_typ_expand (typ exp))
+  check env pat.at (T.sub (typ exp) t) "bad case"
 
 (* Arguments *)
 

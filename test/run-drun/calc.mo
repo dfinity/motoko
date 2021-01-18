@@ -1,7 +1,7 @@
 import P "mo:prim";
 
 actor a {
-  
+
   func power(i:Int, n: Int) : Int {
     if (n<=0) i else i*power(i, n-1);
   };
@@ -79,7 +79,3 @@ actor a {
 await a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
 await a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
 await a.evaluateDoAsync(); //OR-CALL ingress evaluateDoAsync "DIDL\x00\x00"
-
-//SKIP run-low
-//SKIP ic-ref
-//SKIP drun
