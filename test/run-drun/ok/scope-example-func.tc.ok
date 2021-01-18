@@ -1,1 +1,1 @@
-scope-example-func.mo:10.13-10.38: type error, misplaced async expression; try enclosing in an async function
+scope-example-func.mo:10.13-10.38: type error [M0037], misplaced async expression; try enclosing in an async function

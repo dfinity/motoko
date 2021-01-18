@@ -1,1 +1,1 @@
-bad-char-lit3.mo:2.8-2.13: syntax error, invalid utf8 in character literal
+bad-char-lit3.mo:2.8-2.13: syntax error [M0002], invalid utf8 in character literal

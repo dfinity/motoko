@@ -17,21 +17,21 @@ open Syntax
 
 let err m at =
   let open Diag in
-  add_msg m {
-    sev = Diag.Error;
-    cat = "type";
-    at;
-    text = "non-static expression in library or module"
-  }
+  add_msg m
+    (error_message
+       at
+       "M0014"
+       "type"
+       "non-static expression in library or module")
 
 let pat_err m at =
   let open Diag in
-  add_msg m {
-    sev = Diag.Error;
-    cat = "type";
-    at;
-    text = "only trivial patterns allowed in static expressions"
-  }
+  add_msg m
+    (error_message
+       at
+       "M0015"
+       "type"
+       "only trivial patterns allowed in static expressions")
 
 let rec exp m e = match e.it with
   (* Plain values *)

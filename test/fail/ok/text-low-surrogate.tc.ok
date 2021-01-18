@@ -1,1 +1,1 @@
-text-low-surrogate.mo:1.9-1.19: syntax error, unicode escape out of range
+text-low-surrogate.mo:1.9-1.19: syntax error [M0002], unicode escape out of range

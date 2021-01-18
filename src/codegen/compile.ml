@@ -3019,7 +3019,7 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let unit_vanilla_lit = 1l
+  let unit_vanilla_lit = 0l
   let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
