@@ -152,5 +152,5 @@ let error_codes : (string * string option) list =
     "M0146", None; (* Pattern is never matched *)
     "M0147", None; (* Object syntax is deprecated in this position *)
     "M0148", None; (* Block syntax is deprecated in this position *)
-    "M0149", None; (* `do async {}` expressions are not supported *)
+    "M0149", None; (* `do async { ... }` expressions are not supported *)
   ]
