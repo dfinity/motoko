@@ -1,22 +1,22 @@
-issue103.mo:3.29-3.40: type error, shared function has non-shared parameter type
+issue103.mo:3.29-3.40: type error [M0031], shared function has non-shared parameter type
   () -> Nat
 type
   () -> Nat
 is or contains non-shared type
   () -> Nat
-issue103.mo:10.29-10.46: type error, shared function has non-shared parameter type
+issue103.mo:10.29-10.46: type error [M0031], shared function has non-shared parameter type
   {foo : () -> Nat}
 type
   {foo : () -> Nat}
 is or contains non-shared type
   () -> Nat
-issue103.mo:17.29-17.40: type error, async has non-shared content type
+issue103.mo:17.29-17.40: type error [M0033], async has non-shared content type
   () -> Nat
 type
   () -> Nat
 is or contains non-shared type
   () -> Nat
-issue103.mo:24.29-24.48: type error, async has non-shared content type
+issue103.mo:24.29-24.48: type error [M0033], async has non-shared content type
   {foo : () -> Nat}
 type
   {foo : () -> Nat}

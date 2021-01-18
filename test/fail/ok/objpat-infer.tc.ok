@@ -1,22 +1,22 @@
-objpat-infer.mo:5.36-5.37: type error, object field a is not contained in expected type
+objpat-infer.mo:5.36-5.37: type error [M0119], object field a is not contained in expected type
   {}
-objpat-infer.mo:23.13-23.21: type error, expression of type
+objpat-infer.mo:23.13-23.21: type error [M0096], expression of type
   actor {}
 cannot produce expected type
   {}
-objpat-infer.mo:26.13-26.14: type error, expression of type
+objpat-infer.mo:26.13-26.14: type error [M0096], expression of type
   actor {bar : shared {} -> async Nat}
 cannot produce expected type
   {}
-objpat-infer.mo:29.13-29.15: type error, expression of type
+objpat-infer.mo:29.13-29.15: type error [M0096], expression of type
   {}
 cannot produce expected type
   actor {}
-objpat-infer.mo:30.13-30.22: type error, expression of type
+objpat-infer.mo:30.13-30.22: type error [M0096], expression of type
   {}
 cannot produce expected type
   actor {}
-objpat-infer.mo:35.15-35.23: type error, expression of type
+objpat-infer.mo:35.15-35.23: type error [M0096], expression of type
   actor {}
 cannot produce expected type
   {}
