@@ -1,6 +1,10 @@
 = Motoko compiler changelog
 
-* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for reading newline/NUL terminated arguments from `<file>`.
+== 0.5.5 (2021-01-15)
+
+* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for
+  reading newline/NUL terminated arguments from `<file>`.
+* motoko base: documentation examples are executable in the browser
 
 == 0.5.4 (2021-01-07)
 
