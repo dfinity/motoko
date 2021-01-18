@@ -512,23 +512,18 @@ let funcD ((id, typ) as f) x exp =
 let nary_funcD ((id, typ) as f) xs exp =
   letD f (nary_funcE id typ xs exp)
 
-(* Continuation types *)
+(* Continuation types with explicit answer typ *)
 
-let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
+let contT typ ans_typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, T.as_seq ans_typ)
 
-let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
+let err_contT ans_typ =  T.Func (T.Local, T.Returns, [], [T.catch], T.as_seq ans_typ)
 
-let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
+let answerT typ : T.typ =
+  match typ with
+  | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
+  | _ -> assert false
 
-
-(* async continuation types *)
-
-let async_contT typ ans_typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [ans_typ])
-
-let async_err_contT ans_typ = T.Func (T.Local, T.Returns, [], [T.catch], [ans_typ])
-
-let async_cpsT typ ans_typ = T.Func (T.Local, T.Returns, [],
-                             [async_contT typ ans_typ; async_err_contT ans_typ], [ans_typ])
+let cpsT typ ans_typ = T.Func (T.Local, T.Returns, [], [contT typ ans_typ; err_contT ans_typ], T.as_seq ans_typ)
 
 (* Sequence expressions *)
 

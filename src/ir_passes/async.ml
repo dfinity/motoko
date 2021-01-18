@@ -93,8 +93,8 @@ let chain_asyncT =
       [ { var = "T"; sort = T.Type; bound = T.Any };
         { var = "U"; sort = T.Type; bound = T.Any }],
       [t_async unary (T.Var ("U", 1));
-       T.Tup [ async_contT (T.Var ("U", 1)) (t_async unary (T.Var ("T", 0))) ;
-               async_err_contT (t_async unary (T.Var ("T", 0)))]],
+       T.Tup [ contT (T.Var ("U", 1)) (t_async unary (T.Var ("T", 0))) ;
+               err_contT (t_async unary (T.Var ("T", 0)))]],
       [t_async unary (T.Var ("T", 0))]
     )
 
@@ -119,8 +119,8 @@ let new_nary_async_reply ts1 =
     | [t] ->
       varE unary_async
     | ts ->
-      let k' = fresh_var "k" (contT t1) in
-      let r' = fresh_var "r" err_contT in
+      let k' = fresh_var "k" (contT t1 T.unit) in
+      let r' = fresh_var "r" (err_contT T.unit) in
       let seq_of_v' = tupE (List.mapi (fun i _ -> projE (varE v') i) ts) in
       [k';r'] -->* (
         varE unary_async -*- (tupE[([v'] -->* (varE k' -*- seq_of_v')); varE r'])

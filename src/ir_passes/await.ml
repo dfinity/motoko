@@ -8,13 +8,9 @@ module R = Rename
 module T = Type
 open Construct
 
-let fresh_cont typ = fresh_var "k" (contT typ)
+let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
 
-let fresh_err_cont ()  = fresh_var "r" (err_contT)
-
-let fresh_async_cont typ ans_typ = fresh_var "k" (async_contT typ ans_typ)
-
-let fresh_async_err_cont ans_typ  = fresh_var "r" (async_err_contT ans_typ)
+let fresh_err_cont ans_typ  = fresh_var "r" (err_contT ans_typ)
 
 (* continuations, syntactic and meta-level *)
 
@@ -37,7 +33,7 @@ let letcont k scope =
   | MetaCont (typ0, cont) ->
     let v = fresh_var "v" typ0 in
     let e = cont v in
-    let k' = fresh_var "k" (T.Func (T.Local, T.Returns, [], T.as_seq typ0, T.as_seq (typ e))) in
+    let k' = fresh_cont typ0 (typ e) in
     blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
@@ -110,8 +106,8 @@ and t_exp' context exp' =
     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
     (* add the implicit return/throw label *)
     let ans_typ = T.Async(T.Con(tb.it.con,[]),typ exp1) in
-    let k_ret = fresh_async_cont (typ exp1) ans_typ in
-    let k_fail = fresh_async_err_cont ans_typ in
+    let k_ret = fresh_cont (typ exp1) ans_typ in
+    let k_fail = fresh_err_cont ans_typ in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
@@ -122,8 +118,8 @@ and t_exp' context exp' =
   | AsyncE (tb, exp1, typ1) ->
     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
     (* add the implicit return/throw label *)
-    let k_ret = fresh_cont (typ exp1) in
-    let k_fail = fresh_err_cont () in
+    let k_ret = fresh_cont (typ exp1) T.unit in
+    let k_fail = fresh_err_cont T.unit in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
@@ -144,7 +140,7 @@ and t_exp' context exp' =
         t_exp context' exp1
       | T.Await ->
         (* define k_ret as identity continuation and enter cps *)
-        let k_ret = fresh_async_cont (typ exp1) (typ exp1) in
+        let k_ret = fresh_cont (typ exp1) (typ exp1) in
         let v = fresh_var "v" (typ exp1) in
         let context' = LabelEnv.add Return (Cont (ContVar k_ret)) LabelEnv.empty in
         blockE [funcD k_ret v (varE v)]
@@ -244,7 +240,7 @@ and c_loop context k e1 =
   | T.Triv ->
     assert false
   | T.Await ->
-    let loop = fresh_var "loop" (contT T.unit) in
+    let loop = fresh_var "loop" (contT T.unit T.unit) in
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
@@ -334,7 +330,7 @@ and c_exp' context exp k =
              at = no_region;
              note = ()
         }] in
-      let throw = fresh_err_cont () in
+      let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
       blockE
         [ let e = fresh_var "e" T.catch in
@@ -377,8 +373,8 @@ and c_exp' context exp k =
   | DoAsyncE (tb, exp1, typ1) ->
     (* add the implicit return label *)
     let ans_typ = T.Async(T.Con(tb.it.con,[]),typ exp1) in
-    let k_ret = fresh_async_cont (typ exp1) ans_typ in
-    let k_fail = fresh_async_err_cont ans_typ in
+    let k_ret = fresh_cont (typ exp1) ans_typ in
+    let k_fail = fresh_err_cont ans_typ in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
@@ -389,8 +385,8 @@ and c_exp' context exp k =
           (c_exp context' exp1 (ContVar k_ret)))))
   | AsyncE (tb, exp1, typ1) ->
      (* add the implicit return label *)
-    let k_ret = fresh_cont (typ exp1) in
-    let k_fail = fresh_err_cont () in
+    let k_ret = fresh_cont (typ exp1) T.unit in
+    let k_fail = fresh_err_cont T.unit in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
@@ -560,7 +556,7 @@ and t_comp_unit context = function
       | T.Triv ->
         ProgU (t_decs context ds)
       | T.Await ->
-        let throw = fresh_err_cont () in
+        let throw = fresh_err_cont T.unit in
         let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
         let e = fresh_var "e" T.catch in
         ProgU [
