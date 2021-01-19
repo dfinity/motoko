@@ -196,7 +196,7 @@ mo-rts.wasm: $(RTS_RUST_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 		--whole-archive \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_A) $(MUSL_WASM_O)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
