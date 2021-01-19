@@ -128,7 +128,7 @@ let new_nary_async_reply ts1 =
   in
   (* construct the n-ary reply callback that sends a sequence of values to fulfill the async *)
   let nary_reply =
-    let vs,seq_of_vs =
+    let vs, seq_of_vs =
       match ts1 with
       | [t] ->
         let v = fresh_var "rep" t in
