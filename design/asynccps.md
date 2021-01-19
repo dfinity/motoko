@@ -25,6 +25,7 @@ e = x
   | return e
   | try e with x -> e     // evaluate e, handling error x using e.
   | throw e               // throw error e to nearest enclosing handler or async block
+  | do async e            // in an async context, evaluate e, returning an async
 ```
 
 
@@ -32,9 +33,13 @@ The aim of the game is to remove async and await and try catch/throw  by a sourc
 
 Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` is `await`.
 
-The only terms that introduce effect `A` is `await`, `try` or `throw` - the effect is masked by its innermost enclosing `async` (if any).
+The only terms that introduce effect `A` is `await`, `try` or `throw`  and `do async` - the effect is masked by its innermost enclosing `async` (if any).
 
-Note `await`, `try` and `throw` may only occur within an `async` block.
+(A less conservative refinement is to define the effect of `do async e` to be the effect of `e`, which would require extending the `T[e]`  translation below with a case for `T[do async e]` where the effect of `e` is `Triv`. The case would apply, for example, to a `do async` expression
+that has no `await` in `e` but merely  `return`, `throws` or exits with a completed promise).
+
+Note `await`, `try` and `throw` and `do async {}` may only occur within an `async` block.
+(In Motoko, `do async e` is allowed to occur in the body of a shared or asynchronous local function - even without an enclosing `async ...`).
 
 The body of every lambda must be trivial.
 
@@ -45,9 +50,10 @@ Terms `t` are `await/try/throw` free terms (in the sense that await can only occ
 Trivial terms can be compiled in direct style by translation `T[t]`.
 
 Non-trivial terms must be cps-converted by translations `C r [e]` and `CPS[e] r`.
-Their translations expect a pair `r = (reply,reject)` and `reply` and `reject` continuations (for interpreting early `return` and `throw`). We write 'r.reply' and `r.reject` for the obvious projections.
-The `reply` continuation only changes when we enter an async block. 
+Their translations expect a pair `r = (reply,reject)` and `reply` and `reject` continuations (for interpreting early `return` and `throw`). We write `r.reply` and `r.reject` for the obvious projections.
+The `reply` continuation only changes when we enter an async block.
 The `reject` continuation changes when we enter a `async` or `try`.
+Both change when we enter a `do async e`.
 The translation `C r [e]` produces a term in cps, taking a single continuation argument.
 
 Since `async` and `try catch` are block structured, we can record the
@@ -57,6 +63,7 @@ the translation by not threading two continuations throughout.
 
 ```JS
 CPS[ e ] = \\r.C r [e] @ r.reply
+CPS*[ e ] = \\r.C* r [e] @ r.reply
 
 where
 
@@ -71,27 +78,27 @@ C r [ let x = t1 in e2 ] =
 C r [ let x = e1 in e2 ] =
    \\k.C r [ t1 ] @ (\\x. C r [e2] @ k)
 C r [ await t ] =
-   \\k.await(T[t1], (k, r.reject) )
+   \\k.await(T[t1], (k, r.reject))
 C r [ await e ] =
-   \\k.C r [e] @ (\\v.await(v,(k,r.reject))
+   \\k.C r [e] @ (\\v.await(v,(k, r.reject))
 C r [ if e1 then e2 else e3 ]  =
-   \\k.C r [e1] @ (\\b.if b then C r [e1]@k else C r [e2]@k)
+   \\k.C r [e1] @ (\\b.if b then C r [e1] @ k else C r [e2] @ k)
 C r [ if t1 then e2 else e3 ]  =
    \\k.if T[t1] then C r [e1] @ k else C r [e2] @ k
 C r [ if e1 then t2 else t3 ]  =
    \\k.C r [e1] @ (\\b.k @ (if b then T[t1] else T[t2])))
 C r [ while t1 do e2 ] =
   \\k.
-    let rec l = \u. if T[t1] then C r [e2]@l else k@u in
+    let rec l = \u. if T[t1] then C r [e2] @ l else k @ u in
     l@()
 C r [ while e1 do t2 ] =
   \\k.
-    let rec l = \u. C r [e1](\\v.if v then T[t2] ; l@u else k@u) in
-    l@()
+    let rec l = \u. C r [e1](\\v.if v then T[t2] ; l @ u else k @ u) in
+    l @ ()
 C r [ while e1 do e2 ] =
   \\k.
-    let rec l = \u. C r [e1] (\\v.if v then C r [e2]@l else k@()) in
-    l@()
+    let rec l = \u. C r [e1] (\\v.if v then C r [e2] @ l else k @ ()) in
+    l @ ()
 C r [ label l e ] = \\l. C r [e] @ l                 // we use label l to name the success continuation
 C r [ break l e ] = \\k. C r [e] @ l                 // discard k, continue from l
 C r [ return e ] = \\k. C r [e] @ r.reply      // discard k, exit via r.reply
@@ -99,9 +106,29 @@ C r [ try e1 with x -> e2 ] =
   let reject' = \\x. C r [e2] @ k in
   \\k. C (r.reply,reject') [e1] @ k
 C r [ throw e] = \\k. C r [e] @ r.reject      // discard k, exit async or try via reject
+C r [ do async e ] =
+   \\k. k @ (CPS*[e] (\v.CompletedAsync(v), \e.RejectedAsync(e)))
 ```
 
-The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _`, at which point we switch to the `CPS[-]` translation.
+In `C`, an `await` is translated by passing the current continuation `k` and reject continuation `r.reject` (both returning answer type `()`) in the promise and yielding if necessary.
+
+Here translation `C*` (used by `CPS*[e]`) is like translation `C`, used by `CPS[e]`, except for the initial continuations supplied to the translation, which have answer type `async T` (not `()`),
+and its compilation of `await e`, which is
+
+```
+C* r [ await t ] =
+   \\k.(await*(T[t1], (k, r.reject))
+C* r [ await e ] =
+   \\k.C* r [e] @ (\\v. await*(v, (k, r.reject))
+```
+
+In `C*`, an `await` is translated by allocating a new promise, completed on completion of the awaited promise using the current continuation `k`, and immediately returned as a pending promise.
+
+In practice, we can use a single definition for `C` and `C*` and distinguish them on cases
+`await t` and `await e` by examining the answer type of `k` (which is `()` for the body
+of an async expression and `async _`, for the body of a `do async e` expression.
+
+The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _` and `do asnc _`, at which point we switch to the `CPS[-]` translation.
 Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
 
 ```JS
@@ -121,59 +148,9 @@ T[ label l t ] =
    label l T[t]
 T[ return T[t] ] =
    return T[t]
-
-T r [ do async e ] =
-	(DO[e] @ ((\v.CompletedAsync(v)),(\e.RejectedAsync(e)))
-
-DO[e] = \\r. D r [e] @ (\a.a)
-CompletedAsync(v) =  { result = Completed v; waiters = [] }
-CompletedAsync(e) =  { result = Error e; waiters =  [] }
-Await(t,(k,r)) = match t with
-  | {result = Completed v} -> k v
-  | {result = Rejected e} -> r e
-  | {result = Pending} ->
-    t with waiters = (k,r)::t.waiters
-
-D r [ t ] =
-   \\k. k @ T[ t ]
-D r [ t1 e2 ] =
-   \\k. let f = T[ t1 ] in D r [ e2 ] @ \\v. k @ (f @ v))
-D r [ e1 e2 ] =
-   \\k. D r [ e1 ] @ (\\f.D r [ e2 ] @ (\\v. k @ (f @ v))
-D r [ let x = t1 in e2 ] =
-   \\k.let x = T[t1] in D r [e2] @ k
-D r [ let x = e1 in e2 ] =
-   \\k.D r [ t1 ] @ (\\x. D r [e2] @ k)
-D r [ await t ] =
-   \\k.Await(T[t1], (k, r.reject) )
-D r [ await e ] =
-   \\k.D r [e] @ (\\v.Await(v,(k,r.reject))
-D r [ if e1 then e2 else e3 ]  =
-   \\k.D r [e1] @ (\\b.if b then D r [e1]@k else D r [e2]@k)
-D r [ if t1 then e2 else e3 ]  =
-   \\k.if T[t1] then D r [e1] @ k else D r [e2] @ k
-D r [ if e1 then t2 else t3 ]  =
-   \\k.D r [e1] @ (\\b.k @ (if b then T[t1] else T[t2])))
-D r [ while t1 do e2 ] =
-  \\k.
-    let rec l = \u. if T[t1] then D r [e2]@l else k@u in
-    l@()
-D r [ while e1 do t2 ] =
-  \\k.
-    let rec l = \u. D r [e1](\\v.if v then T[t2] ; l@u else k@u) in
-    l@()
-D r [ while e1 do e2 ] =
-  \\k.
-    let rec l = \u. D r [e1] (\\v.if v then D r [e2]@l else k@()) in
-    l@()
-D r [ label l e ] = \\l. D r [e] @ l            // we use label l to name the success continuation
-D r [ break l e ] = \\k. D r [e] @ l            // discard k, continue from l
-D r [ return e ] = \\k. D r [e] @ r.reply      // discard k, exit via r.reply
-D r [ try e1 with x -> e2 ] =
-  let reject' = \\x. D r [e2] @ k in
-  \\k. D (r.reply,reject') [e1] @ k
-D r [ throw e] = \\k. D r [e] @ r.reject      // discard k, exit async or try via reject
-
+// if we allow effect(do async e) = effect e (see above), then add case
+T[ do async t ] =
+   CPS*[e] (\v.completedAsync(v), \e.rejectedAsync(e))
 ```
 
 We use the following primitives for scheduling actions (that complete asyncs).
@@ -193,6 +170,10 @@ type 'a async = { mutable result : 'a result; mutable waiters: ('a cont * error 
 spawn(f) = let t = async { result = Pending; waiters = [] } in
            schedule (\u.f(t));
            t
+
+yield() = schedule.Next()
+
+// meta-operations for interpreting `async e`
 
 await(t,(k,r)) = match t with
              | {result = Completed v} -> k v
@@ -215,7 +196,19 @@ reject(t,v) = match t with
                  schedule(\u.reject(v))
              | { result = _ } -> assert(false)
 
-yield() = schedule.Next()
+
+// meta-operations for interpreting `do async e`
+
+completedAsync(v) = { result = Completed v; waiters = [] }
+
+rejectedAsync(e) = { result = Error e; waiters =  [] }
+
+await*(au, (k, r)) =
+  let at = { result = Pending; waiters = [] };
+  let k1 u = k(u) (fun v -> complete(at, v)};
+  let r2 e = r(e) (fun e -> reject(at, e)};
+  await(au, (k1, r2));
+  at
 ```
 
 The above translations are flawed:

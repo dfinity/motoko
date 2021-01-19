@@ -89,7 +89,7 @@ let parse_with' mode lexer parser name : (Syntax.prog * _) Diag.result =
   let* mk_prog =
     try
       Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
-    with Lexer.Error (at, msg) -> Diag.error at "syntax" msg
+    with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let prog = mk_prog name in
   dump_prog Flags.dump_parse prog;
@@ -109,10 +109,10 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
-    Diag.print_messages
-      (List.map
-        (fun text -> Diag.{ sev = Warning; at; cat = "import"; text })
-        messages);
+    let* _ =
+      Diag.traverse_
+        (Diag.warn at "M0005" "import")
+        messages in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
     let* prog, triv_table = parse_with' mode lexer parse filename in
@@ -306,10 +306,11 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
-        Error [{
-          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s must not depend on itself" f
-        }]
+        Diag.error
+          ri.Source.at
+          "M0003"
+          "import"
+          (Printf.sprintf "file %s must not depend on itself" f)
       else begin
         pending := add ri.Source.it !pending;
         let open Diag.Syntax in
@@ -328,10 +329,11 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
       if actor_opt = None then
-        Error [Diag.{
-          sev = Error; at = ri.Source.at; cat = "import";
-          text = Printf.sprintf "file %s does not define a service" f
-        }]
+        Diag.error
+          ri.Source.at
+          "M0004"
+          "import"
+          (Printf.sprintf "file %s does not define a service" f)
       else
         let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
         let sscope = Scope.lib f actor in

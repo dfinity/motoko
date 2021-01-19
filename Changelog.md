@@ -1,6 +1,14 @@
 = Motoko compiler changelog
 
-* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for reading newline/NUL terminated arguments from `<file>`.
+* The compiler now reports errors and warnings with an additional _error code_
+  This code can be used to look up a more detailed description for a given error by passing the `--explain` flag with a code to the compiler.
+  As of January 2021 this isn't going to work for most codes because the detailed descriptions still have to be written.
+
+== 0.5.5 (2021-01-15)
+
+* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for
+  reading newline/NUL terminated arguments from `<file>`.
+* motoko base: documentation examples are executable in the browser
 
 == 0.5.4 (2021-01-07)
 
