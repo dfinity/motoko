@@ -28,6 +28,7 @@ let
     xargo
     wasmtime
     rust-bindgen
+    rustfmt
   ];
 
   llvmEnv = ''

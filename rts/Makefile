@@ -191,8 +191,7 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --blacklist-type __int32_t \
 	    --blacklist-type __int64_t \
 	    --blacklist-type __uint32_t \
-	    --blacklist-type __uint64_t \
-	    --no-rustfmt-bindings
+	    --blacklist-type __uint64_t
 
 	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
 	# need. Blacklist parameters are used because bindgen still generates unused type
