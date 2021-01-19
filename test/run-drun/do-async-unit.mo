@@ -2,7 +2,12 @@ import P "mo:prim";
 
 actor a {
 
- private func doText() : async () = do async {
+  private func doUnit() : async () = do async {
+    let t = await async (); // await at unit type
+    return t;
+  };
+
+  private func doText() : async () = do async {
     let t = await async "text"; // await at different type
     return;
   };
@@ -19,6 +24,7 @@ actor a {
   };
 
   public func go() : async () {
+    await doUnit();
     await doReturn();
     await doExit();
     try {
@@ -26,6 +32,7 @@ actor a {
       assert(false);
     } catch (e) { assert P.errorMessage(e) == "oops";};
   }
+
 };
 
 

@@ -44,8 +44,8 @@ let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
 let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
-let t_async as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
+let t_async as_seq typ =
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq typ; failT], [])
 
 let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
@@ -72,6 +72,16 @@ let new_fulfilled_asyncT =
 
 let new_fulfilled_asyncE () =
   varE (var "@new_fulfilled_async" new_fulfilled_asyncT)
+
+let fulfilled_asyncE as_seq typ v =
+  let fulfill = fresh_var "f" (fulfillT as_seq typ) in
+  let fail = fresh_var "r" failT in
+  [fulfill; fail] -->* (varE fulfill -*- v)
+
+let failed_asyncE as_seq typ e =
+  let fulfill = fresh_var "f" (fulfillT as_seq typ) in
+  let fail = fresh_var "r" failT in
+  [fulfill; fail] -->* (varE fail -*- e)
 
 let new_failed_asyncT =
   T.Func (
@@ -121,7 +131,7 @@ let new_nary_async_reply ts1 =
     | ts ->
       let k' = fresh_var "k" (contT t1 T.unit) in
       let r' = fresh_var "r" (err_contT T.unit) in
-      let seq_of_v' = tupE (List.mapi (fun i _ -> projE (varE v') i) ts) in
+      let seq_of_v' = tupE (List.mapi (fun i _ -> projE (varE v') i) ts) in (* TODO:is this eta-expansion necessary? *)
       [k';r'] -->* (
         varE unary_async -*- (tupE[([v'] -->* (varE k' -*- seq_of_v')); varE r'])
       )
@@ -147,6 +157,31 @@ let new_nary_async_reply ts1 =
     (async, reply, reject),
       blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
         (tupE [nary_async; nary_reply; varE fail])
+
+
+let chainAsync ts us au kr =
+  let k,r = match typ kr with
+    | T.Tup [t_k; t_r] ->
+      fresh_var "k" t_k,
+      fresh_var "r" t_r
+    | _ -> assert false
+  in
+  let ((at, fulfill, fail), def) = new_nary_async_reply ts in
+   blockE [
+      letP (tupP [varP k; varP r]) kr;
+      letP (tupP [varP at; varP fulfill; varP fail]) def;
+      let fulfill_u = (* flatten v, here and below? *)
+        let us = fresh_vars "u" us in
+        us -->* (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])
+      in
+      let fail_u =
+        let e = fresh_var "e" T.catch in
+        [e] -->* (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
+      in
+      expD (au -*- seqE [fulfill_u; fail_u]);
+    ]
+    (varE at)
+
 
 let letEta e scope =
   match e.it with
@@ -287,11 +322,14 @@ let transform mode prog =
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
           ((t_exp a) -*- (t_exp kr)).it
+(*
         | Func(_, _, [], [t1], [T.Async(_, t2)]) ->
           (* async answer type, from await in `do async {}` *)
           (callE (chain_asyncE ())
              [t_typ t2; t_typ t1]
-             (tupE [t_exp a; t_exp kr])).it
+             (tupE [t_exp a; t_exp kr])).it *)
+        | Func(_, _, [], us, [T.Async(_, t2)]) ->
+          (chainAsync (T.as_seq t2) us (t_exp a) (t_exp kr)).it
         | _ -> assert false
       end
     | PrimE (CPSDoAsync t, [exp1]) ->
@@ -303,11 +341,11 @@ let transform mode prog =
       in
       let k_ret = (* flatten v, here and below? *)
          let v = fresh_var "v" (T.seq ts1) in
-         v --> callE (new_fulfilled_asyncE()) [t2] (varE v)
+         v --> fulfilled_asyncE nary (T.seq ts1) (varE v)
       in
       let k_fail =
          let e = fresh_var "e" T.catch in
-         [e] -->* callE (new_failed_asyncE()) [t2] (varE e)
+         [e] -->* failed_asyncE nary (T.seq ts1) (varE e)
       in
       (callE (t_exp exp1) [t0] (tupE [k_ret; k_fail])).it
     | PrimE (CPSAsync t, [exp1]) ->
