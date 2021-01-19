@@ -127,15 +127,19 @@ in
 rec {
   rts =
     let
+      # We run this on motoko-rts-tests, to get the union of all
+      # dependencies
       rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
         name = "motoko-rts-deps";
-        src = subpath rts/motoko-rts;
-        sourceRoot = null;
-        sha256 = "11la5fl0fgx6i5g52p56sf48yz7f0mqrgm38m320xh3wyqa2nim6";
+        src = subpath ./rts;
+        sourceRoot = "rts/motoko-rts-tests";
+        sha256 = "1jkqr6c0kz8kginq21vjgmpn2wjnkprslkz9ly6aakkpwzmna16p";
         copyLockfile = true;
       };
     in
-    stdenv.mkDerivation {
+    # using multiStdenv instead of stdenv here means gcc -m32 works
+    # (else you get gnu/stubs-32.h: No such file or directory)
+    nixpkgs.multiStdenv.mkDerivation {
       name = "moc-rts";
 
       src = subpath ./rts;
@@ -169,8 +173,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-        # ./test_rts
-        # TODO: Run motoko-rts-tests here
+	cd motoko-rts-tests && cargo run --target=i686-unknown-linux-gnu
       '';
 
       installPhase = ''

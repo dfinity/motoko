@@ -41,10 +41,14 @@ let
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2020-07-22"; channel = "nightly"; };
+          rust-channel = moz_overlay.rustChannelOf { date = "2021-01-19"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
-            targets = [ "wasm32-unknown-unknown" "wasm32-unknown-emscripten" ];
+            targets = [
+	       "wasm32-unknown-unknown"
+	       "wasm32-unknown-emscripten"
+	       "i686-unknown-linux-gnu"
+	    ];
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
