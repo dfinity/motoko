@@ -27,6 +27,7 @@ let
     cargo-nightly
     xargo
     wasmtime
+    rust-bindgen
   ];
 
   llvmEnv = ''

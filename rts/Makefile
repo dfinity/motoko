@@ -107,6 +107,9 @@ CLANG_FLAGS = \
 
 all: mo-rts.wasm mo-rts-debug.wasm
 
+_build:
+	mkdir -p $@
+
 _build/wasm:
 	mkdir -p $@
 
@@ -153,14 +156,56 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
+TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
-.PHONY: $(RTS_RUST_WASM_A)
-$(RTS_RUST_WASM_A): | _build/wasm
+
+
+$(TOMMATH_BINDINGS_RS): | _build
+	bindgen $(TOMMATHSRC)/tommath.h \
+	    -o $@ \
+	    --use-core --ctypes-prefix=libc --no-layout-tests \
+	    --whitelist-function mp_init \
+	    --whitelist-function mp_zero \
+	    --whitelist-function mp_init_copy \
+	    --whitelist-function mp_set_u32 \
+	    --whitelist-function mp_set_i32 \
+	    --whitelist-function mp_get_i32 \
+	    --whitelist-function mp_set_u64 \
+	    --whitelist-function mp_set_i64 \
+	    --whitelist-function mp_get_i64 \
+	    --whitelist-function mp_count_bits \
+	    --whitelist-function mp_get_mag_u64 \
+	    --whitelist-function mp_cmp \
+	    --whitelist-function mp_add \
+	    --whitelist-function mp_sub \
+	    --whitelist-function mp_mul \
+	    --whitelist-function mp_div \
+	    --whitelist-function mp_div_2d \
+	    --whitelist-function mp_neg \
+	    --whitelist-function mp_abs \
+	    --whitelist-function mp_mul_2d \
+	    --whitelist-function mp_expt_u32 \
+	    --whitelist-function mp_2expt \
+	    --whitelist-function mp_incr \
+	    --blacklist-type __int32_t \
+	    --blacklist-type __int64_t \
+	    --blacklist-type __uint32_t \
+	    --blacklist-type __uint64_t \
+	    --no-rustfmt-bindings
+
+	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
+	# need. Blacklist parameters are used because bindgen still generates unused type
+	# definition with the whitelist parameters.
+	#
+	# Note that bindgen can't generate Rust macros or functions for CPP macros, so
+	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
+
+
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-.PHONY: $(RTS_RUST_DEBUG_WASM_A)
-$(RTS_RUST_DEBUG_WASM_A): | _build/wasm
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
