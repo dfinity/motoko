@@ -204,4 +204,11 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 		$+
 
 clean:
-	rm -rf _build mo-rts.wasm mo-rts-debug.wasm motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home
+	rm -rf \
+	  _build \
+	  mo-rts.wasm \
+	  mo-rts-debug.wasm \
+	  motoko-rts/target \
+	  motoko-rts-tests/target \
+	  motoko-rts/xargo-home \
+	  motoko-rts/cargo-home
