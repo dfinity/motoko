@@ -124,6 +124,10 @@ C* r [ await e ] =
 
 In `C*`, an `await` is translated by allocating a new promise, completed on completion of the awaited promise using the current continuation `k`, and immediately returned as a pending promise.
 
+In practice, we can use a single definition for `C` and `C*` and distinguish them on cases
+`await t` and `await e` by examining the answer type of `k` (which is `()` for the body
+of an async expression and `async _`, for the body of a `do async e` expression.
+
 The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _` and `do asnc _`, at which point we switch to the `CPS[-]` translation.
 Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
 
@@ -148,10 +152,6 @@ T[ return T[t] ] =
 T[ do async t ] =
    CPS*[e] (\v.completedAsync(v), \e.rejectedAsync(e))
 ```
-
-(In practice, we can use a single definition for `C` and `C*` and distinguish them on cases
-`await t` and `await e` by examining the answer type of `k` (which is `()` for the body
-of an async expression and `Async<T>` (some T) for the body of a `do async e` expression.)
 
 We use the following primitives for scheduling actions (that complete asyncs).
 
