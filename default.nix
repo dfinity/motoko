@@ -618,7 +618,7 @@ rec {
     # Also mention the dependencies in the output, so that after `nix-build -A
     # shell` (or just `nix-build`) they are guaranteed to be present in the
     # local nix store.
-    phases = ["installPhase" "fixupPhase"];
+    phases = ["installPhase"];
     installPhase = "touch $out";
     preferLocalBuild = true;
     allowSubstitutes = true;
