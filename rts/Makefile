@@ -152,6 +152,10 @@ _build/wasm/libmotoko_rts_debug.a: | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
+.PHONY: test
+test:
+	cd motoko-rts-tests && cargo run --target=i686-unknown-linux-gnu
+
 RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
 

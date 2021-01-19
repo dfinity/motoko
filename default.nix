@@ -173,7 +173,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-	cd motoko-rts-tests && cargo run --target=i686-unknown-linux-gnu
+	make test
       '';
 
       installPhase = ''
