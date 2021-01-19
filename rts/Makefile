@@ -161,7 +161,8 @@ TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
 
 $(TOMMATH_BINDINGS_RS): | _build
-	bindgen $(TOMMATHSRC)/tommath.h \
+	# use bash explicitly (work around nixpkgs bug)
+	bash $$(command -v bindgen) $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
 	    --whitelist-function mp_init \
