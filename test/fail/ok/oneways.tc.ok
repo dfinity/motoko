@@ -1,12 +1,12 @@
-oneways.mo:8.25-8.27: type error, shared function with () result type has unexpected body:
+oneways.mo:8.25-8.27: type error [M0078], shared function with () result type has unexpected body:
   the body must either be of sugared form '{ ... }' 
   or explicit form '= ignore ((async ...) : async ())'
-oneways.mo:9.25-9.40: type error, shared function with () result type has unexpected body:
+oneways.mo:9.25-9.40: type error [M0078], shared function with () result type has unexpected body:
   the body must either be of sugared form '{ ... }' 
   or explicit form '= ignore ((async ...) : async ())'
-oneways.mo:15.24-15.26: type error, shared function with () result type has unexpected body:
+oneways.mo:15.24-15.26: type error [M0078], shared function with () result type has unexpected body:
   the body must either be of sugared form '{ ... }' 
   or explicit form '= ignore ((async ...) : async ())'
-oneways.mo:16.24-16.39: type error, shared function with () result type has unexpected body:
+oneways.mo:16.24-16.39: type error [M0078], shared function with () result type has unexpected body:
   the body must either be of sugared form '{ ... }' 
   or explicit form '= ignore ((async ...) : async ())'

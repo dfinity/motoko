@@ -62,6 +62,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
@@ -536,6 +537,20 @@ rec {
       '';
     };
 
+  check-error-codes = stdenv.mkDerivation {
+      name = "check-error-codes";
+      src = subpath ./test;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.python3 ];
+      buildPhase = ''
+      patchShebangs .
+      ./check-error-codes.py ${./src/lang_utils/error_codes.ml}
+      '';
+      installPhase = ''
+        touch $out
+      '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -556,6 +571,7 @@ rec {
       check-rts-formatting
       check-generated
       check-grammar
+      check-error-codes
     ] ++
     builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
     builtins.attrValues js;
