@@ -111,6 +111,13 @@ _build/wasm:
 	mkdir -p $@
 
 #
+# Let make automatically search these directorys (tommath and musl) for .c files
+#
+
+vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
+
+
+#
 # Building the libtommath files
 #
 
@@ -140,13 +147,7 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 	llvm-ranlib $@
 
 #
-# Look into following directories for source dependencies
-#
-
-vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
-
-#
-# Our part of the RTS
+# The rust code code of the RTS
 #
 
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
@@ -176,43 +177,34 @@ test: $(TOMMATH_WASM_A)
 # Putting it all together
 #
 
+# These symbols from musl are used by the code generator directly
+EXPORTED_SYMBOLS=\
+  __wasm_call_ctors \
+  memcpy \
+  memcmp \
+  tan \
+  asin \
+  acos \
+  atan \
+  atan2 \
+  pow \
+  sin \
+  cos \
+  exp \
+  fmod \
+  log \
+
 mo-rts.wasm: $(RTS_RUST_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
-		--export=memcpy \
-		--export=memcmp \
-		--export=tan \
-		--export=asin \
-		--export=acos \
-		--export=atan \
-		--export=atan2 \
-		--export=pow \
-		--export=sin \
-		--export=cos \
-		--export=exp \
-		--export=fmod \
-		--export=log \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
 
 mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
-		--export=memcpy \
-		--export=memcmp \
-		--export=tan \
-		--export=asin \
-		--export=acos \
-		--export=atan \
-		--export=atan2 \
-		--export=pow \
-		--export=sin \
-		--export=cos \
-		--export=exp \
-		--export=fmod \
-		--export=log \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
 
