@@ -7,16 +7,6 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-# The RTS test suite requires building 32 bit programs
-# This currently works on Linux, using a multilib compilers
-# but not on Darwin:
-# error: Multilib clang-7.1.0 not supported for 'x86_64-darwin'
-# So on darwin, use normal stdenv, and dont run the test suite
-let multiStdenv =
-  if nixpkgs.stdenv.isDarwin
-  then nixpkgs.stdenv
-  else nixpkgs.multiStdenv; in
-
 let subpath = p: import ./nix/gitSource.nix p; in
 
 let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
@@ -32,9 +22,11 @@ let
   rtsBuildInputs = with nixpkgs; [
     clang_10 # for native/wasm building
     lld_10 # for wasm building
+    llvmPackages_10.bintools
     rustc-nightly
     cargo-nightly
     xargo
+    wasmtime
   ];
 
   llvmEnv = ''
@@ -148,9 +140,7 @@ rec {
       };
     in
 
-    # using multiStdenv instead of stdenv here means gcc -m32 works
-    # (else you get gnu/stubs-32.h: No such file or directory)
-    multiStdenv.mkDerivation {
+    stdenv.mkDerivation {
       name = "moc-rts";
 
       src = subpath ./rts;
@@ -181,8 +171,7 @@ rec {
 
       '';
 
-      # do not run tests on darwin (no multilib support)
-      doCheck = !multiStdenv.isDarwin;
+      doCheck = true;
 
       checkPhase = ''
 	make test
@@ -577,7 +566,7 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = multiStdenv.mkDerivation {
+  shell = stdenv.mkDerivation {
     name = "motoko-shell";
 
     #

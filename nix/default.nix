@@ -47,6 +47,7 @@ let
             targets = [
 	       "wasm32-unknown-unknown"
 	       "wasm32-unknown-emscripten"
+	       "wasm32-wasi"
 	       "i686-unknown-linux-gnu"
 	    ];
             extensions = ["rust-src"];

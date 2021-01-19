@@ -114,11 +114,30 @@ _build/wasm:
 # Building the libtommath files
 #
 
+TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
+TOMMATH_WASM_A=_build/libtommath.a
+
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
-TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
+$(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
+	ar rcs $@ $^
+	llvm-ranlib $@
+
+#
+# Building the musl files
+#
+
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
+MUSL_WASM_A=_build/libmusl.a
+
+_build/wasm/musl_%.o: %.c | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
+
+
+$(MUSL_WASM_A): $(MUSL_WASM_O)
+	ar rcs $@ $^
+	llvm-ranlib $@
 
 #
 # Look into following directories for source dependencies
@@ -130,40 +149,34 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 # Our part of the RTS
 #
 
-_build/wasm/%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
+RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
-_build/wasm/%_debug.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
 
-_build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
-_build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
-
-.PHONY: _build/wasm/libmotoko_rts.a
-_build/wasm/libmotoko_rts.a: | _build/wasm
+.PHONY: $(RTS_RUST_WASM_A)
+$(RTS_RUST_WASM_A): | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-.PHONY: _build/wasm/libmotoko_rts_debug.a
-_build/wasm/libmotoko_rts_debug.a: | _build/wasm
+.PHONY: $(RTS_RUST_DEBUG_WASM_A)
+$(RTS_RUST_DEBUG_WASM_A): | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
+#
+# The test suite
+#
+
 .PHONY: test
-test:
-	cd motoko-rts-tests && cargo run --target=i686-unknown-linux-gnu
-
-RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
-RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
+test: $(TOMMATH_WASM_A)
+	cd motoko-rts-tests && cargo build --target=wasm32-wasi
+	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 #
-# The actual RTS, as we ship it with the compiler
+# Putting it all together
 #
 
-mo-rts.wasm: $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts.wasm: $(RTS_RUST_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
@@ -183,7 +196,7 @@ mo-rts.wasm: $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 		--whole-archive \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_A) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
