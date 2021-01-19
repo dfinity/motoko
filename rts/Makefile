@@ -121,7 +121,7 @@ _build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 $(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
-	ar rcs $@ $^
+	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
 #
@@ -136,7 +136,7 @@ _build/wasm/musl_%.o: %.c | _build/wasm
 
 
 $(MUSL_WASM_A): $(MUSL_WASM_O)
-	ar rcs $@ $^
+	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
 #
