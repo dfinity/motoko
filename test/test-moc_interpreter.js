@@ -18,6 +18,6 @@ assert.deepStrictEqual(moc.Motoko.run([], 'ok.mo'), {
 
 assert.deepStrictEqual(moc.Motoko.run([], 'bad.mo'), {
   result: 0,
-  stderr: 'bad.mo:1.3: syntax error, unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>\n',
+  stderr: 'bad.mo:1.3: syntax error [M0001], unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>\n',
   stdout: '',
 });

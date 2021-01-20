@@ -34,7 +34,19 @@ to the `motoko` repository; this is useful if you need to hack on libtommath.
 Exporting and importing functions
 ---------------------------------
 
-TODO
+Import and export as if you are importing from or exporting to a C library. Examples:
+
+```rust
+// Expects bigint_trap to be provided at link time. The function should follow
+// C calling conventions
+extern "C" {
+    fn bigint_trap() -> !;
+}
+
+// Provides bigint_add function. The function follows C calling conventions
+#[no_mangle]
+extern "C" fn bigint_add(...) { ... }
+```
 
 libtommath and memory management
 --------------------------------
@@ -63,7 +75,6 @@ bindgen <path to tommath.h> \
     --whitelist-function mp_get_i64 \
     --whitelist-function mp_isneg \
     --whitelist-function mp_count_bits \
-    --whitelist-function mp_get_mag_u32 \
     --whitelist-function mp_get_mag_u64 \
     --whitelist-function mp_cmp \
     --whitelist-function mp_add \

@@ -1,6 +1,7 @@
 use crate::text::text_of_ptr_size;
 use crate::types::{Bytes, SkewedPtr};
 
+// The meaning of the `mode` parameter is documented in motoko-base, function Float.format()
 #[no_mangle]
 unsafe extern "C" fn float_fmt(a: f64, prec: u32, mode: u32) -> SkewedPtr {
     // prec and mode are tagged (TODO (osa): what tag???)
@@ -10,7 +11,6 @@ unsafe extern "C" fn float_fmt(a: f64, prec: u32, mode: u32) -> SkewedPtr {
     // 110 bytes needed for max precision (TODO (osa): why? how?)
     let buf = [0u8; 120];
 
-    // TODO (osa): Where are these modes defined?
     // NB. Using snprintf because I think only 0 and 3 are supposed by Rust's built-in formatter
     let fmt = match mode {
         0 => "%.*f\0",

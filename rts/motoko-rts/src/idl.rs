@@ -70,7 +70,7 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
     }
 }
 
-// TODO (osa): This will cause problems at some point
+// NB. This function assumes the allocation does not need to survive GC
 unsafe fn alloc(size: Words<u32>) -> *mut u8 {
     alloc_blob(size.to_bytes()).as_blob().payload_addr()
 }
@@ -90,10 +90,6 @@ unsafe fn alloc(size: Words<u32>) -> *mut u8 {
 ///
 /// * returns a pointer to the beginning of the list of main types
 ///   (again via pointer argument, for lack of multi-value returns in C ABI)
-
-// TODO (osa): typtbl_out handling here is very hacky, if we do GC before we're done with
-// typtbl_out things will break
-
 #[no_mangle]
 unsafe extern "C" fn parse_idl_header(
     extended: bool,
@@ -335,7 +331,7 @@ This finds a field in a record.
 Preconditions:
   tb:     points into the type table,
           into the sequence of tags/types that are the argument of IDL_CON_record,
-      at the tag
+          at the tag
   b:      points into the data buffer, at value corresponding to the field
           pointed to by tb
   typtbl: the type table

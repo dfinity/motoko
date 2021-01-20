@@ -25,7 +25,7 @@ pub unsafe fn test() {
         assert_eq!(closure_count(), (N / 2 + i + 1) as u32);
     }
 
-    for i in (0..=N - 1).rev() {
+    for i in (0..N).rev() {
         assert_eq!(recall_closure(references[i]).0, (i << 2).wrapping_sub(1));
         assert_eq!(closure_count(), i as u32);
     }

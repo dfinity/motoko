@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "a0e13c56d52f6f5752c2724126944a9e035e1ea3",
+        "rev": "5981030a2131b7575d21d86a811d4714c9af9634",
         "type": "git"
     },
     "esm": {
@@ -29,7 +29,7 @@
     "ic-ref": {
         "branch": "release-0.15",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "f4aeeafb0826a19a0edaa147c7529386950ccaa3",
+        "rev": "cf285710ded70b59a6fef320591298d850c5abac",
         "type": "git"
     },
     "libtommath": {
@@ -47,7 +47,7 @@
     "motoko-base": {
         "branch": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "5e010560a3f12c85980f61f6fe766eff8c997d57",
+        "rev": "1bce5cedc4f64aa28442e3d23b233fde317f9e48",
         "type": "git"
     },
     "motoko-matchers": {
@@ -83,10 +83,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "94dadba1a3a6a2f0b8ca2963e49daeec5d4e3098",
-        "sha256": "1y2h9wl7w60maa2m4xw9231xdr325xynzpph8xr4j5vsznygv986",
+        "rev": "3cd7914b2c4cff48927e11c216dadfab7d903fe5",
+        "sha256": "1agq4nvbhrylf2s77kb4xhh9k7xcwdwggq764k4jgsbs70py8cw3",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/94dadba1a3a6a2f0b8ca2963e49daeec5d4e3098.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/3cd7914b2c4cff48927e11c216dadfab7d903fe5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {

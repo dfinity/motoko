@@ -1,1 +1,1 @@
-lib/not-static.mo:1.1-1.36: type error, non-static expression in library or module
+lib/not-static.mo:1.1-1.36: type error [M0014], non-static expression in library or module

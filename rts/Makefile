@@ -111,93 +111,109 @@ _build/wasm:
 	mkdir -p $@
 
 #
-# Building the libtommath files
-#
-
-_build/wasm/tommath_%.o: bn_%.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
-TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
-MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
-
-#
-# Look into following directories for source dependencies
+# Let make automatically search these directorys (tommath and musl) for .c files
 #
 
 vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
 
+
 #
-# Our part of the RTS
+# Building the libtommath files
 #
 
-_build/wasm/%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
+TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
+TOMMATH_WASM_A=_build/libtommath.a
 
-_build/wasm/%_debug.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
-
-_build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
+_build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+
+$(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
+
+#
+# Building the musl files
+#
+
+MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
+MUSL_WASM_A=_build/libmusl.a
 
 _build/wasm/musl_%.o: %.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
 
-.PHONY: _build/wasm/libmotoko_rts.a
-_build/wasm/libmotoko_rts.a: | _build/wasm
+
+$(MUSL_WASM_A): $(MUSL_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
+
+#
+# The rust code code of the RTS
+#
+
+RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
+
+
+.PHONY: $(RTS_RUST_WASM_A)
+$(RTS_RUST_WASM_A): | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-.PHONY: _build/wasm/libmotoko_rts_debug.a
-_build/wasm/libmotoko_rts_debug.a: | _build/wasm
+.PHONY: $(RTS_RUST_DEBUG_WASM_A)
+$(RTS_RUST_DEBUG_WASM_A): | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
-RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
-RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
-
 #
-# The actual RTS, as we ship it with the compiler
+# The test suite
 #
 
-mo-rts.wasm: $(RTS_RUST_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+.PHONY: test
+test: $(TOMMATH_WASM_A)
+	cd motoko-rts-tests && cargo build --target=wasm32-wasi
+	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+
+#
+# Putting it all together
+#
+
+# These symbols from musl are used by the code generator directly
+EXPORTED_SYMBOLS=\
+  __wasm_call_ctors \
+  memcpy \
+  memcmp \
+  tan \
+  asin \
+  acos \
+  atan \
+  atan2 \
+  pow \
+  sin \
+  cos \
+  exp \
+  fmod \
+  log \
+
+mo-rts.wasm: $(RTS_RUST_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
-		--export=memcpy \
-		--export=memcmp \
-		--export=tan \
-		--export=asin \
-		--export=acos \
-		--export=atan \
-		--export=atan2 \
-		--export=pow \
-		--export=sin \
-		--export=cos \
-		--export=exp \
-		--export=fmod \
-		--export=log \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
-		--export=memcpy \
-		--export=memcmp \
-		--export=tan \
-		--export=asin \
-		--export=acos \
-		--export=atan \
-		--export=atan2 \
-		--export=pow \
-		--export=sin \
-		--export=cos \
-		--export=exp \
-		--export=fmod \
-		--export=log \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
 
 clean:
-	rm -rf _build mo-rts.wasm mo-rts-debug.wasm motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home
+	rm -rf \
+	  _build \
+	  mo-rts.wasm \
+	  mo-rts-debug.wasm \
+	  motoko-rts/target \
+	  motoko-rts-tests/target \
+	  motoko-rts/xargo-home \
+	  motoko-rts/cargo-home

@@ -51,7 +51,6 @@ unsafe extern "C" fn version() -> SkewedPtr {
 
 extern "C" {
     fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
-
 }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {

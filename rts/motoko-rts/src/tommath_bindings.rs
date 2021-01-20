@@ -37,9 +37,6 @@ extern "C" {
     pub fn mp_set_u64(a: *mut mp_int, b: u64);
 }
 extern "C" {
-    pub fn mp_get_mag_u32(a: *const mp_int) -> u32;
-}
-extern "C" {
     pub fn mp_get_mag_u64(a: *const mp_int) -> u64;
 }
 extern "C" {

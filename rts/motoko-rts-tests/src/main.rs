@@ -1,3 +1,7 @@
+#![feature(
+    ptr_offset_from
+)]
+
 mod bigint;
 mod bitmap;
 mod closure_table;

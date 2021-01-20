@@ -22,9 +22,11 @@ let
   rtsBuildInputs = with nixpkgs; [
     clang_10 # for native/wasm building
     lld_10 # for wasm building
+    llvmPackages_10.bintools
     rustc-nightly
     cargo-nightly
     xargo
+    wasmtime
   ];
 
   llvmEnv = ''
@@ -62,6 +64,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
@@ -127,14 +130,17 @@ in
 rec {
   rts =
     let
+      # We run this on motoko-rts-tests, to get the union of all
+      # dependencies
       rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
         name = "motoko-rts-deps";
-        src = subpath rts/motoko-rts;
-        sourceRoot = null;
-        sha256 = "11la5fl0fgx6i5g52p56sf48yz7f0mqrgm38m320xh3wyqa2nim6";
+        src = subpath ./rts;
+        sourceRoot = "rts/motoko-rts-tests";
+        sha256 = "1k8ia7visgg9i6bdlisjbd4677ajlj9bknjrbrjj8pr0lvl07hbs";
         copyLockfile = true;
       };
     in
+
     stdenv.mkDerivation {
       name = "moc-rts";
 
@@ -169,8 +175,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-        # ./test_rts
-        # TODO: Run motoko-rts-tests here
+	make test
       '';
 
       installPhase = ''
@@ -537,6 +542,20 @@ rec {
       '';
     };
 
+  check-error-codes = stdenv.mkDerivation {
+      name = "check-error-codes";
+      src = subpath ./test;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.python3 ];
+      buildPhase = ''
+      patchShebangs .
+      ./check-error-codes.py ${./src/lang_utils/error_codes.ml}
+      '';
+      installPhase = ''
+        touch $out
+      '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -557,19 +576,21 @@ rec {
       check-rts-formatting
       check-generated
       check-grammar
+      check-error-codes
     ] ++
     builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
     builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell rec {
+  shell = stdenv.mkDerivation {
+    name = "motoko-shell";
+
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
     # both, while not actually building `moc`
     #
-
     propagatedBuildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (

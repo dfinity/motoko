@@ -186,7 +186,7 @@ pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
-    // TODO (osa): I don't understand the size argument
+    // Every group of 8 characters will yield 5 bytes
     let r = alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob();
     let dest = blob.payload_addr();
@@ -229,7 +229,7 @@ unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
     let n = blob.len();
     let mut data = blob.payload_addr();
 
-    // TODO (osa): Explain the size argument
+    // Every group of 5 characters will yield 6 bytes (due to the hypen)
     let r = alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
     let blob = r.as_blob();
     let mut dest = blob.payload_addr();
