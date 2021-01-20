@@ -10,12 +10,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc"
-version = "1.0.66"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c0496836a84f8d0495758516b8621a622beb77c0fed418570e50764093ced48"
-
-[[package]]
 name = "cfg-if"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -87,7 +81,6 @@ dependencies = [
 name = "motoko-rts-tests"
 version = "0.1.0"
 dependencies = [
- "cc",
  "motoko-rts",
  "quickcheck",
 ]
