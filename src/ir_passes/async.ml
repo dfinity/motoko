@@ -81,9 +81,8 @@ let new_nary_async_reply ts getSystemRefund =
     | ts1 ->
       let k' = fresh_var "k" (contT t T.unit) in
       let r' = fresh_var "r" (err_contT T.unit) in
-      let seq_of_v' = tupE (List.mapi (fun i _ -> projE (varE v') i) ts1) in (* TODO: is this eta-expansion necessary? *)
       [k';r'] -->* (
-        varE unary_async -*- (tupE[([v'] -->* (varE k' -*- seq_of_v')); varE r'])
+        varE unary_async -*- (tupE[([v'] -->* (varE k' -*- varE v')); varE r'])
       )
   in
   (* construct the n-ary reply callback that take a *sequence* of values to fulfill the async *)
@@ -109,11 +108,13 @@ let new_nary_async_reply ts getSystemRefund =
         (tupE [nary_async; nary_reply; varE fail])
 
 
-(* Helpers for `do async {}` translation *)
+(* Helpers for `do async {}` translation,
+   Most of the compexity due to use of n-ary asyncs.
+ *)
 
 (* Return a fulfilled async (as_seq t) from value v : T
 
-  fulfilled_async as_seq T v : asyncT as_seq T ::=
+  fulfilled_async as_seq t v : async (as_seq t) ::=
   func (k : fullfillT as_seq T, _ : failT) {
     k(v)
   };
@@ -123,10 +124,10 @@ let fulfilled_asyncE as_seq typ v =
   let fail = fresh_var "r" failT in
   [fulfill; fail] -->* (varE fulfill -*- v)
 
-(* Construct a failed async ts from error e:
+(* Construct a failed async (as_seq t) from error e:
 
-  failed_async as_seq ts (e : Error) : async as_seq ts ::=
-    func (_ : fulfillT as_seq ts, r : failT)  {
+  failed_async as_seq t (e : Error) : async (as_seq t) ::=
+    func (_ : fulfillT as_seq t, r : failT)  {
       r(e)
     };
 *)
@@ -135,28 +136,32 @@ let failed_asyncE as_seq typ e =
   let fail = fresh_var "r" failT in
   [fulfill; fail] -->* (varE fail -*- e)
 
-(* Construct an async ts from async us, given success/fail continuations pair kr:
+(* Construct an async ts from an async us, given success/fail continuation pair kr,
+   where
+     kr = (k,r) with
+     k : us -> async ts,
+     r : Error -> async ts
 
-  chain_async ts us au kr ::=
+  chain_async ts us (aus : async us) kr : async ts ::=
     let (k,r) = kr;
-    let (at, fulfill, fail) = @new_async ts (false);
+    let (ats, fulfill, fail) = @new_async ts (false);
     func fulfill_us(us : us) { k(us) (fulfill, fail) };
     func fail_us(e : Error) { f(e) (fulfill, fail) };
-    au (fulfull_us, fail_us);
-    at
+    au (fulfill_us, fail_us);
+    ats
 *)
-let chainAsync ts us au kr =
+let chainAsync ts us aus kr =
   let k,r = match typ kr with
     | T.Tup [t_k; t_r] ->
       fresh_var "k" t_k,
       fresh_var "r" t_r
     | _ -> assert false
   in
-  let ((at, fulfill, fail), def) = new_nary_async_reply ts false (* getSystemRefund *)
+  let ((ats, fulfill, fail), def) = new_nary_async_reply ts false (* getSystemRefund *)
   in
    blockE [
       letP (tupP [varP k; varP r]) kr;
-      letP (tupP [varP at; varP fulfill; varP fail]) def;
+      letP (tupP [varP ats; varP fulfill; varP fail]) def;
       let fulfill_us =
         let us = fresh_vars "u" us in
         us -->* (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])
@@ -165,9 +170,9 @@ let chainAsync ts us au kr =
         let e = fresh_var "e" T.catch in
         [e] -->* (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
       in
-      expD (au -*- seqE [fulfill_us; fail_us]);
+      expD (aus -*- seqE [fulfill_us; fail_us]);
     ]
-    (varE at)
+    (varE ats)
 
 
 let letEta e scope =
@@ -309,13 +314,8 @@ let transform mode prog =
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
           ((t_exp a) -*- (t_exp kr)).it
-(*
-        | Func(_, _, [], [t1], [T.Async(_, t2)]) ->
-          (* async answer type, from await in `do async {}` *)
-          (callE (chain_asyncE ())
-             [t_typ t2; t_typ t1]
-             (tupE [t_exp a; t_exp kr])).it *)
         | Func(_, _, [], us, [T.Async(_, t2)]) ->
+          (* async answer type, from await in `do async {}` *)
           (chainAsync (T.as_seq t2) us (t_exp a) (t_exp kr)).it
         | _ -> assert false
       end
