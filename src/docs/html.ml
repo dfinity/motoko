@@ -48,22 +48,23 @@ let lookup_import : env -> string -> string option =
 
 let html_of_path : env -> Syntax.path -> t =
  fun env path ->
-  let str = string_of_path path in
-  match split_path path with
-  | [], name ->
-      if List.exists (fun x -> x = name) env.local_types then
-        let link = "#type." ^ name in
-        a ~href:(Uri.of_string link) (html_type str)
-      else html_type str
-  | qualifiers, name -> (
-      match lookup_import env (String.concat "." qualifiers) with
-      | Some url -> (
-          match Url.parse url with
-          | Ok (Url.Relative path) ->
-              let link = path ^ ".html" ^ "#type." ^ name in
-              a ~href:(Uri.of_string link) (html_type str)
-          | _ -> html_type str )
-      | None -> html_type str )
+  let link =
+    match split_path path with
+    | [], name ->
+        if List.exists (fun x -> x = name) env.local_types then
+          Some ("#type." ^ name)
+        else None
+    | qualifiers, name -> (
+        match lookup_import env (String.concat "." qualifiers) with
+        | Some url -> (
+            match Url.parse url with
+            | Ok (Url.Relative path) -> Some (path ^ ".html#type." ^ name)
+            | _ -> None )
+        | None -> None )
+  in
+  match link with
+  | Some link -> a ~href:(Uri.of_string link) (html_type (string_of_path path))
+  | None -> html_type (string_of_path path)
 
 let html_of_comment : string -> t = function
   | "" -> empty
