@@ -87,7 +87,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let e2 = effect_cases cases in
     max_eff e1 e2
   | DoAsyncE (_, e1) ->
-    T.Await (* TODO: less conservatively: effect_exp e1? cf. ir_effect.ml *)
+    effect_exp e1
   | AsyncE _ ->
     T.Triv
   | ThrowE _
