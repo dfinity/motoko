@@ -2,6 +2,9 @@ open Extract
 open Mo_def
 open Cow.Html
 open Common
+open Ic
+
+type env = { imports : (string * string) list; local_types : string list }
 
 let rec join_with : t -> t list -> t =
  fun sep -> function
@@ -28,6 +31,39 @@ let rec string_of_path : Syntax.path -> string =
   match path.Source.it with
   | Syntax.IdH id -> id.Source.it
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
+
+let rec split_path : Syntax.path -> string list * string =
+ fun path ->
+  match path.Source.it with
+  | Syntax.IdH id -> ([], id.Source.it)
+  | Syntax.DotH (path, id) ->
+      let xs, x = split_path path in
+      (List.append xs [ x ], id.Source.it)
+
+let lookup_import : env -> string -> string option =
+ fun { imports; _ } search ->
+  List.find_map
+    (fun (qualifier, url) -> if qualifier = search then Some url else None)
+    imports
+
+let html_of_path : env -> Syntax.path -> t =
+ fun env path ->
+  let str = string_of_path path in
+  match split_path path with
+  | [], name ->
+      if List.exists (fun x -> x = name) env.local_types then
+        let link = "#type." ^ name in
+        a ~href:(Uri.of_string link) (html_type str)
+      else html_type str
+  | qualifiers, name -> (
+      match lookup_import env (String.concat "." qualifiers) with
+      | Some url -> (
+          match Url.parse url with
+          | Ok (Url.Relative path) ->
+              let link = path ^ ".html" ^ "#type." ^ name in
+              a ~href:(Uri.of_string link) (html_type str)
+          | _ -> html_type str )
+      | None -> html_type str )
 
 let html_of_comment : string -> t = function
   | "" -> empty
@@ -56,90 +92,91 @@ let html_of_obj_sort : Syntax.obj_sort -> t =
     | Module -> keyword "module "
     | Memory -> keyword "memory ")
 
-let rec html_of_type : Syntax.typ -> t =
- fun typ ->
+let rec html_of_type : env -> Syntax.typ -> t =
+ fun env typ ->
   match typ.Source.it with
   | Syntax.PathT (path, typs) -> (
-      html_type (string_of_path path)
+      html_of_path env path
       ++
       match typs with
       | [] -> empty
       | xs ->
           string "<"
-          ++ join_with (string ", ") (List.map html_of_type xs)
+          ++ join_with (string ", ") (List.map (html_of_type env) xs)
           ++ string ">" )
   | Syntax.PrimT typ -> html_type typ
-  | Syntax.ParT typ -> string "(" ++ html_of_type typ ++ string ")"
+  | Syntax.ParT typ -> string "(" ++ html_of_type env typ ++ string ")"
   | Syntax.NamedT (id, t) ->
-      string "(" ++ html_of_typ_item (Some id, t) ++ string ")"
-  | Syntax.OptT typ -> string "?" ++ html_of_type typ
+      string "(" ++ html_of_typ_item env (Some id, t) ++ string ")"
+  | Syntax.OptT typ -> string "?" ++ html_of_type env typ
   | Syntax.TupT typ_list ->
       string "("
-      ++ join_with (string ", ") (List.map html_of_typ_item typ_list)
+      ++ join_with (string ", ") (List.map (html_of_typ_item env) typ_list)
       ++ string ")"
   | Syntax.VariantT typ_tags ->
       string "{"
-      ++ join_with (string "; ") (List.map html_of_typ_tag typ_tags)
+      ++ join_with (string "; ") (List.map (html_of_typ_tag env) typ_tags)
       ++ string "}"
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
-      let ty_args = html_of_typ_binders typ_binders in
-      let ty_arg = html_of_type arg in
+      let ty_args = html_of_typ_binders env typ_binders in
+      let ty_arg = html_of_type env arg in
       html_of_func_sort func_sort
       ++ ty_args
       ++ ty_arg
       ++ string " -> "
-      ++ html_of_type res
+      ++ html_of_type env res
   | Syntax.ArrayT (mut, ty) ->
-      string "[" ++ html_of_mut mut ++ html_of_type ty ++ string "]"
-  | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type typ
+      string "[" ++ html_of_mut mut ++ html_of_type env ty ++ string "]"
+  | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type env typ
   | Syntax.ObjT (obj_sort, fields) ->
       html_of_obj_sort obj_sort
       ++ string "{ "
-      ++ join_with (string "; ") (List.map html_of_typ_field fields)
+      ++ join_with (string "; ") (List.map (html_of_typ_field env) fields)
       ++ string " }"
 
-and html_of_typ_tag : Syntax.typ_tag -> t =
- fun typ_tag ->
+and html_of_typ_tag : env -> Syntax.typ_tag -> t =
+ fun env typ_tag ->
   string (Printf.sprintf "#%s" typ_tag.Source.it.Syntax.tag.Source.it)
   ++
   match typ_tag.Source.it.Syntax.typ.Source.it with
   | Syntax.TupT [] -> nil
-  | _ -> string " : " ++ html_of_type typ_tag.Source.it.Syntax.typ
+  | _ -> string " : " ++ html_of_type env typ_tag.Source.it.Syntax.typ
 
-and html_of_typ_bind : Syntax.typ_bind -> t =
- fun typ_bind ->
+and html_of_typ_bind : env -> Syntax.typ_bind -> t =
+ fun env typ_bind ->
   let bound = typ_bind.Source.it.Syntax.bound in
   let bound_html =
-    if Syntax.is_any bound then empty else string " <: " ++ html_of_type bound
+    if Syntax.is_any bound then empty
+    else string " <: " ++ html_of_type env bound
   in
   html_type typ_bind.Source.it.Syntax.var.Source.it ++ bound_html
 
-and html_of_typ_binders : Syntax.typ_bind list -> t =
- fun typ_binders ->
+and html_of_typ_binders : env -> Syntax.typ_bind list -> t =
+ fun env typ_binders ->
   match List.filter (fun b -> not (is_scope_bind b)) typ_binders with
   | [] -> []
   | xs ->
       string "<"
-      ++ join_with (string ", ") (List.map html_of_typ_bind xs)
+      ++ join_with (string ", ") (List.map (html_of_typ_bind env) xs)
       ++ string ">"
 
-and html_of_typ_field : Syntax.typ_field -> t =
- fun field ->
+and html_of_typ_field : env -> Syntax.typ_field -> t =
+ fun env field ->
   (* TODO mut might be wrong here *)
   html_of_mut field.Source.it.Syntax.mut
   ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
-  ++ html_of_type field.Source.it.Syntax.typ
+  ++ html_of_type env field.Source.it.Syntax.typ
 
-and html_of_typ_item : Syntax.typ_item -> t =
- fun (oid, t) ->
+and html_of_typ_item : env -> Syntax.typ_item -> t =
+ fun env (oid, t) ->
   Option.fold ~none:empty
     ~some:(fun id -> parameter id.Source.it ++ string " : ")
     oid
-  ++ html_of_type t
+  ++ html_of_type env t
 
-let html_of_type_doc : Extract.type_doc -> t =
- fun type_doc ->
-  let ty_args = html_of_typ_binders type_doc.type_args in
+let html_of_type_doc : env -> Extract.type_doc -> t =
+ fun env type_doc ->
+  let ty_args = html_of_typ_binders env type_doc.type_args in
   match type_doc.typ with
   | DTPlain ty ->
       h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
@@ -147,7 +184,7 @@ let html_of_type_doc : Extract.type_doc -> t =
         ++ html_type type_doc.name
         ++ ty_args
         ++ string " = "
-        ++ html_of_type ty )
+        ++ html_of_type env ty )
   | DTObj (ty, fields) ->
       (* TODO Figure out a layout for showing the documentation on individual
        *  fields *)
@@ -178,31 +215,33 @@ let html_of_type_doc : Extract.type_doc -> t =
         ++ html_type type_doc.name
         ++ ty_args
         ++ string " = "
-        ++ html_of_type ty )
+        ++ html_of_type env ty )
 
-let html_of_arg : Extract.function_arg_doc -> t =
- fun arg ->
+let html_of_arg : env -> Extract.function_arg_doc -> t =
+ fun env arg ->
   parameter arg.name
   ++ Option.fold ~none:empty
-       ~some:(fun arg -> string " : " ++ html_of_type arg)
+       ~some:(fun arg -> string " : " ++ html_of_type env arg)
        arg.typ
 
-let rec html_of_declaration : Extract.declaration_doc -> t = function
+let rec html_of_declaration : env -> Extract.declaration_doc -> t =
+ fun env dec ->
+  match dec with
   | Function function_doc ->
       let is_multiline = List.length function_doc.args > 2 in
       let br' = if is_multiline then br else empty in
       let br_indent = if is_multiline then br ++ space ++ space else empty in
-      let ty_args = html_of_typ_binders function_doc.type_args in
+      let ty_args = html_of_typ_binders env function_doc.type_args in
       (* TODO: Figure out a layout to show documentation for individual
        *  arguments *)
       let args =
         join_with
           (string ", " ++ br_indent)
-          (List.map html_of_arg function_doc.args)
+          (List.map (html_of_arg env) function_doc.args)
       in
       let return_typ =
         Option.fold ~none:[]
-          ~some:(fun typ -> string " : " ++ html_of_type typ)
+          ~some:(fun typ -> string " : " ++ html_of_type env typ)
           function_doc.typ
       in
       h4 ~cls:"function"
@@ -221,11 +260,11 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
       let is_multiline = List.length class_doc.constructor > 2 in
       let br' = if is_multiline then br else empty in
       let br_indent = if is_multiline then br ++ space ++ space else empty in
-      let ty_args = html_of_typ_binders class_doc.type_args in
+      let ty_args = html_of_typ_binders env class_doc.type_args in
       let args =
         join_with
           (string ", " ++ br_indent)
-          (List.map html_of_arg class_doc.constructor)
+          (List.map (html_of_arg env) class_doc.constructor)
       in
       h4 ~cls:"class-declaration"
         ~id:("class." ^ class_doc.name)
@@ -238,8 +277,8 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
         ++ args
         ++ br'
         ++ string ")" )
-      ++ list (List.map html_of_doc class_doc.fields)
-  | Type type_doc -> html_of_type_doc type_doc
+      ++ list (List.map (html_of_doc env) class_doc.fields)
+  | Type type_doc -> html_of_type_doc env type_doc
   | Value value_doc ->
       h4 ~cls:"value-declaration"
         ~id:("value." ^ value_doc.name)
@@ -247,17 +286,23 @@ let rec html_of_declaration : Extract.declaration_doc -> t = function
            ( keyword "public let "
            ++ fn_name value_doc.name
            ++ string " : "
-           ++ Option.fold ~none:empty ~some:html_of_type value_doc.typ ))
+           ++ Option.fold ~none:empty ~some:(html_of_type env) value_doc.typ ))
   | Unknown s -> code (string "Unknown: " ++ string s)
 
-and html_of_doc : Extract.doc -> t =
- fun { doc_comment; declaration } ->
+and html_of_doc : env -> Extract.doc -> t =
+ fun env { doc_comment; declaration } ->
   div ~cls:"declaration"
-    ( html_of_declaration declaration
+    ( html_of_declaration env declaration
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
 
 let html_of_docs : render_input -> Cow.Html.t =
- fun { all_modules; module_comment; declarations; current_path } ->
+ fun { all_modules; module_comment; declarations; imports; current_path } ->
+  let name_of_type_dec doc =
+    match doc.declaration with Type ty -> Some ty.name | _ -> None
+  in
+  let env =
+    { imports; local_types = List.filter_map name_of_type_dec declarations }
+  in
   let path_to_root =
     String.split_on_char '/' current_path
     |> List.tl
@@ -301,7 +346,7 @@ let html_of_docs : render_input -> Cow.Html.t =
       ++ div ~cls:"documentation"
            ( h1 (string current_path)
            ++ html_of_comment module_comment
-           ++ list (List.map html_of_doc declarations) ) )
+           ++ list (List.map (html_of_doc env) declarations) ) )
   in
   html (header ++ bdy)
 

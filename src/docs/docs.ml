@@ -23,7 +23,7 @@ let write_file : string -> string -> unit =
   flush oc;
   close_out oc
 
-let extract : string -> (string * doc list) option =
+let extract : string -> extracted option =
  fun in_file ->
   let parse_result = Pipeline.parse_file_with_trivia Source.no_region in_file in
   match parse_result with
@@ -36,7 +36,7 @@ let extract : string -> (string * doc list) option =
       | Error err ->
           Printf.eprintf "Skipping %s:\n%s\n" in_file err;
           None
-      | Ok (module_docs, imports, docs) -> Some (module_docs, docs) )
+      | Ok x -> Some x )
 
 let list_files_recursively : string -> string list =
  fun dir ->
@@ -77,10 +77,16 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
   List.filter_map
     (fun (input, output, current_path) ->
       Option.map
-        (fun (module_comment, declarations) ->
+        (fun (module_comment, imports, declarations) ->
           ( output,
-            Common.{ all_modules; current_path; module_comment; declarations }
-          ))
+            Common.
+              {
+                all_modules;
+                current_path;
+                module_comment;
+                imports;
+                declarations;
+              } ))
         (extract input))
     all_files
 

@@ -5,6 +5,7 @@ type render_input = {
   current_path : string;  (** The path for the current module *)
   module_comment : string;
       (** The top-level module comment for the current module *)
+  imports : (string * string) list;  (** The current files imports *)
   declarations : Extract.doc list;  (** The list of declarations to process *)
 }
 
