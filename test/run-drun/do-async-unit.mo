@@ -1,5 +1,5 @@
 import P "mo:prim";
-
+// test nullary async compilation (using unit)
 actor a {
 
   private func doUnit() : async () = do async {
