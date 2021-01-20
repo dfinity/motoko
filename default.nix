@@ -453,9 +453,6 @@ rec {
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
     checkPhase = ''
-      # this is a symlink, and a dead one to begin with. remove.
-      rm src/tommath_bindings.rs
-      echo '// nothing here' > src/tommath_bindings.rs
       cargo fmt -- --check
     '';
   };

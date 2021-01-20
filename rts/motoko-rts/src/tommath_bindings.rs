@@ -1,1 +1,1 @@
-../../_build/tommath_bindings.rs
+include!(concat!("../../_build/tommath_bindings.rs"));
