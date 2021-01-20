@@ -161,7 +161,7 @@ TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
 
 $(TOMMATH_BINDINGS_RS): | _build
-	# use bash explicitly (work around nixpkgs bug)
+	# use bash explicitly (work around nixpkgs bug https://github.com/NixOS/nixpkgs/issues/110126)
 	bash $$(command -v bindgen) $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
