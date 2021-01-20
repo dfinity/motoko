@@ -412,9 +412,8 @@ let @ic00 = actor "aaaaa-aa" : actor {
   } -> async ()
 };
 
-// It would be desirable if create_actor_helper can be defined
-// without paying the extra self-remote-call-cost
-func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+// uses `do async {}`, not `async { }`, to avoid initial context switch
+func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = do async {
   let available = (prim "cyclesAvailable" : () -> Nat64) ();
   let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
   @cycles += accepted;
