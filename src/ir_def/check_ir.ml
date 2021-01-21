@@ -532,7 +532,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
        | _ -> error env exp.at "CPSAwait bad cont");
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-      (* TODO: We can check more here, can we *)
     | CPSDoAsync t0, [exp] ->
       (match typ exp with
         T.Func(T.Local,T.Returns, [tb],
@@ -549,16 +548,22 @@ let rec check_exp env (exp:Ir.exp) : unit =
          T.seq ts21' <: t_async';
          T.seq ts22' <: t_async';
          T.open_ [t0] t_async <: t
-       | _ -> error env exp.at "CPSDoAwait unexpected typ");
+       | _ -> error env exp.at "CPSDoAsync unexpected typ");
       check (not (env.flavor.has_await)) "CPSDoAsync await flavor";
       check (env.flavor.has_async_typ) "CPSDoAsync in post-async flavor";
       check_typ env t0;
-      (* TODO: We can check more here, can we *)
-    | CPSAsync t, [exp] ->
+    | CPSAsync t0, [exp] ->
+      (match typ exp with
+        T.Func(T.Local,T.Returns, [tb],
+               [ T.Func(T.Local, T.Returns, [], ts1, []);
+                 T.Func(T.Local, T.Returns, [], [t_error], [])],
+               []) ->
+         T.catch <: t_error;
+         T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
+       | _ -> error env exp.at "CPSAsync unexpected typ");
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
       check_typ env t;
-      (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
