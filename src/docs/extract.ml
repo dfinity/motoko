@@ -2,7 +2,10 @@ open Mo_frontend
 open Mo_def
 open Source
 
-type doc = { doc_comment : string option; declaration : declaration_doc }
+type doc = {
+  doc_comment : string option;
+  declaration : declaration_doc;
+}
 
 and declaration_doc =
   | Function of function_doc
@@ -45,6 +48,50 @@ and class_doc = {
   fields : doc list;
   sort : Syntax.obj_sort;
 }
+
+(** Describes a _stable_ way of referencing a definition. Stable in
+   the sense that these references don't get invalidated by simple
+   reformatting or small edits to the original source files like
+   source ranges would, and also in a way that they have semantic
+   meaning to a user. *)
+and xref =
+  | XType of string
+  | XValue of string
+  | XClass of string * xref option
+  | XModule of string * xref option
+  | XFile of string * xref option
+  | XPackage of string * xref option
+
+let rec string_of_xref : xref -> string = function
+  | XType s -> "value " ^ s
+  | XValue s -> "type " ^ s
+  | XClass (s, None) -> "class " ^ s
+  | XClass (s, Some xref) ->
+      Printf.sprintf "class %s -> %s" s (string_of_xref xref)
+  | XModule (s, None) -> "module " ^ s
+  | XModule (s, Some xref) ->
+      Printf.sprintf "module %s -> %s" s (string_of_xref xref)
+  | XFile (s, None) -> "file " ^ s
+  | XFile (s, Some xref) ->
+      Printf.sprintf "file %s -> %s" s (string_of_xref xref)
+  | XPackage (s, None) -> "package " ^ s
+  | XPackage (s, Some xref) ->
+      Printf.sprintf "package %s -> %s" s (string_of_xref xref)
+
+let rec extend_xref : xref -> (xref -> xref) option = function
+  | XType _ | XValue _ -> None
+  | XClass (s, None) -> Some (fun xref -> XClass (s, Some xref))
+  | XModule (s, None) -> Some (fun xref -> XModule (s, Some xref))
+  | XFile (s, None) -> Some (fun xref -> XFile (s, Some xref))
+  | XPackage (s, None) -> Some (fun xref -> XPackage (s, Some xref))
+  | XClass (s, Some xref) ->
+     Option.map (fun f x -> XClass (s, Some (f x))) (extend_xref xref)
+  | XModule (s, Some xref) ->
+     Option.map (fun f x -> XModule (s, Some (f x))) (extend_xref xref)
+  | XFile (s, Some xref) ->
+     Option.map (fun f x -> XFile (s, Some (f x))) (extend_xref xref)
+  | XPackage (s, Some xref) ->
+     Option.map (fun f x -> XPackage (s, Some (f x))) (extend_xref xref)
 
 let un_prog prog =
   let rec go acc = function
@@ -157,8 +204,9 @@ let rec extract_doc find_trivia = function
              sort = obj_sort;
            })
   | unknown ->
-      Wasm.Sexpr.print 80 (Arrange.dec unknown);
-      None
+     print_endline "Failed to extract documentation for declaration:";
+     Wasm.Sexpr.print 80 (Arrange.dec unknown);
+     None
 
 and extract_dec_field find_trivia dec_field =
   if dec_field.it.Syntax.vis.it <> Syntax.Public then None
