@@ -146,7 +146,7 @@ let failed_asyncE as_seq typ e =
     let (k,r) = kr;
     let (ats, fulfill, fail) = @new_async ts (false);
     func fulfill_us(us : us) { k(us) (fulfill, fail) };
-    func fail_us(e : Error) { f(e) (fulfill, fail) };
+    func fail_us(e : Error) { r(e) (fulfill, fail) };
     au (fulfill_us, fail_us);
     ats
 *)

@@ -374,6 +374,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         else raise (Invalid_argument "debug_show")
       | CPSAsync _, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
+        assert false;
         let (_, f) = V.as_func v1 in
         let typ = exp.note.Note.typ in
         begin match typ with
@@ -390,16 +391,32 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             k
         | _ -> assert false
         end
-      | CPSAwait _, [v1; v2] ->
+      | CPSAwait cont_typ, [v1; v2] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
-        begin match V.as_tup v2 with
-         | [vf; vr] ->
-           let (_, f) = V.as_func vf in
-           let (_, r) = V.as_func vr in
-           await env exp.at (V.as_async v1)
+        assert false;
+        let (vf, vr) =  V.as_pair v2 in
+        let (_, f) = V.as_func vf in
+        let (_, r) = V.as_func vr in
+        begin
+          match cont_typ with
+          | Func(_, _, [], _, []) ->
+            (* unit answer type, from await in `async {}` *)
+            await env exp.at (V.as_async v1)
              (fun v -> f (context env) v k)
-             (fun e -> r (context env) e k) (* TBR *)
-        | _ -> assert false
+             (fun e -> r (context env) e k)
+          | Func(_, _, [], us, [T.Async(_, t2)]) ->
+            (* async answer type, from await in `do async {}` *)
+            let result = Lib.Promise.make () in
+            let at = V.Async { V.result = result ; V.waiters = [] } in
+            let fulfill v = Lib.Promise.fulfill result (V.Ok v) in
+            let fail e = Lib.Promise.fulfill result (V.Error e) in
+            let au = V.as_async v1 in
+            let rec coerce k = coerce k in
+            get_async au
+              (fun vs -> get_async (V.as_async (coerce k vs)) fulfill fail)
+              (fun e -> get_async (V.as_async (coerce r e))  fulfill fail);
+            at
+          | _ -> assert false
         end
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
