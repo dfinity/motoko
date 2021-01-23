@@ -1,8 +1,11 @@
 = Motoko compiler changelog
 
+== 0.5.6 (2021-01-22)
+
 * The compiler now reports errors and warnings with an additional _error code_
   This code can be used to look up a more detailed description for a given error by passing the `--explain` flag with a code to the compiler.
-  As of January 2021 this isn't going to work for most codes because the detailed descriptions still have to be written.
+  As of now this isn't going to work for most codes because the detailed descriptions still have to be written.
+* Internal: The parts of the RTS that were written in C have been ported to Rust.
 
 == 0.5.5 (2021-01-15)
 
