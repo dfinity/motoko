@@ -725,16 +725,15 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
-    E.add_func_import env "rts" "read_i32_of_sleb128" [I32Type] [I32Type];
+    E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_int32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word32_signed_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_of_word64_signed" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
@@ -789,17 +788,17 @@ module RTS = struct
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_next" [I32Type] [I32Type];
-    E.add_func_import env "rts" "float_pow" [F64Type; F64Type] [F64Type];
-    E.add_func_import env "rts" "float_sin" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_cos" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_tan" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_arcsin" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_arccos" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_arctan" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_arctan2" [F64Type; F64Type] [F64Type];
-    E.add_func_import env "rts" "float_exp" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_log" [F64Type] [F64Type];
-    E.add_func_import env "rts" "float_rem" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "pow" [F64Type; F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "sin" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "cos" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "tan" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "asin" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "acos" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "atan" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "atan2" [F64Type; F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "exp" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "log" [F64Type] [F64Type]; (* musl *)
+    E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type]; (* remainder, musl *)
     E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
@@ -1770,10 +1769,10 @@ module ReadBuf = struct
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
   let read_leb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "read_u32_of_leb128"
+    get_buf ^^ E.call_import env "rts" "leb128_decode"
 
   let read_sleb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "read_i32_of_sleb128"
+    get_buf ^^ E.call_import env "rts" "sleb128_decode"
 
   let check_space env get_buf get_delta =
     get_delta ^^
@@ -2356,8 +2355,8 @@ module BigNumLibtommath : BigNumType = struct
 
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
-  let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
-  let from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
+  let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
+  let from_signed_word64 env = E.call_import env "rts" "bigint_of_int64"
 
   let compile_data_size_unsigned env = E.call_import env "rts" "bigint_leb128_size"
   let compile_data_size_signed env = E.call_import env "rts" "bigint_sleb128_size"
@@ -6366,7 +6365,7 @@ let compile_binop env t op =
           end
           get_res)
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
-  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "float_rem"
+  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp -> TaggedSmallWord.compile_word_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
@@ -6514,7 +6513,7 @@ let compile_binop env t op =
       BigNum.compile_unsigned_pow
       (powNat64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
-  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "float_pow"
+  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow" (* musl *)
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
@@ -7013,48 +7012,48 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "fsin", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_sin"
+      E.call_import env "rts" "sin" (* musl *)
 
     | OtherPrim "fcos", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_cos"
+      E.call_import env "rts" "cos" (* musl *)
 
     | OtherPrim "ftan", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_tan"
+      E.call_import env "rts" "tan" (* musl *)
 
     | OtherPrim "fasin", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_arcsin"
+      E.call_import env "rts" "asin" (* musl *)
 
     | OtherPrim "facos", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_arccos"
+      E.call_import env "rts" "acos" (* musl *)
 
     | OtherPrim "fatan", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_arctan"
+      E.call_import env "rts" "atan" (* musl *)
 
     | OtherPrim "fatan2", [y; x] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 y ^^
       compile_exp_as env ae SR.UnboxedFloat64 x ^^
-      E.call_import env "rts" "float_arctan2"
+      E.call_import env "rts" "atan2" (* musl *)
 
     | OtherPrim "fexp", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_exp"
+      E.call_import env "rts" "exp" (* musl *)
 
     | OtherPrim "flog", [e] ->
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_log"
+      E.call_import env "rts" "log" (* musl *)
 
     (* Other prims, nullary *)
 
