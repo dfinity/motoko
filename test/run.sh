@@ -261,7 +261,7 @@ do
           run run $moc_with_flags --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $moc_with_flags --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc_with_flags --hide-warnings -r -iR -no-async $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]

@@ -109,12 +109,12 @@ let print_exn flags exn =
 
 module Scheduler =
 struct
-  let q : (unit -> unit) Queue.t = Queue.create ()
+  let q : (unit -> V.value) Queue.t = Queue.create ()
 
   let queue work = Queue.add work q
   let yield () =
     trace_depth := 0;
-    try Queue.take q () with Trap (at, msg) ->
+    try V.as_unit (Queue.take q ()) with Trap (at, msg) ->
       Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
 
   let rec run () =
@@ -132,30 +132,36 @@ let get_async async (k : V.value V.cont) (r : V.value V.cont) =
   match Lib.Promise.value_opt async.V.result with
   | Some (V.Ok v) -> k v
   | Some (V.Error v) -> r v
-  | None -> async.V.waiters <- (k,r)::async.V.waiters
+  | None -> async.V.waiters <-
+    (k,r)::async.V.waiters;
+    V.unit
 
 let set_async async v =
   List.iter (fun (k,_) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
   Lib.Promise.fulfill async.V.result (V.Ok v);
-  async.V.waiters <- []
+  async.V.waiters <- [];
+  V.unit
 
 let reject_async async v =
   List.iter (fun (_,r) -> Scheduler.queue (fun () -> r v)) async.V.waiters;
   Lib.Promise.fulfill async.V.result (V.Error v);
-  async.V.waiters <- []
+  async.V.waiters <- [];
+  V.unit
 
 let reply async v =
-  Scheduler.queue (fun () -> set_async async v)
+  Scheduler.queue (fun () -> set_async async v);
+  V.unit
 
 let reject async v =
   match v with
   | V.Tup [ _code; message ] ->
     (* mask the error code before rejecting *)
     Scheduler.queue
-      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]))
+      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]));
+    V.unit
   | _ -> assert false
 
-let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
+let async env at (f: (V.value V.cont) -> (V.value V.cont) -> V.value) (k : V.value V.cont) =
   let async = make_async () in
   let k' = reply async in
   let r = reject async in
@@ -178,7 +184,8 @@ let await env at async k =
       if env.flags.trace then
         trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
       incr trace_depth;
-      k v)
+      k v);
+    V.unit
     )
 
 
@@ -212,7 +219,7 @@ let make_lowered_unit_message env id call_conv f =
   | {sort = T.Shared s; n_res = 0; _} ->
     (* message scheduled here (not by f) *)
     Value.message_func s call_conv.n_args (fun c v k ->
-      (queue f) c v (fun _ -> ());
+      (queue f) c v (fun _ -> V.unit);
       k (V.unit);
     );
   | _ ->
@@ -225,7 +232,7 @@ let make_replying_message env id call_conv f =
   | {sort = T.Shared s; control = T.Replies; _} ->
     Value.replies_func s call_conv.n_args call_conv.n_res (fun c v k ->
       (* message scheduled here (not by f) *)
-      (queue f) c v (fun _ -> ());
+      (queue f) c v (fun _ -> V.unit);
       k (V.unit)
     )
   | _ ->
@@ -372,9 +379,30 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         if Show.can_show ot
         then k (Value.Text (Show.show_val ot v1))
         else raise (Invalid_argument "debug_show")
+      | CPSDoAsync _, [v1] ->
+        assert (not env.flavor.has_await && env.flavor.has_async_typ);
+        let (_, f) = V.as_func v1 in
+        let typ = (List.hd es).note.Note.typ in
+        begin match typ with
+        | T.Func(_, _, _, [f_typ; r_typ], _) ->
+          let call_conv_f = CC.call_conv_of_typ f_typ in
+          let call_conv_r = CC.call_conv_of_typ r_typ in
+          let vk' = Value.Func (call_conv_f, fun c v _ ->
+            V.Async {
+              V.result = Lib.Promise.make_fulfilled (V.Ok v);
+              V.waiters = [] })
+          in
+          let vr = Value.Func (call_conv_r, fun c v _ ->
+             V.Async {
+               V.result = Lib.Promise.make_fulfilled (V.Error v);
+               V.waiters = [] })
+          in
+          let vc = context env in
+          k (f vc (V.Tup [vk'; vr]) (fun v -> v))
+        | _ -> assert false
+        end
       | CPSAsync _, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
-        assert false;
         let (_, f) = V.as_func v1 in
         let typ = (List.hd es).note.Note.typ in
         begin match typ with
@@ -386,36 +414,35 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
               let vk' = Value.Func (call_conv_f, fun c v _ -> k' v) in
               let vr = Value.Func (call_conv_r, fun c v _ -> r v) in
               let vc = context env in
-              f vc (V.Tup [vk'; vr]) V.as_unit
+              f vc (V.Tup [vk'; vr]) (fun v -> V.as_unit v; V.unit)
             )
             k
         | _ -> assert false
         end
       | CPSAwait cont_typ, [v1; v2] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
-        assert false;
-        let (vf, vr) =  V.as_pair v2 in
+        let (vf, vr) = V.as_pair v2 in
         let (_, f) = V.as_func vf in
         let (_, r) = V.as_func vr in
         begin
           match cont_typ with
-          | Func(_, _, [], _, []) ->
+          | T.Func(_, _, [], _, []) ->
             (* unit answer type, from await in `async {}` *)
             await env exp.at (V.as_async v1)
              (fun v -> f (context env) v k)
              (fun e -> r (context env) e k)
-          | Func(_, _, [], us, [T.Async(_, t2)]) ->
+          | T.Func(_, _, [], us, [T.Async(_, t2)]) ->
             (* async answer type, from await in `do async {}` *)
-            let result = Lib.Promise.make () in
-            let at = V.Async { V.result = result ; V.waiters = [] } in
-            let fulfill v = Lib.Promise.fulfill result (V.Ok v) in
-            let fail e = Lib.Promise.fulfill result (V.Error e) in
+            let async = make_async() in
+            let at = V.Async async in
+            let fulfill v = set_async async v in
+            let fail e = reject_async async e in
             let au = V.as_async v1 in
-            let rec coerce k = coerce k in
-            get_async au
-              (fun vs -> get_async (V.as_async (coerce k vs)) fulfill fail)
-              (fun e -> get_async (V.as_async (coerce r e))  fulfill fail);
-            at
+            let c = context env in
+            V.as_unit (await env exp.at au
+              (fun vs -> await env exp.at (V.as_async (f c vs (fun v -> ignore (V.as_async v); v))) fulfill fail)
+              (fun e -> await env exp.at (V.as_async (r c e (fun v -> ignore (V.as_async v); v))) fulfill fail));
+            k at;
           | _ -> assert false
         end
       | OtherPrim s, vs ->
@@ -438,12 +465,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in
-        Scheduler.queue (fun () -> reply v1)
+        Scheduler.queue (fun () -> reply v1);
+        V.unit
       | ICRejectPrim, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
-        Scheduler.queue (fun () -> reject e)
+        Scheduler.queue (fun () -> reject e);
+        V.unit
       | ICCallPrim, [v1; v2; kv; rv] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
@@ -864,8 +893,8 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
       vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
-      replies = Some (fun v -> reply (context env) v V.as_unit);
-      rejects = Some (fun v -> reject (context env) v V.as_unit);
+      replies = Some (fun v -> reply (context env) v (fun v -> V.as_unit v; V.unit));
+      rejects = Some (fun v -> reject (context env) v (fun v -> V.as_unit v; V.unit));
       caller = v_caller;
     }
   in f env' k'
@@ -905,7 +934,7 @@ let interpret_prog flags (cu, flavor) =
   trace_depth := 0;
   try
     Scheduler.queue (fun () ->
-      try interpret_comp_unit env cu  (fun v -> ())
+      try interpret_comp_unit env cu  (fun v -> V.unit)
       with Invalid_argument s -> trap !last_region "%s" s
     );
     Scheduler.run ()

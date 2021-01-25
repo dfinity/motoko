@@ -110,13 +110,13 @@ let print_exn flags exn =
 
 module Scheduler =
 struct
-  let q : (unit -> unit) Queue.t = Queue.create ()
+  let q : (unit -> V.value) Queue.t = Queue.create ()
 
   let queue work = Queue.add work q
   let yield () =
     (*    Printf.printf "!"; (* TODO: delete me *) *)
     trace_depth := 0;
-    try Queue.take q () with Trap (at, msg) ->
+    try V.as_unit (Queue.take q ()) with Trap (at, msg) ->
       Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
@@ -132,30 +132,36 @@ let get_async async (k : V.value V.cont) (r : V.value V.cont) =
   match Lib.Promise.value_opt async.V.result with
   | Some (V.Ok v) -> k v
   | Some (V.Error v) -> r v
-  | None -> async.V.waiters <- (k,r)::async.V.waiters
+  | None ->
+    async.V.waiters <- (k,r)::async.V.waiters;
+    V.unit
 
 let set_async async v =
   List.iter (fun (k,_) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
   Lib.Promise.fulfill async.V.result (V.Ok v);
-  async.V.waiters <- []
+  async.V.waiters <- [];
+  V.unit
 
 let reject_async async v =
   List.iter (fun (_,k) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
   Lib.Promise.fulfill async.V.result (V.Error v);
-  async.V.waiters <- []
+  async.V.waiters <- [];
+  V.unit
 
 let reply async v =
-  Scheduler.queue (fun () -> set_async async v)
+  Scheduler.queue (fun () -> set_async async v);
+  V.unit
 
 let reject async v =
   match v with
   | V.Tup [ _code; message ] ->
     (* mask the error code before rejecting *)
     Scheduler.queue
-      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]))
+      (fun () -> reject_async async (V.Tup [V.Variant("canister_reject", V.unit); message]));
+    V.unit
   | _ -> assert false
 
-let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
+let async env at (f: (V.value V.cont) -> (V.value V.cont) -> V.value) (k : V.value V.cont) =
     let async = make_async () in
     let k' = reply async in
     let r  = reject async in
@@ -180,7 +186,8 @@ let await env at async k =
         trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
       incr trace_depth;
       k v
-      )
+      );
+    V.unit
     )
     (let r = Option.get (env.throws) in
      fun v ->
@@ -188,7 +195,8 @@ let await env at async k =
          if env.flags.trace then
            trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
          incr trace_depth;
-         r v))
+         r v);
+       V.unit)
 
 let make_unit_message env id v =
   let open CC in
@@ -945,7 +953,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+      interpret_block env p.it (Some ve) (fun v -> vo := Some v; V.unit)
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in
@@ -981,7 +989,8 @@ let interpret_lib flags scope lib : scope =
     let import = import_lib env lib in
     let (imp_decs, decs) = CompUnit.decs_of_lib lib in
     interpret_block env (imp_decs @ decs) (Some ve) (fun v ->
-      vo := Some (import v))
+        vo := Some (import v);
+        V.unit)
   );
   Scheduler.run ();
   lib_scope lib.note (Option.get !vo) scope

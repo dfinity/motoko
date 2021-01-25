@@ -280,7 +280,7 @@ type actor_id = string
 type context = value
 
 and func =
-  context -> value -> value cont -> unit
+  context -> value -> value cont -> value
 
 and value =
   | Null
@@ -316,7 +316,7 @@ and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
 
 and def = value Lib.Promise.t
-and 'a cont = 'a -> unit
+and 'a cont = 'a -> value
 
 
 (* Shorthands *)
