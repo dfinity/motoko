@@ -22,9 +22,13 @@ let
   rtsBuildInputs = with nixpkgs; [
     clang_10 # for native/wasm building
     lld_10 # for wasm building
+    llvmPackages_10.bintools
     rustc-nightly
     cargo-nightly
     xargo
+    wasmtime
+    rust-bindgen
+    rustfmt
   ];
 
   llvmEnv = ''
@@ -128,14 +132,17 @@ in
 rec {
   rts =
     let
+      # We run this on motoko-rts-tests, to get the union of all
+      # dependencies
       rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
         name = "motoko-rts-deps";
-        src = subpath rts/motoko-rts;
-        sourceRoot = null;
-        sha256 = "11la5fl0fgx6i5g52p56sf48yz7f0mqrgm38m320xh3wyqa2nim6";
+        src = subpath ./rts;
+        sourceRoot = "rts/motoko-rts-tests";
+        sha256 = "1k8ia7visgg9i6bdlisjbd4677ajlj9bknjrbrjj8pr0lvl07hbs";
         copyLockfile = true;
       };
     in
+
     stdenv.mkDerivation {
       name = "moc-rts";
 
@@ -170,7 +177,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-        ./test_rts
+	make test
       '';
 
       installPhase = ''
@@ -577,14 +584,15 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell rec {
+  shell = stdenv.mkDerivation {
+    name = "motoko-shell";
+
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
     # both, while not actually building `moc`
     #
-
     propagatedBuildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (

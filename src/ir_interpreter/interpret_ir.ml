@@ -376,11 +376,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         assert false;
         let (_, f) = V.as_func v1 in
-        let typ = exp.note.Note.typ in
+        let typ = (List.hd es).note.Note.typ in
         begin match typ with
-        | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
-          let call_conv_f = CC.call_conv_of_typ f_dom in
-          let call_conv_r = CC.call_conv_of_typ r_dom in
+        | T.Func(_, _, _, [f_typ; r_typ], _) ->
+          let call_conv_f = CC.call_conv_of_typ f_typ in
+          let call_conv_r = CC.call_conv_of_typ r_typ in
           async env exp.at
             (fun k' r ->
               let vk' = Value.Func (call_conv_f, fun c v _ -> k' v) in
