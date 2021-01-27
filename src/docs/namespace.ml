@@ -38,13 +38,13 @@ let from_module =
               acc with
               values =
                 StringMap.add id.it
-                  (mk_nested None, Some (go (fun x -> mk_nested (Some x)) decs))
+                  (mk_xref (Xref.XValue id.it), Some (go mk_nested decs))
                   acc.values;
             }
         | Syntax.LetD (pat, _) ->
             let bound_names =
               List.map
-                (fun i -> (i, (mk_xref (Xref.XNested (i, None)), None)))
+                (fun i -> (i, (mk_xref (Xref.XValue i), None)))
                 (idents_in_pattern pat)
             in
             {
@@ -138,9 +138,9 @@ let lookup_type : t -> Syntax.path -> Xref.t option =
              module's types we're just making one up *)
           let mk_xref =
             List.fold_right
-              (fun id f xref -> Xref.XNested (id, Some (f xref)))
+              (fun id f xref -> Xref.XNested (id, f xref))
               xs
-              (fun xref -> Xref.XNested (x, Some xref))
+              (fun xref -> Xref.XNested (x, xref))
           in
           Xref.extend top_xref
           |> Option.map (fun mk_top_xref ->

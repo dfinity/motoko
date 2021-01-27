@@ -6,7 +6,7 @@
 type t =
   | XType of string
   | XValue of string
-  | XNested of string * t option
+  | XNested of string * t
   | XClass of string * t
   | XFile of string * t option
   | XPackage of string * t option
