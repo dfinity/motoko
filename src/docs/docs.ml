@@ -77,15 +77,15 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
   List.filter_map
     (fun (input, output, current_path) ->
       Option.map
-        (fun (module_comment, imports, declarations) ->
+        (fun { module_comment; docs; lookup_type } ->
           ( output,
             Common.
               {
                 all_modules;
                 current_path;
+                lookup_type;
                 module_comment;
-                imports;
-                declarations;
+                declarations = docs;
               } ))
         (extract input))
     all_files

@@ -32,7 +32,7 @@ let from_module =
         match exp_field.it.Syntax.dec.it with
         | Syntax.ExpD _ -> acc
         | Syntax.LetD
-            ({ it = Syntax.VarP id; _ }, { it = Syntax.ObjE (_, decs); _ }) ->
+            ({ it = Syntax.VarP id; _ }, { it = Syntax.ObjBlockE (_, decs); _ }) ->
             let mk_nested x = mk_xref (Xref.XNested (id.it, x)) in
             {
               acc with

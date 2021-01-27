@@ -14,6 +14,6 @@ val shadow : t -> t -> t
 
 (** Extracts the shape of a namespace for a given module from its
    syntactic representation. *)
-val from_module : Syntax.exp_field list -> t
+val from_module : Syntax.dec_field list -> t
 
 val lookup_type : t -> Syntax.path -> Xref.t option

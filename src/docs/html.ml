@@ -2,9 +2,8 @@ open Extract
 open Mo_def
 open Cow.Html
 open Common
-open Ic
 
-type env = { imports : (string * string) list; local_types : string list }
+type env = { lookup_type : Syntax.path -> Xref.t option }
 
 let rec join_with : t -> t list -> t =
  fun sep -> function
@@ -32,39 +31,42 @@ let rec string_of_path : Syntax.path -> string =
   | Syntax.IdH id -> id.Source.it
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
-let rec split_path : Syntax.path -> string list * string =
- fun path ->
-  match path.Source.it with
-  | Syntax.IdH id -> ([], id.Source.it)
-  | Syntax.DotH (path, id) ->
-      let xs, x = split_path path in
-      (List.append xs [ x ], id.Source.it)
+let rec id_of_xref : Xref.t -> string = function
+  | Xref.XClass(x, xref) ->
+     Printf.sprintf "%s.%s" x (id_of_xref xref)
+  | Xref.XNested(x, xref) ->
+     Printf.sprintf "%s.%s" x (id_of_xref xref)
+  | Xref.XValue(x) -> x
+  | Xref.XType(x) -> "type." ^ x
+  | Xref.XPackage(_, None) -> "" (* TODO: What does this mean? *)
+  | Xref.XPackage(_, Some xref) -> id_of_xref xref
+  | Xref.XFile(p, None) -> "" (* TODO: What does this mean? *)
+  | Xref.XFile(p, Some xref) -> id_of_xref xref
 
-let lookup_import : env -> string -> string option =
- fun { imports; _ } search ->
-  List.find_map
-    (fun (qualifier, url) -> if qualifier = search then Some url else None)
-    imports
+let link_of_xref : Xref.t -> t -> t =
+  fun xref html ->
+  let rec string_of_xref = function
+    | Xref.XClass(x, xref) ->
+       Printf.sprintf "%s.%s" x (string_of_xref xref)
+    | Xref.XNested(x, xref) ->
+       Printf.sprintf "%s.%s" x (string_of_xref xref)
+    | Xref.XValue(x) -> x
+    | Xref.XType(x) -> "type." ^ x
+    | Xref.XPackage(_, _) -> ""
+    | Xref.XFile(p, None) -> p
+    | Xref.XFile(p, Some(xref)) ->
+       Printf.sprintf "%s#%s" p (string_of_xref xref) in
+  let link = string_of_xref xref in
+  a ~href:(Uri.of_string link) html
+
 
 let html_of_path : env -> Syntax.path -> t =
- fun env path ->
-  let link =
-    match split_path path with
-    | [], name ->
-        if List.exists (fun x -> x = name) env.local_types then
-          Some ("#type." ^ name)
-        else None
-    | qualifiers, name -> (
-        match lookup_import env (String.concat "." qualifiers) with
-        | Some url -> (
-            match Url.parse url with
-            | Ok (Url.Relative path) -> Some (path ^ ".html#type." ^ name)
-            | _ -> None )
-        | None -> None )
-  in
-  match link with
-  | Some link -> a ~href:(Uri.of_string link) (html_type (string_of_path path))
-  | None -> html_type (string_of_path path)
+  fun env path ->
+  match env.lookup_type path with
+  | Some xref ->
+     link_of_xref xref (html_type (string_of_path path))
+  | None ->
+     html_type (string_of_path path)
 
 let html_of_comment : string -> t = function
   | "" -> empty
@@ -175,43 +177,20 @@ and html_of_typ_item : env -> Syntax.typ_item -> t =
     oid
   ++ html_of_type env t
 
-let html_of_type_doc : env -> Extract.type_doc -> t =
- fun env type_doc ->
+let html_of_type_doc : env -> Extract.type_doc -> Xref.t -> t =
+  fun env type_doc xref ->
   let ty_args = html_of_typ_binders env type_doc.type_args in
+  let id = id_of_xref xref in
   match type_doc.typ with
   | DTPlain ty ->
-      h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
+      h4 ~cls:"type-declaration" ~id
         ( keyword "type "
         ++ html_type type_doc.name
         ++ ty_args
         ++ string " = "
         ++ html_of_type env ty )
   | DTObj (ty, fields) ->
-      (* TODO Figure out a layout for showing the documentation on individual
-       *  fields *)
-      (* let header =
-       *   h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
-       *     ( keyword "type "
-       *     ++ html_type type_doc.name
-       *     ++ ty_args
-       *     ++ string " = {" )
-       * in
-       * let html_field = code ~cls:"type-field" in
-       * let indent = space ++ space in
-       * let br_indent = br ++ indent in
-       * header
-       * ++ list
-       *      (List.map
-       *         (fun (ty_field, doc) ->
-       *           let doc_string =
-       *             if doc <> "" then br_indent ++ string doc else []
-       *           in
-       *           html_field (indent ++ html_of_typ_field ty_field ++ string ";")
-       *           ++ doc_string)
-       *         fields)
-       * ++ br
-       * ++ string "}" *)
-      h4 ~cls:"type-declaration" ~id:("type." ^ type_doc.name)
+      h4 ~cls:"type-declaration" ~id
         ( keyword "type "
         ++ html_type type_doc.name
         ++ ty_args
@@ -225,8 +204,9 @@ let html_of_arg : env -> Extract.function_arg_doc -> t =
        ~some:(fun arg -> string " : " ++ html_of_type env arg)
        arg.typ
 
-let rec html_of_declaration : env -> Extract.declaration_doc -> t =
- fun env dec ->
+let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
+  fun env xref dec ->
+  let id = id_of_xref xref in
   match dec with
   | Function function_doc ->
       let is_multiline = List.length function_doc.args > 2 in
@@ -246,7 +226,7 @@ let rec html_of_declaration : env -> Extract.declaration_doc -> t =
           function_doc.typ
       in
       h4 ~cls:"function"
-        ~id:("value." ^ function_doc.name)
+        ~id
         (code
            ( keyword "public func "
            ++ fn_name function_doc.name
@@ -268,7 +248,7 @@ let rec html_of_declaration : env -> Extract.declaration_doc -> t =
           (List.map (html_of_arg env) class_doc.constructor)
       in
       h4 ~cls:"class-declaration"
-        ~id:("class." ^ class_doc.name)
+        ~id
         ( html_of_obj_sort class_doc.sort
         ++ keyword "class "
         ++ class_name class_doc.name
@@ -279,10 +259,10 @@ let rec html_of_declaration : env -> Extract.declaration_doc -> t =
         ++ br'
         ++ string ")" )
       ++ list (List.map (html_of_doc env) class_doc.fields)
-  | Type type_doc -> html_of_type_doc env type_doc
+  | Type type_doc -> html_of_type_doc env type_doc xref
   | Value value_doc ->
       h4 ~cls:"value-declaration"
-        ~id:("value." ^ value_doc.name)
+        ~id
         (code
            ( keyword "public let "
            ++ fn_name value_doc.name
@@ -291,19 +271,14 @@ let rec html_of_declaration : env -> Extract.declaration_doc -> t =
   | Unknown s -> code (string "Unknown: " ++ string s)
 
 and html_of_doc : env -> Extract.doc -> t =
- fun env { doc_comment; declaration } ->
+ fun env { doc_comment; declaration; xref } ->
   div ~cls:"declaration"
-    ( html_of_declaration env declaration
+    ( html_of_declaration env xref declaration
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
 
 let html_of_docs : render_input -> Cow.Html.t =
- fun { all_modules; module_comment; declarations; imports; current_path } ->
-  let name_of_type_dec doc =
-    match doc.declaration with Type ty -> Some ty.name | _ -> None
-  in
-  let env =
-    { imports; local_types = List.filter_map name_of_type_dec declarations }
-  in
+ fun { all_modules; module_comment; declarations; lookup_type; current_path } ->
+  let env = { lookup_type } in
   let path_to_root =
     String.split_on_char '/' current_path
     |> List.tl
@@ -318,13 +293,13 @@ let html_of_docs : render_input -> Cow.Html.t =
   let nav_of_doc doc =
     match doc.Extract.declaration with
     | Extract.Function func ->
-        li (a ~href:(Uri.of_string ("#value." ^ func.name)) (string func.name))
+        li (a ~href:(Uri.of_string ("#" ^ func.name)) (string func.name))
     | Extract.Type typ ->
         li (a ~href:(Uri.of_string ("#type." ^ typ.name)) (string typ.name))
     | Extract.Class cls ->
-        li (a ~href:(Uri.of_string ("#class." ^ cls.name)) (string cls.name))
+        li (a ~href:(Uri.of_string ("#type." ^ cls.name)) (string cls.name))
     | Extract.Value val' ->
-        li (a ~href:(Uri.of_string ("#value." ^ val'.name)) (string val'.name))
+        li (a ~href:(Uri.of_string ("#" ^ val'.name)) (string val'.name))
     | Extract.Unknown typ -> empty
   in
   let navigation =
