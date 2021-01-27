@@ -154,6 +154,7 @@ and exp' =
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
   | ObjE of obj_sort * exp_field list          (* object *)
+  | RecE of rec_field list                     (* record literal *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
@@ -189,6 +190,9 @@ and exp' =
 
 and exp_field = exp_field' Source.phrase
 and exp_field' = {dec : dec; vis : vis; stab: stab option}
+
+and rec_field = rec_field' Source.phrase
+and rec_field' = {mut : mut; id : id; exp : exp }
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

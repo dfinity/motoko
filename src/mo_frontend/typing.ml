@@ -902,6 +902,10 @@ and infer_exp'' env exp : T.typ =
       else env
     in
     infer_obj env' obj_sort.it fields exp.at
+  | RecE rec_fields ->
+    check_ids env "object" "field"
+      (List.map (fun (rf : rec_field) -> rf.it.id) rec_fields);
+    infer_rec_fields env rec_fields []
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
@@ -1187,6 +1191,15 @@ and infer_exp'' env exp : T.typ =
   | ImportE (f, ri) ->
     check_import env exp.at f ri
 
+and infer_rec_fields env rec_fields fts: T.typ =
+  match rec_fields with
+  | [] ->
+    T.Obj(T.Object, List.sort T.compare_field fts)
+  | rec_field::rec_fields' ->
+    let typ = infer_exp env rec_field.it.exp in
+    let typ' = if rec_field.it.mut.it = Syntax.Var then T.Mut typ else typ in
+    infer_rec_fields env rec_fields' (T.{ lab = rec_field.it.id.it; typ = typ' }::fts)
+
 and check_exp env t exp =
   assert (not env.pre);
   assert (exp.note.note_typ = T.Pre);
@@ -1220,6 +1233,25 @@ and check_exp' env0 t exp : T.typ =
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
+    t
+  | RecE rec_fields, T.Obj(T.Object, fs) ->
+    check_ids env "object" "field"
+      (List.map (fun (rf : rec_field) -> rf.it.id) rec_fields);
+    let check_field (rf : rec_field) =
+      let tf = List.find_opt (fun ft -> ft.T.lab = rf.it.id.it) fs in
+      match tf with
+      | Some { T.typ = T.Mut t; _ } ->
+        if rf.it.mut.it <> Syntax.Var then
+          error env exp.at "MXXXX" "expected mutable field, found immutable field";
+        check_exp env t rf.it.exp
+      | Some { T.typ = t; _ } ->
+        if rf.it.mut.it = Syntax.Var then
+          error env exp.at "MXXXX" "expected immutable field, found mutable field";
+        check_exp env t rf.it.exp
+      | None ->
+        ignore (infer_exp env rf.it.exp);
+    in
+    List.iter check_field rec_fields;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
@@ -2076,7 +2108,8 @@ and gather_dec env scope dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ({it = ObjE (obj_sort, fields); at; _} |
-       {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
+         {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
+       (* TODO include RecE? *)
     ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     let open Scope in
@@ -2159,6 +2192,7 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       ( {it = ObjE (obj_sort, fields); at; _} |
         {it = AwaitE { it = AsyncE (_, {it = ObjE ({ it = Type.Actor; _} as obj_sort, fields); at; _}) ; _  }; _ })
+       (* TODO include RecE? *)
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in

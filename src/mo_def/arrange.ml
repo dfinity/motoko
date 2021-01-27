@@ -21,6 +21,7 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | RecE rfs            -> "RecE"      $$ List.map rec_field rfs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
@@ -160,6 +161,9 @@ and typ_bind (tb : typ_bind)
 
 and exp_field (ef : exp_field)
   = "Field" $$ [dec ef.it.dec; vis ef.it.vis; stab ef.it.stab]
+
+and rec_field (rf : rec_field)
+  = "RecField" $$ [mut rf.it.mut; id rf.it.id; exp rf.it.exp]
 
 and operator_type t = Atom (Type.string_of_typ t)
 

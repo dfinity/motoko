@@ -103,6 +103,7 @@ let rec exp msgs e : f = match e.it with
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
     group msgs (exp_fields msgs efs)
+  | RecE rfs            -> rec_fields msgs rfs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
@@ -131,6 +132,9 @@ let rec exp msgs e : f = match e.it with
   | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
+
+and rec_fields msgs rfs : f = unions (rec_field msgs) rfs
+and rec_field msgs rf : f = exp msgs rf.it.exp
 
 and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)

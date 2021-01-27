@@ -45,6 +45,7 @@ let rec exp m e = match e.it with
       | Var -> err m e.at
     end
   | ObjE (_, efs) -> fields m efs
+  | RecE rfs -> rec_fields m rfs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()
@@ -86,6 +87,8 @@ let rec exp m e = match e.it with
   -> err m e.at
 
 and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
+
+and rec_fields m rfs = List.iter (fun (rf:rec_field) -> exp m rf.it.exp) rfs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
