@@ -36,9 +36,11 @@ let rec id_of_xref : Xref.t -> string = function
   | Xref.XNested (x, xref) -> Printf.sprintf "%s.%s" x (id_of_xref xref)
   | Xref.XValue x -> x
   | Xref.XType x -> "type." ^ x
-  | Xref.XPackage (_, None) -> "" (* TODO: What does this mean? *)
+  (* Shouldn't happen, a Package gets a Url not an anchor *)
+  | Xref.XPackage (_, None) -> ""
   | Xref.XPackage (_, Some xref) -> id_of_xref xref
-  | Xref.XFile (p, None) -> "" (* TODO: What does this mean? *)
+  (* Shouldn't happen, a File gets a Url not an anchor *)
+  | Xref.XFile (p, None) -> assert false
   | Xref.XFile (p, Some xref) -> id_of_xref xref
 
 let link_of_xref : Xref.t -> t -> t =

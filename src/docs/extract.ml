@@ -1,7 +1,6 @@
 open Mo_frontend
 open Mo_def
 open Source
-open Ic
 
 type doc = {
   xref : Xref.t;
@@ -84,7 +83,6 @@ let un_prog prog =
         _;
       }
       :: tail ->
-        (* TODO Gotta resolve this path so it makes sense somehow *)
         go ((v.it, path) :: acc) tail
     | _ :: tail -> go acc tail
     | [] -> Error "Couldn't find a module expression"
