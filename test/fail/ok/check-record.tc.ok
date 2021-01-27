@@ -1,0 +1,29 @@
+check-record.mo:2.9-2.24: type error [M0096], expression of type
+  {foo : Nat}
+cannot produce expected type
+  {foo : Nat64}
+check-record.mo:4.10-4.29: type error [M0096], expression of type
+  {a : Nat; var v : Nat}
+cannot produce expected type
+  {a : Int; var v : Int}
+check-record.mo:6.34-6.53: type error [M0096], expression of type
+  {a : Nat; var v : Nat}
+cannot produce expected type
+  {a : Int; var v : Int}
+check-record.mo:8.10-8.18: type error [M0096], expression of type
+  {v : Nat}
+cannot produce expected type
+  {var v : Nat}
+check-record.mo:10.10-10.22: type error [M0096], expression of type
+  {var a : Nat}
+cannot produce expected type
+  {a : Nat}
+check-record.mo:12.10-12.29: type error [M0096], expression of type
+  {a : Nat; var v : Nat}
+cannot produce expected type
+  {var a : Int; v : Int}
+check-record.mo:14.9-14.11: type error [M0096], expression of type
+  {}
+cannot produce expected type
+  {a : Nat}
+check-record.mo:19.30-19.31: type error [M0057], unbound variable c
