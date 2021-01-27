@@ -32,41 +32,35 @@ let rec string_of_path : Syntax.path -> string =
   | Syntax.DotH (path, id) -> string_of_path path ^ "." ^ id.Source.it
 
 let rec id_of_xref : Xref.t -> string = function
-  | Xref.XClass(x, xref) ->
-     Printf.sprintf "%s.%s" x (id_of_xref xref)
-  | Xref.XNested(x, xref) ->
-     Printf.sprintf "%s.%s" x (id_of_xref xref)
-  | Xref.XValue(x) -> x
-  | Xref.XType(x) -> "type." ^ x
-  | Xref.XPackage(_, None) -> "" (* TODO: What does this mean? *)
-  | Xref.XPackage(_, Some xref) -> id_of_xref xref
-  | Xref.XFile(p, None) -> "" (* TODO: What does this mean? *)
-  | Xref.XFile(p, Some xref) -> id_of_xref xref
+  | Xref.XClass (x, xref) -> Printf.sprintf "%s.%s" x (id_of_xref xref)
+  | Xref.XNested (x, xref) -> Printf.sprintf "%s.%s" x (id_of_xref xref)
+  | Xref.XValue x -> x
+  | Xref.XType x -> "type." ^ x
+  | Xref.XPackage (_, None) -> "" (* TODO: What does this mean? *)
+  | Xref.XPackage (_, Some xref) -> id_of_xref xref
+  | Xref.XFile (p, None) -> "" (* TODO: What does this mean? *)
+  | Xref.XFile (p, Some xref) -> id_of_xref xref
 
 let link_of_xref : Xref.t -> t -> t =
-  fun xref html ->
+ fun xref html ->
   let rec string_of_xref = function
-    | Xref.XClass(x, xref) ->
-       Printf.sprintf "%s.%s" x (string_of_xref xref)
-    | Xref.XNested(x, xref) ->
-       Printf.sprintf "%s.%s" x (string_of_xref xref)
-    | Xref.XValue(x) -> x
-    | Xref.XType(x) -> "type." ^ x
-    | Xref.XPackage(_, _) -> ""
-    | Xref.XFile(p, None) -> p
-    | Xref.XFile(p, Some(xref)) ->
-       Printf.sprintf "%s#%s" p (string_of_xref xref) in
+    | Xref.XClass (x, xref) -> Printf.sprintf "%s.%s" x (string_of_xref xref)
+    | Xref.XNested (x, xref) -> Printf.sprintf "%s.%s" x (string_of_xref xref)
+    | Xref.XValue x -> x
+    | Xref.XType x -> "type." ^ x
+    | Xref.XPackage (_, _) -> ""
+    | Xref.XFile (p, None) -> p
+    | Xref.XFile (p, Some xref) ->
+        Printf.sprintf "%s#%s" p (string_of_xref xref)
+  in
   let link = string_of_xref xref in
   a ~href:(Uri.of_string link) html
 
-
 let html_of_path : env -> Syntax.path -> t =
-  fun env path ->
+ fun env path ->
   match env.lookup_type path with
-  | Some xref ->
-     link_of_xref xref (html_type (string_of_path path))
-  | None ->
-     html_type (string_of_path path)
+  | Some xref -> link_of_xref xref (html_type (string_of_path path))
+  | None -> html_type (string_of_path path)
 
 let html_of_comment : string -> t = function
   | "" -> empty
@@ -178,7 +172,7 @@ and html_of_typ_item : env -> Syntax.typ_item -> t =
   ++ html_of_type env t
 
 let html_of_type_doc : env -> Extract.type_doc -> Xref.t -> t =
-  fun env type_doc xref ->
+ fun env type_doc xref ->
   let ty_args = html_of_typ_binders env type_doc.type_args in
   let id = id_of_xref xref in
   match type_doc.typ with
@@ -205,7 +199,7 @@ let html_of_arg : env -> Extract.function_arg_doc -> t =
        arg.typ
 
 let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
-  fun env xref dec ->
+ fun env xref dec ->
   let id = id_of_xref xref in
   match dec with
   | Function function_doc ->
@@ -225,8 +219,7 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
           ~some:(fun typ -> string " : " ++ html_of_type env typ)
           function_doc.typ
       in
-      h4 ~cls:"function"
-        ~id
+      h4 ~cls:"function" ~id
         (code
            ( keyword "public func "
            ++ fn_name function_doc.name
@@ -247,8 +240,7 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
           (string ", " ++ br_indent)
           (List.map (html_of_arg env) class_doc.constructor)
       in
-      h4 ~cls:"class-declaration"
-        ~id
+      h4 ~cls:"class-declaration" ~id
         ( html_of_obj_sort class_doc.sort
         ++ keyword "class "
         ++ class_name class_doc.name
@@ -261,8 +253,7 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
       ++ list (List.map (html_of_doc env) class_doc.fields)
   | Type type_doc -> html_of_type_doc env type_doc xref
   | Value value_doc ->
-      h4 ~cls:"value-declaration"
-        ~id
+      h4 ~cls:"value-declaration" ~id
         (code
            ( keyword "public let "
            ++ fn_name value_doc.name
