@@ -43,17 +43,22 @@ let rec id_of_xref : Xref.t -> string = function
 
 let link_of_xref : Xref.t -> t -> t =
  fun xref html ->
-  let rec string_of_xref = function
-    | Xref.XClass (x, xref) -> Printf.sprintf "%s.%s" x (string_of_xref xref)
-    | Xref.XNested (x, xref) -> Printf.sprintf "%s.%s" x (string_of_xref xref)
-    | Xref.XValue x -> x
-    | Xref.XType x -> "type." ^ x
+  let prepend_hash is_top s = if is_top then "#" ^ s else s in
+  let rec string_of_xref is_top = function
+    | Xref.XClass (x, xref) ->
+        prepend_hash is_top
+          (Printf.sprintf "%s.%s" x (string_of_xref false xref))
+    | Xref.XNested (x, xref) ->
+        prepend_hash is_top
+          (Printf.sprintf "%s.%s" x (string_of_xref false xref))
+    | Xref.XValue x -> prepend_hash is_top x
+    | Xref.XType x -> prepend_hash is_top ("type." ^ x)
     | Xref.XPackage (_, _) -> ""
     | Xref.XFile (p, None) -> p
     | Xref.XFile (p, Some xref) ->
-        Printf.sprintf "%s#%s" p (string_of_xref xref)
+        Printf.sprintf "%s.html#%s" p (string_of_xref false xref)
   in
-  let link = string_of_xref xref in
+  let link = string_of_xref true xref in
   a ~href:(Uri.of_string link) html
 
 let html_of_path : env -> Syntax.path -> t =

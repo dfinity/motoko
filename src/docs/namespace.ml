@@ -139,8 +139,7 @@ let lookup_type : t -> Syntax.path -> Xref.t option =
           let mk_xref =
             List.fold_right
               (fun id f xref -> Xref.XNested (id, f xref))
-              xs
-              (fun xref -> Xref.XNested (x, xref))
+              xs Fun.id
           in
           Xref.extend top_xref
           |> Option.map (fun mk_top_xref ->

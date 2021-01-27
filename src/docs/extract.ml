@@ -107,12 +107,13 @@ module MakeExtract (Env : sig
   val find_trivia : Source.region -> Lexer.trivia_info
 end) =
 struct
-  let module_shape : Namespace.t =
+  let namespace : Namespace.t =
     let import_ns = Namespace.from_imports Env.imports in
     let module_ns = Namespace.from_module Env.all_decs in
     Namespace.shadow import_ns module_ns
 
-  let lookup_type : Syntax.path -> Xref.t option = fun path -> None
+  let lookup_type : Syntax.path -> Xref.t option =
+    Namespace.lookup_type namespace
 
   let rec extract_args = function
     | Source.{ it = Syntax.VarP { it = name; at; _ }; _ } ->
