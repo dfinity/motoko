@@ -439,6 +439,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (obj_sort, fields) ->
     interpret_obj env obj_sort.it fields k
+  | RecE rec_fields ->
+    interpret_rec_fields env rec_fields V.Env.empty (fun env -> k (V.Obj env))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -620,6 +622,17 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
   | [] -> k (List.rev vs)
   | exp::exps' ->
     interpret_exp env exp (fun v -> interpret_exps env exps' (v::vs) k)
+
+and interpret_rec_fields env rec_fields fld_env (k : V.value V.Env.t V.cont) =
+  match rec_fields with
+  | [] -> k fld_env
+  | rec_field::rec_fields' ->
+    interpret_exp env rec_field.it.exp (fun v ->
+      let fv = match rec_field.it.mut.it with
+          | Syntax.Var -> V.Mut (ref v)
+          | Syntax.Const -> v
+      in
+      interpret_rec_fields env rec_fields' (V.Env.add rec_field.it.id.it fv fld_env) k)
 
 (* Cases *)
 

@@ -192,7 +192,7 @@ and exp_field = exp_field' Source.phrase
 and exp_field' = {dec : dec; vis : vis; stab: stab option}
 
 and rec_field = rec_field' Source.phrase
-and rec_field' = {mut : mut; id : id; exp : exp }
+and rec_field' = {mut : mut; id : id; exp : exp}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
