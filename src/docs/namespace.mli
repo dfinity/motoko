@@ -17,3 +17,5 @@ val shadow : t -> t -> t
 val from_module : Syntax.dec_field list -> t
 
 val lookup_type : t -> Syntax.path -> Xref.t option
+
+val to_string : t -> string

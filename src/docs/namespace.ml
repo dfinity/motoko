@@ -156,3 +156,54 @@ let lookup_type : t -> Syntax.path -> Xref.t option =
               sub_ns xs
           in
           StringMap.find_opt id sub_ns.types )
+
+let rec format : Format.formatter -> t -> unit =
+ fun f { values; types } ->
+  let open Format in
+  let format_values () =
+    pp_open_vbox f 2;
+    pp_print_string f "Values:";
+    pp_print_cut f ();
+    pp_open_vbox f 0;
+    StringMap.iter
+      (fun k (xref, ns) ->
+        pp_open_vbox f 2;
+        fprintf f "%s[%s]" k (Xref.to_string xref);
+        ( match ns with
+        | None -> ()
+        | Some ns ->
+            pp_print_string f ":";
+            pp_print_cut f ();
+            format f ns );
+        pp_close_box f ();
+        pp_print_cut f ())
+      values;
+    pp_close_box f ();
+    pp_close_box f ()
+  in
+  let format_types () =
+    pp_open_vbox f 2;
+    pp_print_string f "Types:";
+    pp_print_cut f ();
+    StringMap.iter
+      (fun k xref ->
+        pp_open_vbox f 0;
+        fprintf f "%s[%s]" k (Xref.to_string xref);
+        pp_print_cut f ();
+        pp_close_box f ())
+      types;
+    pp_close_box f ()
+  in
+  pp_open_vbox f 0;
+  format_values ();
+  pp_print_cut f ();
+  format_types ();
+  pp_close_box f ()
+
+let to_string : t -> string =
+ fun ns ->
+  let b = Buffer.create 16 in
+  let f = Format.formatter_of_buffer b in
+  format f ns;
+  Format.pp_print_flush f ();
+  Buffer.contents b
