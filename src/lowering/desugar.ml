@@ -82,6 +82,8 @@ and exp' at note = function
       (varP v) (varE v) ty).it
   | S.ObjE (s, es) ->
     obj at s None es note.Note.typ
+  | S.RecE rfs ->
+    record note.Note.typ [] [] rfs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -369,6 +371,27 @@ and build_obj at s self_id es obj_typ =
     | None -> [], obj_e
     | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
   in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
+
+and record obj_typ ds fs rfs =
+  match rfs with
+  | [] ->
+    let obj_e = newObjE T.Object (List.rev fs) obj_typ in
+    I.BlockE(List.rev ds, obj_e)
+  | rf::rfs' ->
+    match rf.it.S.mut.it with
+    | S.Var ->
+      let typ = rf.it.exp.note.note_typ in
+      let id' = fresh_var rf.it.id.it typ in
+      let d = varD (id_of_var id') typ (exp rf.it.exp) in
+      let f = { it = { I.name = rf.it.id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
+      record obj_typ (d::ds) (f::fs) rfs'
+    | S.Const ->
+      let typ = rf.it.exp.note.note_typ in
+      let id' = fresh_var rf.it.id.it typ in
+      let d = letD id' (exp rf.it.exp) in
+      let f = { it = { I.name = rf.it.id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+      record obj_typ (d::ds) (f::fs) rfs'
+
 
 and typ_binds tbs = List.map typ_bind tbs
 
