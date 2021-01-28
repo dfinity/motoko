@@ -119,17 +119,14 @@ let let_or_exp named x e' at =
 let field_var_dec d =
   match d.it with
   | VarD(x, e) ->
-    let x' = field_id x.it @@ x.at in
-    x, x', LetD(VarP(x'.it @@ x'.at) @! x'.at, e) @? d.at
+    { mut = Syntax.Var @@ no_region;
+      id = x;
+      exp = e; } @@ d.at
+
   | _ -> assert false
 
-let field d = {dec = d; vis = Public @@ d.at; stab = None}
-let let_field x x' = field (LetD(VarP(x) @! x.at, VarE(x') @? x'.at) @? x.at)
-let var_field x x' = field (VarD(x, VarE(x') @? x'.at) @? x.at)
-
-let obj ds' ds at =
-  let e' = ObjE(Type.Object @@ at, ds) in
-  if ds' = [] then e' else BlockE(ds' @ [ExpD(e' @? at) @? at])
+let obj efs at =
+  RecE efs
 
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
@@ -281,9 +278,9 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<(Mo_def.Syntax.dec * Mo_def.Syntax.exp_field) list> seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.rec_field list> seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.exp_field list> seplist(dec_field,semicolon) obj_body
-%type<Mo_def.Syntax.dec list * Mo_def.Syntax.exp_field list> deprecated_exp_field_list_unamb
+%type<Mo_def.Syntax.rec_field list> deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
@@ -296,7 +293,7 @@ let share_expfield (ef : exp_field) =
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
-%type<Mo_def.Syntax.dec * Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
+%type<Mo_def.Syntax.rec_field> exp_field exp_field_nonvar
 %type<Mo_def.Syntax.exp_field> dec_field
 %type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
@@ -542,17 +539,13 @@ lit :
 exp_obj :
 (* Activate when deprecated object syntax is removed
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
+    {  obj efs (at $sloc) @? at $sloc }
 *)
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY
-    { let ds', ds = List.fold_right
-        (fun d (ds', efs) ->
-          let x, x', d' = field_var_dec d in
-          d'::ds', (var_field x x' @@ at $sloc)::efs
-        ) ds ([], [])
-      in obj ds' ds (at $sloc) @? at $sloc }
-  | LCURLY ds_efs=deprecated_exp_field_list_unamb RCURLY
-    { let ds, efs = ds_efs in obj ds efs (at $sloc) @? at $sloc }
+    { let efs = List.map field_var_dec ds in
+      obj efs (at $sloc) @? at $sloc }
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
+    { obj efs (at $sloc) @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -729,20 +722,20 @@ catch :
 
 exp_field_nonvar :
   | x=id EQ e=exp(ob)
-    { let x' = field_id x.it @@ x.at in
-      LetD(VarP(x') @! x'.at, e) @? at $sloc, let_field x x' @@ at $sloc }
+    { { mut = Syntax.Const @@ no_region;
+	id = x;
+	exp = e; } @@ at $sloc }
 (* TODO: activate once blocks and objects are no longer ambiguous
   | x=id
-    { let x' = field_id x.it @@ x.at in
-      let e = VarE(x.it @@ x.at) @@ x.at in
-      LetD(VarP(x') @! x'.at, e) @? at $sloc, let_field x x' @@ at $sloc }
+    { { mut = Syntax.Const @@ no_region;
+	id = x;
+	exp = VarE(x.it @@ x.at) @@ x.at } @@ at $sloc }
 *)
 
 exp_field :
-  | d_ef=exp_field_nonvar { d_ef }
+  | ef=exp_field_nonvar { ef }
   | d=dec_var
-    { let x, x', d' = field_var_dec d in
-      d', var_field x x' @@ at $sloc }
+    { field_var_dec d }
 
 dec_field :
   | v=vis s=stab d=dec
@@ -931,18 +924,17 @@ deprecated_pat_opt :
       ObjP(fps) @! at $sloc }
 
 deprecated_exp_obj :
-  | LCURLY ds_efs=deprecated_exp_field_list_unamb RCURLY
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
     { warn_deprecated_obj `Exp (at $sloc);
-      let ds, efs = ds_efs in obj ds efs (at $sloc) @? at $sloc }
+      obj efs (at $sloc) @? at $sloc }
 
 deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
-  | d_ef=exp_field_nonvar
-    { let d, ef = d_ef in [d], [ef] }
-  | d_ef=exp_field_nonvar semicolon d_efs=seplist(exp_field, semicolon)
-    { let d, ef = d_ef and ds, efs = List.split d_efs in d::ds, ef::efs }
-  | d=dec_var semicolon ds_efs=deprecated_exp_field_list_unamb
-    { let x, x', d' = field_var_dec d and ds, efs = ds_efs in
-      d'::ds, (var_field x x' @@ at $sloc)::efs }
+  | ef=exp_field_nonvar
+    { [ef] }
+  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
+    { ef::efs }
+  | d=dec_var semicolon efs=deprecated_exp_field_list_unamb
+    { field_var_dec d :: efs }
 
 deprecated_exp_block :
   | LCURLY ds=deprecated_dec_list_unamb RCURLY
