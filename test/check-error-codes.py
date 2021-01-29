@@ -30,6 +30,7 @@ known_untested_codes = {
     "M0042", # same
     "M0053", # did not manage to trigger
     "M0054", # cannot infer type of primitive expression. Could be internal
+    "M0068", # mode-specific
     "M0080", # did not manage to trigger
     "M0084", # when would the return type be inferred?
     "M0092", # async scopes
