@@ -66,12 +66,13 @@ let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
       | Module -> "module "
       | Memory -> "memory ")
 
-let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
- fun buf typ ->
+let rec plain_of_typ :
+    Buffer.t -> (Buffer.t -> Syntax.path -> unit) -> Syntax.typ -> unit =
+ fun buf render_path typ ->
   match typ.Source.it with
   | Syntax.PathT (path, typs) ->
-      plain_of_path buf path;
-      sep_by' buf "<" ", " ">" (plain_of_typ buf) typs
+      render_path buf path;
+      sep_by' buf "<" ", " ">" (plain_of_typ buf render_path) typs
   | Syntax.PrimT typ -> Buffer.add_string buf typ
   | Syntax.ObjT (obj_sort, fields) ->
       plain_of_obj_sort buf obj_sort;
@@ -81,11 +82,11 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
   | Syntax.ArrayT (mut, ty) ->
       bprintf buf "[";
       plain_of_mut buf mut;
-      plain_of_typ buf ty;
+      plain_of_typ buf render_path ty;
       bprintf buf "]"
   | Syntax.OptT typ ->
       bprintf buf "?";
-      plain_of_typ buf typ
+      plain_of_typ buf render_path typ
   | Syntax.VariantT typ_tags ->
       bprintf buf "{";
       sep_by buf "; " (plain_of_typ_tag buf) typ_tags;
@@ -96,10 +97,10 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
       bprintf buf ")"
   | Syntax.AsyncT (_scope, typ) ->
       bprintf buf "async ";
-      plain_of_typ buf typ
+      plain_of_typ buf render_path typ
   | Syntax.ParT typ ->
       bprintf buf "(";
-      plain_of_typ buf typ;
+      plain_of_typ buf render_path typ;
       bprintf buf ")"
   | Syntax.NamedT (id, typ) ->
       bprintf buf "(";
@@ -108,9 +109,9 @@ let rec plain_of_typ : Buffer.t -> Syntax.typ -> unit =
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;
       plain_of_typ_binders buf typ_binders;
-      plain_of_typ buf arg;
+      plain_of_typ buf render_path arg;
       bprintf buf " -> ";
-      plain_of_typ buf res
+      plain_of_typ buf render_path res
 
 and plain_of_typ_tag : Buffer.t -> Syntax.typ_tag -> unit =
  fun buf typ_tag ->
@@ -119,7 +120,7 @@ and plain_of_typ_tag : Buffer.t -> Syntax.typ_tag -> unit =
   | Syntax.TupT [] -> ()
   | _ ->
       bprintf buf " : ";
-      plain_of_typ buf typ_tag.it.Syntax.typ
+      plain_of_typ buf plain_of_path typ_tag.it.Syntax.typ
 
 and plain_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
  fun buf typ_bind ->
@@ -127,7 +128,7 @@ and plain_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
   Buffer.add_string buf typ_bind.it.Syntax.var.it;
   if not (Syntax.is_any bound) then (
     bprintf buf " <: ";
-    plain_of_typ buf typ_bind.it.Syntax.bound )
+    plain_of_typ buf plain_of_path typ_bind.it.Syntax.bound )
 
 and plain_of_typ_binders : Buffer.t -> Syntax.typ_bind list -> unit =
  fun buf typ_binders ->
@@ -140,23 +141,23 @@ and plain_of_typ_field : Buffer.t -> Syntax.typ_field -> unit =
  fun buf field ->
   plain_of_mut buf field.it.Syntax.mut;
   bprintf buf "%s : " field.it.Syntax.id.it;
-  plain_of_typ buf field.it.Syntax.typ
+  plain_of_typ buf plain_of_path field.it.Syntax.typ
 
 and plain_of_typ_item : Buffer.t -> Syntax.typ_item -> unit =
  fun buf (oid, t) ->
   Option.iter (fun id -> bprintf buf "%s : " id.it) oid;
-  plain_of_typ buf t
+  plain_of_typ buf plain_of_path t
 
 let opt_typ : Buffer.t -> Syntax.typ option -> unit =
  fun buf ->
   Option.iter (fun ty ->
       bprintf buf " : ";
-      plain_of_typ buf ty)
+      plain_of_typ buf plain_of_path ty)
 
 let plain_of_doc_typ : Buffer.t -> doc_type -> unit =
  fun buf -> function
-  | DTPlain ty -> plain_of_typ buf ty
-  | DTObj (ty, doc_fields) -> plain_of_typ buf ty
+  | DTPlain ty -> plain_of_typ buf plain_of_path ty
+  | DTObj (ty, doc_fields) -> plain_of_typ buf plain_of_path ty
 
 let function_arg : Buffer.t -> function_arg_doc -> unit =
  fun buf arg ->
@@ -196,7 +197,7 @@ let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
   | Unknown u -> title buf lvl (Printf.sprintf "Unknown %s" u)
 
 and plain_of_doc : Buffer.t -> level -> doc -> unit =
- fun buf lvl { doc_comment; declaration } ->
+ fun buf lvl { doc_comment; declaration; _ } ->
   declaration_header buf lvl declaration;
   Option.iter (bprintf buf "%s\n") doc_comment
 
