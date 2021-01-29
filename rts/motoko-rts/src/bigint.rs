@@ -44,14 +44,14 @@ unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
     (*blob).header.tag = TAG_BIGINT;
     // libtommath stores the size of the object in alloc
     // as count of mp_digits (u64)
-    assert_eq!((size.0 as usize % core::mem::size_of::<mp_digit>()), 0);
+    debug_assert_eq!((size.0 as usize % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size.0 as usize / core::mem::size_of::<mp_digit>()) as i32;
     blob.payload_addr() as *mut u8
 }
 
 #[no_mangle]
 unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
-    assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
+    debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     let size = Bytes((n_elems * elem_size.0) as u32); // Overflow check?
     let payload = mp_alloc(size) as *mut u32;
 
@@ -71,8 +71,8 @@ unsafe extern "C" fn mp_realloc(
 ) -> *mut libc::c_void {
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
-    assert_eq!((*bigint).header.tag, TAG_BIGINT);
-    assert_eq!(bigint.len(), old_size);
+    debug_assert_eq!((*bigint).header.tag, TAG_BIGINT);
+    debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {
         let new_ptr = mp_alloc(new_size);
