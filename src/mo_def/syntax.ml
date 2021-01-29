@@ -282,10 +282,6 @@ open Source
 let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
 let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
 
-(* TODO: remove *)
-let field_id s = "." ^ s
-let as_field_id id = Lib.String.chop_prefix "." id.it
-
 (* Types & Scopes *)
 
 let arity t =

@@ -1,4 +1,1 @@
-var-const-field.mo:1.25-1.32: type error [M0096], expression of type
-  {x : Nat}
-cannot produce expected type
-  {var x : Nat}
+var-const-field.mo:1.25-1.32: type error [M0149], expected mutable 'var' field, found immutable field

@@ -733,9 +733,8 @@ let text_obj () =
 (* Expressions *)
 
 let error_duplicate env kind id =
-  match as_field_id id with
-  | None -> error env id.at "M0051" "duplicate definition for %s%s in block" kind id.it
-  | Some x -> error env id.at "M0052" "duplicate %sfield name %s in object" kind x
+  error env id.at "M0051" "duplicate definition for %s%s in block" kind id.it
+
 
 let error_bin_op env at t1 t2 =
   error env at "M0060"
@@ -1242,11 +1241,11 @@ and check_exp' env0 t exp : T.typ =
       match tf with
       | Some { T.typ = T.Mut t; _ } ->
         if rf.it.mut.it <> Syntax.Var then
-          error env exp.at "MXXXX" "expected mutable field, found immutable field";
+          error env exp.at "M0149" "expected mutable 'var' field, found immutable field";
         check_exp env t rf.it.exp
       | Some { T.typ = t; _ } ->
         if rf.it.mut.it = Syntax.Var then
-          error env exp.at "MXXXX" "expected immutable field, found mutable field";
+          error env exp.at "M0150" "expected immutable field, found mutable 'var' field";
         check_exp env t rf.it.exp
       | None ->
         ignore (infer_exp env rf.it.exp);
