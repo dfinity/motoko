@@ -17,7 +17,7 @@ array.
    to allocate the data array.
 
    We provide these calls, allocate TAG_BIGINT objects (leaving space for the mp_int), and pass a
-   pointer _into_ this object back to libtommath, which stores it in the in the `mp_digit* dp`
+   pointer _into_ this object back to libtommath, which stores it in the `mp_digit* dp`
    field of the struct.
 
 When persisting a `mp_int` (presumably stack-allocated), we know that the `mp_digit` pointer
