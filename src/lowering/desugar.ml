@@ -377,19 +377,19 @@ and record obj_typ ds fs rfs =
   | [] ->
     let obj_e = newObjE T.Object (List.rev fs) obj_typ in
     I.BlockE(List.rev ds, obj_e)
-  | rf::rfs' ->
-    match rf.it.S.mut.it with
+  | (S.{it = {mut; id; exp = e}; _})::rfs' ->
+    match mut.it with
     | S.Var ->
-      let typ = rf.it.exp.note.note_typ in
-      let id' = fresh_var rf.it.id.it typ in
-      let d = varD (id_of_var id') typ (exp rf.it.exp) in
-      let f = { it = { I.name = rf.it.id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
+      let typ = e.note.S.note_typ in
+      let id' = fresh_var id.it typ in
+      let d = varD (id_of_var id') typ (exp e) in
+      let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
       record obj_typ (d::ds) (f::fs) rfs'
     | S.Const ->
-      let typ = rf.it.exp.note.note_typ in
-      let id' = fresh_var rf.it.id.it typ in
-      let d = letD id' (exp rf.it.exp) in
-      let f = { it = { I.name = rf.it.id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+      let typ = e.note.S.note_typ in
+      let id' = fresh_var id.it typ in
+      let d = letD id' (exp e) in
+      let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
       record obj_typ (d::ds) (f::fs) rfs'
 
 
