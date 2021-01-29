@@ -38,7 +38,7 @@ use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};
 
 use crate::{rts_trap, tommath_bindings::*};
 
-unsafe fn alloc_bigint(size: Bytes<u32>) -> SkewedPtr {
+unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
     let ptr = alloc_words(size_of::<BigInt>() + size.to_words());
     let blob = ptr.unskew() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
@@ -46,12 +46,7 @@ unsafe fn alloc_bigint(size: Bytes<u32>) -> SkewedPtr {
     // as count of mp_digits (u64)
     assert_eq!((size.0 as usize % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size.0 as usize / core::mem::size_of::<mp_digit>()) as i32;
-    ptr
-}
-
-unsafe fn mp_alloc(n: Bytes<u32>) -> *mut u8 {
-    let blob = alloc_bigint(n);
-    blob.as_bigint().payload_addr() as *mut u8
+    blob.payload_addr() as *mut u8
 }
 
 #[no_mangle]
