@@ -16,7 +16,7 @@ registered_codes = set()
 tested_codes = set()
 
 # This list should only contain errors that are impossible or hard to
-# exercise in our test suite
+# exercise in our test suite (or defunct)
 known_untested_codes = {
     "M0000", "M0004", "M0005", "M0006", "M0008", "M0009", "M0010",
     "M0011", "M0015", "M0020", "M0021", "M0022", "M0023", "M0025",
@@ -26,7 +26,9 @@ known_untested_codes = {
     "M0088", "M0092", "M0094", "M0095", "M0099", "M0100", "M0102",
     "M0103", "M0105", "M0107", "M0108", "M0109", "M0110", "M0113",
     "M0115", "M0118", "M0124", "M0127", "M0128", "M0129", "M0130",
-    "M0136", "M0144"
+    "M0136", "M0144",
+    # defunct codes
+    "M0052"
     }
 
 def populate_error_codes():

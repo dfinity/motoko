@@ -183,9 +183,9 @@ let coverage_pat warnOrError env pat t =
 let check_ids env kind member ids = Lib.List.iter_pairs
   (fun x y ->
     if x.it = y.it
-    then error env y.at "M0018" "duplicate %s name %s in %s type" member y.it kind;
+    then error env y.at "M0018" "duplicate %s name %s in %s" member y.it kind;
     if Hash.hash x.it = Hash.hash y.it
-    then error env y.at "M0019" "%s names %s and %s in %s type have colliding hashes" member x.it y.it kind;
+    then error env y.at "M0019" "%s names %s and %s in %s have colliding hashes" member x.it y.it kind;
   ) ids
 
 let infer_mut mut : T.typ -> T.typ =
@@ -441,7 +441,7 @@ and check_typ' env typ : T.typ =
   | OptT typ ->
     T.Opt (check_typ env typ)
   | VariantT tags ->
-    check_ids env "variant" "tag"
+    check_ids env "variant type" "tag"
       (List.map (fun (tag : typ_tag) -> tag.it.tag) tags);
     let fs = List.map (check_typ_tag env) tags in
     T.Variant (List.sort T.compare_field fs)
@@ -453,7 +453,7 @@ and check_typ' env typ : T.typ =
         (T.string_of_typ_expand t);
     T.Async (t0, t)
   | ObjT (sort, fields) ->
-    check_ids env "object" "field"
+    check_ids env "object type" "field"
       (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
@@ -1938,7 +1938,7 @@ and check_stab env sort scope fields =
       []
     | _ -> []) fields
   in
-  check_ids env "actor" "stable variable" (List.concat idss)
+  check_ids env "actor type" "stable variable" (List.concat idss)
 
 
 (* Blocks and Declarations *)
