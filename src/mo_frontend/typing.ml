@@ -1661,8 +1661,8 @@ and check_pats env ts pats ve at : Scope.val_env =
         let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
         go ts' pats' ve'
     | ts, [] ->
-        local_error env at "M0118" "tuple pattern has %i components but expected type has %i"
-        pats_len ts_len; ve
+        error env at "M0118" "tuple pattern has %i components but expected type has %i"
+          pats_len ts_len
     | [], ts ->
         error env at "M0118" "tuple pattern has %i components but expected type has %i"
           pats_len ts_len
