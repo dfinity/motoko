@@ -357,7 +357,7 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       inherit qc lsp unit candid profiling-graphs;
-    };
+    } // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
@@ -405,6 +405,7 @@ rec {
       moc = mk "moc";
       moc_interpreter = mk "moc_interpreter";
       didc = mk "didc";
+      recurseForDerivations = true;
     };
 
   inherit drun;
@@ -600,7 +601,7 @@ rec {
         rts.buildInputs ++
         js.moc.buildInputs ++
         overview-slides.buildInputs ++
-        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
+        builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
