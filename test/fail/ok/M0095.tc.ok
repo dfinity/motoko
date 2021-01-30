@@ -1,0 +1,4 @@
+M0095.mo:1.15-1.17: type error [M0095], function return type
+  ()
+does not match expected return type
+  Bool
