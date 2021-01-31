@@ -1,0 +1,5 @@
+--- do-option-bug.run
++++ do-option-bug.run-low
+@@ -0,0 +1,2 @@
++Ill-typed intermediate code after Await Lowering (use -v to see dumped IR):
++(unknown location): IR type error [M0000], unbound label $!/0
