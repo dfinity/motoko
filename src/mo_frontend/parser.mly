@@ -191,21 +191,21 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
-let share_expfield (ef : exp_field) =
-  if ef.it.vis.it = Public
+let share_expfield (df : dec_field) =
+  if df.it.vis.it = Public
   then
-    {ef with it = {ef.it with
-      dec = share_dec ef.it.dec;
-      stab = share_stab ef.it.stab ef.it.dec}}
+    {df with it = {df.it with
+      dec = share_dec df.it.dec;
+      stab = share_stab df.it.stab df.it.dec}}
   else
-    if is_sugared_func_or_module (ef.it.dec) then
-      {ef with it =
-        {ef.it with stab =
-          match ef.it.stab with
-          | None -> Some (Flexible @@ ef.it.dec.at)
+    if is_sugared_func_or_module (df.it.dec) then
+      {df with it =
+        {df.it with stab =
+          match df.it.stab with
+          | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
       }
-    else ef
+    else df
 
 %}
 
@@ -276,7 +276,7 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.rec_field list> seplist(exp_field,semicolon)
-%type<Mo_def.Syntax.exp_field list> seplist(dec_field,semicolon) obj_body
+%type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
 %type<Mo_def.Syntax.rec_field list> deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
@@ -291,9 +291,9 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
 %type<Mo_def.Syntax.rec_field> exp_field exp_field_nonvar
-%type<Mo_def.Syntax.exp_field> dec_field
+%type<Mo_def.Syntax.dec_field> dec_field
 %type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
-%type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
+%type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.exp> bl ob
 %type<Mo_def.Syntax.dec list> import_list

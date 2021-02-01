@@ -153,7 +153,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjE of obj_sort * exp_field list          (* object *)
+  | ObjE of obj_sort * dec_field list          (* object *)
   | RecE of rec_field list                     (* record literal *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
@@ -188,8 +188,8 @@ and exp' =
   | AtomE of string                            (* atom *)
 *)
 
-and exp_field = exp_field' Source.phrase
-and exp_field' = {dec : dec; vis : vis; stab: stab option}
+and dec_field = dec_field' Source.phrase
+and dec_field' = {dec : dec; vis : vis; stab: stab option}
 
 and rec_field = rec_field' Source.phrase
 and rec_field' = {mut : mut; id : id; exp : exp}
@@ -207,7 +207,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
 
 
 (* Program (pre unit detection) *)
@@ -224,10 +224,10 @@ and import' = id * string * resolved_import ref
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of id option * exp_field list      (* main IC actor *)
- | ModuleU of id option * exp_field list     (* module library *)
+ | ActorU of id option * dec_field list      (* main IC actor *)
+ | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * typ_bind list * pat * typ option * id * exp_field list
+     sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase

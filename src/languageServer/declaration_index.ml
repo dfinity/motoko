@@ -222,7 +222,7 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
       |> Option.some
   | _ -> None
 
-let unwrap_module_ast (lib : Syntax.lib) : Syntax.exp_field list option =
+let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
   match lib.it with
   | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None

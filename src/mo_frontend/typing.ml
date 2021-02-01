@@ -1836,7 +1836,7 @@ and infer_obj env s fields at : T.typ =
         rets = None;
         async = C.NullCap; }
   in
-  let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
+  let decs = List.map (fun (field : dec_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
   let t = object_of_scope env s fields scope at in
   let (_, tfs) = T.as_obj t in
@@ -1860,7 +1860,7 @@ and infer_obj env s fields at : T.typ =
             "a shared function cannot be private"
       ) fields;
     end;
-    if s = T.Module then Static.fields env.msgs fields;
+    if s = T.Module then Static.dec_fields env.msgs fields;
     check_system_fields env s scope fields;
     check_stab env s scope fields;
   end;

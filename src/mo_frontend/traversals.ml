@@ -49,8 +49,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = ArrayE (x, List.map (over_exp f) exps) }
   | BlockE ds ->
      f { exp with it = BlockE (List.map (over_dec f) ds) }
-  | ObjE (x, efs) ->
-     f { exp with it = ObjE (x, List.map (over_exp_field f) efs) }
+  | ObjE (x, dfs) ->
+     f { exp with it = ObjE (x, List.map (over_dec_field f) dfs) }
   | RecE rfs ->
      f { exp with it = RecE (List.map (over_rec_field f) rfs) }
   | IfE (exp1, exp2, exp3) ->
@@ -71,11 +71,11 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
      { d with it = VarD (x, over_exp f e)}
   | LetD (x, e) ->
      { d with it = LetD (x, over_exp f e)}
-  | ClassD (sp, cid, tbs, p, t_o, s, id, efs) ->
-     { d with it = ClassD (sp, cid, tbs, p, t_o, s, id, List.map (over_exp_field f) efs)}
+  | ClassD (sp, cid, tbs, p, t_o, s, id, dfs) ->
+     { d with it = ClassD (sp, cid, tbs, p, t_o, s, id, List.map (over_dec_field f) dfs)}
 
-and over_exp_field (f : exp -> exp) (ef : exp_field) : exp_field =
-  { ef with it = { ef.it with dec = over_dec f ef.it.dec } }
+and over_dec_field (f : exp -> exp) (df : dec_field) : dec_field =
+  { df with it = { df.it with dec = over_dec f df.it.dec } }
 
 and over_rec_field (f : exp -> exp) (rf : rec_field) : rec_field =
   { rf with it = { rf.it with exp = over_exp f rf.it.exp } }
