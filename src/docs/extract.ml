@@ -48,7 +48,8 @@ and class_doc = {
 
 let un_prog prog =
   let rec go acc = function
-    | { it = Syntax.ExpD { it = Syntax.ObjBlockE (_, m); _ }; _ } :: _ -> Ok (acc, m)
+    | { it = Syntax.ExpD { it = Syntax.ObjBlockE (_, m); _ }; _ } :: _ ->
+        Ok (acc, m)
     | {
         it =
           Syntax.LetD
