@@ -256,7 +256,7 @@ unsafe fn read_byte_tag(buf: *mut Buf) -> u8 {
 
 unsafe fn skip_blob(buf: *mut Buf) {
     let len = leb128_decode(buf);
-    buf.advance(len); // advance first; does the bounds check
+    buf.advance(len);
 }
 
 unsafe fn skip_text(buf: *mut Buf) {
@@ -305,8 +305,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
             }
             IDL_REF_principal => {
                 if read_byte_tag(buf) != 0 {
-                    let len = leb128_decode(buf);
-                    buf.advance(len);
+                    skip_blob(buf);
                 }
             }
             _ => {
