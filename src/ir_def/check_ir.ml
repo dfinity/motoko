@@ -72,7 +72,9 @@ let initial_env flavor : env =
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
-    async = None;
+    async = Async_cap.(match initial_cap() with
+                       | (NullCap | ErrorCap) -> None
+                       | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
   }
 
@@ -81,7 +83,7 @@ let initial_env flavor : env =
 
 exception CheckFailed of string
 
-let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
+let type_error at : string -> Diag.message = Diag.error_message at "M0000" "IR type"
 
 let error env at fmt =
     Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
@@ -582,13 +584,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t1 <: t;
     | SystemTimePrim, [] ->
       T.(Prim Nat64) <: t;
-    (* Funds *)
-    | (SystemFundsBalancePrim | SystemFundsAvailablePrim | SystemFundsRefundedPrim), [e] ->
-      typ e <: T.blob;
+    (* Cycles *)
+    | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
       T.nat64 <: t
-    | (SystemFundsAddPrim | SystemFundsAcceptPrim), [e1; e2] ->
-      typ e1 <: T.blob;
-      typ e2 <: T.nat64;
+    | SystemCyclesAcceptPrim, [e1] ->
+      typ e1 <: T.nat64;
+      T.nat64 <: t
+    | SystemCyclesAddPrim, [e1] ->
+      typ e1 <: T.nat64;
       T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
@@ -840,7 +843,7 @@ and check_args env args =
       check env a.at (not (T.Env.mem a.it ve))
         "duplicate binding for %s in argument list" a.it;
       check_typ env a.note;
-      let val_info = {typ = a.note; const = false; loc_known = false} in
+      let val_info = {typ = a.note; const = false; loc_known = env.lvl = TopLvl } in
       let env' = T.Env.add a.it val_info ve in
       go env' as_
   in go T.Env.empty args

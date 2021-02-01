@@ -43,13 +43,14 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    with today’s date.
 
- * Look at `git log 0.4.1..HEAD` and check that everything relevant is mentioned
-   in the changelog section, and possibly clean it up.
+ * Look at `git log --first-parent 0.4.1..HEAD` and check
+   that everything relevant is mentioned in the changelog section, and possibly
+   clean it up a bit, curating the information for the target audience.
 
  * `git commit -a -m "Releasing 0.4.2"`
  * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
- * Switch to master. The release commit should be your `HEAD`
+ * `git switch master; git pull`. The release commit should be your `HEAD`
  * `git tag 0.4.2 -m "Motoko 0.4.2"`
  * `git branch -f release 0.4.2`
  * `git push origin release 0.4.2`
@@ -107,11 +108,11 @@ You can get a development environment without having to use `nix-shell`
 ## Updating Haskell Packages
 
 When the `.cabal` file of a Haskell package is changed you need to make sure the
-corresponding `default.nix` file (stored in `nix/generated/`) is kept in sync
-with it.
-
-As mentioned in the `nix/generate.nix` files, these files are automatically
-generated. See `nix/generate.nix` for the command to update them.
+corresponding `.nix` file (stored in `nix/generated/`) is kept in sync with it. These files are automatically generated; run
+```
+nix-shell nix/generate.nix
+```
+to update.
 
 Don't worry if you forget to update the `default.nix` file, the CI job
 `check-generated` checks if these files are in sync and fail with a diff if

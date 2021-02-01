@@ -39,8 +39,8 @@ let env_of_scope msgs scope =
 
 (* Error bookkeeping *)
 
-let type_error at text : Diag.message = Diag.{sev = Diag.Error; at; cat = "type"; text}
-let type_warning at text : Diag.message = Diag.{sev = Diag.Warning; at; cat = "type"; text}
+let type_error at : string -> Diag.message = Diag.error_message at "" "type"
+let type_warning at : string -> Diag.message = Diag.warning_message at "" "type"
 
 let _local_error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
@@ -237,5 +237,15 @@ let check_prog scope prog : (scope * typ option) Diag.result =
           let actor = check_main_service (env_of_scope msgs te) prog.it.actor in
           (te, actor)
         )
+        prog
+    )
+
+(* Test declarations *)
+
+let check_tdecs scope decs : scope Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun prog -> check_decs (env_of_scope msgs scope) decs)
         prog
     )

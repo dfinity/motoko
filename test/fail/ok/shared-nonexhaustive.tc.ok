@@ -1,20 +1,20 @@
-shared-nonexhaustive.mo:3.19-3.32: type error, this pattern consuming type
+shared-nonexhaustive.mo:3.19-3.32: type error [M0145], this pattern of type
   Bool
 does not cover value
   false
-shared-nonexhaustive.mo:5.21-5.34: type error, this pattern consuming type
+shared-nonexhaustive.mo:5.21-5.34: type error [M0145], this pattern of type
   Bool
 does not cover value
   false
-shared-nonexhaustive.mo:5.2-5.75: type error, expression of type
+shared-nonexhaustive.mo:5.2-5.75: type error [M0096], expression of type
   shared Bool -> async ()
 cannot produce expected type
   ()
-shared-nonexhaustive.mo:7.19-7.32: type error, this pattern consuming type
+shared-nonexhaustive.mo:7.19-7.32: type error [M0145], this pattern of type
   Bool
 does not cover value
   false
-shared-nonexhaustive.mo:9.21-9.34: type error, this pattern consuming type
+shared-nonexhaustive.mo:9.21-9.34: type error [M0145], this pattern of type
   Bool
 does not cover value
   false

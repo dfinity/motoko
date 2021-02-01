@@ -1,3 +1,4 @@
+
 (* WIP translation of syntaxops to use IR in place of Source *)
 open Source
 open Ir
@@ -93,6 +94,8 @@ let primE prim es =
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
+    | SystemCyclesAvailablePrim -> T.nat64
+    | SystemCyclesAcceptPrim -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -191,7 +194,7 @@ let tagE i e =
 let dec_eff dec = match dec.it with
   | LetD (_,e) | VarD (_, _, e) -> eff e
 
-let rec simpl_decs decs = Lib.List.concat_map simpl_dec decs
+let rec simpl_decs decs = List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
   | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []
@@ -254,18 +257,20 @@ let funcE name sort ctrl typ_binds args typs exp =
     note = Note.{ def with typ; eff = T.Triv };
   }
 
-let callE exp1 ts exp2 =
-  match T.promote (typ exp1) with
-  | T.Func (_sort, _control, _, _, ret_tys) ->
-    { it = PrimE (CallPrim ts, [exp1; exp2]);
-      at = no_region;
-      note = Note.{ def with
-        typ = T.open_ ts (T.seq ret_tys);
-        eff = max_eff (eff exp1) (eff exp2)
-      }
+let callE exp1 typs exp2 =
+  let typ =  match T.promote (typ exp1) with
+    | T.Func (_sort, _control, _, _, ret_tys) ->
+      T.open_ typs (T.seq ret_tys)
+    | T.Non -> T.Non
+    | _ -> raise (Invalid_argument "callE expect a function")
+  in
+  { it = PrimE (CallPrim typs, [exp1; exp2]);
+    at = no_region;
+    note = Note.{ def with
+     typ;
+     eff = max_eff (eff exp1) (eff exp2)
     }
-  | T.Non -> exp1
-  | _ -> raise (Invalid_argument "callE expect a function")
+  }
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
@@ -550,18 +555,7 @@ let forall tbs e =
 
 (* Lambda application (monomorphic) *)
 
-let ( -*- ) exp1 exp2 =
-  match typ exp1 with
-  | T.Func (_, _, [], _, ret_tys) ->
-    { it = PrimE (CallPrim [], [exp1; exp2]);
-      at = no_region;
-      note = Note.{def with typ = T.seq ret_tys; eff = max_eff (eff exp1) (eff exp2)}
-    }
-  | typ1 -> failwith
-     (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp1))
-        (T.string_of_typ typ1)
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp2)))
+let ( -*- ) exp1 exp2 = callE exp1 [] exp2
 
 
 (* derived loop forms; each can be expressed as an unconditional loop *)

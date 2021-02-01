@@ -1,8 +1,8 @@
 → update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+← replied: (record {hymijyo = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → query foo()
-← completed: (0x4449444c01690001000105c0fefed00d)
+← replied: (0x4449444c01690001000105c0fefed00d)
 → query bar()
-← completed: (0x4449444c0169000100010dc0fefed00dcafebabedeadbeef)
+← replied: (0x4449444c0169000100010dc0fefed00dcafebabedeadbeef)

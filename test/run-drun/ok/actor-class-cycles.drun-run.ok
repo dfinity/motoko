@@ -1,0 +1,21 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {Principal = rwlgt-iiaaa-aaaaa-aaaaa-cai}
+debug.print: {balance = "100T"}
+debug.print: {balance = "100T"}
+debug.print: {iteration = 1}
+debug.print: {balance = "100T"}
+debug.print: {initial_C = 19_000_000_000_000}
+debug.print: {Principal = rrkah-fqaaa-aaaaa-aaaaq-cai}
+debug.print: {current = "19T"; initial = 19_000_000_000_000}
+debug.print: {iteration = 2}
+debug.print: {balance = "80T"}
+debug.print: {initial_C = 29_000_000_000_000}
+debug.print: {Principal = ryjl3-tyaaa-aaaaa-aaaba-cai}
+debug.print: {current = "29T"; initial = 29_000_000_000_000}
+debug.print: {iteration = 3}
+debug.print: {balance = "50T"}
+debug.print: {initial_C = 39_000_000_000_000}
+debug.print: {Principal = r7inp-6aaaa-aaaaa-aaabq-cai}
+debug.print: {current = "39T"; initial = 39_000_000_000_000}
+ingress Completed: Reply: 0x4449444c0000

@@ -17,21 +17,21 @@ open Syntax
 
 let err m at =
   let open Diag in
-  add_msg m {
-    sev = Diag.Error;
-    cat = "type";
-    at;
-    text = "non-static expression in library or module"
-  }
+  add_msg m
+    (error_message
+       at
+       "M0014"
+       "type"
+       "non-static expression in library or module")
 
 let pat_err m at =
   let open Diag in
-  add_msg m {
-    sev = Diag.Error;
-    cat = "type";
-    at;
-    text = "only trivial patterns allowed in static expressions"
-  }
+  add_msg m
+    (error_message
+       at
+       "M0015"
+       "type"
+       "only trivial patterns allowed in static expressions")
 
 let rec exp m e = match e.it with
   (* Plain values *)
@@ -52,10 +52,10 @@ let rec exp m e = match e.it with
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)
   | DotE (exp1, _) -> exp m exp1
-  | IdxE (exp1, exp2) -> exp m exp1; exp m exp2
+  | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
-  | AnnotE (exp1, _) -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1   | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
   (* Clearly non-static *)
@@ -82,13 +82,14 @@ let rec exp m e = match e.it with
   | SwitchE _
   | ThrowE _
   | TryE _
+  | BangE _
   -> err m e.at
 
 and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
-  | ExpD e | IgnoreD e -> exp m e
+  | ExpD e -> exp m e
   | LetD (p, e) -> triv m p; exp m e
   | VarD _ -> err m d.at
 

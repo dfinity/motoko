@@ -11,7 +11,6 @@ end
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
-  val concat_map : ('a -> 'b list) -> 'a list -> 'b list
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
@@ -26,7 +25,6 @@ sig
 
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
-  val first_opt : ('a -> 'b option) -> 'a list -> 'b option
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
@@ -81,6 +79,12 @@ end
 
 module Option :
 sig
+  module Syntax :
+  sig
+    val (let*) : 'a option -> ('a -> 'b option) -> 'b option
+    val (let+) : 'a option -> ('a -> 'b) -> 'b option
+    val (and+) : 'a option -> 'b option -> ('a * 'b) option
+  end
   val get : 'a option -> 'a -> 'a
 end
 

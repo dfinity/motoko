@@ -25,6 +25,8 @@ real[didc]=src/didc
 hint[didc]="make -C $rel_root/src didc"
 real[deser]=src/deser
 hint[deser]="make -C $rel_root/src deser"
+real[candid-tests]=src/candid-tests
+hint[candid-tests]="make -C $rel_root/src candid-tests"
 
 real[MOC_RTS]=rts/mo-rts.wasm
 hint[MOC_RTS]="make -C $rel_root/rts"

@@ -1,16 +1,16 @@
-unsupported.mo:4.14-4.50: type error, a shared function cannot be private
+unsupported.mo:4.14-4.50: type error [M0126], a shared function cannot be private
   (This is a limitation of the current version.)
-unsupported.mo:36.26-36.29: type error, a shared function is only allowed as a public field of an actor
+unsupported.mo:36.26-36.29: type error [M0077], a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)
-unsupported.mo:50.3-50.35: type error, inner actor classes are not supported yet; any actor class must come last in your program
+unsupported.mo:50.3-50.35: type error [M0139], inner actor classes are not supported yet; any actor class must come last in your program
   (This is a limitation of the current version.)
-unsupported.mo:54.3-54.42: type error, inner actor classes are not supported yet; any actor class must come last in your program
+unsupported.mo:54.3-54.42: type error [M0139], inner actor classes are not supported yet; any actor class must come last in your program
   (This is a limitation of the current version.)
-unsupported.mo:58.45-58.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.mo:58.45-58.53: type error [M0069], non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
-unsupported.mo:62.37-62.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.mo:62.39-62.47: type error [M0069], non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
-unsupported.mo:72.34-72.37: type error, a shared function is only allowed as a public field of an actor
+unsupported.mo:72.34-72.37: type error [M0077], a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)
-unsupported.mo:73.27-73.30: type error, a shared function is only allowed as a public field of an actor
+unsupported.mo:73.27-73.30: type error [M0077], a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)

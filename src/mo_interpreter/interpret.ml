@@ -35,7 +35,6 @@ type env =
     rets : ret_env;
     throws : throw_env;
     self : V.actor_id;
-    async : bool
   }
 
 let adjoin_scope scope1 scope2 =
@@ -58,7 +57,6 @@ let env_of_scope flags scope =
     rets = None;
     throws = None;
     self = V.top_id;
-    async = false;
   }
 
 let context env = V.Blob env.self
@@ -118,8 +116,7 @@ struct
   let yield () =
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
-      Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
-
+      Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
 end
@@ -159,7 +156,6 @@ let reject async v =
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
-    (*    let k' = fun v1 -> set_async async v1 in *)
     let k' = reply async in
     let r  = reject async in
     if env.flags.trace then trace "-> async %s" (string_of_region at);
@@ -188,11 +184,10 @@ let await env at async k =
     (let r = Option.get (env.throws) in
      fun v ->
        Scheduler.queue (fun () ->
-           if env.flags.trace then
-             trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
-           incr trace_depth;
-           r v
-         ))
+         if env.flags.trace then
+           trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+         incr trace_depth;
+         r v))
 
 let make_unit_message env id v =
   let open CC in
@@ -431,6 +426,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
+  | DoOptE exp1 ->
+    let env' = { env with labs = V.Env.add "!" k env.labs } in
+    interpret_exp env' exp1 (fun v1 -> k (V.Opt v1))
+  | BangE exp1 ->
+    interpret_exp env exp1 (fun v1 ->
+      match v1 with
+      | V.Opt v2 -> k v2
+      | V.Null -> find "!" env.labs v1
+      | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (obj_sort, fields) ->
@@ -594,7 +598,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     async env
       exp.at
       (fun k' r ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
+        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
   | AwaitE exp1 ->
@@ -608,6 +612,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
+  | IgnoreE exp1 ->
+    interpret_exp env exp1 (fun _v -> k V.unit)
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
@@ -834,7 +840,6 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
-  | IgnoreD _
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
@@ -852,8 +857,6 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | IgnoreD exp ->
-    interpret_exp env exp (fun _v -> k V.unit)
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
@@ -868,12 +871,25 @@ and interpret_dec env dec (k : V.value V.cont) =
     k V.unit
   | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
-      let env'' = adjoin_vals env' (declare_id id') in
-      interpret_obj env'' obj_sort.it fields (fun v' ->
-        define_id env'' id' v';
-        k' v'
-      )
-    ) in
+      if obj_sort.it <> T.Actor then
+        let env'' = adjoin_vals env' (declare_id id') in
+        interpret_obj env'' obj_sort.it fields (fun v' ->
+          define_id env'' id' v';
+          k' v')
+      else
+        async env' Source.no_region
+          (fun k'' r ->
+            let env'' = adjoin_vals env' (declare_id id') in
+            let env''' = { env'' with
+              labs = V.Env.empty;
+              rets = Some k'';
+              throws = Some r }
+            in
+            interpret_obj env''' obj_sort.it fields (fun v' ->
+              define_id env''' id' v';
+              k'' v'))
+          k')
+    in
     let v = V.Func (CC.call_conv_of_typ dec.note.note_typ, f) in
     define_id env {id with note = ()} v;
     k v
@@ -905,7 +921,6 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
         libs = env.libs;
         labs = V.Env.empty;
         rets = Some k';
-        async = false
       }
     in f env' k'
 
@@ -913,7 +928,9 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
 
 let interpret_prog flags scope p : (V.value * scope) option =
   try
-    let env = env_of_scope flags scope in
+    let env =
+      { (env_of_scope flags scope) with
+          throws = Some (fun v -> trap !last_region "uncaught throw") } in
     trace_depth := 0;
     let vo = ref None in
     let ve = ref V.Env.empty in
@@ -940,11 +957,8 @@ let import_lib env lib =
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
-  | Syntax.ActorClassU _ ->
-    fun v ->
-      let call_conv, f = V.as_func v in
-      V.local_func call_conv.Call_conv.n_args 1
-        (fun c v k -> async env lib.at (fun k' _r -> f c v k') k)
+  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _fields) ->
+    fun v -> V.Obj (V.Env.singleton id.it v)
   | _ -> assert false
 
 
@@ -955,7 +969,7 @@ let interpret_lib flags scope lib : scope =
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
     let import = import_lib env lib in
-    let (imp_decs, decs) = Syntax.decs_of_comp_unit lib in
+    let (imp_decs, decs) = CompUnit.decs_of_lib lib in
     interpret_block env (imp_decs @ decs) (Some ve) (fun v ->
       vo := Some (import v))
   );

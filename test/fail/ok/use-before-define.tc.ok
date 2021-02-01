@@ -1,1 +1,1 @@
-use-before-define.mo:4.1-4.12: definedness error, cannot use f before x has been defined
+use-before-define.mo:4.1-4.12: definedness error [M0016], cannot use f before x has been defined

@@ -79,10 +79,13 @@ function normalize () {
     sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
     sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
-    sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
+    sed 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
+    # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    # Normalize instruction locations on traps, added by ic-ref ad6ea9e
+    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -231,17 +234,17 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
+    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
 
     # Typecheck
-    run tc $moc --check $base.mo
+    run tc $moc_with_flags --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $moc --idl $base.mo -o $out/$base.did
+        run idl $moc_with_flags --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -255,10 +258,10 @@ do
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
-          run run $moc --hide-warnings -r $base.mo
+          run run $moc_with_flags --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $moc --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $moc_with_flags --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -268,7 +271,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $moc --hide-warnings -r -iR $base.mo
+          run run-low $moc_with_flags --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -301,13 +304,13 @@ do
         # Compile
         if [ $DTESTS = yes ]
         then
-          run comp $moc $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $moc $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
+          run comp $moc_with_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp-ref $moc_with_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
-          run comp $moc --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $moc -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -321,7 +324,7 @@ do
             if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
-              wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+              wasm2wat --no-check $out/$base.wasm > $out/$base.wat
               cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
@@ -345,7 +348,7 @@ do
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_cycles_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
             fi
           else

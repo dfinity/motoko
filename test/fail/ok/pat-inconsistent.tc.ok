@@ -1,134 +1,134 @@
-pat-inconsistent.mo:6.31-6.44: warning, this pattern is never matched
-pat-inconsistent.mo:7.34-7.50: warning, this pattern is never matched
-pat-inconsistent.mo:9.20-9.22: warning, this pattern is never matched
-pat-inconsistent.mo:10.20-10.24: warning, this pattern is never matched
-pat-inconsistent.mo:11.20-11.30: warning, this pattern is never matched
-pat-inconsistent.mo:2.13-2.21: warning, this pattern consuming type
+pat-inconsistent.mo:2.13-2.21: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 3 or _
-pat-inconsistent.mo:3.13-3.22: warning, this pattern consuming type
+pat-inconsistent.mo:3.13-3.22: warning [M0145], this pattern of type
   Int
 does not cover value
   0 or 2 or _
-pat-inconsistent.mo:5.13-5.29: warning, this pattern consuming type
+pat-inconsistent.mo:5.13-5.29: warning [M0145], this pattern of type
   Int
 does not cover value
   0 or -1 or _
-pat-inconsistent.mo:8.13-8.33: warning, this pattern consuming type
+pat-inconsistent.mo:6.31-6.44: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:7.34-7.50: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:8.13-8.33: warning [M0145], this pattern of type
   (Int, Int)
 does not cover value
   (-1, 0 or 1 or _) or
   (2, 0 or 1 or _) or
   (0 or 1 or _, _)
-pat-inconsistent.mo:16.16-16.24: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:9.20-9.22: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:10.20-10.24: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:11.20-11.30: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:16.19-16.27: type error [M0104], pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Float
-pat-inconsistent.mo:17.16-17.23: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:17.19-17.26: type error [M0104], pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Text
-pat-inconsistent.mo:18.16-18.26: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:18.19-18.29: type error [M0104], pattern branches have incompatible types,
 left consumes
   Bool
 right consumes
   Text
-pat-inconsistent.mo:19.16-19.23: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:19.19-19.26: type error [M0104], pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   ()
-pat-inconsistent.mo:20.16-20.23: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:20.19-20.26: type error [M0104], pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   {}
-pat-inconsistent.mo:21.16-21.31: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:21.19-21.34: type error [M0104], pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Text
-pat-inconsistent.mo:22.16-22.46: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:22.19-22.49: type error [M0104], pattern branches have incompatible types,
 left consumes
   {a : Int}
 right consumes
   {b : Nat}
-pat-inconsistent.mo:23.16-23.40: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:23.19-23.43: type error [M0104], pattern branches have incompatible types,
 left consumes
   Int8
 right consumes
   Nat8
-pat-inconsistent.mo:24.16-24.36: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:24.19-24.39: type error [M0104], pattern branches have incompatible types,
 left consumes
   (Text, Nat)
 right consumes
   (Text, Float)
-pat-inconsistent.mo:25.16-25.50: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:25.19-25.53: type error [M0104], pattern branches have incompatible types,
 left consumes
   (Int16, Text)
 right consumes
   (Nat16, Text)
-pat-inconsistent.mo:26.16-26.28: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:26.19-26.31: type error [M0104], pattern branches have incompatible types,
 left consumes
   {#A}
 right consumes
   {#A : Text}
-pat-inconsistent.mo:27.16-27.31: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:27.19-27.34: type error [M0104], pattern branches have incompatible types,
 left consumes
   {#A : Nat}
 right consumes
   {#A : Text}
-pat-inconsistent.mo:29.16-29.30: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:29.19-29.33: type error [M0104], pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Any
-pat-inconsistent.mo:30.16-30.32: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:30.19-30.35: type error [M0104], pattern branches have incompatible types,
 left consumes
   Any
 right consumes
   Float
-pat-inconsistent.mo:31.16-31.31: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:31.19-31.34: type error [M0104], pattern branches have incompatible types,
 left consumes
   ()
 right consumes
   Any
-pat-inconsistent.mo:32.19-32.32: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:32.22-32.35: type error [M0104], pattern branches have incompatible types,
 left consumes
   Text
 right consumes
   A/9
-pat-inconsistent.mo:33.16-33.40: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:33.19-33.43: type error [M0104], pattern branches have incompatible types,
 left consumes
   Any
 right consumes
   [Nat]
-pat-inconsistent.mo:34.16-34.43: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:34.19-34.46: type error [M0104], pattern branches have incompatible types,
 left consumes
   Any
 right consumes
   () -> ()
-pat-inconsistent.mo:35.16-35.40: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:35.19-35.43: type error [M0104], pattern branches have incompatible types,
 left consumes
   (Text, Nat)
 right consumes
   (Text, Any)
-pat-inconsistent.mo:36.16-36.33: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:36.19-36.36: type error [M0104], pattern branches have incompatible types,
 left consumes
   {#A}
 right consumes
   {#A : Any}
-pat-inconsistent.mo:37.16-37.36: type error, pattern branches have incompatible types,
+pat-inconsistent.mo:37.19-37.39: type error [M0104], pattern branches have incompatible types,
 left consumes
   {#A : Nat}
 right consumes
   {#A : Any}
-pat-inconsistent.mo:42.9-42.11: type error, variant pattern cannot consume expected type
+pat-inconsistent.mo:42.9-42.11: type error [M0116], variant pattern cannot consume expected type
   {#A}
-pat-inconsistent.mo:49.8-49.9: type error, literal of type
+pat-inconsistent.mo:49.8-49.9: type error [M0050], literal of type
   Nat
 does not have expected type
   Bool

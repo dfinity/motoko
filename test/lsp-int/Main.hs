@@ -137,7 +137,7 @@ main = do
           hoverTestCase
             doc
             (Position 17 11)
-            (plainMarkup "pop : <T>List<T> -> (?T, List<T>)")
+            (plainMarkup "pop : <T>(List<T>) -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)
@@ -255,7 +255,7 @@ main = do
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           [diag] <- waitForActualDiagnostics
-          liftIO (diag^.message `shouldBe` "operator not defined for operand types\n  Text\nand\n  Nat")
+          liftIO (diag^.message `shouldBe` "operator is not defined for operand types\n  Text\nand\n  Nat")
 
         log "Completions from package paths"
         withDoc "app.mo" \doc -> do

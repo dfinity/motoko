@@ -31,7 +31,7 @@ type lit =
 
 type 'a phrase = ('a, Note.t) Source.annotated_phrase
 
-type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
+type typ_bind' = {con : Type.con; sort : Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
 type unop = Operator.unop
@@ -130,11 +130,11 @@ and prim =
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
   (* Funds *)
-  | SystemFundsAddPrim
-  | SystemFundsAcceptPrim
-  | SystemFundsAvailablePrim
-  | SystemFundsBalancePrim
-  | SystemFundsRefundedPrim
+  | SystemCyclesAddPrim
+  | SystemCyclesAcceptPrim
+  | SystemCyclesAvailablePrim
+  | SystemCyclesBalancePrim
+  | SystemCyclesRefundedPrim
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)

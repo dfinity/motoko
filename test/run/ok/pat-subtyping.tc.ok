@@ -1,41 +1,41 @@
-pat-subtyping.mo:6.3-6.12: warning, this case is never reached
-pat-subtyping.mo:7.3-7.15: warning, this case is never reached
-pat-subtyping.mo:10.3-10.20: warning, this case is never reached
-pat-subtyping.mo:11.3-11.20: warning, this case is never reached
-pat-subtyping.mo:18.3-18.28: warning, this case is never reached
-pat-subtyping.mo:25.3-25.28: warning, this case is never reached
-pat-subtyping.mo:32.3-32.42: warning, this case is never reached
-pat-subtyping.mo:38.3-38.47: warning, this case is never reached
-pat-subtyping.mo:44.3-44.44: warning, this case is never reached
-pat-subtyping.mo:51.3-51.47: warning, this case is never reached
-pat-subtyping.mo:58.3-58.44: warning, this case is never reached
-pat-subtyping.mo:65.3-65.58: warning, this case is never reached
-pat-subtyping.mo:71.3-71.63: warning, this case is never reached
-pat-subtyping.mo:77.3-77.60: warning, this case is never reached
-pat-subtyping.mo:84.3-84.71: warning, this case is never reached
-pat-subtyping.mo:91.3-91.60: warning, this case is never reached
-pat-subtyping.mo:97.3-97.49: warning, this case is never reached
-pat-subtyping.mo:103.3-103.51: warning, this case is never reached
-pat-subtyping.mo:109.3-109.42: warning, this case is never reached
-pat-subtyping.mo:115.3-115.36: warning, this case is never reached
-pat-subtyping.mo:119.3-119.17: warning, this case is never reached
-pat-subtyping.mo:120.3-120.16: warning, this case is never reached
-pat-subtyping.mo:130.3-130.33: warning, this case is never reached
-pat-subtyping.mo:137.3-137.31: warning, this case is never reached
-pat-subtyping.mo:138.3-138.15: warning, this case is never reached
-pat-subtyping.mo:145.3-145.30: warning, this case is never reached
-pat-subtyping.mo:156.3-156.31: warning, this case is never reached
-pat-subtyping.mo:163.3-163.30: warning, this case is never reached
-pat-subtyping.mo:171.3-171.34: warning, this case is never reached
-pat-subtyping.mo:172.3-172.32: warning, this case is never reached
-pat-subtyping.mo:182.3-182.49: warning, this case is never reached
-pat-subtyping.mo:185.3-185.31: warning, this case is never reached
-pat-subtyping.mo:188.3-188.39: warning, this case is never reached
-pat-subtyping.mo:208.3-208.15: warning, this case is never reached
-pat-subtyping.mo:209.3-209.12: warning, this case is never reached
-pat-subtyping.mo:210.3-210.14: warning, this case is never reached
-pat-subtyping.mo:211.3-211.13: warning, this case is never reached
-pat-subtyping.mo:212.3-212.13: warning, this case is never reached
-pat-subtyping.mo:213.3-213.13: warning, this case is never reached
-pat-subtyping.mo:214.3-214.15: warning, this case is never reached
-pat-subtyping.mo:215.3-215.15: warning, this case is never reached
+pat-subtyping.mo:6.8-6.9: warning [M0146], this pattern is never matched
+pat-subtyping.mo:7.8-7.12: warning [M0146], this pattern is never matched
+pat-subtyping.mo:10.8-10.17: warning [M0146], this pattern is never matched
+pat-subtyping.mo:11.8-11.17: warning [M0146], this pattern is never matched
+pat-subtyping.mo:18.8-18.25: warning [M0146], this pattern is never matched
+pat-subtyping.mo:25.8-25.25: warning [M0146], this pattern is never matched
+pat-subtyping.mo:32.8-32.39: warning [M0146], this pattern is never matched
+pat-subtyping.mo:38.8-38.44: warning [M0146], this pattern is never matched
+pat-subtyping.mo:44.8-44.41: warning [M0146], this pattern is never matched
+pat-subtyping.mo:51.8-51.44: warning [M0146], this pattern is never matched
+pat-subtyping.mo:58.8-58.41: warning [M0146], this pattern is never matched
+pat-subtyping.mo:65.8-65.55: warning [M0146], this pattern is never matched
+pat-subtyping.mo:71.8-71.60: warning [M0146], this pattern is never matched
+pat-subtyping.mo:77.8-77.57: warning [M0146], this pattern is never matched
+pat-subtyping.mo:84.8-84.68: warning [M0146], this pattern is never matched
+pat-subtyping.mo:91.8-91.57: warning [M0146], this pattern is never matched
+pat-subtyping.mo:97.8-97.46: warning [M0146], this pattern is never matched
+pat-subtyping.mo:103.8-103.48: warning [M0146], this pattern is never matched
+pat-subtyping.mo:109.8-109.39: warning [M0146], this pattern is never matched
+pat-subtyping.mo:115.8-115.33: warning [M0146], this pattern is never matched
+pat-subtyping.mo:119.8-119.14: warning [M0146], this pattern is never matched
+pat-subtyping.mo:120.8-120.13: warning [M0146], this pattern is never matched
+pat-subtyping.mo:130.8-130.30: warning [M0146], this pattern is never matched
+pat-subtyping.mo:137.8-137.28: warning [M0146], this pattern is never matched
+pat-subtyping.mo:138.8-138.12: warning [M0146], this pattern is never matched
+pat-subtyping.mo:145.8-145.27: warning [M0146], this pattern is never matched
+pat-subtyping.mo:156.8-156.28: warning [M0146], this pattern is never matched
+pat-subtyping.mo:163.8-163.27: warning [M0146], this pattern is never matched
+pat-subtyping.mo:171.8-171.31: warning [M0146], this pattern is never matched
+pat-subtyping.mo:172.8-172.29: warning [M0146], this pattern is never matched
+pat-subtyping.mo:182.8-182.46: warning [M0146], this pattern is never matched
+pat-subtyping.mo:185.8-185.28: warning [M0146], this pattern is never matched
+pat-subtyping.mo:188.8-188.36: warning [M0146], this pattern is never matched
+pat-subtyping.mo:208.8-208.12: warning [M0146], this pattern is never matched
+pat-subtyping.mo:209.8-209.9: warning [M0146], this pattern is never matched
+pat-subtyping.mo:210.8-210.11: warning [M0146], this pattern is never matched
+pat-subtyping.mo:211.8-211.10: warning [M0146], this pattern is never matched
+pat-subtyping.mo:212.8-212.10: warning [M0146], this pattern is never matched
+pat-subtyping.mo:213.8-213.10: warning [M0146], this pattern is never matched
+pat-subtyping.mo:214.8-214.12: warning [M0146], this pattern is never matched
+pat-subtyping.mo:215.8-215.12: warning [M0146], this pattern is never matched

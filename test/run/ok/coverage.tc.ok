@@ -1,101 +1,101 @@
-coverage.mo:5.13-5.14: warning, this pattern is never matched
-coverage.mo:7.13-7.14: warning, this pattern is never matched
-coverage.mo:8.13-8.14: warning, this pattern is never matched
-coverage.mo:16.16-16.17: warning, this pattern is never matched
-coverage.mo:18.16-18.17: warning, this pattern is never matched
-coverage.mo:19.17-19.18: warning, this pattern is never matched
-coverage.mo:24.25-24.34: warning, this case is never reached
-coverage.mo:27.25-27.34: warning, this case is never reached
-coverage.mo:28.25-28.34: warning, this case is never reached
-coverage.mo:29.25-29.34: warning, this case is never reached
-coverage.mo:30.25-30.34: warning, this case is never reached
-coverage.mo:31.25-31.34: warning, this case is never reached
-coverage.mo:32.43-32.44: warning, this pattern is never matched
-coverage.mo:33.35-33.49: warning, this case is never reached
-coverage.mo:34.42-34.51: warning, this case is never reached
-coverage.mo:37.51-37.73: warning, this case is never reached
-coverage.mo:38.39-38.54: warning, this case is never reached
-coverage.mo:39.56-39.65: warning, this case is never reached
-coverage.mo:40.49-40.58: warning, this case is never reached
-coverage.mo:46.58-46.72: warning, this case is never reached
-coverage.mo:61.22-61.31: warning, this case is never reached
-coverage.mo:62.28-62.37: warning, this case is never reached
-coverage.mo:63.49-63.50: warning, this pattern is never matched
-coverage.mo:64.48-64.49: warning, this pattern is never matched
-coverage.mo:65.41-65.42: warning, this pattern is never matched
-coverage.mo:66.40-66.41: warning, this pattern is never matched
-coverage.mo:77.5-77.55: warning, this case is never reached
-coverage.mo:109.3-109.52: warning, this case is never reached
-coverage.mo:4.7-4.8: warning, this pattern consuming type
+coverage.mo:4.7-4.8: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:5.8-5.14: warning, this pattern consuming type
+coverage.mo:5.13-5.14: warning [M0146], this pattern is never matched
+coverage.mo:5.8-5.14: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:9.7-9.9: warning, this pattern consuming type
+coverage.mo:7.13-7.14: warning [M0146], this pattern is never matched
+coverage.mo:8.13-8.14: warning [M0146], this pattern is never matched
+coverage.mo:9.7-9.9: warning [M0145], this pattern of type
   ?Nat
 does not cover value
   null
-coverage.mo:10.7-10.9: warning, this pattern consuming type
+coverage.mo:10.7-10.9: warning [M0145], this pattern of type
   ?Nat
 does not cover value
   null
-coverage.mo:11.7-11.9: warning, this pattern consuming type
+coverage.mo:11.7-11.9: warning [M0145], this pattern of type
   ?Nat
 does not cover value
   ?(0 or 1 or _) or
   null
-coverage.mo:15.10-15.13: warning, this pattern consuming type
+coverage.mo:15.10-15.13: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:16.10-16.18: warning, this pattern consuming type
+coverage.mo:16.16-16.17: warning [M0146], this pattern is never matched
+coverage.mo:16.10-16.18: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:23.3-23.25: warning, the cases in this switch over type
+coverage.mo:18.16-18.17: warning [M0146], this pattern is never matched
+coverage.mo:19.17-19.18: warning [M0146], this pattern is never matched
+coverage.mo:23.3-23.25: warning [M0145], this switch of type
   Nat
-do not cover value
+does not cover value
   0 or 1 or _
-coverage.mo:24.3-24.36: warning, the cases in this switch over type
+coverage.mo:24.30-24.31: warning [M0146], this pattern is never matched
+coverage.mo:24.3-24.36: warning [M0145], this switch of type
   Nat
-do not cover value
+does not cover value
   0 or 1 or _
-coverage.mo:32.3-32.50: warning, the cases in this switch over type
+coverage.mo:27.30-27.31: warning [M0146], this pattern is never matched
+coverage.mo:28.30-28.31: warning [M0146], this pattern is never matched
+coverage.mo:29.30-29.31: warning [M0146], this pattern is never matched
+coverage.mo:30.30-30.31: warning [M0146], this pattern is never matched
+coverage.mo:31.30-31.31: warning [M0146], this pattern is never matched
+coverage.mo:32.43-32.44: warning [M0146], this pattern is never matched
+coverage.mo:32.3-32.50: warning [M0145], this switch of type
   Nat
-do not cover value
+does not cover value
   0 or 1 or _
-coverage.mo:35.3-35.51: warning, the cases in this switch over type
+coverage.mo:33.40-33.46: warning [M0146], this pattern is never matched
+coverage.mo:34.47-34.48: warning [M0146], this pattern is never matched
+coverage.mo:35.3-35.51: warning [M0145], this switch of type
   (Nat, Nat)
-do not cover value
+does not cover value
   (1 or 2 or _, 1 or 2 or _)
-coverage.mo:41.3-41.61: warning, the cases in this switch over type
+coverage.mo:37.56-37.70: warning [M0146], this pattern is never matched
+coverage.mo:38.44-38.51: warning [M0146], this pattern is never matched
+coverage.mo:39.61-39.62: warning [M0146], this pattern is never matched
+coverage.mo:40.54-40.55: warning [M0146], this pattern is never matched
+coverage.mo:41.3-41.61: warning [M0145], this switch of type
   {a : Nat; b : Nat}
-do not cover value
-  {a = 1 or 2 or _; b = 1 or 2 or _)
-coverage.mo:45.3-45.74: warning, the cases in this switch over type
+does not cover value
+  {a = 1 or 2 or _; b = 1 or 2 or _}
+coverage.mo:45.3-45.74: warning [M0145], this switch of type
   {#a : Nat; #b : Nat}
-do not cover value
+does not cover value
   #b(0 or 1 or _)
-coverage.mo:47.3-47.58: warning, the cases in this switch over type
+coverage.mo:46.63-46.69: warning [M0146], this pattern is never matched
+coverage.mo:47.3-47.58: warning [M0145], this switch of type
   {#a : Nat; #b : Nat}
-do not cover value
+does not cover value
   #b(_)
-coverage.mo:48.3-48.58: warning, the cases in this switch over type
+coverage.mo:48.3-48.58: warning [M0145], this switch of type
   {#a : Nat; #b : Nat}
-do not cover value
+does not cover value
   #a(_)
-coverage.mo:49.3-49.62: warning, the cases in this switch over type
+coverage.mo:49.3-49.62: warning [M0145], this switch of type
   {#a : Nat; #b : Nat; #c}
-do not cover value
+does not cover value
   #a(_) or #c
-coverage.mo:50.3-50.42: warning, the cases in this switch over type
+coverage.mo:50.3-50.42: warning [M0145], this switch of type
   {#a : Nat; #b : Nat}
-do not cover value
+does not cover value
   _
-coverage.mo:74.3-78.4: warning, the cases in this switch over type
+coverage.mo:61.27-61.28: warning [M0146], this pattern is never matched
+coverage.mo:62.33-62.34: warning [M0146], this pattern is never matched
+coverage.mo:63.49-63.50: warning [M0146], this pattern is never matched
+coverage.mo:64.48-64.49: warning [M0146], this pattern is never matched
+coverage.mo:65.41-65.42: warning [M0146], this pattern is never matched
+coverage.mo:66.40-66.41: warning [M0146], this pattern is never matched
+coverage.mo:77.10-77.27: warning [M0146], this pattern is never matched
+coverage.mo:74.3-78.4: warning [M0145], this switch of type
   {#branch : (Tree, Tree); #leaf : Int}
-do not cover value
+does not cover value
   #leaf(0 or 1 or _)
+coverage.mo:109.8-109.47: warning [M0146], this pattern is never matched

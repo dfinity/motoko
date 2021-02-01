@@ -590,7 +590,7 @@ let rec infer from toward = match from, toward with
   | {loc; _}, {loc = {file; _}; _} when file <> loc.file ->
     dw_LNS_set_file :: file :: infer {from with loc = {loc with file}} toward
   | {loc; _}, {loc = {line; _}; _} when line <> loc.line ->
-    dw_LNS_advance_line :: line - line :: infer {from with loc = {loc with line}} toward
+    dw_LNS_advance_line :: line - loc.line :: infer {from with loc = {loc with line}} toward
   | {loc; _}, {loc = {col; _}; _} when col <> loc.col ->
     dw_LNS_set_column :: col :: infer {from with loc = {loc with col}} toward
   | {disc; _}, _ when disc <> toward.disc -> failwith "cannot do disc yet"

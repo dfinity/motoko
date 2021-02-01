@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact | Idl | PrintDeps
+type mode = Default | Check | Compile | Run | Interact | Idl | PrintDeps | Explain
 
 let mode = ref Default
 let args = ref []
@@ -26,6 +26,7 @@ let out_file = ref ""
 let link = ref true
 let interpret_ir = ref false
 let gen_source_map = ref false
+let explain_code = ref ""
 
 let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -35,6 +36,7 @@ let argspec = Arg.align [
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
+  "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
   "-o", Arg.Set_string out_file, " output file";
 
   "-v", Arg.Set Flags.verbose, " verbose output";
@@ -95,8 +97,10 @@ let argspec = Arg.align [
   "--sanity-checks",
   Arg.Unit
     (fun () -> Flags.sanity := true),
-    " enable sanity checking in the RTS and generated code";
-]
+  " enable sanity checking in the RTS and generated code";
+    ]
+  @  Args.inclusion_args
+
 
 
 let set_out_file files ext =
@@ -133,22 +137,38 @@ let process_files files : unit =
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
+    let source_map_file = !out_file ^ ".map" in
     let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
+    let module_ = CustomModule.{ module_ with
+      source_mapping_url =
+        if !gen_source_map
+        then Some (Filename.basename source_map_file)
+        else None
+    } in
+
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !gen_source_map then begin
-      let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
     end
-  | PrintDeps ->
+  | PrintDeps -> begin
      match files with
      | [file] -> Pipeline.print_deps file
      | _ ->
         (eprintf "--print-deps expects exactly one source file as an argument";
          exit 1)
+    end
+  | Explain ->
+     match List.find_opt (fun (c, _) -> String.equal c !explain_code) Error_codes.error_codes with
+     | Some (_, Some(explanation)) ->
+        printf "%s" explanation
+     | Some (_, None) ->
+        printf "Unfortunately there is no detailed explanation for this error yet"
+     | None ->
+        printf "%s is not a known error code. Make sure you pass a code format like this: '--explain M0123'" !explain_code
 
 (* Copy relevant flags into the profiler library's (global) settings.
    This indirection affords the profiler library an independence from the (hacky) Flags library.
@@ -169,7 +189,7 @@ let () =
   (useful for debugging infinite loops)
   *)
   Printexc.record_backtrace true;
-  Arg.parse argspec add_arg usage;
+  Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
   process_profiler_flags ();

@@ -25,11 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        uses: knl/niv-updater-action@v6
+        uses: knl/niv-updater-action@v8
         with:
           whitelist: 'nixpkgs,musl-wasi'
           labels: |
             autoclose
             ci-also-darwin
+          keep_updating: true
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}
