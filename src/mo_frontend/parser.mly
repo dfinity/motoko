@@ -125,9 +125,6 @@ let field_var_dec d =
 
   | _ -> assert false
 
-let obj efs at =
-  RecE efs
-
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
@@ -543,9 +540,9 @@ exp_obj :
 *)
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY
     { let efs = List.map field_var_dec ds in
-      obj efs (at $sloc) @? at $sloc }
+      RecE efs @? at $sloc }
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
-    { obj efs (at $sloc) @? at $sloc }
+    { RecE efs @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -926,7 +923,7 @@ deprecated_pat_opt :
 deprecated_exp_obj :
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
     { warn_deprecated_obj `Exp (at $sloc);
-      obj efs (at $sloc) @? at $sloc }
+      RecE efs @? at $sloc }
 
 deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar
