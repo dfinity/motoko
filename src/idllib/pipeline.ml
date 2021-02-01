@@ -6,7 +6,7 @@ let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
 let error at cat text =
-  Error [{ Diag.sev = Diag.Error; at; cat; text }]
+  Error [Diag.error_message at "" cat text]
 
 let print_stat_te =
   Typing.Env.iter (fun x t ->

@@ -3,9 +3,7 @@
 //!
 //!  1. Adding a closure (any heap pointer) and getting an index (i32)
 //!  2. Looking up a closure by index, which also frees it
-//!  3. GC must be able to traverse and move clsoures in the table
-//!  4. Obtain number of closures registered (TODO (osa): Why?)
-//!  5. Obtain size of table (TODO (osa): Why?)
+//!  3. GC must be able to traverse and move closures in the table
 //!
 //! Current implementation stores the closures in heap-allocated Motoko array.
 //!
@@ -79,7 +77,7 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
     }
 
     // Just as a sanity check make sure the ptr is really skewed
-    if ptr.0 & 0b1 != 1 {
+    if ptr.is_tagged_scalar() {
         rts_trap_with("remember_closure: Argument is not a skewed pointer");
     }
 

@@ -12,16 +12,10 @@
         "url": "https://github.com/dfinity/candid/archive/25fb8470f9ef6858f74479bfe60a7dc09c54ad19.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "common": {
-        "branch": "master",
-        "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "6ec0b53fe9780cf4d401515e7619b9c697199eeb",
-        "type": "git"
-    },
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "3f0af46db698010a38394c1b77b365aca025a807",
+        "rev": "5981030a2131b7575d21d86a811d4714c9af9634",
         "type": "git"
     },
     "esm": {
@@ -33,9 +27,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "branch": "release-0.14",
+        "branch": "release-0.15",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "e76bd62e3216fef8a23a236352d8732d5f621cf8",
+        "rev": "cf285710ded70b59a6fef320591298d850c5abac",
         "type": "git"
     },
     "libtommath": {
@@ -53,7 +47,7 @@
     "motoko-base": {
         "branch": "next-moc",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "5e010560a3f12c85980f61f6fe766eff8c997d57",
+        "rev": "1bce5cedc4f64aa28442e3d23b233fde317f9e48",
         "type": "git"
     },
     "motoko-matchers": {
@@ -89,10 +83,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "ba57d5a29b4e0f2085917010380ef3ddc3cf380f",
-        "sha256": "1kpsvc53x821cmjg1khvp1nz7906gczq8mp83664cr15h94sh8i4",
+        "rev": "3cd7914b2c4cff48927e11c216dadfab7d903fe5",
+        "sha256": "1agq4nvbhrylf2s77kb4xhh9k7xcwdwggq764k4jgsbs70py8cw3",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/ba57d5a29b4e0f2085917010380ef3ddc3cf380f.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/3cd7914b2c4cff48927e11c216dadfab7d903fe5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -134,5 +128,17 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
+    },
+    "wasm-profiler": {
+        "branch": "main",
+        "description": "A (hacky) wasm instruction profiler",
+        "homepage": null,
+        "owner": "dfinity",
+        "repo": "wasm-profiler",
+        "rev": "7cfb023e6f1d9a522fc56d24c35ace6d7f981f49",
+        "sha256": "1yzhafazry6v6pspc639xl2qrbi5cpqhnnyl4ngs9nk13z5yn7ln",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/wasm-profiler/archive/7cfb023e6f1d9a522fc56d24c35ace6d7f981f49.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

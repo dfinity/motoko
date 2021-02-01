@@ -197,10 +197,14 @@ and group msgs (grp : group) : f =
            defined after j *)
         if j < i
         then () (* all izz well *)
-        else Diag.(add_msg msgs
-          { sev = Error; at; cat = "definedness";
-            text = Printf.sprintf "cannot use %s before %s has been defined" x y
-          })
+        else
+          Diag.add_msg
+            msgs
+            (Diag.error_message
+               at
+               "M0016"
+               "definedness"
+               (Printf.sprintf "cannot use %s before %s has been defined" x y))
       | None ->
         (* External variable, ok for now *)
         ()

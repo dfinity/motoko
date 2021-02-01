@@ -65,7 +65,7 @@ pub unsafe fn test() {
         assert_eq!(iter.collect::<String>(), str);
     }
 
-    println!("  Testing concatenation (QuickCheck)");
+    println!("  Testing concatenation");
     concat1();
     quickcheck(concat_prop as fn(Vec<String>) -> TestResult);
 }

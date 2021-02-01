@@ -1,8 +1,24 @@
 = Motoko compiler changelog
 
-* _Option blocks_ `do ? <block>` and _null breaks_ `<exp> !`.
-  The option block `do ? <block>` exits with `null` when a nested null break, `<exp> !`, evaluates `<exp>` to null.
-  This can simplify null handling by avoiding verbose `switch` expressions.
+* The compiler now reports errors and warnings with an additional _error code_
+  This code can be used to look up a more detailed description for a given error by passing the `--explain` flag with a code to the compiler.
+  As of January 2021 this isn't going to work for most codes because the detailed descriptions still have to be written.
+
+== 0.5.5 (2021-01-15)
+
+* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for
+  reading newline/NUL terminated arguments from `<file>`.
+* motoko base: documentation examples are executable in the browser
+
+== 0.5.4 (2021-01-07)
+
+* _Option blocks_ `do ? <block>` and _option checks_ `<exp> !`.
+  Inside an option block, an option check validates that its operand expression is not `null`.
+  If it is, the entire option block is aborted and evaluates to `null`.
+  This simplifies consecutive null handling by avoiding verbose `switch` expressions.
+
+  For example, the expression `do? { f(x!, y!) + z!.a }` evaluates to `null` if either `x`, `y` or `z` is `null`;
+  otherwise, it takes the options' contents and ultimately returns `?r`, where `r` is the result of the addition.
 
 * BREAKING CHANGE (Minor):
   The light-weight `do <exp>` form of the recently added, more general `do <block-or-exp>` form,

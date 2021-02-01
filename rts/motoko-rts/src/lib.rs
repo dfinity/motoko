@@ -16,13 +16,15 @@ mod print;
 #[cfg(feature = "gc")]
 mod gc;
 
+#[cfg(debug_assertions)]
+pub mod debug;
+
 mod alloc;
 pub mod bigint;
 mod blob_iter;
 pub mod buf;
 mod char;
 pub mod closure_table;
-pub mod debug;
 mod float;
 mod idl;
 pub mod leb128;
@@ -44,7 +46,6 @@ unsafe extern "C" fn version() -> SkewedPtr {
 
 extern "C" {
     fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
-
 }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {

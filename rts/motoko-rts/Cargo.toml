@@ -20,11 +20,11 @@ gc = []
 panic_handler = []
 
 [dependencies]
-libc = { version = "0.2.73", default_features = false }
+libc = { version = "0.2.81", default_features = false }
 
 # Added here so that it ends up in Cargo.lock, so that nix will pre-fetch it
 [dependencies.compiler_builtins]
-version = "0.1.32"
+version = "0.1.39"
 # Without this feature we get dozens of duplicate symbol errors when generating
 # the final shared .wasm file:
 #

@@ -3,7 +3,7 @@
 //! One main goal of this datastructure (inspired by ropes and similar) is to support constant time
 //! concatenation, by having a dedicated heap object for the concatenation of two strings.
 //!
-//! The first goal was to wire up this C code with the RTS that encapsulates the internals of
+//! The first goal was to wire up this Rust code with the RTS that encapsulates the internals of
 //! strings.
 //!
 //! This encapsulation is not complete (and likely never will)
@@ -13,7 +13,7 @@
 //! In a subsequent step, the actual concatenation node has been introduced.
 //!
 //! From here on, there are stretch goals like:
-//!  - restructure recursive code to not use unbounded C stack
+//!  - restructure recursive code to not use unbounded Rust stack
 //!  - maybe rebalancing
 
 // Layout of a concat node:
@@ -123,7 +123,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 
     loop {
         let s_ptr = s.as_obj();
-        if (*s_ptr).tag == TAG_BLOB {
+        if s_ptr.tag() == TAG_BLOB {
             let blob = s_ptr.as_blob();
             memcpy_bytes(buf as usize, blob.payload_addr() as usize, blob.len());
 
@@ -135,7 +135,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
             s = (*next_crumb).t;
             next_crumb = (*next_crumb).next;
         } else {
-            debug_assert_eq!((*s_ptr).tag, TAG_CONCAT);
+            debug_assert_eq!(s_ptr.tag(), TAG_CONCAT);
             let concat = s_ptr as *const Concat;
             let s1 = (*concat).text1;
             let s2 = (*concat).text2;
@@ -309,7 +309,6 @@ pub unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     }
 }
 
-// TODO: This will be called by Rust after porting principal.c, return Ordering
 pub(crate) unsafe fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);

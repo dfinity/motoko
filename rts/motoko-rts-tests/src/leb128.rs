@@ -4,7 +4,7 @@ use motoko_rts::leb128::{leb128_decode, leb128_encode, sleb128_decode, sleb128_e
 use quickcheck::{quickcheck, TestResult};
 
 pub unsafe fn test() {
-    println!("Testing (s)leb128 encode-decode roundtrip (QuickCheck) ...");
+    println!("Testing (s)leb128 encode-decode roundtrip ...");
     quickcheck(roundtrip_signed as fn(i32) -> TestResult);
     quickcheck(roundtrip_unsigned as fn(u32) -> TestResult);
 }

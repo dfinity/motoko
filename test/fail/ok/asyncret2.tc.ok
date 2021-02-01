@@ -1,4 +1,4 @@
-asyncret2.mo:1.54-1.57: type error, expression of type
+asyncret2.mo:1.54-1.57: type error [M0096], expression of type
   async<$call3> Int
 cannot produce expected type
   Int

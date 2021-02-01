@@ -12,7 +12,7 @@ path = "../src/lib.rs"
 libc = { version = "0.2.73", default_features = false }
 
 [dependencies.compiler_builtins]
-version = "0.1.32"
+version = "0.1.39"
 features = ["mangled-names"]
 
 [profile.dev]

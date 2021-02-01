@@ -1,5 +1,8 @@
 //! Implements non-allocating printing utilities. All allocations are done on stack.
 
+// Debug functions are not always used
+#![allow(unused)]
+
 use core::fmt;
 
 extern "C" {
