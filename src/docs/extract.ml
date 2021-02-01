@@ -48,7 +48,7 @@ and class_doc = {
 
 let un_prog prog =
   let rec go acc = function
-    | { it = Syntax.ExpD { it = Syntax.ObjE (_, m); _ }; _ } :: _ -> Ok (acc, m)
+    | { it = Syntax.ExpD { it = Syntax.ObjBlockE (_, m); _ }; _ } :: _ -> Ok (acc, m)
     | {
         it =
           Syntax.LetD
@@ -152,20 +152,20 @@ let rec extract_doc find_trivia = function
              name = name.it;
              type_args;
              constructor = extract_func_args find_trivia ctor;
-             fields = List.filter_map (extract_exp_field find_trivia) fields;
+             fields = List.filter_map (extract_dec_field find_trivia) fields;
              sort = obj_sort;
            })
   | unknown ->
       Wasm.Sexpr.print 80 (Arrange.dec unknown);
       None
 
-and extract_exp_field find_trivia exp_field =
-  if exp_field.it.Syntax.vis.it <> Syntax.Public then None
+and extract_dec_field find_trivia dec_field =
+  if dec_field.it.Syntax.vis.it <> Syntax.Public then None
   else
-    extract_doc find_trivia exp_field.it.Syntax.dec
+    extract_doc find_trivia dec_field.it.Syntax.dec
     |> Option.map (fun decl_doc ->
            {
-             doc_comment = Some (string_of_leading (find_trivia exp_field.at));
+             doc_comment = Some (string_of_leading (find_trivia dec_field.at));
              declaration = decl_doc;
            })
 
@@ -189,6 +189,6 @@ let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
   (* Skip the module header *)
   match un_prog prog with
   | Ok (imports, decls) ->
-      let docs = List.filter_map (extract_exp_field find_trivia) decls in
+      let docs = List.filter_map (extract_dec_field find_trivia) decls in
       Ok (string_of_leading module_docs, imports, docs)
   | Error msg -> Error msg

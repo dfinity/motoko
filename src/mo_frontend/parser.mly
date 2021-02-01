@@ -129,7 +129,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjE(sort, _) ->
+    | ObjBlockE (sort, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -191,7 +191,7 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
-let share_expfield (df : dec_field) =
+let shared_dec_field (df : dec_field) =
   if df.it.vis.it = Public
   then
     {df with it = {df.it with
@@ -831,9 +831,9 @@ dec_nonvar :
         if s.it = Type.Actor then
           AwaitE
             (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (ObjE(s, List.map share_expfield efs) @? (at $sloc)))
+              (ObjBlockE(s, List.map shared_dec_field efs) @? (at $sloc)))
              @? at $sloc)
-        else ObjE(s, efs)
+        else ObjBlockE(s, efs)
       in
       let_or_exp named x e (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
@@ -846,16 +846,16 @@ dec_nonvar :
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
-    { let x, efs = cb in
-      let efs', tps', t' =
+    { let x, dfs = cb in
+      let dfs', tps', t' =
         if s.it = Type.Actor then
-          (List.map share_expfield efs,
+          (List.map shared_dec_field dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
 	   ensure_async_typ t)
-        else (efs, tps, t)
+        else (dfs, tps, t)
       in
-      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, efs') @? at $sloc }
+      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
@@ -870,11 +870,11 @@ func_body :
   | e=block { (true, e) }
 
 obj_body :
-  | LCURLY efs=seplist(dec_field, semicolon) RCURLY { efs }
+  | LCURLY dfs=seplist(dec_field, semicolon) RCURLY { dfs }
 
 class_body :
-  | EQ xf=id_opt efs=obj_body { snd (xf "object" $sloc), efs }
-  | efs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, efs }
+  | EQ xf=id_opt dfs=obj_body { snd (xf "object" $sloc), dfs }
+  | dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, dfs }
 
 
 (* Programs *)

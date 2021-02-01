@@ -75,7 +75,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | BlockE decs ->
     let es = List.map effect_dec decs in
     List.fold_left max_eff T.Triv es
-  | ObjE (sort, dfs) ->
+  | ObjBlockE (sort, dfs) ->
     infer_effect_dec_fields dfs
   | RecE rfs ->
     infer_effect_rec_fields rfs

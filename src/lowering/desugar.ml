@@ -80,8 +80,8 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjE (s, es) ->
-    obj at s None es note.Note.typ
+  | S.ObjBlockE (s, dfs) ->
+    obj at s None dfs note.Note.typ
   | S.RecE rfs ->
     record note.Note.typ rfs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it

@@ -229,13 +229,13 @@ let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
 
 let populate_definitions (project_root : string) (libs : Syntax.lib list)
     (path : string) (decls : ide_decl list) : ide_decl list =
-  let is_let_bound exp_field =
-    match exp_field.it.Syntax.dec.it with
+  let is_let_bound dec_field =
+    match dec_field.it.Syntax.dec.it with
     | Syntax.LetD (pat, _) -> Some pat
     | _ -> None
   in
-  let is_type_def exp_field =
-    match exp_field.it.Syntax.dec.it with
+  let is_type_def dec_field =
+    match dec_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) -> Some typ_id
     | Syntax.ClassD (_, typ_id, _, _, _, _, _, _) -> Some typ_id
     | _ -> None

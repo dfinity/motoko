@@ -437,8 +437,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjE (obj_sort, fields) ->
-    interpret_obj env obj_sort.it fields k
+  | ObjBlockE (obj_sort, dec_fields) ->
+    interpret_obj env obj_sort.it dec_fields k
   | RecE rec_fields ->
     interpret_rec_fields env rec_fields V.Env.empty (fun env -> k (V.Obj env))
   | TagE (i, exp1) ->
@@ -818,28 +818,28 @@ and match_shared_pat env shared_pat c =
 
 (* Objects *)
 
-and interpret_obj env obj_sort fields (k : V.value V.cont) =
+and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
   let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
-  let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
+  let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
   let env' = adjoin_vals { env with self = self } ve_in in
-  interpret_exp_fields env' fields ve_ex k
+  interpret_dec_fields env' dec_fields ve_ex k
 
-and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
-  match fields with
+and declare_dec_fields dec_fields ve_ex ve_in : val_env * val_env =
+  match dec_fields with
   | [] -> ve_ex, ve_in
-  | {it = {dec; vis; _}; _}::fields' ->
+  | {it = {dec; vis; _}; _}::dec_fields' ->
     let ve' = declare_dec dec in
     let ve_ex' = if vis.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
     let ve_in' = V.Env.adjoin ve_in ve' in
-    declare_exp_fields fields' ve_ex' ve_in'
+    declare_dec_fields dec_fields' ve_ex' ve_in'
 
-and interpret_exp_fields env fields ve (k : V.value V.cont) =
-  match fields with
+and interpret_dec_fields env dec_fields ve (k : V.value V.cont) =
+  match dec_fields with
   | [] ->
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
     k obj
-  | {it = {dec; _}; _}::fields' ->
-    interpret_dec env dec (fun _v -> interpret_exp_fields env fields' ve k)
+  | {it = {dec; _}; _}::dec_fields' ->
+    interpret_dec env dec (fun _v -> interpret_dec_fields env dec_fields' ve k)
 
 
 (* Blocks and Declarations *)
@@ -882,11 +882,11 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
+  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', dec_fields) ->
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it fields (fun v' ->
+        interpret_obj env'' obj_sort.it dec_fields (fun v' ->
           define_id env'' id' v';
           k' v')
       else
@@ -898,7 +898,7 @@ and interpret_dec env dec (k : V.value V.cont) =
               rets = Some k'';
               throws = Some r }
             in
-            interpret_obj env''' obj_sort.it fields (fun v' ->
+            interpret_obj env''' obj_sort.it dec_fields (fun v' ->
               define_id env''' id' v';
               k'' v'))
           k')
@@ -970,7 +970,7 @@ let import_lib env lib =
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
-  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _fields) ->
+  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     fun v -> V.Obj (V.Env.singleton id.it v)
   | _ -> assert false
 

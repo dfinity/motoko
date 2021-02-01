@@ -20,7 +20,7 @@ let rec exp e = match e.it with
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, dfs)       -> "ObjE"      $$ [obj_sort s] @ List.map dec_field dfs
+  | ObjBlockE (s, dfs)  -> "ObjBlockE"      $$ [obj_sort s] @ List.map dec_field dfs
   | RecE rfs            -> "RecE"      $$ List.map rec_field rfs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
