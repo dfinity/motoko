@@ -152,6 +152,3 @@ let unescape_method str =
 
 let needs_candid_quote str =
   not (is_valid_as_id str) || is_candid_keyword str
-
-let needs_motoko_quote str =
-  not (is_valid_as_id str) || is_motoko_keyword str
