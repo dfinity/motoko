@@ -106,7 +106,7 @@ val unreachableE : exp
 
 val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
-val varD : id -> typ -> exp -> dec
+val varD : var -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var -> var list -> exp -> dec

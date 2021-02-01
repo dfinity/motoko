@@ -294,7 +294,7 @@ and build_actor at self_id es obj_typ =
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let ds =
-    varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
+    varD state (optE (primE (I.ICStableRead ty) []))
     ::
     nary_funcD get_state []
       (let v = fresh_var "v" ty in
@@ -345,7 +345,7 @@ and stabilize stab_opt d =
     ([(i, t)],
      fun get_state ->
      let v = fresh_var i t in
-     varD i t
+     varD v
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
          e
          (varP v) (varE v)
@@ -378,7 +378,7 @@ and rec_field rf =
   let id' = fresh_var id.it typ in
   match mut.it with
   | S.Var ->
-    let d = varD (id_of_var id') typ (exp e) in
+    let d = varD id' (exp e) in
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
     (d, f)
   | S.Const ->
