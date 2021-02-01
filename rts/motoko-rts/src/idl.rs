@@ -1,12 +1,12 @@
 #![allow(non_upper_case_globals)]
 
-use core::cmp::min;
 use crate::alloc::alloc_blob;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::trap_with_prefix;
 use crate::types::Words;
 use crate::utf8::utf8_validate;
+use core::cmp::min;
 
 //
 // IDL constants
@@ -167,7 +167,7 @@ unsafe extern "C" fn parse_idl_header(
                 }
             }
         } else if ty == IDL_CON_service {
-            let mut last_len : u32 = 0 as u32;
+            let mut last_len: u32 = 0 as u32;
             let mut last_p = core::ptr::null_mut();
             for _ in 0..leb128_decode(buf) {
                 // Name
@@ -178,7 +178,11 @@ unsafe extern "C" fn parse_idl_header(
                 utf8_validate(p as *const _, len);
                 // Method names must be in order
                 if last_p != core::ptr::null_mut() {
-                    let cmp = libc::memcmp(last_p as *mut libc::c_void, p as *mut libc::c_void, min(last_len,len) as usize);
+                    let cmp = libc::memcmp(
+                        last_p as *mut libc::c_void,
+                        p as *mut libc::c_void,
+                        min(last_len, len) as usize,
+                    );
                     if cmp > 0 || (cmp == 0 && last_len >= len) {
                         idl_trap_with("service method names out of order");
                     }
@@ -203,7 +207,10 @@ unsafe extern "C" fn parse_idl_header(
     // references
     for i in 0..n_types {
         // do not modify the main buf
-        let mut tmp_buf = Buf { end: (*buf).end, ptr: *typtbl.add(i as usize) };
+        let mut tmp_buf = Buf {
+            end: (*buf).end,
+            ptr: *typtbl.add(i as usize),
+        };
 
         let ty = sleb128_decode(&mut tmp_buf);
         if ty == IDL_CON_service {
@@ -216,7 +223,10 @@ unsafe extern "C" fn parse_idl_header(
                 if !(t >= 0 && (t as u32) < n_types) {
                     idl_trap_with("service method arg not a constructor type");
                 }
-                let mut tmp_buf2 = Buf { end: (*buf).end, ptr: *typtbl.add(t as usize) };
+                let mut tmp_buf2 = Buf {
+                    end: (*buf).end,
+                    ptr: *typtbl.add(t as usize),
+                };
                 let mty = sleb128_decode(&mut tmp_buf2);
                 if mty != IDL_CON_func {
                     idl_trap_with("service method arg not a function type");
@@ -224,7 +234,6 @@ unsafe extern "C" fn parse_idl_header(
             }
         }
     }
-
 
     // Now read the main types
     *main_types_out = (*buf).ptr;
@@ -245,12 +254,12 @@ unsafe fn read_byte_tag(buf: *mut Buf) -> u8 {
     b
 }
 
-unsafe fn skip_blob(buf : *mut Buf) {
+unsafe fn skip_blob(buf: *mut Buf) {
     let len = leb128_decode(buf);
     buf.advance(len); // advance first; does the bounds check
 }
 
-unsafe fn skip_text(buf : *mut Buf) {
+unsafe fn skip_text(buf: *mut Buf) {
     let len = leb128_decode(buf);
     let p = (*buf).ptr;
     utf8_validate(p as *const _, len);
@@ -289,9 +298,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
             IDL_PRIM_nat64 | IDL_PRIM_int64 | IDL_PRIM_float64 => {
                 buf.advance(8);
             }
-            IDL_PRIM_text => {
-                skip_text(buf)
-            }
+            IDL_PRIM_text => skip_text(buf),
             IDL_PRIM_empty => {
                 idl_trap_with("skip_any: encountered empty");
             }
