@@ -18,6 +18,5 @@ service : {
   "oneway": (nat8) -> () oneway;
   "query": (blob) -> (blob) query;
   //"service": t;
-  "👀": () -> ();
   tuple: (record { int; blob; text }) -> (record { int; 1: nat8 });
 }
