@@ -201,11 +201,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 
-$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 

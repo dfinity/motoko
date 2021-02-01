@@ -1,9 +1,8 @@
 open Idllib.Syntax
+open Idllib.Exception
 open Source
 module M = Mo_types.Type
 module I = Idllib.Typing
-
-exception UnsupportedCandidFeature of string
 
 let m_env = ref M.Env.empty
 
@@ -92,7 +91,7 @@ and check_variant_field env f =
   | PrimT Null -> M.{lab = check_label f.it.label; typ = M.Tup []}
   | _ -> check_field env f
 and check_meth env (m: typ_meth) =
-  M.{lab = Idllib.Escape.escape m.it.var.it; typ = check_typ env m.it.meth}
+  M.{lab = Idllib.Escape.escape_method m.it.var.it; typ = check_typ env m.it.meth}
 
 let check_prog (env: typ I.Env.t) actor : M.typ =
   match actor with
