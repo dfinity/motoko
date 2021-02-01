@@ -1,1 +1,1 @@
-var-const-field.mo:1.25-1.32: type error [M0149], expected mutable 'var' field, found immutable field
+var-const-field.mo:1.26-1.31: type error [M0149], expected mutable 'var' field, found immutable field

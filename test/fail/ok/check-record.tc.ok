@@ -1,4 +1,4 @@
-check-record.mo:8.10-8.18: type error [M0149], expected mutable 'var' field, found immutable field
-check-record.mo:10.10-10.22: type error [M0150], expected immutable field, found mutable 'var' field
-check-record.mo:12.10-12.29: type error [M0149], expected mutable 'var' field, found immutable field
+check-record.mo:8.12-8.17: type error [M0149], expected mutable 'var' field, found immutable field
+check-record.mo:10.12-10.21: type error [M0150], expected immutable field, found mutable 'var' field
+check-record.mo:12.12-12.17: type error [M0149], expected mutable 'var' field, found immutable field
 check-record.mo:19.30-19.31: type error [M0057], unbound variable c
