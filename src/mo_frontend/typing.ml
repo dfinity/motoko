@@ -1190,10 +1190,10 @@ and infer_exp'' env exp : T.typ =
   | ImportE (f, ri) ->
     check_import env exp.at f ri
 
-and infer_rec_fields env rec_fields fts: T.typ =
+and infer_rec_fields env rec_fields fts : T.typ =
   match rec_fields with
   | [] ->
-    T.Obj(T.Object, List.sort T.compare_field fts)
+    T.Obj (T.Object, List.sort T.compare_field fts)
   | rec_field::rec_fields' ->
     let typ = infer_exp env rec_field.it.exp in
     let typ' = if rec_field.it.mut.it = Syntax.Var then T.Mut typ else typ in
