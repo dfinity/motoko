@@ -18,15 +18,27 @@ tested_codes = set()
 # This list should only contain errors that are impossible or hard to
 # exercise in our test suite
 known_untested_codes = {
-    "M0000", "M0004", "M0005", "M0006", "M0008", "M0009", "M0010",
-    "M0011", "M0015", "M0020", "M0021", "M0022", "M0023", "M0025",
-    "M0026", "M0027", "M0028", "M0029", "M0036", "M0040", "M0041",
-    "M0042", "M0044", "M0053", "M0054", "M0063", "M0066", "M0067",
-    "M0068", "M0070", "M0073", "M0075", "M0080", "M0082", "M0084",
-    "M0088", "M0092", "M0094", "M0095", "M0099", "M0100", "M0102",
-    "M0103", "M0105", "M0107", "M0108", "M0109", "M0110", "M0113",
-    "M0115", "M0118", "M0124", "M0127", "M0128", "M0129", "M0130",
-    "M0136", "M0144"
+    "M0000", # internal compiler error
+    "M0005", # case mismatch, hard to test on linux
+    "M0020", # unresolved import, seems to be an internal error?
+    "M0021", # infer forwart import type. internal, because imports are topologically sorted?
+    "M0022", # imported file not loaded?
+    "M0023", # failed to trigger. dead code?
+    "M0025", # related to unavailable variables
+    "M0040", # unknown primitive type; should be an internal error?
+    "M0041", # shared function with non-async result type. how to get past syntactic check?
+    "M0042", # same
+    "M0053", # did not manage to trigger
+    "M0054", # cannot infer type of primitive expression. Could be internal
+    "M0068", # mode-specific
+    "M0080", # did not manage to trigger
+    "M0084", # when would the return type be inferred?
+    "M0092", # async scopes
+    "M0094", # hard to trigger (check_exp only applies with no type variables, but shared functions have type variables)
+    "M0099", # hard to trigger (syntactic checks hit first)
+    "M0100", # hard to trigger (syntactic checks hit first)
+    "M0108", # mode-specific
+    "M0144", # bad import, but seems to be shadowed by non-static expression
     }
 
 def populate_error_codes():
