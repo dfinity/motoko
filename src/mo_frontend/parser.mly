@@ -191,7 +191,7 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
-let shared_dec_field (df : dec_field) =
+let share_dec_field (df : dec_field) =
   if df.it.vis.it = Public
   then
     {df with it = {df.it with
@@ -831,7 +831,7 @@ dec_nonvar :
         if s.it = Type.Actor then
           AwaitE
             (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (ObjBlockE(s, List.map shared_dec_field efs) @? (at $sloc)))
+              (ObjBlockE(s, List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
         else ObjBlockE(s, efs)
       in
@@ -849,7 +849,7 @@ dec_nonvar :
     { let x, dfs = cb in
       let dfs', tps', t' =
         if s.it = Type.Actor then
-          (List.map shared_dec_field dfs,
+          (List.map share_dec_field dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
 	   ensure_async_typ t)
