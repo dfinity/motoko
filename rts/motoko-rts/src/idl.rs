@@ -262,6 +262,7 @@ unsafe fn skip_blob(buf: *mut Buf) {
 unsafe fn skip_text(buf: *mut Buf) {
     let len = leb128_decode(buf);
     let p = (*buf).ptr;
+    buf.advance(len); // advance first; does the bounds check
     utf8_validate(p as *const _, len);
 }
 
