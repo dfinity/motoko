@@ -13,8 +13,8 @@ ignore ( { a = 0; var v = 0} : {var a : Int;  v : Int}); // reject, mutability m
 
 ignore ({} : { a: Nat }); // reject
 
-do { 
-  let a = 1; 
-  let b = 2; 
+do {
+  let a = 1;
+  let b = 2;
   { a = a; b = a; c = 1; d = c}; // reject (c not bound)
 };
