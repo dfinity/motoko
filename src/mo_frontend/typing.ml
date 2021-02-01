@@ -901,10 +901,10 @@ and infer_exp'' env exp : T.typ =
       else env
     in
     infer_obj env' obj_sort.it dec_fields exp.at
-  | RecE rec_fields ->
+  | ObjE exp_fields ->
     check_ids env "object" "field"
-      (List.map (fun (rf : rec_field) -> rf.it.id) rec_fields);
-    let fts = List.map (infer_rec_field env) rec_fields in
+      (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
+    let fts = List.map (infer_exp_field env) exp_fields in
     T.Obj (T.Object, List.sort T.compare_field fts)
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -1191,7 +1191,7 @@ and infer_exp'' env exp : T.typ =
   | ImportE (f, ri) ->
     check_import env exp.at f ri
 
-and infer_rec_field env rf =
+and infer_exp_field env rf =
   let { mut; id; exp } = rf.it in
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
@@ -1231,10 +1231,10 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | RecE rec_fields, T.Obj(T.Object, fts) ->
+  | ObjE exp_fields, T.Obj(T.Object, fts) ->
     check_ids env "object" "field"
-      (List.map (fun (rf : rec_field) -> rf.it.id) rec_fields);
-    List.iter (fun rf -> check_rec_field env rf fts) rec_fields;
+      (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
+    List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
@@ -1351,19 +1351,20 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t);
     t'
 
-and check_rec_field env (rf : rec_field) fts =
-  let ft_opt = List.find_opt (fun ft -> ft.T.lab = rf.it.id.it) fts in
+and check_exp_field env (ef : exp_field) fts =
+  let { mut; id; exp } = ef.it in
+  let ft_opt = List.find_opt (fun ft -> ft.T.lab = id.it) fts in
   match ft_opt with
   | Some { T.typ = T.Mut t; _ } ->
-    if rf.it.mut.it <> Syntax.Var then
-      error env rf.at "M0149" "expected mutable 'var' field, found immutable field";
-    check_exp env t rf.it.exp
+    if mut.it <> Syntax.Var then
+      error env ef.at "M0149" "expected mutable 'var' field, found immutable field";
+    check_exp env t exp
   | Some { T.typ = t; _ } ->
-    if rf.it.mut.it = Syntax.Var then
-      error env rf.at "M0150" "expected immutable field, found mutable 'var' field";
-    check_exp env t rf.it.exp
+    if mut.it = Syntax.Var then
+      error env ef.at "M0150" "expected immutable field, found mutable 'var' field";
+    check_exp env t exp
   | None ->
-    ignore (infer_exp env rf.it.exp)
+    ignore (infer_exp env exp)
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let t = Lib.Option.get t_expect_opt T.Any in

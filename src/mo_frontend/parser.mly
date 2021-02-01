@@ -275,9 +275,9 @@ let shared_dec_field (df : dec_field) =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.rec_field list> seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
-%type<Mo_def.Syntax.rec_field list> deprecated_exp_field_list_unamb
+%type<Mo_def.Syntax.exp_field list> deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
@@ -290,7 +290,7 @@ let shared_dec_field (df : dec_field) =
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
-%type<Mo_def.Syntax.rec_field> exp_field exp_field_nonvar
+%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
 %type<Mo_def.Syntax.dec_field> dec_field
 %type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
@@ -540,9 +540,9 @@ exp_obj :
 *)
   | LCURLY ds=seplist(dec_var, semicolon) RCURLY
     { let efs = List.map field_var_dec ds in
-      RecE efs @? at $sloc }
+      ObjE efs @? at $sloc }
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
-    { RecE efs @? at $sloc }
+    { ObjE efs @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -923,7 +923,7 @@ deprecated_pat_opt :
 deprecated_exp_obj :
   | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
     { warn_deprecated_obj `Exp (at $sloc);
-      RecE efs @? at $sloc }
+      ObjE efs @? at $sloc }
 
 deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar

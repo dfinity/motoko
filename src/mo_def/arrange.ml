@@ -20,8 +20,8 @@ let rec exp e = match e.it with
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjBlockE (s, dfs)  -> "ObjBlockE"      $$ [obj_sort s] @ List.map dec_field dfs
-  | RecE rfs            -> "RecE"      $$ List.map rec_field rfs
+  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+  | ObjE efs            -> "ObjE"      $$ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
@@ -160,10 +160,10 @@ and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and dec_field (df : dec_field)
-  = "Field" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]
+  = "DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]
 
-and rec_field (rf : rec_field)
-  = "RecField" $$ [mut rf.it.mut; id rf.it.id; exp rf.it.exp]
+and exp_field (ef : exp_field)
+  = "ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp]
 
 and operator_type t = Atom (Type.string_of_typ t)
 

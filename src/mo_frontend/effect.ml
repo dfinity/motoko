@@ -77,8 +77,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     List.fold_left max_eff T.Triv es
   | ObjBlockE (sort, dfs) ->
     infer_effect_dec_fields dfs
-  | RecE rfs ->
-    infer_effect_rec_fields rfs
+  | ObjE efs ->
+    infer_effect_exp_fields efs
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
@@ -106,8 +106,8 @@ and effect_cases cases =
 and infer_effect_dec_fields dfs =
   List.fold_left (fun e (df : dec_field ) -> max_eff e (effect_dec df.it.dec)) T.Triv dfs
 
-and infer_effect_rec_fields rfs =
-  List.fold_left (fun e (rf : rec_field) -> max_eff e (effect_exp rf.it.exp)) T.Triv rfs
+and infer_effect_exp_fields efs =
+  List.fold_left (fun e (ef : exp_field) -> max_eff e (effect_exp ef.it.exp)) T.Triv efs
 
 and effect_dec dec =
   dec.note.note_eff

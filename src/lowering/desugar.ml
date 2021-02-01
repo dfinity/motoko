@@ -81,9 +81,9 @@ and exp' at note = function
       (* case ? v : *)
       (varP v) (varE v) ty).it
   | S.ObjBlockE (s, dfs) ->
-    obj at s None dfs note.Note.typ
-  | S.RecE rfs ->
-    record note.Note.typ rfs
+    obj_block at s None dfs note.Note.typ
+  | S.ObjE efs ->
+    obj note.Note.typ efs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -224,11 +224,11 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj at s self_id es obj_typ =
+and obj_block at s self_id dfs obj_typ =
   match s.it with
   | T.Object | T.Module ->
-    build_obj at s.it self_id es obj_typ
-  | T.Actor -> build_actor at self_id es obj_typ
+    build_obj at s.it self_id dfs obj_typ
+  | T.Actor -> build_actor at self_id dfs obj_typ
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ} =
@@ -363,17 +363,17 @@ and stabilize stab_opt d =
   | (S.Stable, I.LetD _) ->
     assert false
 
-and build_obj at s self_id es obj_typ =
+and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
     | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
-  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
+  in I.BlockE (decs (List.map (fun df -> df.it.S.dec) dfs) @ ret_ds, ret_o)
 
-and rec_field rf =
-  let S.{mut; id; exp = e} = rf.it in
+and exp_field ef =
+  let S.{mut; id; exp = e} = ef.it in
   let typ = e.note.S.note_typ in
   match mut.it with
   | S.Var ->
@@ -387,8 +387,8 @@ and rec_field rf =
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
 
-and record obj_typ rfs =
-  let (ds, fs) = List.map rec_field rfs |> List.split in
+and obj obj_typ efs =
+  let (ds, fs) = List.map exp_field efs |> List.split in
   let obj_e = newObjE T.Object fs obj_typ in
   I.BlockE(ds, obj_e)
 
@@ -485,7 +485,7 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -512,13 +512,13 @@ and dec' at n d = match d with
         let (_, obj_typ) = T.as_async rng_typ in
         let c = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE (typ_arg c T.Scope T.scope_bound)
-          (wrap { it = obj at s (Some self_id) es (T.promote obj_typ);
+          (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
       else
        wrap
-        { it = obj at s (Some self_id) es rng_typ;
+        { it = obj_block at s (Some self_id) dfs rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
