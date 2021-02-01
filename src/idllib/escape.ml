@@ -117,7 +117,7 @@ let escape_method str =
   then if ends_with_underscore str then str ^ "_" else str
   else raise (Exception.UnsupportedCandidFeature "Candid method not a valid Motoko id")
 
-(* Unescaping (used for Motoko → IDL) *)
+(* Unescaping (used for Motoko → Candid) *)
 
 let is_escaped_num str =
   match Lib.String.chop_prefix "_" str with
@@ -155,4 +155,3 @@ let needs_candid_quote str =
 
 let needs_motoko_quote str =
   not (is_valid_as_id str) || is_motoko_keyword str
-
