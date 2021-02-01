@@ -345,7 +345,7 @@ and stabilize stab_opt d =
     ([(i, t)],
      fun get_state ->
      let v = fresh_var i t in
-     varD v
+     varD (var i (T.Mut t))
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
          e
          (varP v) (varE v)
@@ -375,13 +375,14 @@ and build_obj at s self_id es obj_typ =
 and rec_field rf =
   let S.{mut; id; exp = e} = rf.it in
   let typ = e.note.S.note_typ in
-  let id' = fresh_var id.it typ in
   match mut.it with
   | S.Var ->
+    let id' = fresh_var id.it (T.Mut typ) in
     let d = varD id' (exp e) in
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
     (d, f)
   | S.Const ->
+    let id' = fresh_var id.it typ in
     let d = letD id' (exp e) in
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
