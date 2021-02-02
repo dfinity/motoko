@@ -1,6 +1,6 @@
 abstract-msgs.mo:2.31-2.40: type error [M0031], shared function has non-shared parameter type
   A/9
-abstract-msgs.mo:3.36-3.38: type error [M0035], shared function must have syntactic return type `()` or `async <typ>`
+abstract-msgs.mo:3.36-3.38: type error [M0035], shared function must have syntactic return type '()' or 'async <typ>'
 abstract-msgs.mo:5.23-5.32: type error [M0031], shared function has non-shared parameter type
   A/11
 abstract-msgs.mo:6.28-6.36: type error [M0032], shared function has non-shared return type

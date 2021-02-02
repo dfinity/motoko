@@ -296,8 +296,8 @@ let check_shared_return env at sort c ts =
   match sort, c, ts with
   | T.Shared _, T.Promises,  _ -> ()
   | T.Shared T.Write, T.Returns, [] -> ()
-  | T.Shared T.Write, _, _ -> error env at "M0035" "shared function must have syntactic return type `()` or `async <typ>`"
-  | T.Shared T.Query, _, _ -> error env at "M0036" "shared query function must have syntactic return type `async <typ>`"
+  | T.Shared T.Write, _, _ -> error env at "M0035" "shared function must have syntactic return type '()' or 'async <typ>'"
+  | T.Shared T.Query, _, _ -> error env at "M0036" "shared query function must have syntactic return type 'async <typ>'"
   | _ -> ()
 
 let region_of_scope env typ =
@@ -1357,11 +1357,13 @@ and check_exp_field env (ef : exp_field) fts =
   match ft_opt with
   | Some { T.typ = T.Mut t; _ } ->
     if mut.it <> Syntax.Var then
-      error env ef.at "M0149" "expected mutable 'var' field, found immutable field";
+      error env ef.at "M0149" "expected mutable 'var' field %s of type\n  %s\nbut found immutable field (insert 'var'?)"
+        id.it (T.string_of_typ t);
     check_exp env t exp
   | Some { T.typ = t; _ } ->
     if mut.it = Syntax.Var then
-      error env ef.at "M0150" "expected immutable field, found mutable 'var' field";
+      error env ef.at "M0150" "expected immutable field %s of type\n  %s\nbut found mutable 'var' field (delete 'var'?)"
+        id.it (T.string_of_typ t)
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
@@ -2015,7 +2017,7 @@ and infer_dec env dec : T.typ =
       | Some ({ at; _ } as typ), (T.Module | T.Object) ->
         if at = Source.no_region then
           warn env dec.at "M0135"
-            "actor classes with non non-async return types are deprecated; please declare the return type as `async ...`";
+            "actor classes with non non-async return types are deprecated; please declare the return type as 'async ...'";
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error env dec.at "M0134"

@@ -1,4 +1,10 @@
-check-record.mo:8.12-8.17: type error [M0149], expected mutable 'var' field, found immutable field
-check-record.mo:10.12-10.21: type error [M0150], expected immutable field, found mutable 'var' field
-check-record.mo:12.12-12.17: type error [M0149], expected mutable 'var' field, found immutable field
+check-record.mo:8.11-8.16: type error [M0149], expected mutable 'var' field v of type
+  Nat
+but found immutable field (insert 'var'?)
+check-record.mo:10.11-10.20: type error [M0150], expected immutable field a of type
+  Nat
+but found mutable 'var' field (delete 'var'?)
+check-record.mo:12.11-12.16: type error [M0149], expected mutable 'var' field a of type
+  Int
+but found immutable field (insert 'var'?)
 check-record.mo:19.30-19.31: type error [M0057], unbound variable c
