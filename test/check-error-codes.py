@@ -16,7 +16,7 @@ registered_codes = set()
 tested_codes = set()
 
 # This list should only contain errors that are impossible or hard to
-# exercise in our test suite
+# exercise in our test suite (or defunct)
 known_untested_codes = {
     "M0000", # internal compiler error
     "M0005", # case mismatch, hard to test on linux
@@ -39,6 +39,8 @@ known_untested_codes = {
     "M0100", # hard to trigger (syntactic checks hit first)
     "M0108", # mode-specific
     "M0144", # bad import, but seems to be shadowed by non-static expression
+    # defunct codes:
+    "M0052",
     }
 
 def populate_error_codes():
