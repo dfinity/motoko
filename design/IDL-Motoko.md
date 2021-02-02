@@ -42,7 +42,7 @@ The following are not necessary true:
    different types.
 
  * The type export mapping is not surjective: there are Candid types that
-   cannot be exported, in particular types with `service` types with methods
+   cannot be imported, in particular types with `service` types with methods
    names that are no valid identifiers in Motoko.
 
  * For some types, not all IDL values may be accepted: for example, `Char` is
