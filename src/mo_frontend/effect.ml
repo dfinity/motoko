@@ -104,7 +104,7 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and infer_effect_dec_fields dfs =
-  List.fold_left (fun e (df : dec_field ) -> max_eff e (effect_dec df.it.dec)) T.Triv dfs
+  List.fold_left (fun e (df : dec_field) -> max_eff e (effect_dec df.it.dec)) T.Triv dfs
 
 and infer_effect_exp_fields efs =
   List.fold_left (fun e (ef : exp_field) -> max_eff e (effect_exp ef.it.exp)) T.Triv efs
