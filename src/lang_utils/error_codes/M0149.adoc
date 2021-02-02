@@ -7,6 +7,6 @@ cannot be represented in Motoko. These are
  * `service` types with method names that are not identifiers, e.g. because
    they contain special characters.
 
-If you encounter this error, and you can, you should avoid these type in the
+If you encounter this error, and you can, you should avoid these types in the
 service’s interface. If you have no control over the interface, you cannot
 interact with it from Motoko.
