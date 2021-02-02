@@ -1363,7 +1363,7 @@ and check_exp_field env (ef : exp_field) fts =
   | Some { T.typ = t; _ } ->
     if mut.it = Syntax.Var then
       error env ef.at "M0150" "expected immutable field %s of type\n  %s\nbut found mutable 'var' field (delete 'var'?)"
-        id.it (T.string_of_typ t)
+        id.it (T.string_of_typ t);
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
