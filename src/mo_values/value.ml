@@ -37,7 +37,7 @@ module type WordRepType =
 sig
   include Wasm.Int.RepType
   val of_big_int : Big_int.big_int -> t (* wrapping *)
-  val to_big_int : bool -> t -> Big_int.big_int
+  val to_big_int : t -> Big_int.big_int
 end
 
 module Int64Rep : WordRepType =
@@ -45,24 +45,23 @@ struct
   include Int64
   let bitwidth = 64
   let to_hex_string = Printf.sprintf "%Lx"
+
   let of_big_int i =
     let open Big_int in
     let i = mod_big_int i (power_int_positive_int 2 64) in
     if lt_big_int i (power_int_positive_int 2 63)
     then int64_of_big_int i
     else int64_of_big_int (sub_big_int i (power_int_positive_int 2 64))
-  let to_big_int signed i =
+
+  let to_big_int i =
     let open Big_int in
-    if signed
-    then big_int_of_int64 i
-    else
-      if i < 0L
-      then add_big_int (big_int_of_int64 i) (power_int_positive_int 2 64)
-      else big_int_of_int64 i
+    if i < 0L
+    then add_big_int (big_int_of_int64 i) (power_int_positive_int 2 64)
+    else big_int_of_int64 i
 end
 
 
-(* Represent n-bit integers using k-bit integers by shifting left/right by k-n bits *)
+(* Represent n-bit words using k-bit words by shifting left/right by k-n bits *)
 module SubRep (Rep : WordRepType) (Width : sig val bitwidth : int end) : WordRepType =
 struct
   let _ = assert (Width.bitwidth < Rep.bitwidth)
@@ -72,7 +71,7 @@ struct
   let bitwidth = Width.bitwidth
   let bitdiff = Rep.bitwidth - Width.bitwidth
   let inj r  = Rep.shift_left r bitdiff
-  let proj i = Rep.shift_right i bitdiff
+  let proj i = Rep.shift_right_logical i bitdiff
 
   let zero = inj Rep.zero
   let one = inj Rep.one
@@ -97,7 +96,7 @@ struct
   let to_string i = group_num (Rep.to_string (proj i))
   let to_hex_string i = group_num (Rep.to_hex_string (proj i))
   let of_big_int i = inj (Rep.of_big_int i)
-  let to_big_int signed i = Rep.to_big_int signed (proj i)
+  let to_big_int i = Rep.to_big_int (proj i)
 end
 
 module Int8Rep = SubRep (Int64Rep) (struct let bitwidth = 8 end)
@@ -116,8 +115,9 @@ sig
   val not : t -> t
   val pow : t -> t -> t
 
+  val bitwidth : int
   val of_big_int : Big_int.big_int -> t (* wrapping *)
-  val to_big_int : bool -> t -> Big_int.big_int
+  val to_big_int : t -> Big_int.big_int (* returns natural numbers *)
 end
 
 module MakeWord (Rep : WordRepType) : WordType =
@@ -135,6 +135,7 @@ struct
     else
       mul x (pow x (sub y one))
 
+  let bitwidth = Rep.bitwidth
   let of_big_int = Rep.of_big_int
   let to_big_int = Rep.to_big_int
 end
@@ -281,7 +282,15 @@ module Ranged
   : BitNumType =
 struct
   let to_word i = WordRep.of_big_int (Rep.to_big_int i)
-  let from_word i = Rep.of_big_int (WordRep.to_big_int Rep.signed i)
+  let from_word i =
+    let n = WordRep.to_big_int i in
+    let n' =
+      let open Big_int in
+      if Rep.signed && le_big_int (power_int_positive_int 2 (WordRep.bitwidth - 1)) n
+      then sub_big_int n (power_int_positive_int 2 (WordRep.bitwidth))
+      else n
+    in
+    Rep.of_big_int n'
 
   let check i =
     if Rep.eq (from_word (to_word i)) i

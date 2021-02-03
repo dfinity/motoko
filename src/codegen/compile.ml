@@ -6330,11 +6330,9 @@ let compile_binop env t op =
   | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),
                                               WrappingDivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
                                                        TaggedSmallWord.msb_adjust ty
-  (*
-  TODO: Do we need a wrapping mod?
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32)),
-                                              ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
-  *)
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+                                                       TaggedSmallWord.msb_adjust ty
+  | Type.(Prim (Nat8|Nat16|Nat32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
   | Type.(Prim Int32),                        DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivS))
   | Type.(Prim (Int8|Int16 as ty)),           DivOp ->
     Func.share_code2 env (prim_fun_name ty "div")
@@ -6547,7 +6545,7 @@ let compile_binop env t op =
 
   | Type.(Prim Text), CatOp -> Text.concat env
   | Type.Non, _ -> G.i Unreachable
-  | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
+  | _ -> todo_trap env "compile_binop" (Wasm.Sexpr.Node ("BinOp", [ Arrange_ops.binop op; Arrange_type.typ t]))
   )
 
 let compile_eq env =
