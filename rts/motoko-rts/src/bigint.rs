@@ -52,7 +52,11 @@ unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
 #[no_mangle]
 unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
-    let size = Bytes((n_elems * elem_size.0) as u32); // Overflow check?
+    // Overflow check for the following multiplication
+    if n_elems > 1<<30 {
+        bigint_trap();
+    }
+    let size = Bytes((n_elems * elem_size.0) as u32);
     let payload = mp_alloc(size) as *mut u32;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
