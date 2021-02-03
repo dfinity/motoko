@@ -27,5 +27,6 @@ jobs:
             automerge-squash
             ci-also-darwin
           keep_updating: true
+          debug_output: true
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}
