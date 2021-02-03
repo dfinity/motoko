@@ -42,6 +42,7 @@ A simple language for writing Dfinity actors.
 
 * Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
 
+
 ### Left for Future Version
 
 * Features for utility tokens?
