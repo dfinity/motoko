@@ -10,8 +10,8 @@ let surround : Buffer.t -> string -> (unit -> unit) -> unit =
   inner ();
   Buffer.add_string buf s
 
-let adoc_link : Buffer.t -> Xref.t -> (unit -> unit) -> unit =
- fun buf xref adoc_text ->
+let adoc_link : Xref.t -> string -> string =
+ fun xref adoc_text ->
   let prepend_hash is_top s = if is_top then "#" ^ s else s in
   let rec string_of_xref is_top = function
     | Xref.XClass (x, xref) ->
@@ -27,21 +27,16 @@ let adoc_link : Buffer.t -> Xref.t -> (unit -> unit) -> unit =
     | Xref.XFile (p, Some xref) ->
         Printf.sprintf "%s.adoc#%s" p (string_of_xref false xref)
   in
-  let link = string_of_xref true xref in
-  bprintf buf "xref:%s[" link;
-  adoc_text ();
-  bprintf buf "]"
+  sprintf "xref:%s[%s]" (string_of_xref true xref) adoc_text
+
+let adoc_render_path : env -> Syntax.path -> string =
+ fun env path ->
+  match env.lookup_type path with
+  | None -> Plain.string_of_path path
+  | Some xref -> adoc_link xref (Plain.string_of_path path)
 
 let adoc_of_type : Buffer.t -> env -> Syntax.typ -> unit =
- fun buf env ty ->
-  let render_path buf path =
-    match env.lookup_type path with
-    | None ->
-        Plain.plain_of_path buf path
-    | Some xref ->
-       adoc_link buf xref (fun () -> Plain.plain_of_path buf path)
-  in
-  Plain.plain_of_typ buf render_path ty
+ fun buf env ty -> Plain.plain_of_typ buf (adoc_render_path env) ty
 
 let opt_typ : Buffer.t -> env -> Syntax.typ option -> unit =
  fun buf env ->
@@ -49,8 +44,8 @@ let opt_typ : Buffer.t -> env -> Syntax.typ option -> unit =
       bprintf buf " : ";
       adoc_of_type buf env ty)
 
-let adoc_of_typ_bind : Buffer.t -> Syntax.typ_bind -> unit =
-  Plain.plain_of_typ_bind
+let adoc_of_typ_bind : Buffer.t -> env -> Syntax.typ_bind -> unit =
+ fun buf env -> Plain.plain_of_typ_bind buf (adoc_render_path env)
 
 let adoc_of_function_arg : Buffer.t -> env -> function_arg_doc -> unit =
  fun buf env arg ->
@@ -90,7 +85,6 @@ let adoc_signature : Buffer.t -> (unit -> unit) -> unit =
   f ();
   bprintf buf "\n----\n\n"
 
-
 let adoc_of_doc_type : Buffer.t -> env -> Extract.doc_type -> unit =
  fun buf env dt ->
   match dt with
@@ -108,7 +102,7 @@ let rec adoc_of_declaration :
       header function_doc.name;
       signature (fun _ ->
           bprintf buf "func %s" function_doc.name;
-          Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
+          Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf env)
             function_doc.type_args;
           bprintf buf "(";
           Plain.sep_by buf ", " (adoc_of_function_arg buf env) function_doc.args;
@@ -125,7 +119,7 @@ let rec adoc_of_declaration :
       header type_doc.name;
       signature (fun _ ->
           bprintf buf "type %s" type_doc.name;
-          Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
+          Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf env)
             type_doc.type_args;
           bprintf buf " = ";
           adoc_of_doc_type buf env type_doc.typ);
@@ -134,10 +128,12 @@ let rec adoc_of_declaration :
       header class_doc.name;
       signature (fun _ ->
           bprintf buf "class %s" class_doc.name;
-          Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf)
+          Plain.sep_by' buf "<" ", " ">" (adoc_of_typ_bind buf env)
             class_doc.type_args;
           bprintf buf "(";
-          Plain.sep_by buf ", " (adoc_of_function_arg buf env) class_doc.constructor;
+          Plain.sep_by buf ", "
+            (adoc_of_function_arg buf env)
+            class_doc.constructor;
           bprintf buf ")");
       doc_comment ();
       bprintf buf "\n\n";
