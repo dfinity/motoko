@@ -312,7 +312,7 @@ impl BigInt {
     /// Note that this returns a `const` pointer. This is very nice, as together with the const
     /// annotation on the libtommath API, this should prevent us from passing this pointer to a
     /// libtommath function that tries to change it. For example, we cannot confuse input and
-    /// output paramters of mp_add() this way.
+    /// output parameters of mp_add() this way.
     pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
         (*self).mp_int.dp = self.payload_addr();
         &(*self).mp_int
