@@ -53,7 +53,7 @@ unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
 unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
-    if n_elems > 1<<30 {
+    if n_elems > 1 << 30 {
         bigint_trap();
     }
     let size = Bytes((n_elems * elem_size.0) as u32);
