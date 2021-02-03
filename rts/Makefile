@@ -10,7 +10,7 @@ WASM_LD ?= wasm-ld-10
 #
 
 TOMMATHFILES = \
-   mp_init mp_add mp_sub mp_mul mp_zero mp_cmp \
+   mp_init mp_zero mp_add mp_sub mp_mul mp_cmp \
    mp_set_u32 mp_set_i32 mp_get_i32 mp_get_mag_u32 \
    mp_set_u64 mp_set_i64 mp_get_i64 mp_get_mag_u64 \
    mp_div mp_init_copy mp_neg mp_abs mp_2expt mp_expt_u32 mp_set mp_sqr \
@@ -166,7 +166,6 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
 	    --whitelist-function mp_init \
-	    --whitelist-function mp_zero \
 	    --whitelist-function mp_init_copy \
 	    --whitelist-function mp_set_u32 \
 	    --whitelist-function mp_set_i32 \
@@ -175,7 +174,6 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --whitelist-function mp_set_i64 \
 	    --whitelist-function mp_get_i64 \
 	    --whitelist-function mp_count_bits \
-	    --whitelist-function mp_get_mag_u64 \
 	    --whitelist-function mp_cmp \
 	    --whitelist-function mp_add \
 	    --whitelist-function mp_sub \
@@ -191,7 +189,8 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --blacklist-type __int32_t \
 	    --blacklist-type __int64_t \
 	    --blacklist-type __uint32_t \
-	    --blacklist-type __uint64_t
+	    --blacklist-type __uint64_t \
+            -- $(TOMMATH_FLAGS)
 
 	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
 	# need. Blacklist parameters are used because bindgen still generates unused type
@@ -214,7 +213,7 @@ $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
 #
 
 .PHONY: test
-test: $(TOMMATH_WASM_A)
+test: $(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 	cd motoko-rts-tests && cargo build --target=wasm32-wasi
 	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
