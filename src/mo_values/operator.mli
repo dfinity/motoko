@@ -19,10 +19,15 @@ type binop =
   | OrOp
   | XorOp
   | ShLOp
-  | UShROp
-  | SShROp
+  | ShROp
   | RotLOp
   | RotROp
+  | WrappingAddOp                               (* wrapping operators... *)
+  | WrappingSubOp
+  | WrappingMulOp
+  | WrappingDivOp
+  | WrappingModOp
+  | WrappingPowOp
   | CatOp                                       (* concatenation *)
 
 type relop =

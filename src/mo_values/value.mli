@@ -2,19 +2,10 @@ open Mo_types
 
 (* Numeric Representations *)
 
-module type WordType =
-sig
-  include Wasm.Int.S
-  val neg : t -> t
-  val not : t -> t
-  val pow : t -> t -> t
-  val to_string : t -> string
-  val to_pretty_string : t -> string
-end
-
 module type NumType =
 sig
-  type t
+  type t (* = Big_int.big_int *)
+  val signed : bool
   val zero : t
   val abs : t -> t
   val neg : t -> t
@@ -40,6 +31,27 @@ sig
   val to_pretty_string : t -> string
 end
 
+(* Extension of NumType with wrapping and bit-wise operations *)
+module type BitNumType =
+sig
+  include NumType
+
+  val not : t -> t
+  val and_ : t -> t -> t
+  val or_ : t -> t -> t
+  val xor : t -> t -> t
+  val shl : t -> t -> t
+  val shr : t -> t -> t
+  val rotl : t -> t -> t
+  val rotr : t -> t -> t
+
+  val wrapping_neg : t -> t
+  val wrapping_add : t -> t -> t
+  val wrapping_sub : t -> t -> t
+  val wrapping_mul : t -> t -> t
+  val wrapping_pow : t -> t -> t
+end
+
 module type FloatType =
 sig
   include Wasm.Float.S
@@ -48,22 +60,18 @@ sig
   val to_pretty_string : t -> string
 end
 
-module Word8 : WordType with type bits = int32
-module Word16 : WordType with type bits = int32
-module Word32 : WordType with type bits = int32 and type t = Wasm.I32.t
-module Word64 : WordType with type bits = int64 and type t = Wasm.I64.t
 module Float : FloatType with type bits = int64 and type t = Wasm.F64.t
 
 module Nat : NumType with type t = Big_int.big_int
 module Int : NumType with type t = Big_int.big_int
-module Int_8 : NumType
-module Int_16 : NumType
-module Int_32 : NumType
-module Int_64 : NumType
-module Nat8 : NumType
-module Nat16 : NumType
-module Nat32 : NumType
-module Nat64 : NumType
+module Int_8 : BitNumType
+module Int_16 : BitNumType
+module Int_32 : BitNumType
+module Int_64 : BitNumType
+module Nat8 : BitNumType
+module Nat16 : BitNumType
+module Nat32 : BitNumType
+module Nat64 : BitNumType
 
 module Blob : sig
   val escape : string -> string
@@ -96,10 +104,12 @@ and value =
   | Nat16 of Nat16.t
   | Nat32 of Nat32.t
   | Nat64 of Nat64.t
+  (*
   | Word8 of Word8.t
   | Word16 of Word16.t
   | Word32 of Word32.t
   | Word64 of Word64.t
+  *)
   | Float of Float.t
   | Char of unicode
   | Text of string
@@ -150,10 +160,12 @@ val as_nat8 : value -> Nat8.t
 val as_nat16 : value -> Nat16.t
 val as_nat32 : value -> Nat32.t
 val as_nat64 : value -> Nat64.t
+(*
 val as_word8 : value -> Word8.t
 val as_word16 : value -> Word16.t
 val as_word32 : value -> Word32.t
 val as_word64 : value -> Word64.t
+*)
 val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string

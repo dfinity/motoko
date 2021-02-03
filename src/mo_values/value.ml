@@ -32,9 +32,38 @@ let group_num s =
   Buffer.add_substring buf s exp (len - exp);
   Buffer.contents buf
 
-(* Represent n-bit integers using k-bit (n<=k) integers by shifting left/right by k-n bits *)
-module SubRep (Rep : Wasm.Int.RepType) (Width : sig val bitwidth : int end) :
-  Wasm.Int.RepType with type t = Rep.t =
+(* a mild extension over Was.Int.RepType *)
+module type WordRepType =
+sig
+  include Wasm.Int.RepType
+  val of_big_int : Big_int.big_int -> t (* wrapping *)
+  val to_big_int : bool -> t -> Big_int.big_int
+end
+
+module Int64Rep : WordRepType =
+struct
+  include Int64
+  let bitwidth = 64
+  let to_hex_string = Printf.sprintf "%Lx"
+  let of_big_int i =
+    let open Big_int in
+    int64_of_big_int (
+      sub_big_int (mod_big_int i (power_int_positive_int 2 64))
+                  (power_int_positive_int 2 63)
+    )
+  let to_big_int signed i =
+    let open Big_int in
+    if signed
+    then big_int_of_int64 i
+    else
+      if i < 0L
+      then add_big_int (big_int_of_int64 i) (power_int_positive_int 2 64)
+      else big_int_of_int64 i
+end
+
+
+(* Represent n-bit integers using k-bit integers by shifting left/right by k-n bits *)
+module SubRep (Rep : WordRepType) (Width : sig val bitwidth : int end) : WordRepType =
 struct
   let _ = assert (Width.bitwidth < Rep.bitwidth)
 
@@ -67,7 +96,18 @@ struct
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
   let to_hex_string i = group_num (Rep.to_hex_string (proj i))
+  let of_big_int i = inj (Rep.of_big_int i)
+  let to_big_int signed i = Rep.to_big_int signed (proj i)
 end
+
+module Int8Rep = SubRep (Int64Rep) (struct let bitwidth = 8 end)
+module Int16Rep = SubRep (Int64Rep) (struct let bitwidth = 16 end)
+module Int32Rep = SubRep (Int64Rep) (struct let bitwidth = 32 end)
+
+(*
+This WordType is used only internally in this module, to implement the bit-wise
+or wrapping operations on NatN and IntN (see module Ranged)
+*)
 
 module type WordType =
 sig
@@ -75,13 +115,14 @@ sig
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
-  val to_string : t -> string
-  val to_pretty_string : t -> string
+
+  val of_big_int : Big_int.big_int -> t (* wrapping *)
+  val to_big_int : bool -> t -> Big_int.big_int
 end
 
-module MakeWord
-  (WasmInt : Wasm.Int.S) (ToInt : sig val to_int : WasmInt.t -> int end) =
+module MakeWord (Rep : WordRepType) : WordType =
 struct
+  module WasmInt = Wasm.Int.Make (Rep)
   include WasmInt
   let neg w = sub zero w
   let not w = xor w (of_int_s (-1))
@@ -94,27 +135,14 @@ struct
     else
       mul x (pow x (sub y one))
 
-  let base = of_int_u 16
-  let digs =
-    [|"0"; "1"; "2"; "3"; "4"; "5"; "6"; "7";
-      "8"; "9"; "A"; "B"; "C"; "D"; "E"; "F"|]
-  let rec to_pretty_string w = if w = zero then "0" else to_pretty_string' w 0 ""
-  and to_pretty_string' w i s =
-    if w = zero then s else
-    let dig = digs.(ToInt.to_int (WasmInt.rem_u w base)) in
-    let s' = dig ^ (if i = 4 then "_" else "") ^ s in
-    to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
-  let to_string = to_pretty_string
+  let of_big_int = Rep.of_big_int
+  let to_big_int = Rep.to_big_int
 end
 
-module Int32Rep = struct include Int32 let bitwidth = 32 let to_hex_string = Printf.sprintf "%lx" end
-module Int16Rep = SubRep (Int32Rep) (struct let bitwidth = 16 end)
-module Int8Rep = SubRep (Int32Rep) (struct let bitwidth = 8 end)
-
-module Word8 = MakeWord (Wasm.Int.Make (Int8Rep)) (Int8Rep)
-module Word16 = MakeWord (Wasm.Int.Make (Int16Rep)) (Int16Rep)
-module Word32 = MakeWord (Wasm.I32) (Int32)
-module Word64 = MakeWord (Wasm.I64) (Int64)
+module Word8  = MakeWord (Int8Rep)
+module Word16 = MakeWord (Int16Rep)
+module Word32 = MakeWord (Int32Rep)
+module Word64 = MakeWord (Int64Rep)
 
 module type FloatType =
 sig
@@ -139,6 +167,7 @@ module Float = MakeFloat(Wasm.F64)
 module type NumType =
 sig
   type t
+  val signed : bool
   val zero : t
   val abs : t -> t
   val neg : t -> t
@@ -168,6 +197,7 @@ module Int : NumType with type t = Big_int.big_int =
 struct
   open Big_int
   type t = big_int
+  let signed = true
   let zero = zero_big_int
   let sub = sub_big_int
   let abs = abs_big_int
@@ -212,18 +242,47 @@ end
 module Nat : NumType with type t = Big_int.big_int =
 struct
   include Int
+  let signed = false
   let sub x y =
     let z = Int.sub x y in
     if ge z zero then z else raise (Invalid_argument "Nat.sub")
 end
 
-module Ranged (Rep : NumType) (Range : sig val is_range : Rep.t -> bool end) : NumType =
+(* Extension of NumType with wrapping and bit-wise operations *)
+module type BitNumType =
+sig
+  include NumType
+  val not : t -> t
+  val and_ : t -> t -> t
+  val or_ : t -> t -> t
+  val xor : t -> t -> t
+  val shl : t -> t -> t
+  val shr : t -> t -> t
+  val rotl : t -> t -> t
+  val rotr : t -> t -> t
+
+  val wrapping_neg : t -> t
+  val wrapping_add : t -> t -> t
+  val wrapping_sub : t -> t -> t
+  val wrapping_mul : t -> t -> t
+  val wrapping_pow : t -> t -> t
+end
+
+module Ranged
+  (Rep : NumType)
+  (WordRep : WordType)
+  : BitNumType =
 struct
+  let to_word i = WordRep.of_big_int (Rep.to_big_int i)
+  let from_word i = Rep.of_big_int (WordRep.to_big_int Rep.signed i)
+
   let check i =
-    if Range.is_range i then i
+    if Rep.eq (from_word (to_word i)) i
+    then i
     else raise (Invalid_argument "value out of bounds")
 
   include Rep
+  (* bounds-checking operations *)
   let neg a = let res = Rep.neg a in check res
   let abs a = let res = Rep.abs a in check res
   let add a b = let res = Rep.add a b in check res
@@ -234,29 +293,37 @@ struct
   let of_int i = let res = Rep.of_int i in check res
   let of_big_int i = let res = Rep.of_big_int i in check res
   let of_string s = let res = Rep.of_string s in check res
+
+  let on_word op a = from_word (op (to_word a))
+  let on_words op a b = from_word (op (to_word a) (to_word b))
+
+  (* bit-wise operations *)
+  let not = on_word WordRep.not
+  let and_ = on_words WordRep.and_
+  let or_ = on_words WordRep.or_
+  let xor = on_words WordRep.xor
+  let shl = on_words WordRep.shl
+  let shr = on_words (if Rep.signed then WordRep.shr_s else WordRep.shr_u)
+  let rotl = on_words WordRep.rotl
+  let rotr = on_words WordRep.rotr
+
+  (* wrapping-wise operations *)
+  let wrapping_neg = on_word WordRep.neg
+  let wrapping_add = on_words WordRep.add
+  let wrapping_sub = on_words WordRep.sub
+  let wrapping_mul = on_words WordRep.mul
+  let wrapping_pow = on_words WordRep.pow
 end
 
-module NatRange (Limit : sig val upper : Big_int.big_int end) =
-struct
-  open Big_int
-  let is_range n = ge_big_int n zero_big_int && lt_big_int n Limit.upper
-end
+module Nat8 = Ranged (Nat) (Word8)
+module Nat16 = Ranged (Nat) (Word16)
+module Nat32 = Ranged (Nat) (Word32)
+module Nat64 = Ranged (Nat) (Word64)
 
-module Nat8 = Ranged (Nat) (NatRange (struct let upper = Big_int.big_int_of_int 0x100 end))
-module Nat16 = Ranged (Nat) (NatRange (struct let upper = Big_int.big_int_of_int 0x1_0000 end))
-module Nat32 = Ranged (Nat) (NatRange (struct let upper = Big_int.big_int_of_int 0x1_0000_0000 end))
-module Nat64 = Ranged (Nat) (NatRange (struct let upper = Big_int.power_int_positive_int 2 64 end))
-
-module IntRange (Limit : sig val upper : Big_int.big_int end) =
-struct
-  open Big_int
-  let is_range n = ge_big_int n (minus_big_int Limit.upper) && lt_big_int n Limit.upper
-end
-
-module Int_8 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x80 end))
-module Int_16 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000 end))
-module Int_32 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000_0000 end))
-module Int_64 = Ranged (Int) (IntRange (struct let upper = Big_int.power_int_positive_int 2 63 end))
+module Int_8 = Ranged (Int) (Word8)
+module Int_16 = Ranged (Int) (Word16)
+module Int_32 = Ranged (Int) (Word32)
+module Int_64 = Ranged (Int) (Word64)
 
 (* Blobs *)
 
@@ -294,10 +361,12 @@ and value =
   | Nat16 of Nat16.t
   | Nat32 of Nat32.t
   | Nat64 of Nat64.t
+  (*
   | Word8 of Word8.t
   | Word16 of Word16.t
   | Word32 of Word32.t
   | Word64 of Word64.t
+  *)
   | Float of Float.t
   | Char of unicode
   | Text of string
@@ -344,10 +413,12 @@ let as_nat8 = function Nat8 w -> w | _ -> invalid "as_nat8"
 let as_nat16 = function Nat16 w -> w | _ -> invalid "as_nat16"
 let as_nat32 = function Nat32 w -> w | _ -> invalid "as_nat32"
 let as_nat64 = function Nat64 w -> w | _ -> invalid "as_nat64"
+(*
 let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
 let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
 let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
 let as_word64 = function Word64 w -> w | _ -> invalid "as_word64"
+*)
 let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
@@ -440,10 +511,12 @@ let rec string_of_val_nullary d = function
   | Nat16 n -> Nat16.to_pretty_string n
   | Nat32 n -> Nat32.to_pretty_string n
   | Nat64 n -> Nat64.to_pretty_string n
+  (*
   | Word8 w -> "0x" ^ Word8.to_pretty_string w
   | Word16 w -> "0x" ^ Word16.to_pretty_string w
   | Word32 w -> "0x" ^ Word32.to_pretty_string w
   | Word64 w -> "0x" ^ Word64.to_pretty_string w
+  *)
   | Float f -> Float.to_pretty_string f
   | Char c -> string_of_string '\'' [c] '\''
   | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
