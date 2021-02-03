@@ -2480,10 +2480,13 @@ module Prim = struct
   let prim_shiftWordNtoSigned env b =
     compile_shrS_const b ^^
     prim_word32toInt env
+  (* TODO, needed? *)
+  (*
   let prim_intToWord32 env = BigNum.truncate_to_word32 env
   let prim_shiftToWordN env b =
     prim_intToWord32 env ^^
     TaggedSmallWord.shift_leftWordNtoI32 b
+  *)
 end (* Prim *)
 
 module Object = struct
