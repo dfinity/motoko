@@ -232,10 +232,6 @@ let interpret_lit env lit : V.value =
   | Int16Lit i -> V.Int16 i
   | Int32Lit i -> V.Int32 i
   | Int64Lit i -> V.Int64 i
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
@@ -302,7 +298,7 @@ let blob_bytes t at =
       V.local_func 0 1 (fun c v k' ->
         if !i = String.length t
         then k' V.Null
-        else let v = V.Opt V.(Word8 (Word8.of_int_u (Char.code (String.get t !i)))) in incr i; k' v
+        else let v = V.Opt V.(Nat8 (Nat8.of_int (Char.code (String.get t !i)))) in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -739,10 +735,6 @@ and match_lit lit v : bool =
   | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
   | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
   | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
-  | Word8Lit w, V.Word8 w' -> w = w'
-  | Word16Lit w, V.Word16 w' -> w = w'
-  | Word32Lit w, V.Word32 w' -> w = w'
-  | Word64Lit w, V.Word64 w' -> w = w'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'

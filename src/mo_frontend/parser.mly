@@ -223,12 +223,12 @@ let share_dec_field (df : dec_field) =
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
-%token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
+%token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token HASH
 %token EQ LT GT
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
-%token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
+%token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
 %token FLEXIBLE STABLE
 %token<string> DOT_NUM
@@ -253,7 +253,7 @@ let share_dec_field (df : dec_field) =
 %left OROP
 %left ANDOP
 %left XOROP
-%nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
+%nonassoc SHLOP SHROP ROTLOP ROTROP
 %left POWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
@@ -496,8 +496,7 @@ lit :
   | OROP  { OrOp }
   | XOROP { XorOp }
   | SHLOP { ShLOp }
-  | USHROP { UShROp }
-  | SSHROP { SShROp }
+  | SHROP { ShROp }
   | ROTLOP { RotLOp }
   | ROTROP { RotROp }
   | HASH { CatOp }
@@ -526,8 +525,7 @@ lit :
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }
   | SHLASSIGN { ShLOp }
-  | USHRASSIGN { UShROp }
-  | SSHRASSIGN { SShROp }
+  | SHRASSIGN { ShROp }
   | ROTLASSIGN { RotLOp }
   | ROTRASSIGN { RotROp }
   | CATASSIGN { CatOp }

@@ -252,7 +252,12 @@ end
 module type BitNumType =
 sig
   include NumType
+
   val not : t -> t
+  val popcnt : t -> t
+  val clz : t -> t
+  val ctz : t -> t
+
   val and_ : t -> t -> t
   val or_ : t -> t -> t
   val xor : t -> t -> t
@@ -261,10 +266,12 @@ sig
   val rotl : t -> t -> t
   val rotr : t -> t -> t
 
+
   val wrapping_neg : t -> t
   val wrapping_add : t -> t -> t
   val wrapping_sub : t -> t -> t
   val wrapping_mul : t -> t -> t
+  val wrapping_div : t -> t -> t
   val wrapping_pow : t -> t -> t
 end
 
@@ -299,6 +306,10 @@ struct
 
   (* bit-wise operations *)
   let not = on_word WordRep.not
+  let popcnt = on_word WordRep.popcnt
+  let clz = on_word WordRep.clz
+  let ctz = on_word WordRep.ctz
+
   let and_ = on_words WordRep.and_
   let or_ = on_words WordRep.or_
   let xor = on_words WordRep.xor
@@ -307,11 +318,15 @@ struct
   let rotl = on_words WordRep.rotl
   let rotr = on_words WordRep.rotr
 
+
   (* wrapping-wise operations *)
   let wrapping_neg = on_word WordRep.neg
   let wrapping_add = on_words WordRep.add
   let wrapping_sub = on_words WordRep.sub
   let wrapping_mul = on_words WordRep.mul
+  (* TODO: This is probably not correct, if the divisor is negative we do not
+     want to treat it like a large number *)
+  let wrapping_div = on_words WordRep.div_u
   let wrapping_pow = on_words WordRep.pow
 end
 

@@ -226,13 +226,13 @@ and prim_type_ref (prim : Type.prim) : die list * int =
       | Type.(Int8|Int16|Int32) ->
         with_referencable_tags add dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
-      | Type.(Word8|Nat8|Word16|Nat16|Word32|Nat32) ->
+      | Type.(Nat8|Nat16|Nat32) ->
         with_referencable_tags add dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
       | Type.Int64 ->
         with_referencable_tags add dw_TAG_base_type
           (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
-      | Type.(Word64|Nat64) ->
+      | Type.Nat64 ->
         with_referencable_tags add dw_TAG_base_type
           (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_unsigned])
       | ty -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim));*) type_ref Type.Any (* FIXME, this is "Any" for now *)
@@ -393,18 +393,18 @@ let rec loc slot =
   | Prim Char -> Location.local slot [ dw_OP_lit8; dw_OP_shr; dw_OP_stack_value ]
   | Prim Bool -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_stack_value ]
   | Prim Int8 -> Location.local slot [ dw_OP_lit24; dw_OP_shra; dw_OP_stack_value ]
-  | Prim (Word8|Nat8) -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
+  | Prim Nat8 -> Location.local slot [ dw_OP_lit24; dw_OP_shr; dw_OP_stack_value ]
   | Prim Int16 -> Location.local slot [ dw_OP_lit16; dw_OP_shra; dw_OP_stack_value ]
-  | Prim (Word16|Nat16) -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
+  | Prim Nat16 -> Location.local slot [ dw_OP_lit16; dw_OP_shr; dw_OP_stack_value ]
   | Prim Int32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
                                         dw_OP_lit1; dw_OP_shra; dw_OP_skip; 3; 0;
                                         dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-  | Prim (Word32|Nat32) -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
+  | Prim Nat32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
                                                  dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
                                                  dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
   (* FIXME: for Int64|Word64|Nat64|Nat|Int the heap check is ignored for now *)
   | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
-  | Prim (Word64|Nat64) -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
+  | Prim Nat64 -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
   | Prim (Nat|Int) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
 
   | Tup _ -> Location.local slot []
@@ -429,8 +429,8 @@ let tag_open : dw_TAG -> die list =
   | Compile_unit (dir, file) ->
     let base_types = (* these are emitted for inspectionability, now *)
       List.concat_map prim_type
-        [ Bool; Char; Text; Word8; Nat8; Int8; Word16; Nat16
-        ; Int16; Word32; Nat32; Int32; Word64; Nat64; Int64] in
+        [ Bool; Char; Text; Nat8; Int8; Nat16
+        ; Int16; Nat32; Int32; Nat64; Int64] in
     let builtin_types =
       type_ Any @
       prim_type Nat @

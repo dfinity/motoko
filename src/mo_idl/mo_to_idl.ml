@@ -58,10 +58,6 @@ let prim p =
   | Int16 -> I.PrimT I.Int16
   | Int32 -> I.PrimT I.Int32
   | Int64 -> I.PrimT I.Int64
-  | Word8 -> I.PrimT I.Nat8
-  | Word16 -> I.PrimT I.Nat16
-  | Word32 -> I.PrimT I.Nat32
-  | Word64 -> I.PrimT I.Nat64
   | Float -> I.PrimT I.Float64
   | Char -> I.PrimT I.Nat32
   | Text -> I.PrimT I.Text

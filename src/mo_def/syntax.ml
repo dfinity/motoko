@@ -80,10 +80,6 @@ type lit =
   | Int16Lit of Value.Int_16.t
   | Int32Lit of Value.Int_32.t
   | Int64Lit of Value.Int_64.t
-  | Word8Lit of Value.Word8.t
-  | Word16Lit of Value.Word16.t
-  | Word32Lit of Value.Word32.t
-  | Word64Lit of Value.Word64.t
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
@@ -258,10 +254,6 @@ let string_of_lit = function
   | Nat16Lit n    -> Value.Nat16.to_pretty_string n
   | Nat32Lit n    -> Value.Nat32.to_pretty_string n
   | Nat64Lit n    -> Value.Nat64.to_pretty_string n
-  | Word8Lit n    -> Value.Word8.to_pretty_string n
-  | Word16Lit n   -> Value.Word16.to_pretty_string n
-  | Word32Lit n   -> Value.Word32.to_pretty_string n
-  | Word64Lit n   -> Value.Word64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t

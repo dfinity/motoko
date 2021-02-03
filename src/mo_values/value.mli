@@ -4,7 +4,7 @@ open Mo_types
 
 module type NumType =
 sig
-  type t (* = Big_int.big_int *)
+  type t
   val signed : bool
   val zero : t
   val abs : t -> t
@@ -37,6 +37,10 @@ sig
   include NumType
 
   val not : t -> t
+  val popcnt : t -> t
+  val clz : t -> t
+  val ctz : t -> t
+
   val and_ : t -> t -> t
   val or_ : t -> t -> t
   val xor : t -> t -> t
@@ -49,6 +53,7 @@ sig
   val wrapping_add : t -> t -> t
   val wrapping_sub : t -> t -> t
   val wrapping_mul : t -> t -> t
+  val wrapping_div : t -> t -> t
   val wrapping_pow : t -> t -> t
 end
 
@@ -104,12 +109,6 @@ and value =
   | Nat16 of Nat16.t
   | Nat32 of Nat32.t
   | Nat64 of Nat64.t
-  (*
-  | Word8 of Word8.t
-  | Word16 of Word16.t
-  | Word32 of Word32.t
-  | Word64 of Word64.t
-  *)
   | Float of Float.t
   | Char of unicode
   | Text of string
@@ -160,12 +159,6 @@ val as_nat8 : value -> Nat8.t
 val as_nat16 : value -> Nat16.t
 val as_nat32 : value -> Nat32.t
 val as_nat64 : value -> Nat64.t
-(*
-val as_word8 : value -> Word8.t
-val as_word16 : value -> Word16.t
-val as_word32 : value -> Word32.t
-val as_word64 : value -> Word64.t
-*)
 val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string

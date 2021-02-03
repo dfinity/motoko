@@ -140,7 +140,6 @@ rule token mode = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "<<" { SHLOP }
-  | "+>>" { SSHROP }
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }
   | "#" { HASH }
@@ -161,8 +160,7 @@ rule token mode = parse
   | "|=" { ORASSIGN }
   | "^=" { XORASSIGN }
   | "<<=" { SHLASSIGN }
-  | ">>=" { USHRASSIGN }
-  | "+>>=" { SSHRASSIGN }
+  | ">>=" { SHRASSIGN }
   | "<<>=" { ROTLASSIGN }
   | "<>>=" { ROTRASSIGN }
   | "#=" { CATASSIGN }

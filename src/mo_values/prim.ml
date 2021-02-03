@@ -3,7 +3,9 @@ open Mo_types
 
 open Value
 
+(*
 let range_violation () = raise (Invalid_argument "numeric overflow")
+*)
 
 let num_conv_prim t1 t2 =
   let as_big_int = function
@@ -108,38 +110,54 @@ let prim =
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. popcnt w)
-        | Word16 w -> Word16 (Word16.popcnt w)
-        | Word32 w -> Word32 (Word32.popcnt w)
-        | Word64 w -> Word64 (Word64.popcnt w)
+        | Nat8  w -> Nat8  (Nat8. popcnt w)
+        | Nat16 w -> Nat16 (Nat16.popcnt w)
+        | Nat32 w -> Nat32 (Nat32.popcnt w)
+        | Nat64 w -> Nat64 (Nat64.popcnt w)
+        | Int8  w -> Int8  (Int_8. popcnt w)
+        | Int16 w -> Int16 (Int_16.popcnt w)
+        | Int32 w -> Int32 (Int_32.popcnt w)
+        | Int64 w -> Int64 (Int_64.popcnt w)
         | _ -> failwith "popcnt")
 
   | "clz8" | "clz16" | "clz32" | "clz64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. clz w)
-        | Word16 w -> Word16 (Word16.clz w)
-        | Word32 w -> Word32 (Word32.clz w)
-        | Word64 w -> Word64 (Word64.clz w)
+        | Nat8  w -> Nat8  (Nat8. clz w)
+        | Nat16 w -> Nat16 (Nat16.clz w)
+        | Nat32 w -> Nat32 (Nat32.clz w)
+        | Nat64 w -> Nat64 (Nat64.clz w)
+        | Int8  w -> Int8  (Int_8. clz w)
+        | Int16 w -> Int16 (Int_16.clz w)
+        | Int32 w -> Int32 (Int_32.clz w)
+        | Int64 w -> Int64 (Int_64.clz w)
         | _ -> failwith "clz")
 
   | "ctz8" | "ctz16" | "ctz32" | "ctz64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. ctz w)
-        | Word16 w -> Word16 (Word16.ctz w)
-        | Word32 w -> Word32 (Word32.ctz w)
-        | Word64 w -> Word64 (Word64.ctz w)
+        | Nat8  w -> Nat8  (Nat8. ctz w)
+        | Nat16 w -> Nat16 (Nat16.ctz w)
+        | Nat32 w -> Nat32 (Nat32.ctz w)
+        | Nat64 w -> Nat64 (Nat64.ctz w)
+        | Int8  w -> Int8  (Int_8. ctz w)
+        | Int16 w -> Int16 (Int_16.ctz w)
+        | Int32 w -> Int32 (Int_32.ctz w)
+        | Int64 w -> Int64 (Int_64.ctz w)
         | _ -> failwith "ctz")
 
   | "btst8" | "btst16" | "btst32" | "btst64" ->
      fun _ v k ->
      let w, a = as_pair v
      in k (match w with
-           | Word8  y -> Word8  Word8. (and_ y (shl (of_int_u 1) (as_word8  a)))
-           | Word16 y -> Word16 Word16.(and_ y (shl (of_int_u 1) (as_word16 a)))
-           | Word32 y -> Word32 Word32.(and_ y (shl 1l (as_word32 a)))
-           | Word64 y -> Word64 Word64.(and_ y (shl 1L (as_word64 a)))
+           | Nat8  y -> Nat8  Nat8. (and_ y (shl (of_int 1) (as_nat8  a)))
+           | Nat16 y -> Nat16 Nat16.(and_ y (shl (of_int 1) (as_nat16 a)))
+           | Nat32 y -> Nat32 Nat32.(and_ y (shl (of_int 1) (as_nat32 a)))
+           | Nat64 y -> Nat64 Nat64.(and_ y (shl (of_int 1) (as_nat64 a)))
+           | Int8  y -> Int8  Int_8. (and_ y (shl (of_int 1) (as_int8  a)))
+           | Int16 y -> Int16 Int_16.(and_ y (shl (of_int 1) (as_int16 a)))
+           | Int32 y -> Int32 Int_32.(and_ y (shl (of_int 1) (as_int32 a)))
+           | Int64 y -> Int64 Int_64.(and_ y (shl (of_int 1) (as_int64 a)))
            | _ -> failwith "btst")
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
@@ -152,16 +170,17 @@ let prim =
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Value.Nat64.of_int 42))
-  | "idlHash" -> fun _ v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
+  | "idlHash" -> fun _ v k -> let s = as_text v in k (Nat32 (Nat32.of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))
   | "crc32Hash" -> fun _ v k -> let s = as_blob v in
-    k (Word32 Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)))
+    let i = Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)) in
+    k (Nat32 (Nat32.of_big_int (Big_int.big_int_of_int32 i)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
   | "blob_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_blob v) in
-    let valuation b = Word8 (Word8.of_int_u (Char.code b)) in
+    let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
     k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" | "text_iter_done" -> fun _ v k ->
     let i = Value.as_iter v in

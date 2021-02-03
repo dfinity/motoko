@@ -27,7 +27,6 @@ type binop =
   | WrappingSubOp
   | WrappingMulOp
   | WrappingDivOp
-  | WrappingModOp
   | WrappingPowOp
   | CatOp                                       (* concatenation *)
 
@@ -116,6 +115,7 @@ let binop op t =
     | PowOp -> num_binop Nat.pow Nat.pow (Nat8.pow, Nat16.pow, Nat32.pow, Nat64.pow, Int_8.pow, Int_16.pow, Int_32.pow, Int_64.pow) Float.pow p
     | AndOp -> word_binop (Nat8.and_, Nat16.and_, Nat32.and_, Nat64.and_, Int_8.and_, Int_16.and_, Int_32.and_, Int_64.and_) p
     | OrOp -> word_binop (Nat8.or_, Nat16.or_, Nat32.or_, Nat64.or_, Int_8.or_, Int_16.or_, Int_32.or_, Int_64.or_) p
+    | XorOp -> word_binop (Nat8.xor, Nat16.xor, Nat32.xor, Nat64.xor, Int_8.xor, Int_16.xor, Int_32.xor, Int_64.xor) p
     | ShLOp -> word_binop (Nat8.shl, Nat16.shl, Nat32.shl, Nat64.shl, Int_8.shl, Int_16.shl, Int_32.shl, Int_64.shl) p
     | ShROp -> word_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr) p
     | RotLOp -> word_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl) p
@@ -124,6 +124,7 @@ let binop op t =
     | WrappingAddOp -> word_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
     | WrappingSubOp -> word_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
     | WrappingMulOp -> word_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
+    | WrappingDivOp -> word_binop (Nat8.wrapping_div, Nat16.wrapping_div, Nat32.wrapping_div, Nat64.wrapping_div, Int_8.wrapping_div, Int_16.wrapping_div, Int_32.wrapping_div, Int_64.wrapping_div) p
     | WrappingPowOp -> word_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
     )
   | T.Non -> impossible

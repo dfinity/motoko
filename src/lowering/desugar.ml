@@ -435,7 +435,7 @@ and blob_dotE proj e =
     callE (varE f) [] e in
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
-    | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
+    | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Nat8)]
     |  _ -> assert false
 
 and text_dotE proj e =
@@ -566,10 +566,6 @@ and lit l = match l with
   | S.Int16Lit x -> I.Int16Lit x
   | S.Int32Lit x -> I.Int32Lit x
   | S.Int64Lit x -> I.Int64Lit x
-  | S.Word8Lit x -> I.Word8Lit x
-  | S.Word16Lit x -> I.Word16Lit x
-  | S.Word32Lit x -> I.Word32Lit x
-  | S.Word64Lit x -> I.Word64Lit x
   | S.FloatLit x -> I.FloatLit x
   | S.CharLit x -> I.CharLit x
   | S.TextLit x -> I.TextLit x

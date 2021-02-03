@@ -26,7 +26,6 @@ type binop =
   | WrappingSubOp
   | WrappingMulOp
   | WrappingDivOp
-  | WrappingModOp
   | WrappingPowOp
   | CatOp                                       (* concatenation *)
 

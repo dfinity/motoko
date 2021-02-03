@@ -70,7 +70,6 @@ type token =
   | OROP
   | XOROP
   | SHLOP
-  | SSHROP
   | ROTLOP
   | ROTROP
   | EQOP
@@ -92,8 +91,7 @@ type token =
   | ORASSIGN
   | XORASSIGN
   | SHLASSIGN
-  | USHRASSIGN
-  | SSHRASSIGN
+  | SHRASSIGN
   | ROTLASSIGN
   | ROTRASSIGN
   | NULL
@@ -182,7 +180,6 @@ let to_parser_token :
   | OROP -> Ok Parser.OROP
   | XOROP -> Ok Parser.XOROP
   | SHLOP -> Ok Parser.SHLOP
-  | SSHROP -> Ok Parser.SSHROP
   | ROTLOP -> Ok Parser.ROTLOP
   | ROTROP -> Ok Parser.ROTROP
   | EQOP -> Ok Parser.EQOP
@@ -204,8 +201,7 @@ let to_parser_token :
   | ORASSIGN -> Ok Parser.ORASSIGN
   | XORASSIGN -> Ok Parser.XORASSIGN
   | SHLASSIGN -> Ok Parser.SHLASSIGN
-  | USHRASSIGN -> Ok Parser.USHRASSIGN
-  | SSHRASSIGN -> Ok Parser.SSHRASSIGN
+  | SHRASSIGN -> Ok Parser.SHRASSIGN
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
@@ -294,8 +290,7 @@ let string_of_parser_token = function
   | Parser.OROP -> "OROP"
   | Parser.XOROP -> "XOROP"
   | Parser.SHLOP -> "SHLOP"
-  | Parser.USHROP -> "USHROP"
-  | Parser.SSHROP -> "SSHROP"
+  | Parser.SHROP -> "SHROP"
   | Parser.ROTLOP -> "ROTLOP"
   | Parser.ROTROP -> "ROTROP"
   | Parser.EQOP -> "EQOP"
@@ -319,8 +314,7 @@ let string_of_parser_token = function
   | Parser.ORASSIGN -> "ORASSIGN"
   | Parser.XORASSIGN -> "XORASSIGN"
   | Parser.SHLASSIGN -> "SHLASSIGN"
-  | Parser.USHRASSIGN -> "USHRASSIGN"
-  | Parser.SSHRASSIGN -> "SSHRASSIGN"
+  | Parser.SHRASSIGN -> "SHRASSIGN"
   | Parser.ROTLASSIGN -> "ROTLASSIGN"
   | Parser.ROTRASSIGN -> "ROTRASSIGN"
   | Parser.NULL -> "NULL"
