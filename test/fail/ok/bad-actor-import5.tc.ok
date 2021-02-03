@@ -1,0 +1,1 @@
+bad-actor-import5.mo:2.1-2.32: import error [M0011], canister alias "foo" not defined

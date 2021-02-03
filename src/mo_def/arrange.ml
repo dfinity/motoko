@@ -20,7 +20,8 @@ let rec exp e = match e.it with
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+  | ObjE efs            -> "ObjE"      $$ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
@@ -158,8 +159,11 @@ and typ_tag (tt : typ_tag)
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
+and dec_field (df : dec_field)
+  = "DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]
+
 and exp_field (ef : exp_field)
-  = "Field" $$ [dec ef.it.dec; vis ef.it.vis; stab ef.it.stab]
+  = "ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp]
 
 and operator_type t = Atom (Type.string_of_typ t)
 
@@ -186,11 +190,11 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (sp, x, tp, p, rt, s, i', efs) ->
+  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
     "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
       obj_sort s; id i'
-    ] @ List.map exp_field efs
+    ] @ List.map dec_field dfs
 
 and prog prog = "Prog" $$ List.map dec prog.it

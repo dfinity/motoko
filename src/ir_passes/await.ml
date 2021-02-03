@@ -180,7 +180,7 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
       (* TBR: optimization - no need to name the last trivial argument *)
-      k -@- naryE (List.rev (e1 :: vs))
+      k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
       match eff e1 with
       | T.Triv ->
