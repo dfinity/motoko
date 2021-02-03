@@ -6280,9 +6280,10 @@ let compile_binop env t op =
   | Type.(Prim Nat64),                        MulOp ->
     compile_Nat64_kernel env "mul" BigNum.compile_mul
       (mulNat64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Mul))))
-  (* TODO: Check what this did on minIntN/-1 on nat64 before *)
-  | Type.(Prim (Nat64|Int64)),                DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.(Prim (Nat64|Int64)) ,               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim Nat64),                        DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.(Prim Nat64) ,                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim Int64),                        DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
+  | Type.(Prim Int64) ,                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
   | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
   | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
   | Type.(Prim (Nat64|Int64)),                WrappingSubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))

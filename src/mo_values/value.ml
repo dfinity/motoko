@@ -47,10 +47,10 @@ struct
   let to_hex_string = Printf.sprintf "%Lx"
   let of_big_int i =
     let open Big_int in
-    int64_of_big_int (
-      sub_big_int (mod_big_int i (power_int_positive_int 2 64))
-                  (power_int_positive_int 2 63)
-    )
+    let i = mod_big_int i (power_int_positive_int 2 64) in
+    if lt_big_int i (power_int_positive_int 2 63)
+    then int64_of_big_int i
+    else int64_of_big_int (sub_big_int i (power_int_positive_int 2 64))
   let to_big_int signed i =
     let open Big_int in
     if signed

@@ -595,7 +595,7 @@ and check_inst_bounds env tbs inst at =
 (* Literals *)
 
 let check_lit_val env t of_string at s =
-  try of_string s with _ ->
+  try of_string s with Invalid_argument _ ->
     error env at "M0048" "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
