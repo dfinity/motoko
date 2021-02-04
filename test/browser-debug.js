@@ -401,12 +401,9 @@ let bigInt28 = BigInt(28);
 let mask = 2**28-1;
 function decodeBIGINT(view, p) {
   let size = getUint32(view, p + 4);
-  let _alloc = getUint32(view, p + 8); //?
   let sign = getUint32(view, p + 12);
   var a = BigInt(0);
-  let data_ptr = getUint32(view, p + 16);
-  // if skewed, unskew and extract payload past header for compacting GC
-  let q =  (data_ptr & 1 === 1) ? (data_ptr + 1 + 8) : data_ptr
+  let q = p + 20;
   for(var r = q + (4 * (size-1)); r >= q; r -= 4) {
     a = a << bigInt28;
     a += BigInt(getUint32(view, r) & mask );
