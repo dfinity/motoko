@@ -318,7 +318,7 @@ function decodeVARIANT(view, p) {
   m[hash] = decode(view, getUint32(view, p+8));
   return m;
 }
-// stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView 
+// stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
 const BigInt = window.BigInt, bigThirtyTwo = BigInt(32), bigZero = BigInt(0);
 function getUint64BigInt(dataview, byteOffset, littleEndian) {
   // split 64-bit number into two 32-bit (4-byte) parts
@@ -425,16 +425,16 @@ function decode(view, v) {
     //    case 4 : unused?
     case 5 : return decodeBITS64(view, p);
     case 6 : return decodeMUTBOX(view, p);
-    case 7 : return "CLOSURE";
+    case 7 : return "<CLOSURE>";
     case 8 : return decodeSOME(view, p);
     case 9 : return decodeVARIANT(view, p);
     case 10 : return decodeBLOB(view, p);
-    case 11 : return "FWD_PTR";
+    case 11 : return "<FWD_PTR>";
     case 12 : return decodeBITS32(view, p);
     case 13 : return decodeBIGINT(view, p);
     case 14 : return decodeCONCAT(view, p);
     case 15 : return decodeNULL(view, p);
-    default : return "UNKOWN";
+    default : return "<UNKNOWN>";
   };
 }
 
