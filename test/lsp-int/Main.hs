@@ -255,7 +255,7 @@ main = do
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           [diag] <- waitForActualDiagnostics
-          liftIO (diag^.message `shouldBe` "operator not defined for operand types\n  Text\nand\n  Nat")
+          liftIO (diag^.message `shouldBe` "operator is not defined for operand types\n  Text\nand\n  Nat")
 
         log "Completions from package paths"
         withDoc "app.mo" \doc -> do

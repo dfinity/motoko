@@ -1,17 +1,16 @@
 use crate::alloc;
+use crate::closure_table::closure_table_loc;
+use crate::mem::{memcpy_bytes, memcpy_words};
 use crate::rts_trap_with;
 use crate::types::*;
 
 extern "C" {
     /// Get __heap_base. Provided by the code generator (src/codegen/compile.ml).
-    fn get_heap_base() -> u32;
-
-    /// Skewed pointer to a skewed pointer to an array. See closure-table.c for details.
-    fn closure_table_loc() -> SkewedPtr;
+    pub(crate) fn get_heap_base() -> u32;
 
     /// Get pointer to the static memory with an array to the static roots. Provided by the
     /// generated code.
-    fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
 /// Maximum live data retained in a GC.
@@ -59,73 +58,6 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
 }
 
-/// Returns object size in words
-unsafe fn object_size(obj: usize) -> Words<u32> {
-    let obj = obj as *const Obj;
-    match (*obj).tag {
-        TAG_OBJECT => {
-            let object = obj as *const Object;
-            let size = (*object).size;
-            size_of::<Object>() + Words(size)
-        }
-
-        TAG_OBJ_IND => size_of::<ObjInd>(),
-
-        TAG_ARRAY => {
-            let array = obj as *const Array;
-            let size = (*array).len;
-            size_of::<Array>() + Words(size)
-        }
-
-        TAG_BITS64 => Words(3),
-
-        TAG_MUTBOX => size_of::<MutBox>(),
-
-        TAG_CLOSURE => {
-            let closure = obj as *const Closure;
-            let size = (*closure).size;
-            size_of::<Closure>() + Words(size)
-        }
-
-        TAG_SOME => size_of::<Some>(),
-
-        TAG_VARIANT => size_of::<Variant>(),
-
-        TAG_BLOB => {
-            let blob = obj as *const Blob;
-            size_of::<Blob>() + (*blob).len.to_words()
-        }
-
-        TAG_FWD_PTR => {
-            rts_trap_with("object_size: forwarding pointer\0".as_ptr());
-        }
-
-        TAG_BITS32 => Words(2),
-
-        TAG_BIGINT => size_of::<BigInt>(),
-
-        TAG_CONCAT => size_of::<Concat>(),
-
-        TAG_NULL => size_of::<Null>(),
-
-        _ => {
-            rts_trap_with("object_size: invalid object tag\0".as_ptr());
-        }
-    }
-}
-
-fn is_tagged_scalar(p: SkewedPtr) -> bool {
-    p.0 & 0b1 == 0
-}
-
-unsafe fn memcpy_words(to: usize, from: usize, n: Words<u32>) {
-    libc::memcpy(to as *mut _, from as *const _, n.to_bytes().0 as usize);
-}
-
-unsafe fn memcpy_bytes(to: usize, from: usize, n: Bytes<u32>) {
-    libc::memcpy(to as *mut _, from as *const _, n.0 as usize);
-}
-
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
 /// already evacuated end_to_space is not changed.
 ///
@@ -156,7 +88,7 @@ unsafe fn evac(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
-    if is_tagged_scalar(*ptr_loc) {
+    if (*ptr_loc).is_tagged_scalar() {
         return;
     }
 
@@ -168,7 +100,7 @@ unsafe fn evac(
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
     // Update the field if the object is already evacauted
-    if (*obj).tag == TAG_FWD_PTR {
+    if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;
@@ -198,49 +130,15 @@ unsafe fn evac(
     *end_to_space += obj_size_bytes.0 as usize
 }
 
-/// Evacuate a blob payload pointed by a bigint. bigints are special in that a bigint's first field
-/// is an internal pointer: it points to the _payload_ of a blob object, instead of skewedly pointing to the object start
-///
-/// - `ptr_loc`: Address of a `data_ptr` field of a BigInt (see types.rs). Points to payload of a
-///   blob. See types.rs for blob layout.
-unsafe fn evac_bigint_blob(
-    begin_from_space: usize,
-    begin_to_space: usize,
-    end_to_space: &mut usize,
-    ptr_loc: *mut usize, // address of field with a pointer to a blob payload
-) {
-    let blob_payload_addr = *ptr_loc;
-
-    // Get blob object from the payload
-    let mut blob_obj_addr = skew(blob_payload_addr - size_of::<Blob>().to_bytes().0 as usize);
-    // Create a temporary field to the blob object, to be passed to `evac`.
-    let blob_obj_addr_field = &mut blob_obj_addr;
-    let blob_obj_addr_field_ptr = blob_obj_addr_field as *mut _;
-
-    evac(
-        begin_from_space,
-        begin_to_space,
-        end_to_space,
-        blob_obj_addr_field_ptr as usize,
-    );
-
-    // blob_obj_addr_field now has the new location of the blob, get the payload address
-    let blob_new_addr = (*blob_obj_addr_field).unskew();
-    let blob_new_payload_addr = blob_new_addr + 2 * (WORD_SIZE as usize);
-
-    // Update evacuated field
-    *ptr_loc = blob_new_payload_addr; // not skewed!
-}
-
 unsafe fn scav(
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
     obj: usize,
 ) {
-    let obj = obj as *const Obj;
+    let obj = obj as *mut Obj;
 
-    match (*obj).tag {
+    match obj.tag() {
         TAG_OBJECT => {
             let obj = obj as *const Object;
             let obj_payload = obj.payload_addr();
@@ -255,7 +153,7 @@ unsafe fn scav(
         }
 
         TAG_ARRAY => {
-            let array = obj as *const Array;
+            let array = obj as *mut Array;
             let array_payload = array.payload_addr();
             for i in 0..(*array).len as isize {
                 evac(
@@ -298,18 +196,6 @@ unsafe fn scav(
             evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
-        TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
-            let data_ptr_addr = (&mut (*bigint).data_ptr) as *mut _;
-
-            evac_bigint_blob(
-                begin_from_space,
-                begin_to_space,
-                end_to_space,
-                data_ptr_addr,
-            );
-        }
-
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = ((&mut (*concat).text1) as *mut _) as usize;
@@ -324,17 +210,17 @@ unsafe fn scav(
             evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't include pointers, skip
         }
 
         TAG_NULL => {
-            rts_trap_with("encountered NULL object tag in dynamic object in scav\0".as_ptr());
+            rts_trap_with("encountered NULL object tag in dynamic object in scav");
         }
 
         TAG_FWD_PTR | _ => {
             // Any other tag is a bug
-            rts_trap_with("invalid object tag in scav\0".as_ptr());
+            rts_trap_with("invalid object tag in scav");
         }
     }
 }
@@ -345,7 +231,7 @@ unsafe fn evac_static_roots(
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
-    roots: *const Array,
+    roots: *mut Array,
 ) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
@@ -363,7 +249,7 @@ unsafe extern "C" fn collect() {
     let begin_to_space = end_from_space;
     let mut end_to_space = begin_to_space;
 
-    let static_roots = get_static_roots().unskew() as *const Array;
+    let static_roots = get_static_roots().as_array();
 
     // Evacuate roots
     evac_static_roots(
@@ -377,7 +263,7 @@ unsafe extern "C" fn collect() {
         begin_from_space,
         begin_to_space,
         &mut end_to_space,
-        closure_table_loc().unskew(),
+        closure_table_loc() as usize,
     );
 
     // Scavenge to-space

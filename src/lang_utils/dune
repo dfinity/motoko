@@ -2,4 +2,7 @@
   (name lang_utils)
   (libraries lib mo_config)
   (wrapped false)
+
+  (preprocess (pps ppx_blob))
+  (preprocessor_deps (glob_files error_codes/*.adoc))
 )
