@@ -36,16 +36,6 @@ module {
   /// Returns `t.size()`, the number of characters in `t` (and `t.chars()`).
   public func size(t : Text) : Nat { t.size(); };
 
-  /// Returns a hash obtained by the `xor`-ing the (`Word32`) values of all characters in `t`.
-  /// WARNING: this is a poor hash function and will be replaced.
-  public func hash(t : Text) : Hash.Hash {
-    var x = 0 : Word32;
-    for (c in t.chars()) {
-      x := x ^ Prim.charToWord32(c);
-    };
-    return x
-  };
-
   /// Returns the concatenation of `t1` and `t2`, `t1 # t2`.
   public func concat(t1 : Text, t2 : Text) : Text =
     t1 # t2;

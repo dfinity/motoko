@@ -53,30 +53,6 @@ module {
     if (x < y) { y } else { x };
   };
 
-  // TODO: (re)move me?
-  public func hash(i : Int) : Hash.Hash {
-    let j = Prim.intToWord32(i);
-    Hash.hashWord8(
-      [j & (255 << 0),
-       j & (255 << 8),
-       j & (255 << 16),
-       j & (255 << 24)
-      ]);
-  };
-
-  // TODO: (re)move me?
-  /// WARNING: May go away (?)
-  public func hashAcc(h1 : Hash.Hash, i : Int) : Hash.Hash {
-    let j = Prim.intToWord32(i);
-    Hash.hashWord8(
-      [h1,
-       j & (255 << 0),
-       j & (255 << 8),
-       j & (255 << 16),
-       j & (255 << 24)
-      ]);
-  };
-
   /// Returns `x == y`.
   public func equal(x : Int, y : Int) : Bool { x == y };
 
