@@ -924,12 +924,10 @@ bitWidth p = show (natVal p)
 
 instance KnownNat n => Annot (BitLimited n Natural) where
   annot _ s = "((" <> s <> ") : Nat" <> bitWidth (Proxy @n) <> ")"
+  sizeSuffix _ = (<> bitWidth (Proxy @n))
 
 instance KnownNat n => Annot (BitLimited n Integer) where
   annot _ s = "((" <> s <> ") : Int" <> bitWidth (Proxy @n) <> ")"
-
-instance KnownNat n => Annot (BitLimited n Word) where
-  annot _ s = "((" <> s <> ") : Word" <> bitWidth (Proxy @n) <> ")"
   sizeSuffix _ = (<> bitWidth (Proxy @n))
 
 instance Annot Bool where
