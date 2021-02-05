@@ -3,10 +3,6 @@ open Mo_types
 
 open Value
 
-(*
-let range_violation () = raise (Invalid_argument "numeric overflow")
-*)
-
 let as_big_int = function
   | Type.Nat -> fun v -> Nat.to_big_int (as_int v)
   | Type.Int -> fun v -> Int.to_big_int (as_int v)
