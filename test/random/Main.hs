@@ -51,14 +51,14 @@ arithProps = testGroup "Arithmetic/logic"
   ]
 
 conversionProps = testGroup "Numeric conversions"
-  [ QC.testProperty "roundtrip Word64 Nat Word64 " $ prop_roundtripWNW @64
-  , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
-  , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
-  , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
-  , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
-  , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
-  , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
-  , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
+  [ QC.testProperty "roundtrip Nat64 Nat Nat64 " $ prop_roundtripWNW @64
+  , QC.testProperty "roundtrip Nat32 Nat Nat32 " $ prop_roundtripWNW @32
+  , QC.testProperty "roundtrip Nat16 Nat Nat16 " $ prop_roundtripWNW @16
+  , QC.testProperty "roundtrip Nat8 Nat Nat8 " $ prop_roundtripWNW @8
+  , QC.testProperty "modulo Nat Nat64 Nat" $ prop_moduloNWN @64
+  , QC.testProperty "modulo Nat Nat32 Nat" $ prop_moduloNWN @32
+  , QC.testProperty "modulo Nat Nat16 Nat" $ prop_moduloNWN @16
+  , QC.testProperty "modulo Nat Nat8 Nat" $ prop_moduloNWN @8
   ]
 
 utf8Props = testGroup "UTF-8 coding"
@@ -250,31 +250,31 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   assertSuccessNoFuzz res
 
 
-newtype ConversionTest n = ConversionTest (MOTerm (BitLimited n Word)) deriving Show
+newtype ConversionTest n = ConversionTest (MOTerm (BitLimited n Natural)) deriving Show
 
 instance WordLike n => Arbitrary (ConversionTest n) where
-  arbitrary = ConversionTest . ConvertNatToWord . ConvertWordToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited n Word)))
+  arbitrary = ConversionTest . ConvertNatToNatN . ConvertNatNToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited n Natural)))
 
 prop_roundtripWNW :: ConversionTest n -> Property
 prop_roundtripWNW (ConversionTest term) =
     case term of
-      ConvertNatToWord (ConvertWordToNat n) ->
+      ConvertNatToNatN (ConvertNatNToNat n) ->
           case sameNat (bitsIn term) (bitsIn n) of
             Just Refl -> let testCase = "assert(" <> unparseMO (term `Equals` n) <> ")" in
                          monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
-  where bitsIn :: KnownNat n => MOTerm (BitLimited n Word) -> Proxy n
+  where bitsIn :: KnownNat n => MOTerm (BitLimited n Natural) -> Proxy n
         bitsIn _ = Proxy
 
 
-newtype ModuloTest (n :: Nat) = ModuloTest (MOTerm (BitLimited n Word)) deriving Show
+newtype ModuloTest (n :: Nat) = ModuloTest (MOTerm (BitLimited n Natural)) deriving Show
 
 instance WordLike n => Arbitrary (ModuloTest n) where
-  arbitrary = ModuloTest . ConvertNatToWord @n . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
+  arbitrary = ModuloTest . ConvertNatToNatN @n . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
 
 prop_moduloNWN :: forall n . KnownNat n => ModuloTest n -> Property
-prop_moduloNWN (ModuloTest term@(ConvertNatToWord (Neuralgic m))) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
+prop_moduloNWN (ModuloTest term@(ConvertNatToNatN (Neuralgic m))) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
   where m' = evalN m .&. maskFor term
-        testCase = "assert(" <> unparseMO (ConvertWordToNat term)
+        testCase = "assert(" <> unparseMO (ConvertNatNToNat term)
                 <> " == " <> show m' <> ")"
 
 data Matching where
@@ -288,7 +288,7 @@ instance Arbitrary Matching where
                     , realise Matching <$> gen @(Bool, Bool)
                     , realise Matching <$> gen @(Bool, Integer)
                     , realise Matching <$> gen @((Bool, Natural), Integer)
-                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Word)
+                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Natural)
                     , realise Matching <$> gen @(Maybe Integer)
                     ]
     where gen :: (Arbitrary (MOTerm a), Evaluatable a) => Gen (MOTerm a, Maybe a)
@@ -367,10 +367,6 @@ instance KnownNat n => MOValue (BitLimited n Integer) where
   unparseType _ = "Int" <> bitWidth (Proxy @n)
   unparse (IntN a) = annot (Five @(BitLimited n Integer)) (show a)
 
-instance KnownNat n => MOValue (BitLimited n Word) where
-  unparseType _ = "Word" <> bitWidth (Proxy @n)
-  unparse (WordN a) = annot (Five @(BitLimited n Word)) (show a)
-
 instance (MOValue a, MOValue b) => MOValue (a, b) where
   unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
   unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
@@ -443,15 +439,6 @@ instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Integer)) where
           menu 64 = [Around0, AroundNeg 9, AroundNeg 27, AroundNeg 51, AroundNeg 63, AroundPos 10, AroundPos 28, AroundPos 55, AroundPos 63]
 
 
-instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Word)) where
-  arbitrary = fmap WordN <$> trapWord bits `guardedFrom` menu bits
-    where bits = natVal (Proxy @n)
-          menu 8 = [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 8, AroundPos 3, AroundPos 5, AroundPos 8]
-          menu 16 = [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 16, AroundPos 6, AroundPos 13, AroundPos 16]
-          menu 32 = [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 23, AroundNeg 32, AroundPos 6, AroundPos 15, AroundPos 26, AroundPos 32]
-          menu 64 = [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
-
-
 data MOTerm :: * -> * where
   -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
@@ -463,10 +450,10 @@ data MOTerm :: * -> * where
   Not :: MOTerm Bool -> MOTerm Bool
   Bool :: Bool -> MOTerm Bool
   -- Bitwise
-  Complement :: MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word)
+  Complement :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
   Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned
-    :: MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word)
-  PopCnt, Clz, Ctz :: MOTerm (BitLimited n Word) -> MOTerm (BitLimited n Word)
+    :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
+  PopCnt, Clz, Ctz :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
   -- Arithmetic
   Pos, Neg, Abs :: MOTerm a -> MOTerm a
   Add, Sub, Mul, Div, Mod, Pow :: MOTerm a -> MOTerm a -> MOTerm a
@@ -480,11 +467,10 @@ data MOTerm :: * -> * where
   IfThenElse :: MOTerm a -> MOTerm a -> MOTerm Bool -> MOTerm a
   -- Conversion
   ConvertNatural :: MOTerm Natural -> MOTerm Integer
-  ConvertNat :: KnownNat n => MOTerm (BitLimited n Natural) -> MOTerm Integer
-  ConvertInt :: KnownNat n => MOTerm (BitLimited n Integer) -> MOTerm Integer
-  ConvertWord :: WordLike n => MOTerm (BitLimited n Word) -> MOTerm Integer
-  ConvertNatToWord :: WordLike n => MOTerm Natural -> MOTerm (BitLimited n Word)
-  ConvertWordToNat :: WordLike n => MOTerm (BitLimited n Word) -> MOTerm Natural
+  ConvertNat :: WordLike n => MOTerm (BitLimited n Natural) -> MOTerm Integer
+  ConvertInt :: WordLike n => MOTerm (BitLimited n Integer) -> MOTerm Integer
+  ConvertNatToNatN :: WordLike n => MOTerm Natural -> MOTerm (BitLimited n Natural)
+  ConvertNatNToNat :: WordLike n => MOTerm (BitLimited n Natural) -> MOTerm Natural
   -- Constructors (intro forms)
   Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => MOTerm a -> MOTerm b -> MOTerm (a, b)
   Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
@@ -523,7 +509,7 @@ subTermPow5 n = (n, resize (n `div` 5)
                                                     ]))
                 : subTerm False n
 
-bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n Word)) => Int -> [(Int, Gen (MOTerm (BitLimited n Word)))]
+bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) => Int -> [(Int, Gen (MOTerm (BitLimited n Natural)))]
 bitwiseTerm n =
     [ (n `div` 5, resize (n `div` 3) $ Or <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ And <$> arbitrary <*> arbitrary)
@@ -555,18 +541,11 @@ instance {-# OVERLAPS #-} Arbitrary (MOTerm Nat8) where
   arbitrary = reasonablyShaped $ subTerm True
 
 
-instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (MOTerm (BitLimited n Integer)) where
+instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
   arbitrary = reasonablyShaped subTermPow5
 
 instance {-# OVERLAPS #-} Arbitrary (MOTerm Int8) where
   arbitrary = reasonablyShaped $ subTerm True
-
-
-instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Word)) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
-
-instance {-# OVERLAPS #-} Arbitrary (MOTerm Word8) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
@@ -599,10 +578,6 @@ instance Arbitrary (MOTerm Integer) where
     , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat16)))
     , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat32)))
     , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat64)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word8)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word16)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word32)))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(MOTerm Word64)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int8)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int16)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int32)))
@@ -668,10 +643,6 @@ instance KnownNat n => Restricted (BitLimited n Integer) where
   exponentiable = if natVal (Proxy @n) <= 8
                   then nonNegativeExponentRestriction
                   else defaultExponentRestriction
-instance KnownNat n => Restricted (BitLimited n Word) where
-  exponentiable = if natVal (Proxy @n) <= 8
-                  then noExponentRestriction
-                  else defaultExponentRestriction
 
 class Ord a => Evaluatable a where
   evaluate :: MOTerm a -> Maybe a
@@ -680,7 +651,6 @@ class Ord a => Evaluatable a where
 data BitLimited (n :: Nat) (a :: *) where
   NatN :: KnownNat n => Natural -> BitLimited n Natural
   IntN :: KnownNat n => Integer -> BitLimited n Integer
-  WordN :: KnownNat n => Natural -> BitLimited n Word
 
 deriving instance Show (BitLimited n a)
 deriving instance Eq (BitLimited n a)
@@ -709,18 +679,22 @@ type family WordTypeForBits a where
   WordTypeForBits 32 = Data.Word.Word32
   WordTypeForBits 64 = Data.Word.Word64
 
+instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat n) => WordView (BitLimited n Natural) where
+  type WordType (BitLimited n Natural) = WordTypeForBits n
+  toWord (NatN n) = fromIntegral n
+  fromWord = NatN . fromIntegral
 
-instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat n) => WordView (BitLimited n Word) where
-  type WordType (BitLimited n Word) = WordTypeForBits n
-  toWord (WordN n) = fromIntegral n
-  fromWord = WordN . fromIntegral
+instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat n) => WordView (BitLimited n Integer) where
+  type WordType (BitLimited n Integer) = WordTypeForBits n
+  toWord (IntN n) = fromIntegral n
+  fromWord = IntN . fromIntegral
 
 type WordLike n = ( Integral (WordTypeForBits n)
                   , FiniteBits (WordTypeForBits n)
                   , KnownNat n
-                  , WordView (BitLimited n Word))
+                  , WordView (BitLimited n Natural))
 
-instance WordLike n => Bits (BitLimited n Word) where
+instance WordLike n => Bits (BitLimited n Natural) where
   (.&.) = lift2 (.&.)
   (.|.) = lift2 (.|.)
   xor = lift2 xor
@@ -734,7 +708,26 @@ instance WordLike n => Bits (BitLimited n Word) where
   bit = fromWord . bit
   popCount = lift1b popCount
 
-instance WordLike n => FiniteBits (BitLimited n Word) where
+instance WordLike n => Bits (BitLimited n Integer) where
+  (.&.) = lift2 (.&.)
+  (.|.) = lift2 (.|.)
+  xor = lift2 xor
+  complement = lift1 complement
+  shift a b = lift1 (`shift` b) a
+  rotate a b = lift1 (`rotate` b) a
+  bitSize = finiteBitSize
+  bitSizeMaybe = pure . finiteBitSize
+  isSigned _ = False
+  testBit a b = lift1b (`testBit` b) a
+  bit = fromWord . bit
+  popCount = lift1b popCount
+
+instance WordLike n => FiniteBits (BitLimited n Natural) where
+  finiteBitSize b = fromIntegral $ natVal (Proxy @n)
+  countLeadingZeros = lift1b countLeadingZeros
+  countTrailingZeros = lift1b countTrailingZeros
+
+instance WordLike n => FiniteBits (BitLimited n Integer) where
   finiteBitSize b = fromIntegral $ natVal (Proxy @n)
   countLeadingZeros = lift1b countLeadingZeros
   countTrailingZeros = lift1b countTrailingZeros
@@ -755,21 +748,16 @@ type Word64 = BitLimited 64 Word
 instance ToBitLimited bits a => Num (BitLimited bits a) where
   NatN m + NatN n = NatN . fromJust $ trapNat (natVal (Proxy @bits)) (toInteger m + toInteger n)
   IntN m + IntN n = IntN . fromJust $ trapInt (natVal (Proxy @bits)) (m + n)
-  WordN m + WordN n = WordN . fromJust $ trapWord (natVal (Proxy @bits)) (toInteger m + toInteger n)
   NatN m - NatN n = NatN . fromJust $ trapNat (natVal (Proxy @bits)) (toInteger m - toInteger n)
   IntN m - IntN n = IntN . fromJust $ trapInt (natVal (Proxy @bits)) (m - n)
-  WordN m - WordN n = WordN . fromJust $ trapWord (natVal (Proxy @bits)) (toInteger m - toInteger n)
   NatN m * NatN n = NatN . fromJust $ trapNat (natVal (Proxy @bits)) (toInteger m * toInteger n)
   IntN m * IntN n = IntN . fromJust $ trapInt (natVal (Proxy @bits)) (m * n)
-  WordN m * WordN n = WordN . fromJust $ trapWord (natVal (Proxy @bits)) (toInteger m * toInteger n)
 
   abs (NatN m) = NatN (abs m)
   abs (IntN m) = IntN . fromJust $ trapInt (natVal (Proxy @bits)) (abs m)
-  abs (WordN m) = WordN (abs m)
 
   signum (NatN m) = NatN (signum m)
   signum (IntN m) = IntN (signum m)
-  signum (WordN m) = WordN (signum m)
 
   fromInteger = toBitLimited . fromInteger
 
@@ -780,15 +768,12 @@ instance KnownNat bits => ToBitLimited bits Natural where
   toBitLimited = NatN @bits . fromJust . trapNat (natVal (Proxy @bits)) . fromIntegral
 instance KnownNat bits => ToBitLimited bits Integer where
   toBitLimited = IntN @bits . fromJust . trapInt (natVal (Proxy @bits))
-instance KnownNat bits => ToBitLimited bits Word where
-  toBitLimited = WordN @bits . fromJust . trapWord (natVal (Proxy @bits)) . fromIntegral
 
 instance ToBitLimited n a => Real (BitLimited n a)
 instance Enum (BitLimited n a)
 instance ToBitLimited n a => Integral (BitLimited n a) where
   toInteger (NatN n) = toInteger n
   toInteger (IntN n) = n
-  toInteger (WordN n) = toInteger n
 
 trapNat :: Integer -> Integer -> Maybe Natural
 trapNat n v = do guard (v >= 0 && v < 2 ^ n); pure (fromIntegral v)
@@ -818,7 +803,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
         _ -> error $ show ab
     where go op a b = do NatN a <- evaluate a; NatN b <- evaluate b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
-instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
+instance WordLike bits => Evaluatable (BitLimited bits Integer) where
   evaluate Five = pure $ IntN 5
   evaluate (Neuralgic n) = IntN <$> trapInt (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
@@ -833,42 +818,24 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evaluate c
                                evaluate $ if c then a else b
-        _ -> error $ show ab
-    where go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
+        a `Or` b -> go (.|.) a b
+        a `And` b -> go (.&.) a b
+        a `Xor` b -> go xor a b
+        a `RotL` b -> go (flip rotateL . fromIntegral) b a
+        a `RotR` b -> go (flip rotateR . fromIntegral) b a
+        a `ShiftL` b -> go (flip shiftL . (`mod` fromIntegral bitcount) . fromIntegral) b a
+        a `ShiftR` b -> go (flip shiftR . (`mod` fromIntegral bitcount) . fromIntegral) b a
 
-instance WordLike bits => Evaluatable (BitLimited bits Word) where
-  evaluate Five = pure $ WordN 5
-  evaluate (Neuralgic n) = WordN <$> trapWord (natVal (Proxy @bits)) (evalN n)
-  evaluate (Complement a) = complement <$> evaluate a
-  evaluate ab =
-      case ab of
-        a `Add` b -> go (+) a b
-        a `Sub` b -> go (-) a b
-        a `Mul` b -> go (*) a b
-        _ `Div` (evaluate -> Just 0) -> Nothing
-        a `Div` b -> go quot a b
-        _ `Mod` (evaluate -> Just 0) -> Nothing
-        a `Mod` b -> go rem a b
-        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
-        IfThenElse a b c -> do c <- evaluate c
-                               evaluate $ if c then a else b
-        a `Or` b -> log (.|.) a b
-        a `And` b -> log (.&.) a b
-        a `Xor` b -> log xor a b
-        a `RotL` b -> log (flip rotateL . fromIntegral) b a
-        a `RotR` b -> log (flip rotateR . fromIntegral) b a
-        a `ShiftL` b -> log (flip shiftL . (`mod` fromIntegral bitcount) . fromIntegral) b a
-        a `ShiftR` b -> log (flip shiftR . (`mod` fromIntegral bitcount) . fromIntegral) b a
-        a `ShiftRSigned` b -> log signedShiftR a b
         PopCnt (evaluate -> a) -> fromIntegral . popCount <$> a
         Clz (evaluate -> a) -> fromIntegral . countLeadingZeros <$> a
         Ctz (evaluate -> a) -> fromIntegral . countTrailingZeros <$> a
-    where log op a b = op <$> evaluate a <*> evaluate b
-          bitcount = natVal (Proxy @bits)
-          signedShiftR a b = fromIntegral $ a' `shiftR` (fromIntegral b `mod` fromIntegral bitcount)
-            where a' = toInteger a - (toInteger (((a `rotateL` 1) .&. 1) `rotateR` 1) `shiftL` 1)
-          go op a b = do WordN a <- evaluate a; WordN b <- evaluate b; WordN <$> trapWord bitcount (toInteger a `op` toInteger b)
+
+        _ -> error $ show ab
+    where
+        bitcount = natVal (Proxy @bits)
+        go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
+
 
 instance Evaluatable Integer where
   evaluate = eval
@@ -885,7 +852,7 @@ instance Evaluatable a => Evaluatable (Maybe a) where
   evaluate Null = pure Nothing
   evaluate (Some a) = Just <$> evaluate a
 
-maskFor :: forall n . KnownNat n => MOTerm (BitLimited n Word) -> Natural
+maskFor :: forall n . KnownNat n => MOTerm (BitLimited n Natural) -> Natural
 maskFor _ = fromIntegral $ 2 ^ natVal (Proxy @n) - 1
 
 
@@ -904,9 +871,8 @@ eval (a `Pow` (eval -> b)) = do b' <- b; exponentiable b'; (^) <$> eval a <*> b
 eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
-eval (ConvertWord t) = fromIntegral <$> evaluate t
-eval c@(ConvertNatToWord t) = fromIntegral . (.&. maskFor c) <$> evaluate t
-eval (ConvertWordToNat t) = fromIntegral <$> evaluate t
+eval c@(ConvertNatToNatN t) = fromIntegral . (.&. maskFor c) <$> evaluate t
+eval (ConvertNatNToNat t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 --eval _ = Nothing
@@ -1028,9 +994,8 @@ unparseMO (Complement a) = "(^ " <> unparseMO a <> ")"
 unparseMO (ConvertNatural a) = "(++++(" <> unparseMO a <> "))"
 unparseMO (ConvertNat a) = unparseNat Proxy a
 unparseMO (ConvertInt a) = unparseInt Proxy a
-unparseMO (ConvertWord a) = unparseWord Proxy a
-unparseMO (ConvertWordToNat a) = sizeSuffix a "(Prim.word" <> "ToNat " <> unparseMO a <> ")"
-unparseMO t@(ConvertNatToWord a) = sizeSuffix t "(Prim.natToWord" <> " " <> unparseMO a <> ")"
+unparseMO (ConvertNatNToNat a) = sizeSuffix a "(Prim.nat" <> "ToNat " <> unparseMO a <> ")"
+unparseMO t@(ConvertNatToNatN a) = sizeSuffix t "(Prim.natToNat" <> " " <> unparseMO a <> ")"
 unparseMO (IfThenElse a b c) = "(if (" <> unparseMO c <> ") " <> unparseMO a <> " else " <> unparseMO b <> ")"
 unparseMO (a `NotEqual` b) = inParens unparseMO "!=" a b
 unparseMO (a `Equals` b) = inParens unparseMO "==" a b
@@ -1055,9 +1020,6 @@ unparseNat p a = "(Prim.nat" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))"
 
 unparseInt :: KnownNat n => Proxy n -> MOTerm (BitLimited n Integer) -> String
 unparseInt p a = "(Prim.int" <> bitWidth p <> "ToInt(" <> unparseMO a <> "))"
-
-unparseWord :: KnownNat n => Proxy n -> MOTerm (BitLimited n Word) -> String
-unparseWord p a = "(Prim.word" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))" -- TODO we want signed too: wordToInt
 
 -- TODOs:
 --   - wordToInt
