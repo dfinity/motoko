@@ -993,7 +993,7 @@ unparseMO (ConvertNatural a) = "(++++(" <> unparseMO a <> "))"
 unparseMO (ConvertNat a) = unparseNat Proxy a
 unparseMO (ConvertInt a) = unparseInt Proxy a
 unparseMO (ConvertNatNToNat a) = sizeSuffix a "(Prim.nat" <> "ToNat " <> unparseMO a <> ")"
-unparseMO t@(ConvertNatToNatN a) = sizeSuffix t "(Prim.natToNat" <> " " <> unparseMO a <> ")"
+unparseMO t@(ConvertNatToNatN a) = sizeSuffix t "(Prim.natToNat" <> "Wrap " <> unparseMO a <> ")"
 unparseMO (IfThenElse a b c) = "(if (" <> unparseMO c <> ") " <> unparseMO a <> " else " <> unparseMO b <> ")"
 unparseMO (a `NotEqual` b) = inParens unparseMO "!=" a b
 unparseMO (a `Equals` b) = inParens unparseMO "==" a b
