@@ -1667,7 +1667,7 @@ module TaggedSmallWord = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Mul))
 
   let compile_word_power env ty =
-    let rec pow () = Func.share_code2 env (prim_fun_name ty "pow")
+    let rec pow () = Func.share_code2 env (prim_fun_name ty "wrapping_pow")
                        (("n", I32Type), ("exp", I32Type)) [I32Type]
                        Wasm.Values.(fun env get_n get_exp ->
         let one = compile_unboxed_const (const_of_type ty 1l) in
@@ -2480,13 +2480,10 @@ module Prim = struct
   let prim_shiftWordNtoSigned env b =
     compile_shrS_const b ^^
     prim_word32toInt env
-  (* TODO, needed? *)
-  (*
   let prim_intToWord32 env = BigNum.truncate_to_word32 env
-  let prim_shiftToWordN env b =
+  let prim_intToWordNShifted env b =
     prim_intToWord32 env ^^
     TaggedSmallWord.shift_leftWordNtoI32 b
-  *)
 end (* Prim *)
 
 module Object = struct
@@ -5946,6 +5943,13 @@ end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
 
+(* wraps a bigint in range [0…2^64-1] into range [-2^63…2^63-1] *)
+let nat64_to_int64 n =
+  let open Big_int in
+  if ge_big_int n (power_int_positive_int 2 63)
+  then sub_big_int n (power_int_positive_int 2 64)
+  else n
+
 let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
@@ -5957,7 +5961,7 @@ let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | Int32Lit n    -> Const.Word32 (Int32.of_int (Value.Int_32.to_int n))
   | Nat32Lit n    -> Const.Word32 (Int32.of_int (Value.Nat32.to_int n))
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
-  | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Nat64.to_big_int n))
+  | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Value.Nat64.to_big_int n)))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
   | NullLit       -> Const.Vanilla (Opt.null_vanilla_lit env)
   | TextLit t
@@ -6024,7 +6028,8 @@ let compile_unop env t op =
      compile_unboxed_const (TaggedSmallWord.mask_of_type ty) ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | _ ->
-    todo "compile_unop" (Arrange_ops.unop op)
+    todo "compile_unop"
+      (Wasm.Sexpr.Node ("BinOp", [ Arrange_ops.unop op ]))
       (SR.Vanilla, SR.Unreachable, E.trap_with env "TODO: compile_unop")
 
 (* Logarithmic helpers for deciding whether we can carry out operations in constant bitwidth *)
@@ -6762,45 +6767,40 @@ and compile_exp (env : E.t) ae exp =
       G.i Return
 
     (* Numeric conversions *)
-    | NumConvPrim (t1, t2), [e] -> begin
+    | NumConvWrapPrim (t1, t2), [e] -> begin
       let open Type in
       match t1, t2 with
-      (*
-      TODO: wrapping conversions
-
-      | (Nat|Int), (Word8|Word16) ->
+      | (Nat|Int), (Nat8|Nat16|Int8|Int16) ->
         SR.Vanilla,
         compile_exp_vanilla env ae e ^^
-        Prim.prim_shiftToWordN env (TaggedSmallWord.shift_of_type t2)
+        (* this looks fishy *)
+        Prim.prim_intToWordNShifted env (TaggedSmallWord.shift_of_type t2)
 
-      | (Nat|Int), Word32 ->
+      | (Nat|Int), (Nat32|Int32) ->
         SR.UnboxedWord32,
         compile_exp_vanilla env ae e ^^
         Prim.prim_intToWord32 env
 
-      | (Nat|Int), Word64 ->
+      | (Nat|Int), (Nat64|Int64) ->
         SR.UnboxedWord64,
         compile_exp_vanilla env ae e ^^
         BigNum.truncate_to_word64 env
 
-      | Nat64, Word64
-      | Int64, Word64
-      | Word64, Nat64
-      | Word64, Int64
-      | Nat32, Word32
-      | Int32, Word32
-      | Word32, Nat32
-      | Word32, Int32
-      | Nat16, Word16
-      | Int16, Word16
-      | Word16, Nat16
-      | Word16, Int16
-      | Nat8, Word8
-      | Int8, Word8
-      | Word8, Nat8
-      | Word8, Int8 ->
+      | Nat64, Int64
+      | Int64, Nat64
+      | Nat32, Int32
+      | Int32, Nat32
+      | Nat16, Int16
+      | Int16, Nat16
+      | Nat8, Int8
+      | Int8, Nat8 ->
         compile_exp env ae e
-      *)
+      | _ -> SR.Unreachable, todo_trap env "compile_exp u" (Arrange_ir.exp exp)
+      end
+
+    | NumConvTrapPrim (t1, t2), [e] -> begin
+      let open Type in
+      match t1, t2 with
 
       | Int, Int64 ->
         SR.UnboxedWord64,

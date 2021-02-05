@@ -66,6 +66,10 @@ type token =
   | DIVOP
   | MODOP
   | POWOP
+  | WRAPADDOP
+  | WRAPSUBOP
+  | WRAPMULOP
+  | WRAPPOWOP
   | ANDOP
   | OROP
   | XOROP
@@ -176,6 +180,10 @@ let to_parser_token :
   | DIVOP -> Ok Parser.DIVOP
   | MODOP -> Ok Parser.MODOP
   | POWOP -> Ok Parser.POWOP
+  | WRAPADDOP -> Ok Parser.WRAPADDOP
+  | WRAPSUBOP -> Ok Parser.WRAPSUBOP
+  | WRAPMULOP -> Ok Parser.WRAPMULOP
+  | WRAPPOWOP -> Ok Parser.WRAPPOWOP
   | ANDOP -> Ok Parser.ANDOP
   | OROP -> Ok Parser.OROP
   | XOROP -> Ok Parser.XOROP
@@ -286,6 +294,10 @@ let string_of_parser_token = function
   | Parser.DIVOP -> "DIVOP"
   | Parser.MODOP -> "MODOP"
   | Parser.POWOP -> "POWOP"
+  | Parser.WRAPADDOP -> "WRAPADDOP"
+  | Parser.WRAPSUBOP -> "WRAPSUBOP"
+  | Parser.WRAPMULOP -> "WRAPMULOP"
+  | Parser.WRAPPOWOP -> "WRAPPOWOP"
   | Parser.ANDOP -> "ANDOP"
   | Parser.OROP -> "OROP"
   | Parser.XOROP -> "XOROP"

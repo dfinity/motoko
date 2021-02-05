@@ -142,6 +142,10 @@ rule token mode = parse
   | "<<" { SHLOP }
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }
+  | "+%" { WRAPADDOP }
+  | "-%" { WRAPSUBOP }
+  | "*%" { WRAPMULOP }
+  | "**%" { WRAPPOWOP }
   | "#" { HASH }
 
   | "==" { EQOP }

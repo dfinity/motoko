@@ -1,2 +1,2 @@
 import Prim "mo:prim";
-let _ = Prim.word32ToChar 0xdfff
+let _ = Prim.nat32ToChar 0xdfff

@@ -77,6 +77,10 @@ s/MULASSIGN/\'*=\'/g
 s/MODULE/\'module\'/g
 s/MODOP/\'%\'/g
 s/MODASSIGN/\'%=\'/g
+s/WRAPADDOP/\'+%\'/g
+s/WRAPSUBOP/\'-%\'/g
+s/WRAPMULOP/\'/%\'/g
+s/WRAPPOWOP/\'**%\'/g
 s/MINUSASSIGN/\'-=\'/g
 s/LTOP/\' < \'/g
 s/LT/\'<\'/g

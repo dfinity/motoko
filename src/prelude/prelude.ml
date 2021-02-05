@@ -458,7 +458,7 @@ func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> N
 
 func hashBlob(b : Blob) : Nat32 { (prim "crc32Hash" : Blob -> Nat32) b };
 
-// Conversions
+// Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;
 let int32ToInt = @int32ToInt;
@@ -468,6 +468,8 @@ let nat64ToNat = @nat64ToNat;
 let nat32ToNat = @nat32ToNat;
 let nat16ToNat = @nat16ToNat;
 let nat8ToNat = @nat8ToNat;
+
+// Trapping conversions (big to fixed)
 
 func intToInt64(n : Int) : Int64 = (prim "num_conv_Int_Int64" : Int -> Int64) n;
 func intToInt32(n : Int) : Int32 = (prim "num_conv_Int_Int32" : Int -> Int32) n;
@@ -479,14 +481,28 @@ func natToNat32(n : Nat) : Nat32 = (prim "num_conv_Nat_Nat32" : Nat -> Nat32) n;
 func natToNat16(n : Nat) : Nat16 = (prim "num_conv_Nat_Nat16" : Nat -> Nat16) n;
 func natToNat8(n : Nat) : Nat8 = (prim "num_conv_Nat_Nat8" : Nat -> Nat8) n;
 
-func int64ToNat64(n : Int64) : Nat64 = (prim "num_conv_Int64_Nat64" : Int64 -> Nat64) n;
-func nat64ToInt64(n : Nat64) : Int64 = (prim "num_conv_Nat64_Int64" : Nat64 -> Int64) n;
-func int32ToNat32(n : Int32) : Nat32 = (prim "num_conv_Int32_Nat32" : Int32 -> Nat32) n;
-func nat32ToInt32(n : Nat32) : Int32 = (prim "num_conv_Nat32_Int32" : Nat32 -> Int32) n;
-func int16ToNat16(n : Int16) : Nat16 = (prim "num_conv_Int16_Nat16" : Int16 -> Nat16) n;
-func nat16ToInt16(n : Nat16) : Int16 = (prim "num_conv_Nat16_Int16" : Nat16 -> Int16) n;
-func int8ToNat8(n : Int8) : Nat8 = (prim "num_conv_Int8_Nat8" : Int8 -> Nat8) n;
-func nat8ToInt8(n : Nat8) : Int8 = (prim "num_conv_Nat8_Int8" : Nat8 -> Int8) n;
+// Wrapping conversions (big to fixed, and within fixed)
+
+func intToInt64Wrap(n : Int) : Int64 = (prim "num_wrap_Int_Int64" : Int -> Int64) n;
+func intToInt32Wrap(n : Int) : Int32 = (prim "num_wrap_Int_Int32" : Int -> Int32) n;
+func intToInt16Wrap(n : Int) : Int16 = (prim "num_wrap_Int_Int16" : Int -> Int16) n;
+func intToInt8Wrap(n : Int) : Int8 = (prim "num_wrap_Int_Int8" : Int -> Int8) n;
+
+func natToNat64Wrap(n : Nat) : Nat64 = (prim "num_wrap_Nat_Nat64" : Nat -> Nat64) n;
+func natToNat32Wrap(n : Nat) : Nat32 = (prim "num_wrap_Nat_Nat32" : Nat -> Nat32) n;
+func natToNat16Wrap(n : Nat) : Nat16 = (prim "num_wrap_Nat_Nat16" : Nat -> Nat16) n;
+func natToNat8Wrap(n : Nat) : Nat8 = (prim "num_wrap_Nat_Nat8" : Nat -> Nat8) n;
+
+func int64ToNat64(n : Int64) : Nat64 = (prim "num_wrap_Int64_Nat64" : Int64 -> Nat64) n;
+func nat64ToInt64(n : Nat64) : Int64 = (prim "num_wrap_Nat64_Int64" : Nat64 -> Int64) n;
+func int32ToNat32(n : Int32) : Nat32 = (prim "num_wrap_Int32_Nat32" : Int32 -> Nat32) n;
+func nat32ToInt32(n : Nat32) : Int32 = (prim "num_wrap_Nat32_Int32" : Nat32 -> Int32) n;
+func int16ToNat16(n : Int16) : Nat16 = (prim "num_wrap_Int16_Nat16" : Int16 -> Nat16) n;
+func nat16ToInt16(n : Nat16) : Int16 = (prim "num_wrap_Nat16_Int16" : Nat16 -> Int16) n;
+func int8ToNat8(n : Int8) : Nat8 = (prim "num_wrap_Int8_Nat8" : Int8 -> Nat8) n;
+func nat8ToInt8(n : Nat8) : Int8 = (prim "num_wrap_Nat8_Int8" : Nat8 -> Int8) n;
+
+// Char conversion and properties
 
 func charToNat32(c : Char) : Nat32 = (prim "num_conv_Char_Nat32" : Char -> Nat32) c;
 func nat32ToChar(w : Nat32) : Char = (prim "num_conv_Nat32_Char" : Nat32 -> Char) w;

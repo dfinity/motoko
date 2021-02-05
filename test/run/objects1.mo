@@ -45,7 +45,7 @@ assert (get_a () == -42);
 let row : (Nat, Int, {c : Char; d : Text}) = (100, -42, {c = 'C'; d = "D"});
 
 func foo () : Int = switch row {
-  case (a : Int, -42, {c} : {c : Char}) (Prim.word32ToNat(Prim.charToWord32 c))  // OK
+  case (a : Int, -42, {c} : {c : Char}) (Prim.nat32ToNat(Prim.charToNat32 c))  // OK
 };
 
 assert (foo () == 67);

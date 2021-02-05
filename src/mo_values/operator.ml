@@ -43,7 +43,8 @@ let impossible _ = raise (Invalid_argument "operator called for None")
 
 (* Unary operators *)
 
-let word_unop (fnat8, fnat16, fnat32, fnat64, fint8, fint16, fint32, fint64) = function
+(* bit-wise unops *)
+let bit_unop (fnat8, fnat16, fnat32, fnat64, fint8, fint16, fint32, fint64) = function
   | T.Nat8 -> fun v -> Nat8 (fnat8 (as_nat8 v))
   | T.Nat16 -> fun v -> Nat16 (fnat16 (as_nat16 v))
   | T.Nat32 -> fun v -> Nat32 (fnat32 (as_nat32 v))
@@ -54,24 +55,28 @@ let word_unop (fnat8, fnat16, fnat32, fnat64, fint8, fint16, fint32, fint64) = f
   | T.Int64 -> fun v -> Int64 (fint64 (as_int64 v))
   | _ -> raise (Invalid_argument "unop")
 
-let num_unop fint wordops ffloat = function
+(* types that support sign operations (+, -)  *)
+let sign_unop fint (fint8, fint16, fint32, fint64) ffloat = function
   | T.Int -> fun v -> Int (fint (as_int v))
+  | T.Int8 -> fun v -> Int8 (fint8 (as_int8 v))
+  | T.Int16 -> fun v -> Int16 (fint16 (as_int16 v))
+  | T.Int32 -> fun v -> Int32 (fint32 (as_int32 v))
+  | T.Int64 -> fun v -> Int64 (fint64 (as_int64 v))
   | T.Float -> fun v -> Float (ffloat (as_float v))
-  | t -> word_unop wordops t
+  | _ -> raise (Invalid_argument "unop")
 
 let unop op t =
   match t with
   | T.Prim p ->
     (match op with
-    | PosOp -> let id v = v in num_unop id  (id, id, id, id, id, id, id, id) id p
+    | PosOp -> let id v = v in sign_unop id (id, id, id, id) id p
     | NegOp ->
-      num_unop
+      sign_unop
         Int.neg
-        (Nat8.neg, Nat16.neg, Nat32.neg, Nat64.neg,
-         Int_8.neg, Int_16.neg, Int_32.neg, Int_64.neg)
+        (Int_8.neg, Int_16.neg, Int_32.neg, Int_64.neg)
         Float.neg
         p
-    | NotOp -> word_unop
+    | NotOp -> bit_unop
       (Nat8.not, Nat16.not, Nat32.not, Nat64.not,
        Int_8.not, Int_16.not, Int_32.not, Int_64.not)
       p
@@ -119,13 +124,13 @@ let binop op t =
     | ShLOp -> word_binop (Nat8.shl, Nat16.shl, Nat32.shl, Nat64.shl, Int_8.shl, Int_16.shl, Int_32.shl, Int_64.shl) p
     | ShROp -> word_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr) p
     | RotLOp -> word_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl) p
-    | RotROp -> word_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl) p
-    | CatOp -> text_binop (^) p
+    | RotROp -> word_binop (Nat8.rotr, Nat16.rotr, Nat32.rotr, Nat64.rotr, Int_8.rotr, Int_16.rotr, Int_32.rotr, Int_64.rotr) p
     | WrappingAddOp -> word_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
     | WrappingSubOp -> word_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
     | WrappingMulOp -> word_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
     | WrappingDivOp -> word_binop (Nat8.wrapping_div, Nat16.wrapping_div, Nat32.wrapping_div, Nat64.wrapping_div, Int_8.wrapping_div, Int_16.wrapping_div, Int_32.wrapping_div, Int_64.wrapping_div) p
     | WrappingPowOp -> word_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
+    | CatOp -> text_binop (^) p
     )
   | T.Non -> impossible
   | _ -> raise (Invalid_argument "binop")

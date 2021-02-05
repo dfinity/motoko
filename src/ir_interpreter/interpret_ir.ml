@@ -411,9 +411,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | IcUrlOfBlob, [v1] ->
         k (V.Text (Ic.Url.encode_principal (V.as_blob v1)))
-      | NumConvPrim (t1, t2), vs ->
+      | NumConvTrapPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
+        k (try Prim.num_conv_trap_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
+      | NumConvWrapPrim (t1, t2), vs ->
+        let arg = match vs with [v] -> v | _ -> V.Tup vs in
+        k (try Prim.num_conv_wrap_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in

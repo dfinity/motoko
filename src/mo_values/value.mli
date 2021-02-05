@@ -36,6 +36,7 @@ module type BitNumType =
 sig
   include NumType
 
+
   val not : t -> t
   val popcnt : t -> t
   val clz : t -> t
@@ -48,6 +49,8 @@ sig
   val shr : t -> t -> t
   val rotl : t -> t -> t
   val rotr : t -> t -> t
+
+  val wrapping_of_big_int : Big_int.big_int -> t
 
   val wrapping_neg : t -> t
   val wrapping_add : t -> t -> t

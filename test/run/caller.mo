@@ -5,7 +5,7 @@ actor a {
     return c.caller;
   };
 
-  public shared query({ caller = c }) func getCallerHash() : async Word32 {
+  public shared query({ caller = c }) func getCallerHash() : async Nat32 {
     Prim.hashBlob (Prim.blobOfPrincipal c);
   };
 

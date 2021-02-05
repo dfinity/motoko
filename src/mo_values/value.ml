@@ -244,6 +244,8 @@ module Nat : NumType with type t = Big_int.big_int =
 struct
   include Int
   let signed = false
+  let of_big_int i =
+    if ge i zero then i else raise (Invalid_argument "Nat.of_big_int")
   let sub x y =
     let z = Int.sub x y in
     if ge z zero then z else raise (Invalid_argument "Nat.sub")
@@ -267,6 +269,7 @@ sig
   val rotl : t -> t -> t
   val rotr : t -> t -> t
 
+  val wrapping_of_big_int : Big_int.big_int -> t
 
   val wrapping_neg : t -> t
   val wrapping_add : t -> t -> t
@@ -328,7 +331,9 @@ struct
   let rotr = on_words WordRep.rotr
 
 
-  (* wrapping-wise operations *)
+  (* wrapping operations *)
+  let wrapping_of_big_int i = from_word (WordRep.of_big_int i)
+
   let wrapping_neg = on_word WordRep.neg
   let wrapping_add = on_words WordRep.add
   let wrapping_sub = on_words WordRep.sub
