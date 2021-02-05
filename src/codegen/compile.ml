@@ -296,7 +296,10 @@ module E = struct
     labs = ref LabSet.empty;
   }
 
-  (* record an object or variant field label, for debugging *)
+  (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
+      so that that data can be put in a custom section, useful for debugging.
+      Thus Mo_types.Hash.hash should not be called directly!
+   *)
   let hash (env : t) lab =
     env.labs := LabSet.add lab (!(env.labs));
     Mo_types.Hash.hash lab
