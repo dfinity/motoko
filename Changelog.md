@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+== 0.5.7 (2021-02-05)
+
 * The type checker now exploits the expected type, if any,
   when typing object literal expressions.
   So `{ x = 0 } : { x : Nat8 }` now works as expected
