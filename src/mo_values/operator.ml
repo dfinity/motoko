@@ -1,4 +1,5 @@
 open Value
+open Numerics
 
 module T = Mo_types.Type
 

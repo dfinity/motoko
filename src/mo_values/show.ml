@@ -38,17 +38,17 @@ let rec show_val t v =
   let t = T.normalize t in
   match t, v with
   | T.(Prim Bool), Value.Bool b -> if b then "true" else "false"
-  | T.(Prim Nat), Value.Int i -> Value.Int.to_string i
-  | T.(Prim Nat8), Value.Nat8 i -> Value.Nat8.to_string i
-  | T.(Prim Nat16), Value.Nat16 i -> Value.Nat16.to_string i
-  | T.(Prim Nat32), Value.Nat32 i -> Value.Nat32.to_string i
-  | T.(Prim Nat64), Value.Nat64 i -> Value.Nat64.to_string i
-  | T.(Prim Int), Value.Int i -> Value.Int.(sign (gt i zero) (to_string i))
-  | T.(Prim Int8), Value.Int8 i -> Value.Int_8.(sign (gt i zero) (to_string i))
-  | T.(Prim Int16), Value.Int16 i -> Value.Int_16.(sign (gt i zero) (to_string i))
-  | T.(Prim Int32), Value.Int32 i -> Value.Int_32.(sign (gt i zero) (to_string i))
-  | T.(Prim Int64), Value.Int64 i -> Value.Int_64.(sign (gt i zero) (to_string i))
-  | T.(Prim Float), Value.Float i -> Value.Float.to_string i
+  | T.(Prim Nat), Value.Int i -> Numerics.Int.to_string i
+  | T.(Prim Nat8), Value.Nat8 i -> Numerics.Nat8.to_string i
+  | T.(Prim Nat16), Value.Nat16 i -> Numerics.Nat16.to_string i
+  | T.(Prim Nat32), Value.Nat32 i -> Numerics.Nat32.to_string i
+  | T.(Prim Nat64), Value.Nat64 i -> Numerics.Nat64.to_string i
+  | T.(Prim Int), Value.Int i -> Numerics.Int.(sign (gt i zero) (to_string i))
+  | T.(Prim Int8), Value.Int8 i -> Numerics.Int_8.(sign (gt i zero) (to_string i))
+  | T.(Prim Int16), Value.Int16 i -> Numerics.Int_16.(sign (gt i zero) (to_string i))
+  | T.(Prim Int32), Value.Int32 i -> Numerics.Int_32.(sign (gt i zero) (to_string i))
+  | T.(Prim Int64), Value.Int64 i -> Numerics.Int_64.(sign (gt i zero) (to_string i))
+  | T.(Prim Float), Value.Float i -> Numerics.Float.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
   | T.(Prim Blob), Value.Blob s -> "\"" ^ Value.Blob.escape s ^ "\""
   | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"

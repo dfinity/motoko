@@ -97,7 +97,7 @@ module Const = struct
     | Bool of bool
     | Word32 of int32
     | Word64 of int64
-    | Float64 of Value.Float.t
+    | Float64 of Numerics.Float.t
     | Blob of string
 
   (* Constant known values.
@@ -5954,14 +5954,14 @@ let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt n
-  | Int8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int8 (Value.Int_8.to_int n))
-  | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Value.Nat8.to_int n))
-  | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Value.Int_16.to_int n))
-  | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Value.Nat16.to_int n))
-  | Int32Lit n    -> Const.Word32 (Int32.of_int (Value.Int_32.to_int n))
-  | Nat32Lit n    -> Const.Word32 (Int32.of_int (Value.Nat32.to_int n))
-  | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
-  | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Value.Nat64.to_big_int n)))
+  | Int8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int8 (Numerics.Int_8.to_int n))
+  | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int n))
+  | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int n))
+  | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int n))
+  | Int32Lit n    -> Const.Word32 (Int32.of_int (Numerics.Int_32.to_int n))
+  | Nat32Lit n    -> Const.Word32 (Int32.of_int (Numerics.Nat32.to_int n))
+  | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
+  | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
   | NullLit       -> Const.Vanilla (Opt.null_vanilla_lit env)
   | TextLit t

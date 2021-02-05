@@ -23,11 +23,11 @@ let id_of_full_path (fp : string) : string =
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
-  | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
-  | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
-  | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
-  | NegOp, Int64Lit n -> Int64Lit (Value.Int_64.sub Value.Int_64.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Numerics.Int.sub Numerics.Int.zero n)
+  | NegOp, Int8Lit n -> Int8Lit (Numerics.Int_8.sub Numerics.Int_8.zero n)
+  | NegOp, Int16Lit n -> Int16Lit (Numerics.Int_16.sub Numerics.Int_16.zero n)
+  | NegOp, Int32Lit n -> Int32Lit (Numerics.Int_32.sub Numerics.Int_32.zero n)
+  | NegOp, Int64Lit n -> Int64Lit (Numerics.Int_64.sub Numerics.Int_64.zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 

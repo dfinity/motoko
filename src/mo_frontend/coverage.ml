@@ -54,14 +54,14 @@ let make_sets () =
 
 let max_expand = 2
 
-let pick_nat (type t) (module Num : V.NumType with type t = t) to_val vs =
+let pick_nat (type t) (module Num : Numerics.NumType with type t = t) to_val vs =
   let x = ref Num.zero in
   while ValSet.mem (to_val !x) vs do
     x := Num.add (Num.of_int 1) !x
   done;
   Val (to_val !x)
 
-let pick_int (type t) (module Num : V.NumType with type t = t) to_val vs =
+let pick_int (type t) (module Num : Numerics.NumType with type t = t) to_val vs =
   let x = ref Num.zero in
   while ValSet.mem (to_val !x) vs do
     x := Num.neg !x;
@@ -79,16 +79,16 @@ let pick_char vs =
 let pick_val vs = function
   | T.Null -> assert false
   | T.Bool -> Val (V.Bool (ValSet.mem (V.Bool false) vs))
-  | T.Nat -> pick_nat (module V.Nat) (fun x -> V.Int x) vs
-  | T.Nat8 -> pick_nat (module V.Nat8) (fun x -> V.Nat8 x) vs
-  | T.Nat16 -> pick_nat (module V.Nat16) (fun x -> V.Nat16 x) vs
-  | T.Nat32 -> pick_nat (module V.Nat32) (fun x -> V.Nat32 x) vs
-  | T.Nat64 -> pick_nat (module V.Nat64) (fun x -> V.Nat64 x) vs
-  | T.Int -> pick_int (module V.Int) (fun x -> V.Int x) vs
-  | T.Int8 -> pick_int (module V.Int_8) (fun x -> V.Int8 x) vs
-  | T.Int16 -> pick_int (module V.Int_16) (fun x -> V.Int16 x) vs
-  | T.Int32 -> pick_int (module V.Int_32) (fun x -> V.Int32 x) vs
-  | T.Int64 -> pick_int (module V.Int_64) (fun x -> V.Int64 x) vs
+  | T.Nat -> pick_nat (module Numerics.Nat) (fun x -> V.Int x) vs
+  | T.Nat8 -> pick_nat (module Numerics.Nat8) (fun x -> V.Nat8 x) vs
+  | T.Nat16 -> pick_nat (module Numerics.Nat16) (fun x -> V.Nat16 x) vs
+  | T.Nat32 -> pick_nat (module Numerics.Nat32) (fun x -> V.Nat32 x) vs
+  | T.Nat64 -> pick_nat (module Numerics.Nat64) (fun x -> V.Nat64 x) vs
+  | T.Int -> pick_int (module Numerics.Int) (fun x -> V.Int x) vs
+  | T.Int8 -> pick_int (module Numerics.Int_8) (fun x -> V.Int8 x) vs
+  | T.Int16 -> pick_int (module Numerics.Int_16) (fun x -> V.Int16 x) vs
+  | T.Int32 -> pick_int (module Numerics.Int_32) (fun x -> V.Int32 x) vs
+  | T.Int64 -> pick_int (module Numerics.Int_64) (fun x -> V.Int64 x) vs
   | T.Char -> pick_char vs
   | T.Text
   | T.Blob

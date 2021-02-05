@@ -599,17 +599,17 @@ let check_lit_val env t of_string at s =
     error env at "M0048" "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
-let check_nat env = check_lit_val env T.Nat Value.Nat.of_string
-let check_nat8 env = check_lit_val env T.Nat8 Value.Nat8.of_string
-let check_nat16 env = check_lit_val env T.Nat16 Value.Nat16.of_string
-let check_nat32 env = check_lit_val env T.Nat32 Value.Nat32.of_string
-let check_nat64 env = check_lit_val env T.Nat64 Value.Nat64.of_string
-let check_int env = check_lit_val env T.Int Value.Int.of_string
-let check_int8 env = check_lit_val env T.Int8 Value.Int_8.of_string
-let check_int16 env = check_lit_val env T.Int16 Value.Int_16.of_string
-let check_int32 env = check_lit_val env T.Int32 Value.Int_32.of_string
-let check_int64 env = check_lit_val env T.Int64 Value.Int_64.of_string
-let check_float env = check_lit_val env T.Float Value.Float.of_string
+let check_nat env = check_lit_val env T.Nat Numerics.Nat.of_string
+let check_nat8 env = check_lit_val env T.Nat8 Numerics.Nat8.of_string
+let check_nat16 env = check_lit_val env T.Nat16 Numerics.Nat16.of_string
+let check_nat32 env = check_lit_val env T.Nat32 Numerics.Nat32.of_string
+let check_nat64 env = check_lit_val env T.Nat64 Numerics.Nat64.of_string
+let check_int env = check_lit_val env T.Int Numerics.Int.of_string
+let check_int8 env = check_lit_val env T.Int8 Numerics.Int_8.of_string
+let check_int16 env = check_lit_val env T.Int16 Numerics.Int_16.of_string
+let check_int32 env = check_lit_val env T.Int32 Numerics.Int_32.of_string
+let check_int64 env = check_lit_val env T.Int64 Numerics.Int_64.of_string
+let check_float env = check_lit_val env T.Float Numerics.Float.of_string
 
 let check_text env at s =
   (try ignore (Wasm.Utf8.decode s)

@@ -2,6 +2,7 @@
 open Mo_types
 
 open Value
+open Numerics
 
 let as_big_int = function
   | Type.Nat -> fun v -> Nat.to_big_int (as_int v)
@@ -194,7 +195,7 @@ let prim =
   | "rts_heap_size" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
-  | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Value.Nat64.of_int 42))
+  | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
   | "idlHash" -> fun _ v k ->
     let s = as_text v in
     k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))
