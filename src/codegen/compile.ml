@@ -7379,7 +7379,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Object.is_mut_field env exp.note.Note.typ f.it.name
+        if f.it.mut = Var
         then Var.get_aliased_box env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
