@@ -233,7 +233,6 @@ and obj_block at s self_id dfs obj_typ =
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
-         ; I.mut = if T.is_mut typ then I.Var else I.Const
          ; I.var = lab
          }
   ; at = no_region
@@ -278,7 +277,7 @@ and export_interface txt =
       asyncE bind2 (textE txt) (T.Con (scope_con, []))
     )
   )],
-  [{ it = { I.name = name; mut = I.Const; var = v }; at = no_region; note = typ }])
+  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -326,7 +325,7 @@ and build_actor at self_id es obj_typ =
           (primE (I.ICStableWrite ty)
              [ newObjE T.Memory
                  (List.map2 (fun f v ->
-                      { it = {I.name = f.T.lab; I.mut = I.Const; I.var = id_of_var v};
+                      { it = {I.name = f.T.lab; I.var = id_of_var v};
                         at = no_region;
                         note = f.T.typ }
                     ) fields vs)
@@ -380,20 +379,12 @@ and exp_field ef =
   | S.Var ->
     let id' = fresh_var id.it (T.Mut typ) in
     let d = varD id' (exp e) in
-    let f = {
-      it = { I.name = id.it; I.mut = I.Var; I.var = id_of_var id'};
-      at = no_region;
-      note = T.Mut typ
-    } in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
     (d, f)
   | S.Const ->
     let id' = fresh_var id.it typ in
     let d = letD id' (exp e) in
-    let f = {
-      it = { I.name = id.it; I.mut = I.Const; I.var = id_of_var id'};
-      at = no_region;
-      note = typ
-    } in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
 
 and obj obj_typ efs =
@@ -673,7 +664,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
-              [{ it = {Ir.name = "caller"; Ir.mut = I.Const; var = id_of_var v};
+              [{ it = {Ir.name = "caller"; var = id_of_var v};
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
@@ -704,7 +695,7 @@ let actor_class_mod_exp id class_typ func =
   blockE
     [letD v func]
     (newObjE T.Module
-       [{ it = {I.name = id; Ir.mut = I.Const; I.var = id_of_var v};
+       [{ it = {I.name = id; I.var = id_of_var v};
           at = no_region;
           note = fun_typ }]
        (T.Obj(T.Module, List.sort T.compare_field [

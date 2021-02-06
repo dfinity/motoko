@@ -950,17 +950,14 @@ and type_exp_fields env s fs : T.field list =
   List.sort T.compare_field tfs
 
 and type_exp_field env s f : T.field =
-  let {name; mut; var} = f.it in
+  let {name; var} = f.it in
   let { typ = t; const; loc_known } =
     try T.Env.find var env.vals
     with Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
+  check_sub env f.at t f.note;
   if not (T.is_typ t) then begin
-    check env f.at (mut = Var ==> T.is_mut t)
-      (Printf.sprintf "mutable field %s has non-mut type" name);
-    check env f.at (mut = Const ==> not (T.is_mut t))
-      (Printf.sprintf "immutable field %s has mut type" name);
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
       "public actor field must have shared function type";
   end;
