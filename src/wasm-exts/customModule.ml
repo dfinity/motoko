@@ -25,8 +25,7 @@ type dylink_section = {
 }
 
 type motoko_section = {
-  (* Hashes of Labels (fields and variants) *)
-  labels : (int32 * string) list;
+  labels : string list;
 }
 
 let empty_motoko_section = {

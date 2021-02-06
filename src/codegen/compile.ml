@@ -304,8 +304,7 @@ module E = struct
     env.labs := LabSet.add lab (!(env.labs));
     Mo_types.Hash.hash lab
 
-  let get_labs env =
-    LabSet.fold (fun lab ls -> (Mo_types.Hash.hash lab, lab) :: ls) (!(env.labs)) []
+  let get_labs env = LabSet.elements (!(env.labs))
 
   let mk_fun_env env n_param return_arity =
     { env with
