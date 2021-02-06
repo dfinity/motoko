@@ -327,7 +327,7 @@ function decodeOBJ(view, p) {
 function decodeVARIANT(view, p) {
   let m = new Map();
   let hash = getUint32(view, p+4);
-  let lab = decodeLabel(hash);
+  let lab = `#` + decodeLabel(hash);
   m[lab] = decode(view, getUint32(view, p+8));
   return m;
 }
@@ -366,7 +366,7 @@ function decodeARRAY(view, p) {
 
 function decodeSOME(view, p) {
   let a = decode(view, getUint32(view, p + 4));
-  return { some: a };
+  return { "?": a };
 }
 
 function decodeNULL(view, p) {
@@ -443,8 +443,11 @@ function getULEB128(view, p) {
 };
 
 function hashLabel(label) {
+  // assumes label is ascii
   var s = 0;
-  for(var i = 0; i < label.length; i++) {
+   for(var i = 0; i < label.length; i++) {
+    let c = label.charCodeAt(i);
+    console.assert("non-ascii label", c < 128);
     s = (s * 223) + label.charCodeAt(i);
   };
   return (2**31-1) & s;
@@ -460,18 +463,17 @@ function decodeMotokoSection(customSections) {
   let [_sec_size, p] = getULEB128(view, 1); // always 5 bytes as back patched
   let [cnt, p1] = getULEB128(view, 6);
   while (cnt > 0) {
-    let [hash, p2] = getULEB128(view, p1);
-    let [size, p3] = getULEB128(view, p2);
+    let [size, p2] = getULEB128(view, p1);
     let a = new Uint8Array(size);
     for(var i = 0; i < size; i++) {
-      a[i] = view.getUint8(p3);
-      p3 += 1;
+      a[i] = view.getUint8(p2);
+      p2 += 1;
     };
-    p1 = p3;
+    p1 = p2;
     let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
     let id = textDecoder.decode(a);
-    console.assert("bad hash", hash === hashLabel(id));
-    m[hashLabel(id)] = id;
+    let hash = hashLabel(id);
+    m[hash] = id;
     cnt -= 1;
   };
   return m;
