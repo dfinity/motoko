@@ -741,7 +741,7 @@ let name_section s =
 let motoko_section_subsection (ms : motoko_section) s =
   match u8 s with
   | 0 -> (* module name *)
-    let labels = sized (fun _ -> name_map) s in
+    let labels = sized (fun _ -> vec string) s in
     { labels = ms.labels @ labels }
   | i -> error s (pos s) "unknown motoko section subsection id"
 
