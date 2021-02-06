@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-func id<T>(x:T):T { x };
+func id<T>(x:T):T { x }; // used to suppress const optimization
 
 func foo(n : Nat8, b: Bool, t: Text ) {
 //  if (n > (0 : Nat8)) { foo(n - (1:Nat8), not b, t # t ) };

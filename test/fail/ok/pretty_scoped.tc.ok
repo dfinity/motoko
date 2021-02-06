@@ -1,4 +1,4 @@
-pretty_scoped.mo:2.1-2.38: type error, cannot implicitly instantiate function of type
+pretty_scoped.mo:2.1-2.38: type error [M0098], cannot implicitly instantiate function of type
   <A>(A -> async ()) -> ()
 to argument of type
   ()
@@ -6,7 +6,7 @@ to produce result of type
   ()
 because no instantiation of A makes
   ()  <:  A -> async ()
-pretty_scoped.mo:4.1-4.45: type error, cannot implicitly instantiate function of type
+pretty_scoped.mo:4.1-4.45: type error [M0098], cannot implicitly instantiate function of type
   <A, B>((A, B) -> async ()) -> ()
 to argument of type
   ()
@@ -14,7 +14,7 @@ to produce result of type
   ()
 because no instantiation of A, B makes
   ()  <:  (A, B) -> async ()
-pretty_scoped.mo:6.1-6.50: type error, cannot implicitly instantiate function of type
+pretty_scoped.mo:6.1-6.50: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>((A, B, C) -> async ()) -> ()
 to argument of type
   ()
@@ -22,7 +22,7 @@ to produce result of type
   ()
 because no instantiation of A, B, C makes
   ()  <:  (A, B, C) -> async ()
-pretty_scoped.mo:8.1-8.55: type error, cannot implicitly instantiate function of type
+pretty_scoped.mo:8.1-8.55: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(<D>(A, B, C, D) -> async ()) -> ()
 to argument of type
   ()
@@ -30,7 +30,7 @@ to produce result of type
   ()
 because no instantiation of A, B, C makes
   ()  <:  <D>(A, B, C, D) -> async ()
-pretty_scoped.mo:10.1-10.69: type error, cannot implicitly instantiate function of type
+pretty_scoped.mo:10.1-10.69: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(<D <: C, E <: D>(A, B, C, D, E) -> async ()) -> ()
 to argument of type
   ()

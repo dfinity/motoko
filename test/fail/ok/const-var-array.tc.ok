@@ -1,2 +1,2 @@
-const-var-array.mo:1.17-1.22: type error, mutable array expression cannot produce expected type
+const-var-array.mo:1.17-1.22: type error [M0091], mutable array expression cannot produce expected type
   [Nat]

@@ -1,41 +1,44 @@
-//! Implements allocation routines used by the generated code and the GC.
+#[cfg(feature = "gc")]
+#[path = "alloc/gc.rs"]
+pub(crate) mod alloc_impl;
 
-use core::arch::wasm32;
+#[cfg(not(feature = "gc"))]
+#[path = "alloc/nogc.rs"]
+mod alloc_impl;
 
-use crate::gc;
+pub use alloc_impl::alloc_words;
+
+#[cfg(feature = "gc")]
+pub(crate) use alloc_impl::grow_memory;
+
 use crate::rts_trap_with;
-use crate::types::{skew, Bytes, SkewedPtr, Words};
+use crate::types::{size_of, Array, Blob, Bytes, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB};
 
 #[no_mangle]
-unsafe extern "C" fn alloc_bytes(n: Bytes<u32>) -> SkewedPtr {
-    alloc_words(n.to_words())
-}
-
-#[no_mangle]
-unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
-    let bytes = n.to_bytes();
-    // Update ALLOCATED
-    gc::ALLOCATED += Bytes(bytes.0 as u64);
-
-    // Update heap pointer
-    let old_hp = gc::HP;
-    let new_hp = old_hp + bytes.0;
-    gc::HP = new_hp;
-
-    // Grow memory if needed
-    grow_memory(new_hp as usize);
-
-    skew(old_hp as usize)
-}
-
-/// Page allocation. Ensures that the memory up to the given pointer is allocated.
-pub(crate) unsafe fn grow_memory(ptr: usize) {
-    let total_pages_needed = ((ptr / 65536) + 1) as i32;
-    let current_pages = wasm32::memory_size(0) as i32;
-    let new_pages_needed = total_pages_needed - current_pages;
-    if new_pages_needed > 0 {
-        if wasm32::memory_grow(0, new_pages_needed as usize) == core::usize::MAX {
-            rts_trap_with("Cannot grow memory\0".as_ptr());
-        }
+pub unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
+    // Array payload should not be larger than half of the memory
+    if len > 1 << (32 - 2 - 1) {
+        // 2 for word size, 1 to divide by two
+        rts_trap_with("Array allocation too large");
     }
+
+    let skewed_ptr = alloc_words(size_of::<Array>() + Words(len));
+
+    let ptr: *mut Array = skewed_ptr.unskew() as *mut Array;
+    (*ptr).header.tag = TAG_ARRAY;
+    (*ptr).len = len;
+
+    skewed_ptr
+}
+
+#[no_mangle]
+pub(crate) unsafe extern "C" fn alloc_blob(size: Bytes<u32>) -> SkewedPtr {
+    // NOTE: We round the size up to the next word and allocates words, but we initialize blob
+    // length as `size` instead of `round_up_to_word(size)`. This is fine as as GC knows that we
+    // can only allocate words and looks for objects in word boundaries.
+    let ptr = alloc_words(size_of::<Blob>() + size.to_words());
+    let blob = ptr.unskew() as *mut Blob;
+    (*blob).header.tag = TAG_BLOB;
+    (*blob).len = size;
+    ptr
 }

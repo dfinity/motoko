@@ -17,21 +17,21 @@ open Syntax
 
 let err m at =
   let open Diag in
-  add_msg m {
-    sev = Diag.Error;
-    cat = "type";
-    at;
-    text = "non-static expression in library or module"
-  }
+  add_msg m
+    (error_message
+       at
+       "M0014"
+       "type"
+       "non-static expression in library or module")
 
 let pat_err m at =
   let open Diag in
-  add_msg m {
-    sev = Diag.Error;
-    cat = "type";
-    at;
-    text = "only trivial patterns allowed in static expressions"
-  }
+  add_msg m
+    (error_message
+       at
+       "M0015"
+       "type"
+       "only trivial patterns allowed in static expressions")
 
 let rec exp m e = match e.it with
   (* Plain values *)
@@ -44,7 +44,8 @@ let rec exp m e = match e.it with
       | Const ->  List.iter (exp m) es
       | Var -> err m e.at
     end
-  | ObjE (_, efs) -> fields m efs
+  | ObjBlockE (_, dfs) -> dec_fields m dfs
+  | ObjE efs -> exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()
@@ -85,7 +86,9 @@ let rec exp m e = match e.it with
   | BangE _
   -> err m e.at
 
-and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
+and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs
+
+and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()

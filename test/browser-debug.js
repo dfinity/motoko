@@ -332,7 +332,7 @@ function decodeVARIANT(view, p) {
   return m;
 }
 
-// stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView 
+// stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
 const BigInt = window.BigInt, bigThirtyTwo = BigInt(32), bigZero = BigInt(0);
 function getUint64BigInt(dataview, byteOffset, littleEndian) {
   // split 64-bit number into two 32-bit (4-byte) parts
@@ -415,12 +415,9 @@ let bigInt28 = BigInt(28);
 let mask = 2**28-1;
 function decodeBIGINT(view, p) {
   let size = getUint32(view, p + 4);
-  let _alloc = getUint32(view, p + 8); //?
   let sign = getUint32(view, p + 12);
   var a = BigInt(0);
-  let data_ptr = getUint32(view, p + 16);
-  // if skewed, unskew and extract payload past header for compacting GC
-  let q =  (data_ptr & 1 === 1) ? (data_ptr + 1 + 8) : data_ptr
+  let q = p + 20;
   for(var r = q + (4 * (size-1)); r >= q; r -= 4) {
     a = a << bigInt28;
     a += BigInt(getUint32(view, r) & mask );
@@ -445,6 +442,14 @@ function getULEB128(view, p) {
     return [result, p];
 };
 
+function hashLabel(label) {
+  var s = 0;
+  for(var i = 0; i < label.length; i++) {
+    s = (s * 223) + label.charCodeAt(i);
+  };
+  return (2**31-1) & s;
+};
+
 function decodeMotokoSection(customSections) {
   let m = new Map();
   if (customSections.length === 0) return m;
@@ -465,7 +470,8 @@ function decodeMotokoSection(customSections) {
     p1 = p3;
     let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
     let id = textDecoder.decode(a);
-    m[hash] = id;
+    console.assert("bad hash", hash === hashLabel(id));
+    m[hashLabel(id)] = id;
     cnt -= 1;
   };
   return m;
@@ -482,11 +488,11 @@ function decode(view, v) {
     //    case 4 : unused?
     case 5 : return decodeBITS64(view, p);
     case 6 : return decodeMUTBOX(view, p);
-    case 7 : return "CLOSURE";
+    case 7 : return "<CLOSURE>";
     case 8 : return decodeSOME(view, p);
     case 9 : return decodeVARIANT(view, p);
     case 10 : return decodeBLOB(view, p);
-    case 11 : return "FWD_PTR";
+    case 11 : return "<FWD_PTR>";
     case 12 : return decodeBITS32(view, p);
     case 13 : return decodeBIGINT(view, p);
     case 14 : return decodeCONCAT(view, p);
