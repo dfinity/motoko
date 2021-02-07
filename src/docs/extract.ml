@@ -75,7 +75,8 @@ let _print_leading : Lexer.trivia_info -> unit =
 
 let un_prog prog =
   let rec go acc = function
-    | { it = Syntax.ExpD { it = Syntax.ObjBlockE (_, m); _ }; _ } :: _ -> Ok (acc, m)
+    | { it = Syntax.ExpD { it = Syntax.ObjBlockE (_, m); _ }; _ } :: _ ->
+        Ok (acc, m)
     | {
         it =
           Syntax.LetD
