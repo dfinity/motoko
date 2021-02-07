@@ -206,10 +206,6 @@ struct
              })
 end
 
-module type Extract = sig
-  val extract_exp_field : (Xref.t -> Xref.t) -> Syntax.dec list -> doc option
-end
-
 let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
     =
  fun prog trivia_table ->
