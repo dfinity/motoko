@@ -508,6 +508,7 @@ let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
+let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_rotr_const = compile_op_const I32Op.Rotr
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
@@ -6542,22 +6543,28 @@ let compile_binop env t op =
      sanitize_word_result ty)
   | Type.(Prim (Nat64|Int64)),                RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
   | Type.(Prim (Nat32|Int32)),                RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
-  | Type.(Prim (Nat8|Nat16|Int8|Int16 as ty)),RotLOp -> TaggedSmallWord.(
+  | Type.(Prim (Nat8|Nat16|Int8|Int16 as ty)),RotLOp ->
      Func.share_code2 env (prim_fun_name ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
-       Wasm.Values.(fun env get_n get_by ->
-      let beside_adjust = compile_shrU_const (Int32.sub 32l (shift_of_type ty)) in
-      get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
-      sanitize_word_result ty))
+       (fun env get_n get_by ->
+        let open Wasm.Values in
+        let open TaggedSmallWord in
+        let beside_adjust = compile_rotr_const (shift_of_type ty) in
+        get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
+        get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
+        sanitize_word_result ty
+       )
   | Type.(Prim (Nat64|Int64)),                RotROp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotr))
   | Type.(Prim (Nat32|Int32)),                RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
-  | Type.(Prim (Nat8|Nat16|Int8|Int16 as ty)),RotROp -> TaggedSmallWord.(
+  | Type.(Prim (Nat8|Nat16|Int8|Int16 as ty)),RotROp ->
      Func.share_code2 env (prim_fun_name ty "rotr") (("n", I32Type), ("by", I32Type)) [I32Type]
-       Wasm.Values.(fun env get_n get_by ->
-      get_n ^^ get_n ^^ lsb_adjust ty ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
-      sanitize_word_result ty))
-
+       (fun env get_n get_by ->
+        let open Wasm.Values in
+        let open TaggedSmallWord in
+        let beside_adjust = compile_rotl_const (shift_of_type ty) in
+        get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
+        get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
+        sanitize_word_result ty
+       )
   | Type.(Prim Text), CatOp -> Text.concat env
   | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_binop" (Wasm.Sexpr.Node ("BinOp", [ Arrange_ops.binop op; Arrange_type.typ t]))
