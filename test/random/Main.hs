@@ -457,6 +457,9 @@ data MOTerm :: * -> * where
   -- Arithmetic
   Pos, Neg, Abs :: MOTerm a -> MOTerm a
   Add, Sub, Mul, Div, Mod, Pow :: MOTerm a -> MOTerm a -> MOTerm a
+  -- Wrapping Arithmetic
+  WrapAdd, WrapSub, WrapMul, WrapPow
+    :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
   -- Numeric
   Neuralgic :: Neuralgic a -> MOTerm a
   Five :: MOTerm a
@@ -518,6 +521,10 @@ bitwiseTerm n =
     , (n `div` 5, resize (n `div` 3) $ RotR <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ ShiftL <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ ShiftR <$> arbitrary <*> arbitrary)
+    , (n `div` 5, resize (n `div` 3) $ WrapAdd <$> arbitrary <*> arbitrary)
+    , (n `div` 5, resize (n `div` 3) $ WrapSub <$> arbitrary <*> arbitrary)
+    , (n `div` 5, resize (n `div` 3) $ WrapMul <$> arbitrary <*> arbitrary)
+    , (n `div` 5, resize (n `div` 3) $ WrapPow <$> arbitrary <*> arbitrary)
     , (n `div` 5, PopCnt <$> arbitrary)
     , (n `div` 5, Clz <$> arbitrary)
     , (n `div` 5, Ctz <$> arbitrary)
@@ -776,6 +783,11 @@ instance WordLike bits => Evaluatable (BitLimited bits Natural) where
         Clz a -> NatN . fromIntegral . countLeadingZeros . toWord <$> evaluate a
         Ctz a -> NatN . fromIntegral . countTrailingZeros . toWord <$> evaluate a
 
+        a `WrapAdd` b -> goWrap (+) a b
+        a `WrapSub` b -> goWrap (-) a b
+        a `WrapMul` b -> goWrap (*) a b
+        a `WrapPow` b -> goWrap (^) a b
+
         _ -> error $ show ab
     where
         bitcount = natVal (Proxy @bits)
@@ -817,6 +829,11 @@ instance WordLike bits => Evaluatable (BitLimited bits Integer) where
         PopCnt a -> IntN . fromIntegral . popCount . toWord <$> evaluate a
         Clz a -> IntN . fromIntegral . countLeadingZeros . toWord <$> evaluate a
         Ctz a -> IntN . fromIntegral . countTrailingZeros . toWord <$> evaluate a
+
+        a `WrapAdd` b -> goWrap (+) a b
+        a `WrapSub` b -> goWrap (-) a b
+        a `WrapMul` b -> goWrap (*) a b
+        a `WrapPow` b -> do b' <- evaluate b; exponentiable b'; goWrap (^) a b
 
         _ -> error $ show ab
     where
@@ -980,6 +997,10 @@ unparseMO (a `RotL` b) = inParens unparseMO "<<>" a b
 unparseMO (a `RotR` b) = inParens unparseMO "<>>" a b
 unparseMO (a `ShiftL` b) = inParens unparseMO "<<" a b
 unparseMO (a `ShiftR` b) = inParens unparseMO ">>" a b
+unparseMO (a `WrapAdd` b) = inParens unparseMO "+%" a b
+unparseMO (a `WrapSub` b) = inParens unparseMO "-%" a b
+unparseMO (a `WrapMul` b) = inParens unparseMO "*%" a b
+unparseMO (a `WrapPow` b) = inParens unparseMO "**%" a b
 unparseMO t@(PopCnt n) = typSuffix t "(Prim.popcnt" <> " " <> unparseMO n <> ")"
 unparseMO t@(Clz n) = typSuffix t "(Prim.clz" <> " " <> unparseMO n <> ")"
 unparseMO t@(Ctz n) = typSuffix t "(Prim.ctz" <> " " <> unparseMO n <> ")"
