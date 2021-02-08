@@ -21,6 +21,7 @@ import Data.Type.Equality
 import GHC.Natural
 import GHC.TypeLits hiding (Text)
 import qualified Data.Word
+import qualified Data.Int
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
 import Data.List (intercalate)
@@ -452,7 +453,8 @@ instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Integer)) where
 data MOTerm :: * -> * where
   -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
-    :: (AnnotLit a, Evaluatable a) => MOTerm a -> MOTerm a -> MOTerm Bool
+    :: (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) =>
+       MOTerm a -> MOTerm a -> MOTerm Bool
   -- Short-circuit
   ShortAnd, ShortOr
     :: MOTerm Bool -> MOTerm Bool -> MOTerm Bool
@@ -488,13 +490,80 @@ data MOTerm :: * -> * where
   ConvertIntToIntN :: WordLike n => MOTerm Integer -> MOTerm (BitLimited n Integer)
   ConvertIntNToInt :: WordLike n => MOTerm (BitLimited n Integer) -> MOTerm Integer
   -- Constructors (intro forms)
-  Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => MOTerm a -> MOTerm b -> MOTerm (a, b)
-  Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
-         => MOTerm a -> MOTerm b -> MOTerm c -> MOTerm (a, b, c)
+  Pair ::
+    ( AnnotLit a, AnnotLit b
+    , Evaluatable a, Evaluatable b
+    , Arbitrary (MOTerm a), Arbitrary (MOTerm b)
+    ) => MOTerm a -> MOTerm b -> MOTerm (a, b)
+  Triple ::
+    ( AnnotLit a, AnnotLit b, AnnotLit c
+    , Evaluatable a, Evaluatable b, Evaluatable c
+    , Arbitrary (MOTerm a), Arbitrary (MOTerm b), Arbitrary (MOTerm c)
+    ) => MOTerm a -> MOTerm b -> MOTerm c -> MOTerm (a, b, c)
   Array :: MOTerm a -> MOTerm [a] -- not matchable!
   Null :: MOTerm (Maybe a)
-  Some :: (AnnotLit a, Evaluatable a) => MOTerm a -> MOTerm (Maybe a)
+  Some :: (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => MOTerm a -> MOTerm (Maybe a)
   -- Variants, Objects (TODO)
+
+shrinkOp2 op a b = ((`op` b) <$> shrink a) <> ((a `op`) <$> shrink b)
+shrinkOp3 f a b c = concat
+    [ (\a -> f a b c) <$> shrink a
+    , (\b -> f a b c) <$> shrink b
+    , (\c -> f a b c) <$> shrink c
+    ]
+
+subShrink :: Arbitrary (MOTerm t) => MOTerm t -> [MOTerm t]
+subShrink Five = []
+subShrink (Lit n) = []
+subShrink (Neuralgic n) = []
+subShrink (Pos n) = Pos <$> shrink n
+subShrink (Neg n) = Neg <$> shrink n
+subShrink (Abs n) = Abs <$> shrink n
+subShrink (a `Add` b) = shrinkOp2 Add a b
+subShrink (a `Sub` b) = shrinkOp2 Sub a b
+subShrink (a `Mul` b) = shrinkOp2 Mul a b
+subShrink (a `Div` b) = shrinkOp2 Div a b
+subShrink (a `Mod` b) = shrinkOp2 Mod a b
+subShrink (a `Or` b) = shrinkOp2 Or a b
+subShrink (a `And` b) = shrinkOp2 And a b
+subShrink (a `Xor` b) = shrinkOp2 Xor a b
+subShrink (a `RotL` b) = shrinkOp2 RotL a b
+subShrink (a `RotR` b) = shrinkOp2 RotR a b
+subShrink (a `ShiftL` b) = shrinkOp2 ShiftL a b
+subShrink (a `ShiftR` b) = shrinkOp2 ShiftR a b
+subShrink (a `WrapAdd` b) = shrinkOp2 WrapAdd a b
+subShrink (a `WrapSub` b) = shrinkOp2 WrapSub a b
+subShrink (a `WrapMul` b) = shrinkOp2 WrapMul a b
+subShrink (a `WrapPow` b) = shrinkOp2 WrapPow a b
+subShrink (PopCnt n) = PopCnt <$> shrink n
+subShrink (Clz a) = Clz <$> shrink a
+subShrink (Ctz a) = Ctz <$> shrink a
+subShrink (Complement a) = Complement <$> shrink a
+subShrink (ConvertNatural a) = ConvertNatural <$> shrink a
+subShrink (ConvertNat a) = ConvertNat <$> shrink a
+subShrink (ConvertInt a) = ConvertInt <$> shrink a
+subShrink (ConvertNatNToNat a) = ConvertNatNToNat <$> shrink a
+subShrink (ConvertNatToNatN a) = ConvertNatToNatN <$> shrink a
+subShrink (ConvertIntNToInt a) = ConvertIntNToInt <$> shrink a
+subShrink (ConvertIntToIntN a) = ConvertIntToIntN <$> shrink a
+subShrink (IfThenElse a b c) = [a, b] <> shrinkOp3 IfThenElse a b c
+subShrink (a `NotEqual` b) = shrinkOp2 NotEqual a b
+subShrink (a `Equals` b) = shrinkOp2 Equals a b
+subShrink (a `GreaterEqual` b) = shrinkOp2 GreaterEqual a b
+subShrink (a `Greater` b) = shrinkOp2 Greater a b
+subShrink (a `LessEqual` b) = shrinkOp2 LessEqual a b
+subShrink (a `Less` b) = shrinkOp2 Less a b
+subShrink (a `ShortAnd` b) = shrinkOp2 ShortAnd a b
+subShrink (a `ShortOr` b) = shrinkOp2 ShortOr a b
+subShrink (Not a) = Not <$> shrink a
+subShrink (Bool False) = []
+subShrink (Bool True) = []
+subShrink (a `Pair` b) = shrinkOp2 Pair a b
+subShrink (Triple a b c) = shrinkOp3 Triple a b c
+subShrink Null = []
+subShrink (Some a) = Null : (Some <$> shrink a)
+subShrink (Text a) = Text <$> shrink a
+subShrink (a `Concat` b) = shrinkOp2 Concat a b
 
 deriving instance Show (MOTerm t)
 
@@ -543,13 +612,15 @@ instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Natu
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
     bitwiseTerm n
-  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
+  shrink (Lit _) = []
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
 
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
     bitwiseTerm n
-  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
+  shrink (Lit _) = []
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
@@ -580,7 +651,8 @@ instance Arbitrary (MOTerm Bool) where
 
 instance Arbitrary (MOTerm Natural) where
   arbitrary = reasonablyShaped arithTerm
-  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
+  shrink (Lit _) = []
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
 
 instance Arbitrary (MOTerm Integer) where
   arbitrary = reasonablyShaped $ \n ->
@@ -598,7 +670,8 @@ instance Arbitrary (MOTerm Integer) where
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int32)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int64)))
     ]
-  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
+  shrink (Lit _) = []
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
 
 instance Num a => Num (Maybe a) where
   (+) = liftA2 (+)
@@ -701,18 +774,21 @@ instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat
   toWord (NatN n) = fromIntegral n
   fromWord = NatN . fromIntegral
 
-instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat n) => WordView (BitLimited n Integer) where
-  type WordType (BitLimited n Integer) = WordTypeForBits n
-  toWord (IntN n) = fromIntegral n
-  fromWord = IntN . wrap . fromIntegral
-    where
-      bitwidth = natVal (Proxy @n)
-      wrap n | n < 2^(bitwidth - 1) = n
-             | otherwise            = n - 2^bitwidth
+type family IntTypeForBits a where
+  IntTypeForBits 8 = Data.Int.Int8
+  IntTypeForBits 16 = Data.Int.Int16
+  IntTypeForBits 32 = Data.Int.Int32
+  IntTypeForBits 64 = Data.Int.Int64
 
+instance (Integral (IntTypeForBits n), FiniteBits (IntTypeForBits n), KnownNat n) => WordView (BitLimited n Integer) where
+  type WordType (BitLimited n Integer) = IntTypeForBits n
+  toWord (IntN n) = fromIntegral n
+  fromWord = IntN . fromIntegral
 
 type WordLike n = ( Integral (WordTypeForBits n)
                   , FiniteBits (WordTypeForBits n)
+                  , Integral (IntTypeForBits n)
+                  , FiniteBits (IntTypeForBits n)
                   , KnownNat n
                   , WordView (BitLimited n Natural)
                   , WordView (BitLimited n Integer)
