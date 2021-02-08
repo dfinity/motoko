@@ -1,4 +1,0 @@
-type anon_class_1_1 = 
- service {
- };
-service : () -> anon_class_1_1

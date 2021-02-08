@@ -451,7 +451,7 @@ data MOTerm :: * -> * where
   Bool :: Bool -> MOTerm Bool
   -- Bitwise
   Complement :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
-  Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned
+  Or, And, Xor, RotL, RotR, ShiftL, ShiftR
     :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
   PopCnt, Clz, Ctz :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
   -- Arithmetic
@@ -509,7 +509,7 @@ subTermPow5 n = (n, resize (n `div` 5)
                                                     ]))
                 : subTerm False n
 
-bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) => Int -> [(Int, Gen (MOTerm (BitLimited n Natural)))]
+bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n i)) => Int -> [(Int, Gen (MOTerm (BitLimited n i)))]
 bitwiseTerm n =
     [ (n `div` 5, resize (n `div` 3) $ Or <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ And <$> arbitrary <*> arbitrary)
@@ -518,7 +518,6 @@ bitwiseTerm n =
     , (n `div` 5, resize (n `div` 3) $ RotR <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ ShiftL <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ ShiftR <$> arbitrary <*> arbitrary)
-    , (n `div` 5, resize (n `div` 3) $ ShiftRSigned <$> arbitrary <*> arbitrary)
     , (n `div` 5, PopCnt <$> arbitrary)
     , (n `div` 5, Clz <$> arbitrary)
     , (n `div` 5, Ctz <$> arbitrary)
@@ -534,15 +533,15 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        (30 `div` n, Neuralgic <$> arbitrary)
                        : if n > 1 then sub n else []
 
-instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (MOTerm (BitLimited n Natural)) where
-  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
+instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) where
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n ++ bitwiseTerm n
 
 instance {-# OVERLAPS #-} Arbitrary (MOTerm Nat8) where
   arbitrary = reasonablyShaped $ subTerm True
 
 
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
-  arbitrary = reasonablyShaped subTermPow5
+  arbitrary = reasonablyShaped $ \n -> subTermPow5 n ++ bitwiseTerm n
 
 instance {-# OVERLAPS #-} Arbitrary (MOTerm Int8) where
   arbitrary = reasonablyShaped $ subTerm True
@@ -692,45 +691,9 @@ instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat
 type WordLike n = ( Integral (WordTypeForBits n)
                   , FiniteBits (WordTypeForBits n)
                   , KnownNat n
-                  , WordView (BitLimited n Natural))
-
-instance WordLike n => Bits (BitLimited n Natural) where
-  (.&.) = lift2 (.&.)
-  (.|.) = lift2 (.|.)
-  xor = lift2 xor
-  complement = lift1 complement
-  shift a b = lift1 (`shift` b) a
-  rotate a b = lift1 (`rotate` b) a
-  bitSize = finiteBitSize
-  bitSizeMaybe = pure . finiteBitSize
-  isSigned _ = False
-  testBit a b = lift1b (`testBit` b) a
-  bit = fromWord . bit
-  popCount = lift1b popCount
-
-instance WordLike n => Bits (BitLimited n Integer) where
-  (.&.) = lift2 (.&.)
-  (.|.) = lift2 (.|.)
-  xor = lift2 xor
-  complement = lift1 complement
-  shift a b = lift1 (`shift` b) a
-  rotate a b = lift1 (`rotate` b) a
-  bitSize = finiteBitSize
-  bitSizeMaybe = pure . finiteBitSize
-  isSigned _ = False
-  testBit a b = lift1b (`testBit` b) a
-  bit = fromWord . bit
-  popCount = lift1b popCount
-
-instance WordLike n => FiniteBits (BitLimited n Natural) where
-  finiteBitSize b = fromIntegral $ natVal (Proxy @n)
-  countLeadingZeros = lift1b countLeadingZeros
-  countTrailingZeros = lift1b countTrailingZeros
-
-instance WordLike n => FiniteBits (BitLimited n Integer) where
-  finiteBitSize b = fromIntegral $ natVal (Proxy @n)
-  countLeadingZeros = lift1b countLeadingZeros
-  countTrailingZeros = lift1b countTrailingZeros
+                  , WordView (BitLimited n Natural)
+                  , WordView (BitLimited n Integer)
+                  )
 
 type Nat8 = BitLimited 8 Natural
 type Nat16 = BitLimited 16 Natural
@@ -740,10 +703,6 @@ type Int8 = BitLimited 8 Integer
 type Int16 = BitLimited 16 Integer
 type Int32 = BitLimited 32 Integer
 type Int64 = BitLimited 64 Integer
-type Word8 = BitLimited 8 Word
-type Word16 = BitLimited 16 Word
-type Word32 = BitLimited 32 Word
-type Word64 = BitLimited 64 Word
 
 instance ToBitLimited bits a => Num (BitLimited bits a) where
   NatN m + NatN n = NatN . fromJust $ trapNat (natVal (Proxy @bits)) (toInteger m + toInteger n)
@@ -778,14 +737,17 @@ instance ToBitLimited n a => Integral (BitLimited n a) where
 trapNat :: Integer -> Integer -> Maybe Natural
 trapNat n v = do guard (v >= 0 && v < 2 ^ n); pure (fromIntegral v)
 
+wrapNat :: Integer -> Integer -> Maybe Natural
+wrapNat n v = do pure (fromIntegral v `mod` 2^n)
+
 trapInt :: Integer -> Integer -> Maybe Integer
 trapInt (pred -> n) v = do guard (v < 2 ^ n && v >= - 2 ^ n); pure v
 
-trapWord :: Integer -> Integer -> Maybe Natural
-trapWord n v = pure . fromIntegral $ v `mod` 2 ^ n
+wrapInt :: Integer -> Integer -> Maybe Natural
+wrapInt n v = do pure (fromIntegral v `mod` 2^n)
 
 
-instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
+instance WordLike bits => Evaluatable (BitLimited bits Natural) where
   evaluate Five = pure $ NatN 5
   evaluate (Neuralgic n) = NatN <$> trapNat (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
@@ -800,8 +762,32 @@ instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evaluate c
                                evaluate $ if c then a else b
+
+        a `Or` b -> goWrap (.|.) a b
+        a `And` b -> goWrap (.&.) a b
+        a `Xor` b -> goWrap xor a b
+        a `RotL` b -> goWrapMod rotateL a b
+        a `RotR` b -> goWrapMod rotateR a b
+        a `ShiftL` b -> goWrapMod shiftL a b
+        a `ShiftR` b -> goWrapMod shiftR a b
+
+        Complement a -> fromWord . complement . toWord <$> evaluate a
+        PopCnt a -> NatN . fromIntegral . popCount . toWord <$> evaluate a
+        Clz a -> NatN . fromIntegral . countLeadingZeros . toWord <$> evaluate a
+        Ctz a -> NatN . fromIntegral . countTrailingZeros . toWord <$> evaluate a
+
         _ -> error $ show ab
-    where go op a b = do NatN a <- evaluate a; NatN b <- evaluate b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
+    where
+        bitcount = natVal (Proxy @bits)
+        go op a b = do NatN a <- evaluate a; NatN b <- evaluate b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
+        goWrap op a b = do
+            a <- toWord <$> evaluate a
+            b <- toWord <$> evaluate b
+            pure $ fromWord $ a `op` b
+        goWrapMod op a b = do
+            a <- toWord <$> evaluate a
+            b <- fromIntegral . (`mod` bitcount) . fromIntegral <$> evaluate b
+            pure $ fromWord $ a `op` b
 
 instance WordLike bits => Evaluatable (BitLimited bits Integer) where
   evaluate Five = pure $ IntN 5
@@ -819,23 +805,31 @@ instance WordLike bits => Evaluatable (BitLimited bits Integer) where
         IfThenElse a b c -> do c <- evaluate c
                                evaluate $ if c then a else b
 
-        a `Or` b -> go (.|.) a b
-        a `And` b -> go (.&.) a b
-        a `Xor` b -> go xor a b
-        a `RotL` b -> go (flip rotateL . fromIntegral) b a
-        a `RotR` b -> go (flip rotateR . fromIntegral) b a
-        a `ShiftL` b -> go (flip shiftL . (`mod` fromIntegral bitcount) . fromIntegral) b a
-        a `ShiftR` b -> go (flip shiftR . (`mod` fromIntegral bitcount) . fromIntegral) b a
+        a `Or` b -> goWrap (.|.) a b
+        a `And` b -> goWrap (.&.) a b
+        a `Xor` b -> goWrap xor a b
+        a `RotL` b -> goWrapMod rotateL a b
+        a `RotR` b -> goWrapMod rotateR a b
+        a `ShiftL` b -> goWrapMod shiftL a b
+        a `ShiftR` b -> goWrapMod shiftR a b
 
-        PopCnt (evaluate -> a) -> fromIntegral . popCount <$> a
-        Clz (evaluate -> a) -> fromIntegral . countLeadingZeros <$> a
-        Ctz (evaluate -> a) -> fromIntegral . countTrailingZeros <$> a
+        Complement a -> fromWord . complement . toWord <$> evaluate a
+        PopCnt a -> IntN . fromIntegral . popCount . toWord <$> evaluate a
+        Clz a -> IntN . fromIntegral . countLeadingZeros . toWord <$> evaluate a
+        Ctz a -> IntN . fromIntegral . countTrailingZeros . toWord <$> evaluate a
 
         _ -> error $ show ab
     where
         bitcount = natVal (Proxy @bits)
         go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
-
+        goWrap op a b = do
+            a <- toWord <$> evaluate a
+            b <- toWord <$> evaluate b
+            pure $ fromWord $ a `op` b
+        goWrapMod op a b = do
+            a <- toWord <$> evaluate a
+            b <- fromIntegral . (`mod` bitcount) . fromIntegral <$> evaluate b
+            pure $ fromWord $ a `op` b
 
 instance Evaluatable Integer where
   evaluate = eval
@@ -900,6 +894,8 @@ class Annot t where
   annot :: MOTerm t -> String -> String
   sizeSuffix :: MOTerm t -> String -> String
   sizeSuffix _ = id
+  typSuffix :: MOTerm t -> String -> String
+  typSuffix _ = id
 
 instance Annot (a, b) where
   annot _ = id
@@ -925,10 +921,12 @@ bitWidth p = show (natVal p)
 instance KnownNat n => Annot (BitLimited n Natural) where
   annot _ s = "((" <> s <> ") : Nat" <> bitWidth (Proxy @n) <> ")"
   sizeSuffix _ = (<> bitWidth (Proxy @n))
+  typSuffix _ = (<> "Nat" <> bitWidth (Proxy @n))
 
 instance KnownNat n => Annot (BitLimited n Integer) where
   annot _ s = "((" <> s <> ") : Int" <> bitWidth (Proxy @n) <> ")"
   sizeSuffix _ = (<> bitWidth (Proxy @n))
+  typSuffix _ = (<> "Int" <> bitWidth (Proxy @n))
 
 instance Annot Bool where
   annot _ = id
@@ -956,8 +954,6 @@ instance KnownNat bits => Literal (BitLimited bits Integer) where
   literal (evalN -> n) = if n < 0
                          then "(" <> show n <> ")"
                          else show n
-instance KnownNat bits => Literal (BitLimited bits Word) where
-  literal n = show . fromJust $ trapWord (natVal (Proxy @bits)) (evalN n)
 
 instance Literal Bool where
   literal _ = error "Literal Bool makes no sense"
@@ -984,10 +980,9 @@ unparseMO (a `RotL` b) = inParens unparseMO "<<>" a b
 unparseMO (a `RotR` b) = inParens unparseMO "<>>" a b
 unparseMO (a `ShiftL` b) = inParens unparseMO "<<" a b
 unparseMO (a `ShiftR` b) = inParens unparseMO ">>" a b
-unparseMO (a `ShiftRSigned` b) = inParens unparseMO "+>>" a b
-unparseMO (PopCnt n) = sizeSuffix n "(Prim.popcntWord" <> " " <> unparseMO n <> ")"
-unparseMO (Clz n) = sizeSuffix n "(Prim.clzWord" <> " " <> unparseMO n <> ")"
-unparseMO (Ctz n) = sizeSuffix n "(Prim.ctzWord" <> " " <> unparseMO n <> ")"
+unparseMO t@(PopCnt n) = typSuffix t "(Prim.popcnt" <> " " <> unparseMO n <> ")"
+unparseMO t@(Clz n) = typSuffix t "(Prim.clz" <> " " <> unparseMO n <> ")"
+unparseMO t@(Ctz n) = typSuffix t "(Prim.ctz" <> " " <> unparseMO n <> ")"
 unparseMO (Complement a) = "(^ " <> unparseMO a <> ")"
 unparseMO (ConvertNatural a) = "(++++(" <> unparseMO a <> "))"
 unparseMO (ConvertNat a) = unparseNat Proxy a

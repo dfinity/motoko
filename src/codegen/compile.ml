@@ -6795,14 +6795,10 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae e ^^
         BigNum.truncate_to_word64 env
 
-      | Nat64, Int64
-      | Int64, Nat64
-      | Nat32, Int32
-      | Int32, Nat32
-      | Nat16, Int16
-      | Int16, Nat16
-      | Nat8, Int8
-      | Int8, Nat8 ->
+      | Nat64, Int64 | Int64, Nat64
+      | Nat32, Int32 | Int32, Nat32
+      | Nat16, Int16 | Int16, Nat16
+      | Nat8, Int8 | Int8, Nat8 ->
         compile_exp env ae e
       | _ -> SR.Unreachable, todo_trap env "compile_exp u" (Arrange_ir.exp exp)
       end
