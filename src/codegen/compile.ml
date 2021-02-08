@@ -5978,10 +5978,6 @@ let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
 
-let prim_of_typ ty = match Type.normalize ty with
-  | Type.Prim ty -> ty
-  | _ -> assert false
-
 (* helper, traps with message *)
 let then_arithmetic_overflow env =
   E.then_trap_with env "arithmetic overflow"
@@ -6812,10 +6808,8 @@ and compile_exp (env : E.t) ae exp =
           get_n ^^
           BigNum.truncate_to_word64 env)
 
-      | Int, (Int8|Int16|Int32) ->
-        let ty = exp.note.Note.typ in
-        StackRep.of_type ty,
-        let pty = prim_of_typ ty in
+      | Int, (Int8|Int16|Int32 as pty) ->
+        StackRep.of_type (Prim pty),
         compile_exp_vanilla env ae e ^^
         Func.share_code1 env (prim_fun_name pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
           get_n ^^
@@ -6835,10 +6829,8 @@ and compile_exp (env : E.t) ae exp =
           get_n ^^
           BigNum.truncate_to_word64 env)
 
-      | Nat, (Nat8|Nat16|Nat32) ->
-        let ty = exp.note.Note.typ in
-        StackRep.of_type ty,
-        let pty = prim_of_typ ty in
+      | Nat, (Nat8|Nat16|Nat32 as pty) ->
+        StackRep.of_type (Prim pty),
         compile_exp_vanilla env ae e ^^
         Func.share_code1 env (prim_fun_name pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
           get_n ^^
