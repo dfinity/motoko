@@ -1036,7 +1036,7 @@ module BitTagged = struct
        0b00: `false`
        0b01: `true`
 
-     Note that Word16 and Word8 do not need to be explicitly bit-tagged:
+     Note that {Nat,Int}{8,16} do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
      thus lowest two bits are always 0.
      All arithmetic is implemented directly on that representation, see
@@ -2494,14 +2494,14 @@ module BigNum = MakeCompact(BigNumLibtommath)
 
 (* Primitive functions *)
 module Prim = struct
-  (* The Word8 and Word16 bits sit in the MSBs of the i32, in this manner
+  (* The {Nat,Int}{8,16} bits sit in the MSBs of the i32, in this manner
      we can perform almost all operations, with the exception of
      - Mul (needs shr of one operand)
      - Shr (needs masking of result)
      - Rot (needs duplication into LSBs, masking of amount and masking of result)
      - ctz (needs shr of operand or sub from result)
 
-     Both Word8/16 easily fit into the vanilla stackrep, so no boxing is necessary.
+     Both {Nat,Int}{8,16} fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
   let prim_word32toNat env = BigNum.from_word32 env
