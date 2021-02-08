@@ -1,5 +1,22 @@
 = Motoko compiler changelog
 
+* **BREAKING CHANGE**
+
+  The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
+
+  Bit-wise operations (and, or, xor, shifts, rotation etc.) are now possible on
+  `Nat8`, `Nat16`, `Nat32`, `Nat64`, `Int8`, `Int16`, `Int32` and `Int64`
+  directly. New _wrapping_ operators (`+%`, `*%`, `-%`, `**%`) are supported on
+  these types, and intended to be used where previously arithmetic on word
+  types was used.
+
+  Iterating over a `Blob` now produces `Nat8` values.
+
+  Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
+  modules, and wrapping conversion functions were added to the other number
+  types.
+
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
