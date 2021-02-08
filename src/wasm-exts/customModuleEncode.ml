@@ -827,6 +827,13 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
+
+    let motoko_section_body labels =
+      section 0 (vec string) labels (labels <> [])
+
+    let motoko_sections motoko =
+      custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> [])
+
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
     let close_section () = u8 0x00
@@ -1170,6 +1177,7 @@ let encode (em : extended_module) =
       in
       custom_section ".debug_line" debug_line_section_body () (fs <> [])
 
+
     (* Module *)
 
     let module_ (em : extended_module) =
@@ -1192,6 +1200,7 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      motoko_sections em.motoko;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then
         begin
