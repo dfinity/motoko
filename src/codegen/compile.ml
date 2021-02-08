@@ -6783,7 +6783,6 @@ and compile_exp (env : E.t) ae exp =
       | (Nat|Int), (Nat8|Nat16|Int8|Int16) ->
         SR.Vanilla,
         compile_exp_vanilla env ae e ^^
-        (* this looks fishy *)
         Prim.prim_intToWordNShifted env (TaggedSmallWord.shift_of_type t2)
 
       | (Nat|Int), (Nat32|Int32) ->
