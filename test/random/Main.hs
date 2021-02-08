@@ -293,7 +293,7 @@ instance Arbitrary Matching where
                     , realise Matching <$> gen @(Bool, Bool)
                     , realise Matching <$> gen @(Bool, Integer)
                     , realise Matching <$> gen @((Bool, Natural), Integer)
-                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Natural)
+                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer)
                     , realise Matching <$> gen @(Maybe Integer)
                     ]
     where gen :: (Arbitrary (MOTerm a), Evaluatable a) => Gen (MOTerm a, Maybe a)
@@ -684,7 +684,12 @@ instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat
 instance (Integral (WordTypeForBits n), FiniteBits (WordTypeForBits n), KnownNat n) => WordView (BitLimited n Integer) where
   type WordType (BitLimited n Integer) = WordTypeForBits n
   toWord (IntN n) = fromIntegral n
-  fromWord = IntN . fromIntegral
+  fromWord = IntN . wrap . fromIntegral
+    where
+      bitwidth = natVal (Proxy @n)
+      wrap n | n < 2^(bitwidth - 1) = n
+             | otherwise            = n - 2^bitwidth
+
 
 type WordLike n = ( Integral (WordTypeForBits n)
                   , FiniteBits (WordTypeForBits n)
@@ -735,15 +740,8 @@ instance ToBitLimited n a => Integral (BitLimited n a) where
 trapNat :: Integer -> Integer -> Maybe Natural
 trapNat n v = do guard (v >= 0 && v < 2 ^ n); pure (fromIntegral v)
 
-wrapNat :: Integer -> Integer -> Maybe Natural
-wrapNat n v = do pure (fromIntegral v `mod` 2^n)
-
 trapInt :: Integer -> Integer -> Maybe Integer
-trapInt (pred -> n) v = do guard (v < 2 ^ n && v >= - 2 ^ n); pure v
-
-wrapInt :: Integer -> Integer -> Maybe Natural
-wrapInt n v = do pure (fromIntegral v `mod` 2^n)
-
+trapInt n v = do guard (v < 2 ^ (n-1) && v >= - 2 ^ (n-1)); pure v
 
 instance WordLike bits => Evaluatable (BitLimited bits Natural) where
   evaluate Five = pure $ NatN 5
