@@ -6344,10 +6344,6 @@ let compile_binop env t op =
   | Type.(Prim Nat8),                         MulOp -> compile_smallNat_kernel' env Type.Nat8 "mul"
                                                          (compile_shrU_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
   | Type.(Prim Float),                        MulOp -> G.i (Binary (Wasm.Values.F64 F64Op.Mul))
-  (* TODO: Check what this did on minIntN/-1 on natN before *)
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),
-                                              WrappingDivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
-                                                       TaggedSmallWord.msb_adjust ty
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
                                                        TaggedSmallWord.msb_adjust ty
   | Type.(Prim (Nat8|Nat16|Nat32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))

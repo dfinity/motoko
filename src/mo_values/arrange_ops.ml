@@ -24,7 +24,6 @@ let binop bo = match bo with
   | WrappingAddOp  -> Atom "WrappingAddOp"
   | WrappingSubOp  -> Atom "WrappingSubOp"
   | WrappingMulOp  -> Atom "WrappingMulOp"
-  | WrappingDivOp  -> Atom "WrappingDivOp"
   | WrappingPowOp  -> Atom "WrappingPowOp"
 
 let relop ro = match ro with

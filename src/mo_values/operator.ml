@@ -27,7 +27,6 @@ type binop =
   | WrappingAddOp                               (* wrapping operators... *)
   | WrappingSubOp
   | WrappingMulOp
-  | WrappingDivOp
   | WrappingPowOp
   | CatOp                                       (* concatenation *)
 
@@ -129,7 +128,6 @@ let binop op t =
     | WrappingAddOp -> word_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
     | WrappingSubOp -> word_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
     | WrappingMulOp -> word_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
-    | WrappingDivOp -> word_binop (Nat8.wrapping_div, Nat16.wrapping_div, Nat32.wrapping_div, Nat64.wrapping_div, Int_8.wrapping_div, Int_16.wrapping_div, Int_32.wrapping_div, Int_64.wrapping_div) p
     | WrappingPowOp -> word_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
     | CatOp -> text_binop (^) p
     )
