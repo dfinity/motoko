@@ -118,3 +118,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_WRAPSUBOP -> WRAPSUBOP
       | T_WRAPMULOP -> WRAPMULOP
       | T_WRAPPOWOP -> WRAPPOWOP
+      | T_WRAPADDASSIGN -> WRAPADDOP
+      | T_WRAPSUBASSIGN -> WRAPSUBOP
+      | T_WRAPMULASSIGN -> WRAPMULOP
+      | T_WRAPPOWASSIGN -> WRAPPOWOP

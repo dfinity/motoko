@@ -167,6 +167,10 @@ rule token mode = parse
   | ">>=" { SHRASSIGN }
   | "<<>=" { ROTLASSIGN }
   | "<>>=" { ROTRASSIGN }
+  | "+%=" { WRAPADDASSIGN }
+  | "-%=" { WRAPSUBASSIGN }
+  | "*%=" { WRAPMULASSIGN }
+  | "**%=" { WRAPPOWASSIGN }
   | "#=" { CATASSIGN }
   | "->" { ARROW }
   | "_" { UNDERSCORE }

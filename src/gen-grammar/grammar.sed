@@ -27,6 +27,10 @@ s/<semicolon>/\';\'/g
 s/<annot_opt>/(':' <typ>)?/g
 s/<pat_opt>/<pat_plain>?/g
 s/epsilon/<empty>/g
+s/WRAPADDASSIGN/\'+%=\'/g
+s/WRAPSUBASSIGN/\'-%=\'/g
+s/WRAPMULASSIGN/\'*%=\'/g
+s/WRAPPOWASSIGN/\'**%=\'/g
 s/WRAPADDOP/\'+%\'/g
 s/WRAPSUBOP/\'-%\'/g
 s/WRAPMULOP/\'*%\'/g
