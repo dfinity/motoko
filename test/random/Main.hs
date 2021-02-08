@@ -283,7 +283,7 @@ prop_moduloNWN (ModuloTest term@(ConvertNatToNatN (Neuralgic m))) = monadicIO $ 
                 <> " == " <> show m' <> ")"
 
 data Matching where
-  Matching :: (AnnotLit t, MOValue t, Show t) => (MOTerm t, t) -> Matching
+  Matching :: (AnnotLit t, MOValue t, Show t, Evaluatable t, Arbitrary (MOTerm t)) => (MOTerm t, t) -> Matching
 
 deriving instance Show Matching
 
@@ -301,6 +301,11 @@ instance Arbitrary Matching where
                     let val = evaluate term
                     pure (term, val)) `suchThat` (isJust . snd)
           realise f (tm, Just v) = f (tm, v)
+  shrink (Matching (term, val)) = do
+    term' <- shrink term
+    if evaluate term' /= Just val
+    then error "shrinking changed values"
+    else pure $ Matching (term', val)
 
 prop_matchStructured :: Matching -> Property
 prop_matchStructured (Matching a) = locally a
@@ -466,6 +471,7 @@ data MOTerm :: * -> * where
   WrapAdd, WrapSub, WrapMul, WrapPow
     :: MOTerm (BitLimited n a) -> MOTerm (BitLimited n a) -> MOTerm (BitLimited n a)
   -- Numeric
+  Lit :: Integer -> MOTerm a
   Neuralgic :: Neuralgic a -> MOTerm a
   Five :: MOTerm a
   -- Text
@@ -537,21 +543,32 @@ instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Natu
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
     bitwiseTerm n
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
 
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
     bitwiseTerm n
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
+  shrink (Pair x y) =
+    [ Pair x y' | y' <- shrink y ] <>
+    [ Pair x' y | x' <- shrink x ]
 
 instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (MOTerm a), Arbitrary (MOTerm b), Arbitrary (MOTerm c))
     => Arbitrary (MOTerm (a, b, c)) where
   arbitrary = scale (`quot` 3) $ Triple <$> arbitrary <*> arbitrary <*> arbitrary
+  shrink (Triple x y z) =
+    [ Triple x y' z | y' <- shrink y ] <>
+    [ Triple x' y z | x' <- shrink x ] <>
+    [ Triple x y z' | z' <- shrink z ]
 
 instance (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => Arbitrary (MOTerm (Maybe a)) where
   arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
+  shrink Null = []
+  shrink (Some t) = Null : [ Some t | t' <- shrink t ]
 
 instance Arbitrary (MOTerm Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
@@ -563,6 +580,7 @@ instance Arbitrary (MOTerm Bool) where
 
 instance Arbitrary (MOTerm Natural) where
   arbitrary = reasonablyShaped arithTerm
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
 
 instance Arbitrary (MOTerm Integer) where
   arbitrary = reasonablyShaped $ \n ->
@@ -580,6 +598,7 @@ instance Arbitrary (MOTerm Integer) where
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int32)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int64)))
     ]
+  shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ]
 
 instance Num a => Num (Maybe a) where
   (+) = liftA2 (+)
@@ -607,6 +626,7 @@ evalO OneMore = (+1)
 evalO TwoMore = (+2)
 
 
+evalN :: Num a => Neuralgic t -> a
 evalN LargeNeg = fromIntegral (minBound :: Int) - 111
 evalN (AroundNeg n) = - 2 ^ n
 evalN Around0 = 0
@@ -745,6 +765,7 @@ trapInt n v = do guard (v < 2 ^ (n-1) && v >= - 2 ^ (n-1)); pure v
 
 instance WordLike bits => Evaluatable (BitLimited bits Natural) where
   evaluate Five = pure $ NatN 5
+  evaluate (Lit n) = NatN <$> trapNat (natVal (Proxy @bits)) n
   evaluate (Neuralgic n) = NatN <$> trapNat (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
       case ab of
@@ -796,6 +817,7 @@ instance WordLike bits => Evaluatable (BitLimited bits Natural) where
 
 instance WordLike bits => Evaluatable (BitLimited bits Integer) where
   evaluate Five = pure $ IntN 5
+  evaluate (Lit n) = IntN <$> trapInt (natVal (Proxy @bits)) n
   evaluate (Neuralgic n) = IntN <$> trapInt (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
       case ab of
@@ -863,6 +885,7 @@ maskFor _ = fromIntegral $ 2 ^ natVal (Proxy @n) - 1
 eval :: (Restricted a, Integral a) => MOTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
+eval (Lit n) = pure (fromIntegral n)
 eval (Pos n) = eval n
 eval (Neg n) = - eval n
 eval (Abs n) = abs $ eval n
@@ -975,6 +998,7 @@ inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
 unparseMO :: AnnotLit a => MOTerm a -> String
 unparseMO f@Five = annot f "5"
+unparseMO a@(Lit n) = annot a $ show n
 unparseMO a@(Neuralgic n) = annot a $ literal n
 unparseMO (Pos n) = "(+" <> unparseMO n <> ")"
 unparseMO (Neg n) = "(-" <> unparseMO n <> ")"
