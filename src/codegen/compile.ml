@@ -6548,7 +6548,7 @@ let compile_binop env t op =
        (fun env get_n get_by ->
         let open Wasm.Values in
         let open TaggedSmallWord in
-        let beside_adjust = compile_rotr_const (shift_of_type ty) in
+        let beside_adjust = compile_rotr_const (Int32.of_int (bits_of_type ty)) in
         get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
         get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
         sanitize_word_result ty
@@ -6560,7 +6560,7 @@ let compile_binop env t op =
        (fun env get_n get_by ->
         let open Wasm.Values in
         let open TaggedSmallWord in
-        let beside_adjust = compile_rotl_const (shift_of_type ty) in
+        let beside_adjust = compile_rotl_const (Int32.of_int (bits_of_type ty)) in
         get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
         get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
         sanitize_word_result ty
