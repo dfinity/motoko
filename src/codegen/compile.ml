@@ -6030,11 +6030,6 @@ let compile_unop env t op =
 
 (* Logarithmic helpers for deciding whether we can carry out operations in constant bitwidth *)
 
-(* TODO: Is this comment still up to date? *)
-(* Compiling Int/Nat64 ops by conversion to/from BigNum. This is currently
-   consing a lot, but compact bignums will get back efficiency as soon as
-   they are merged. *)
-
 (* helper, traps with message *)
 let else_arithmetic_overflow env =
   E.else_trap_with env "arithmetic overflow"
