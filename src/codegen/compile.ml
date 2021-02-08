@@ -1486,26 +1486,39 @@ module Word64 = struct
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
 
-  let compile_unsigned_pow env =
-    let rec pow () = Func.share_code2 env "pow"
-                       (("n", I64Type), ("exp", I64Type)) [I64Type]
-                       Wasm.Values.(fun env get_n get_exp ->
-         let one = compile_const_64 1L in
-         let (set_res, get_res) = new_local64 env "res" in
-         let square_recurse_with_shifted =
-           get_n ^^ get_exp ^^ one ^^
-           G.i (Binary (I64 I64Op.ShrU)) ^^
-           pow () ^^ set_res ^^ get_res ^^ get_res ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-         in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+  let rec compile_unsigned_pow env =
+    (* TODO: Rewrite as a loop *)
+    Func.share_code2 env "wrap_pow_Nat64" (("n", I64Type), ("exp", I64Type)) [I64Type]
+      (fun env get_n get_exp ->
+        let open Wasm.Values in
+        let one = compile_const_64 1L in
+        let (set_res, get_res) = new_local64 env "res" in
+        let square_recurse_with_shifted =
+          get_n ^^ get_exp ^^ one ^^
+          G.i (Binary (I64 I64Op.ShrU)) ^^
+          compile_unsigned_pow env ^^ set_res ^^ get_res ^^ get_res ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) in
+        get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+        G.if_ [I64Type]
+          one
+          begin
+            get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
             G.if_ [I64Type]
-             one
-             (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-              G.if_ [I64Type]
-                square_recurse_with_shifted
-                (get_n ^^
-                 square_recurse_with_shifted ^^
-                 G.i (Binary (Wasm.Values.I64 I64Op.Mul)))))
-    in pow ()
+              square_recurse_with_shifted
+              (get_n ^^
+               square_recurse_with_shifted ^^
+              G.i (Binary (Wasm.Values.I64 I64Op.Mul)))
+          end
+      )
+
+  let compile_signed_wrapping_pow env =
+    Func.share_code2 env "wrap_pow_Int64" (("n", I64Type), ("exp", I64Type)) [I64Type]
+      (fun env get_n get_exp ->
+        get_exp ^^
+        compile_const_64 0L ^^
+        G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
+        E.else_trap_with env "negative power" ^^
+        get_n ^^ get_exp ^^ compile_unsigned_pow env
+      )
 
   let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   let compile_relop env i64op = G.i (Compare (Wasm.Values.I64 i64op))
@@ -1565,9 +1578,13 @@ module BoxedSmallWord = struct
 end (* BoxedSmallWord *)
 
 module TaggedSmallWord = struct
-  (* While smaller-than-32bit words are treated as i32 from the WebAssembly perspective,
-     there are certain differences that are type based. This module provides helpers to abstract
-     over those. *)
+  (* While smaller-than-32bit words are treated as i32 from the WebAssembly
+     perspective, there are certain differences that are type based. This module
+     provides helpers to abstract over those.
+
+     Caution: Some functions here are also used for Nat32/Int32, while others
+     are _only_ used for the small ones. Check call-sites!
+  *)
 
   let bits_of_type = function
     | Type.(Int8|Nat8) -> 8
@@ -1666,26 +1683,41 @@ module TaggedSmallWord = struct
     lsb_adjust ty ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Mul))
 
-  let compile_word_power env ty =
-    let rec pow () = Func.share_code2 env (prim_fun_name ty "wrapping_pow")
-                       (("n", I32Type), ("exp", I32Type)) [I32Type]
-                       Wasm.Values.(fun env get_n get_exp ->
+  let rec compile_nat_power env ty =
+    let name = prim_fun_name ty "wrapping_pow_nat" in
+    (* TODO: Rewrite as a loop *)
+    Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
+      (fun env get_n get_exp ->
+        let open Wasm.Values in
         let one = compile_unboxed_const (const_of_type ty 1l) in
         let (set_res, get_res) = new_local env "res" in
         let mul = compile_word_mul env ty in
         let square_recurse_with_shifted sanitize =
           get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
-          pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
-        in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-           G.if_ [I32Type]
-             one
-             (get_exp ^^ one ^^ G.i (Binary (I32 I32Op.And)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-              G.if_ [I32Type]
-                (square_recurse_with_shifted G.nop)
-                (get_n ^^
-                 square_recurse_with_shifted (sanitize_word_result ty) ^^
-                 mul)))
-    in pow ()
+          compile_nat_power env ty ^^ set_res ^^ get_res ^^ get_res ^^ mul in
+        get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
+        G.if_ [I32Type] one
+        begin
+          get_exp ^^ one ^^ G.i (Binary (I32 I32Op.And)) ^^
+          G.i (Test (I32 I32Op.Eqz)) ^^
+          G.if_ [I32Type]
+            (square_recurse_with_shifted G.nop)
+            (get_n ^^
+             square_recurse_with_shifted (sanitize_word_result ty) ^^
+             mul)
+        end
+      )
+
+  let compile_int_power env ty =
+    let name = prim_fun_name ty "wrapping_pow_int" in
+    Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
+      (fun env get_n get_exp ->
+        get_exp ^^
+        compile_unboxed_const 0l ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        E.else_trap_with env "negative power"  ^^
+        get_n ^^ get_exp ^^ compile_nat_power env ty
+      )
 
 end (* TaggedSmallWord *)
 
@@ -6349,8 +6381,8 @@ let compile_binop env t op =
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
   | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),
-                                              WrappingPowOp -> TaggedSmallWord.compile_word_power env ty
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WrappingPowOp -> TaggedSmallWord.compile_nat_power env ty
+  | Type.(Prim (Int8|Int16|Int32 as ty)),     WrappingPowOp -> TaggedSmallWord.compile_int_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
     Func.share_code2 env (prim_fun_name ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
@@ -6369,7 +6401,7 @@ let compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
-                TaggedSmallWord.compile_word_power env Type.Nat32 ^^ set_res ^^
+                TaggedSmallWord.compile_nat_power env Type.Nat32 ^^ set_res ^^
                 get_res ^^ enforce_unsigned_bits env bits ^^
                 get_res ^^ TaggedSmallWord.msb_adjust ty
               end
@@ -6423,7 +6455,7 @@ let compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
-                TaggedSmallWord.compile_word_power env Type.Nat32 ^^
+                TaggedSmallWord.compile_nat_power env Type.Nat32 ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
                 get_res ^^ TaggedSmallWord.msb_adjust ty
               end
@@ -6480,7 +6512,12 @@ let compile_binop env t op =
     get_exp ^^ BigNum.compile_is_negative env ^^
     E.then_trap_with env "negative power" ^^
     get_n ^^ get_exp ^^ pow
-  | Type.(Prim (Nat64|Int64)),                WrappingPowOp -> Word64.compile_unsigned_pow env
+  | Type.(Prim Nat64),                        WrappingPowOp -> Word64.compile_unsigned_pow env
+  | Type.(Prim Int64),                        WrappingPowOp -> Word64.compile_signed_wrapping_pow env
+  | Type.(Prim Nat64),                        PowOp ->
+    compile_Nat64_kernel env "pow"
+      BigNum.compile_unsigned_pow
+      (powNat64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Int64),                        PowOp ->
     let (set_exp, get_exp) = new_local64 env "exp" in
     set_exp ^^ get_exp ^^
@@ -6491,10 +6528,6 @@ let compile_binop env t op =
     compile_Int64_kernel
       env "pow" BigNum.compile_unsigned_pow
       (powInt64_shortcut (Word64.compile_unsigned_pow env))
-  | Type.(Prim Nat64),                        PowOp ->
-    compile_Nat64_kernel env "pow"
-      BigNum.compile_unsigned_pow
-      (powNat64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow" (* musl *)
   | Type.(Prim (Nat64|Int64)),                AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))

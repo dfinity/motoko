@@ -336,7 +336,10 @@ struct
   (* TODO: This is probably not correct, if the divisor is negative we do not
      want to treat it like a large number *)
   let wrapping_div = on_words WordRep.div_u
-  let wrapping_pow = on_words WordRep.pow
+  let wrapping_pow a b =
+    if Rep.ge b Rep.zero
+    then on_words WordRep.pow a b
+    else raise (Invalid_argument "negative exponent")
 end
 
 module Nat8 = Ranged (Nat) (Word8)
