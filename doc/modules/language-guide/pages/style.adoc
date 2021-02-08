@@ -39,7 +39,7 @@ let r = { a = 1; b = 2 };
 var v : Nat = 0;
 func foo(x : Nat, y : Nat) : Nat { x + y }
 func bar((x, y) : (Nat, Nat)) : Nat { x + y }
-let w = -1 ^ 0xff : Word16;
+let w = 1 ^ 0xff : Nat16;
 ....
 
 Rationale: ':' is to declarations what '=' is to definitions.
@@ -528,7 +528,7 @@ Group by 3 digits in decimal numbers and by 4 in hexadecimal notation.
 ....
 let billion = 1_000_000_000;
 let pi = 3.141_592_653_589_793_12;
-let mask : Word32 = 0xff00_ff0f;
+let mask : Nat32 = 0xff00_ff0f;
 ....
 
 == Naming
@@ -682,7 +682,7 @@ func foreach<X>(xs : [X], f : X -> ()) {
 
 [source, motoko]
 ....
-let mask : Word32 = 0xfc03_ff00;
+let mask : Nat32 = 0xfc03_ff00;
 let pivot : Nat32 = (size + 1)/2;
 let vec : [Int16] = [1, 3, -4, 0];
 ....
@@ -700,7 +700,7 @@ let offset = +1;   // type Int
 
 [source, motoko]
 ....
-if (x & mask == (1 : Word32)) { ... };
+if (x & mask == (1 : Nat32)) { ... };
 ....
 
 NOTE: The need to annotate constants in cases like this is a short-coming of Motoko's type system that we hope to address soon.
@@ -763,7 +763,7 @@ Array.map<Nat, Nat>(func n {n + 1}, a);
 
 [source, motoko]
 ....
-let mask : Word32 = 0xfc03_ff00;
+let mask : Nat32 = 0xfc03_ff00;
 let offset : Nat32 = size + 1;
 ....
 
@@ -772,9 +772,7 @@ let offset : Nat32 = size + 1;
 
 * Use `Nat` for any integral value that cannot be negative.
 
-* Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, or when matching types imposed by external requirements, such as other canisters.
-
-* Use `WordN` only when bit-fiddling requires the low-level interpretation of a number as a vector of bits.
+* Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, or when matching types imposed by external requirements, such as other canisters, or when bit-fiddling requires the low-level interpretation of a number as a vector of bits.
 
 * Avoid proliferation of option types, and therefore `null`.
 +

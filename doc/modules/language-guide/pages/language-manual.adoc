@@ -212,7 +212,7 @@ To simplify the presentation of available operators, operators and primitive typ
 
 | A            | Arithmetic | arithmetic operations
 | L            | Logical    | logical/Boolean operations
-| B            | Bitwise    | bitwise operations
+| B            | Bitwise    | bitwise and wrapping operations
 | O            | Ordered    | comparison
 | T            | Text       | concatenation
 |===
@@ -269,7 +269,7 @@ Equality and inequality are structural and based on the observable content of th
 |===
 
 [[syntax-ops-bitwise]]
-=== Bitwise binary operators
+=== Bitwise and wrapping binary operators
 
 |===
 | `<binop>` | Category |
@@ -279,9 +279,13 @@ Equality and inequality are structural and based on the observable content of th
 | `^`   | B | exclusive or
 | `<<`  | B | shift left
 | `␣>>` | B | shift right *(must be preceded by whitespace)*
-| `+>>` | B | signed shift right
 | `<<>` | B | rotate left
 | `<>>` | B | rotate right
+
+|  `+%` | A | addition (wrap-on-overflow)
+|  `-%` | A | subtraction (wrap-on-overflow)
+|  `*%` | A | multiplication (wrap-on-overflow)
+|  `**%`| A | exponentiation (wrap-on-overflow)
 |===
 
 [[syntax-ops-string]]
@@ -311,9 +315,12 @@ Equality and inequality are structural and based on the observable content of th
 | `^=`   | B | in place exclusive or
 | `<\<=`  | B | in place shift left
 | `>>=`  | B | in place shift right
-| `+>>=` | B | in place signed shift right
 | `<<>=` | B | in place rotate left
 | `<>>=` | B | in place rotate right
+| `+%=`   | B | in place add (wrap-on-overflow)
+| `-%=`   | B | in place subtract (wrap-on-overflow)
+| `*%=`   | B | in place multiply (wrap-on-overflow)
+| `**%=`  | B | in place exponentiation (wrap-on-overflow)
 | `#=`   | T | in place concatenation
 |===
 
@@ -330,18 +337,18 @@ Tokens on the same line have equal precedence with the indicated associativity.
 
 | LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 |(higher)| none | `else`, `while`
-|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>-`, `<<>=`, `<>>=`
+|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>-`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=`,`
 |(higher)| left | `:`
 |(higher)| left | `or`
 |(higher)| left | `and`
 |(higher)| none | `==`, `!=`, `<`, `>`, `\<=`, `>`, `>=`
-|(higher)| left | `+`, `-`, `#`
-|(higher)| left | `*`, `/`, `%`
+|(higher)| left | `+`, `-`, `#`, `+%`, `-%`
+|(higher)| left | `*`, `/`, `%`, `*%`
 |(higher)| left | `\|`
 |(higher)| left | `+&+`
 |(higher)| left | `+^+`
 |(higher)| none | `<<`, `>>`, `<<>`, `<>>`
-| HIGHEST | left | `+**+`
+| HIGHEST | left | `+**+`, `+**%+`
 |===
 
 
@@ -624,10 +631,6 @@ The category of a type determines the operators (unary, binary, relational and i
 | `Nat16`  | A, O | non-negative 16-bit integer values with checked arithmetic
 | `Nat32`  | A, O | non-negative 32-bit integer values with checked arithmetic
 | `Nat64`  | A, O | non-negative 64-bit integer values with checked arithmetic
-| `Word8` | A, B, O | unsigned 8-bit integers with bitwise operations
-| `Word16` | A, B, O | unsigned 16-bit integers with bitwise operations
-| `Word32` | A, B, O | unsigned 32-bit integers with bitwise operations
-| `Word64` | A, B, O | unsigned 64-bit integers with bitwise operations
 | `Blob` | O | binary blobs with iterators
 | `Principal` | O | principals
 | `Error` | | (opaque) error values
@@ -644,7 +647,7 @@ The type `Bool` of category L (Logical) has values `true` and `false` and is sup
 === Type `Char`
 
 A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
-set. Characters can be converted to `Word32`, and `Word32`s in the
+set. Characters can be converted to `Nat32`, and `Nat32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
 if outside of this range). With `charToText` a character can be
 converted into a text of length 1.
@@ -684,45 +687,47 @@ In particular, every value of type `Nat` is also a value of type `Int`, without 
 
 The types `Int8`, `Int16`, `Int32` and `Int64` represent
 signed integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and O (Ordered).
+All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
+
+The operations `+%`, `-%`, `*%` and `**%` provide access to the raw wrap-on-overflow operations.
+
+As bitwise types, these types support bitwise operations *and* `(&)`,
+*or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
+left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
+The right-shift preserves the two's-complement sign.
+All shift and rotate amounts are considered modulo the word's width *n*.
+
+Bounded integer types are not in subtype relationship with each other or with
+other arithmetic types, and their literals need type annotation, e.g.
+`(-42 : Int16)`.
+
+The corresponding module in the base library provides conversion functions:
+Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
+conversion to the bounded natural type of the same size.
+
 
 [[bounded-naturals]]
 === Bounded naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
 
 The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
 unsigned integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and O (Ordered).
+All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
-[[word-types]]
-=== Word types
+The operations `+%`, `-%`, `*%` and `**%` provide access to the raw wrap-on-overflow operations.
 
-The types `Word8`, `Word16`, `Word32` and `Word64` represent
-fixed-width bit patterns of width *n* (8, 16, 32 and 64).
-All word types have categories A (Arithmetic), B (Bitwise) and  O (Ordered).
-As arithmetic types, word types implementing numeric wrap-around
-(modulo *2^n*).
-As bitwise types, word types support bitwise operations *and* `(&)`,
-*or* `(|)` and *exclusive-or* `(^)`. Further, words can be rotated
-left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`,
-as well as right with two's-complement sign preserved `(+>>)`.
-All shift and rotate amounts are considered modulo the word's width
-*n*.
+As bitwise types, these types support bitwise operations *and* `(&)`,
+*or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
+left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
+The right-shift is logical.
+All shift and rotate amounts are considered modulo the word's width *n*.
 
-Conversions to `Int` and `Nat`, named `word`*n*`ToInt` and
-`word`*n*`ToNat`, are exact and expose the word's bit-pattern as
-two's complement values, resp. natural numbers. Reverse conversions,
-named `intToWord`*n* and `natToWord`*n* are potentially lossy, but the
-round-trip property holds modulo *2^n*. The former choose the
-two's-complement representation for negative integers.
-
-Word types are not in subtype relationship with each other or with
-other arithmetic types, and their literals need type annotation, e.g.
-`(-42 : Word16)`. For negative literals the two's-complement
-representation is applied.
+The corresponding module in the base library provides conversion functions:
+Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
+conversion to the bounded natural type of the same size.
 
 [[type-Blob]]
 === Type `Blob`
@@ -730,7 +735,7 @@ representation is applied.
 The type `Blob` of category O (Ordered) represents binary blobs or sequences of bytes.
 Function `b.size` returns the number of characters in `Blob` value `b`.
 Operations on blob values include sequential iteration over bytes via function `b.bytes` as in
-`for (w : Word8 in b.bytes()) { ... w ... }`.
+`for (w : Nat8 in b.bytes()) { ... w ... }`.
 
 [[type-Principal]]
 === Type `Principal`
@@ -1673,7 +1678,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `Text` | `chars` | `{ next: () -> Char? }` | character iterator, first to last
 | | | |
 | `Blob` | `size` | `Nat` | size in bytes
-| `Blob` | `bytes` | `{ next: () -> Word8? }` | byte iterator, first to last
+| `Blob` | `bytes` | `{ next: () -> Nat8? }` | byte iterator, first to last
 | | | |
 | `[var? T]` | `get` | `Nat -> T` | indexed read function
 | `[var? T]` | `keys` | `{ next: () -> Nat? }` | index iterator, by ascending index

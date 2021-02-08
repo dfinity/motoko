@@ -21,10 +21,6 @@
                 "Nat16"
                 "Nat32"
                 "Nat64"
-                "Word8"
-                "Word16"
-                "Word32"
-                "Word64"
                 "Float"
                 "Char"
                 "Text"))

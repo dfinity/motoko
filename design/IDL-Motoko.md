@@ -35,7 +35,7 @@ The following are not necessary true:
    be exported, such as mutable arrays.
 
  * The type export mapping is not injective: there may be different
-   Motoko types that map to the same IDL type, e.g. `Char`, `Word32` and
+   Motoko types that map to the same IDL type, e.g. `Char`, `Nat32` and
    `Nat32`.
 
    This implies that round-tripping an Motoko type via the IDL can yield
@@ -81,7 +81,6 @@ e(Nat) = nat
 e(Int) = int
 e(Nat<n>) = nat<n> for n = 8, 16, 32, 64
 e(Int<n>) = int<n> for n = 8, 16, 32, 64
-e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
 e(Char) = nat32
 e(Text) = text

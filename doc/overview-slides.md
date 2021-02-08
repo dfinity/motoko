@@ -118,20 +118,10 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 ## Bounded numbers (trapping)
 
-`Nat8`, `Nat16`, `Nat32`, `Nat64`,  
+`Nat8`, `Nat16`, `Nat32`, `Nat64`,
 `Int8`, `Int16`, `Int32`, `Int64`
 
-Trap on over- and underflow.
-
-Needs type annotations (somewhere)
-
-Literals: `13`, `0xf4`, `-20`, `1_000_000`
-
-## Bounded numbers (wrapping)
-
-`Word8`, `Word16`, `Word32`, `Word64`
-
-Wrap-around on over/under-flow. Use for bit-fiddling.
+Trap on over- and underflow. Wrap-on-trap and bit-fiddling operations available.
 
 Needs type annotations (somewhere)
 
@@ -531,10 +521,10 @@ let ? name = d.find(1);
 ### Language prelude
 
 * connects internal primitives with surface syntax (types, operations)
-* conversions like `intToWord32`
+* conversions like `intToNat32`
 * side-effecting operations `debugPrintInt`
   (tie into execution environment)
-* utilities like `hashInt`, `clzWord32`
+* utilities like `hashInt`, `clzNat32`
 
 
 # Sample App
