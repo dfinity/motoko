@@ -1,5 +1,5 @@
 {-# language ConstraintKinds, DataKinds, DeriveFoldable, FlexibleContexts, FlexibleInstances, GADTs
-           , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
+           , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
            , UndecidableInstances, ViewPatterns #-}
 
@@ -51,10 +51,14 @@ arithProps = testGroup "Arithmetic/logic"
   ]
 
 conversionProps = testGroup "Numeric conversions"
-  [ QC.testProperty "roundtrip Nat64 Nat Nat64 " $ prop_roundtripWNW @64
-  , QC.testProperty "roundtrip Nat32 Nat Nat32 " $ prop_roundtripWNW @32
-  , QC.testProperty "roundtrip Nat16 Nat Nat16 " $ prop_roundtripWNW @16
-  , QC.testProperty "roundtrip Nat8 Nat Nat8 " $ prop_roundtripWNW @8
+  [ QC.testProperty "roundtrip Nat64 Nat Nat64 " $ prop_roundtripNatWNW @64
+  , QC.testProperty "roundtrip Nat32 Nat Nat32 " $ prop_roundtripNatWNW @32
+  , QC.testProperty "roundtrip Nat16 Nat Nat16 " $ prop_roundtripNatWNW @16
+  , QC.testProperty "roundtrip Nat8 Nat Nat8 " $ prop_roundtripNatWNW @8
+  , QC.testProperty "roundtrip Int64 Nat Nat64 " $ prop_roundtripIntWNW @64
+  , QC.testProperty "roundtrip Int32 Nat Nat32 " $ prop_roundtripIntWNW @32
+  , QC.testProperty "roundtrip Int16 Nat Nat16 " $ prop_roundtripIntWNW @16
+  , QC.testProperty "roundtrip Int8 Nat Nat8 " $ prop_roundtripIntWNW @8
   , QC.testProperty "modulo Nat Nat64 Nat" $ prop_moduloNWN @64
   , QC.testProperty "modulo Nat Nat32 Nat" $ prop_moduloNWN @32
   , QC.testProperty "modulo Nat Nat16 Nat" $ prop_moduloNWN @16
@@ -250,20 +254,21 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   assertSuccessNoFuzz res
 
 
-newtype ConversionTest n = ConversionTest (MOTerm (BitLimited n Natural)) deriving Show
+newtype ConversionTestNat n = ConversionTestNat (Neuralgic (BitLimited n Natural)) deriving (Show, Arbitrary)
+newtype ConversionTestInt n = ConversionTestInt (Neuralgic (BitLimited n Integer)) deriving (Show, Arbitrary)
 
-instance WordLike n => Arbitrary (ConversionTest n) where
-  arbitrary = ConversionTest . ConvertNatToNatN . ConvertNatNToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited n Natural)))
-
-prop_roundtripWNW :: ConversionTest n -> Property
-prop_roundtripWNW (ConversionTest term) =
-    case term of
-      ConvertNatToNatN (ConvertNatNToNat n) ->
-          case sameNat (bitsIn term) (bitsIn n) of
-            Just Refl -> let testCase = "assert(" <> unparseMO (term `Equals` n) <> ")" in
-                         monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
-  where bitsIn :: KnownNat n => MOTerm (BitLimited n Natural) -> Proxy n
-        bitsIn _ = Proxy
+prop_roundtripNatWNW :: WordLike n => ConversionTestNat n -> Property
+prop_roundtripNatWNW (ConversionTestNat n) = do
+    let expected = Neuralgic n
+    let actual = ConvertNatToNatN (ConvertNatNToNat expected)
+    let testCase = "assert(" <> unparseMO (actual `Equals` expected) <> ")"
+    monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
+prop_roundtripIntWNW :: WordLike n => ConversionTestInt n -> Property
+prop_roundtripIntWNW (ConversionTestInt n) = do
+    let expected = Neuralgic n
+    let actual = ConvertIntToIntN (ConvertIntNToInt expected)
+    let testCase = "assert(" <> unparseMO (actual `Equals` expected) <> ")"
+    monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
 
 
 newtype ModuloTest (n :: Nat) = ModuloTest (MOTerm (BitLimited n Natural)) deriving Show
@@ -474,6 +479,8 @@ data MOTerm :: * -> * where
   ConvertInt :: WordLike n => MOTerm (BitLimited n Integer) -> MOTerm Integer
   ConvertNatToNatN :: WordLike n => MOTerm Natural -> MOTerm (BitLimited n Natural)
   ConvertNatNToNat :: WordLike n => MOTerm (BitLimited n Natural) -> MOTerm Natural
+  ConvertIntToIntN :: WordLike n => MOTerm Integer -> MOTerm (BitLimited n Integer)
+  ConvertIntNToInt :: WordLike n => MOTerm (BitLimited n Integer) -> MOTerm Integer
   -- Constructors (intro forms)
   Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => MOTerm a -> MOTerm b -> MOTerm (a, b)
   Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
@@ -863,7 +870,7 @@ instance Evaluatable a => Evaluatable (Maybe a) where
   evaluate Null = pure Nothing
   evaluate (Some a) = Just <$> evaluate a
 
-maskFor :: forall n . KnownNat n => MOTerm (BitLimited n Natural) -> Natural
+maskFor :: forall n a . (WordLike n, Num a) => MOTerm (BitLimited n a) -> a
 maskFor _ = fromIntegral $ 2 ^ natVal (Proxy @n) - 1
 
 
@@ -884,6 +891,8 @@ eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval c@(ConvertNatToNatN t) = fromIntegral . (.&. maskFor c) <$> evaluate t
 eval (ConvertNatNToNat t) = fromIntegral <$> evaluate t
+eval c@(ConvertIntToIntN t) = fromIntegral . (.&. maskFor c) <$> evaluate t
+eval (ConvertIntNToInt t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 --eval _ = Nothing
@@ -1010,6 +1019,8 @@ unparseMO (ConvertNat a) = unparseNat Proxy a
 unparseMO (ConvertInt a) = unparseInt Proxy a
 unparseMO (ConvertNatNToNat a) = sizeSuffix a "(Prim.nat" <> "ToNat " <> unparseMO a <> ")"
 unparseMO t@(ConvertNatToNatN a) = sizeSuffix t "(Prim.natToNat" <> "Wrap " <> unparseMO a <> ")"
+unparseMO (ConvertIntNToInt a) = sizeSuffix a "(Prim.int" <> "ToInt " <> unparseMO a <> ")"
+unparseMO t@(ConvertIntToIntN a) = sizeSuffix t "(Prim.intToInt" <> "Wrap " <> unparseMO a <> ")"
 unparseMO (IfThenElse a b c) = "(if (" <> unparseMO c <> ") " <> unparseMO a <> " else " <> unparseMO b <> ")"
 unparseMO (a `NotEqual` b) = inParens unparseMO "!=" a b
 unparseMO (a `Equals` b) = inParens unparseMO "==" a b
