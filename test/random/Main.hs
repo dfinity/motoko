@@ -492,9 +492,11 @@ data MOTerm :: * -> * where
 
 deriving instance Show (MOTerm t)
 
-subTerm :: Arbitrary (MOTerm t) => Bool -> Int -> [(Int, Gen (MOTerm t))]
-subTerm fullPow n =
-    [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> arbitrary) | fullPow] ++
+
+-- Arithmetic excluding power
+arithTerm :: Arbitrary (MOTerm t) =>
+    Int -> [(Int, Gen (MOTerm t))]
+arithTerm n =
     [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Sub <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Mul <$> arbitrary <*> arbitrary)
@@ -503,21 +505,24 @@ subTerm fullPow n =
     , (n, resize (n `div` 4) $ IfThenElse <$> arbitrary <*> arbitrary <*> arbitrary)
     ]
 
-subTermPow :: Arbitrary (MOTerm t) => (MOTerm t -> MOTerm t) -> Int -> [(Int, Gen (MOTerm t))]
-subTermPow mod n = (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (mod <$> arbitrary))
-                   : subTerm False n
+powTermCapped :: Arbitrary (MOTerm t) =>
+    (MOTerm t -> MOTerm t) ->
+    Int -> [(Int, Gen (MOTerm t))]
+powTermCapped cap_exponent n =
+    [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> (cap_exponent <$> arbitrary)) ]
 
-subTermPow5 :: Arbitrary (MOTerm t)
-               => Int -> [(Int, Gen (MOTerm t))]
-subTermPow5 n = (n, resize (n `div` 5)
-                      $ Pow <$> arbitrary
-                            <*> (Neuralgic <$> elements [ Around0
-                                                    , Around0 `Offset` OneMore
-                                                    , AroundPos 1
-                                                    , AroundPos 1 `Offset` OneMore
-                                                    , AroundPos 2
-                                                    ]))
-                : subTerm False n
+powTermPow5 :: Arbitrary (MOTerm t) =>
+    Int -> [(Int, Gen (MOTerm t))]
+powTermPow5 n =
+    [(n, resize (n `div` 5) $ Pow <$> arbitrary <*> exp)]
+  where
+    exp = Neuralgic <$> elements
+      [ Around0
+      , Around0 `Offset` OneMore
+      , AroundPos 1
+      , AroundPos 1 `Offset` OneMore
+      , AroundPos 2
+      ]
 
 bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n i)) => Int -> [(Int, Gen (MOTerm (BitLimited n i)))]
 bitwiseTerm n =
@@ -548,17 +553,16 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        : if n > 1 then sub n else []
 
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n ++ bitwiseTerm n
-
-instance {-# OVERLAPS #-} Arbitrary (MOTerm Nat8) where
-  arbitrary = reasonablyShaped $ subTerm True
-
+  arbitrary = reasonablyShaped $ \n ->
+    arithTerm n <>
+    powTermCapped (`Mod` Five) n <>
+    bitwiseTerm n
 
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow5 n ++ bitwiseTerm n
-
-instance {-# OVERLAPS #-} Arbitrary (MOTerm Int8) where
-  arbitrary = reasonablyShaped $ subTerm True
+  arbitrary = reasonablyShaped $ \n ->
+    arithTerm n <>
+    powTermPow5 n <>
+    bitwiseTerm n
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
@@ -579,10 +583,14 @@ instance Arbitrary (MOTerm Bool) where
     ]
 
 instance Arbitrary (MOTerm Natural) where
-  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
+  arbitrary = reasonablyShaped $ \n ->
+    arithTerm n <>
+    powTermCapped (`Mod` Five) n
 
 instance Arbitrary (MOTerm Integer) where
   arbitrary = reasonablyShaped $ \n ->
+    arithTerm n <>
+    powTermCapped ((`Mod` Five) . Abs) n <>
     [ (n, resize (n `div` 2) $ Pos <$> arbitrary)
     , (n, resize (n `div` 2) $ Neg <$> arbitrary)
     , (n, resize (n `div` 2) $ Abs <$> arbitrary)
@@ -595,7 +603,7 @@ instance Arbitrary (MOTerm Integer) where
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int16)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int32)))
     , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int64)))
-    ] <> subTermPow ((`Mod` Five) . Abs) n
+    ]
 
 instance Num a => Num (Maybe a) where
   (+) = liftA2 (+)
