@@ -270,7 +270,6 @@ sig
   val wrapping_add : t -> t -> t
   val wrapping_sub : t -> t -> t
   val wrapping_mul : t -> t -> t
-  val wrapping_div : t -> t -> t
   val wrapping_pow : t -> t -> t
 end
 
@@ -333,9 +332,6 @@ struct
   let wrapping_add = on_words WordRep.add
   let wrapping_sub = on_words WordRep.sub
   let wrapping_mul = on_words WordRep.mul
-  (* TODO: This is probably not correct, if the divisor is negative we do not
-     want to treat it like a large number *)
-  let wrapping_div = on_words WordRep.div_u
   let wrapping_pow a b =
     if Rep.ge b Rep.zero
     then on_words WordRep.pow a b

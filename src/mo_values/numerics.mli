@@ -54,7 +54,6 @@ sig
   val wrapping_add : t -> t -> t
   val wrapping_sub : t -> t -> t
   val wrapping_mul : t -> t -> t
-  val wrapping_div : t -> t -> t
   val wrapping_pow : t -> t -> t
 end
 
