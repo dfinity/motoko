@@ -483,8 +483,6 @@ data MOTerm :: * -> * where
   IfThenElse :: MOTerm a -> MOTerm a -> MOTerm Bool -> MOTerm a
   -- Conversion
   ConvertNatural :: MOTerm Natural -> MOTerm Integer
-  ConvertNat :: WordLike n => MOTerm (BitLimited n Natural) -> MOTerm Integer
-  ConvertInt :: WordLike n => MOTerm (BitLimited n Integer) -> MOTerm Integer
   ConvertNatToNatN :: WordLike n => MOTerm Natural -> MOTerm (BitLimited n Natural)
   ConvertNatNToNat :: WordLike n => MOTerm (BitLimited n Natural) -> MOTerm Natural
   ConvertIntToIntN :: WordLike n => MOTerm Integer -> MOTerm (BitLimited n Integer)
@@ -505,7 +503,10 @@ data MOTerm :: * -> * where
   Some :: (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => MOTerm a -> MOTerm (Maybe a)
   -- Variants, Objects (TODO)
 
-shrinkOp2 op a b = ((`op` b) <$> shrink a) <> ((a `op`) <$> shrink b)
+shrinkOp2 f a b = concat
+    [ (\a -> f a b) <$> shrink a
+    , (\b -> f a b) <$> shrink b
+    ]
 shrinkOp3 f a b c = concat
     [ (\a -> f a b c) <$> shrink a
     , (\b -> f a b c) <$> shrink b
@@ -540,12 +541,12 @@ subShrink (Clz a) = Clz <$> shrink a
 subShrink (Ctz a) = Ctz <$> shrink a
 subShrink (Complement a) = Complement <$> shrink a
 subShrink (ConvertNatural a) = ConvertNatural <$> shrink a
-subShrink (ConvertNat a) = ConvertNat <$> shrink a
-subShrink (ConvertInt a) = ConvertInt <$> shrink a
 subShrink (ConvertNatNToNat a) = ConvertNatNToNat <$> shrink a
 subShrink (ConvertNatToNatN a) = ConvertNatToNatN <$> shrink a
 subShrink (ConvertIntNToInt a) = ConvertIntNToInt <$> shrink a
 subShrink (ConvertIntToIntN a) = ConvertIntToIntN <$> shrink a
+subShrink (IfThenElse a b (Bool True)) = [a]
+subShrink (IfThenElse a b (Bool False)) = [b]
 subShrink (IfThenElse a b c) = [a, b] <> shrinkOp3 IfThenElse a b c
 subShrink (a `NotEqual` b) = shrinkOp2 NotEqual a b
 subShrink (a `Equals` b) = shrinkOp2 Equals a b
@@ -608,14 +609,14 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        (30 `div` n, Neuralgic <$> arbitrary)
                        : if n > 1 then sub n else []
 
-instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) where
+instance WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
     bitwiseTerm n
   shrink (Lit _) = []
   shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
 
-instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
+instance WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
     bitwiseTerm n
@@ -624,17 +625,12 @@ instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Inte
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
-  shrink (Pair x y) =
-    [ Pair x y' | y' <- shrink y ] <>
-    [ Pair x' y | x' <- shrink x ]
+  shrink (Pair x y) = shrinkOp2 Pair x y
 
 instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (MOTerm a), Arbitrary (MOTerm b), Arbitrary (MOTerm c))
     => Arbitrary (MOTerm (a, b, c)) where
   arbitrary = scale (`quot` 3) $ Triple <$> arbitrary <*> arbitrary <*> arbitrary
-  shrink (Triple x y z) =
-    [ Triple x y' z | y' <- shrink y ] <>
-    [ Triple x' y z | x' <- shrink x ] <>
-    [ Triple x y z' | z' <- shrink z ]
+  shrink (Triple x y z) = shrinkOp3 Triple x y z
 
 instance (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => Arbitrary (MOTerm (Maybe a)) where
   arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
@@ -648,9 +644,17 @@ instance Arbitrary (MOTerm Bool) where
     , resize (n `div` 5) $ elements [ShortAnd, ShortOr] <*> arbitrary <*> arbitrary
     , resize (n `div` 2) $ Not <$> arbitrary
     ]
+  shrink (Bool _) = []
+  shrink x = [ Bool x | Just x <- pure $ evaluate x ] <> subShrink x
 
 instance Arbitrary (MOTerm Natural) where
-  arbitrary = reasonablyShaped arithTerm
+  arbitrary = reasonablyShaped $ \n ->
+    arithTerm n <>
+    [ (n `div` 2, ConvertNatNToNat <$> (arbitrary @(MOTerm Nat8)))
+    , (n `div` 2, ConvertNatNToNat <$> (arbitrary @(MOTerm Nat16)))
+    , (n `div` 2, ConvertNatNToNat <$> (arbitrary @(MOTerm Nat32)))
+    , (n `div` 2, ConvertNatNToNat <$> (arbitrary @(MOTerm Nat64)))
+    ]
   shrink (Lit _) = []
   shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
 
@@ -660,15 +664,11 @@ instance Arbitrary (MOTerm Integer) where
     [ (n, resize (n `div` 2) $ Pos <$> arbitrary)
     , (n, resize (n `div` 2) $ Neg <$> arbitrary)
     , (n, resize (n `div` 2) $ Abs <$> arbitrary)
-    , (n, ConvertNatural <$> arbitrary)
-    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat8)))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat16)))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat32)))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(MOTerm Nat64)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int8)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int16)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int32)))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(MOTerm Int64)))
+    , (5*n, ConvertNatural <$> arbitrary)
+    , (n `div` 3, ConvertIntNToInt <$> (arbitrary @(MOTerm Int8)))
+    , (n `div` 3, ConvertIntNToInt <$> (arbitrary @(MOTerm Int16)))
+    , (n `div` 3, ConvertIntNToInt <$> (arbitrary @(MOTerm Int32)))
+    , (n `div` 3, ConvertIntNToInt <$> (arbitrary @(MOTerm Int64)))
     ]
   shrink (Lit _) = []
   shrink x = [ Lit (fromIntegral x) | Just x <- pure $ evaluate x ] <> subShrink x
@@ -972,8 +972,6 @@ eval (a `Div` b) = eval a `quot` eval b
 eval (a `Mod` b) = eval a `rem` eval b
 eval (a `Pow` (eval -> b)) = do b' <- b; exponentiable b'; (^) <$> eval a <*> b
 eval (ConvertNatural t) = fromIntegral <$> evaluate t
-eval (ConvertNat t) = fromIntegral <$> evaluate t
-eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval c@(ConvertNatToNatN t) = fromIntegral . (.&. maskFor c) <$> evaluate t
 eval (ConvertNatNToNat t) = fromIntegral <$> evaluate t
 eval c@(ConvertIntToIntN t) = fromIntegral . (.&. maskFor c) <$> evaluate t
@@ -1101,8 +1099,6 @@ unparseMO t@(Clz n) = typSuffix t "(Prim.clz" <> " " <> unparseMO n <> ")"
 unparseMO t@(Ctz n) = typSuffix t "(Prim.ctz" <> " " <> unparseMO n <> ")"
 unparseMO (Complement a) = "(^ " <> unparseMO a <> ")"
 unparseMO (ConvertNatural a) = "(++++(" <> unparseMO a <> "))"
-unparseMO (ConvertNat a) = unparseNat Proxy a
-unparseMO (ConvertInt a) = unparseInt Proxy a
 unparseMO (ConvertNatNToNat a) = sizeSuffix a "(Prim.nat" <> "ToNat " <> unparseMO a <> ")"
 unparseMO t@(ConvertNatToNatN a) = sizeSuffix t "(Prim.natToNat" <> "Wrap " <> unparseMO a <> ")"
 unparseMO (ConvertIntNToInt a) = sizeSuffix a "(Prim.int" <> "ToInt " <> unparseMO a <> ")"
@@ -1123,14 +1119,9 @@ unparseMO (a `Pair` b) = "(" <> unparseMO a <> ", " <> unparseMO b <> ")"
 unparseMO (Triple a b c) = "(" <> unparseMO a <> ", " <> unparseMO b <> ", " <> unparseMO c <> ")"
 unparseMO Null = "null"
 unparseMO (Some a) = '?' : unparseMO a
-unparseMO (Text a) = '"' : (concatMap escape a) <> "\""
+unparseMO (Text a) = '"' : concatMap escape a <> "\""
 unparseMO (a `Concat` b) = "(" <> unparseMO a <> " # " <> unparseMO b <> ")"
 
-unparseNat :: KnownNat n => Proxy n -> MOTerm (BitLimited n Natural) -> String
-unparseNat p a = "(Prim.nat" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))"
-
-unparseInt :: KnownNat n => Proxy n -> MOTerm (BitLimited n Integer) -> String
-unparseInt p a = "(Prim.int" <> bitWidth p <> "ToInt(" <> unparseMO a <> "))"
 
 -- TODOs:
 --   - wordToInt
