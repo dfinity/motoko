@@ -736,7 +736,6 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
-    E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
@@ -2416,10 +2415,6 @@ module BigNumLibtommath : BigNumType = struct
 
     let n = Big_int.abs_big_int n in
 
-    (* copied from Blob *)
-    let header_size = Int32.add Tagged.header_size 1l in
-    let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size)) in
-
     let limbs =
       (* see MP_DIGIT_BIT *)
       let twoto28 = Big_int.power_int_positive_int 2 28 in
@@ -2434,20 +2429,15 @@ module BigNumLibtommath : BigNumType = struct
     (* how many 32 bit digits *)
     let size = Int32.of_int (List.length limbs) in
 
-    let data_blob = E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Blob);
-      I32 Int32.(mul Heap.word_size size);
-      i32s limbs
-    ] in
-    let data_ptr = Int32.(add data_blob unskewed_payload_offset) in
-
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag BigInt);
-      I32 size;
-      I32 size; (* alloc *)
+      I32 size; (* used *)
+      I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
-      I32 data_ptr;
+      I32 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
+      i32s limbs
+
     ] in
     ptr
 
@@ -7404,7 +7394,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Object.is_mut_field env exp.note.Note.typ f.it.name
+        if Type.is_mut f.note
         then Var.get_aliased_box env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'

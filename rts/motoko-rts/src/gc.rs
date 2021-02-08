@@ -130,40 +130,6 @@ unsafe fn evac(
     *end_to_space += obj_size_bytes.0 as usize
 }
 
-/// Evacuate a blob payload pointed by a bigint. bigints are special in that a bigint's first field
-/// is an internal pointer: it points to the _payload_ of a blob object, instead of skewedly pointing to the object start
-///
-/// - `ptr_loc`: Address of a `data_ptr` field of a BigInt (see types.rs). Points to payload of a
-///   blob. See types.rs for blob layout.
-unsafe fn evac_bigint_blob(
-    begin_from_space: usize,
-    begin_to_space: usize,
-    end_to_space: &mut usize,
-    ptr_loc: *mut usize, // address of field with a pointer to a blob payload
-) {
-    let blob_payload_addr = *ptr_loc;
-
-    // Get blob object from the payload
-    let mut blob_obj_addr = skew(blob_payload_addr - size_of::<Blob>().to_bytes().0 as usize);
-    // Create a temporary field to the blob object, to be passed to `evac`.
-    let blob_obj_addr_field = &mut blob_obj_addr;
-    let blob_obj_addr_field_ptr = blob_obj_addr_field as *mut _;
-
-    evac(
-        begin_from_space,
-        begin_to_space,
-        end_to_space,
-        blob_obj_addr_field_ptr as usize,
-    );
-
-    // blob_obj_addr_field now has the new location of the blob, get the payload address
-    let blob_new_addr = (*blob_obj_addr_field).unskew();
-    let blob_new_payload_addr = blob_new_addr + size_of::<Blob>().to_bytes().0 as usize;
-
-    // Update evacuated field
-    *ptr_loc = blob_new_payload_addr; // not skewed!
-}
-
 unsafe fn scav(
     begin_from_space: usize,
     begin_to_space: usize,
@@ -230,18 +196,6 @@ unsafe fn scav(
             evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
-        TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
-            let data_ptr_addr = bigint.data_ptr() as *mut _;
-
-            evac_bigint_blob(
-                begin_from_space,
-                begin_to_space,
-                end_to_space,
-                data_ptr_addr,
-            );
-        }
-
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = ((&mut (*concat).text1) as *mut _) as usize;
@@ -256,7 +210,7 @@ unsafe fn scav(
             evac(begin_from_space, begin_to_space, end_to_space, field_addr);
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't include pointers, skip
         }
 
