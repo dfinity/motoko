@@ -263,7 +263,8 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
-    labs : LabSet.t ref; (* used labels (fields and variants) *)
+    labs : LabSet.t ref; (* Used labels (fields and variants),
+                            collected for Motoko custom section 0 *)
   }
 
 
@@ -7394,7 +7395,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Object.is_mut_field env exp.note.Note.typ f.it.name
+        if Type.is_mut f.note
         then Var.get_aliased_box env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
