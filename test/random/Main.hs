@@ -493,7 +493,6 @@ data MOTerm :: * -> * where
 deriving instance Show (MOTerm t)
 
 
--- Arithmetic excluding power
 arithTerm :: Arbitrary (MOTerm t) =>
     Int -> [(Int, Gen (MOTerm t))]
 arithTerm n =
@@ -503,26 +502,8 @@ arithTerm n =
     , (n, resize (n `div` 3) $ Div <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Mod <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 4) $ IfThenElse <$> arbitrary <*> arbitrary <*> arbitrary)
+    , (n `div` 5 , resize (n `div` 3) $ Pow <$> arbitrary <*> ((`Mod` Five) <$> arbitrary))
     ]
-
-powTermCapped :: Arbitrary (MOTerm t) =>
-    (MOTerm t -> MOTerm t) ->
-    Int -> [(Int, Gen (MOTerm t))]
-powTermCapped cap_exponent n =
-    [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> (cap_exponent <$> arbitrary)) ]
-
-powTermPow5 :: Arbitrary (MOTerm t) =>
-    Int -> [(Int, Gen (MOTerm t))]
-powTermPow5 n =
-    [(n, resize (n `div` 5) $ Pow <$> arbitrary <*> exp)]
-  where
-    exp = Neuralgic <$> elements
-      [ Around0
-      , Around0 `Offset` OneMore
-      , AroundPos 1
-      , AroundPos 1 `Offset` OneMore
-      , AroundPos 2
-      ]
 
 bitwiseTerm :: WordLike n => Arbitrary (MOTerm (BitLimited n i)) => Int -> [(Int, Gen (MOTerm (BitLimited n i)))]
 bitwiseTerm n =
@@ -536,7 +517,7 @@ bitwiseTerm n =
     , (n `div` 5, resize (n `div` 3) $ WrapAdd <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ WrapSub <$> arbitrary <*> arbitrary)
     , (n `div` 5, resize (n `div` 3) $ WrapMul <$> arbitrary <*> arbitrary)
-    , (n `div` 5, resize (n `div` 3) $ WrapPow <$> arbitrary <*> arbitrary)
+    , (n `div` 5, resize (n `div` 3) $ WrapPow <$> arbitrary <*> ((`Mod` Five) <$> arbitrary))
     , (n `div` 5, PopCnt <$> arbitrary)
     , (n `div` 5, Clz <$> arbitrary)
     , (n `div` 5, Ctz <$> arbitrary)
@@ -555,13 +536,11 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Natural)) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
-    powTermCapped (`Mod` Five) n <>
     bitwiseTerm n
 
 instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
-    powTermPow5 n <>
     bitwiseTerm n
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
@@ -583,14 +562,11 @@ instance Arbitrary (MOTerm Bool) where
     ]
 
 instance Arbitrary (MOTerm Natural) where
-  arbitrary = reasonablyShaped $ \n ->
-    arithTerm n <>
-    powTermCapped (`Mod` Five) n
+  arbitrary = reasonablyShaped arithTerm
 
 instance Arbitrary (MOTerm Integer) where
   arbitrary = reasonablyShaped $ \n ->
     arithTerm n <>
-    powTermCapped ((`Mod` Five) . Abs) n <>
     [ (n, resize (n `div` 2) $ Pos <$> arbitrary)
     , (n, resize (n `div` 2) $ Neg <$> arbitrary)
     , (n, resize (n `div` 2) $ Abs <$> arbitrary)
@@ -782,6 +758,10 @@ instance WordLike bits => Evaluatable (BitLimited bits Natural) where
         _ `Mod` (evaluate -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
+          -- NB: The use of exponentiable means that evaluate t = Nothing
+          -- can mean "traps" or "too big, should not evaluate"
+          -- This is kinda ok, because the generators only produce small
+          -- exponents, but could be revisited for better test coverage.
         IfThenElse a b c -> do c <- evaluate c
                                evaluate $ if c then a else b
 
