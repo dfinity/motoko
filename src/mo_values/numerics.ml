@@ -1,5 +1,5 @@
 (*
-This module contains all the numeric stuff, cumulating
+This module contains all the numeric stuff, culminating
 in the NatN and Int_N modules, to be used by value.ml
 *)
 
