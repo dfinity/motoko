@@ -141,7 +141,7 @@ let binop op t =
     | XorOp -> fixed_binop (Nat8.xor, Nat16.xor, Nat32.xor, Nat64.xor, Int_8.xor, Int_16.xor, Int_32.xor, Int_64.xor)(Word8.xor, Word16.xor, Word32.xor, Word64.xor) p
     | ShLOp -> fixed_binop (Nat8.shl, Nat16.shl, Nat32.shl, Nat64.shl, Int_8.shl, Int_16.shl, Int_32.shl, Int_64.shl)(Word8.shl, Word16.shl, Word32.shl, Word64.shl) p
     | UShROp -> fixed_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr)(Word8.shr, Word16.shr, Word32.shr, Word64.shr) p
-    | SShROp -> fixed_binop (Nat8.shr_s, Nat16.shr_s, Nat32.shr_s, Nat64.shr_s, Int_8.shr_s, Int_16.shr_s, Int_32.shr_s, Int_64.shr_s)(Word8.shr_s, Word16.shr_s, Word32.shr_s, Word64.shr_s) p
+    | SShROp -> word_binop (Word8.shr_s, Word16.shr_s, Word32.shr_s, Word64.shr_s) p
     | RotLOp -> fixed_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl)(Word8.rotl, Word16.rotl, Word32.rotl, Word64.rotl) p
     | RotROp -> fixed_binop (Nat8.rotr, Nat16.rotr, Nat32.rotr, Nat64.rotr, Int_8.rotr, Int_16.rotr, Int_32.rotr, Int_64.rotr)(Word8.rotr, Word16.rotr, Word32.rotr, Word64.rotr) p
     | WrappingAddOp -> fixed_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) (Word8.wrapping_add, Word16.wrapping_add, Word32.wrapping_add, Word64.wrapping_add) p

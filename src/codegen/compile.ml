@@ -6576,7 +6576,7 @@ let compile_binop env t op =
      lsb_adjust ty ^^ clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Shl)))
   (* >>  is unsigned on Nat and Word, and signed on Int.
-     +>> is always signd, but deprecated
+     +>> is only supported on Word (and such legacy)
   *)
   | Type.(Prim (Nat64|Word64)),               UShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32 as ty)),     UShROp -> TaggedSmallWord.(
@@ -6584,10 +6584,9 @@ let compile_binop env t op =
      G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
      sanitize_word_result ty)
   | Type.(Prim (Int64)),                      UShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
-  | Type.(Prim (Int64|Nat64|Word64)),         SShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
+  | Type.(Prim Word64),                       SShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
   | Type.(Prim (Int8|Int16|Int32 as ty)),     UShROp
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32|Word8|Word16|Word32 as ty)),
-                                              SShROp -> TaggedSmallWord.(
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  SShROp -> TaggedSmallWord.(
      lsb_adjust ty ^^ clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
      sanitize_word_result ty)
