@@ -219,6 +219,8 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
+  module LabSet = Set.Make(String)
+
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
@@ -261,6 +263,8 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
+    labs : LabSet.t ref; (* used labels (fields and variants),
+                            collected for Motoko custom section 0 *)
   }
 
 
@@ -290,8 +294,18 @@ module E = struct
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
+    labs = ref LabSet.empty;
   }
 
+  (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
+      so that that data can be put in a custom section, useful for debugging.
+      Thus Mo_types.Hash.hash should not be called directly!
+   *)
+  let hash (env : t) lab =
+    env.labs := LabSet.add lab (!(env.labs));
+    Mo_types.Hash.hash lab
+
+  let get_labs env = LabSet.elements (!(env.labs))
 
   let mk_fun_env env n_param return_arity =
     { env with
@@ -1360,11 +1374,11 @@ module Variant = struct
   let tag_field = Tagged.header_size
   let payload_field = Int32.add Tagged.header_size 1l
 
-  let hash_variant_label : Mo_types.Type.lab -> int32 =
-    Mo_types.Hash.hash
+  let hash_variant_label env : Mo_types.Type.lab -> int32 =
+    E.hash env
 
   let inject env l e =
-    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label l); e]
+    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
   let get_tag = Heap.load_field tag_field
   let project = Heap.load_field payload_field
@@ -1372,7 +1386,7 @@ module Variant = struct
   (* Test if the top of the stacks points to a variant with this label *)
   let test_is env l =
     get_tag ^^
-    compile_eq_const (hash_variant_label l)
+    compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
 
@@ -2577,7 +2591,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
-      List.map (fun (n,_) -> (Mo_types.Hash.hash n, n)) |>
+      List.map (fun (n,_) -> (E.hash env n, n)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -2586,7 +2600,7 @@ module Object = struct
 
     (* Create hash array *)
     let hashes = fs |>
-      List.map (fun (n,_) -> Mo_types.Hash.hash n) |>
+      List.map (fun (n,_) -> E.hash env n) |>
       List.sort compare in
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
@@ -2622,6 +2636,7 @@ module Object = struct
 
     (* Return the pointer to the object *)
     get_ri
+
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_hash_raw env =
@@ -2669,18 +2684,19 @@ module Object = struct
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_raw env f =
-    compile_unboxed_const (Mo_types.Hash.hash f) ^^
+    compile_unboxed_const (E.hash env f) ^^
     idx_hash_raw env
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx env obj_type f =
-    compile_unboxed_const (Mo_types.Hash.hash f) ^^
+    compile_unboxed_const (E.hash env f) ^^
     idx_hash env (is_mut_field env obj_type f)
 
   (* load the value (or the mutbox) *)
   let load_idx_raw env f =
     idx_raw env f ^^
     load_ptr
+
 
   (* load the actual value (dereferencing the mutbox) *)
   let load_idx env obj_type f =
@@ -7984,6 +8000,9 @@ and conclude_module env start_fi_o =
             List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
         locals_names =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+        };
+      motoko = {
+        labels = E.get_labs env;
       };
       source_mapping_url = None;
     } in
