@@ -302,11 +302,10 @@ instance Arbitrary Matching where
                     let val = evaluate term
                     pure (term, val)) `suchThat` (isJust . snd)
           realise f (tm, Just v) = f (tm, v)
-  shrink (Matching (term, val)) = do
+  shrink (Matching (term, _val)) = do
     term' <- shrink term
-    if evaluate term' /= Just val
-    then error "shrinking changed values"
-    else pure $ Matching (term', val)
+    Just val' <- pure $ evaluate term'
+    pure $ Matching (term', val')
 
 prop_matchStructured :: Matching -> Property
 prop_matchStructured (Matching a) = locally a
@@ -503,23 +502,26 @@ data MOTerm :: * -> * where
   Some :: (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => MOTerm a -> MOTerm (Maybe a)
   -- Variants, Objects (TODO)
 
-shrinkOp2 f a b = concat
+shrinkRel2 f a b = concat
     [ (\a -> f a b) <$> shrink a
     , (\b -> f a b) <$> shrink b
     ]
-shrinkOp3 f a b c = concat
+shrinkRel3 f a b c = concat
     [ (\a -> f a b c) <$> shrink a
     , (\b -> f a b c) <$> shrink b
     , (\c -> f a b c) <$> shrink c
     ]
+shrinkOp2 f a b = a : b : shrinkRel2 f a b
+
+shrinkOp1 f a = a : (f <$> shrink a)
 
 subShrink :: Arbitrary (MOTerm t) => MOTerm t -> [MOTerm t]
 subShrink Five = []
 subShrink (Lit n) = []
 subShrink (Neuralgic n) = []
-subShrink (Pos n) = Pos <$> shrink n
-subShrink (Neg n) = Neg <$> shrink n
-subShrink (Abs n) = Abs <$> shrink n
+subShrink (Pos n) = shrinkOp1 Pos n
+subShrink (Neg n) = shrinkOp1 Neg n
+subShrink (Abs n) = shrinkOp1 Abs n
 subShrink (a `Add` b) = shrinkOp2 Add a b
 subShrink (a `Sub` b) = shrinkOp2 Sub a b
 subShrink (a `Mul` b) = shrinkOp2 Mul a b
@@ -536,10 +538,10 @@ subShrink (a `WrapAdd` b) = shrinkOp2 WrapAdd a b
 subShrink (a `WrapSub` b) = shrinkOp2 WrapSub a b
 subShrink (a `WrapMul` b) = shrinkOp2 WrapMul a b
 subShrink (a `WrapPow` b) = shrinkOp2 WrapPow a b
-subShrink (PopCnt n) = PopCnt <$> shrink n
-subShrink (Clz a) = Clz <$> shrink a
-subShrink (Ctz a) = Ctz <$> shrink a
-subShrink (Complement a) = Complement <$> shrink a
+subShrink (PopCnt n) = shrinkOp1 PopCnt n
+subShrink (Clz n) = shrinkOp1 Clz n
+subShrink (Ctz n) = shrinkOp1 Ctz n
+subShrink (Complement n) = shrinkOp1 Complement n
 subShrink (ConvertNatural a) = ConvertNatural <$> shrink a
 subShrink (ConvertNatNToNat a) = ConvertNatNToNat <$> shrink a
 subShrink (ConvertNatToNatN a) = ConvertNatToNatN <$> shrink a
@@ -547,20 +549,20 @@ subShrink (ConvertIntNToInt a) = ConvertIntNToInt <$> shrink a
 subShrink (ConvertIntToIntN a) = ConvertIntToIntN <$> shrink a
 subShrink (IfThenElse a b (Bool True)) = [a]
 subShrink (IfThenElse a b (Bool False)) = [b]
-subShrink (IfThenElse a b c) = [a, b] <> shrinkOp3 IfThenElse a b c
-subShrink (a `NotEqual` b) = shrinkOp2 NotEqual a b
-subShrink (a `Equals` b) = shrinkOp2 Equals a b
-subShrink (a `GreaterEqual` b) = shrinkOp2 GreaterEqual a b
-subShrink (a `Greater` b) = shrinkOp2 Greater a b
-subShrink (a `LessEqual` b) = shrinkOp2 LessEqual a b
-subShrink (a `Less` b) = shrinkOp2 Less a b
-subShrink (a `ShortAnd` b) = shrinkOp2 ShortAnd a b
-subShrink (a `ShortOr` b) = shrinkOp2 ShortOr a b
+subShrink (IfThenElse a b c) = [a, b] <> shrinkRel3 IfThenElse a b c
+subShrink (a `NotEqual` b) = shrinkRel2 NotEqual a b
+subShrink (a `Equals` b) = shrinkRel2 Equals a b
+subShrink (a `GreaterEqual` b) = shrinkRel2 GreaterEqual a b
+subShrink (a `Greater` b) = shrinkRel2 Greater a b
+subShrink (a `LessEqual` b) = shrinkRel2 LessEqual a b
+subShrink (a `Less` b) = shrinkRel2 Less a b
+subShrink (a `ShortAnd` b) = shrinkRel2 ShortAnd a b
+subShrink (a `ShortOr` b) = shrinkRel2 ShortOr a b
 subShrink (Not a) = Not <$> shrink a
 subShrink (Bool False) = []
 subShrink (Bool True) = []
-subShrink (a `Pair` b) = shrinkOp2 Pair a b
-subShrink (Triple a b c) = shrinkOp3 Triple a b c
+subShrink (a `Pair` b) = shrinkRel2 Pair a b
+subShrink (Triple a b c) = shrinkRel3 Triple a b c
 subShrink Null = []
 subShrink (Some a) = Null : (Some <$> shrink a)
 subShrink (Text a) = Text <$> shrink a
@@ -625,17 +627,17 @@ instance WordLike n => Arbitrary (MOTerm (BitLimited n Integer)) where
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (MOTerm a), Arbitrary (MOTerm b)) => Arbitrary (MOTerm (a, b)) where
   arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
-  shrink (Pair x y) = shrinkOp2 Pair x y
+  shrink (Pair x y) = shrinkRel2 Pair x y
 
 instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (MOTerm a), Arbitrary (MOTerm b), Arbitrary (MOTerm c))
     => Arbitrary (MOTerm (a, b, c)) where
   arbitrary = scale (`quot` 3) $ Triple <$> arbitrary <*> arbitrary <*> arbitrary
-  shrink (Triple x y z) = shrinkOp3 Triple x y z
+  shrink (Triple x y z) = shrinkRel3 Triple x y z
 
 instance (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => Arbitrary (MOTerm (Maybe a)) where
   arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
   shrink Null = []
-  shrink (Some t) = Null : [ Some t | t' <- shrink t ]
+  shrink (Some t) = Null : [ Some t' | t' <- shrink t ]
 
 instance Arbitrary (MOTerm Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
