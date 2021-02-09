@@ -22,7 +22,7 @@ type binop =
   | ShROp
   | RotLOp
   | RotROp
-  | WAddOp                               (* wrapping operators... *)
+  | WAddOp                                      (* wrapping operators... *)
   | WSubOp
   | WMulOp
   | WPowOp
