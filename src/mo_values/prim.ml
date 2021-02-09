@@ -20,7 +20,7 @@ let as_big_int = function
   | Type.Word32 -> fun v -> Word32.to_big_int (as_word32 v)
   | Type.Word64 -> fun v -> Word64.to_big_int (as_word64 v)
   | Type.Char -> fun v -> Big_int.big_int_of_int (as_char v)
-  | _ -> assert false (* as_big_int is only used below, on these arguments *)
+  | t -> raise (Invalid_argument ("Value.as_big_int: " ^ Type.string_of_typ (Type.Prim t)))
 
 let of_big_int_trap = function
   | Type.Nat -> fun i -> Int (Nat.of_big_int i)
@@ -36,7 +36,7 @@ let of_big_int_trap = function
   | Type.Char -> fun i ->
     let i = Big_int.int_of_big_int i in
     if i < 0xD800 || i >= 0xE000 && i < 0x110000 then Char i else raise (Invalid_argument "character value out of bounds")
-  | _ -> assert false (* of_big_int_trap is only used below, on these arguments *)
+  | t -> raise (Invalid_argument ("Value.of_big_int_trap: " ^ Type.string_of_typ (Type.Prim t)))
 
 let of_big_int_wrap = function
   | Type.Nat8 -> fun i -> Nat8 (Nat8.wrapping_of_big_int i)
@@ -51,65 +51,34 @@ let of_big_int_wrap = function
   | Type.Word16 -> fun i -> Word16 (Word16.wrapping_of_big_int i)
   | Type.Word32 -> fun i -> Word32 (Word32.wrapping_of_big_int i)
   | Type.Word64 -> fun i -> Word64 (Word64.wrapping_of_big_int i)
-  | _ -> assert false (* of_big_int_wrap is only used below, on these arguments *)
+  | t -> raise (Invalid_argument ("Value.of_big_int_wrap: " ^ Type.string_of_typ (Type.Prim t)))
 
+(*
+Wrapping numeric conversions are all specified uniformly by going through bigint
+*)
+
+(* Trapping convesions (the num_conv_t1_t2 prim used in prelude/prelude.ml *)
 let num_conv_trap_prim t1 t2 =
   let module T = Type in
   match (t1, t2) with
-  (* numeric conversions are all specified uniformly by going through bigint *)
   | T.Nat, (T.Nat8|T.Nat16|T.Nat32|T.Nat64)
-  | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
   | T.Int, (T.Int8|T.Int16|T.Int32|T.Int64)
-  | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int ->
-    fun v -> of_big_int_trap t2 (as_big_int t1 v)
-
-  | (T.Word8|T.Word16|T.Word32|T.Word64), T.Nat ->
-    fun v -> of_big_int_trap t2 (as_big_int t1 v)
-
-  | T.Char, T.Word32 ->
-    fun v -> of_big_int_wrap t2 (as_big_int t1 v)
-  | T.Word32, T.Char ->
-    fun v -> of_big_int_trap t2 (as_big_int t1 v)
+  | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
+  | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int
+  | (T.Word8|T.Word16|T.Word32|T.Word64), T.Nat
+  | T.Word32, T.Char
+  -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_trap_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
+(*
+It is the responsibility of prelude/prelude.ml to define num_wrap_t1_t2 only
+for suitable types t1 and t2
+*)
 let num_conv_wrap_prim t1 t2 =
-  let module T = Type in
-  match (t1, t2) with
-  (* numeric conversions are all specified uniformly by going through bigint *)
-  | T.Nat, (T.Nat8|T.Nat16|T.Nat32|T.Nat64)
-  | T.Int, (T.Int8|T.Int16|T.Int32|T.Int64)
-  | T.Int, (T.Word8|T.Word16|T.Word32|T.Word64)
-  | T.Nat8, T.Word8
-  | T.Word8, T.Nat8
-  | T.Nat16, T.Word16
-  | T.Word16, T.Nat16
-  | T.Nat32, T.Word32
-  | T.Word32, T.Nat32
-  | T.Nat64, T.Word64
-  | T.Word64, T.Nat64
-  | T.Word8, T.Int8
-  | T.Int8, T.Word8
-  | T.Word16, T.Int16
-  | T.Int16, T.Word16
-  | T.Word32, T.Int32
-  | T.Int32, T.Word32
-  | T.Word64, T.Int64
-  | T.Int64, T.Word64
-  | T.Nat8, T.Int8
-  | T.Int8, T.Nat8
-  | T.Nat16, T.Int16
-  | T.Int16, T.Nat16
-  | T.Nat32, T.Int32
-  | T.Int32, T.Nat32
-  | T.Nat64, T.Int64
-  | T.Int64, T.Nat64
-  ->
-    fun v -> of_big_int_wrap t2 (as_big_int t1 v)
-
-  | t1, t2 -> raise (Invalid_argument (Printf.sprintf "Value.num_conv_wrap_prim: %s -> %s " (T.string_of_typ (T.Prim t1)) (T.string_of_typ (T.Prim t2))))
+  fun v -> of_big_int_wrap t2 (as_big_int t1 v)
 
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
