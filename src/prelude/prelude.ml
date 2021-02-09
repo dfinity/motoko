@@ -158,7 +158,7 @@ func @left_pad(pad : Nat, char : Text, t : Text) : Text {
 func @digits_dec(x : Nat) : Text =
  (prim "conv_Char_Text" : Char -> Text) (
    (prim "num_conv_Word32_Char" : Word32 -> Char) (
-     (prim "num_conv_Nat_Word32" : Nat -> Word32) (
+     (prim "num_wrap_Int_Word32" : Int -> Word32) (
        x + 0x30
      )
    )
@@ -176,7 +176,7 @@ func @text_of_Int(x : Int) : Text {
 func @digits_hex(x : Nat) : Text =
  (prim "conv_Char_Text" : Char -> Text) (
    (prim "num_conv_Word32_Char" : Word32 -> Char) (
-     (prim "num_conv_Nat_Word32" : Nat -> Word32) (
+     (prim "num_wrap_Int_Word32" : Int -> Word32) (
        x + (if (x < 10) 0x30 else 55)
      )
    )
@@ -472,7 +472,7 @@ func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> N
 
 func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
 
-// Conversions
+// Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;
 let int32ToInt = @int32ToInt;
@@ -487,40 +487,54 @@ let word32ToNat = @word32ToNat;
 let word16ToNat = @word16ToNat;
 let word8ToNat = @word8ToNat;
 
+// Trapping conversions (big to fixed)
+
 func intToInt64(n : Int) : Int64 = (prim "num_conv_Int_Int64" : Int -> Int64) n;
-func int64ToWord64(n : Int64) : Word64 = (prim "num_conv_Int64_Word64" : Int64 -> Word64) n;
-func word64ToInt64(n : Word64) : Int64 = (prim "num_conv_Word64_Int64" : Word64 -> Int64) n;
 func intToInt32(n : Int) : Int32 = (prim "num_conv_Int_Int32" : Int -> Int32) n;
-func int32ToWord32(n : Int32) : Word32 = (prim "num_conv_Int32_Word32" : Int32 -> Word32) n;
-func word32ToInt32(n : Word32) : Int32 = (prim "num_conv_Word32_Int32" : Word32 -> Int32) n;
 func intToInt16(n : Int) : Int16 = (prim "num_conv_Int_Int16" : Int -> Int16) n;
-func int16ToWord16(n : Int16) : Word16 = (prim "num_conv_Int16_Word16" : Int16 -> Word16) n;
-func word16ToInt16(n : Word16) : Int16 = (prim "num_conv_Word16_Int16" : Word16 -> Int16) n;
 func intToInt8(n : Int) : Int8 = (prim "num_conv_Int_Int8" : Int -> Int8) n;
-func int8ToWord8(n : Int8) : Word8 = (prim "num_conv_Int8_Word8" : Int8 -> Word8) n;
-func word8ToInt8(n : Word8) : Int8 = (prim "num_conv_Word8_Int8" : Word8 -> Int8) n;
 
 func natToNat64(n : Nat) : Nat64 = (prim "num_conv_Nat_Nat64" : Nat -> Nat64) n;
-func nat64ToWord64(n : Nat64) : Word64 = (prim "num_conv_Nat64_Word64" : Nat64 -> Word64) n;
-func word64ToNat64(n : Word64) : Nat64 = (prim "num_conv_Word64_Nat64" : Word64 -> Nat64) n;
 func natToNat32(n : Nat) : Nat32 = (prim "num_conv_Nat_Nat32" : Nat -> Nat32) n;
-func nat32ToWord32(n : Nat32) : Word32 = (prim "num_conv_Nat32_Word32" : Nat32 -> Word32) n;
-func word32ToNat32(n : Word32) : Nat32 = (prim "num_conv_Word32_Nat32" : Word32 -> Nat32) n;
 func natToNat16(n : Nat) : Nat16 = (prim "num_conv_Nat_Nat16" : Nat -> Nat16) n;
-func nat16ToWord16(n : Nat16) : Word16 = (prim "num_conv_Nat16_Word16" : Nat16 -> Word16) n;
-func word16ToNat16(n : Word16) : Nat16 = (prim "num_conv_Word16_Nat16" : Word16 -> Nat16) n;
 func natToNat8(n : Nat) : Nat8 = (prim "num_conv_Nat_Nat8" : Nat -> Nat8) n;
-func nat8ToWord8(n : Nat8) : Word8 = (prim "num_conv_Nat8_Word8" : Nat8 -> Word8) n;
-func word8ToNat8(n : Word8) : Nat8 = (prim "num_conv_Word8_Nat8" : Word8 -> Nat8) n;
 
-func natToWord8(n : Nat) : Word8 = (prim "num_conv_Nat_Word8" : Nat -> Word8) n;
-func intToWord8(n : Int) : Word8 = (prim "num_conv_Int_Word8" : Int -> Word8) n;
-func natToWord16(n : Nat) : Word16 = (prim "num_conv_Nat_Word16" : Nat -> Word16) n;
-func intToWord16(n : Int) : Word16 = (prim "num_conv_Int_Word16" : Int -> Word16) n;
-func natToWord32(n : Nat) : Word32 = (prim "num_conv_Nat_Word32" : Nat -> Word32) n;
-func intToWord32(n : Int) : Word32 = (prim "num_conv_Int_Word32" : Int -> Word32) n;
-func natToWord64(n : Nat) : Word64 = (prim "num_conv_Nat_Word64" : Nat -> Word64) n;
-func intToWord64(n : Int) : Word64 = (prim "num_conv_Int_Word64" : Int -> Word64) n;
+// Wrapping conversions (big to fixed, big to word, and within fixed)
+
+func intToInt64Wrap(n : Int) : Int64 = (prim "num_wrap_Int_Int64" : Int -> Int64) n;
+func intToInt32Wrap(n : Int) : Int32 = (prim "num_wrap_Int_Int32" : Int -> Int32) n;
+func intToInt16Wrap(n : Int) : Int16 = (prim "num_wrap_Int_Int16" : Int -> Int16) n;
+func intToInt8Wrap(n : Int) : Int8 = (prim "num_wrap_Int_Int8" : Int -> Int8) n;
+
+func natToNat64Wrap(n : Nat) : Nat64 = (prim "num_wrap_Nat_Nat64" : Nat -> Nat64) n;
+func natToNat32Wrap(n : Nat) : Nat32 = (prim "num_wrap_Nat_Nat32" : Nat -> Nat32) n;
+func natToNat16Wrap(n : Nat) : Nat16 = (prim "num_wrap_Nat_Nat16" : Nat -> Nat16) n;
+func natToNat8Wrap(n : Nat) : Nat8 = (prim "num_wrap_Nat_Nat8" : Nat -> Nat8) n;
+
+func intToWord64Wrap(n : Int) : Word64 = (prim "num_wrap_Int_Word64" : Int -> Word64) n;
+func intToWord32Wrap(n : Int) : Word32 = (prim "num_wrap_Int_Word32" : Int -> Word32) n;
+func intToWord16Wrap(n : Int) : Word16 = (prim "num_wrap_Int_Word16" : Int -> Word16) n;
+func intToWord8Wrap(n : Int) : Word8 = (prim "num_wrap_Int_Word8" : Int -> Word8) n;
+
+func int64ToWord64(n : Int64) : Word64 = (prim "num_wrap_Int64_Word64" : Int64 -> Word64) n;
+func word64ToInt64(n : Word64) : Int64 = (prim "num_wrap_Word64_Int64" : Word64 -> Int64) n;
+func int32ToWord32(n : Int32) : Word32 = (prim "num_wrap_Int32_Word32" : Int32 -> Word32) n;
+func word32ToInt32(n : Word32) : Int32 = (prim "num_wrap_Word32_Int32" : Word32 -> Int32) n;
+func int16ToWord16(n : Int16) : Word16 = (prim "num_wrap_Int16_Word16" : Int16 -> Word16) n;
+func word16ToInt16(n : Word16) : Int16 = (prim "num_wrap_Word16_Int16" : Word16 -> Int16) n;
+func int8ToWord8(n : Int8) : Word8 = (prim "num_wrap_Int8_Word8" : Int8 -> Word8) n;
+func word8ToInt8(n : Word8) : Int8 = (prim "num_wrap_Word8_Int8" : Word8 -> Int8) n;
+
+func word64ToNat64(n : Word64) : Nat64 = (prim "num_wrap_Word64_Nat64" : Word64 -> Nat64) n;
+func nat64ToWord64(n : Nat64) : Word64 = (prim "num_wrap_Nat64_Word64" : Nat64 -> Word64) n;
+func word32ToNat32(n : Word32) : Nat32 = (prim "num_wrap_Word32_Nat32" : Word32 -> Nat32) n;
+func nat32ToWord32(n : Nat32) : Word32 = (prim "num_wrap_Nat32_Word32" : Nat32 -> Word32) n;
+func word16ToNat16(n : Word16) : Nat16 = (prim "num_wrap_Word16_Nat16" : Word16 -> Nat16) n;
+func nat16ToWord16(n : Nat16) : Word16 = (prim "num_wrap_Nat16_Word16" : Nat16 -> Word16) n;
+func word8ToNat8(n : Word8) : Nat8 = (prim "num_wrap_Word8_Nat8" : Word8 -> Nat8) n;
+func nat8ToWord8(n : Nat8) : Word8 = (prim "num_wrap_Nat8_Word8" : Nat8 -> Word8) n;
+
+// Char conversion and properties
 
 func charToWord32(c : Char) : Word32 = (prim "num_conv_Char_Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> Char) w;
