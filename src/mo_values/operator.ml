@@ -25,10 +25,10 @@ type binop =
   | SShROp
   | RotLOp
   | RotROp
-  | WrappingAddOp                               (* wrapping operators... *)
-  | WrappingSubOp
-  | WrappingMulOp
-  | WrappingPowOp
+  | WAddOp                                      (* wrapping operators... *)
+  | WSubOp
+  | WMulOp
+  | WPowOp
   | CatOp                                       (* concatenation *)
 
 type relop =
@@ -144,10 +144,10 @@ let binop op t =
     | SShROp -> word_binop (Word8.shr_s, Word16.shr_s, Word32.shr_s, Word64.shr_s) p
     | RotLOp -> fixed_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl)(Word8.rotl, Word16.rotl, Word32.rotl, Word64.rotl) p
     | RotROp -> fixed_binop (Nat8.rotr, Nat16.rotr, Nat32.rotr, Nat64.rotr, Int_8.rotr, Int_16.rotr, Int_32.rotr, Int_64.rotr)(Word8.rotr, Word16.rotr, Word32.rotr, Word64.rotr) p
-    | WrappingAddOp -> fixed_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) (Word8.wrapping_add, Word16.wrapping_add, Word32.wrapping_add, Word64.wrapping_add) p
-    | WrappingSubOp -> fixed_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) (Word8.wrapping_sub, Word16.wrapping_sub, Word32.wrapping_sub, Word64.wrapping_sub) p
-    | WrappingMulOp -> fixed_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) (Word8.wrapping_mul, Word16.wrapping_mul, Word32.wrapping_mul, Word64.wrapping_mul) p
-    | WrappingPowOp -> fixed_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) (Word8.wrapping_pow, Word16.wrapping_pow, Word32.wrapping_pow, Word64.wrapping_pow) p
+    | WAddOp -> fixed_binop (Nat8.wadd, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) (Word8.wrapping_add, Word16.wrapping_add, Word32.wrapping_add, Word64.wrapping_add) p
+    | WSubOp -> fixed_binop (Nat8.wsub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) (Word8.wrapping_sub, Word16.wrapping_sub, Word32.wrapping_sub, Word64.wrapping_sub) p
+    | WMulOp -> fixed_binop (Nat8.wmul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) (Word8.wrapping_mul, Word16.wrapping_mul, Word32.wrapping_mul, Word64.wrapping_mul) p
+    | WPowOp -> fixed_binop (Nat8.wpow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) (Word8.wrapping_pow, Word16.wrapping_pow, Word32.wrapping_pow, Word64.wrapping_pow) p
     | CatOp -> text_binop (^) p
     )
   | T.Non -> impossible
