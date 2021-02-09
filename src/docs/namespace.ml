@@ -16,8 +16,7 @@ let rec idents_in_pattern : Syntax.pat -> string list =
       List.concat_map
         (fun (pf : Syntax.pat_field) -> idents_in_pattern pf.it.Syntax.pat)
         pfs
-  (* TODO: Do I need the intersection of p and p' here? *)
-  | Syntax.AltP (p, _ (* p' *))
+  | Syntax.AltP (p, _)
   | Syntax.OptP p
   | Syntax.TagP (_, p)
   | Syntax.AnnotP (p, _)
