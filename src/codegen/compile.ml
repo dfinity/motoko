@@ -1675,7 +1675,7 @@ module TaggedSmallWord = struct
   (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
      ensuring the codepoint range and the absence of surrogates. *)
   let check_and_tag_codepoint env =
-    Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type] (fun env get_n ->
+    Func.share_code1 env "Nat32->Char" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_unboxed_const 0xD800l ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
       get_n ^^ compile_unboxed_const 0xE000l ^^
@@ -6823,6 +6823,12 @@ and compile_exp (env : E.t) ae exp =
       | Nat16, Int16 | Int16, Nat16
       | Nat8, Int8 | Int8, Nat8 ->
         compile_exp env ae e
+
+      | Char, Nat32 ->
+        SR.UnboxedWord32,
+        compile_exp_vanilla env ae e ^^
+        TaggedSmallWord.untag_codepoint
+
       | _ -> SR.Unreachable, todo_trap env "compile_exp u" (Arrange_ir.exp exp)
       end
 
@@ -6871,11 +6877,6 @@ and compile_exp (env : E.t) ae exp =
           get_n ^^
           BigNum.truncate_to_word32 env ^^
           TaggedSmallWord.msb_adjust pty)
-
-      | Char, Nat32 ->
-        SR.UnboxedWord32,
-        compile_exp_vanilla env ae e ^^
-        TaggedSmallWord.untag_codepoint
 
       | (Nat8|Nat16), Nat ->
         SR.Vanilla,
