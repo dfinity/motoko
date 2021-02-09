@@ -22,10 +22,10 @@ let binop bo = match bo with
   | RotROp -> Atom "RotROp"
   | CatOp  -> Atom "CatOp"
   | PowOp  -> Atom "PowOp"
-  | WrappingAddOp  -> Atom "WrappingAddOp"
-  | WrappingSubOp  -> Atom "WrappingSubOp"
-  | WrappingMulOp  -> Atom "WrappingMulOp"
-  | WrappingPowOp  -> Atom "WrappingPowOp"
+  | WAddOp  -> Atom "WrappingAddOp"
+  | WSubOp  -> Atom "WrappingSubOp"
+  | WMulOp  -> Atom "WrappingMulOp"
+  | WPowOp  -> Atom "WrappingPowOp"
 
 let relop ro = match ro with
   | EqOp  -> Atom "EqOp"
