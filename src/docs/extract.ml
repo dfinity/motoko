@@ -74,21 +74,18 @@ let _print_leading : Lexer.trivia_info -> unit =
  fun info -> print_endline (string_of_leading info)
 
 let un_prog prog =
-  let rec go acc = function
-    | { it = Syntax.ExpD { it = Syntax.ObjBlockE (_, m); _ }; _ } :: _ ->
-        Ok (acc, m)
-    | {
-        it =
-          Syntax.LetD
-            ({ it = Syntax.VarP v; _ }, { it = Syntax.ImportE (path, _); _ });
-        _;
-      }
-      :: tail ->
-        go ((v.it, path) :: acc) tail
-    | _ :: tail -> go acc tail
-    | [] -> Error "Couldn't find a module expression"
+  let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
+  let imports, body = comp_unit.it in
+  let imports =
+    List.map
+      (fun i ->
+        let alias, path, _ = i.it in
+        (alias.it, path))
+      imports
   in
-  go [] prog.Source.it
+  match body.it with
+  | Syntax.ModuleU (_, decs) -> Ok (imports, decs)
+  | _ -> Error "Couldn't find a module expression"
 
 module PosTable = Lexer.PosHashtbl
 
