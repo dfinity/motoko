@@ -211,48 +211,59 @@ assertOutcomeCheckingFuzz outcome relevant (compiled, (exitCode, out, err)) = do
 
 assertSuccessNoFuzz = assertOutcomeCheckingFuzz ExitSuccess id
 
-newtype Failing a = Failing a deriving Show
+newtype Failing = Failing (MOTerm Integer)
 
-instance Arbitrary (Failing String) where
-  arbitrary = do let failed as = "let _ = " ++ unparseMO as ++ ";"
-                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @Integer -> res) -> null res)
+instance Arbitrary Failing where
+  arbitrary = Failing <$> suchThat (resize 5 arbitrary) (\(evaluate @Integer -> res) -> null res)
+  shrink (Failing term) = do
+    term' <- shrink term
+    Nothing <- pure $ evaluate term'
+    pure $ Failing term'
 
-prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
+unparseFailing (Failing t) = "let _ = " ++ unparseMO t ++ ";"
+
+instance Show Failing where
+    show = unparseFailing
+
+prop_rejects f = monadicIO $ runScriptWantFuzz "fails" (unparseFailing f)
 
 halve [] = ([], [])
 halve a@[_] = (a, [])
 halve (clown : joker : (halve -> (cs, js))) = (clown : cs, joker : js)
 
-newtype TestCase = TestCase [String] deriving Show
+newtype TestCase = TestCase (MOTerm Integer)
+
+unparseTestCase (TestCase t) =
+  let actual = unparseMO t in
+  let Just expected = evaluate @Integer t in
+  "assert (" ++ actual ++ " == " ++ show expected ++ ");"
+
+instance Show TestCase where show = unparseTestCase
 
 instance Arbitrary TestCase where
-  arbitrary = do tests <- infiniteListOf arbitrary
-                 let expected = evaluate @Integer <$> tests
-                 let paired as = fmap (\res -> "assert (" ++ unparseMO as ++ " == " ++ show res ++ ");")
-                 pure . TestCase . take 10 . catMaybes $ zipWith paired tests expected
+  arbitrary = TestCase <$> suchThat (resize 5 arbitrary) (isJust . evaluate @Integer)
+  shrink (TestCase term) = do
+    term' <- shrink term
+    Just _ <- pure $ evaluate term'
+    pure $ TestCase term'
 
+newtype TestCases = TestCases [TestCase]
 
-prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let script cases = do Turtle.output "tests.mo" $ msum (pure (withPrim mempty) : cases)
-                        res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                 (addCompilerArgs embedder ["-no-check-ir", "tests.mo"]) empty
-                        if ExitSuccess == exitCode
-                        then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
-                        else pure (False, res)
-  res@(compiled, (exitCode, out, err)) <- run $ script testCase
-  when compiled $ do
-    pre (ExitSuccess == exitCode)
-    let bisect (clowns, jokers) =
-            do (True, (cExitCode, cOut, _)) <- script clowns
-               (True, (jExitCode, jOut, _)) <- script jokers
-               case (Data.Text.null cOut, Data.Text.null jOut) of
-                 (False, _) -> if length clowns == 1
-                               then reduce (Fold (<>) empty linesToText) $ sequence clowns
-                               else bisect $ halve clowns
-                 (_, False) -> bisect $ halve jokers
-    let good = Data.Text.null out
-    unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
-  assertSuccessNoFuzz res
+instance Show TestCases where
+  show (TestCases tcs) = unlines $ map unparseTestCase tcs
+
+instance Arbitrary TestCases where
+  arbitrary = TestCases <$> vector 10
+  shrink (TestCases tcs) = TestCases <$> shrink tcs
+
+prop_verifies (TestCases tcs) = monadicIO $ do
+  Turtle.output "tests.mo" $ msum $ pure (withPrim mempty) : [ fromString (unparseTestCase tc) | tc <- tcs ]
+  res@(exitCode, _, _) <- procStrictWithErr "moc"
+           (addCompilerArgs embedder ["-no-check-ir", "tests.mo"]) empty
+  res' <- if exitCode == ExitSuccess
+          then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
+          else pure (False, res)
+  assertSuccessNoFuzz res'
 
 
 newtype ConversionTestNat n = ConversionTestNat (Neuralgic (BitLimited n Natural)) deriving (Show, Arbitrary)

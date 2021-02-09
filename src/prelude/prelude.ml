@@ -559,6 +559,46 @@ func clzInt64(w : Int64) : Int64 = (prim "clz64" : Int64 -> Int64) w;
 func ctzInt64(w : Int64) : Int64 = (prim "ctz64" : Int64 -> Int64) w;
 func btstInt64(w : Int64, amount : Int64) : Bool = (prim "btst64" : (Int64, Int64) -> Int64) (w, amount) != (0 : Int64);
 
+func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;
+func clzNat8(w : Nat8) : Nat8 = (prim "clz8" : Nat8 -> Nat8) w;
+func ctzNat8(w : Nat8) : Nat8 = (prim "ctz8" : Nat8 -> Nat8) w;
+func btstNat8(w : Nat8, amount : Nat8) : Bool = (prim "btst8" : (Nat8, Nat8) -> Nat8) (w, amount) != (0 : Nat8);
+
+func popcntNat16(w : Nat16) : Nat16 = (prim "popcnt16" : Nat16 -> Nat16) w;
+func clzNat16(w : Nat16) : Nat16 = (prim "clz16" : Nat16 -> Nat16) w;
+func ctzNat16(w : Nat16) : Nat16 = (prim "ctz16" : Nat16 -> Nat16) w;
+func btstNat16(w : Nat16, amount : Nat16) : Bool = (prim "btst16" : (Nat16, Nat16) -> Nat16) (w, amount) != (0 : Nat16);
+
+func popcntNat32(w : Nat32) : Nat32 = (prim "popcnt32" : Nat32 -> Nat32) w;
+func clzNat32(w : Nat32) : Nat32 = (prim "clz32" : Nat32 -> Nat32) w;
+func ctzNat32(w : Nat32) : Nat32 = (prim "ctz32" : Nat32 -> Nat32) w;
+func btstNat32(w : Nat32, amount : Nat32) : Bool = (prim "btst32" : (Nat32, Nat32) -> Nat32) (w, amount) != (0 : Nat32);
+
+func popcntNat64(w : Nat64) : Nat64 = (prim "popcnt64" : Nat64 -> Nat64) w;
+func clzNat64(w : Nat64) : Nat64 = (prim "clz64" : Nat64 -> Nat64) w;
+func ctzNat64(w : Nat64) : Nat64 = (prim "ctz64" : Nat64 -> Nat64) w;
+func btstNat64(w : Nat64, amount : Nat64) : Bool = (prim "btst64" : (Nat64, Nat64) -> Nat64) (w, amount) != (0 : Nat64);
+
+func popcntInt8(w : Int8) : Int8 = (prim "popcnt8" : Int8 -> Int8) w;
+func clzInt8(w : Int8) : Int8 = (prim "clz8" : Int8 -> Int8) w;
+func ctzInt8(w : Int8) : Int8 = (prim "ctz8" : Int8 -> Int8) w;
+func btstInt8(w : Int8, amount : Int8) : Bool = (prim "btst8" : (Int8, Int8) -> Int8) (w, amount) != (0 : Int8);
+
+func popcntInt16(w : Int16) : Int16 = (prim "popcnt16" : Int16 -> Int16) w;
+func clzInt16(w : Int16) : Int16 = (prim "clz16" : Int16 -> Int16) w;
+func ctzInt16(w : Int16) : Int16 = (prim "ctz16" : Int16 -> Int16) w;
+func btstInt16(w : Int16, amount : Int16) : Bool = (prim "btst16" : (Int16, Int16) -> Int16) (w, amount) != (0 : Int16);
+
+func popcntInt32(w : Int32) : Int32 = (prim "popcnt32" : Int32 -> Int32) w;
+func clzInt32(w : Int32) : Int32 = (prim "clz32" : Int32 -> Int32) w;
+func ctzInt32(w : Int32) : Int32 = (prim "ctz32" : Int32 -> Int32) w;
+func btstInt32(w : Int32, amount : Int32) : Bool = (prim "btst32" : (Int32, Int32) -> Int32) (w, amount) != (0 : Int32);
+
+func popcntInt64(w : Int64) : Int64 = (prim "popcnt64" : Int64 -> Int64) w;
+func clzInt64(w : Int64) : Int64 = (prim "clz64" : Int64 -> Int64) w;
+func ctzInt64(w : Int64) : Int64 = (prim "ctz64" : Int64 -> Int64) w;
+func btstInt64(w : Int64, amount : Int64) : Bool = (prim "btst64" : (Int64, Int64) -> Int64) (w, amount) != (0 : Int64);
+
 // Float operations
 
 func floatAbs(f : Float) : Float = (prim "fabs" : Float -> Float) f;
