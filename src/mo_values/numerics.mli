@@ -34,7 +34,6 @@ module type BitNumType =
 sig
   include NumType
 
-
   val not : t -> t
   val popcnt : t -> t
   val clz : t -> t
