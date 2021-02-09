@@ -494,10 +494,10 @@ lit :
   | DIVOP { DivOp }
   | MODOP { ModOp }
   | POWOP { PowOp }
-  | WRAPADDOP { WrappingAddOp }
-  | WRAPSUBOP { WrappingSubOp }
-  | WRAPMULOP { WrappingMulOp }
-  | WRAPPOWOP { WrappingPowOp }
+  | WRAPADDOP { WAddOp }
+  | WRAPSUBOP { WSubOp }
+  | WRAPMULOP { WMulOp }
+  | WRAPPOWOP { WPowOp }
   | ANDOP { AndOp }
   | OROP  { OrOp }
   | XOROP { XorOp }
@@ -527,10 +527,10 @@ lit :
   | DIVASSIGN { DivOp }
   | MODASSIGN { ModOp }
   | POWASSIGN { PowOp }
-  | WRAPADDASSIGN { WrappingAddOp }
-  | WRAPSUBASSIGN { WrappingSubOp }
-  | WRAPMULASSIGN { WrappingMulOp }
-  | WRAPPOWASSIGN { WrappingPowOp }
+  | WRAPADDASSIGN { WAddOp }
+  | WRAPSUBASSIGN { WSubOp }
+  | WRAPMULASSIGN { WMulOp }
+  | WRAPPOWASSIGN { WPowOp }
   | ANDASSIGN { AndOp }
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }

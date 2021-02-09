@@ -49,11 +49,10 @@ sig
 
   val wrapping_of_big_int : Big_int.big_int -> t
 
-  val wrapping_neg : t -> t
-  val wrapping_add : t -> t -> t
-  val wrapping_sub : t -> t -> t
-  val wrapping_mul : t -> t -> t
-  val wrapping_pow : t -> t -> t
+  val wadd : t -> t -> t
+  val wsub : t -> t -> t
+  val wmul : t -> t -> t
+  val wpow : t -> t -> t
 end
 
 module type FloatType =

@@ -266,7 +266,6 @@ sig
 
   val wrapping_of_big_int : Big_int.big_int -> t
 
-  val wrapping_neg : t -> t
   val wadd : t -> t -> t
   val wsub : t -> t -> t
   val wmul : t -> t -> t
@@ -328,7 +327,6 @@ struct
   (* wrapping operations *)
   let wrapping_of_big_int i = from_word (WordRep.of_big_int i)
 
-  let wrapping_neg = on_word WordRep.neg
   let wadd = on_words WordRep.add
   let wsub = on_words WordRep.sub
   let wmul = on_words WordRep.mul

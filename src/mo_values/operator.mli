@@ -22,10 +22,10 @@ type binop =
   | ShROp
   | RotLOp
   | RotROp
-  | WrappingAddOp                               (* wrapping operators... *)
-  | WrappingSubOp
-  | WrappingMulOp
-  | WrappingPowOp
+  | WAddOp                               (* wrapping operators... *)
+  | WSubOp
+  | WMulOp
+  | WPowOp
   | CatOp                                       (* concatenation *)
 
 type relop =
