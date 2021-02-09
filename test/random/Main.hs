@@ -1,9 +1,26 @@
-{-# language ConstraintKinds, DataKinds, DeriveFoldable, FlexibleContexts, FlexibleInstances, GADTs
-           , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving
-           , TypeApplications, TypeOperators, TypeFamilies, TupleSections
-           , UndecidableInstances, ViewPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
-{-# options_ghc -Wno-missing-methods #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main where
 
@@ -17,7 +34,6 @@ import qualified Data.Text (null, pack, unpack)
 import Data.Maybe
 import Data.Bool (bool)
 import Data.Proxy
-import Data.Type.Equality
 import GHC.Natural
 import GHC.TypeLits hiding (Text)
 import qualified Data.Word
@@ -31,6 +47,7 @@ import Embedder
 -- import Debug.Trace (traceShowId, traceShow)
 
 
+main :: IO ()
 main = do
   putStrLn "Probing embedders..."
   good <- isHealthy embedder
@@ -46,11 +63,13 @@ main = do
   then putStrLn "No embedder available for testing. Done..."
   else setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
 
+arithProps :: TestTree
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
 
+conversionProps :: TestTree
 conversionProps = testGroup "Numeric conversions"
   [ QC.testProperty "roundtrip Nat64 Nat Nat64 " $ prop_roundtripNatWNW @64
   , QC.testProperty "roundtrip Nat32 Nat Nat32 " $ prop_roundtripNatWNW @32
@@ -66,6 +85,7 @@ conversionProps = testGroup "Numeric conversions"
   , QC.testProperty "modulo Nat Nat8 Nat" $ prop_moduloNWN @8
   ]
 
+utf8Props :: TestTree
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
@@ -75,12 +95,13 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
+matchingProps :: TestTree
 matchingProps = testGroup "Pattern matching" $
   [ QC.testProperty "intra-actor" $ prop_matchStructured ]
 
 
 -- these require messaging
---
+encodingProps :: TestTree
 encodingProps = testGroup "Encoding" $
   [ QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
   , QC.testProperty "encoded-Nat" $ withMaxSuccess 10 prop_matchActorNat
@@ -104,6 +125,11 @@ runner embedder reqOutcome relevant name testCase =
                     then (True,) <$> invokeEmbedder embedder wasm
                     else pure (False, res)
     in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
+
+runScriptNoFuzz    :: Turtle.FilePath -> String -> PropertyM IO ()
+runScriptWantFuzz  :: Turtle.FilePath -> String -> PropertyM IO ()
+drunScriptNoFuzz   :: Turtle.FilePath -> String -> PropertyM IO ()
+drunScriptWantFuzz :: Turtle.FilePath -> String -> PropertyM IO ()
 
 (runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 134) not)
     where runEmbedder = runner embedder
@@ -131,10 +157,12 @@ instance Arbitrary (UTF8 Char) where
 hex :: Int -> String
 hex = (`showHex` "")
 
+escape :: Char -> String
 escape ch | '\\' `elem` show ch = "\\u{" <> hex (fromEnum ch) <> "}"
 escape '"' = "\\\""
 escape ch = pure ch
 
+prop_charToText :: UTF8 Char -> Property
 prop_charToText (UTF8 char) = monadicIO $ do
   let testCase = "assert (switch ((Prim.charToText '"
                  <> c <> "').chars().next()) { case (?'" <> c <> "') true; case _ false })"
@@ -142,6 +170,7 @@ prop_charToText (UTF8 char) = monadicIO $ do
       c = escape char
   runScriptNoFuzz "charToText" testCase
 
+prop_textLength :: UTF8 [Char] -> Property
 prop_textLength (UTF8 text) = monadicIO $ do
   let testCase = "assert(\"" <> (text >>= escape) <> "\".size() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
@@ -169,23 +198,27 @@ instance Semigroup (MOTerm String) where
 instance Monoid (MOTerm String) where
   mempty = Text mempty
 
+asString :: Rope String -> String
 asString = foldMap id
 
 asMot :: Rope String -> MOTerm String
 asMot = foldMap Text
 
+prop_ropeConcat :: Rope String -> Property
 prop_ropeConcat rope = monadicIO $ do
   let testCase = "assert (" <> ropeMot <> " == " <> string <> ")"
       string = unparseMO (Text (asString rope))
       ropeMot = unparseMO (asMot rope)
   runScriptNoFuzz "ropeConcat" testCase
 
+prop_ropeLength :: Rope String -> Property
 prop_ropeLength rope = monadicIO $ do
   let testCase = "assert (" <> ropeMot <> ".size() == " <> show len <> ")"
       len = length (asString rope)
       ropeMot = unparseMO (asMot rope)
   runScriptNoFuzz "ropeLength" testCase
 
+prop_ropeIterator :: Rope String -> Property
 prop_ropeIterator rope = monadicIO $ do
   let testCase = "func same(c : ?Char, d : Char) : Bool = switch c { case (?cc) { cc == d }; case null false };"
               <> "let i = (" <> ropeMot <> ").chars();"
@@ -197,6 +230,8 @@ prop_ropeIterator rope = monadicIO $ do
   runScriptNoFuzz "ropeLength" testCase
 
 
+assertOutcomeCheckingFuzz ::
+    ExitCode -> (Bool -> Bool) -> (Bool, (ExitCode, Text, Text)) -> PropertyM IO ()
 assertOutcomeCheckingFuzz outcome relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
       fuzzErrRelevant = relevant fuzzErr
@@ -209,6 +244,7 @@ assertOutcomeCheckingFuzz outcome relevant (compiled, (exitCode, out, err)) = do
     monitor (counterexample . Data.Text.unpack $ out)
   assert (not $ outcome /= exitCode || (if compiled then fuzzErrRelevant else fuzzErr) || fuzzOut)
 
+assertSuccessNoFuzz :: (Bool, (ExitCode, Text, Text)) -> PropertyM IO ()
 assertSuccessNoFuzz = assertOutcomeCheckingFuzz ExitSuccess id
 
 newtype Failing = Failing (MOTerm Integer)
@@ -220,19 +256,18 @@ instance Arbitrary Failing where
     Nothing <- pure $ evaluate term'
     pure $ Failing term'
 
+unparseFailing :: Failing -> String
 unparseFailing (Failing t) = "let _ = " ++ unparseMO t ++ ";"
 
 instance Show Failing where
     show = unparseFailing
 
+prop_rejects :: Failing -> Property
 prop_rejects f = monadicIO $ runScriptWantFuzz "fails" (unparseFailing f)
-
-halve [] = ([], [])
-halve a@[_] = (a, [])
-halve (clown : joker : (halve -> (cs, js))) = (clown : cs, joker : js)
 
 newtype TestCase = TestCase (MOTerm Integer)
 
+unparseTestCase :: TestCase -> String
 unparseTestCase (TestCase t) =
   let actual = unparseMO t in
   let Just expected = evaluate @Integer t in
@@ -256,6 +291,7 @@ instance Arbitrary TestCases where
   arbitrary = TestCases <$> vector 10
   shrink (TestCases tcs) = TestCases <$> shrink tcs
 
+prop_verifies :: TestCases -> Property
 prop_verifies (TestCases tcs) = monadicIO $ do
   Turtle.output "tests.mo" $ msum $ pure (withPrim mempty) : [ fromString (unparseTestCase tc) | tc <- tcs ]
   res@(exitCode, _, _) <- procStrictWithErr "moc"
@@ -433,6 +469,8 @@ instance Arbitrary (Neuralgic Integer) where
                         , (8, Offset <$> arbitrary <*> arbitrary)]
 
 
+guardedFrom :: (Arbitrary (Neuralgic a), Integral a) =>
+              (Integer -> Maybe a) -> [Neuralgic a] -> Gen (Neuralgic a)
 pred `guardedFrom` set = frequency [ (5, elements set)
                                    , (3, Offset <$> arbitrary <*> arbitrary)]
                          `suchThat` (isJust . guardedEvalN pred)
@@ -513,23 +551,29 @@ data MOTerm :: * -> * where
   Some :: (AnnotLit a, Evaluatable a, Arbitrary (MOTerm a)) => MOTerm a -> MOTerm (Maybe a)
   -- Variants, Objects (TODO)
 
+shrinkRel2 :: (Arbitrary a, Arbitrary b) => (a -> b -> c) -> a -> b -> [c]
 shrinkRel2 f a b = concat
     [ (\a -> f a b) <$> shrink a
     , (\b -> f a b) <$> shrink b
     ]
+
+shrinkRel3 :: (Arbitrary a, Arbitrary b, Arbitrary c) => (a -> b -> c -> d) -> a -> b -> c -> [d]
 shrinkRel3 f a b c = concat
     [ (\a -> f a b c) <$> shrink a
     , (\b -> f a b c) <$> shrink b
     , (\c -> f a b c) <$> shrink c
     ]
+
+shrinkOp2 :: Arbitrary a => (a -> a -> a) -> a -> a -> [a]
 shrinkOp2 f a b = a : b : shrinkRel2 f a b
 
+shrinkOp1 :: Arbitrary a => (a -> a) -> a -> [a]
 shrinkOp1 f a = a : (f <$> shrink a)
 
 subShrink :: Arbitrary (MOTerm t) => MOTerm t -> [MOTerm t]
 subShrink Five = []
-subShrink (Lit n) = []
-subShrink (Neuralgic n) = []
+subShrink (Lit _) = []
+subShrink (Neuralgic _) = []
 subShrink (Pos n) = shrinkOp1 Pos n
 subShrink (Neg n) = shrinkOp1 Neg n
 subShrink (Abs n) = shrinkOp1 Abs n
@@ -558,8 +602,8 @@ subShrink (ConvertNatNToNat a) = ConvertNatNToNat <$> shrink a
 subShrink (ConvertNatToNatN a) = ConvertNatToNatN <$> shrink a
 subShrink (ConvertIntNToInt a) = ConvertIntNToInt <$> shrink a
 subShrink (ConvertIntToIntN a) = ConvertIntToIntN <$> shrink a
-subShrink (IfThenElse a b (Bool True)) = [a]
-subShrink (IfThenElse a b (Bool False)) = [b]
+subShrink (IfThenElse a _ (Bool True)) = [a]
+subShrink (IfThenElse _ b (Bool False)) = [b]
 subShrink (IfThenElse a b c) = [a, b] <> shrinkRel3 IfThenElse a b c
 subShrink (a `NotEqual` b) = shrinkRel2 NotEqual a b
 subShrink (a `Equals` b) = shrinkRel2 Equals a b
@@ -706,11 +750,11 @@ instance (Enum (Maybe a), Eq a, Integral a) => Integral (Maybe a) where
                     _ -> (Nothing, Nothing)
 
 
+evalO :: Num a => Off -> a -> a
 evalO TwoLess = \n -> n - 2
 evalO OneLess = \n -> n - 1
 evalO OneMore = (+1)
 evalO TwoMore = (+2)
-
 
 evalN :: Num a => Neuralgic t -> a
 evalN LargeNeg = fromIntegral (minBound :: Int) - 111
@@ -1134,6 +1178,7 @@ unparseMO Null = "null"
 unparseMO (Some a) = '?' : unparseMO a
 unparseMO (Text a) = '"' : concatMap escape a <> "\""
 unparseMO (a `Concat` b) = "(" <> unparseMO a <> " # " <> unparseMO b <> ")"
+unparseMO (Array _ ) = error "TODO"
 
 
 -- TODOs:
