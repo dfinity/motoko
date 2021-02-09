@@ -6409,7 +6409,7 @@ let compile_binop env t op =
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
   | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
-  | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp -> TaggedSmallWord.compile_int_power env ty
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp -> TaggedSmallWord.compile_nat_power env ty
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WrappingPowOp -> TaggedSmallWord.compile_nat_power env ty
   | Type.(Prim (Word8|Word16|Word32 as ty)),  WrappingPowOp -> TaggedSmallWord.compile_nat_power env ty
   | Type.(Prim (Int8|Int16|Int32 as ty)),     WrappingPowOp -> TaggedSmallWord.compile_int_power env ty
