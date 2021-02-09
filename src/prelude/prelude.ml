@@ -534,6 +534,17 @@ func nat16ToWord16(n : Nat16) : Word16 = (prim "num_wrap_Nat16_Word16" : Nat16 -
 func word8ToNat8(n : Word8) : Nat8 = (prim "num_wrap_Word8_Nat8" : Word8 -> Nat8) n;
 func nat8ToWord8(n : Nat8) : Word8 = (prim "num_wrap_Nat8_Word8" : Nat8 -> Word8) n;
 
+// Temporary, to break less of base in #2324
+let natToWord8 : Nat -> Word8 = intToWord8Wrap;
+let intToWord8 : Int -> Word8 = intToWord8Wrap;
+let natToWord16 : Nat -> Word16 = intToWord16Wrap;
+let intToWord16 : Int -> Word16 = intToWord16Wrap;
+let natToWord32 : Nat -> Word32 = intToWord32Wrap;
+let intToWord32 : Int -> Word32 = intToWord32Wrap;
+let natToWord64 : Nat -> Word64 = intToWord64Wrap;
+let intToWord64 : Int -> Word64 = intToWord64Wrap;
+
+
 // Char conversion and properties
 
 func charToWord32(c : Char) : Word32 = (prim "num_conv_Char_Word32" : Char -> Word32) c;
