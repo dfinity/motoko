@@ -371,6 +371,9 @@ struct
   let of_int = WordRep.of_int_u
   let to_int w = Big_int.int_of_big_int (WordRep.to_big_int w)
 
+  let of_string s =
+    of_big_int (Big_int.big_int_of_string (String.concat "" (String.split_on_char '_' s)))
+
   let base = of_int_u 16
   let digs =
     [|"0"; "1"; "2"; "3"; "4"; "5"; "6"; "7";
