@@ -6543,8 +6543,7 @@ let compile_binop env t op =
     E.then_trap_with env "negative power" ^^
     get_n ^^ get_exp ^^ pow
   | Type.(Prim Word64),                       PowOp -> Word64.compile_unsigned_pow env
-  | Type.(Prim Nat64),                        WrappingPowOp -> Word64.compile_unsigned_pow env
-  | Type.(Prim Word64),                       WrappingPowOp -> Word64.compile_unsigned_pow env
+  | Type.(Prim (Nat64|Word64)),               WrappingPowOp -> Word64.compile_unsigned_pow env
   | Type.(Prim Int64),                        WrappingPowOp -> Word64.compile_signed_wrapping_pow env
   | Type.(Prim Nat64),                        PowOp ->
     compile_Nat64_kernel env "pow"
