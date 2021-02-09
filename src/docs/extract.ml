@@ -138,14 +138,14 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
-  let extract_let_doc : Syntax.exp -> string -> declaration_doc = function
-    | Source.{ it = Syntax.FuncE (_, _, type_args, args, typ, _, _); _ } ->
-        fun name ->
-          let args_doc = extract_func_args args in
-          Function { name; typ; type_args; args = args_doc }
-    | Source.{ it = Syntax.AnnotE (e, ty); _ } ->
-        fun name -> Value { name; typ = Some ty }
-    | _ -> fun name -> Value { name; typ = None }
+  let extract_let_doc : Syntax.exp -> string -> declaration_doc =
+   fun exp name ->
+    match exp.it with
+    | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
+        let args_doc = extract_func_args args in
+        Function { name; typ; type_args; args = args_doc }
+    | Syntax.AnnotE (e, ty) -> Value { name; typ = Some ty }
+    | _ -> Value { name; typ = None }
 
   let extract_obj_field_doc : Syntax.typ_field -> Syntax.typ_field * string =
    fun ({ at; _ } as tf) -> (tf, string_of_leading (Env.find_trivia at))
