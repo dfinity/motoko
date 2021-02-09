@@ -57,7 +57,7 @@ let of_big_int_wrap = function
 Wrapping numeric conversions are all specified uniformly by going through bigint
 *)
 
-(* Trapping convesions (the num_conv_t1_t2 prim used in prelude/prelude.ml *)
+(* Trapping conversions (the num_conv_t1_t2 prim used in prelude/prelude.ml) *)
 let num_conv_trap_prim t1 t2 =
   let module T = Type in
   match (t1, t2) with
@@ -74,7 +74,6 @@ let num_conv_trap_prim t1 t2 =
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_trap_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 (*
-
 It is the responsibility of prelude/prelude.ml to define num_wrap_t1_t2 only
 for suitable types t1 and t2
 *)
