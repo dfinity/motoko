@@ -485,15 +485,15 @@ func natToNat8(n : Nat) : Nat8 = (prim "num_conv_Nat_Nat8" : Nat -> Nat8) n;
 
 // Wrapping conversions (big to fixed, and within fixed)
 
+func intToNat64Wrap(n : Int) : Nat64 = (prim "num_wrap_Int_Nat64" : Int -> Nat64) n;
+func intToNat32Wrap(n : Int) : Nat32 = (prim "num_wrap_Int_Nat32" : Int -> Nat32) n;
+func intToNat16Wrap(n : Int) : Nat16 = (prim "num_wrap_Int_Nat16" : Int -> Nat16) n;
+func intToNat8Wrap(n : Int) : Nat8 = (prim "num_wrap_Int_Nat8" : Int -> Nat8) n;
+
 func intToInt64Wrap(n : Int) : Int64 = (prim "num_wrap_Int_Int64" : Int -> Int64) n;
 func intToInt32Wrap(n : Int) : Int32 = (prim "num_wrap_Int_Int32" : Int -> Int32) n;
 func intToInt16Wrap(n : Int) : Int16 = (prim "num_wrap_Int_Int16" : Int -> Int16) n;
 func intToInt8Wrap(n : Int) : Int8 = (prim "num_wrap_Int_Int8" : Int -> Int8) n;
-
-func natToNat64Wrap(n : Nat) : Nat64 = (prim "num_wrap_Nat_Nat64" : Nat -> Nat64) n;
-func natToNat32Wrap(n : Nat) : Nat32 = (prim "num_wrap_Nat_Nat32" : Nat -> Nat32) n;
-func natToNat16Wrap(n : Nat) : Nat16 = (prim "num_wrap_Nat_Nat16" : Nat -> Nat16) n;
-func natToNat8Wrap(n : Nat) : Nat8 = (prim "num_wrap_Nat_Nat8" : Nat -> Nat8) n;
 
 func int64ToNat64(n : Int64) : Nat64 = (prim "num_wrap_Int64_Nat64" : Int64 -> Nat64) n;
 func nat64ToInt64(n : Nat64) : Int64 = (prim "num_wrap_Nat64_Int64" : Nat64 -> Int64) n;

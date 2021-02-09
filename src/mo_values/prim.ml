@@ -68,7 +68,7 @@ let num_conv_wrap_prim t1 t2 =
   let module T = Type in
   match (t1, t2) with
   (* numeric conversions are all specified uniformly by going through bigint *)
-  | T.Nat, (T.Nat8|T.Nat16|T.Nat32|T.Nat64)
+  | T.Int, (T.Nat8|T.Nat16|T.Nat32|T.Nat64)
   | T.Int, (T.Int8|T.Int16|T.Int32|T.Int64)
   | T.Nat8, T.Int8
   | T.Int8, T.Nat8

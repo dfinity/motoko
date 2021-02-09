@@ -47,7 +47,7 @@
     "motoko-base": {
         "branch": "joachim/no-word",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "38daf2b6b0f5b2e076121aa8e3fe1c73d3a44512",
+        "rev": "e9166c07a9bde299c1e06b460d26ff770c4746b3",
         "type": "git"
     },
     "motoko-matchers": {
