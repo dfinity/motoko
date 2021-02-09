@@ -66,7 +66,7 @@ let unop op t =
   match t with
   | T.Prim p ->
     (match op with
-    | PosOp -> let id v = v in sign_unop id (id, id, id, id, id, id, id, id) id p
+    | PosOp -> Fun.(sign_unop id (id, id, id, id, id, id, id, id) id p)
     | NegOp ->
       sign_unop
         Int.neg
