@@ -547,7 +547,7 @@ let intToWord64 : Int -> Word64 = intToWord64Wrap;
 
 // Char conversion and properties
 
-func charToWord32(c : Char) : Word32 = (prim "num_conv_Char_Word32" : Char -> Word32) c;
+func charToWord32(c : Char) : Word32 = (prim "num_wrap_Char_Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> Char) w;
 
 func charToText(c : Char) : Text = (prim "conv_Char_Text" : Char -> Text) c;

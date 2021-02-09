@@ -6804,6 +6804,12 @@ and compile_exp (env : E.t) ae exp =
       | Word8, Int8 | Int8, Word8
       ->
         compile_exp env ae e
+
+      | Char, (Nat32|Word32) ->
+        SR.UnboxedWord32,
+        compile_exp_vanilla env ae e ^^
+        TaggedSmallWord.untag_codepoint
+
       | _ -> SR.Unreachable, todo_trap env "compile_exp u" (Arrange_ir.exp exp)
       end
 
@@ -6852,11 +6858,6 @@ and compile_exp (env : E.t) ae exp =
           get_n ^^
           BigNum.truncate_to_word32 env ^^
           TaggedSmallWord.msb_adjust pty)
-
-      | Char, Word32 ->
-        SR.UnboxedWord32,
-        compile_exp_vanilla env ae e ^^
-        TaggedSmallWord.untag_codepoint
 
       | (Nat8|Word8|Nat16|Word16), Nat ->
         SR.Vanilla,
