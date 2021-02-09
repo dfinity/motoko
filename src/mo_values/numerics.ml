@@ -267,10 +267,10 @@ sig
   val wrapping_of_big_int : Big_int.big_int -> t
 
   val wrapping_neg : t -> t
-  val wrapping_add : t -> t -> t
-  val wrapping_sub : t -> t -> t
-  val wrapping_mul : t -> t -> t
-  val wrapping_pow : t -> t -> t
+  val wadd : t -> t -> t
+  val wsub : t -> t -> t
+  val wmul : t -> t -> t
+  val wpow : t -> t -> t
 end
 
 module Ranged
@@ -329,10 +329,10 @@ struct
   let wrapping_of_big_int i = from_word (WordRep.of_big_int i)
 
   let wrapping_neg = on_word WordRep.neg
-  let wrapping_add = on_words WordRep.add
-  let wrapping_sub = on_words WordRep.sub
-  let wrapping_mul = on_words WordRep.mul
-  let wrapping_pow a b =
+  let wadd = on_words WordRep.add
+  let wsub = on_words WordRep.sub
+  let wmul = on_words WordRep.mul
+  let wpow a b =
     if Rep.ge b Rep.zero
     then on_words WordRep.pow a b
     else raise (Invalid_argument "negative exponent")

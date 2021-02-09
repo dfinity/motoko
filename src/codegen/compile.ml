@@ -1524,7 +1524,7 @@ module Word64 = struct
           end
       )
 
-  let compile_signed_wrapping_pow env =
+  let compile_signed_wpow env =
     Func.share_code2 env "wrap_pow_Int64" (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
         get_exp ^^
@@ -1698,7 +1698,7 @@ module TaggedSmallWord = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Mul))
 
   let rec compile_nat_power env ty =
-    let name = prim_fun_name ty "wrapping_pow_nat" in
+    let name = prim_fun_name ty "wpow_nat" in
     (* TODO: Rewrite as a loop *)
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
@@ -1723,7 +1723,7 @@ module TaggedSmallWord = struct
       )
 
   let compile_int_power env ty =
-    let name = prim_fun_name ty "wrapping_pow_int" in
+    let name = prim_fun_name ty "wpow_int" in
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
         get_exp ^^
@@ -6298,7 +6298,7 @@ let compile_binop env t op =
   StackRep.of_type t,
   Operator.(match t, op with
   | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
-  | Type.(Prim (Nat64 | Int64)),              WrappingAddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.(Prim (Nat64 | Int64)),              WAddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
   | Type.(Prim Int64),                        AddOp ->
     compile_Int64_kernel env "add" BigNum.compile_add
       (additiveInt64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Add))))
@@ -6308,7 +6308,7 @@ let compile_binop env t op =
   | Type.(Prim Nat),                          SubOp -> BigNum.compile_unsigned_sub env
   | Type.(Prim Int),                          SubOp -> BigNum.compile_signed_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
-  | Type.(Prim (Nat64|Int64)),                WrappingMulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.(Prim (Nat64|Int64)),                WMulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim Int64),                        MulOp ->
     compile_Int64_kernel env "mul" BigNum.compile_mul
       (mulInt64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Mul))))
@@ -6321,7 +6321,7 @@ let compile_binop env t op =
   | Type.(Prim Int64) ,                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
   | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
   | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
-  | Type.(Prim (Nat64|Int64)),                WrappingSubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  | Type.(Prim (Nat64|Int64)),                WSubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
   | Type.(Prim Int64),                        SubOp ->
     compile_Int64_kernel env "sub" BigNum.compile_signed_sub
       (additiveInt64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Sub))))
@@ -6337,21 +6337,21 @@ let compile_binop env t op =
   | Type.(Prim Int),                          ModOp -> BigNum.compile_signed_mod env
 
   | Type.Prim Type.(Nat8|Nat16|Nat32|Int8|Int16|Int32),
-                                              WrappingAddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
+                                              WAddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.(Prim Int32),                        AddOp -> compile_Int32_kernel env "add" I64Op.Add
   | Type.Prim Type.(Int8 | Int16 as ty),      AddOp -> compile_smallInt_kernel env ty "add" I32Op.Add
   | Type.(Prim Nat32),                        AddOp -> compile_Nat32_kernel env "add" I64Op.Add
   | Type.Prim Type.(Nat8 | Nat16 as ty),      AddOp -> compile_smallNat_kernel env ty "add" I32Op.Add
   | Type.(Prim Float),                        AddOp -> G.i (Binary (Wasm.Values.F64 F64Op.Add))
   | Type.Prim Type.(Nat8|Nat16|Nat32|Int8|Int16|Int32),
-                                              WrappingSubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+                                              WSubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
   | Type.(Prim Int32),                        SubOp -> compile_Int32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Int8|Int16 as ty)),           SubOp -> compile_smallInt_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Nat32),                        SubOp -> compile_Nat32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Nat8|Nat16 as ty)),           SubOp -> compile_smallNat_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Float),                        SubOp -> G.i (Binary (Wasm.Values.F64 F64Op.Sub))
   | Type.Prim Type.(Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty),
-                                              WrappingMulOp -> TaggedSmallWord.compile_word_mul env ty
+                                              WMulOp -> TaggedSmallWord.compile_word_mul env ty
   | Type.(Prim Int32),                        MulOp -> compile_Int32_kernel env "mul" I64Op.Mul
   | Type.(Prim Int16),                        MulOp -> compile_smallInt_kernel env Type.Int16 "mul" I32Op.Mul
   | Type.(Prim Int8),                         MulOp -> compile_smallInt_kernel' env Type.Int8 "mul"
@@ -6384,8 +6384,8 @@ let compile_binop env t op =
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
   | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
-  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WrappingPowOp -> TaggedSmallWord.compile_nat_power env ty
-  | Type.(Prim (Int8|Int16|Int32 as ty)),     WrappingPowOp -> TaggedSmallWord.compile_int_power env ty
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> TaggedSmallWord.compile_nat_power env ty
+  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> TaggedSmallWord.compile_int_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
     Func.share_code2 env (prim_fun_name ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
@@ -6515,8 +6515,8 @@ let compile_binop env t op =
     get_exp ^^ BigNum.compile_is_negative env ^^
     E.then_trap_with env "negative power" ^^
     get_n ^^ get_exp ^^ pow
-  | Type.(Prim Nat64),                        WrappingPowOp -> Word64.compile_unsigned_pow env
-  | Type.(Prim Int64),                        WrappingPowOp -> Word64.compile_signed_wrapping_pow env
+  | Type.(Prim Nat64),                        WPowOp -> Word64.compile_unsigned_pow env
+  | Type.(Prim Int64),                        WPowOp -> Word64.compile_signed_wpow env
   | Type.(Prim Nat64),                        PowOp ->
     compile_Nat64_kernel env "pow"
       BigNum.compile_unsigned_pow

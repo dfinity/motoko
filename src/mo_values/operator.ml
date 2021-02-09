@@ -24,10 +24,10 @@ type binop =
   | ShROp
   | RotLOp
   | RotROp
-  | WrappingAddOp                               (* wrapping operators... *)
-  | WrappingSubOp
-  | WrappingMulOp
-  | WrappingPowOp
+  | WAddOp                               (* wrapping operators... *)
+  | WSubOp
+  | WMulOp
+  | WPowOp
   | CatOp                                       (* concatenation *)
 
 type relop =
@@ -125,10 +125,10 @@ let binop op t =
     | ShROp -> fixed_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr) p
     | RotLOp -> fixed_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl) p
     | RotROp -> fixed_binop (Nat8.rotr, Nat16.rotr, Nat32.rotr, Nat64.rotr, Int_8.rotr, Int_16.rotr, Int_32.rotr, Int_64.rotr) p
-    | WrappingAddOp -> fixed_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
-    | WrappingSubOp -> fixed_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
-    | WrappingMulOp -> fixed_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
-    | WrappingPowOp -> fixed_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
+    | WAddOp -> fixed_binop (Nat8.wadd, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
+    | WSubOp -> fixed_binop (Nat8.wsub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
+    | WMulOp -> fixed_binop (Nat8.wmul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
+    | WPowOp -> fixed_binop (Nat8.wpow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
     | CatOp -> text_binop (^) p
     )
   | T.Non -> impossible
