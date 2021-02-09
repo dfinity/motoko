@@ -6566,8 +6566,8 @@ let compile_binop env t op =
   | Type.(Prim Word64),                       RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
   | Type.(Prim Word32),                       RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
   | Type.(Prim (Word8|Word16 as ty)),         RotLOp -> TaggedSmallWord.rotl env ty
-  | Type.(Prim (Nat64|Int64)),                RotROp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotr))
-  | Type.(Prim (Nat32|Int32)),                RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
+  | Type.(Prim Word64),                       RotROp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotr))
+  | Type.(Prim Word32),                       RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
   | Type.(Prim (Word8|Word16 as ty)),         RotROp -> TaggedSmallWord.rotr env ty
   | Type.(Prim Text), CatOp -> Text.concat env
   | Type.Non, _ -> G.i Unreachable
