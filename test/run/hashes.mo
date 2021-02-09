@@ -9,7 +9,7 @@ func hashInt(x : Int) : Nat32 {
   };
   let base = 2**32;
   while (n > 0) {
-    hash ^= Prim.natToNat32(Prim.abs(n % base));
+    hash ^= Prim.intToNat32Wrap(n % base);
     n /= base;
   };
   return hash;

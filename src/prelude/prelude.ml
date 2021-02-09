@@ -471,6 +471,8 @@ let nat8ToNat = @nat8ToNat;
 
 // Trapping conversions (big to fixed)
 
+// Trapping conversions (big to fixed)
+
 func intToInt64(n : Int) : Int64 = (prim "num_conv_Int_Int64" : Int -> Int64) n;
 func intToInt32(n : Int) : Int32 = (prim "num_conv_Int_Int32" : Int -> Int32) n;
 func intToInt16(n : Int) : Int16 = (prim "num_conv_Int_Int16" : Int -> Int16) n;

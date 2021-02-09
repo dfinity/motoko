@@ -91,7 +91,7 @@ let text_binop ftext = function
   | T.Text -> fun v1 v2 -> Text (ftext (as_text v1) (as_text v2))
   | _ -> raise (Invalid_argument "binop")
 
-let word_binop (fnat8, fnat16, fnat32, fnat64, fint8, fint16, fint32, fint64) = function
+let fixed_binop (fnat8, fnat16, fnat32, fnat64, fint8, fint16, fint32, fint64) = function
   | T.Nat8 -> fun v1 v2 -> Nat8 (fnat8 (as_nat8 v1) (as_nat8 v2))
   | T.Nat16 -> fun v1 v2 -> Nat16 (fnat16 (as_nat16 v1) (as_nat16 v2))
   | T.Nat32 -> fun v1 v2 -> Nat32 (fnat32 (as_nat32 v1) (as_nat32 v2))
@@ -102,11 +102,11 @@ let word_binop (fnat8, fnat16, fnat32, fnat64, fint8, fint16, fint32, fint64) = 
   | T.Int64 -> fun v1 v2 -> Int64 (fint64 (as_int64 v1) (as_int64 v2))
   | _ -> raise (Invalid_argument "binop")
 
-let num_binop fnat fint fwords ffloat = function
+let num_binop fnat fint ffixed ffloat = function
   | T.Nat -> fun v1 v2 -> Int (fnat (as_int v1) (as_int v2))
   | T.Int -> fun v1 v2 -> Int (fint (as_int v1) (as_int v2))
   | T.Float -> fun v1 v2 -> Float (ffloat (as_float v1) (as_float v2))
-  | t -> word_binop fwords t
+  | t -> fixed_binop ffixed t
 
 let binop op t =
   match t with
@@ -118,17 +118,17 @@ let binop op t =
     | DivOp -> num_binop Nat.div Nat.div (Nat8.div, Nat16.div, Nat32.div, Nat64.div, Int_8.div, Int_16.div, Int_32.div, Int_64.div) Float.div p
     | ModOp -> num_binop Nat.rem Nat.rem (Nat8.rem, Nat16.rem, Nat32.rem, Nat64.rem, Int_8.rem, Int_16.rem, Int_32.rem, Int_64.rem) Float.rem p
     | PowOp -> num_binop Nat.pow Nat.pow (Nat8.pow, Nat16.pow, Nat32.pow, Nat64.pow, Int_8.pow, Int_16.pow, Int_32.pow, Int_64.pow) Float.pow p
-    | AndOp -> word_binop (Nat8.and_, Nat16.and_, Nat32.and_, Nat64.and_, Int_8.and_, Int_16.and_, Int_32.and_, Int_64.and_) p
-    | OrOp -> word_binop (Nat8.or_, Nat16.or_, Nat32.or_, Nat64.or_, Int_8.or_, Int_16.or_, Int_32.or_, Int_64.or_) p
-    | XorOp -> word_binop (Nat8.xor, Nat16.xor, Nat32.xor, Nat64.xor, Int_8.xor, Int_16.xor, Int_32.xor, Int_64.xor) p
-    | ShLOp -> word_binop (Nat8.shl, Nat16.shl, Nat32.shl, Nat64.shl, Int_8.shl, Int_16.shl, Int_32.shl, Int_64.shl) p
-    | ShROp -> word_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr) p
-    | RotLOp -> word_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl) p
-    | RotROp -> word_binop (Nat8.rotr, Nat16.rotr, Nat32.rotr, Nat64.rotr, Int_8.rotr, Int_16.rotr, Int_32.rotr, Int_64.rotr) p
-    | WrappingAddOp -> word_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
-    | WrappingSubOp -> word_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
-    | WrappingMulOp -> word_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
-    | WrappingPowOp -> word_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
+    | AndOp -> fixed_binop (Nat8.and_, Nat16.and_, Nat32.and_, Nat64.and_, Int_8.and_, Int_16.and_, Int_32.and_, Int_64.and_) p
+    | OrOp -> fixed_binop (Nat8.or_, Nat16.or_, Nat32.or_, Nat64.or_, Int_8.or_, Int_16.or_, Int_32.or_, Int_64.or_) p
+    | XorOp -> fixed_binop (Nat8.xor, Nat16.xor, Nat32.xor, Nat64.xor, Int_8.xor, Int_16.xor, Int_32.xor, Int_64.xor) p
+    | ShLOp -> fixed_binop (Nat8.shl, Nat16.shl, Nat32.shl, Nat64.shl, Int_8.shl, Int_16.shl, Int_32.shl, Int_64.shl) p
+    | ShROp -> fixed_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr) p
+    | RotLOp -> fixed_binop (Nat8.rotl, Nat16.rotl, Nat32.rotl, Nat64.rotl, Int_8.rotl, Int_16.rotl, Int_32.rotl, Int_64.rotl) p
+    | RotROp -> fixed_binop (Nat8.rotr, Nat16.rotr, Nat32.rotr, Nat64.rotr, Int_8.rotr, Int_16.rotr, Int_32.rotr, Int_64.rotr) p
+    | WrappingAddOp -> fixed_binop (Nat8.wrapping_add, Nat16.wrapping_add, Nat32.wrapping_add, Nat64.wrapping_add, Int_8.wrapping_add, Int_16.wrapping_add, Int_32.wrapping_add, Int_64.wrapping_add) p
+    | WrappingSubOp -> fixed_binop (Nat8.wrapping_sub, Nat16.wrapping_sub, Nat32.wrapping_sub, Nat64.wrapping_sub, Int_8.wrapping_sub, Int_16.wrapping_sub, Int_32.wrapping_sub, Int_64.wrapping_sub) p
+    | WrappingMulOp -> fixed_binop (Nat8.wrapping_mul, Nat16.wrapping_mul, Nat32.wrapping_mul, Nat64.wrapping_mul, Int_8.wrapping_mul, Int_16.wrapping_mul, Int_32.wrapping_mul, Int_64.wrapping_mul) p
+    | WrappingPowOp -> fixed_binop (Nat8.wrapping_pow, Nat16.wrapping_pow, Nat32.wrapping_pow, Nat64.wrapping_pow, Int_8.wrapping_pow, Int_16.wrapping_pow, Int_32.wrapping_pow, Int_64.wrapping_pow) p
     | CatOp -> text_binop (^) p
     )
   | T.Non -> impossible

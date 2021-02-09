@@ -67,8 +67,8 @@ end
 
 module Float : FloatType with type bits = int64 and type t = Wasm.F64.t
 
-module Nat : NumType with type t = Big_int.big_int
-module Int : NumType with type t = Big_int.big_int
+module Int : NumType
+module Nat : NumType with type t = Int.t
 module Int_8 : BitNumType
 module Int_16 : BitNumType
 module Int_32 : BitNumType
@@ -77,4 +77,3 @@ module Nat8 : BitNumType
 module Nat16 : BitNumType
 module Nat32 : BitNumType
 module Nat64 : BitNumType
-

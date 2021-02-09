@@ -135,10 +135,10 @@ struct
   let to_big_int = Rep.to_big_int
 end
 
-module Word8  = MakeWord (Int8Rep)
-module Word16 = MakeWord (Int16Rep)
-module Word32 = MakeWord (Int32Rep)
-module Word64 = MakeWord (Int64Rep)
+module Word8Rep  = MakeWord (Int8Rep)
+module Word16Rep = MakeWord (Int16Rep)
+module Word32Rep = MakeWord (Int32Rep)
+module Word64Rep = MakeWord (Int64Rep)
 
 module type FloatType =
 sig
@@ -338,13 +338,12 @@ struct
     else raise (Invalid_argument "negative exponent")
 end
 
-module Nat8 = Ranged (Nat) (Word8)
-module Nat16 = Ranged (Nat) (Word16)
-module Nat32 = Ranged (Nat) (Word32)
-module Nat64 = Ranged (Nat) (Word64)
+module Nat8 = Ranged (Nat) (Word8Rep)
+module Nat16 = Ranged (Nat) (Word16Rep)
+module Nat32 = Ranged (Nat) (Word32Rep)
+module Nat64 = Ranged (Nat) (Word64Rep)
 
-module Int_8 = Ranged (Int) (Word8)
-module Int_16 = Ranged (Int) (Word16)
-module Int_32 = Ranged (Int) (Word32)
-module Int_64 = Ranged (Int) (Word64)
-
+module Int_8 = Ranged (Int) (Word8Rep)
+module Int_16 = Ranged (Int) (Word16Rep)
+module Int_32 = Ranged (Int) (Word32Rep)
+module Int_64 = Ranged (Int) (Word64Rep)
