@@ -4,12 +4,12 @@ import Prim "mo:prim";
 
 func test_Nat_Nat8(n1 : Nat, n2 : Nat8) {
   assert(Prim.natToNat8 n1 == n2);
-  assert(Prim.natToNat8Wrap n1 == n2);
+  assert(Prim.intToNat8Wrap n1 == n2);
   assert(n1 == Prim.nat8ToNat n2);
 };
 func wrap_Nat_Nat8(n1 : Nat, n2 : Nat8) {
   assert(Prim.natToNat8 (n1 % 2**8) == n2);
-  assert(Prim.natToNat8Wrap n1 == n2);
+  assert(Prim.intToNat8Wrap n1 == n2);
   assert(n1 % 2**8 == Prim.nat8ToNat n2);
 };
 
@@ -23,12 +23,12 @@ wrap_Nat_Nat8(0x101, 1);
 
 func test_Nat_Nat16(n1 : Nat, n2 : Nat16) {
   assert(Prim.natToNat16 n1 == n2);
-  assert(Prim.natToNat16Wrap n1 == n2);
+  assert(Prim.intToNat16Wrap n1 == n2);
   assert(n1 == Prim.nat16ToNat n2);
 };
 func wrap_Nat_Nat16(n1 : Nat, n2 : Nat16) {
   assert(Prim.natToNat16 (n1 % 2**16) == n2);
-  assert(Prim.natToNat16Wrap n1 == n2);
+  assert(Prim.intToNat16Wrap n1 == n2);
   assert(n1 % 2**16 == Prim.nat16ToNat n2);
 };
 
@@ -42,12 +42,12 @@ wrap_Nat_Nat16(0x10001, 1);
 
 func test_Nat_Nat32(n1 : Nat, n2 : Nat32) {
   assert(Prim.natToNat32 n1 == n2);
-  assert(Prim.natToNat32Wrap n1 == n2);
+  assert(Prim.intToNat32Wrap n1 == n2);
   assert(n1 == Prim.nat32ToNat n2);
 };
 func wrap_Nat_Nat32(n1 : Nat, n2 : Nat32) {
   assert(Prim.natToNat32 (n1 % 2**32) == n2);
-  assert(Prim.natToNat32Wrap n1 == n2);
+  assert(Prim.intToNat32Wrap n1 == n2);
   assert(n1 % 2**32 == Prim.nat32ToNat n2);
 };
 
@@ -61,12 +61,12 @@ wrap_Nat_Nat32(0x100000001, 1);
 
 func test_Nat_Nat64(n1 : Nat, n2 : Nat64) {
   assert(Prim.natToNat64 n1 == n2);
-  assert(Prim.natToNat64Wrap n1 == n2);
+  assert(Prim.intToNat64Wrap n1 == n2);
   assert(n1 == Prim.nat64ToNat n2);
 };
 func wrap_Nat_Nat64(n1 : Nat, n2 : Nat64) {
   assert(Prim.natToNat64 (n1 % 2**64) == n2);
-  assert(Prim.natToNat64Wrap n1 == n2);
+  assert(Prim.intToNat64Wrap n1 == n2);
   assert(n1 % 2**64 == Prim.nat64ToNat n2);
 };
 
