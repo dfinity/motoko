@@ -771,8 +771,6 @@ let rec rel_typ rel eq t1 t2 =
     eq_typ rel eq t1' t2'
   | Depr t1', Depr t2' ->
     rel_typ rel eq t1' t2'
-  | t1', Depr t2' when rel != eq ->
-    rel_typ rel eq t1' t2'
   | Depr t1', t2' when rel != eq ->
     rel_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
