@@ -6955,7 +6955,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         BigNum.from_signed_word64 env
 
-      | Word32, Char ->
+      | (Nat32|Word32), Char ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         TaggedSmallWord.check_and_tag_codepoint env
