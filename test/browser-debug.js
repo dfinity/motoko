@@ -379,24 +379,15 @@ function decodeOBJ_IND(view, p) {
 }
 
 function decodeCONCAT(view, p) {
-  let size = 2;
-  let a = new Array(size);
   let q = p + 8; // skip n_bytes
-  for(let i = 0; i < size; i++) {
-    a[i] = decode(view, getUint32(view, q));
-    q += 4;
-  }
-  return a;
+  return [
+    decode(view, getUint32(view, q)),
+    decode(view, getUint32(view, q + 4)) ];
 }
 
 function decodeBLOB(view, p) {
   let size = getUint32(view, p + 4);
-  let a = new Uint8Array(size);
-  let q = p + 8;
-  for(let i = 0; i < size; i++) {
-    a[i] = view.getUint8(q);
-    q += 1;
-  };
+  let a = new Uint8Array(view.buffer, p + 8, size);
   try {
     let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
     return textDecoder.decode(a);
@@ -459,12 +450,8 @@ function decodeMotokoSection(customSections) {
   let [cnt, p1] = getULEB128(view, 6);
   while (cnt > 0) {
     let [size, p2] = getULEB128(view, p1);
-    let a = new Uint8Array(size);
-    for(let i = 0; i < size; i++) {
-      a[i] = view.getUint8(p2);
-      p2 += 1;
-    };
-    p1 = p2;
+    let a = new Uint8Array(view.buffer, p2, size);
+    p1 = p2 + size;
     let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
     let id = textDecoder.decode(a);
     let hash = hashLabel(id);
