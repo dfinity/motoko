@@ -4,18 +4,23 @@
 
   The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
 
-  Bit-wise operations (and, or, xor, shifts, rotation etc.) are now possible on
-  `Nat8`, `Nat16`, `Nat32`, `Nat64`, `Int8`, `Int16`, `Int32` and `Int64`
-  directly. New _wrapping_ operators (`+%`, `*%`, `-%`, `**%`) are supported on
-  these types, and intended to be used where previously arithmetic on word
-  types was used.
-
-  Iterating over a `Blob` now produces `Nat8` values.
-
   Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
   modules, and wrapping conversion functions were added to the other number
   types.
 
+* Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
+
+  The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
+  If wrapping semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used.
+
+  Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
+  `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
+  operator (`>>`) is a unsigned right shift on `NatN` and a signed right shift
+  on `IntN`; the `+>>` operator is _not_ available on these types.
+
+  The motivation for this change is to eventually deprecate and remove the
+  `WordN` types.
 
 == 0.5.7 (2021-02-05)
 
