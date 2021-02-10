@@ -58,8 +58,8 @@ let adoc_header : Buffer.t -> int -> string -> unit =
 let rec lvl_of_xref : Xref.t -> int = function
   | Xref.XType _ | Xref.XValue _ -> 1
   | Xref.XNested (_, xref) | Xref.XClass (_, xref) -> lvl_of_xref xref + 1
-  | Xref.XFile (file, xref) -> (* TODO *) 0
-  | Xref.XPackage (pkg, xref) -> (* TODO *) 0
+  | Xref.XFile (file, xref) -> 0
+  | Xref.XPackage (pkg, xref) -> 0
 
 let adoc_xref : Buffer.t -> Xref.t -> unit =
  fun buf xref ->
@@ -72,8 +72,8 @@ let adoc_xref : Buffer.t -> Xref.t -> unit =
     | Xref.XClass (x, xref) ->
         bprintf buf "%s." x;
         go xref
-    | Xref.XFile (file, xref) -> (* TODO *) ()
-    | Xref.XPackage (pkg, xref) -> (* TODO *) ()
+    | Xref.XFile (file, xref) -> ()
+    | Xref.XPackage (pkg, xref) -> ()
   in
   bprintf buf "[[";
   go xref;
