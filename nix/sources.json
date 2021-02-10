@@ -45,9 +45,9 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "next-moc",
+        "branch": "joachim/new-bit-ops",
         "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "71c9e60915b23c48d3080c1a25c1c3201ed90a75",
+        "rev": "4a45e6bd1768ec9271247f519517043c355e7424",
         "type": "git"
     },
     "motoko-matchers": {
