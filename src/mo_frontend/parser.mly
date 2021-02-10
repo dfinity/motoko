@@ -43,7 +43,7 @@ let warn_deprecated_block at =
 let scope_bind x at =
   { var = Type.scope_var x @@ at;
     sort = Type.Scope @@ at;
-    bound = PrimT "Any" @! at
+    bound = PrimT ("Any", []) @! at
   } @= at
 
 let ensure_scope_bind var tbs =
@@ -414,8 +414,8 @@ typ_un :
 typ_pre :
   | t=typ_un
     { t }
-  | PRIM s=TEXT
-    { PrimT(s) @! at $sloc }
+  | PRIM tso=typ_args? s=TEXT
+    { PrimT(s, Lib.Option.get tso []) @! at $sloc }
   | ASYNC t=typ_pre
     { AsyncT(scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
@@ -463,7 +463,7 @@ typ_bind :
   | x=id SUB t=typ
     { {var = x; sort = Type.Type @@ no_region; bound = t} @= at $sloc }
   | x=id
-    { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
+    { {var = x; sort = Type.Type @@ no_region; bound = PrimT ("Any", []) @! at $sloc} @= at $sloc }
 
 annot_opt :
   | COLON t=typ { Some t }

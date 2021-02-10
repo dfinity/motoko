@@ -50,6 +50,7 @@ and typ =
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
+  | Depr of typ                               (* deprecated typ *)
   | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 

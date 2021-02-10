@@ -135,6 +135,7 @@ let rec go = function
   | Async _ -> raise (Invalid_argument "typ_hash: Only supports serializable data")
 
   | Con _ as t -> go (normalize t)
+  | Depr _ as t -> go (normalize t)
   | Pre -> assert false
   | Var _ -> assert false
   | Typ _ -> assert false

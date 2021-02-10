@@ -40,7 +40,7 @@ and path' =
 type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
   | PathT of path * typ list                       (* type path *)
-  | PrimT of string                                (* primitive *)
+  | PrimT of string * typ list                     (* primitive *)
   | ObjT of obj_sort * typ_field list              (* object *)
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
@@ -291,7 +291,7 @@ let arity t =
 
 let is_any t =
   match t.it with
-  | PrimT "Any" -> true
+  | PrimT ("Any", _) -> true
   | _ -> false
 
 let scopeT at =

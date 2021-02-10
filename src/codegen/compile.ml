@@ -1233,21 +1233,21 @@ module Tagged = struct
       | (Con _ | Any) -> true
       | (Array _ | Tup _) -> true
       | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | (Pre | Depr _ | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Blob ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Prim (Text|Blob|Principal)) -> true
       | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | (Pre | Depr _ | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | (Pre | Depr _ | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | _ -> true
 

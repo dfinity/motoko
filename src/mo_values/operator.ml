@@ -174,7 +174,7 @@ let eq_prim =
 let structural_equality t =
   let rec go t =
     match t with
-    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
+    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _  -> assert false
     | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim p -> eq_prim p
     | T.Con (c, ts) -> (
@@ -239,6 +239,7 @@ let structural_equality t =
     | T.Func (s, c, tbs, ts1, ts2) ->
         assert (T.is_shared_sort s);
         fun v1 v2 -> Bool (v1 == v2)  (* HACK *)
+    | T.Depr t -> go t
   in
   go t
 

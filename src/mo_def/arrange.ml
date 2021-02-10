@@ -173,7 +173,7 @@ and path p = match p.it with
 
 and typ t = match t.it with
   | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
-  | PrimT p -> "PrimT" $$ [Atom p]
+  | PrimT (p, ts) -> "PrimT" $$ [Atom p] @ List.map typ ts
   | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
   | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
   | OptT t -> "OptT" $$ [typ t]

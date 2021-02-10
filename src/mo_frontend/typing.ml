@@ -399,12 +399,15 @@ and check_typ' env typ : T.typ =
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
-  | PrimT "Any" -> T.Any
-  | PrimT "None" -> T.Non
-  | PrimT s ->
+  | PrimT ("Deprecated", [t]) -> T.Depr (check_typ env t)
+  | PrimT ("Any", []) -> T.Any
+  | PrimT ("None", []) -> T.Non
+  | PrimT (s, []) ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error env typ.at "M0040" "unknown primitive type"
     )
+  | PrimT (s, _) ->
+     error env typ.at "M0000" "wrong number of type arguments"
   | ArrayT (mut, typ) ->
     let t = check_typ env typ in
     T.Array (infer_mut mut t)

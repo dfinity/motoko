@@ -177,6 +177,12 @@ let bi_match_subs scope_opt tbs subs =
     | Typ c1, Typ c2 ->
       (* NB: we assume c1, c2 closed *)
       if Type.eq t1 t2 then Some inst else None
+    | Depr t1', Depr t2' ->
+      bi_match_typ rel eq inst any t1' t2'
+    | t1', Depr t2' when rel != eq ->
+      bi_match_typ rel eq inst any t1' t2'
+    | Depr t1', t2' when rel != eq ->
+      bi_match_typ rel eq inst any t1' t2'
     | _, _ -> None
     end
 

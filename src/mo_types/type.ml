@@ -57,6 +57,7 @@ and typ =
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
+  | Depr of typ                               (* deprecated typ *)
   | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
@@ -186,6 +187,7 @@ let rec shift i n t =
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Variant fs -> Variant (List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
+  | Depr t -> Depr (shift i n t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -234,6 +236,7 @@ let rec subst sigma t =
   | Mut t -> Mut (subst sigma t)
   | Any -> Any
   | Non -> Non
+  | Depr t -> Depr (subst sigma t)
   | Pre -> Pre
   | Typ c -> Typ c (* NB: this is incorrect unless we ensure dom(sigma) \cap FV(c.kind) = {}
                       For now, we could do this by ensuring all type definitions are closed,
@@ -287,6 +290,7 @@ let rec open' i ts t =
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Variant fs -> Variant (List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
+  | Depr t -> Depr (open' i ts t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -341,6 +345,7 @@ let rec promote = function
   | Con (con, ts) ->
     let Def (tbs, t) | Abs (tbs, t) = Con.kind con
     in promote (reduce tbs t ts)
+  | Depr t -> t
   | t -> t
 
 
@@ -474,6 +479,7 @@ let rec span = function
   | Variant fs -> Some (List.length fs)
   | Array _ | Func _ | Any -> None
   | Opt _ -> Some 2
+  | Depr t -> span t
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
@@ -509,6 +515,7 @@ let rec avoid' cons seen = function
   | Async (t1, t2) -> Async (avoid' cons seen t1, avoid' cons seen t2)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
   | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
+  | Depr t -> Depr (avoid' cons seen t)
   | Mut t -> Mut (avoid' cons seen t)
   | Typ c ->
     if ConSet.mem c cons then raise (Unavoidable c) else Typ c (* TBR *)
@@ -544,7 +551,7 @@ let rec cons' t cs =
   | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
     List.fold_right cons' ts (ConSet.add c cs)
-  | (Opt t | Mut t | Array t) ->
+  | (Opt t | Mut t | Array t | Depr t) ->
     cons' t cs
   | Async (t1, t2) ->
     cons' t2 (cons' t1 cs)
@@ -594,7 +601,7 @@ let concrete t =
         | Abs _ -> false
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t | Opt t | Mut t -> go t
+      | Array t | Opt t | Depr t | Mut t -> go t
       | Async (t1, t2) -> go t2 (* t1 is a phantom type *)
       | Tup ts -> List.for_all go ts
       | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go f.typ) fs
@@ -624,7 +631,7 @@ let serializable allow_mut t =
         | Abs _ -> false
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t | Opt t -> go t
+      | Array t | Opt t | Depr t -> go t
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) ->
         (match s with
@@ -653,7 +660,7 @@ let find_unshared t =
         | Abs _ -> None
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t | Opt t -> go t
+      | Array t | Opt t | Depr t -> go t
       | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
         (match s with
@@ -762,6 +769,12 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t12 t22
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
+  | Depr t1', Depr t2' ->
+    rel_typ rel eq t1' t2'
+  | t1', Depr t2' when rel != eq ->
+    rel_typ rel eq t1' t2'
+  | Depr t1', t2' when rel != eq ->
+    rel_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
     eq_con eq c1 c2
   | _, _ -> false
@@ -937,6 +950,7 @@ let rec inhabited_typ co t =
   | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
   | Variant tfs -> List.exists (inhabited_field co) tfs
   | Var _ -> true  (* TODO(rossberg): consider bound *)
+  | Depr t -> inhabited_typ co t
   | Con (c, ts) ->
     match Con.kind c with
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
@@ -966,6 +980,7 @@ let rec singleton_typ co t =
   | Variant _ -> false
   | Var _ -> false
   | Con _ -> false
+  | Depr t -> singleton_typ co t
   end
 
 and singleton_field co tf = singleton_typ co tf.typ
@@ -1016,6 +1031,11 @@ let rec lub' lubs glbs t1 t2 =
       combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
     | Typ _, _
     | _, Typ _ -> assert false
+    | Depr t1', Depr t2' ->
+      Depr (lub' lubs glbs t1' t2')
+      (* This is fishy, should Depr be more sticky? Or should we warn here? *)
+    | Depr t1', t2' -> lub' lubs glbs t1' t2'
+    | t1', Depr t2' -> lub' lubs glbs t1' t2'
     | _ when eq t1 t2 -> t1
     | _ -> Any
 
@@ -1245,6 +1265,8 @@ let rec string_of_typ_nullary vs = function
     sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
   | Typ c ->
     sprintf "= (type %s)" (string_of_kind (Con.kind c))
+  | Depr t ->
+    sprintf "Deprecated<%s>"  (string_of_typ' vs t)
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom parens vs ts =
@@ -1287,7 +1309,7 @@ and can_omit n t =
       | Pre -> assert false
       | Prim _ | Any | Non -> true
       | Con (c, ts) -> List.for_all (go i ) ts
-      | Array t | Opt t | Mut t -> go i t
+      | Array t | Opt t | Mut t | Depr t -> go i t
       | Async (Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
       | Async (t1, t2) -> go i t1 && go i t2
       | Tup ts -> List.for_all (go i ) ts

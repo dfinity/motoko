@@ -122,6 +122,7 @@ let rec typ t =
           | Write -> []),
          t1, args ts)
      | _ -> assert false)
+  | Depr t_ -> (typ t).it
   | Func _ -> assert false
   | Async _ -> assert false
   | Mut t -> assert false

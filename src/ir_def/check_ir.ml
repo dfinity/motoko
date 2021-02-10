@@ -233,6 +233,8 @@ let rec check_typ env typ : unit =
     check_field_hashes env "variant" no_region fields;
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
+  | T.Depr typ ->
+    check_typ env typ
   | T.Mut typ ->
     error env no_region "unexpected T.Mut"
   | T.Typ c ->

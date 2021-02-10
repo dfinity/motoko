@@ -30,6 +30,7 @@ type Text = prim "Text";
 type Blob = prim "Blob";
 type Error = prim "Error";
 type Principal = prim "Principal";
+type Deprecated<T> = prim <T> "Deprecated";
 
 type @Iter<T_> = {next : () -> ?T_};
 
@@ -692,5 +693,7 @@ func cyclesAdd(amount: Nat64) : () {
   @cycles += amount;
 };
 
+// Deprecate values
+func deprecate<T>(x : T) : Deprecated<T> { (prim "cast" : T -> Deprecated<T>) x };
 
 |}

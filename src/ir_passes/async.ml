@@ -174,6 +174,7 @@ let transform mode prog =
     | Async (_, t) -> t_async nary (t_typ t) (* TBR exploit the index _ *)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
+    | Depr t -> Depr (t_typ t)
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
