@@ -66,7 +66,7 @@ let num_conv_trap_prim t1 t2 =
   | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
   | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int
   | (T.Word8|T.Word16|T.Word32|T.Word64), T.Nat
-  | T.Word32, T.Char
+  | (T.Nat32|T.Word32), T.Char
   -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
