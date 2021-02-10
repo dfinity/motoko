@@ -719,6 +719,7 @@ let blob_obj () =
   let open T in
   Object,
   [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)])};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
