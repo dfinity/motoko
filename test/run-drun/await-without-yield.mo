@@ -16,7 +16,7 @@ actor a {
     ignore(0/0);
   };
 
-  public func go() {
+  public func go() : async () {
     try {
       await bar();
       Prim.debugPrint("Huh, bar() replied?");
