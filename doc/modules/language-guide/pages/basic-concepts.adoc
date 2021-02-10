@@ -233,6 +233,7 @@ For practical reasons, {proglang} also includes _bounded_ types for integers and
 Each bounded variant has a fixed width (one of `8`, `16`, `32`, `64`) and each carries the potential for "`overflow`". If and when this event occurs, it is an error and causes the
 <<overview-traps,program to trap>>.
 There are no unchecked, uncaught overflows in {proglang}, except in well-defined situations, for explicitly _wrapping_ operations and specific (`Word`-based) types.
+The language provides primitive built-ins to convert between these various number representations.
 
 The link:language-manual{outfilesuffix}[language quick reference] contains a complete list of link:language-manual{outfilesuffix}#primitive-types[primitive types].
 
