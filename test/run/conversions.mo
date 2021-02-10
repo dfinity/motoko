@@ -3,19 +3,19 @@ import Prim "mo:prim";
 // Nat <--> Word32
 
 func n2w(n : Nat) : ?Word32 {
-    let w = Prim.natToWord32 n;
+    let w = Prim.intToWord32Wrap n;
     if (n == Prim.word32ToNat w)
        ?w else null
 };
 
-assert(Prim.natToWord32 0 == (0 : Word32));
-assert(Prim.natToWord32 42 == (42 : Word32));
-assert(Prim.natToWord32 65535 == (65535 : Word32)); // 2**16 - 1
+assert(Prim.intToWord32Wrap 0 == (0 : Word32));
+assert(Prim.intToWord32Wrap 42 == (42 : Word32));
+assert(Prim.intToWord32Wrap 65535 == (65535 : Word32)); // 2**16 - 1
 
-assert(Prim.natToWord32 2147483647 == (2147483647 : Word32)); // 2**31 - 1
-assert(Prim.natToWord32 2147483648 == (2147483648 : Word32)); // 2**31
-assert(Prim.natToWord32 2147483649 == (2147483649 : Word32)); // 2**31 + 1
-assert(Prim.natToWord32 4294967295 == (4294967295 : Word32)); // 2**32 - 1
+assert(Prim.intToWord32Wrap 2147483647 == (2147483647 : Word32)); // 2**31 - 1
+assert(Prim.intToWord32Wrap 2147483648 == (2147483648 : Word32)); // 2**31
+assert(Prim.intToWord32Wrap 2147483649 == (2147483649 : Word32)); // 2**31 + 1
+assert(Prim.intToWord32Wrap 4294967295 == (4294967295 : Word32)); // 2**32 - 1
 
 
 assert(Prim.word32ToNat 0 == 0);
@@ -26,12 +26,12 @@ assert(Prim.word32ToNat 4294967295 == 4294967295); // 2**32 - 1
 func forall<T> (f : T -> (), l : [T]) = for (e in l.vals()) { f e };
 
 do {
-    func roundtrip(n : Nat) = assert (Prim.word32ToNat (Prim.natToWord32 n) == n);
+    func roundtrip(n : Nat) = assert (Prim.word32ToNat (Prim.intToWord32Wrap n) == n);
     forall<Nat>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 };
 
 do {
-    func roundtrip(w : Word32) = assert (Prim.natToWord32 (Prim.word32ToNat w) == w);
+    func roundtrip(w : Word32) = assert (Prim.intToWord32Wrap (Prim.word32ToNat w) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 
 
@@ -93,38 +93,38 @@ do {
 // Int <--> Word32
 
 func i2w(n : Nat) : ?Word32 {
-    let w = Prim.intToWord32 n;
+    let w = Prim.intToWord32Wrap n;
     if (n == Prim.int32ToInt (Prim.word32ToInt32(w)))
        ?w else null
 };
 
 
 
-assert(Prim.intToWord32 0 == (0 : Word32));
-assert(Prim.intToWord32 42 == (42 : Word32));
-assert(Prim.intToWord32 65535 == (65535 : Word32)); // 2**16 - 1
+assert(Prim.intToWord32Wrap 0 == (0 : Word32));
+assert(Prim.intToWord32Wrap 42 == (42 : Word32));
+assert(Prim.intToWord32Wrap 65535 == (65535 : Word32)); // 2**16 - 1
 
-assert(Prim.intToWord32 (-42) == (-42/*!*/ : Word32));
-assert(Prim.intToWord32 (-65535) == (-65535/*!*/ : Word32)); // - 2**16 + 1
-assert(Prim.intToWord32 (-65536) == (-65536/*!*/ : Word32)); // - 2**16
-assert(Prim.intToWord32 (-2147483648) == (-2147483648/*!*/ : Word32)); // - 2**31
+assert(Prim.intToWord32Wrap (-42) == (-42/*!*/ : Word32));
+assert(Prim.intToWord32Wrap (-65535) == (-65535/*!*/ : Word32)); // - 2**16 + 1
+assert(Prim.intToWord32Wrap (-65536) == (-65536/*!*/ : Word32)); // - 2**16
+assert(Prim.intToWord32Wrap (-2147483648) == (-2147483648/*!*/ : Word32)); // - 2**31
 
-assert(Prim.intToWord32 2147483647 == (2147483647 : Word32)); // 2**31 - 1
-assert(Prim.intToWord32 2147483648 == (2147483648 : Word32)); // 2**31
-assert(Prim.intToWord32 2147483649 == (2147483649 : Word32)); // 2**31 + 1
-assert(Prim.intToWord32 4294967295 == (4294967295 : Word32)); // 2**32 - 1
+assert(Prim.intToWord32Wrap 2147483647 == (2147483647 : Word32)); // 2**31 - 1
+assert(Prim.intToWord32Wrap 2147483648 == (2147483648 : Word32)); // 2**31
+assert(Prim.intToWord32Wrap 2147483649 == (2147483649 : Word32)); // 2**31 + 1
+assert(Prim.intToWord32Wrap 4294967295 == (4294967295 : Word32)); // 2**32 - 1
 
 func println(i : Int) { Prim.debugPrintInt(i) };
 
 do {
-    func roundtrip(i : Int) = assert (Prim.int32ToInt (Prim.word32ToInt32 (Prim.intToWord32 i)) == i);
+    func roundtrip(i : Int) = assert (Prim.int32ToInt (Prim.word32ToInt32 (Prim.intToWord32Wrap i)) == i);
     forall<Int>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF]);
 
     forall<Int>(roundtrip, [-10, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000, -2147483648]);
 };
 
 do {
-    func roundtrip(w : Word32) = assert (Prim.intToWord32 (Prim.int32ToInt (Prim.word32ToInt32 w)) == w);
+    func roundtrip(w : Word32) = assert (Prim.intToWord32Wrap (Prim.int32ToInt (Prim.word32ToInt32 w)) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 
     /* non-canonical range for Word32 */
@@ -156,12 +156,12 @@ assert(switch ("П".chars().next()) { case (?'П') true; case _ false });
 
 // Nat <--> Word64
 
-assert(Prim.natToWord64 0x0000000000000000 == (0x0000000000000000 : Word64));
-assert(Prim.natToWord64 0x0000000000000001 == (0x0000000000000001 : Word64));
-assert(Prim.natToWord64 0x7FFFFFFFFFFFFFFF == (0x7FFFFFFFFFFFFFFF : Word64));
-assert(Prim.natToWord64 0x8000000000000000 == (0x8000000000000000 : Word64));
-assert(Prim.natToWord64 0x8000000000000001 == (0x8000000000000001 : Word64));
-assert(Prim.natToWord64 0xFFFFFFFFFFFFFFFF == (0xFFFFFFFFFFFFFFFF : Word64));
+assert(Prim.intToWord64Wrap 0x0000000000000000 == (0x0000000000000000 : Word64));
+assert(Prim.intToWord64Wrap 0x0000000000000001 == (0x0000000000000001 : Word64));
+assert(Prim.intToWord64Wrap 0x7FFFFFFFFFFFFFFF == (0x7FFFFFFFFFFFFFFF : Word64));
+assert(Prim.intToWord64Wrap 0x8000000000000000 == (0x8000000000000000 : Word64));
+assert(Prim.intToWord64Wrap 0x8000000000000001 == (0x8000000000000001 : Word64));
+assert(Prim.intToWord64Wrap 0xFFFFFFFFFFFFFFFF == (0xFFFFFFFFFFFFFFFF : Word64));
 
 assert(Prim.word64ToNat 0x0000000000000000 == (0x0000000000000000 : Nat));
 assert(Prim.word64ToNat 0x0000000000000001 == (0x0000000000000001 : Nat));
@@ -172,117 +172,117 @@ assert(Prim.word64ToNat 0xFFFFFFFFFFFFFFFF == (0xFFFFFFFFFFFFFFFF : Nat));
 
 // Int <--> Word64
 
-assert(Prim.intToWord64   0x0000000000000000 ==  (0x0000000000000000 : Word64));
-assert(Prim.intToWord64   0x0000000000000001 ==  (0x0000000000000001 : Word64));
-assert(Prim.intToWord64   0x7FFFFFFFFFFFFFFF ==  (0x7FFFFFFFFFFFFFFF : Word64));
-assert(Prim.intToWord64 (-0x8000000000000000) == (0x8000000000000000 : Word64));
-assert(Prim.intToWord64 (-0x7FFFFFFFFFFFFFFF) == (0x8000000000000001 : Word64));
-assert(Prim.intToWord64 (-0x7FFFFFFFFFFFFFFE) == (0x8000000000000002 : Word64));
-assert(Prim.intToWord64 (-0x0000000000000001) == (0xFFFFFFFFFFFFFFFF : Word64));
+assert(Prim.intToWord64Wrap   0x0000000000000000 ==  (0x0000000000000000 : Word64));
+assert(Prim.intToWord64Wrap   0x0000000000000001 ==  (0x0000000000000001 : Word64));
+assert(Prim.intToWord64Wrap   0x7FFFFFFFFFFFFFFF ==  (0x7FFFFFFFFFFFFFFF : Word64));
+assert(Prim.intToWord64Wrap (-0x8000000000000000) == (0x8000000000000000 : Word64));
+assert(Prim.intToWord64Wrap (-0x7FFFFFFFFFFFFFFF) == (0x8000000000000001 : Word64));
+assert(Prim.intToWord64Wrap (-0x7FFFFFFFFFFFFFFE) == (0x8000000000000002 : Word64));
+assert(Prim.intToWord64Wrap (-0x0000000000000001) == (0xFFFFFFFFFFFFFFFF : Word64));
 
 // Below conversions mainly test the interpreter's bignum arithmetics
 
 // Int <--> Word8
 
-assert(Prim.intToWord8 (2 ** 62) == (0 : Word8));
-assert(Prim.intToWord8 (2 ** 62 + 1) == (1 : Word8));
-assert(Prim.intToWord8 (2 ** 62 - 1) == (255 : Word8));
-assert(Prim.intToWord8 (- 2 ** 62) == (0 : Word8));
-assert(Prim.intToWord8 (- 2 ** 62 + 1) == (1 : Word8));
-assert(Prim.intToWord8 (- 2 ** 62 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 62) == (0 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 62 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 62 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 62) == (0 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 62 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 62 - 1) == (255 : Word8));
 
-assert(Prim.intToWord8 (2 ** 63) == (0 : Word8));
-assert(Prim.intToWord8 (2 ** 63 + 1) == (1 : Word8));
-assert(Prim.intToWord8 (2 ** 63 - 1) == (255 : Word8));
-assert(Prim.intToWord8 (- 2 ** 63) == (0 : Word8));
-assert(Prim.intToWord8 (- 2 ** 63 + 1) == (1 : Word8));
-assert(Prim.intToWord8 (- 2 ** 63 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 63) == (0 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 63 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 63 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 63) == (0 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 63 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 63 - 1) == (255 : Word8));
 
-assert(Prim.intToWord8 (2 ** 64) == (0 : Word8));
-assert(Prim.intToWord8 (2 ** 64 + 1) == (1 : Word8));
-assert(Prim.intToWord8 (2 ** 64 - 1) == (255 : Word8));
-assert(Prim.intToWord8 (- 2 ** 64) == (0 : Word8));
-assert(Prim.intToWord8 (- 2 ** 64 + 1) == (1 : Word8));
-assert(Prim.intToWord8 (- 2 ** 64 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 64) == (0 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 64 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 64 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 64) == (0 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 64 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (- 2 ** 64 - 1) == (255 : Word8));
 
 
 // Nat <--> Word8
 
-assert(Prim.natToWord8 (2 ** 64) == (0 : Word8));
-assert(Prim.natToWord8 (2 ** 64 + 1) == (1 : Word8));
-assert(Prim.natToWord8 (2 ** 64 - 1) == (255 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 64) == (0 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 64 + 1) == (1 : Word8));
+assert(Prim.intToWord8Wrap (2 ** 64 - 1) == (255 : Word8));
 
 // Int <--> Word16
 
-assert(Prim.intToWord16 (2 ** 62) == (0 : Word16));
-assert(Prim.intToWord16 (2 ** 62 + 1) == (1 : Word16));
-assert(Prim.intToWord16 (2 ** 62 - 1) == (65535 : Word16));
-assert(Prim.intToWord16 (- 2 ** 62) == (0 : Word16));
-assert(Prim.intToWord16 (- 2 ** 62 + 1) == (1 : Word16));
-assert(Prim.intToWord16 (- 2 ** 62 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 62) == (0 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 62 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 62 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 62) == (0 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 62 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 62 - 1) == (65535 : Word16));
 
-assert(Prim.intToWord16 (2 ** 63) == (0 : Word16));
-assert(Prim.intToWord16 (2 ** 63 + 1) == (1 : Word16));
-assert(Prim.intToWord16 (2 ** 63 - 1) == (65535 : Word16));
-assert(Prim.intToWord16 (- 2 ** 63) == (0 : Word16));
-assert(Prim.intToWord16 (- 2 ** 63 + 1) == (1 : Word16));
-assert(Prim.intToWord16 (- 2 ** 63 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 63) == (0 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 63 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 63 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 63) == (0 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 63 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 63 - 1) == (65535 : Word16));
 
-assert(Prim.intToWord16 (2 ** 64) == (0 : Word16));
-assert(Prim.intToWord16 (2 ** 64 + 1) == (1 : Word16));
-assert(Prim.intToWord16 (2 ** 64 - 1) == (65535 : Word16));
-assert(Prim.intToWord16 (- 2 ** 64) == (0 : Word16));
-assert(Prim.intToWord16 (- 2 ** 64 + 1) == (1 : Word16));
-assert(Prim.intToWord16 (- 2 ** 64 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 64) == (0 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 64 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 64 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 64) == (0 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 64 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (- 2 ** 64 - 1) == (65535 : Word16));
 
 // Nat <--> Word16
 
-assert(Prim.natToWord16 (2 ** 62) == (0 : Word16));
-assert(Prim.natToWord16 (2 ** 62 + 1) == (1 : Word16));
-assert(Prim.natToWord16 (2 ** 62 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 62) == (0 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 62 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 62 - 1) == (65535 : Word16));
 
-assert(Prim.natToWord16 (2 ** 63) == (0 : Word16));
-assert(Prim.natToWord16 (2 ** 63 + 1) == (1 : Word16));
-assert(Prim.natToWord16 (2 ** 63 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 63) == (0 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 63 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 63 - 1) == (65535 : Word16));
 
-assert(Prim.natToWord16 (2 ** 64) == (0 : Word16));
-assert(Prim.natToWord16 (2 ** 64 + 1) == (1 : Word16));
-assert(Prim.natToWord16 (2 ** 64 - 1) == (65535 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 64) == (0 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 64 + 1) == (1 : Word16));
+assert(Prim.intToWord16Wrap (2 ** 64 - 1) == (65535 : Word16));
 
 // Int <--> Word32
 
-assert(Prim.intToWord32 (2 ** 62) == (0 : Word32));
-assert(Prim.intToWord32 (2 ** 62 + 1) == (1 : Word32));
-assert(Prim.intToWord32 (2 ** 62 - 1) == (4294967295 : Word32));
-assert(Prim.intToWord32 (- 2 ** 62) == (0 : Word32));
-assert(Prim.intToWord32 (- 2 ** 62 + 1) == (1 : Word32));
-assert(Prim.intToWord32 (- 2 ** 62 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 62) == (0 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 62 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 62 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 62) == (0 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 62 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 62 - 1) == (4294967295 : Word32));
 
-assert(Prim.intToWord32 (2 ** 63) == (0 : Word32));
-assert(Prim.intToWord32 (2 ** 63 + 1) == (1 : Word32));
-assert(Prim.intToWord32 (2 ** 63 - 1) == (4294967295 : Word32));
-assert(Prim.intToWord32 (- 2 ** 63) == (0 : Word32));
-assert(Prim.intToWord32 (- 2 ** 63 + 1) == (1 : Word32));
-assert(Prim.intToWord32 (- 2 ** 63 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 63) == (0 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 63 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 63 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 63) == (0 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 63 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 63 - 1) == (4294967295 : Word32));
 
-assert(Prim.intToWord32 (2 ** 64) == (0 : Word32));
-assert(Prim.intToWord32 (2 ** 64 + 1) == (1 : Word32));
-assert(Prim.intToWord32 (2 ** 64 - 1) == (4294967295 : Word32));
-assert(Prim.intToWord32 (- 2 ** 64) == (0 : Word32));
-assert(Prim.intToWord32 (- 2 ** 64 + 1) == (1 : Word32));
-assert(Prim.intToWord32 (- 2 ** 64 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 64) == (0 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 64 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 64 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 64) == (0 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 64 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (- 2 ** 64 - 1) == (4294967295 : Word32));
 
 // Nat <--> Word32
 
-assert(Prim.natToWord32 (2 ** 62) == (0 : Word32));
-assert(Prim.natToWord32 (2 ** 62 + 1) == (1 : Word32));
-assert(Prim.natToWord32 (2 ** 62 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 62) == (0 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 62 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 62 - 1) == (4294967295 : Word32));
 
-assert(Prim.natToWord32 (2 ** 63) == (0 : Word32));
-assert(Prim.natToWord32 (2 ** 63 + 1) == (1 : Word32));
-assert(Prim.natToWord32 (2 ** 63 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 63) == (0 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 63 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 63 - 1) == (4294967295 : Word32));
 
-assert(Prim.natToWord32 (2 ** 64) == (0 : Word32));
-assert(Prim.natToWord32 (2 ** 64 + 1) == (1 : Word32));
-assert(Prim.natToWord32 (2 ** 64 - 1) == (4294967295 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 64) == (0 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 64 + 1) == (1 : Word32));
+assert(Prim.intToWord32Wrap (2 ** 64 - 1) == (4294967295 : Word32));
 

@@ -13,8 +13,8 @@ func iter<A>(what : Text, xs : [A]) {
 type FixOpt = ?FixOpt;
 
 iter("Nat", Prim.Array_tabulate<Nat>(iters,func x = x));
-iter("Word16", Prim.Array_tabulate<Word16>(iters,func x = Prim.natToWord16 x));
-iter("Word32", Prim.Array_tabulate<Word32>(iters,func x = Prim.natToWord32 x));
+iter("Word16", Prim.Array_tabulate<Word16>(iters,func x = Prim.intToWord16Wrap x));
+iter("Word32", Prim.Array_tabulate<Word32>(iters,func x = Prim.intToWord32Wrap x));
 iter("?Nat, all null", Prim.Array_tabulate<?Nat>(iters,func x = null));
 iter("FixOpt, all ?null", Prim.Array_tabulate<FixOpt>(iters,func x = ?null));
 iter("FixOpt, all ??null", Prim.Array_tabulate<FixOpt>(iters,func x = ??null));
