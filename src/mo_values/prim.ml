@@ -195,7 +195,11 @@ let prim =
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
-  | "blob_iter" -> fun _ v k ->
+  | "blob_bytes_iter" -> fun _ v k ->
+    let s = String.to_seq (Value.as_blob v) in
+    let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
+    k (Iter (ref (Seq.map valuation s)))
+  | "blob_vals_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_blob v) in
     let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
     k (Iter (ref (Seq.map valuation s)))

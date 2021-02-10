@@ -12,7 +12,8 @@ assert (("\00":Blob) >= ("":Blob));
 assert (("\00":Blob) < ("\01":Blob));
 assert (("\00":Blob) <= ("\01":Blob));
 
-let i1 = ("\00\01☃":Blob).bytes();
+do {
+let i1 = ("\00\01☃":Blob).vals();
 switch(i1.next()) {
   case (?b) { assert (b == (0:Nat8)); };
   case null { assert false; };
@@ -36,4 +37,5 @@ switch(i1.next()) {
 switch(i1.next()) {
   case (?b) { assert false; };
   case null {};
+};
 };

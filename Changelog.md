@@ -3,6 +3,7 @@
 * **BREAKING CHANGE**
 
   The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
+  This also removed the `blob.bytes()` iterator.
 
   Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
   modules, and wrapping conversion functions were added to the other number
@@ -21,6 +22,10 @@
 
   The motivation for this change is to eventually deprecate and remove the
   `WordN` types.
+
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
 
 == 0.5.7 (2021-02-05)
 

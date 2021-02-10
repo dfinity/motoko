@@ -249,7 +249,7 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 
 |`Blob`
 |blob
-|`bytes`
+|`vals`
 |the blob's bytes
 |`Nat8`
 |===

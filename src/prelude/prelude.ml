@@ -89,10 +89,10 @@ func @mut_array_vals<A>(xs : [var A]) : () -> @Iter<A> =
   };
 func @blob_size(xs : Blob) : () -> Nat =
   func () : Nat = (prim "blob_size" : Blob -> Nat) xs;
-func @blob_bytes(xs : Blob) : () -> @Iter<Nat8> =
+func @blob_vals(xs : Blob) : () -> @Iter<Nat8> =
   func () : @Iter<Nat8> = object {
     type BlobIter = Any; // not exposed
-    let i = (prim "blob_iter" : Blob -> BlobIter) xs;
+    let i = (prim "blob_vals_iter" : Blob -> BlobIter) xs;
     public func next() : ?Nat8 {
       if ((prim "blob_iter_done" : BlobIter -> Bool) i)
         null
@@ -216,7 +216,7 @@ func @text_of_Char(c : Char) : Text {
 
 func @text_of_Blob(blob : Blob) : Text {
   var t = "\"";
-  for (b in blob.bytes()) {
+  for (b in blob.vals()) {
     // Could do more clever escaping, e.g. leave ascii and utf8 in place
     t #= "\\" # @left_pad(2, "0", @text_of_num(@nat8ToNat b, 16, 0, @digits_hex));
   };
