@@ -4,6 +4,9 @@
   `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
   as type `Nat8`.
 
+* Bugfix: Certain ill-typed object literals are now prevented by the type
+  checker.
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
