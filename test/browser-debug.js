@@ -298,10 +298,12 @@ function updateHexDump() {
   }
 }
 
+
+// Decoding Motoko heap objects
+
 function getUint32(view, p) {
   return view.getUint32(p, true)
 }
-
 
 function decodeLabel(hash) {
   return motokoHashMap?.[hash] ?? hash;
@@ -309,10 +311,10 @@ function decodeLabel(hash) {
 
 function decodeOBJ(view, p) {
   let size = getUint32(view, p + 4);
-  let m = new Map();
+  let m = new Object();
   let h = getUint32(view, p + 8) + 1; //unskew
   let q = p + 12;
-  for(var i = 0; i < size; i++) {
+  for(let i = 0; i < size; i++) {
     let hash = getUint32(view, h);
     let lab = decodeLabel(hash);
     m[lab] = decode(view, getUint32(view, q));
@@ -323,7 +325,7 @@ function decodeOBJ(view, p) {
 }
 
 function decodeVARIANT(view, p) {
-  let m = new Map();
+  let m = new Object();
   let hash = getUint32(view, p+4);
   let lab = "#" + decodeLabel(hash);
   m[lab] = decode(view, getUint32(view, p+8));
@@ -353,7 +355,7 @@ function decodeARRAY(view, p) {
   let size = getUint32(view, p + 4);
   let a = new Array(size);
   let q = p + 8;
-  for(var i = 0; i < size; i++) {
+  for(let i = 0; i < size; i++) {
     a[i] = decode(view, getUint32(view, q));
     q += 4;
   }
@@ -361,8 +363,7 @@ function decodeARRAY(view, p) {
 }
 
 function decodeSOME(view, p) {
-  let a = decode(view, getUint32(view, p + 4));
-  return { "?": a };
+  return { "?": decode(view, getUint32(view, p + 4)) };
 }
 
 function decodeNULL(view, p) {
@@ -370,20 +371,18 @@ function decodeNULL(view, p) {
 }
 
 function decodeMUTBOX(view, p) {
-  let a = decode(view, getUint32(view, p + 4));
-  return { mut: a };
+  return { mut: decode(view, getUint32(view, p + 4)) };
 }
 
 function decodeOBJ_IND(view, p) {
-  let a = decode(view, getUint32(view, p + 4));
-  return { ind: a };
+   return { ind: decode(view, getUint32(view, p + 4)) };
 }
 
 function decodeCONCAT(view, p) {
   let size = 2;
   let a = new Array(size);
   let q = p + 8; // skip n_bytes
-  for(var i = 0; i < size; i++) {
+  for(let i = 0; i < size; i++) {
     a[i] = decode(view, getUint32(view, q));
     q += 4;
   }
@@ -394,7 +393,7 @@ function decodeBLOB(view, p) {
   let size = getUint32(view, p + 4);
   let a = new Uint8Array(size);
   let q = p + 8;
-  for(var i = 0; i < size; i++) {
+  for(let i = 0; i < size; i++) {
     a[i] = view.getUint8(q);
     q += 1;
   };
@@ -412,9 +411,9 @@ let mask = 2**28-1;
 function decodeBIGINT(view, p) {
   let size = getUint32(view, p + 4);
   let sign = getUint32(view, p + 12);
-  var a = BigInt(0);
+  let a = BigInt(0);
   let q = p + 20;
-  for(var r = q + (4 * (size-1)); r >= q; r -= 4) {
+  for(let r = q + (4 * (size-1)); r >= q; r -= 4) {
     a = a << bigInt28;
     a += BigInt(getUint32(view, r) & mask );
   };
@@ -426,8 +425,8 @@ function decodeBIGINT(view, p) {
 
 // https://en.wikipedia.org/wiki/LEB128
 function getULEB128(view, p) {
-    var result = 0;
-    var shift = 0;
+    let result = 0;
+    let shift = 0;
     while (true) {
      let byte = view.getUint8(p);
      p += 1;
@@ -440,8 +439,8 @@ function getULEB128(view, p) {
 
 function hashLabel(label) {
   // assumes label is ascii
-  var s = 0;
-   for(var i = 0; i < label.length; i++) {
+  let s = 0;
+   for(let i = 0; i < label.length; i++) {
     let c = label.charCodeAt(i);
     console.assert("non-ascii label", c < 128);
     s = (s * 223) + label.charCodeAt(i);
@@ -450,7 +449,7 @@ function hashLabel(label) {
 };
 
 function decodeMotokoSection(customSections) {
-  let m = new Map();
+  let m = new Object();
   if (customSections.length === 0) return m;
   let view = new DataView(customSections[0]);
   if (view.byteLength === 0) return m;
@@ -461,7 +460,7 @@ function decodeMotokoSection(customSections) {
   while (cnt > 0) {
     let [size, p2] = getULEB128(view, p1);
     let a = new Uint8Array(size);
-    for(var i = 0; i < size; i++) {
+    for(let i = 0; i < size; i++) {
       a[i] = view.getUint8(p2);
       p2 += 1;
     };
