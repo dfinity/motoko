@@ -788,6 +788,9 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
+    | Some (T.Depr t, Available) ->
+      warn env exp.at "M0152" "variable %s is deprecatd" id.it;
+      t
     | Some (t, Available) -> t
     | None ->
       error env id.at "M0057" "unbound variable %s" id.it
@@ -926,6 +929,9 @@ and infer_exp'' env exp : T.typ =
       error env exp.at "M0071"
         "cannot infer type of forward field reference %s"
         id.it
+    | T.Depr t ->
+      warn env exp.at "M0152" "field %s is deprecatd" id.it;
+      t
     | t -> t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"

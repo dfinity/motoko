@@ -1,0 +1,8 @@
+deprecated.mo:5.9-5.10: warning [M0152], variable x is deprecatd
+deprecated.mo:9.20-9.38: type error [M0014], non-static expression in library or module
+deprecated.mo:10.43-10.84: type error [M0014], non-static expression in library or module
+deprecated.mo:16.9-16.14: warning [M0152], field bar is deprecatd
+deprecated.mo:17.8-17.13: warning [M0152], field bar is deprecatd
+deprecated.mo:19.8-19.11: warning [M0152], field f is deprecatd
+deprecated.mo:20.8-20.11: warning [M0152], field f is deprecatd
+deprecated.mo:21.8-21.11: warning [M0152], field f is deprecatd

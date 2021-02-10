@@ -1031,7 +1031,6 @@ let rec lub' lubs glbs t1 t2 =
     | _, Typ _ -> assert false
     | Depr t1', Depr t2' ->
       Depr (lub' lubs glbs t1' t2')
-      (* This is fishy, should Depr be more sticky? Or should we warn here? *)
     | Depr t1', t2' -> lub' lubs glbs t1' t2'
     | t1', Depr t2' -> lub' lubs glbs t1' t2'
     | _ when eq t1 t2 -> t1
