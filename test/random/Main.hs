@@ -1178,7 +1178,7 @@ unparseMO Null = "null"
 unparseMO (Some a) = '?' : unparseMO a
 unparseMO (Text a) = '"' : concatMap escape a <> "\""
 unparseMO (a `Concat` b) = "(" <> unparseMO a <> " # " <> unparseMO b <> ")"
-unparseMO (Array _ ) = error "TODO"
+unparseMO (Array _ ) = error "not yet implemented"
 
 
 -- TODOs:
