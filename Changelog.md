@@ -14,6 +14,10 @@
   The motivation for this change is to eventually deprecate and remove the
   `WordN` types.
 
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
