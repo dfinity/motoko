@@ -1,5 +1,19 @@
 = Motoko compiler changelog
 
+* Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
+
+  The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
+  If wrapping semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used.
+
+  Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
+  `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
+  operator (`>>`) is a unsigned right shift on `NatN` and a signed right shift
+  on `IntN`; the `+>>` operator is _not_ available on these types.
+
+  The motivation for this change is to eventually deprecate and remove the
+  `WordN` types.
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
