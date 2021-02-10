@@ -339,7 +339,7 @@ Tokens on the same line have equal precedence with the indicated associativity.
 
 | LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 |(higher)| none | `else`, `while`
-|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>-`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=`,`
+|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=`,`
 |(higher)| left | `:`
 |(higher)| left | `or`
 |(higher)| left | `and`
