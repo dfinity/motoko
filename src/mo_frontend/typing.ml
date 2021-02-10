@@ -1238,7 +1238,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (fun ft ->
       if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
       then local_error env exp.at "M0151"
-        "object literal lacks field %s. Expected type\n  %s"
+        "object literal is missing field %s from expected type\n  %s"
         ft.T.lab (T.string_of_typ_expand t);
     ) fts;
     t
