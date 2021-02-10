@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 
 actor class Clone(makeClone: shared (init : Nat) -> async Clone,
-                  init : Nat) = self {
+                  init : Nat) {
 
     var state = init;
 
