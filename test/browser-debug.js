@@ -304,9 +304,7 @@ function getUint32(view, p) {
 
 
 function decodeLabel(hash) {
-  if (motokoHashMap === null) return hash;
-  let lab = motokoHashMap[hash];
-  return (lab === undefined) ? hash : lab;
+  return motokoHashMap?.[hash] ?? hash;
 }
 
 function decodeOBJ(view, p) {
@@ -327,7 +325,7 @@ function decodeOBJ(view, p) {
 function decodeVARIANT(view, p) {
   let m = new Map();
   let hash = getUint32(view, p+4);
-  let lab = `#` + decodeLabel(hash);
+  let lab = "#" + decodeLabel(hash);
   m[lab] = decode(view, getUint32(view, p+8));
   return m;
 }
@@ -344,13 +342,11 @@ function getUint64BigInt(dataview, byteOffset, littleEndian) {
 }
 
 function decodeBITS64(view, p) {
-  let bits32 = getUint64BigInt(view, p + 4, littleEndian);
-  return bits32;
+  return getUint64BigInt(view, p + 4, littleEndian);
 }
 
 function decodeBITS32(view, p) {
-  let bits32 = getUint32(view, p + 4);
-  return bits32;
+  return getUint32(view, p + 4);
 }
 
 function decodeARRAY(view, p) {
