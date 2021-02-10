@@ -595,25 +595,25 @@ and check_inst_bounds env tbs inst at =
 (* Literals *)
 
 let check_lit_val env t of_string at s =
-  try of_string s with _ ->
+  try of_string s with Invalid_argument _ ->
     error env at "M0048" "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
-let check_nat env = check_lit_val env T.Nat Value.Nat.of_string
-let check_nat8 env = check_lit_val env T.Nat8 Value.Nat8.of_string
-let check_nat16 env = check_lit_val env T.Nat16 Value.Nat16.of_string
-let check_nat32 env = check_lit_val env T.Nat32 Value.Nat32.of_string
-let check_nat64 env = check_lit_val env T.Nat64 Value.Nat64.of_string
-let check_int env = check_lit_val env T.Int Value.Int.of_string
-let check_int8 env = check_lit_val env T.Int8 Value.Int_8.of_string
-let check_int16 env = check_lit_val env T.Int16 Value.Int_16.of_string
-let check_int32 env = check_lit_val env T.Int32 Value.Int_32.of_string
-let check_int64 env = check_lit_val env T.Int64 Value.Int_64.of_string
-let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string
-let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string
-let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string
-let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string
-let check_float env = check_lit_val env T.Float Value.Float.of_string
+let check_nat env = check_lit_val env T.Nat Numerics.Nat.of_string
+let check_nat8 env = check_lit_val env T.Nat8 Numerics.Nat8.of_string
+let check_nat16 env = check_lit_val env T.Nat16 Numerics.Nat16.of_string
+let check_nat32 env = check_lit_val env T.Nat32 Numerics.Nat32.of_string
+let check_nat64 env = check_lit_val env T.Nat64 Numerics.Nat64.of_string
+let check_int env = check_lit_val env T.Int Numerics.Int.of_string
+let check_int8 env = check_lit_val env T.Int8 Numerics.Int_8.of_string
+let check_int16 env = check_lit_val env T.Int16 Numerics.Int_16.of_string
+let check_int32 env = check_lit_val env T.Int32 Numerics.Int_32.of_string
+let check_int64 env = check_lit_val env T.Int64 Numerics.Int_64.of_string
+let check_word8 env = check_lit_val env T.Word8 Numerics.Word8.of_string
+let check_word16 env = check_lit_val env T.Word16 Numerics.Word16.of_string
+let check_word32 env = check_lit_val env T.Word32 Numerics.Word32.of_string
+let check_word64 env = check_lit_val env T.Word64 Numerics.Word64.of_string
+let check_float env = check_lit_val env T.Float Numerics.Float.of_string
 
 let check_text env at s =
   (try ignore (Wasm.Utf8.decode s)
@@ -719,6 +719,7 @@ let blob_obj () =
   let open T in
   Object,
   [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)])};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
@@ -1235,6 +1236,12 @@ and check_exp' env0 t exp : T.typ =
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
+    List.iter (fun ft ->
+      if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
+      then local_error env exp.at "M0151"
+        "object literal is missing field %s from expected type\n  %s"
+        ft.T.lab (T.string_of_typ_expand t);
+    ) fts;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;

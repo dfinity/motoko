@@ -252,6 +252,12 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 |`bytes`
 |the blob's bytes
 |`Word8`
+
+|`Blob`
+|blob
+|`vals`
+|the blob's bytes
+|`Nat8`
 |===
 
 User-defined data structures can define their own iterators. As long they conform with the `Iter<A>` type for some element type `A`, these behave like the built-in ones and can be consumed with ordinary `for`-loops.

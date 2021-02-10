@@ -408,12 +408,13 @@ rec {
     };
 
   inherit drun;
+  inherit (nixpkgs) wabt wasmtime wasm;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  wabt = nixpkgs.wabt;
-  wasmtime = nixpkgs.wasmtime;
-  xargo = nixpkgs.xargo;
-  wasm = nixpkgs.wasm;
+  inherit (nixpkgs) xargo;
+
+  # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
+  inherit (nixpkgs) gitMinimal;
 
   overview-slides = stdenv.mkDerivation {
     name = "overview-slides";

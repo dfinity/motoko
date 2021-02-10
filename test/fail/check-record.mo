@@ -13,6 +13,8 @@ ignore ({ a = 0; var v = 0} : { var a : Int;  v : Int }); // reject, mutability 
 
 ignore ({} : { a: Nat }); // reject
 
+ignore ({ a = 0; b = 1} : { a: Nat }); // accept (but warn in the future?)
+
 do {
   let a = 1;
   let b = 2;

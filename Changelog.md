@@ -1,5 +1,17 @@
 = Motoko compiler changelog
 
+* `mo-doc` now generates cross-references for types in signatures in
+  both the Html as well as the Asciidoc output. So a signature like
+  `fromIter : I.Iter<Nat> -> List.List<Nat>` will now let you click on
+  `I.Iter` or `List.List` and take you to their definitions.
+
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
+
+* Bugfix: Certain ill-typed object literals are now prevented by the type
+  checker.
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
