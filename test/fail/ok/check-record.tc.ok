@@ -9,4 +9,4 @@ check-record.mo:12.11-12.16: type error [M0149], expected mutable 'var' field a 
 but found immutable field (insert 'var'?)
 check-record.mo:14.9-14.11: type error [M0151], object literal lacks field a. Expected type
   {a : Nat}
-check-record.mo:19.30-19.31: type error [M0057], unbound variable c
+check-record.mo:21.30-21.31: type error [M0057], unbound variable c
