@@ -19,7 +19,7 @@ func foo(n : Nat8, b: Bool, t: Text ) {
 
   let v0 = id(#fa);
   let v1 = id(#fb "data");
-
+  let ints : [Int] = id([-4294967296, -256, -1, 0, 1, 256, 4294967296]);
   let bigNat : Nat = id((2 ** 65) - 1);
   let bigInt : Int = id(2 ** 65 : Int);
   let negBigInt : Int = id(- (2 ** 65) : Int);
