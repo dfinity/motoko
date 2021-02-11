@@ -1,17 +1,35 @@
 import Prim "mo:prim";
+import Lib = "clone/cloneable";
 
-actor class Clone(makeClone: shared (init : Nat) -> async Clone,
-                  init : Nat) {
+actor Cloner {
 
-    var state = init;
+   // calls Lib.Cloneable to construct a new Clonable,
+   // passing itself as first argument
+   public shared func makeCloneable(init : Nat): async Lib.Cloneable {
+      await Lib.Cloneable(makeCloneable, init);
+   };
 
-    Prim.debugPrint(debug_show(state));
+   public shared func test() : async () {
 
-    public func someMethod() : async () {
-      state += 1;
-    };
+      // create the original Cloneable object
+      let c0 : Lib.Cloneable = await makeCloneable(0);
+      await c0.someMethod();
+      Prim.debugPrint(debug_show(Prim.principalOfActor c0));
 
-    public func clone(init : Nat) : async Clone {
-      await makeClone(init : Nat);
-    }
-}
+      // create some proper clones
+      let c1 = await c0.clone(1); // clone!
+      await c1.someMethod();
+      Prim.debugPrint(debug_show(Prim.principalOfActor c1));
+
+      let c2 = await c1.clone(2); // clone!
+      await c2.someMethod();
+      Prim.debugPrint(debug_show(Prim.principalOfActor c2));
+   }
+
+};
+
+// testing
+//SKIP run
+//SKIP run-ir
+//SKIP run-low
+ignore Cloner.test(); //OR-CALL ingress test "DIDL\x00\x00"
