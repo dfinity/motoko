@@ -1,6 +1,6 @@
 import Prim "mo:prim";
-import Cycles = "cycles/cycles";
-import Lib = "clone/cloneable";
+import Cycles "cycles/cycles";
+import Lib "clone/cloneable";
 
 actor Cloner {
 

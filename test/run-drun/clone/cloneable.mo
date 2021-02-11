@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Cycles = "../cycles/cycles";
+import Cycles "../cycles/cycles";
 
 // A simple Clonable class implementing a clone method without recursion.
 // (init parameter, simple state, and a single other method for
@@ -7,7 +7,8 @@ import Cycles = "../cycles/cycles";
 
 actor class Cloneable(
   makeCloneable: shared (init : Nat) -> async Cloneable,
-  init : Nat) {
+  init : Nat
+) {
 
   var state = init;
   Prim.debugPrint(debug_show(state));
