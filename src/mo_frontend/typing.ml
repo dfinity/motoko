@@ -592,6 +592,61 @@ and check_inst_bounds env tbs inst at =
   ts
 
 
+(* Subgrammar of explicitly typed expressions *)
+
+let is_explicit_lit l =
+  match l with
+  | BoolLit _ -> true
+  | _ -> false
+
+let rec is_explicit_pat p =
+  match p.it with
+  | WildP | VarP _ -> false
+  | LitP l | SignP (_, l) -> is_explicit_lit !l
+  | OptP p1 | TagP (_, p1) | ParP p1 -> is_explicit_pat p1
+  | TupP ps -> List.for_all is_explicit_pat ps
+  | ObjP pfs -> List.for_all (fun (pf : pat_field) -> is_explicit_pat pf.it.pat) pfs
+  | AltP (p1, p2) -> is_explicit_pat p1 && is_explicit_pat p2
+  | AnnotP _ -> true
+
+let rec is_explicit_exp e =
+  match e.it with
+  | PrimE _ | ActorUrlE _ -> false
+  | VarE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _
+  | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
+  | WhileE _ | LoopE _ | ForE _
+  | BreakE _ | RetE _ | ThrowE _
+  | AnnotE _ | ImportE _ ->
+    true
+  | LitE l -> is_explicit_lit !l
+  | UnE (_, _, e1) | TagE (_, e1) | OptE e1 | DoOptE e1
+  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
+  | LabelE (_, _, e1) | AsyncE (_, e1) | AwaitE e1 ->
+    is_explicit_exp e1
+  | BinE (_, e1, _, e2) -> is_explicit_exp e1 && is_explicit_exp e2
+  | TupE es -> List.for_all is_explicit_exp es
+  | ObjE efs ->
+    List.for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs
+  | ObjBlockE (_, dfs) ->
+    List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
+  | ArrayE (_, es) -> es <> [] && List.for_all is_explicit_exp es
+  | IfE (_, e1, e2) -> is_explicit_exp e1 && is_explicit_exp e2
+  | SwitchE (e1, cs) | TryE (e1, cs) ->
+    is_explicit_exp e1 &&
+    List.for_all (fun (c : case) -> is_explicit_exp c.it.exp) cs
+  | BlockE ds -> List.for_all is_explicit_dec ds
+  | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
+
+and is_explicit_dec d =
+  match d.it with
+  | ExpD e | LetD (_, e) | VarD (_, e) -> is_explicit_exp e
+  | TypD _ -> true
+  | ClassD (_, _, _, p, _, _, _, dfs) ->
+    is_explicit_pat p &&
+    List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
+
+
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -805,9 +860,8 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | BinE (ot, exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = Operator.type_binop op (T.lub t1 t2) in
+    let t1, t2 = infer_bin_exp env exp1 exp2 in
+    let t = Operator.type_binop op (T.lub (T.promote t1) (T.promote t2)) in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_binop op t) then
@@ -816,11 +870,10 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
-    let t1 = T.normalize (infer_exp env exp1) in
-    let t2 = T.normalize (infer_exp env exp2) in
-    let t = Operator.type_relop op (T.lub (T.promote t1) (T.promote t2)) in
     if not env.pre then begin
       assert (!ot = Type.Pre);
+      let t1, t2 = infer_bin_exp env exp1 exp2 in
+      let t = Operator.type_relop op (T.lub (T.promote t1) (T.promote t2)) in
       if not (Operator.has_relop op t) then
         error_bin_op env exp.at t1 t2;
       if not (T.eq t t1 || T.eq t t2) then
@@ -839,8 +892,8 @@ and infer_exp'' env exp : T.typ =
     end;
     T.bool
   | ShowE (ot, exp1) ->
-    let t = infer_exp_promote env exp1 in
     if not env.pre then begin
+      let t = infer_exp_promote env exp1 in
       if not (Show.can_show t) then
         error env exp.at "M0063" "show is not defined for operand type\n  %s"
           (T.string_of_typ_expand t);
@@ -870,7 +923,8 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     end
   | TagE (id, exp1) ->
-    T.Variant [T.{lab = id.it; typ = infer_exp env exp1}]
+    let t1 = infer_exp env exp1 in
+    T.Variant [T.{lab = id.it; typ = t1}]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -1190,6 +1244,21 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | ImportE (f, ri) ->
     check_import env exp.at f ri
+
+and infer_bin_exp env exp1 exp2 =
+  match is_explicit_exp exp1, is_explicit_exp exp2 with
+  | true, false ->
+    let t1 = T.normalize (infer_exp env exp1) in
+    if not env.pre then check_exp env t1 exp2;
+    t1, t1
+  | false, true ->
+    let t2 = T.normalize (infer_exp env exp2) in
+    if not env.pre then check_exp env t2 exp1;
+    t2, t2
+  | _ ->
+    let t1 = T.normalize (infer_exp env exp1) in
+    let t2 = T.normalize (infer_exp env exp2) in
+    t1, t2
 
 and infer_exp_field env rf =
   let { mut; id; exp } = rf.it in

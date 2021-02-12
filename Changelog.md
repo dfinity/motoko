@@ -1,5 +1,11 @@
 = Motoko compiler changelog
 
+* Type propagation for binary operators has been improved. If the type of one of
+  the operands can be determined locally, then the other operand is checked
+  against that expected type. This should help avoiding tedious type annotations
+  in many cases of literals, e.g., `x == 0` or `2 * x`, when `x` has a special
+  type like `Nat8`.
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
