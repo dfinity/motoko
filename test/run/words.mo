@@ -35,19 +35,19 @@ do {
     printW64ln(+c);
     printW64ln(-c);
     printW64ln(^c);
-    printW64ln(a + c);
-    printW64ln(c - a);
+    printW64ln(a +% c);
+    printW64ln(c -% a);
 
 // CHECK: call $checkpointAlpha
     checkpointAlpha();
 // This is a native Wasm i64 multiplication, there should be no shift involved!
 // CHECK-NOT: i64.shr_u
 // CHECK: call $printW64ln
-    printW64ln(a * b);
+    printW64ln(a *% b);
 
     printW64ln(a / b);
     printW64ln(c % a);
-    printW64ln(a ** 2);
+    printW64ln(a **% 2);
 
     printW64ln(a & c);
     printW64ln(a | c);
@@ -95,18 +95,18 @@ do {
     printW32ln(+c);
     printW32ln(-c);
     printW32ln(^c);
-    printW32ln(a + c);
-    printW32ln(c - a);
+    printW32ln(a +% c);
+    printW32ln(c -% a);
 
 // CHECK: call $checkpointCharlie
     checkpointCharlie();
 // This is a native Wasm i32 multiplication, there should be no shift involved!
 // CHECK-NOT: i32.shr_u
 // CHECK: call $printW32ln
-    printW32ln(a * b);
+    printW32ln(a *% b);
     printW32ln(a / b);
     printW32ln(c % a);
-    printW32ln(a ** 2);
+    printW32ln(a **% 2);
 
     printW32ln(a & c);
     printW32ln(a | c);
@@ -147,8 +147,8 @@ do {
     printW16ln(+c);
     printW16ln(-c);
     printW16ln(^c);
-    printW16ln(a + c);
-    printW16ln(c - a);
+    printW16ln(a +% c);
+    printW16ln(c -% a);
 
 // CHECK: call $checkpointDelta
     checkpointDelta();
@@ -161,10 +161,10 @@ do {
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
 // CHECK-NEXT: call $printW16ln
-    printW16ln(a * b);
+    printW16ln(a *% b);
     printW16ln(a / b);
     printW16ln(c % a);
-    printW16ln(a ** 2);
+    printW16ln(a **% 2);
 
     printW16ln(a & c);
     printW16ln(a | c);
@@ -234,8 +234,8 @@ do {
     printW8ln(+c);
     printW8ln(-c);
     printW8ln(^c);
-    printW8ln(a + c);
-    printW8ln(c - a);
+    printW8ln(a +% c);
+    printW8ln(c -% a);
 // CHECK: call $checkpointHotel
     checkpointHotel();
 // this is the value of b
@@ -245,10 +245,10 @@ do {
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
 // CHECK-NEXT: call $printW8ln
-    printW8ln(a * b);
+    printW8ln(a *% b);
     printW8ln(a / b);
     printW8ln(c % a);
-    printW8ln(a ** 2);
+    printW8ln(a **% 2);
 
     printW8ln(a & c);
     printW8ln(a | c);
