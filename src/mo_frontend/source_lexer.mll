@@ -143,6 +143,10 @@ rule token mode = parse
   | "+>>" { SSHROP }
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }
+  | "+%" { WRAPADDOP }
+  | "-%" { WRAPSUBOP }
+  | "*%" { WRAPMULOP }
+  | "**%" { WRAPPOWOP }
   | "#" { HASH }
 
   | "==" { EQOP }
@@ -165,6 +169,10 @@ rule token mode = parse
   | "+>>=" { SSHRASSIGN }
   | "<<>=" { ROTLASSIGN }
   | "<>>=" { ROTRASSIGN }
+  | "+%=" { WRAPADDASSIGN }
+  | "-%=" { WRAPSUBASSIGN }
+  | "*%=" { WRAPMULASSIGN }
+  | "**%=" { WRAPPOWASSIGN }
   | "#=" { CATASSIGN }
   | "->" { ARROW }
   | "_" { UNDERSCORE }

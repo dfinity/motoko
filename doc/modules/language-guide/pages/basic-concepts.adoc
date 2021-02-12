@@ -226,15 +226,13 @@ As a broader language overview, however, we briefly summarize the other value fo
  - Text values --- strings of unicode characters.
  - Words --- fixed-width numbers, _without_ overflow checks, and _with_ explicit wrap-around semantics.
 
-*Numbers.* By default, integers and natural numbers are _unbounded_ and do not overflow.  
+*Numbers.* By default, integers and natural numbers are _unbounded_ and do not overflow.
 Instead, they use representations that grow to accommodate any finite number.
 
 For practical reasons, {proglang} also includes _bounded_ types for integers and natural numbers, distinct from the default versions.
 Each bounded variant has a fixed width (one of `8`, `16`, `32`, `64`) and each carries the potential for "`overflow`". If and when this event occurs, it is an error and causes the
 <<overview-traps,program to trap>>.
-There are no unchecked, uncaught overflows in {proglang}, except in well-defined situations, for specific (`Word`-based) types.
-
-Word types permit bitwise operations that are unsupported by the other number types.
+There are no unchecked, uncaught overflows in {proglang}, except in well-defined situations, for explicitly _wrapping_ operations (indicated by a `%`  character in the operator) and specific (`Word`-based) types.
 The language provides primitive built-ins to convert between these various number representations.
 
 The link:language-manual{outfilesuffix}[language quick reference] contains a complete list of link:language-manual{outfilesuffix}#primitive-types[primitive types].
