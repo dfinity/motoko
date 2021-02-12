@@ -697,7 +697,7 @@ All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
-The operations `+%`, `-%`, `*%` and `**%` provide access to the raw wrap-on-overflow operations.
+The operations `+%`, `-%`, `*%` and `**%` provide access to wrap-around arithmetics as in hardware.
 
 As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
@@ -706,8 +706,8 @@ The right-shift preserves the two's-complement sign.
 All shift and rotate amounts are considered modulo the word's width *n*.
 
 Bounded integer types are not in subtype relationship with each other or with
-other arithmetic types, and their literals need type annotation, e.g.
-`(-42 : Int16)`.
+other arithmetic types, and their literals need type annotation if
+the type cannot be inferred from context, e.g. `(-42 : Int16)`.
 
 The corresponding module in the base library provides conversion functions:
 Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
