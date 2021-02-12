@@ -57,7 +57,7 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Iter of value Seq.t ref (* internal to {b.bytes(), t.chars()} iterator *)
+  | Iter of value Seq.t ref (* internal to {b.vals(), t.chars()} iterator *)
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}

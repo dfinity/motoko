@@ -263,7 +263,7 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
-    labs : LabSet.t ref; (* used labels (fields and variants),
+    labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
   }
 
@@ -7002,7 +7002,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "blob_size", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env
-    | OtherPrim "blob_iter", [e] ->
+    | OtherPrim ("blob_bytes_iter"|"blob_vals_iter"), [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
     | OtherPrim "blob_iter_done", [e] ->
       SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env

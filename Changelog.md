@@ -3,16 +3,28 @@
 * Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
 
   The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
-  If wrapping semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
-  can be used.
+  If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used. The corresponding assignment operators (`+%=` etc.) are also available.
 
   Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
   `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
-  operator (`>>`) is a unsigned right shift on `NatN` and a signed right shift
+  operator (`>>`) is an unsigned right shift on `NatN` and a signed right shift
   on `IntN`; the `+>>` operator is _not_ available on these types.
 
   The motivation for this change is to eventually deprecate and remove the
   `WordN` types.
+
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
+
+* `mo-doc` now generates cross-references for types in signatures in
+  both the Html as well as the Asciidoc output. So a signature like
+  `fromIter : I.Iter<Nat> -> List.List<Nat>` will now let you click on
+  `I.Iter` or `List.List` and take you to their definitions.
+
+* Bugfix: Certain ill-typed object literals are now prevented by the type
+  checker.
 
 == 0.5.7 (2021-02-05)
 
