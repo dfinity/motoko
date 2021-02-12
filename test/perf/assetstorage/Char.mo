@@ -19,11 +19,6 @@ module {
   // Not exposed pending multi-char implementation.
   private let toLower : (c : Char) -> Char = Prim.charToLower;
 
-  /// Returns `true` when `c` is a decimal digit between `0` and `9`, otherwise `false`.
-  public func isDigit(c : Char) : Bool {
-    Prim.charToWord32(c) - Prim.charToWord32('0') <= (9 : Word32)
-  };
-
   /// Returns the Unicode _White_Space_ property of `c`.
   public let isWhitespace : (c : Char) -> Bool = Prim.charIsWhitespace;
 
