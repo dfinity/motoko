@@ -1,0 +1,23 @@
+= M0152
+
+You are using a possibly wrapping operator (`+`, `-`, `*` or `**`) on a word
+type (e.g. `Word8`). The word type will be deprecated in the future, and
+replaced with `Nat8`, `Int8` etc. The arithmetic operations have different
+semantics on these types, as they trap on overflow, instead of wrapping around.
+to prepare the transition, you are advised to use the wrapping operators (`+%`,
+`-%`, `*%` and `**%`) now. This way, when you eventually switch to `Nat8` or `Int8`,
+these operators work as expected.
+
+See the user's guide, section on `Word` type, for more information on this transition.
+
+Erroneous code example:
+
+```
+  func add(w1 : Word8, w2 : Word8) : Word8 { w1 + w2 };
+```
+
+Typical fix:
+
+```
+  func add(w1 : Word8, w2 : Word8) : Word8 { w1 +% w2 };
+```

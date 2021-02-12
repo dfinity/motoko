@@ -1,0 +1,16 @@
+word-ops-deprecation.mo:2.34-2.39: warning [M0151], the arithmetic operation + on Word8 is deprecated, use +% instead
+word-ops-deprecation.mo:3.34-3.39: warning [M0151], the arithmetic operation - on Word8 is deprecated, use -% instead
+word-ops-deprecation.mo:4.34-4.39: warning [M0151], the arithmetic operation * on Word8 is deprecated, use *% instead
+word-ops-deprecation.mo:5.34-5.40: warning [M0151], the arithmetic operation ** on Word8 is deprecated, use **% instead
+word-ops-deprecation.mo:6.35-6.40: warning [M0151], the arithmetic operation + on Word16 is deprecated, use +% instead
+word-ops-deprecation.mo:7.35-7.40: warning [M0151], the arithmetic operation - on Word16 is deprecated, use -% instead
+word-ops-deprecation.mo:8.35-8.40: warning [M0151], the arithmetic operation * on Word16 is deprecated, use *% instead
+word-ops-deprecation.mo:9.35-9.41: warning [M0151], the arithmetic operation ** on Word16 is deprecated, use **% instead
+word-ops-deprecation.mo:10.35-10.40: warning [M0151], the arithmetic operation + on Word32 is deprecated, use +% instead
+word-ops-deprecation.mo:11.35-11.40: warning [M0151], the arithmetic operation - on Word32 is deprecated, use -% instead
+word-ops-deprecation.mo:12.35-12.40: warning [M0151], the arithmetic operation * on Word32 is deprecated, use *% instead
+word-ops-deprecation.mo:13.35-13.41: warning [M0151], the arithmetic operation ** on Word32 is deprecated, use **% instead
+word-ops-deprecation.mo:14.35-14.40: warning [M0151], the arithmetic operation + on Word64 is deprecated, use +% instead
+word-ops-deprecation.mo:15.35-15.40: warning [M0151], the arithmetic operation - on Word64 is deprecated, use -% instead
+word-ops-deprecation.mo:16.35-16.40: warning [M0151], the arithmetic operation * on Word64 is deprecated, use *% instead
+word-ops-deprecation.mo:17.35-17.41: warning [M0151], the arithmetic operation ** on Word64 is deprecated, use **% instead
