@@ -16,6 +16,24 @@ ignore (func (a : Word64){ignore (a - a)});
 ignore (func (a : Word64){ignore (a * a)});
 ignore (func (a : Word64){ignore (a ** a)});
 
+// and now the same in checking mode
+ignore (func (a : Word8) : Word8 {(a + a)});
+ignore (func (a : Word8) : Word8 {(a - a)});
+ignore (func (a : Word8) : Word8 {(a * a)});
+ignore (func (a : Word8) : Word8 {(a ** a)});
+ignore (func (a : Word16) : Word16 {(a + a)});
+ignore (func (a : Word16) : Word16 {(a - a)});
+ignore (func (a : Word16) : Word16 {(a * a)});
+ignore (func (a : Word16) : Word16 {(a ** a)});
+ignore (func (a : Word32) : Word32 {(a + a)});
+ignore (func (a : Word32) : Word32 {(a - a)});
+ignore (func (a : Word32) : Word32 {(a * a)});
+ignore (func (a : Word32) : Word32 {(a ** a)});
+ignore (func (a : Word64) : Word64 {(a + a)});
+ignore (func (a : Word64) : Word64 {(a - a)});
+ignore (func (a : Word64) : Word64 {(a * a)});
+ignore (func (a : Word64) : Word64 {(a ** a)});
+
 // not deprecated
 ignore (func (a : Word8){ignore (-a)});
 ignore (func (a : Word8){ignore (a / a)});
