@@ -59,7 +59,7 @@ let link_of_xref : Xref.t -> t -> t =
         Printf.sprintf "%s.html#%s" p (string_of_xref false xref)
   in
   let link = string_of_xref true xref in
-  a ~href:(Uri.of_string link) html
+  if link = "" then html else a ~href:(Uri.of_string link) html
 
 let html_of_path : env -> Syntax.path -> t =
  fun env path ->
