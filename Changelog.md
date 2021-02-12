@@ -14,6 +14,10 @@
   The motivation for this change is to eventually deprecate and remove the
   `WordN` types.
 
+  Therefore, the wrapping arithmetic operations on `WordN` are deprecated and
+  their use will print a warning. See the user’s guide, section “Word types”,
+  for a migration guide.
+
 * For values `x` of type `Blob`, an iterator over the elements of the blob
   `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
   as type `Nat8`.
