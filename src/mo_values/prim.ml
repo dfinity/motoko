@@ -66,7 +66,7 @@ let num_conv_trap_prim t1 t2 =
   | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
   | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int
   | (T.Word8|T.Word16|T.Word32|T.Word64), T.Nat
-  | T.Word32, T.Char
+  | (T.Nat32|T.Word32), T.Char
   -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
@@ -138,6 +138,14 @@ let prim =
         | Word16 w -> Word16 (Word16.popcnt w)
         | Word32 w -> Word32 (Word32.popcnt w)
         | Word64 w -> Word64 (Word64.popcnt w)
+        | Nat8  w -> Nat8  (Nat8. popcnt w)
+        | Nat16 w -> Nat16 (Nat16.popcnt w)
+        | Nat32 w -> Nat32 (Nat32.popcnt w)
+        | Nat64 w -> Nat64 (Nat64.popcnt w)
+        | Int8  w -> Int8  (Int_8. popcnt w)
+        | Int16 w -> Int16 (Int_16.popcnt w)
+        | Int32 w -> Int32 (Int_32.popcnt w)
+        | Int64 w -> Int64 (Int_64.popcnt w)
         | _ -> failwith "popcnt")
 
   | "clz8" | "clz16" | "clz32" | "clz64" ->
@@ -147,6 +155,14 @@ let prim =
         | Word16 w -> Word16 (Word16.clz w)
         | Word32 w -> Word32 (Word32.clz w)
         | Word64 w -> Word64 (Word64.clz w)
+        | Nat8  w -> Nat8  (Nat8. clz w)
+        | Nat16 w -> Nat16 (Nat16.clz w)
+        | Nat32 w -> Nat32 (Nat32.clz w)
+        | Nat64 w -> Nat64 (Nat64.clz w)
+        | Int8  w -> Int8  (Int_8. clz w)
+        | Int16 w -> Int16 (Int_16.clz w)
+        | Int32 w -> Int32 (Int_32.clz w)
+        | Int64 w -> Int64 (Int_64.clz w)
         | _ -> failwith "clz")
 
   | "ctz8" | "ctz16" | "ctz32" | "ctz64" ->
@@ -156,6 +172,14 @@ let prim =
         | Word16 w -> Word16 (Word16.ctz w)
         | Word32 w -> Word32 (Word32.ctz w)
         | Word64 w -> Word64 (Word64.ctz w)
+        | Nat8  w -> Nat8  (Nat8. ctz w)
+        | Nat16 w -> Nat16 (Nat16.ctz w)
+        | Nat32 w -> Nat32 (Nat32.ctz w)
+        | Nat64 w -> Nat64 (Nat64.ctz w)
+        | Int8  w -> Int8  (Int_8. ctz w)
+        | Int16 w -> Int16 (Int_16.ctz w)
+        | Int32 w -> Int32 (Int_32.ctz w)
+        | Int64 w -> Int64 (Int_64.ctz w)
         | _ -> failwith "ctz")
 
   | "btst8" | "btst16" | "btst32" | "btst64" ->
@@ -166,6 +190,14 @@ let prim =
            | Word16 y -> Word16 Word16.(and_ y (shl (of_int 1) (as_word16 a)))
            | Word32 y -> Word32 Word32.(and_ y (shl (of_int 1) (as_word32 a)))
            | Word64 y -> Word64 Word64.(and_ y (shl (of_int 1) (as_word64 a)))
+           | Nat8  y -> Nat8  Nat8. (and_ y (shl (of_int 1) (as_nat8  a)))
+           | Nat16 y -> Nat16 Nat16.(and_ y (shl (of_int 1) (as_nat16 a)))
+           | Nat32 y -> Nat32 Nat32.(and_ y (shl (of_int 1) (as_nat32 a)))
+           | Nat64 y -> Nat64 Nat64.(and_ y (shl (of_int 1) (as_nat64 a)))
+           | Int8  y -> Int8  Int_8. (and_ y (shl (of_int 1) (as_int8  a)))
+           | Int16 y -> Int16 Int_16.(and_ y (shl (of_int 1) (as_int16 a)))
+           | Int32 y -> Int32 Int_32.(and_ y (shl (of_int 1) (as_int32 a)))
+           | Int64 y -> Int64 Int_64.(and_ y (shl (of_int 1) (as_int64 a)))
            | _ -> failwith "btst")
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with

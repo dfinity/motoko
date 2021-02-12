@@ -27,6 +27,14 @@ s/<semicolon>/\';\'/g
 s/<annot_opt>/(':' <typ>)?/g
 s/<pat_opt>/<pat_plain>?/g
 s/epsilon/<empty>/g
+s/WRAPADDASSIGN/\'+%=\'/g
+s/WRAPSUBASSIGN/\'-%=\'/g
+s/WRAPMULASSIGN/\'*%=\'/g
+s/WRAPPOWASSIGN/\'**%=\'/g
+s/WRAPADDOP/\'+%\'/g
+s/WRAPSUBOP/\'-%\'/g
+s/WRAPMULOP/\'*%\'/g
+s/WRAPPOWOP/\'**%\'/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
