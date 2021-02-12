@@ -697,7 +697,7 @@ All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
-The operations `+%`, `-%`, `*%` and `**%` provide access to wrap-around arithmetics as in hardware.
+The operations `+%`, `-%`, `*%` and `**%` provide access to wrap-around, modular arithmetic.
 
 As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
@@ -723,7 +723,7 @@ All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
-The operations `+%`, `-%`, `*%` and `**%` provide access to the raw wrap-on-overflow operations.
+The operations `+%`, `-%`, `*%` and `**%` provide access to the modular, wrap-on-overflow operations.
 
 As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated

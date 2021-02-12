@@ -6,7 +6,7 @@
   If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
   can be used. The corresponding assignment operators (`+%=` etc.) are also available.
 
-  Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
+  Likewise, the bit fiddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
   `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
   operator (`>>`) is an unsigned right shift on `NatN` and a signed right shift
   on `IntN`; the `+>>` operator is _not_ available on these types.
