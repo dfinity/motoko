@@ -3,12 +3,12 @@
 * Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
 
   The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
-  If wrapping semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
-  can be used.
+  If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used. The corresponding assignment operators (`+%=` etc.) are also available.
 
   Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
   `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
-  operator (`>>`) is a unsigned right shift on `NatN` and a signed right shift
+  operator (`>>`) is an unsigned right shift on `NatN` and a signed right shift
   on `IntN`; the `+>>` operator is _not_ available on these types.
 
   The motivation for this change is to eventually deprecate and remove the
