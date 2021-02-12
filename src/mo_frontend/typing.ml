@@ -594,6 +594,20 @@ and check_inst_bounds env tbs inst at =
 
 (* Subgrammar of explicitly typed expressions *)
 
+(* Roughly, this defines the sublanguage of expressions whose inferred type
+   is determined by explicit type annotations or previously defined identifiers,
+   or by expressions whose type is unambiguous and can be weakened only to Any
+   or via lossy width subtyping (on records or variants).
+
+   Specifically, this excludes expression forms that are either overloaded
+   or have a principal type like None or Null, that are subtypes of other
+   non-trivial types. These must be excluded so that examples like the
+   following do not run into checking mode with a type that is too small:
+
+     null == ?0
+     [] == [0]
+*)
+
 let is_explicit_lit l =
   match l with
   | BoolLit _ -> true
