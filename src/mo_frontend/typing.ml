@@ -597,7 +597,7 @@ and check_inst_bounds env tbs inst at =
 (* Roughly, this defines the sublanguage of expressions whose inferred type
    is determined by explicit type annotations or previously defined identifiers,
    or by expressions whose type is unambiguous and can be weakened only to Any
-   or via lossy width subtyping (on records or variants).
+   or via lossy width subtyping on records.
 
    Specifically, this excludes expression forms that are either overloaded
    or have a principal type like None or Null, that are subtypes of other
@@ -626,6 +626,7 @@ let rec is_explicit_pat p =
 let rec is_explicit_exp e =
   match e.it with
   | PrimE _ | ActorUrlE _
+  | TagE _
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
@@ -635,21 +636,21 @@ let rec is_explicit_exp e =
   | AnnotE _ | ImportE _ ->
     true
   | LitE l -> is_explicit_lit !l
-  | UnE (_, _, e1) | TagE (_, e1) | OptE e1 | DoOptE e1
+  | UnE (_, _, e1) | OptE e1 | DoOptE e1
   | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
   | LabelE (_, _, e1) | AsyncE (_, e1) | AwaitE e1 ->
     is_explicit_exp e1
-  | BinE (_, e1, _, e2) -> is_explicit_exp e1 && is_explicit_exp e2
+  | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
+    is_explicit_exp e1 || is_explicit_exp e2
   | TupE es -> List.for_all is_explicit_exp es
   | ObjE efs ->
     List.for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs
   | ObjBlockE (_, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
-  | ArrayE (_, es) -> es <> [] && List.for_all is_explicit_exp es
-  | IfE (_, e1, e2) -> is_explicit_exp e1 && is_explicit_exp e2
+  | ArrayE (_, es) -> List.exists is_explicit_exp es
   | SwitchE (e1, cs) | TryE (e1, cs) ->
     is_explicit_exp e1 &&
-    List.for_all (fun (c : case) -> is_explicit_exp c.it.exp) cs
+    List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
   | BlockE ds -> List.for_all is_explicit_dec ds
   | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
   | LoopE (_, e_opt) -> e_opt <> None
