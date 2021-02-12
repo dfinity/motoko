@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+== 0.5.8 (2021-02-12)
+
 * Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
 
   The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
@@ -29,6 +31,9 @@
 
 * Bugfix: Certain ill-typed object literals are now prevented by the type
   checker.
+
+* Bugfix: Avoid compiler aborting when object literals have more fields than
+  their type expects.
 
 == 0.5.7 (2021-02-05)
 
