@@ -121,7 +121,7 @@ Literals: `13`, `0xf4`, `1_000_000`
 `Nat8`, `Nat16`, `Nat32`, `Nat64`,
 `Int8`, `Int16`, `Int32`, `Int64`
 
-Trap on over- and underflow. Wrap-on-trap and bit-fiddling operations available.
+Trap on over- and underflow. Wrap-on-trap and bit-manipulating operations available.
 
 Needs type annotations (somewhere)
 
