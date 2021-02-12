@@ -12,12 +12,8 @@ See the user's guide, section on `Word` type, for more information on this trans
 
 Erroneous code example:
 
-```
   func add(w1 : Word8, w2 : Word8) : Word8 { w1 + w2 };
-```
 
 Typical fix:
 
-```
   func add(w1 : Word8, w2 : Word8) : Word8 { w1 +% w2 };
-```
