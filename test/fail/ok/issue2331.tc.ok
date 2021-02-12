@@ -1,0 +1,2 @@
+issue2331.mo:1.9-1.18: type error [M0151], object literal is missing field bar from expected type
+  {bar : Nat}

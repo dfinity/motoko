@@ -263,7 +263,7 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
-    labs : LabSet.t ref; (* used labels (fields and variants),
+    labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
   }
 
