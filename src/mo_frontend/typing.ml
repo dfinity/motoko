@@ -719,6 +719,7 @@ let blob_obj () =
   let open T in
   Object,
   [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)])};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
@@ -1235,6 +1236,12 @@ and check_exp' env0 t exp : T.typ =
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
+    List.iter (fun ft ->
+      if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
+      then local_error env exp.at "M0151"
+        "object literal is missing field %s from expected type\n  %s"
+        ft.T.lab (T.string_of_typ_expand t);
+    ) fts;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;

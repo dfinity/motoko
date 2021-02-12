@@ -263,7 +263,7 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
-    labs : LabSet.t ref; (* used labels (fields and variants),
+    labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
   }
 
@@ -6955,7 +6955,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         BigNum.from_signed_word64 env
 
-      | Word32, Char ->
+      | (Nat32|Word32), Char ->
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         TaggedSmallWord.check_and_tag_codepoint env
@@ -7002,7 +7002,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "blob_size", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env
-    | OtherPrim "blob_iter", [e] ->
+    | OtherPrim ("blob_bytes_iter"|"blob_vals_iter"), [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
     | OtherPrim "blob_iter_done", [e] ->
       SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env

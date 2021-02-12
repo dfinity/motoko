@@ -181,6 +181,10 @@ var runWasmModule = () => {
 
 var memory = null;
 
+var motokoSections = null;
+
+var motokoHashMap = null;
+
 function importWasmModule(moduleName, wasiPolyfill) {
 
   const moduleImports = {
@@ -189,7 +193,6 @@ function importWasmModule(moduleName, wasiPolyfill) {
   };
 
   (async () => {
-    var module = null;
 
     if (WebAssembly.compileStreaming) {
       module = await WebAssembly.compileStreaming(fetch(moduleName));
@@ -198,6 +201,9 @@ function importWasmModule(moduleName, wasiPolyfill) {
       const buffer = await response.arrayBuffer();
       module = await WebAssembly.compile(buffer);
     }
+
+    motokoSections = WebAssembly.Module.customSections(module, "motoko");
+    motokoHashMap = (motokoSections.length > 0) ? decodeMotokoSection(motokoSections) : null;
 
     runWasmModule = (async () => {
       const instance = await WebAssembly.instantiate(module, moduleImports);
@@ -219,7 +225,7 @@ const hexdump = (function () {
             var ret = "";
             while (--l > -1)
                 ret += fillWith;
-            return ret + value;
+           return ret + value;
         },
         hexdump = function (arrayBuffer, offset, length) {
 
@@ -291,3 +297,207 @@ function updateHexDump() {
     document.getElementById("memory").value = "No memory yet";
   }
 }
+
+
+// Decoding Motoko heap objects
+
+function getUint32(view, p) {
+  return view.getUint32(p, true)
+}
+
+function decodeLabel(hash) {
+  return motokoHashMap?.[hash] ?? hash;
+}
+
+function decodeOBJ(view, p) {
+  let size = getUint32(view, p + 4);
+  let m = new Object();
+  let h = getUint32(view, p + 8) + 1; //unskew
+  let q = p + 12;
+  for(let i = 0; i < size; i++) {
+    let hash = getUint32(view, h);
+    let lab = decodeLabel(hash);
+    m[lab] = decode(view, getUint32(view, q));
+    q += 4;
+    h += 4;
+  }
+  return m;
+}
+
+function decodeVARIANT(view, p) {
+  let m = new Object();
+  let hash = getUint32(view, p+4);
+  let lab = "#" + decodeLabel(hash);
+  m[lab] = decode(view, getUint32(view, p+8));
+  return m;
+}
+
+// stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
+const BigInt = window.BigInt, bigThirtyTwo = BigInt(32), bigZero = BigInt(0);
+function getUint64BigInt(dataview, byteOffset, littleEndian) {
+  // split 64-bit number into two 32-bit (4-byte) parts
+  const left = BigInt(dataview.getUint32(byteOffset|0, !!littleEndian)>>>0);
+  const right = BigInt(dataview.getUint32((byteOffset|0) + 4|0, !!littleEndian)>>>0);
+
+  // combine the two 32-bit values and return
+  return littleEndian ? (right<<bigThirtyTwo)|left : (left<<bigThirtyTwo)|right;
+}
+
+function decodeBITS64(view, p) {
+  return getUint64BigInt(view, p + 4, littleEndian);
+}
+
+function decodeBITS32(view, p) {
+  return getUint32(view, p + 4);
+}
+
+function decodeARRAY(view, p) {
+  let size = getUint32(view, p + 4);
+  let a = new Array(size);
+  let q = p + 8;
+  for(let i = 0; i < size; i++) {
+    a[i] = decode(view, getUint32(view, q));
+    q += 4;
+  }
+  return a;
+}
+
+function decodeSOME(view, p) {
+  return { "?": decode(view, getUint32(view, p + 4)) };
+}
+
+function decodeNULL(view, p) {
+  return null; // Symbol(`null`)?
+}
+
+function decodeMUTBOX(view, p) {
+  return { mut: decode(view, getUint32(view, p + 4)) };
+}
+
+function decodeOBJ_IND(view, p) {
+   return { ind: decode(view, getUint32(view, p + 4)) };
+}
+
+function decodeCONCAT(view, p) {
+  let q = p + 8; // skip n_bytes
+  return [
+    decode(view, getUint32(view, q)),
+    decode(view, getUint32(view, q + 4)) ];
+}
+
+function decodeBLOB(view, p) {
+  let size = getUint32(view, p + 4);
+  let a = new Uint8Array(view.buffer, p + 8, size);
+  try {
+    let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
+    return textDecoder.decode(a);
+  }
+  catch(err) {
+    return a;
+  }
+}
+
+let bigInt28 = BigInt(28);
+let mask = 2**28-1;
+function decodeBIGINT(view, p) {
+  let size = getUint32(view, p + 4);
+  let sign = getUint32(view, p + 12);
+  let a = BigInt(0);
+  let q = p + 20;
+  for(let r = q + (4 * (size-1)); r >= q; r -= 4) {
+    a = a << bigInt28;
+    a += BigInt(getUint32(view, r) & mask );
+  };
+  if (sign > 0) {
+    return - a;
+  }
+  return a;
+}
+
+// https://en.wikipedia.org/wiki/LEB128
+function getULEB128(view, p) {
+    let result = 0;
+    let shift = 0;
+    while (true) {
+     let byte = view.getUint8(p);
+     p += 1;
+     result |= (byte & 127) << shift;
+     if ((byte & 128) === 0) break;
+     shift += 7;
+    };
+    return [result, p];
+};
+
+function hashLabel(label) {
+  // assumes label is ascii
+  let s = 0;
+   for(let i = 0; i < label.length; i++) {
+    let c = label.charCodeAt(i);
+    console.assert("non-ascii label", c < 128);
+    s = (s * 223) + label.charCodeAt(i);
+  };
+  return (2**31-1) & s;
+};
+
+function decodeMotokoSection(customSections) {
+  let m = new Object();
+  if (customSections.length === 0) return m;
+  let view = new DataView(customSections[0]);
+  if (view.byteLength === 0) return m;
+  let id = view.getUint8(0);
+  if (!(id === 0)) { return m };
+  let [_sec_size, p] = getULEB128(view, 1); // always 5 bytes as back patched
+  let [cnt, p1] = getULEB128(view, 6);
+  while (cnt > 0) {
+    let [size, p2] = getULEB128(view, p1);
+    let a = new Uint8Array(view.buffer, p2, size);
+    p1 = p2 + size;
+    let textDecoder = new TextDecoder('utf-8', { fatal: true }); // hoist and reuse?
+    let id = textDecoder.decode(a);
+    let hash = hashLabel(id);
+    m[hash] = id;
+    cnt -= 1;
+  };
+  return m;
+}
+
+function decode(view, v) {
+  if ((v & 1) === 0) return v >> 1;
+  let p = v + 1;
+  let tag = getUint32(view, p);
+  switch (tag) {
+    case 1 : return decodeOBJ(view, p);
+    case 2 : return decodeOBJ_IND(view, p);
+    case 3 : return decodeARRAY(view, p);
+    //    case 4 : unused?
+    case 5 : return decodeBITS64(view, p);
+    case 6 : return decodeMUTBOX(view, p);
+    case 7 : return "<CLOSURE>";
+    case 8 : return decodeSOME(view, p);
+    case 9 : return decodeVARIANT(view, p);
+    case 10 : return decodeBLOB(view, p);
+    case 11 : return "<FWD_PTR>";
+    case 12 : return decodeBITS32(view, p);
+    case 13 : return decodeBIGINT(view, p);
+    case 14 : return decodeCONCAT(view, p);
+    case 15 : return decodeNULL(view, p);
+    default : return { address: p, tag: tag};
+  };
+}
+
+function show(v) {
+    const view = new DataView(memory.buffer);
+    return decode(view, v);
+}
+
+// https://www.mattzeunert.com/2016/02/19/custom-chrome-devtools-object-formatters.html
+/*
+window.devtoolsFormatters = [{
+    header: function(obj){
+        return ["div", {}, "value"]
+    },
+    hasBody: function(){
+        return false;
+    }
+}]
+*/

@@ -96,12 +96,23 @@ func @blob_size(xs : Blob) : () -> Nat =
 func @blob_bytes(xs : Blob) : () -> @Iter<Word8> =
   func () : @Iter<Word8> = object {
     type BlobIter = Any; // not exposed
-    let i = (prim "blob_iter" : Blob -> BlobIter) xs;
+    let i = (prim "blob_bytes_iter" : Blob -> BlobIter) xs;
     public func next() : ?Word8 {
       if ((prim "blob_iter_done" : BlobIter -> Bool) i)
         null
       else
         ?((prim "blob_iter_next" : BlobIter -> Word8) i)
+    };
+  };
+func @blob_vals(xs : Blob) : () -> @Iter<Nat8> =
+  func () : @Iter<Nat8> = object {
+    type BlobIter = Any; // not exposed
+    let i = (prim "blob_vals_iter" : Blob -> BlobIter) xs;
+    public func next() : ?Nat8 {
+      if ((prim "blob_iter_done" : BlobIter -> Bool) i)
+        null
+      else
+        ?((prim "blob_iter_next" : BlobIter -> Nat8) i)
     };
   };
 func @text_size(xs : Text) : () -> Nat =
@@ -557,6 +568,8 @@ func nat8ToInt8(n : Nat8) : Int8 = (prim "num_wrap_Nat8_Int8" : Nat8 -> Int8) n;
 
 func charToWord32(c : Char) : Word32 = (prim "num_wrap_Char_Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> Char) w;
+func charToNat32(c : Char) : Nat32 = (prim "num_wrap_Char_Nat32" : Char -> Nat32) c;
+func nat32ToChar(w : Nat32) : Char = (prim "num_conv_Nat32_Char" : Nat32 -> Char) w;
 
 func charToText(c : Char) : Text = (prim "conv_Char_Text" : Char -> Text) c;
 

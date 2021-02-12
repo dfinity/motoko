@@ -120,9 +120,8 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 `Nat8`, `Nat16`, `Nat32`, `Nat64`,
 `Int8`, `Int16`, `Int32`, `Int64`
-`Word8`, `Word16`, `Word32`, `Word64`
 
-Trap on over- and underflow. Wrap-on-trap and bit-fiddling operations available.
+Trap on over- and underflow. Wrap-on-trap and bit-manipulating operations available.
 
 Needs type annotations (somewhere)
 
@@ -702,4 +701,3 @@ We focus on abstractions for implementing the database for the produce exchange:
 - [Hash trie](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
 
 - [Association list](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
-

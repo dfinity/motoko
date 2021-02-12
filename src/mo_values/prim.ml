@@ -66,7 +66,7 @@ let num_conv_trap_prim t1 t2 =
   | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
   | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int
   | (T.Word8|T.Word16|T.Word32|T.Word64), T.Nat
-  | T.Word32, T.Char
+  | (T.Nat32|T.Word32), T.Char
   -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
@@ -220,9 +220,13 @@ let prim =
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
-  | "blob_iter" -> fun _ v k ->
+  | "blob_bytes_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_blob v) in
     let valuation b = Word8 (Word8.of_int (Char.code b)) in
+    k (Iter (ref (Seq.map valuation s)))
+  | "blob_vals_iter" -> fun _ v k ->
+    let s = String.to_seq (Value.as_blob v) in
+    let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
     k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" | "text_iter_done" -> fun _ v k ->
     let i = Value.as_iter v in
