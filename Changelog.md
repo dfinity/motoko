@@ -4,7 +4,7 @@
 
   The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
   If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
-  can be used.
+  can be used. The corresponding assignment operators (`+%=` etc.) are also available.
 
   Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
   `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
