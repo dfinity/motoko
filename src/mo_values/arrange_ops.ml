@@ -22,6 +22,10 @@ let binop bo = match bo with
   | RotROp -> Atom "RotROp"
   | CatOp  -> Atom "CatOp"
   | PowOp  -> Atom "PowOp"
+  | WAddOp  -> Atom "WAddOp"
+  | WSubOp  -> Atom "WSubOp"
+  | WMulOp  -> Atom "WMulOp"
+  | WPowOp  -> Atom "WPowOp"
 
 let relop ro = match ro with
   | EqOp  -> Atom "EqOp"

@@ -71,7 +71,7 @@ module {
       if (Char.isDigit(char)) {
         Option.map<Nat, Nat>(func (a) {
           let b = Prim.word32ToNat(
-            Prim.charToWord32(char) - Prim.charToWord32('0')
+            Prim.charToWord32(char) -% Prim.charToWord32('0')
           );
           10 * a + b
         }, accum)
