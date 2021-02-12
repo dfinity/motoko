@@ -611,12 +611,13 @@ let rec is_explicit_pat p =
 
 let rec is_explicit_exp e =
   match e.it with
-  | PrimE _ | ActorUrlE _ -> false
+  | PrimE _ | ActorUrlE _
+  | BreakE _ | RetE _ | ThrowE _ ->
+    false
   | VarE _
   | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
-  | WhileE _ | LoopE _ | ForE _
-  | BreakE _ | RetE _ | ThrowE _
+  | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
     true
   | LitE l -> is_explicit_lit !l
@@ -637,6 +638,7 @@ let rec is_explicit_exp e =
     List.for_all (fun (c : case) -> is_explicit_exp c.it.exp) cs
   | BlockE ds -> List.for_all is_explicit_dec ds
   | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
+  | LoopE (_, e_opt) -> e_opt <> None
 
 and is_explicit_dec d =
   match d.it with

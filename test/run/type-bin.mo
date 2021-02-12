@@ -11,5 +11,5 @@ let j = 0 != (do { let x : Int8 = 0; x });
 let k = {x = a; b = true}.x ** 1;
 let l = (switch (#x(a)) { case (#x(b)) b }) + 1;
 let m = 1 - (object {public let y = [a]; public let x = y[0]}).x;
-
+let o = (a, [a], {x=a}, #x(a), ?a, ?a) != (0, [0, 0], {x=0}, #x(0), ?0, null);
 let z = (5 - 2) * (if true { [(a, a)][0].1 } else { let x : Int8 = 0; x });
