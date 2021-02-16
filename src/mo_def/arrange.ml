@@ -147,8 +147,9 @@ and stab s_opt = match s_opt with
     | Flexible -> Atom "Flexible"
     | Stable -> Atom "Stable")
 
-and typ_field (tf : typ_field)
-  = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
+and typ_field (tf : typ_field) = match tf.it with
+  | ValField (id, t, m) -> id.it $$ [typ t; mut m]
+  | TypField (id, t) -> id.it $$ ["Typ" $$ [ typ t ]]
 
 and typ_item ((id, ty) : typ_item) =
   match id with

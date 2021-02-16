@@ -62,6 +62,7 @@
     '<' <list(<typ>, ',')> '>'
 
 <typ_field> ::= 
+    'type' <id> '=' <typ>
     'var'? <id> ':' <typ>
     <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> ':' <typ>
 

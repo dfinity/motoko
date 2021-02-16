@@ -486,7 +486,13 @@ and check_typ' env typ : T.typ =
     T.Async (t0, t)
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
-      (List.map (fun (field : typ_field) -> field.it.id) fields);
+      (List.filter_map (fun (field : typ_field) ->
+        match field.it with ValField (x, _, _) -> Some x | _ -> None
+      ) fields);
+    check_ids env "object type" "type field"
+      (List.filter_map (fun (field : typ_field) ->
+        match field.it with TypField (x, _) -> Some x | _ -> None
+      ) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
   | AndT (typ1, typ2) ->
@@ -522,16 +528,19 @@ and check_typ' env typ : T.typ =
   | NamedT (_, typ) ->
     check_typ env typ
 
-and check_typ_field env s typ_field : T.field =
-  let {id; mut; typ} = typ_field.it in
-  let t = infer_mut mut (check_typ env typ) in
-  if not env.pre && s = T.Actor then begin
-    if not (T.is_shared_func t) then
-      error env typ.at "M0042" "actor field %s must have shared function type, but has type%a"
-        id.it
-        display_typ_expand t
-  end;
-  T.{lab = id.it; typ = t; depr = None}
+and check_typ_field env s typ_field : T.field = match typ_field.it with
+  | ValField (id, typ, mut) ->
+    let t = infer_mut mut (check_typ env typ) in
+    if not env.pre && s = T.Actor then begin
+      if not (T.is_shared_func t) then
+        error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
+          id.it (T.string_of_typ_expand t)
+    end;
+    T.{lab = id.it; typ = t}
+  | TypField (id,  typ) ->
+    let t = check_typ env typ in
+    let c = Con.fresh id.it (T.Def ([], t)) in
+    T.{lab = id.it; typ = Typ c; depr = None}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in

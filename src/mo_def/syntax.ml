@@ -55,7 +55,9 @@ and typ' =
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
-and typ_field' = {id : id; typ : typ; mut : mut}
+and typ_field' =
+  | ValField of id * typ * mut
+  | TypField of id * typ
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}

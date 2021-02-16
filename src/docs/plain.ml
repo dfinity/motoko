@@ -169,9 +169,14 @@ and plain_of_typ_binders :
 and plain_of_typ_field :
     Buffer.t -> render_functions -> Syntax.typ_field -> unit =
  fun buf rf field ->
-  plain_of_mut buf field.it.Syntax.mut;
-  bprintf buf "%s : " field.it.Syntax.id.it;
-  plain_of_typ buf rf field.it.Syntax.typ
+  match field.Source.it with
+  | Syntax.ValField (id, typ, mut) ->
+      plain_of_mut buf mut;
+      bprintf buf "%s : " id.it;
+      plain_of_typ buf rf typ
+  | Syntax.TypField (id, typ) ->
+      bprintf buf "type %s = " id.it;
+      plain_of_typ buf rf typ
 
 and plain_of_typ_item : Buffer.t -> render_functions -> Syntax.typ_item -> unit
     =

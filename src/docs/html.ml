@@ -163,9 +163,11 @@ and html_of_typ_binders : env -> Syntax.typ_bind list -> t =
 and html_of_typ_field : env -> Syntax.typ_field -> t =
  fun env field ->
   (* TODO mut might be wrong here *)
-  html_of_mut field.Source.it.Syntax.mut
-  ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
-  ++ html_of_type env field.Source.it.Syntax.typ
+  match field.Source.it with
+  | Syntax.ValField (id, typ, mut) ->
+      html_of_mut mut ++ string (id.Source.it ^ " : ") ++ html_of_type env typ
+  | Syntax.TypField (id, typ) ->
+      string ("type " ^ id.Source.it ^ " = ") ++ html_of_type env typ
 
 and html_of_typ_item : env -> Syntax.typ_item -> t =
  fun env (oid, t) ->
