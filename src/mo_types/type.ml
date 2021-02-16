@@ -1060,8 +1060,8 @@ and cons_if b x xs = if b then x::xs else xs
 
 and combine_fields rel lubs glbs fs1 fs2 =
   match fs1, fs2 with
-  | _, [] -> if rel == lubs then [] else fs2
-  | [], _ -> if rel == lubs then [] else fs1
+  | _, [] -> if rel == lubs then [] else fs1
+  | [], _ -> if rel == lubs then [] else fs2
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
     | -1 -> cons_if (rel == glbs) f1 (combine_fields rel lubs glbs fs1' fs2)
@@ -1074,8 +1074,8 @@ and combine_fields rel lubs glbs fs1 fs2 =
 
 and combine_tags rel lubs glbs fs1 fs2 =
   match fs1, fs2 with
-  | fs1, [] -> if rel == lubs then fs1 else []
-  | [], fs2 -> if rel == lubs then fs2 else []
+  | _, [] -> if rel == lubs then fs1 else []
+  | [], _ -> if rel == lubs then fs2 else []
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
     | -1 -> cons_if (rel == lubs) f1 (combine_tags rel lubs glbs fs1' fs2)

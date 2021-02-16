@@ -168,13 +168,11 @@ let _ : [() -> {a : Int}] = do { let x =
     func() : {a : Int; var c : Nat} { bot() },
   ]; x
 };
-/* TODO(crusso): IR subtype violation
 let _ : [{a : Nat; b : Nat; var c : Nat} -> ()] = do { let x =
   [ func(_ : {a : Nat; b : Nat}) {},
     func(_ : {a : Int; var c : Nat}) {},
   ]; x
 };
-*/
 let _ : [() -> Any] = do { let x =
   [ func() : {a : Nat; b : Nat} { bot() },
     func() : {a : Nat; var b : Nat} { bot() },
@@ -354,13 +352,11 @@ let _ : [() -> lubDE] = do { let x =
     func() : E { bot() },
   ]; x
 };
-/* TODO(crusso): IR subtype violation
 let _ : [glbDE -> ()] = do { let x =
   [ func(_ : D) {},
     func(_ : E) {},
   ]; x
 };
-*/
 
 // Type members
 class T() {
@@ -395,10 +391,8 @@ let _ : [() -> {}] = do { let x =
     func() : {T : Nat} { bot() },
   ]; x
 };
-/* TODO(crusso): IR subtype violation
 let _ : [None -> ()] = do { let x =
   [ func(_ : T) {},
     func(_ : {T : Nat}) {},
   ]; x
 };
-*/
