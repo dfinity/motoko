@@ -990,8 +990,6 @@ let rec combine rel lubs glbs t1 t2 =
     t
   | _ ->
     match t1, t2 with
-    | _, Pre
-    | Pre, _ -> assert false
     | _, Any -> if rel == lubs then Any else t1
     | Any, _ -> if rel == lubs then Any else t2
     | _, Non -> if rel == lubs then t1 else Non
@@ -1039,12 +1037,23 @@ let rec combine rel lubs glbs t1 t2 =
         let c = Con.fresh name (Abs ([], Pre)) in
         let t = Con (c, []) in
         rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
-        let t' = combine rel lubs glbs (expand t1) (expand t2) in
+        let t' =
+          (* When taking the glb of an abstract con and an incompatible type,
+           * normalisation will no further simplify t1 nor t2, so that t itself
+           * is returned via the extended relation. In that case, bottom is
+           * the correct result.
+           *)
+          match combine rel lubs glbs (expand t1) (expand t2) with
+          | t' when t' == t -> assert (rel == glbs); Non
+          | t' -> t'
+        in
         set_kind c (Def ([], t'));
         t'
     | Typ _, Typ _ -> raise Mismatch
     | Typ _, _
-    | _, Typ _ -> assert false
+    | _, Typ _
+    | _, Pre
+    | Pre, _ -> assert false
     | _ -> if rel == lubs then Any else Non
 
 and cons_if b x xs = if b then x::xs else xs
