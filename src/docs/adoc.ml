@@ -27,7 +27,8 @@ let adoc_link : Xref.t -> string -> string =
     | Xref.XFile (p, Some xref) ->
         Printf.sprintf "%s.adoc#%s" p (string_of_xref false xref)
   in
-  sprintf "xref:%s[%s]" (string_of_xref true xref) adoc_text
+  let link = string_of_xref true xref in
+  if link = "" then adoc_text else sprintf "xref:%s[%s]" link adoc_text
 
 let adoc_render_path : env -> Syntax.path -> string =
  fun env path ->
