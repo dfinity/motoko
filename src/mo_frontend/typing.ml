@@ -177,6 +177,21 @@ let coverage_cases category env cases t at =
 let coverage_pat warnOrError env pat t =
   coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
 
+(* Deprecation *)
+
+let check_deprecation_binop env at t op =
+  let open Type in
+  let open Operator in
+  let word_op_warn s =
+    warn env at "M0152" "the arithmetic operation %s on %s is deprecated, use %s%% instead"
+      s (T.string_of_typ_expand t) s
+  in
+  match t, op with
+  | Prim (Word8|Word16|Word32|Word64), AddOp -> word_op_warn "+"
+  | Prim (Word8|Word16|Word32|Word64), SubOp -> word_op_warn "-"
+  | Prim (Word8|Word16|Word32|Word64), MulOp -> word_op_warn "*"
+  | Prim (Word8|Word16|Word32|Word64), PowOp -> word_op_warn "**"
+  | _, _ -> ()
 
 (* Types *)
 
@@ -821,6 +836,7 @@ and infer_exp'' env exp : T.typ =
         error_bin_op env exp.at t1 t2;
       ot := t
     end;
+    check_deprecation_binop env exp.at t op;
     t
   | RelE (ot, exp1, op, exp2) ->
     let t1 = T.normalize (infer_exp env exp1) in
@@ -1237,6 +1253,7 @@ and check_exp' env0 t exp : T.typ =
     ot := t;
     check_exp env t exp1;
     check_exp env t exp2;
+    check_deprecation_binop env exp.at t op;
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;

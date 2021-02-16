@@ -20,7 +20,7 @@ a little reading advice:
  * Nullary types are described a single letter, or few letters:
 
      Nat: N
-     Word8: w8
+     Int8: i8
      (): u
 
  * Unary type constructors just prefix their type argument

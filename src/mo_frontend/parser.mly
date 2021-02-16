@@ -223,12 +223,14 @@ let share_dec_field (df : dec_field) =
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
+%token WRAPADDOP WRAPSUBOP WRAPMULOP WRAPPOWOP
 %token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token HASH
 %token EQ LT GT
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
+%token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
 %token FLEXIBLE STABLE
 %token<string> DOT_NUM
@@ -248,13 +250,13 @@ let share_dec_field (df : dec_field) =
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
-%left ADDOP SUBOP HASH
-%left MULOP DIVOP MODOP
+%left ADDOP SUBOP WRAPADDOP WRAPSUBOP HASH
+%left MULOP WRAPMULOP DIVOP MODOP
 %left OROP
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
-%left POWOP
+%left POWOP WRAPPOWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
 %type<Mo_def.Syntax.typ_item> typ_item
@@ -492,6 +494,10 @@ lit :
   | DIVOP { DivOp }
   | MODOP { ModOp }
   | POWOP { PowOp }
+  | WRAPADDOP { WAddOp }
+  | WRAPSUBOP { WSubOp }
+  | WRAPMULOP { WMulOp }
+  | WRAPPOWOP { WPowOp }
   | ANDOP { AndOp }
   | OROP  { OrOp }
   | XOROP { XorOp }
@@ -522,6 +528,10 @@ lit :
   | DIVASSIGN { DivOp }
   | MODASSIGN { ModOp }
   | POWASSIGN { PowOp }
+  | WRAPADDASSIGN { WAddOp }
+  | WRAPSUBASSIGN { WSubOp }
+  | WRAPMULASSIGN { WMulOp }
+  | WRAPPOWASSIGN { WPowOp }
   | ANDASSIGN { AndOp }
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }
