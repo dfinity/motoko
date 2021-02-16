@@ -1500,29 +1500,45 @@ module Word64 = struct
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
 
-  let rec compile_unsigned_pow env =
-    (* TODO: Rewrite as a loop *)
-    Func.share_code2 env "wrap_pow_Nat64" (("n", I64Type), ("exp", I64Type)) [I64Type]
+  let compile_unsigned_pow env =
+    let name = prim_fun_name Type.Nat64 "wpow_nat" in
+    Func.share_code2 env name (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
-        let open Wasm.Values in
-        let one = compile_const_64 1L in
-        let (set_res, get_res) = new_local64 env "res" in
-        let square_recurse_with_shifted =
-          get_n ^^ get_exp ^^ one ^^
-          G.i (Binary (I64 I64Op.ShrU)) ^^
-          compile_unsigned_pow env ^^ set_res ^^ get_res ^^ get_res ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) in
-        get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-        G.if_ [I64Type]
-          one
-          begin
-            get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-            G.if_ [I64Type]
-              square_recurse_with_shifted
-              (get_n ^^
-               square_recurse_with_shifted ^^
-              G.i (Binary (Wasm.Values.I64 I64Op.Mul)))
-          end
+        let set_n = G.i (LocalSet (nr 0l)) in
+        let set_exp = G.i (LocalSet (nr 1l)) in
+        let (set_acc, get_acc) = new_local64 env "acc" in
+
+        (* start with result = 1 *)
+        compile_const_64 1L ^^ set_acc ^^
+
+        (* handle exp == 0 *)
+        get_exp ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+        G.if_ [I64Type] get_acc (* done *)
+        begin
+          G.loop_ [] begin
+            (* Are we done? *)
+            get_exp ^^ compile_const_64 1L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+            G.if_ [] G.nop (* done *)
+            begin
+              (* Check low bit of exp to see if we need to multiply *)
+              get_exp ^^ compile_shl64_const 63L ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+              G.if_ [] G.nop
+              begin
+                (* Multiply! *)
+                get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ set_acc
+              end ^^
+              (* Square n, and shift exponent *)
+              get_n ^^ get_n ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ set_n ^^
+              get_exp ^^ compile_shrU64_const 1L ^^ set_exp ^^
+              (* And loop *)
+              G.i (Br (nr 1l))
+            end
+          end ^^
+          (* Multiply a last time *)
+          get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+        end
       )
+
 
   let compile_signed_wpow env =
     Func.share_code2 env "wrap_pow_Int64" (("n", I64Type), ("exp", I64Type)) [I64Type]
@@ -1697,28 +1713,48 @@ module TaggedSmallWord = struct
     lsb_adjust ty ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Mul))
 
-  let rec compile_nat_power env ty =
+  let compile_nat_power env ty =
+    (* Square- and multiply exponentiation *)
     let name = prim_fun_name ty "wpow_nat" in
-    (* TODO: Rewrite as a loop *)
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
-        let open Wasm.Values in
-        let one = compile_unboxed_const (const_of_type ty 1l) in
-        let (set_res, get_res) = new_local env "res" in
-        let mul = compile_word_mul env ty in
-        let square_recurse_with_shifted sanitize =
-          get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
-          compile_nat_power env ty ^^ set_res ^^ get_res ^^ get_res ^^ mul in
-        get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-        G.if_ [I32Type] one
+        let set_n = G.i (LocalSet (nr 0l)) in
+        let set_exp = G.i (LocalSet (nr 1l)) in
+        let (set_acc, get_acc) = new_local env "acc" in
+
+        (* unshift arguments *)
+        get_exp ^^ compile_shrU_const (shift_of_type ty) ^^ set_exp ^^
+        get_n ^^ compile_shrU_const (shift_of_type ty) ^^ set_n ^^
+
+        (* The accumulator starts with and stays shifted, so no other shifts needed. *)
+        compile_unboxed_const (const_of_type ty 1l) ^^ set_acc ^^
+
+        (* handle exp == 0 *)
+        get_exp ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+        G.if_ [I32Type] get_acc (* done *)
         begin
-          get_exp ^^ one ^^ G.i (Binary (I32 I32Op.And)) ^^
-          G.i (Test (I32 I32Op.Eqz)) ^^
-          G.if_ [I32Type]
-            (square_recurse_with_shifted G.nop)
-            (get_n ^^
-             square_recurse_with_shifted (sanitize_word_result ty) ^^
-             mul)
+          G.loop_ [] begin
+            (* Are we done? *)
+            get_exp ^^ compile_unboxed_const 1l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+            G.if_ [] G.nop (* done *)
+            begin
+              (* Check low bit of exp to see if we need to multiply *)
+              get_exp ^^ compile_shl_const 31l ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+              G.if_ [] G.nop
+              begin
+                (* Multiply! *)
+                get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^ set_acc
+              end ^^
+              (* Square n, and shift exponent *)
+              get_n ^^ get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^ set_n ^^
+              get_exp ^^ compile_shrU_const 1l ^^ set_exp ^^
+              (* And loop *)
+              G.i (Br (nr 1l))
+            end
+          end ^^
+          (* Multiply a last time *)
+          get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+          (* Accumulator was shifted, so no further shift needed here *)
         end
       )
 
