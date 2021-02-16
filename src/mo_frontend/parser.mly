@@ -192,12 +192,12 @@ let share_stab stab_opt dec =
   | _ -> stab_opt
 
 let share_dec_field (df : dec_field) =
-  if df.it.vis.it = Public
-  then
+  match df.it.vis.it with
+  | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  else
+  | _ ->
     if is_sugared_func_or_module (df.it.dec) then
       {df with it =
         {df.it with stab =
@@ -216,7 +216,7 @@ let share_dec_field (df : dec_field) =
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE DEPRECATED SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
@@ -262,6 +262,7 @@ let share_dec_field (df : dec_field) =
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
+%type<Mo_def.Syntax.deprecation option> depr
 %type<Mo_def.Syntax.typ_tag> typ_tag
 %type<Mo_def.Syntax.typ_tag list> typ_variant
 %type<Mo_def.Syntax.typ_field> typ_field
@@ -751,8 +752,12 @@ dec_field :
 vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
-  | PUBLIC { Public @@ at $sloc }
+  | PUBLIC d=depr { Public d @@ at $sloc }
   | SYSTEM { System @@ at $sloc }
+
+depr :
+  | (* empty *) { None }
+  | DEPRECATED t=TEXT { Some (t @@ at $sloc) }
 
 stab :
   | (* empty *) { None }

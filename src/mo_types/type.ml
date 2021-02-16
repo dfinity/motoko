@@ -64,7 +64,7 @@ and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and field = {lab : lab; typ : typ}
+and field = {lab : lab; typ : typ; depr : string option}
 
 and con = kind Con.t
 and kind =
@@ -90,10 +90,10 @@ module ConSet = ConEnv.Dom
 
 let compare_field f1 f2 =
   match f1,f2 with
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
-  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
-  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+  | {lab = l1; typ = Typ _;_}, {lab = l2; typ = Typ _ ;_} -> compare l1 l2
+  | {lab = l1; typ = Typ _;_}, {lab = l2; typ = _ ;_} -> -1
+  | {lab = l1; typ = _;_}, {lab = l2; typ = Typ _ ;_} -> 1
+  | {lab = l1; typ = _;_}, {lab = l2; typ = _ ;_} -> compare l1 l2
 
 
 (* Short-hands *)
@@ -110,16 +110,16 @@ let char = Prim Char
 let principal = Prim Principal
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "canister_reject"; typ = unit }
+  { lab = "canister_reject"; typ = unit; depr = None}
 ]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system_fatal"; typ = unit};
-    { lab = "system_transient"; typ = unit};
-    { lab = "destination_invalid"; typ = unit};
-    { lab = "canister_error"; typ = unit};
-    { lab = "future"; typ = Prim Nat32};
+    { lab = "system_fatal"; typ = unit; depr = None};
+    { lab = "system_transient"; typ = unit; depr = None};
+    { lab = "destination_invalid"; typ = unit; depr = None};
+    { lab = "canister_error"; typ = unit; depr = None};
+    { lab = "future"; typ = Prim Nat32; depr = None};
   ])
 
 let throw = Prim Error
@@ -128,7 +128,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = Prim Principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller }])
+let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; depr = None}])
 
 let prim = function
   | "Null" -> Null
@@ -166,7 +166,7 @@ let codom c to_scope ts2 =  match c with
 
 let iter_obj t =
   Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
+    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); depr = None}])
 
 
 (* Shifting *)
@@ -194,8 +194,8 @@ let rec shift i n t =
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
 
-and shift_field i n {lab; typ} =
-  {lab; typ = shift i n typ}
+and shift_field i n {lab; typ; depr} =
+  {lab; typ = shift i n typ; depr}
 
 (*
 and shift_kind i n k =
@@ -245,8 +245,8 @@ let rec subst sigma t =
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
 
-and subst_field sigma {lab; typ} =
-  {lab; typ = subst sigma typ}
+and subst_field sigma {lab; typ; depr} =
+  {lab; typ = subst sigma typ; depr}
 
 (*
 and subst_kind sigma k =
@@ -295,8 +295,8 @@ let rec open' i ts t =
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
 
-and open_field i ts {lab; typ} =
-  {lab; typ = open' i ts typ}
+and open_field i ts {lab; typ; depr} =
+  {lab; typ = open' i ts typ; depr}
 
 (*
 and open_kind i ts k =
@@ -400,11 +400,11 @@ let as_prim_sub p t = match promote t with
   | _ -> invalid "as_prim_sub"
 let as_obj_sub ls t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Non -> Object, List.map (fun l -> {lab = l; typ = Non}) ls
+  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; depr = None}) ls
   | _ -> invalid "as_obj_sub"
 let as_variant_sub l t = match promote t with
   | Variant tfs -> tfs
-  | Non -> [{lab = l; typ = Non}]
+  | Non -> [{lab = l; typ = Non; depr = None}]
   | _ -> invalid "as_variant_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
@@ -453,11 +453,23 @@ let lookup_val_field l tfs =
   | None -> invalid "lookup_val_field"
 
 let lookup_typ_field l tfs =
-  let is_lab = function {typ = Typ _; lab} -> lab = l | _ -> false in
+  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
   | Some {typ = Typ c; _} -> c
   | _ -> invalid "lookup_typ_field"
 
+
+let lookup_val_deprecation l tfs =
+  let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
+  match List.find_opt is_lab tfs with
+  | Some tf -> tf.depr
+  | None -> invalid "lookup_val_deprecation"
+
+let lookup_typ_deprecation l tfs =
+  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
+  match List.find_opt is_lab tfs with
+  | Some tf -> tf.depr
+  | _ -> invalid "lookup_typ_deprecation"
 
 (* Span *)
 
@@ -516,8 +528,8 @@ let rec avoid' cons seen = function
 and avoid_bind cons seen tb=
   { tb with bound = avoid' cons seen tb.bound}
 
-and avoid_field cons seen {lab; typ} =
-  {lab; typ = avoid' cons seen typ}
+and avoid_field cons seen {lab; typ; depr} =
+  {lab; typ = avoid' cons seen typ; depr}
 
 and avoid_kind cons seen k =
   match k with
@@ -560,7 +572,7 @@ let rec cons' t cs =
 and cons_bind tb cs =
   cons' tb.bound cs
 
-and cons_field {lab; typ} cs =
+and cons_field {lab; typ; depr} cs =
   cons' typ cs
 
 let cons_kind k =
@@ -1343,7 +1355,7 @@ and string_of_typ' vs t =
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
-and string_of_field vs {lab; typ} =
+and string_of_field vs {lab; typ; depr} =
   match typ with
   | Typ c ->
     let op, sbs, st = strings_of_kind (Con.kind c) in
@@ -1353,7 +1365,7 @@ and string_of_field vs {lab; typ} =
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
 
-and string_of_tag vs {lab; typ} =
+and string_of_tag vs {lab; typ; depr} =
   match typ with
   | Tup [] -> sprintf "#%s" lab
   | _ -> sprintf "#%s : %s" lab (string_of_typ' vs typ)

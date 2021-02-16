@@ -116,8 +116,16 @@ and pat_field' = {id : id; pat : pat}
 
 (* Expressions *)
 
+type deprecation = deprecation' Source.phrase
+and deprecation' = string
+
 type vis = vis' Source.phrase
-and vis' = Public | Private | System
+and vis'
+  = Public of deprecation option
+  | Private
+  | System
+
+let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible

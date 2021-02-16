@@ -240,7 +240,7 @@ and obj_block at s self_id dfs obj_typ =
   | T.Actor -> build_actor at self_id dfs obj_typ
   | T.Memory -> assert false
 
-and build_field {T.lab; T.typ} =
+and build_field {T.lab; T.typ;_} =
   { it = { I.name = lab
          ; I.var = lab
          }
@@ -252,7 +252,7 @@ and build_fields obj_typ =
     match obj_typ with
     | T.Obj (_, fields) ->
       (* TBR: do we need to sort val_fields?*)
-      let val_fields = List.filter (fun {T.lab;T.typ} -> not (T.is_typ typ)) fields in
+      let val_fields = List.filter (fun {T.lab;T.typ;_} -> not (T.is_typ typ)) fields in
       List.map build_field val_fields
     | _ -> assert false
 
@@ -296,7 +296,7 @@ and build_actor at self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t; depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
@@ -709,8 +709,8 @@ let actor_class_mod_exp id class_typ func =
           at = no_region;
           note = fun_typ }]
        (T.Obj(T.Module, List.sort T.compare_field [
-          { T.lab = id; T.typ = T.Typ class_con };
-          { T.lab = id; T.typ = fun_typ }])))
+          { T.lab = id; T.typ = T.Typ class_con; depr = None };
+          { T.lab = id; T.typ = fun_typ; depr = None }])))
 
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note in

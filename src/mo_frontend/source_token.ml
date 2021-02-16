@@ -20,6 +20,7 @@ type token =
   | CONTINUE
   | LABEL
   | DEBUG
+  | DEPRECATED
   | DO
   | FLEXIBLE
   | IF
@@ -141,6 +142,7 @@ let to_parser_token :
   | LABEL -> Ok Parser.LABEL
   | DO -> Ok Parser.DO
   | DEBUG -> Ok Parser.DEBUG
+  | DEPRECATED -> Ok Parser.DEPRECATED
   | FLEXIBLE -> Ok Parser.FLEXIBLE
   | IF -> Ok Parser.IF
   | IGNORE -> Ok Parser.IGNORE
@@ -259,6 +261,7 @@ let string_of_parser_token = function
   | Parser.CONTINUE -> "CONTINUE"
   | Parser.LABEL -> "LABEL"
   | Parser.DEBUG -> "DEBUG"
+  | Parser.DEPRECATED -> "DEPRECATED"
   | Parser.DO -> "DO"
   | Parser.FLEXIBLE -> "FLEXIBLE"
   | Parser.IF -> "IF"

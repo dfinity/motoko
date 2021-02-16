@@ -96,6 +96,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_DIVASSIGN -> DIVASSIGN
       | T_DEBUG_SHOW -> DEBUG_SHOW
       | T_DEBUG -> DEBUG
+      | T_DEPRECATED -> DEPRECATED
       | T_CONTINUE -> CONTINUE
       | T_COMMA -> COMMA
       | T_COLON -> COLON

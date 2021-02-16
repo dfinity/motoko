@@ -127,7 +127,7 @@ let rec typ t =
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region
-and field {lab; typ=t} =
+and field {lab; typ=t; _} =
   let open Idllib.Escape in
   match unescape lab with
   | Nat nat ->

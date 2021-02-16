@@ -192,8 +192,8 @@ struct
         None
 
   and extract_dec_field mk_xref dec_field =
-    if dec_field.it.Syntax.vis.it <> Syntax.Public then None
-    else
+    if Syntax.is_public (dec_field.it.Syntax.vis)
+    then
       extract_doc mk_xref dec_field.it.Syntax.dec
       |> Option.map (fun (xref, decl_doc) ->
              {
@@ -202,6 +202,7 @@ struct
                  Some (string_of_leading (Env.find_trivia dec_field.at));
                declaration = decl_doc;
              })
+    else None
 end
 
 let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result

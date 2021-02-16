@@ -215,7 +215,7 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   match ty with
   | Type.Obj ((Type.Module | Type.Actor), fields) ->
       fields
-      |> List.map (fun Type.{ lab = name; typ } ->
+      |> List.map (fun Type.{ lab = name; typ; _ } ->
              match typ with
              | Type.Typ con -> TypeDecl { name; typ = con; definition = None }
              | typ -> ValueDecl { name; typ; definition = None })

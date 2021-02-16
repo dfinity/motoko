@@ -230,7 +230,7 @@
 <vis> ::= 
     <empty>
     'private'
-    'public'
+    'public' (DEPRECATED <text>)?
     'system'
 
 <stab> ::= 

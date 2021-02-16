@@ -281,6 +281,10 @@ and check_typ_path' env path : T.con =
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
+    (match T.lookup_typ_deprecation id.it fs with
+    | Some msg -> warn env path.at "M0152" "type field %s is deprecated:\n%s" id.it msg;
+    | None -> ()
+    );
     try T.lookup_typ_field id.it fs with Invalid_argument _ ->
       error env id.at "M0030" "type field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
@@ -485,12 +489,12 @@ and check_typ_field env s typ_field : T.field =
       error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
         id.it (T.string_of_typ_expand t)
   end;
-  T.{lab = id.it; typ = t}
+  T.{lab = id.it; typ = t; depr = None}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in
   let t = check_typ env typ in
-  T.{lab = tag.it; typ = t}
+  T.{lab = tag.it; typ = t; depr = None}
 
 and check_typ_binds_acyclic env typ_binds cs ts  =
   let n = List.length cs in
@@ -720,29 +724,29 @@ let check_lit env t lit at =
 let array_obj t =
   let open T in
   let immut t =
-    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
-      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
-      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
-      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
+    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t]); depr = None};
+      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
+      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); depr = None};
+      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t]); depr = None};
     ] in
   let mut t = immut t @
-    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
+    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); depr = None} ] in
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
   let open T in
   Object,
-  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
-    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)])};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)]); depr = None};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
   ]
 
 let text_obj () =
   let open T in
   Object,
-  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); depr = None};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
   ]
 
 
@@ -887,7 +891,7 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     end
   | TagE (id, exp1) ->
-    T.Variant [T.{lab = id.it; typ = infer_exp env exp1}]
+    T.Variant [T.{lab = id.it; typ = infer_exp env exp1; depr = None}]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -934,6 +938,10 @@ and infer_exp'' env exp : T.typ =
           "expected object type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
+    (match T.lookup_val_deprecation id.it tfs with
+    | Some msg -> warn env exp.at "M0152" "field %s is deprecated:\n%s" id.it msg;
+    | None -> ()
+    );
     (match T.lookup_val_field id.it tfs with
     | T.Pre ->
       error env exp.at "M0071"
@@ -1212,7 +1220,7 @@ and infer_exp_field env rf =
   let { mut; id; exp } = rf.it in
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
-  T.{ lab = id.it; typ = t1 }
+  T.{ lab = id.it; typ = t1; depr = None }
 
 and check_exp env t exp =
   assert (not env.pre);
@@ -1363,7 +1371,7 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t);
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
-    let {T.typ; _} = List.find (fun T.{lab; typ} -> lab = id.it) fs in
+    let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1 ;
     t
   | _ ->
@@ -1526,7 +1534,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     T.Opt t1, ve
   | TagP (id, pat1) ->
     let t1, ve = infer_pat env pat1 in
-    T.Variant [T.{lab = id.it; typ = t1}], ve
+    T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
@@ -1559,7 +1567,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   | pf::pfs' ->
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
+    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ; depr = None }::ts) ve'
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   match shared_pat.it with
@@ -1729,9 +1737,9 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
     error env pf.at "M0119"
       "object field %s is not contained in expected type\n  %s"
       pf.it.id.it (T.string_of_typ (T.Obj (s, tfs)))
-  | T.{lab; typ = Typ _}::tfs', _ ->  (* TODO: remove the namespace hack *)
+  | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
     check_pat_fields env s tfs' pfs ve at
-  | T.{lab; typ}::tfs', pf::pfs' ->
+  | T.{lab; typ; _}::tfs', pf::pfs' ->
     match compare pf.it.id.it lab with
     | -1 -> check_pat_fields env s [] pfs ve at
     | +1 -> check_pat_fields env s tfs' pfs ve at
@@ -1751,43 +1759,43 @@ and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it
 
 (* Objects *)
 
-and pub_fields dec_fields : region T.Env.t * region T.Env.t =
+and pub_fields dec_fields : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
   List.fold_right pub_field dec_fields (T.Env.empty, T.Env.empty)
 
-and pub_field dec_field xs : region T.Env.t * region T.Env.t =
+and pub_field dec_field xs : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
   match dec_field.it with
-  | {vis; dec; _} when vis.it = Public -> pub_dec dec xs
+  | {vis = { it = Public depr; _}; dec; _} -> pub_dec depr dec xs
   | _ -> xs
 
-and pub_dec dec xs : region T.Env.t * region T.Env.t =
+and pub_dec depr dec xs : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
   match dec.it with
   | ExpD _ -> xs
-  | LetD (pat, _) -> pub_pat pat xs
-  | VarD (id, _) -> pub_val_id id xs
+  | LetD (pat, _) -> pub_pat depr pat xs
+  | VarD (id, _) -> pub_val_id depr id xs
   | ClassD (_, id, _, _, _, _, _, _) ->
-    pub_val_id {id with note = ()} (pub_typ_id id xs)
-  | TypD (id, _, _) -> pub_typ_id id xs
+    pub_val_id depr {id with note = ()} (pub_typ_id depr id xs)
+  | TypD (id, _, _) -> pub_typ_id depr id xs
 
-and pub_pat pat xs : region T.Env.t * region T.Env.t =
+and pub_pat depr pat xs : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
-  | VarP id -> pub_val_id id xs
-  | TupP pats -> List.fold_right pub_pat pats xs
-  | ObjP pfs -> List.fold_right pub_pat_field pfs xs
+  | VarP id -> pub_val_id depr id xs
+  | TupP pats -> List.fold_right (pub_pat depr) pats xs
+  | ObjP pfs -> List.fold_right (pub_pat_field depr) pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | TagP (_, pat1)
   | AnnotP (pat1, _)
-  | ParP pat1 -> pub_pat pat1 xs
+  | ParP pat1 -> pub_pat depr pat1 xs
 
-and pub_pat_field pf xs =
-  pub_pat pf.it.pat xs
+and pub_pat_field depr pf xs =
+  pub_pat depr pf.it.pat xs
 
-and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
-  (T.Env.add id.it id.at xs, ys)
+and pub_typ_id depr id (xs, ys) : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+  (T.Env.add id.it (id.at, depr) xs, ys)
 
-and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
-  (xs, T.Env.add id.it id.at ys)
+and pub_val_id depr id (xs, ys) : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+  (xs, T.Env.add id.it (id.at, depr) ys)
 
 
 (* Object/Scope transformations *)
@@ -1797,7 +1805,7 @@ and gather_typ con_env t =
   | T.Obj (s, tfs) -> List.fold_right gather_typ_field tfs con_env
   | _ -> con_env
 
-and gather_typ_field T.{lab; typ} con_env =
+and gather_typ_field T.{lab; typ; _} con_env =
   match typ with
   | T.Typ  c -> T.ConSet.add c con_env
   | t -> gather_typ con_env t
@@ -1809,17 +1817,19 @@ and object_of_scope env sort dec_fields scope at =
   let tfs =
     T.Env.fold
       (fun id c tfs ->
-        if T.Env.mem id pub_typ
-        then T.{lab = id; typ = T.Typ c}::tfs
-        else tfs
+        match T.Env.find_opt id pub_typ with
+        | Some (_r, Some depr) -> T.{lab = id; typ = T.Typ c; depr = Some depr.it}::tfs
+        | Some (_r, None) -> T.{lab = id; typ = T.Typ c; depr = None}::tfs
+        | _ -> tfs
       ) scope.Scope.typ_env  []
   in
   let tfs' =
     T.Env.fold
       (fun id t tfs ->
-        if T.Env.mem id pub_val
-        then T.{lab = id; typ = t}::tfs
-        else tfs
+        match T.Env.find_opt id pub_val with
+        | Some (_r, Some depr) -> T.{lab = id; typ = t; depr = Some depr.it}::tfs
+        | Some (_r, None) -> T.{lab = id; typ = t; depr = None}::tfs
+        | _ -> tfs
       ) scope.Scope.val_env tfs
   in
 
@@ -1869,15 +1879,15 @@ and infer_obj env s dec_fields at : T.typ =
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
     if s = T.Actor then begin
-      List.iter (fun T.{lab; typ} ->
+      List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
-          error env (T.Env.find lab pub_val) "M0124"
+          error env (fst (T.Env.find lab pub_val)) "M0124"
             "public actor field %s has non-shared function type\n  %s"
             lab (T.string_of_typ_expand typ)
       ) tfs;
       List.iter (fun df ->
-        if df.it.vis.it = Syntax.Public && not (is_actor_method df.it.dec) && not (is_typ_dec df.it.dec) then
+        if is_public df.it.vis && not (is_actor_method df.it.dec) && not (is_typ_dec df.it.dec) then
           local_error env df.it.dec.at "M0125"
             "public actor field needs to be a manifest function"
       ) dec_fields;
@@ -2447,8 +2457,8 @@ let check_lib scope lib : Scope.t Diag.result =
               in
               let con = Con.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
-                { T.lab = id.it; T.typ = T.Typ con };
-                { T.lab = id.it; T.typ = fun_typ }
+                { T.lab = id.it; T.typ = T.Typ con; depr = None };
+                { T.lab = id.it; T.typ = fun_typ; depr = None }
               ])
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"

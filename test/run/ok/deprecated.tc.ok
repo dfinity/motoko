@@ -1,0 +1,3 @@
+/home/jojo/dfinity/motoko/bin/moc: target src/moc not built yet.
+To build, run:
+    make -C ../../src moc
