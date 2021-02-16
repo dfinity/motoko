@@ -5,7 +5,7 @@ func print(o : ? Nat) { Prim.debugPrint(debug_show(o));};
 let o1 = do ? {
     let oi = ?1;
     let oj = ?2;
-    oi! + oj!;
+    oi! + oj! : Nat;
 };
 print(o1);
 assert (o1 == ? 3);
@@ -14,7 +14,7 @@ assert (o1 == ? 3);
 let o2 = do ? {
    let oi = ?1;
    let oj : ?Nat = null;
-   oi! + oj!;
+   oi! + oj! : Nat;
 };
 print(o2);
 assert (o2 == null);

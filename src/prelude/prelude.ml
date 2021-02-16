@@ -143,7 +143,7 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
 
   var i = 0;
   while (n > 0) {
-    let rem = n % base;
+    let rem : Nat = n % base;
     if (sep > 0 and i == sep) { text := "_" # text; i := 0 };
     text := digits rem # text;
     n := n / base;
@@ -154,7 +154,7 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
 
 func @left_pad(pad : Nat, char : Text, t : Text) : Text {
   if (pad > t.size()) {
-    var i = pad - t.size();
+    var i : Nat = pad - t.size();
     var text = t;
     while (i > 0) {
       text := char # text;

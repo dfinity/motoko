@@ -820,7 +820,16 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     t
+  | BinE (ot, exp1, op, exp2) when op = Operator.CatOp ->
+    if not env.pre then
+    begin
+     check_exp env T.text exp1;
+     check_exp env T.text exp2;
+     ot := T.text
+    end;
+    T.text
   | BinE (ot, exp1, op, exp2) ->
+(*   
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
     let t = Operator.type_binop op (T.lub t1 t2) in
@@ -832,6 +841,8 @@ and infer_exp'' env exp : T.typ =
     end;
     check_deprecation_binop env exp.at t op;
     t
+ *)
+    error env exp.at "can't infer type of binary operator %s" ""
   | RelE (ot, exp1, op, exp2) ->
     let t1 = T.normalize (infer_exp env exp1) in
     let t2 = T.normalize (infer_exp env exp2) in
