@@ -1,3 +1,12 @@
-/home/jojo/dfinity/motoko/bin/moc: target src/moc not built yet.
-To build, run:
-    make -C ../../src moc
+deprecated.mo:10.9-10.14: warning [M0152], field foo is deprecated:
+do not use foo anymore
+deprecated.mo:11.9-11.14: warning [M0152], field foo is deprecated:
+do not use foo anymore
+deprecated.mo:13.8-13.11: warning [M0152], field f is deprecated:
+deprecated function
+deprecated.mo:14.8-14.11: warning [M0152], field f is deprecated:
+deprecated function
+deprecated.mo:15.8-15.11: warning [M0152], field f is deprecated:
+deprecated function
+deprecated.mo:17.13-17.16: warning [M0152], type field T is deprecated:
+also types
