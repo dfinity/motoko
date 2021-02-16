@@ -90,10 +90,10 @@ module ConSet = ConEnv.Dom
 
 let compare_field f1 f2 =
   match f1,f2 with
-  | {lab = l1; typ = Typ _;_}, {lab = l2; typ = Typ _ ;_} -> compare l1 l2
-  | {lab = l1; typ = Typ _;_}, {lab = l2; typ = _ ;_} -> -1
-  | {lab = l1; typ = _;_}, {lab = l2; typ = Typ _ ;_} -> 1
-  | {lab = l1; typ = _;_}, {lab = l2; typ = _ ;_} -> compare l1 l2
+  | {lab = l1; typ = Typ _; _}, {lab = l2; typ = Typ _; _} -> compare l1 l2
+  | {lab = l1; typ = Typ _; _}, {lab = l2; typ = _; _} -> -1
+  | {lab = l1; typ = _; _}, {lab = l2; typ = Typ _; _} -> 1
+  | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
 
 (* Short-hands *)
