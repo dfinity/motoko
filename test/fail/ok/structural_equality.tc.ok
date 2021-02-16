@@ -14,7 +14,7 @@ structural_equality.mo:8.9-8.37: warning [M0062], comparing incompatible types
   {x : Nat}
 and
   {var x : Nat}
-  {x : Any}
+  {}
 structural_equality.mo:10.8-10.18: warning [M0062], comparing incompatible types
   Nat
 and

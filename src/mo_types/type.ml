@@ -693,10 +693,17 @@ let rel_list p rel eq xs1 xs2 =
 let rec rel_typ rel eq t1 t2 =
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
-  (*  Printf.printf "%s %s\n" (!str t1) (!str t2); *)
   match t1, t2 with
+  (* Second-class types first, since they mustn't relate to Any/Non *)
   | Pre, _ | _, Pre ->
     assert false
+  | Mut t1', Mut t2' ->
+    eq_typ rel eq t1' t2'
+  | Typ c1, Typ c2 ->
+    eq_con eq c1 c2
+  | Mut _, _ | _, Mut _
+  | Typ _, _ | _, Typ _ ->
+    false
   | Any, Any ->
     true
   | _, Any when rel != eq ->
@@ -760,10 +767,6 @@ let rec rel_typ rel eq t1 t2 =
   | Async (t11, t12), Async (t21, t22) ->
     eq_typ rel eq t11 t21 &&
     rel_typ rel eq t12 t22
-  | Mut t1', Mut t2' ->
-    eq_typ rel eq t1' t2'
-  | Typ c1, Typ c2 ->
-    eq_con eq c1 c2
   | _, _ -> false
   end
 
@@ -861,6 +864,13 @@ let rec compatible_typ co t1 t2 =
   match promote t1, promote t2 with
   | Pre, _ | _, Pre ->
     assert false
+  | Mut t1', Mut t2' ->
+    compatible_typ co t1' t2'
+  | Typ _, Typ _ ->
+    true
+  | Mut _, _ | _, Mut _
+  | Typ _, _ | _, Typ _ ->
+    false
   | Any, Any ->
     true
   | Any, _ | _, Any ->
@@ -889,10 +899,6 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t12 t22
   | Func _, Func _ ->
     true
-  | Typ _, Typ _ ->
-    true
-  | Mut t1', Mut t2' ->
-    compatible_typ co t1' t2'
   | _, _ ->
     false
   end
@@ -990,21 +996,33 @@ let rec combine rel lubs glbs t1 t2 =
     t
   | _ ->
     match t1, t2 with
-    | _, Any -> if rel == lubs then Any else t1
-    | Any, _ -> if rel == lubs then Any else t2
-    | _, Non -> if rel == lubs then t1 else Non
-    | Non, _ -> if rel == lubs then t2 else Non
+    | Pre, _ | _, Pre ->
+      assert false
+    | Mut _, _ | _, Mut _
+    | Typ _, _ | _, Typ _ ->
+      raise Mismatch
+    | Any, t | t, Any ->
+      if rel == lubs then Any else t
+    | Non, t | t, Non ->
+      if rel == lubs then t else Non
     | Prim Nat, Prim Int
-    | Prim Int, Prim Nat -> Prim (if rel == lubs then Int else Nat)
-    | Opt t1', Opt t2' -> Opt (combine rel lubs glbs t1' t2')
-    | Opt _, Prim Null -> if rel == lubs then t1 else t2
-    | Prim Null, Opt _ -> if rel == lubs then t2 else t1
-    | Array t1', Array t2' -> Array (combine rel lubs glbs t1' t2')
-    | Variant t1', Variant t2' -> Variant (combine_tags rel lubs glbs t1' t2')
+    | Prim Int, Prim Nat ->
+      Prim (if rel == lubs then Int else Nat)
+    | Opt t1', Opt t2' ->
+      Opt (combine rel lubs glbs t1' t2')
+    | (Opt _ as t), (Prim Null as t')
+    | (Prim Null as t'), (Opt _ as t) ->
+      if rel == lubs then t else t'
+    | Array t1', Array t2' ->
+      (try Array (combine rel lubs glbs t1' t2')
+      with Mismatch -> if rel == lubs then Any else Non)
+    | Variant t1', Variant t2' ->
+      Variant (combine_tags rel lubs glbs t1' t2')
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
       Tup (List.map2 (combine rel lubs glbs) ts1 ts2)
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-      (try Obj (s1, combine_fields rel lubs glbs tf1 tf2) with Mismatch -> Non)
+      (try Obj (s1, combine_fields rel lubs glbs tf1 tf2)
+      with Mismatch -> assert (rel == glbs); Non)
     | Func (s1, c1, bs1, ts11, ts12), Func (s2, c2, bs2, ts21, ts22) when
         s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
         List.(length ts11 = length ts21 && length ts12 = length ts22) ->
@@ -1049,12 +1067,8 @@ let rec combine rel lubs glbs t1 t2 =
         in
         set_kind c (Def ([], t'));
         t'
-    | Typ _, Typ _ -> raise Mismatch
-    | Typ _, _
-    | _, Typ _
-    | _, Pre
-    | Pre, _ -> assert false
-    | _ -> if rel == lubs then Any else Non
+    | _, _ ->
+      if rel == lubs then Any else Non
 
 and cons_if b x xs = if b then x::xs else xs
 
