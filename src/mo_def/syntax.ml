@@ -120,8 +120,8 @@ type deprecation = deprecation' Source.phrase
 and deprecation' = string
 
 type vis = vis' Source.phrase
-and vis'
-  = Public of deprecation option
+and vis' =
+  | Public of deprecation option
   | Private
   | System
 

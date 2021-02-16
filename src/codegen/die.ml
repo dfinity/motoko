@@ -291,7 +291,7 @@ and option_instance key : die list * int =
 
 and variant vnts : die list * int =
   let open Wasm_exts.Abbreviation in
-  let selectors = List.map (fun Type.{lab; typ;_} -> lab, typ, type_ref typ) vnts in
+  let selectors = List.map (fun Type.{lab; typ; _} -> lab, typ, type_ref typ) vnts in
   (* make sure all prerequisite types are around *)
   let prereqs = List.concat_map (fun (_, _, (dw, _)) -> dw) selectors in
   let key = List.map (fun (name, _, (_, reference)) -> name, reference) selectors in
@@ -340,7 +340,7 @@ and variant vnts : die list * int =
 and object_ fs : die list * int =
   let open List in
   let open Wasm_exts.Abbreviation in
-  let selectors = map (fun Type.{lab; typ;_} -> lab, type_ref typ) fs in
+  let selectors = map (fun Type.{lab; typ; _} -> lab, type_ref typ) fs in
   (* make sure all prerequisite types are around *)
   let prereqs = concat_map (fun (_, (ds, _)) -> ds) selectors in
   let key = map (fun (name, (_, reference)) -> name, reference) selectors in

@@ -252,7 +252,7 @@ and build_fields obj_typ =
     match obj_typ with
     | T.Obj (_, fields) ->
       (* TBR: do we need to sort val_fields?*)
-      let val_fields = List.filter (fun {T.lab;T.typ;_} -> not (T.is_typ typ)) fields in
+      let val_fields = List.filter (fun {T.lab; T.typ; _} -> not (T.is_typ typ)) fields in
       List.map build_field val_fields
     | _ -> assert false
 
