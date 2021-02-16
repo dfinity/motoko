@@ -494,7 +494,7 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
     T.{lab = id.it; typ = t}
   | TypField (id,  typ) ->
     let t = check_typ env typ in
-    let c = Con.fresh id.it (T.Def([], t)) in
+    let c = Con.fresh id.it (T.Def ([], t)) in
     T.{lab = id.it; typ = Typ c}
 
 and check_typ_tag env typ_tag =
