@@ -231,7 +231,7 @@
 <vis> ::= 
     <empty>
     'private'
-    'public' (DEPRECATED <text>)?
+    'public' <text>?
     'system'
 
 <stab> ::= 
