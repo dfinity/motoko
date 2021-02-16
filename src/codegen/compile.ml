@@ -1726,7 +1726,7 @@ module TaggedSmallWord = struct
         get_exp ^^ compile_shrU_const (shift_of_type ty) ^^ set_exp ^^
         get_n ^^ compile_shrU_const (shift_of_type ty) ^^ set_n ^^
 
-        (* start with result = 1 (shifted!) *)
+        (* The accumulator starts with and stays shifted, so no other shifts needed. *)
         compile_unboxed_const (const_of_type ty 1l) ^^ set_acc ^^
 
         (* handle exp == 0 *)
@@ -1754,6 +1754,7 @@ module TaggedSmallWord = struct
           end ^^
           (* Multiply a last time *)
           get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+          (* Accumulator was shifted, so no further shift needed here *)
         end
       )
 
