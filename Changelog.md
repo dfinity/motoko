@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+* The `moc` now accepts the `-Werror` flag to turn warnings into errors.
+
 == 0.5.8 (2021-02-12)
 
 * Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
