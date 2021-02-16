@@ -112,7 +112,6 @@ let string_of_symbol symbol : string =
   | X (T T_DIVASSIGN) -> binassign "/="
   | X (T T_DEBUG_SHOW) -> "debug_show"
   | X (T T_DEBUG) -> "debug"
-  | X (T T_DEPRECATED) -> "deprecated"
   | X (T T_CONTINUE) -> "continue"
   | X (T T_COMMA) -> ","
   | X (T T_COLON) -> ":"
@@ -220,7 +219,6 @@ let string_of_symbol symbol : string =
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
   | X (N N_stab) -> "<stab>"
-  | X (N N_depr) -> "<deprecation>"
   | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
 
 (* In order to print a view of the stack that includes semantic values,

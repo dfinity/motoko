@@ -204,7 +204,6 @@ rule token mode = parse
   | "class" { CLASS }
   | "continue" { CONTINUE }
   | "debug" { DEBUG }
-  | "deprecated" { DEPRECATED }
   | "do" { DO }
   | "else" { ELSE }
   | "false" { BOOL false }

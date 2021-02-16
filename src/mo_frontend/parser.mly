@@ -219,7 +219,7 @@ let share_dec_field (df : dec_field) =
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE DEPRECATED SHARED SYSTEM QUERY
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
@@ -762,7 +762,7 @@ vis :
 
 depr :
   | (* empty *) { None }
-  | DEPRECATED t=TEXT { Some (t @@ at $sloc) }
+  | t=TEXT { Some (t @@ at $sloc) }
 
 stab :
   | (* empty *) { None }
