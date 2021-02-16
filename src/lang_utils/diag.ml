@@ -86,8 +86,14 @@ let with_message_store f =
   | _ -> Error msgs
 
 let flush_messages : 'a result -> 'a option = function
-  | Stdlib.Error msgs -> print_messages msgs; None
-  | Ok (x, msgs) -> print_messages msgs; Some x
+  | Stdlib.Error msgs ->
+    print_messages msgs;
+    None
+  | Ok (x, msgs) ->
+    print_messages msgs;
+    if !Flags.warnings_are_errors && msgs <> []
+    then None
+    else Some x
 
 let run r = match flush_messages r with
   | None -> exit 1
