@@ -31,7 +31,7 @@ let extract : string -> extracted option =
       Printf.eprintf "Skipping %s:\n" in_file;
       Diag.print_messages err;
       None
-  | Ok ((prog, trivia_table), _) -> (
+  | Ok ((prog, trivia_table, _), _) -> (
       match extract_docs prog trivia_table with
       | Error err ->
           Printf.eprintf "Skipping %s:\n%s\n" in_file err;

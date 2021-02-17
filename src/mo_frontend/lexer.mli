@@ -24,6 +24,7 @@ type trivia_info = {
 module PosHashtbl : Hashtbl.S with type key = pos
 
 type triv_table = trivia_info PosHashtbl.t
+val empty_triv_table : triv_table
 
 type parser_token = Parser.token * Lexing.position * Lexing.position
 

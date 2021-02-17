@@ -24,6 +24,7 @@ module PosHashtbl = Hashtbl.Make (PosHash)
 
 (* type triv_table = trivia_info IntHashtbl.t *)
 type triv_table = trivia_info PosHashtbl.t
+let empty_triv_table = PosHashtbl.create 0
 
 type source_token = ST.token * Lexing.position * Lexing.position
 
