@@ -1,0 +1,13 @@
+= M0149
+
+This error means that you supplied a immutable record field (declared without `var`), where a mutable record field (specified with `var`), was expected.
+
+Erroneous code example:
+
+  { count = 0 } : { var count : Nat }
+
+
+If you encounter this error, you should probably insert the `var` keyword:
+
+
+  { var count = 1 } : { var count : Nat }

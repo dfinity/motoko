@@ -98,13 +98,13 @@ module {
   public let hashWord8s : [Hash] -> Hash = func(key) {
     var hash = Prim.natToWord32(0);
     for (wordOfKey in key.vals()) {
-      hash := hash + wordOfKey;
-      hash := hash + hash << 10;
+      hash := hash +% wordOfKey;
+      hash := hash +% hash << 10;
       hash := hash ^ (hash >> 6);
     };
-    hash := hash + hash << 3;
+    hash := hash +% hash << 3;
     hash := hash ^ (hash >> 11);
-    hash := hash + hash << 15;
+    hash := hash +% hash << 15;
     return hash;
   };
 

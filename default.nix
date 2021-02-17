@@ -138,7 +138,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "1k8ia7visgg9i6bdlisjbd4677ajlj9bknjrbrjj8pr0lvl07hbs";
+        sha256 = "13pcsik4nq9w7dwi3srhn1ddm30zi5japwn5q50vxknaj0fixi14";
         copyLockfile = true;
       };
     in
@@ -408,12 +408,13 @@ rec {
     };
 
   inherit drun;
+  inherit (nixpkgs) wabt wasmtime wasm;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  wabt = nixpkgs.wabt;
-  wasmtime = nixpkgs.wasmtime;
-  xargo = nixpkgs.xargo;
-  wasm = nixpkgs.wasm;
+  inherit (nixpkgs) xargo;
+
+  # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
+  inherit (nixpkgs) gitMinimal;
 
   overview-slides = stdenv.mkDerivation {
     name = "overview-slides";

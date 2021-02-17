@@ -478,13 +478,11 @@ let output_scope (senv, _) t v sscope dscope =
   if v <> Value.unit then print_val senv v t
 
 let run_stdin lexer (senv, denv) : env option =
-  match load_decl (parse_lexer lexer) senv with
-  | Error msgs ->
-    Diag.print_messages msgs;
+  match Diag.flush_messages (load_decl (parse_lexer lexer) senv) with
+  | None ->
     if !Flags.verbose then printf "\n";
     None
-  | Ok ((libs, prog, senv', t, sscope), msgs) ->
-    Diag.print_messages msgs;
+  | Some (libs, prog, senv', t, sscope) ->
     let denv' = interpret_libs denv libs in
     match interpret_prog denv' prog with
     | None ->
