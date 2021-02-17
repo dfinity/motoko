@@ -1,0 +1,2 @@
+iter-no-alloc.mo:16.36-16.42: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+iter-no-alloc.mo:17.36-17.42: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead

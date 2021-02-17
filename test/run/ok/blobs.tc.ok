@@ -1,0 +1,5 @@
+blobs.mo:18.31-18.36: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+blobs.mo:22.31-22.36: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+blobs.mo:26.34-26.39: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+blobs.mo:30.34-30.39: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+blobs.mo:34.34-34.39: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead

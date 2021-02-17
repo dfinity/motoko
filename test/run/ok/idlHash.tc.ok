@@ -1,0 +1,2 @@
+idlHash.mo:3.29-3.35: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+idlHash.mo:3.29-3.35: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead

@@ -193,6 +193,16 @@ let check_deprecation_binop env at t op =
   | Prim (Word8|Word16|Word32|Word64), PowOp -> word_op_warn "**"
   | _, _ -> ()
 
+let check_word_deprecation env at c =
+  let msg n = warn env at "M0153" "the Word%d type is deprecated, please use Nat%d or Int%d instead" n n n in
+  match Con.kind c with
+    | T.(Def ([], Prim Word8))  -> msg 8
+    | T.(Def ([], Prim Word16)) -> msg 16
+    | T.(Def ([], Prim Word32)) -> msg 32
+    | T.(Def ([], Prim Word64)) -> msg 64
+    | _ -> ()
+
+
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -412,6 +422,7 @@ and check_typ' env typ : T.typ =
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
+    check_word_deprecation env typ.at c;
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any

@@ -1,0 +1,15 @@
+= M0153
+
+The word types (`Word8` etc.) are deprecated, please use `Nat8` or `Int8`
+instead. Things to keep in mind:
+
+ * The operators `+`, `-`, `*` and `**` were warpping on word types. To get the
+   same behaviour on `NatN` and `IntN` types, use the wrapping variants (`+%`,
+   `-%`, `*%` and `**%`)
+
+ * On word types, there are two shift operators (`>>` and `+>>`). In the
+   future, there is only `>>`, and the signedness depends on the signedness of
+   the underlying type.
+
+ * You can use `.vals()` instead of `.bytes()` on blobs to get a `Nat8`-valued
+   iterator.

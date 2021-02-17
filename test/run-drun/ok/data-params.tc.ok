@@ -1,0 +1,12 @@
+data-params.mo:33.30-33.35: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+data-params.mo:33.43-33.49: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+data-params.mo:33.57-33.63: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+data-params.mo:33.71-33.77: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+data-params.mo:33.30-33.35: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+data-params.mo:33.43-33.49: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+data-params.mo:33.57-33.63: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+data-params.mo:33.71-33.77: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+data-params.mo:33.30-33.35: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+data-params.mo:33.43-33.49: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+data-params.mo:33.57-33.63: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+data-params.mo:33.71-33.77: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
