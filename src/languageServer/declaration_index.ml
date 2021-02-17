@@ -5,9 +5,19 @@ open Mo_frontend
 open Source
 open Syntax
 
-type value_decl = { name : string; typ : Type.typ; definition : region option }
+type value_decl = {
+  name : string;
+  typ : Type.typ;
+  definition : region option;
+  doc_comment : string option;
+}
 
-type type_decl = { name : string; typ : Type.con; definition : region option }
+type type_decl = {
+  name : string;
+  typ : Type.con;
+  definition : region option;
+  doc_comment : string option;
+}
 
 type ide_decl = ValueDecl of value_decl | TypeDecl of type_decl
 
@@ -218,8 +228,11 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
       fields
       |> List.map (fun Type.{ lab = name; typ } ->
              match typ with
-             | Type.Typ con -> TypeDecl { name; typ = con; definition = None }
-             | typ -> ValueDecl { name; typ; definition = None })
+             | Type.Typ con ->
+                 TypeDecl
+                   { name; typ = con; definition = None; doc_comment = None }
+             | typ ->
+                 ValueDecl { name; typ; definition = None; doc_comment = None })
       |> Option.some
   | _ -> None
 
@@ -244,25 +257,50 @@ let populate_definitions (project_root : string)
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def (lib, triv_table) def =
+    let find_doc_comment (parser_pos : Source.region) : string =
+      Lexer.PosHashtbl.find_opt triv_table
+        Lexer.{ line = parser_pos.left.line; column = parser_pos.left.column }
+      |> Option.get
+      |> Lexer.doc_comment_of_trivia_info
+    in
     match def with
-    | ValueDecl value ->
+    | ValueDecl value -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
-        let positioned_binder =
-          fields
-          |> List.filter_map is_let_bound
-          |> List.fold_left extract_binders PatternMap.empty
-          |> PatternMap.find_opt value.name
+        let find_binder field =
+          let open Lib.Option.Syntax in
+          let* pat = is_let_bound field in
+          let* binder_definition =
+            extract_binders PatternMap.empty pat
+            |> PatternMap.find_opt value.name
+          in
+          Some (binder_definition, find_doc_comment field.at)
         in
-        ValueDecl { value with definition = positioned_binder }
-    | TypeDecl typ ->
+        match List.find_map find_binder fields with
+        | None -> ValueDecl { value with definition = None }
+        | Some (definition, doc_comment) ->
+            ValueDecl
+              {
+                value with
+                definition = Some definition;
+                doc_comment = Some doc_comment;
+              } )
+    | TypeDecl typ -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
-        let type_definition =
-          fields
-          |> List.filter_map is_type_def
-          |> List.find_map (fun ty_id ->
-                 if ty_id.it = typ.name then Some ty_id.at else None)
+        let find_type_binder field =
+          let open Lib.Option.Syntax in
+          let* ty_id = is_type_def field in
+          if ty_id.it = typ.name then Some (ty_id.at, find_doc_comment field.at)
+          else None
         in
-        TypeDecl { typ with definition = type_definition }
+        match List.find_map find_type_binder fields with
+        | None -> TypeDecl typ
+        | Some (type_definition, doc_comment) ->
+            TypeDecl
+              {
+                typ with
+                definition = Some type_definition;
+                doc_comment = Some doc_comment;
+              } )
   in
   let opt_lib =
     List.find_opt
