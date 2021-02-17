@@ -6,4 +6,5 @@ wall.mo:10.10-10.19: warning [M0062], comparing incompatible types
   Bool
 and
   Nat
+at common supertype
   Any
