@@ -50,28 +50,8 @@ and class_doc = {
   sort : Syntax.obj_sort;
 }
 
-let string_of_leading : Lexer.trivia_info -> string =
- fun info ->
-  String.concat "\n"
-    (List.filter_map
-       (function
-         | Source_token.Comment s -> (
-             match Lib.String.chop_prefix "///" s with
-             | Some "" -> Some ""
-             | Some line_comment ->
-                 (* We expect a documentation line comment to start with a space
-                  *  (which we remove here) *)
-                 Lib.String.chop_prefix " " line_comment
-             | None ->
-                 Option.bind
-                   (Lib.String.chop_prefix "/**" s)
-                   (Lib.String.chop_suffix "*/")
-                 |> Option.map String.trim )
-         | _ -> None)
-       info.Lexer.leading_trivia)
-
 let _print_leading : Lexer.trivia_info -> unit =
- fun info -> print_endline (string_of_leading info)
+ fun info -> print_endline (Lexer.doc_comment_of_trivia_info info)
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
@@ -117,7 +97,7 @@ struct
           {
             name;
             typ = None;
-            doc = Some (string_of_leading (Env.find_trivia at));
+            doc = Some (Lexer.doc_comment_of_trivia_info (Env.find_trivia at));
           }
     | Source.{ it = Syntax.AnnotP (p, ty); at; _ } ->
         Option.map
@@ -125,7 +105,7 @@ struct
             {
               x with
               typ = Some ty;
-              doc = Some (string_of_leading (Env.find_trivia at));
+              doc = Some (Lexer.doc_comment_of_trivia_info (Env.find_trivia at));
             })
           (extract_args p)
     | Source.{ it = Syntax.WildP; _ } -> None
@@ -148,7 +128,8 @@ struct
     | _ -> Value { name; typ = None }
 
   let extract_obj_field_doc : Syntax.typ_field -> Syntax.typ_field * string =
-   fun ({ at; _ } as tf) -> (tf, string_of_leading (Env.find_trivia at))
+   fun ({ at; _ } as tf) ->
+    (tf, Lexer.doc_comment_of_trivia_info (Env.find_trivia at))
 
   let rec extract_doc mk_xref = function
     | Source.
@@ -199,7 +180,9 @@ struct
              {
                xref;
                doc_comment =
-                 Some (string_of_leading (Env.find_trivia dec_field.at));
+                 Some
+                   (Lexer.doc_comment_of_trivia_info
+                      (Env.find_trivia dec_field.at));
                declaration = decl_doc;
              })
 end
@@ -228,7 +211,7 @@ let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
       let docs = List.filter_map (Ex.extract_dec_field Fun.id) decls in
       Ok
         {
-          module_comment = string_of_leading module_docs;
+          module_comment = Lexer.doc_comment_of_trivia_info module_docs;
           lookup_type = Ex.lookup_type;
           docs;
         }

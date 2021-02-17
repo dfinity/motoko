@@ -12,6 +12,26 @@ type trivia_info = {
   trailing_trivia : ST.void ST.trivia list;
 }
 
+let doc_comment_of_trivia_info : trivia_info -> string =
+ fun info ->
+  String.concat "\n"
+    (List.filter_map
+       (function
+         | Source_token.Comment s -> (
+             match Lib.String.chop_prefix "///" s with
+             | Some "" -> Some ""
+             | Some line_comment ->
+                 (* We expect a documentation line comment to start with a space
+                  *  (which we remove here) *)
+                 Lib.String.chop_prefix " " line_comment
+             | None ->
+                 Option.bind
+                   (Lib.String.chop_prefix "/**" s)
+                   (Lib.String.chop_suffix "*/")
+                 |> Option.map String.trim )
+         | _ -> None)
+       info.leading_trivia)
+
 module PosHash = struct
   type t = pos
 
