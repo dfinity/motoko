@@ -66,6 +66,14 @@ type token =
   | DIVOP
   | MODOP
   | POWOP
+  | WRAPADDOP
+  | WRAPSUBOP
+  | WRAPMULOP
+  | WRAPPOWOP
+  | WRAPADDASSIGN
+  | WRAPSUBASSIGN
+  | WRAPMULASSIGN
+  | WRAPPOWASSIGN
   | ANDOP
   | OROP
   | XOROP
@@ -178,6 +186,14 @@ let to_parser_token :
   | DIVOP -> Ok Parser.DIVOP
   | MODOP -> Ok Parser.MODOP
   | POWOP -> Ok Parser.POWOP
+  | WRAPADDOP -> Ok Parser.WRAPADDOP
+  | WRAPSUBOP -> Ok Parser.WRAPSUBOP
+  | WRAPMULOP -> Ok Parser.WRAPMULOP
+  | WRAPPOWOP -> Ok Parser.WRAPPOWOP
+  | WRAPADDASSIGN -> Ok Parser.WRAPADDASSIGN
+  | WRAPSUBASSIGN -> Ok Parser.WRAPSUBASSIGN
+  | WRAPMULASSIGN -> Ok Parser.WRAPMULASSIGN
+  | WRAPPOWASSIGN -> Ok Parser.WRAPPOWASSIGN
   | ANDOP -> Ok Parser.ANDOP
   | OROP -> Ok Parser.OROP
   | XOROP -> Ok Parser.XOROP
@@ -290,6 +306,14 @@ let string_of_parser_token = function
   | Parser.DIVOP -> "DIVOP"
   | Parser.MODOP -> "MODOP"
   | Parser.POWOP -> "POWOP"
+  | Parser.WRAPADDOP -> "WRAPADDOP"
+  | Parser.WRAPSUBOP -> "WRAPSUBOP"
+  | Parser.WRAPMULOP -> "WRAPMULOP"
+  | Parser.WRAPPOWOP -> "WRAPPOWOP"
+  | Parser.WRAPADDASSIGN -> "WRAPADDASSIGN"
+  | Parser.WRAPSUBASSIGN -> "WRAPSUBASSIGN"
+  | Parser.WRAPMULASSIGN -> "WRAPMULASSIGN"
+  | Parser.WRAPPOWASSIGN -> "WRAPPOWASSIGN"
   | Parser.ANDOP -> "ANDOP"
   | Parser.OROP -> "OROP"
   | Parser.XOROP -> "XOROP"

@@ -23,11 +23,11 @@ let id_of_full_path (fp : string) : string =
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
-  | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
-  | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
-  | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
-  | NegOp, Int64Lit n -> Int64Lit (Value.Int_64.sub Value.Int_64.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Numerics.Int.sub Numerics.Int.zero n)
+  | NegOp, Int8Lit n -> Int8Lit (Numerics.Int_8.sub Numerics.Int_8.zero n)
+  | NegOp, Int16Lit n -> Int16Lit (Numerics.Int_16.sub Numerics.Int_16.zero n)
+  | NegOp, Int32Lit n -> Int32Lit (Numerics.Int_32.sub Numerics.Int_32.zero n)
+  | NegOp, Int64Lit n -> Int64Lit (Numerics.Int_64.sub Numerics.Int_64.zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
@@ -80,8 +80,10 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjE (s, es) ->
-    obj at s None es note.Note.typ
+  | S.ObjBlockE (s, dfs) ->
+    obj_block at s None dfs note.Note.typ
+  | S.ObjE efs ->
+    obj note.Note.typ efs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -114,10 +116,19 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
-    | ["num";"conv";s1;s2] ->
+    | ["num"; "conv"; s1; s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
-      I.PrimE (I.NumConvPrim (p1, p2), [exp e])
+      I.PrimE (I.NumConvTrapPrim (p1, p2), [exp e])
+    | _ -> assert false
+    end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
+    when Lib.String.chop_prefix "num_wrap" p <> None ->
+    begin match String.split_on_char '_' p with
+    | ["num"; "wrap"; s1; s2] ->
+      let p1 = Type.prim s1 in
+      let p2 = Type.prim s2 in
+      I.PrimE (I.NumConvWrapPrim (p1, p2), [exp e])
     | _ -> assert false
     end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
@@ -222,11 +233,11 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj at s self_id es obj_typ =
+and obj_block at s self_id dfs obj_typ =
   match s.it with
   | T.Object | T.Module ->
-    build_obj at s.it self_id es obj_typ
-  | T.Actor -> build_actor at self_id es obj_typ
+    build_obj at s.it self_id dfs obj_typ
+  | T.Actor -> build_actor at self_id dfs obj_typ
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ} =
@@ -292,7 +303,7 @@ and build_actor at self_id es obj_typ =
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let ds =
-    varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
+    varD state (optE (primE (I.ICStableRead ty) []))
     ::
     nary_funcD get_state []
       (let v = fresh_var "v" ty in
@@ -343,7 +354,7 @@ and stabilize stab_opt d =
     ([(i, t)],
      fun get_state ->
      let v = fresh_var i t in
-     varD i t
+     varD (var i (T.Mut t))
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
          e
          (varP v) (varE v)
@@ -361,14 +372,34 @@ and stabilize stab_opt d =
   | (S.Stable, I.LetD _) ->
     assert false
 
-and build_obj at s self_id es obj_typ =
+and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
     | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
-  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
+  in I.BlockE (decs (List.map (fun df -> df.it.S.dec) dfs) @ ret_ds, ret_o)
+
+and exp_field ef =
+  let S.{mut; id; exp = e} = ef.it in
+  let typ = e.note.S.note_typ in
+  match mut.it with
+  | S.Var ->
+    let id' = fresh_var id.it (T.Mut typ) in
+    let d = varD id' (exp e) in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
+    (d, f)
+  | S.Const ->
+    let id' = fresh_var id.it typ in
+    let d = letD id' (exp e) in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    (d, f)
+
+and obj obj_typ efs =
+  let (ds, fs) = List.map exp_field efs |> List.split in
+  let obj_e = newObjE T.Object fs obj_typ in
+  I.BlockE(ds, obj_e)
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -414,6 +445,7 @@ and blob_dotE proj e =
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
     | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
+    | "vals" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
     |  _ -> assert false
 
 and text_dotE proj e =
@@ -463,7 +495,7 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -490,13 +522,13 @@ and dec' at n d = match d with
         let (_, obj_typ) = T.as_async rng_typ in
         let c = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE (typ_arg c T.Scope T.scope_bound)
-          (wrap { it = obj at s (Some self_id) es (T.promote obj_typ);
+          (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
       else
        wrap
-        { it = obj at s (Some self_id) es rng_typ;
+        { it = obj_block at s (Some self_id) dfs rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in

@@ -18,7 +18,7 @@ Motoko compiler (revision XXX)
 > -42 : Int
 > [func, func] : [(<A, B>([A], B) -> A)]
 >   [func, func] : [({#bar} -> ())]
-> > >   [[42], [25], [77]] : [[Any]]
+> > >   [[42], [25], [77]] : [Any]
 >   [42, 77, [1, 2, 3]] : [Any]
 > [77, [1, 2, 3], 42] : [Any]
 > [func, func] : [(Nat -> Int)]

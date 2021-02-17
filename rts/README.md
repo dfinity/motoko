@@ -52,8 +52,8 @@ libtommath and memory management
 --------------------------------
 
 We have to make libtommath’s memory management (which expects functions
-`alloc`, `calloc` and `realloc`) work with the Motoko runtime. See in bigint.rs
-for the technical details.
+`alloc`, `calloc` and `realloc`) work with the Motoko runtime.
+See `motoko-rts/src/bigint.rs` for the technical details.
 
 Rust build
 ----------

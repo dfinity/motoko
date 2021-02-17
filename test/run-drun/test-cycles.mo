@@ -7,6 +7,8 @@ actor client {
  func print(t:Text) { Prim.debugPrint("client: " # t); };
 
  public func go() : async () {
+  if (Cycles.balance() == (0 : Nat64))
+    await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
 
 //  print("balance: " # debug_show(Cycles.balance()) ); // to volatile to show
 
@@ -14,6 +16,7 @@ actor client {
 
   print("accept(0): " # debug_show(Cycles.accept(0)));
 
+  Cycles.add(2_000_000_000_000);
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");

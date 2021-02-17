@@ -1,0 +1,13 @@
+= M0150
+
+This error means you supplied a mutable record field (declared with `var`) where an immutable record field (specified without `var`) was expected.
+
+Erroneous code example:
+
+
+  { var name = "Fred" } : { name : Text }
+
+
+If you encounter this error, you should probably omit `var`:
+
+  { name = "Fred" } : { name : Text }

@@ -66,7 +66,7 @@ You can get a development environment without having to use `nix-shell`
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages:
    ```
-   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test atdgen wasm obelisk
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test atdgen wasm obelisk uucp
    ```
  * Install into your `PATH` various command line tools used by, in particular,
    the test suite:
