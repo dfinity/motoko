@@ -17,7 +17,7 @@ import qualified Data.Text as Text
 import           Language.Haskell.LSP.Test hiding (message)
 import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionDoc(..))
 import qualified Language.Haskell.LSP.Types as LSP
-import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message, additionalTextEdits, newText)
+import           Language.Haskell.LSP.Types.Lens (contents, label, detail, documentation, message, additionalTextEdits, newText)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
@@ -30,11 +30,12 @@ import           Test.Hspec (Expectation, shouldBe, shouldMatchList, shouldConta
 completionTestCase
   :: TextDocumentIdentifier
   -> Position
-  -> ([(Text, Maybe Text)] -> IO ())
+  -> ([(Text, Maybe Text, Maybe Text)] -> IO ())
   -> Session ()
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  liftIO (pred (map (\c -> (c^.label, c^.detail)) actual))
+  let unCompletionDoc (CompletionDocMarkup t) = unMarkup t
+  liftIO (pred (map (\c -> (c^.label, c^.detail, fmap unCompletionDoc (c^.documentation))) actual))
 
 hoverTestCase
   :: TextDocumentIdentifier
@@ -99,6 +100,9 @@ plainMarkup t =
       { _kind = MkPlainText
       , _value = t
       })
+
+unMarkup :: MarkupContent -> Text
+unMarkup (MarkupContent { _kind = MkMarkdown, _value = t}) = t
 
 expectationFailure :: String -> Expectation
 expectationFailure = Test.HUnit.assertFailure
@@ -200,7 +204,7 @@ main = do
             doc
           -- 15 | List.pus|
             (Position 14 14)
-            (`shouldMatchList` [("push",Just "<T>(T, List<T>) -> List<T>")])
+            (`shouldMatchList` [("push",Just "<T>(T, List<T>) -> List<T>", Just "Documentation for `push`")])
 
         log "Completing primitives"
         withDoc "ListClient.mo" \doc -> do
@@ -287,4 +291,4 @@ main = do
             doc
             -- MyDep.|
             (Position 6 6)
-            (`shouldContain` [("print_hello", Just "() -> Text")])
+            (`shouldContain` [("print_hello", Just "() -> Text", Just "")])
