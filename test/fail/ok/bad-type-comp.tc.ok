@@ -1,0 +1,9 @@
+bad-type-comp.mo:1.10-1.19: type error [M0096], expression of type
+  module {}
+cannot produce expected type
+  module {type T = Null}
+bad-type-comp.mo:2.10-2.39: type error [M0096], expression of type
+  module {type T = Int}
+cannot produce expected type
+  module {type T = Null}
+bad-type-comp.mo:3.73-3.74: type error [M0018], duplicate type field name T in object type

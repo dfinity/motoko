@@ -9,7 +9,7 @@ func hashInt(x : Int) : Word32 {
   };
   let base = 2**32;
   while (n > 0) {
-    hash ^= Prim.intToWord32(n % base);
+    hash ^= Prim.intToWord32Wrap(n % base);
     n /= base;
   };
   return hash;

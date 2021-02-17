@@ -177,6 +177,21 @@ let coverage_cases category env cases t at =
 let coverage_pat warnOrError env pat t =
   coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
 
+(* Deprecation *)
+
+let check_deprecation_binop env at t op =
+  let open Type in
+  let open Operator in
+  let word_op_warn s =
+    warn env at "M0152" "the arithmetic operation %s on %s is deprecated, use %s%% instead"
+      s (T.string_of_typ_expand t) s
+  in
+  match t, op with
+  | Prim (Word8|Word16|Word32|Word64), AddOp -> word_op_warn "+"
+  | Prim (Word8|Word16|Word32|Word64), SubOp -> word_op_warn "-"
+  | Prim (Word8|Word16|Word32|Word64), MulOp -> word_op_warn "*"
+  | Prim (Word8|Word16|Word32|Word64), PowOp -> word_op_warn "**"
+  | _, _ -> ()
 
 (* Types *)
 
@@ -454,7 +469,13 @@ and check_typ' env typ : T.typ =
     T.Async (t0, t)
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
-      (List.map (fun (field : typ_field) -> field.it.id) fields);
+      (List.filter_map (fun (field : typ_field) ->
+        match field.it with ValField (x, _, _) -> Some x | _ -> None
+      ) fields);
+    check_ids env "object type" "type field"
+      (List.filter_map (fun (field : typ_field) ->
+        match field.it with TypField (x, _) -> Some x | _ -> None
+      ) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
   | ParT typ ->
@@ -462,15 +483,19 @@ and check_typ' env typ : T.typ =
   | NamedT (_, typ) ->
     check_typ env typ
 
-and check_typ_field env s typ_field : T.field =
-  let {id; mut; typ} = typ_field.it in
-  let t = infer_mut mut (check_typ env typ) in
-  if not env.pre && s = T.Actor then begin
-    if not (T.is_shared_func t) then
-      error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
-        id.it (T.string_of_typ_expand t)
-  end;
-  T.{lab = id.it; typ = t}
+and check_typ_field env s typ_field : T.field = match typ_field.it with
+  | ValField (id, typ, mut) ->
+    let t = infer_mut mut (check_typ env typ) in
+    if not env.pre && s = T.Actor then begin
+      if not (T.is_shared_func t) then
+        error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
+          id.it (T.string_of_typ_expand t)
+    end;
+    T.{lab = id.it; typ = t}
+  | TypField (id,  typ) ->
+    let t = check_typ env typ in
+    let c = Con.fresh id.it (T.Def ([], t)) in
+    T.{lab = id.it; typ = Typ c}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in
@@ -595,25 +620,25 @@ and check_inst_bounds env tbs inst at =
 (* Literals *)
 
 let check_lit_val env t of_string at s =
-  try of_string s with _ ->
+  try of_string s with Invalid_argument _ ->
     error env at "M0048" "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
-let check_nat env = check_lit_val env T.Nat Value.Nat.of_string
-let check_nat8 env = check_lit_val env T.Nat8 Value.Nat8.of_string
-let check_nat16 env = check_lit_val env T.Nat16 Value.Nat16.of_string
-let check_nat32 env = check_lit_val env T.Nat32 Value.Nat32.of_string
-let check_nat64 env = check_lit_val env T.Nat64 Value.Nat64.of_string
-let check_int env = check_lit_val env T.Int Value.Int.of_string
-let check_int8 env = check_lit_val env T.Int8 Value.Int_8.of_string
-let check_int16 env = check_lit_val env T.Int16 Value.Int_16.of_string
-let check_int32 env = check_lit_val env T.Int32 Value.Int_32.of_string
-let check_int64 env = check_lit_val env T.Int64 Value.Int_64.of_string
-let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string
-let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string
-let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string
-let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string
-let check_float env = check_lit_val env T.Float Value.Float.of_string
+let check_nat env = check_lit_val env T.Nat Numerics.Nat.of_string
+let check_nat8 env = check_lit_val env T.Nat8 Numerics.Nat8.of_string
+let check_nat16 env = check_lit_val env T.Nat16 Numerics.Nat16.of_string
+let check_nat32 env = check_lit_val env T.Nat32 Numerics.Nat32.of_string
+let check_nat64 env = check_lit_val env T.Nat64 Numerics.Nat64.of_string
+let check_int env = check_lit_val env T.Int Numerics.Int.of_string
+let check_int8 env = check_lit_val env T.Int8 Numerics.Int_8.of_string
+let check_int16 env = check_lit_val env T.Int16 Numerics.Int_16.of_string
+let check_int32 env = check_lit_val env T.Int32 Numerics.Int_32.of_string
+let check_int64 env = check_lit_val env T.Int64 Numerics.Int_64.of_string
+let check_word8 env = check_lit_val env T.Word8 Numerics.Word8.of_string
+let check_word16 env = check_lit_val env T.Word16 Numerics.Word16.of_string
+let check_word32 env = check_lit_val env T.Word32 Numerics.Word32.of_string
+let check_word64 env = check_lit_val env T.Word64 Numerics.Word64.of_string
+let check_float env = check_lit_val env T.Float Numerics.Float.of_string
 
 let check_text env at s =
   (try ignore (Wasm.Utf8.decode s)
@@ -719,6 +744,7 @@ let blob_obj () =
   let open T in
   Object,
   [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)])};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
 
@@ -814,6 +840,7 @@ and infer_exp'' env exp : T.typ =
         error_bin_op env exp.at t1 t2;
       ot := t
     end;
+    check_deprecation_binop env exp.at t op;
     t
   | RelE (ot, exp1, op, exp2) ->
     let t1 = T.normalize (infer_exp env exp1) in
@@ -1227,6 +1254,7 @@ and check_exp' env0 t exp : T.typ =
     ot := t;
     check_exp env t exp1;
     check_exp env t exp2;
+    check_deprecation_binop env exp.at t op;
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
@@ -1235,6 +1263,12 @@ and check_exp' env0 t exp : T.typ =
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
+    List.iter (fun ft ->
+      if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
+      then local_error env exp.at "M0151"
+        "object literal is missing field %s from expected type\n  %s"
+        ft.T.lab (T.string_of_typ_expand t);
+    ) fts;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;

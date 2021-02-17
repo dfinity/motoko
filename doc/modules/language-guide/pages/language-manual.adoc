@@ -212,7 +212,7 @@ To simplify the presentation of available operators, operators and primitive typ
 
 | A            | Arithmetic | arithmetic operations
 | L            | Logical    | logical/Boolean operations
-| B            | Bitwise    | bitwise operations
+| B            | Bitwise    | bitwise and wrapping operations
 | O            | Ordered    | comparison
 | T            | Text       | concatenation
 |===
@@ -269,7 +269,7 @@ Equality and inequality are structural and based on the observable content of th
 |===
 
 [[syntax-ops-bitwise]]
-=== Bitwise binary operators
+=== Bitwise and wrapping binary operators
 
 |===
 | `<binop>` | Category |
@@ -279,9 +279,14 @@ Equality and inequality are structural and based on the observable content of th
 | `^`   | B | exclusive or
 | `<<`  | B | shift left
 | `␣>>` | B | shift right *(must be preceded by whitespace)*
-| `+>>` | B | signed shift right
+| `+>>` | B | signed shift right (only on `Word`-types)
 | `<<>` | B | rotate left
 | `<>>` | B | rotate right
+
+|  `+%` | A | addition (wrap-on-overflow)
+|  `-%` | A | subtraction (wrap-on-overflow)
+|  `*%` | A | multiplication (wrap-on-overflow)
+|  `**%`| A | exponentiation (wrap-on-overflow)
 |===
 
 [[syntax-ops-string]]
@@ -311,9 +316,13 @@ Equality and inequality are structural and based on the observable content of th
 | `^=`   | B | in place exclusive or
 | `<\<=`  | B | in place shift left
 | `>>=`  | B | in place shift right
-| `+>>=` | B | in place signed shift right
+| `+>>=` | B | in place signed shift right (only on `Word`-types)
 | `<<>=` | B | in place rotate left
 | `<>>=` | B | in place rotate right
+| `+%=`   | B | in place add (wrap-on-overflow)
+| `-%=`   | B | in place subtract (wrap-on-overflow)
+| `*%=`   | B | in place multiply (wrap-on-overflow)
+| `**%=`  | B | in place exponentiation (wrap-on-overflow)
 | `#=`   | T | in place concatenation
 |===
 
@@ -330,18 +339,18 @@ Tokens on the same line have equal precedence with the indicated associativity.
 
 | LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 |(higher)| none | `else`, `while`
-|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>-`, `<<>=`, `<>>=`
+|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=`,`
 |(higher)| left | `:`
 |(higher)| left | `or`
 |(higher)| left | `and`
 |(higher)| none | `==`, `!=`, `<`, `>`, `\<=`, `>`, `>=`
-|(higher)| left | `+`, `-`, `#`
-|(higher)| left | `*`, `/`, `%`
+|(higher)| left | `+`, `-`, `#`, `+%`, `-%`
+|(higher)| left | `*`, `/`, `%`, `*%`
 |(higher)| left | `\|`
 |(higher)| left | `+&+`
 |(higher)| left | `+^+`
 |(higher)| none | `<<`, `>>`, `<<>`, `<>>`
-| HIGHEST | left | `+**+`
+| HIGHEST | left | `+**+`, `+**%+`
 |===
 
 
@@ -684,18 +693,47 @@ In particular, every value of type `Nat` is also a value of type `Int`, without 
 
 The types `Int8`, `Int16`, `Int32` and `Int64` represent
 signed integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and O (Ordered).
+All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
+
+The operations `+%`, `-%`, `*%` and `**%` provide access to wrap-around, modular arithmetic.
+
+As bitwise types, these types support bitwise operations *and* `(&)`,
+*or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
+left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
+The right-shift preserves the two's-complement sign.
+All shift and rotate amounts are considered modulo the word's width *n*.
+
+Bounded integer types are not in subtype relationship with each other or with
+other arithmetic types, and their literals need type annotation if
+the type cannot be inferred from context, e.g. `(-42 : Int16)`.
+
+The corresponding module in the base library provides conversion functions:
+Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
+conversion to the bounded natural type of the same size.
+
 
 [[bounded-naturals]]
 === Bounded naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
 
 The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
 unsigned integers with respectively 8, 16, 32 and 64 bit precision.
-All have categories A (Arithmetic) and O (Ordered).
+All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
+
+The operations `+%`, `-%`, `*%` and `**%` provide access to the modular, wrap-on-overflow operations.
+
+As bitwise types, these types support bitwise operations *and* `(&)`,
+*or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
+left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
+The right-shift is logical.
+All shift and rotate amounts are considered modulo the word's width *n*.
+
+The corresponding module in the base library provides conversion functions:
+Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
+conversion to the bounded natural type of the same size.
 
 [[word-types]]
 === Word types
@@ -724,13 +762,44 @@ other arithmetic types, and their literals need type annotation, e.g.
 `(-42 : Word16)`. For negative literals the two's-complement
 representation is applied.
 
+[IMPORTANT]
+====
+The `WordN` types will be deprecated in favor of the `NatN` and `IntN` types. This happens in two phases:
+
+1. First, the wrapping arithmetic operations on word types (`+`, `-`, `*` or `**`) are deprecated, and the explicitly wrapping variants should be used (`+%`, +`-%`, `*%` and `**%`).
+
+2. In the next phase, the `Word` types themselves are removed.
+
+Developers can choose to follow these phases, and be guided by the deprecation
+warnings, or can migrate away from using the `WordN` types now. In that case:
+
+ * Choose `NatN` or `IntN` as needed (typically `NatN`).
+
+ * For each use of `+`, `-`, `*` or `**`, decide whether you want to preserve
+   the wrapping behaviour, in which case you use `+%`, +`-%`, `*%` or `**%`, or
+   if you actually want the trapping behaviour of arithmetic on `NatN`/`IntN`.
+
+ * For each use of `Word8.fromInt`, decide whether you want wrapping or
+   trapping behaviour. Use `fromNat`/`fromInt` or `fromIntWrap` accordingly.
+
+ * Instead of `Char.fromWord32` and `Char.toWord32`, use `Char.fromNat32` and `Char.toNat32`.
+
+ * For each use of `>>` or `+>>`, decide if the right-shift on `Nat` resp.
+   `Int` gives you the desired semantics. If not, convert to the other type
+   before shifting.
+
+ * Use `blob.vals()` instead of `blob.bytes()`, to get a `Nat8`-iterator.
+
+====
+
+
 [[type-Blob]]
 === Type `Blob`
 
 The type `Blob` of category O (Ordered) represents binary blobs or sequences of bytes.
 Function `b.size` returns the number of characters in `Blob` value `b`.
-Operations on blob values include sequential iteration over bytes via function `b.bytes` as in
-`for (w : Word8 in b.bytes()) { ... w ... }`.
+Operations on blob values include sequential iteration over bytes via function `b.vals` as in
+`for (v : Nat8 in b.vals()) { ... v ... }`.
 
 [[type-Principal]]
 === Type `Principal`
@@ -1674,6 +1743,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | | | |
 | `Blob` | `size` | `Nat` | size in bytes
 | `Blob` | `bytes` | `{ next: () -> Word8? }` | byte iterator, first to last
+| `Blob` | `vals` | `{ next: () -> Nat8? }` | byte iterator, first to last
 | | | |
 | `[var? T]` | `get` | `Nat -> T` | indexed read function
 | `[var? T]` | `keys` | `{ next: () -> Nat? }` | index iterator, by ascending index
@@ -1686,7 +1756,7 @@ If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
 
-NOTE: the `chars`, `bytes`, `keys` and `vals` members
+NOTE: the `chars`, `bytes`, `vals`, `keys` and `vals` members
 produce stateful *iterator objects* than can be
 consumed by `for` expressions (see <<exp-for>>).
 
