@@ -180,12 +180,17 @@ let completions index project_root file_path file_contents line column =
                 else
                   List.map
                     (fun d ->
+                      let item = item_of_ide_decl d in
                       Lsp_t.
                         {
-                          (item_of_ide_decl d) with
+                          item with
                           completion_item_additionalTextEdits =
                             Some [ import_edit p ];
-                          completion_item_detail = Some p;
+                          completion_item_detail =
+                            Option.map
+                              (fun ty ->
+                                Printf.sprintf "%s (import from \"%s\")" ty p)
+                              item.completion_item_detail;
                         })
                     ds)
               possible_imports

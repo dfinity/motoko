@@ -17,19 +17,15 @@ import qualified Data.Text as Text
 import           Language.Haskell.LSP.Test hiding (message)
 import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionDoc(..))
 import qualified Language.Haskell.LSP.Types as LSP
-import           Language.Haskell.LSP.Types.Lens (contents, label, documentation, message, additionalTextEdits, newText)
+import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message, additionalTextEdits, newText)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
 import           System.FilePath ((</>))
 import           System.IO (hPutStr, stderr)
+import qualified Test.HUnit
 import           Test.HUnit.Lang (HUnitFailure(..), formatFailureReason)
-import           Test.Hspec (shouldBe, shouldMatchList, shouldContain)
-
-completionDocAsText :: Maybe CompletionDoc -> Maybe Text
-completionDocAsText = fmap \case
-  CompletionDocString t -> t
-  _ -> error "Non-text documentation field"
+import           Test.Hspec (Expectation, shouldBe, shouldMatchList, shouldContain)
 
 completionTestCase
   :: TextDocumentIdentifier
@@ -38,16 +34,35 @@ completionTestCase
   -> Session ()
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  liftIO (pred (map (\c -> (c^.label, completionDocAsText (c^.documentation))) actual))
+  liftIO (pred (map (\c -> (c^.label, c^.detail)) actual))
 
 hoverTestCase
   :: TextDocumentIdentifier
   -> Position
-  -> Maybe HoverContents
+  -> Maybe Text
   -> Session ()
 hoverTestCase doc pos expected = do
   actual <- getHover doc pos
-  liftIO (shouldBe (fmap (^.contents) actual) expected)
+  case fmap (^.contents) actual of
+    Nothing
+      | expected == Nothing ->
+        pure ()
+    Just (HoverContents (MarkupContent { _value = content}))
+      | Just expected' <- expected ->
+        if Text.isInfixOf expected' content
+          then pure ()
+          else do
+            liftIO $ expectationFailure $
+              "Hover content should've contained " <>
+              show expected' <>
+              " but was " <>
+              show content
+    hc ->
+      liftIO $ expectationFailure $
+        "Hover content should've been " <>
+        show expected <>
+        " but was: " <>
+        show hc
 
 definitionsTestCase
   :: FilePath
@@ -84,6 +99,9 @@ plainMarkup t =
       { _kind = MkPlainText
       , _value = t
       })
+
+expectationFailure :: String -> Expectation
+expectationFailure = Test.HUnit.assertFailure
 
 handleHUnitFailure :: forall a. String -> IO a -> IO a
 handleHUnitFailure project act = do
@@ -133,11 +151,11 @@ main = do
           hoverTestCase
             doc
             (Position 14 11)
-            (plainMarkup "push : <T>(T, List<T>) -> List<T>")
+            (Just "push : <T>(T, List<T>) -> List<T>")
           hoverTestCase
             doc
             (Position 17 11)
-            (plainMarkup "pop : <T>(List<T>) -> (?T, List<T>)")
+            (Just "pop : <T>(List<T>) -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)
@@ -146,7 +164,7 @@ main = do
           hoverTestCase
             doc
             (Position 8 39)
-            (plainMarkup "natToWord8 : Nat -> Word8")
+            (Just "natToWord8 : Nat -> Word8")
 
         log "Definition tests"
         withDoc "definitions.mo" \doc -> do
@@ -172,7 +190,7 @@ main = do
           liftIO
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "empty")
-                              *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
+                              *> pure (c^.label, c^.detail)) actual)
              ([("empty", Just "() -> Stack")]))
           --     15 | List.push<Int>(x, s);
           -- ==> 15 | List.pus
@@ -192,7 +210,7 @@ main = do
           liftIO
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "word32ToNat")
-                         *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
+                         *> pure (c^.label, c^.detail)) actual)
              ([("word32ToNat", Just "Word32 -> Nat")]))
 
         log "Completing not-yet-imported modules"
@@ -202,7 +220,7 @@ main = do
           [actual] <- getCompletions doc (Position 15 12)
           liftIO do
             shouldBe (actual^.label) "print_hello"
-            shouldBe (completionDocAsText (actual^.documentation)) (Just "() -> Text")
+            shouldBe (actual^.detail) (Just "() -> Text (import from \"mo:mydep/lib\")")
             let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
             shouldContain (Text.lines (importEdit^.newText)) ["import MyDep \"mo:mydep/lib\";"]
 
@@ -213,7 +231,7 @@ main = do
           [actual] <- getCompletions doc (Position 15 12)
           liftIO do
             shouldBe (actual^.label) "add_counter"
-            shouldBe (completionDocAsText (actual^.documentation)) (Just "shared Nat -> ()")
+            shouldBe (actual^.detail) (Just "shared Nat -> () (import from \"canister:counter\")")
             let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
             shouldContain (Text.lines (importEdit^.newText)) ["import Counter \"canister:counter\";"]
 
