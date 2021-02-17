@@ -339,7 +339,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         | exception Idllib.Exception.UnsupportedCandidFeature s ->
           Diag.error
             ri.Source.at
-            "M0149"
+            "M0153"
             "import"
             (Printf.sprintf "file %s uses Candid types without corresponding Motoko type" f)
         | actor ->
