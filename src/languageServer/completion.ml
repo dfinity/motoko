@@ -9,6 +9,9 @@ let string_of_list f xs =
 let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
+let markup_content s =
+  Lsp_t.{ markup_content_kind = "markdown"; markup_content_value = s }
+
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
   let comp = DI.name_of_ide_decl d in
   match d with
@@ -21,8 +24,8 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
-            Some (Pretty.string_of_typ value.DI.typ);
-          completion_item_detail = None;
+            Option.map markup_content value.DI.doc_comment;
+          completion_item_detail = Some (Pretty.string_of_typ value.DI.typ);
         }
   | DI.TypeDecl ty ->
       let con = ty.DI.typ in
@@ -35,8 +38,9 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
+            Option.map markup_content ty.DI.doc_comment;
+          completion_item_detail =
             Some (Printf.sprintf "type %s%s" ty.DI.name params);
-          completion_item_detail = None;
         }
 
 let import_relative_to_project_root root module_path dependency =

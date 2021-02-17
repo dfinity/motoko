@@ -4,13 +4,23 @@ module Lsp = Lsp.Lsp_t
 module DI = Declaration_index
 
 let hover_detail = function
-  | ValueDecl value -> value.name ^ " : " ^ Pretty.string_of_typ value.typ
+  | ValueDecl value ->
+      let doc_comment =
+        match value.doc_comment with None -> "" | Some c -> "\n\n---\n\n" ^ c
+      in
+      Printf.sprintf "```motoko\n%s : %s\n```%s" value.name
+        (Pretty.string_of_typ value.typ)
+        doc_comment
   | TypeDecl ty ->
+      let doc_comment =
+        match ty.doc_comment with None -> "" | Some c -> "\n\n---\n\n" ^ c
+      in
       let _, params, _ = Type.strings_of_kind (Con.kind ty.typ) in
-      Printf.sprintf "public type %s%s" ty.name params
+      Printf.sprintf "```motoko\npublic type %s%s\n```%s" ty.name params
+        doc_comment
 
 let markup_content (msg : string) : Lsp.markup_content =
-  Lsp.{ markup_content_kind = "plaintext"; markup_content_value = msg }
+  Lsp.{ markup_content_kind = "markdown"; markup_content_value = msg }
 
 let hover_handler (index : DI.t) (position : Lsp.position)
     (file_contents : string) (project_root : string) (file_path : string) =
