@@ -1,0 +1,2 @@
+exception UnsupportedCandidFeature of string
+

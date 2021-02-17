@@ -78,6 +78,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
 
   try
     let defs =
+      "import Prim \"mo:prim\";" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
         "type " ^ n ^ " = " ^ Type.string_of_typ mo_typ ^ ";\n"
@@ -97,7 +98,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | ParsesEqual (false, i1, i2)
     -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
   with
-    | Idl_to_mo.UnsupportedCandidFeature what ->
+    | Exception.UnsupportedCandidFeature what ->
       Error (what ^ " not supported")
     | TextualParseError (x, msgs) ->
       Error (Printf.sprintf "Could not parse %S:\n%s" x
