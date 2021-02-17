@@ -127,8 +127,10 @@ let num_binop fnat fint ffixed fwords ffloat = function
   | t -> fixed_binop ffixed fwords t
 
 let binop op t =
-  match t with
-  | T.Prim p ->
+  match t, op with
+  (* This is temporary until word types are removed, then things will be simpler here again *)
+  | T.(Prim (Word8|Word16|Word32|Word64)), (AddOp|SubOp|MulOp|PowOp) -> raise (Invalid_argument "binop")
+  | T.Prim p, _ ->
     (match op with
     | AddOp -> num_binop Nat.add Int.add (Nat8.add, Nat16.add, Nat32.add, Nat64.add, Int_8.add, Int_16.add, Int_32.add, Int_64.add) (Word8.add, Word16.add, Word32.add, Word64.add) Float.add p
     | SubOp -> num_binop Nat.sub Int.sub (Nat8.sub, Nat16.sub, Nat32.sub, Nat64.sub, Int_8.sub, Int_16.sub, Int_32.sub, Int_64.sub) (Word8.sub, Word16.sub, Word32.sub, Word64.sub) Float.sub p
@@ -150,7 +152,7 @@ let binop op t =
     | WPowOp -> fixed_binop (Nat8.wpow, Nat16.wpow, Nat32.wpow, Nat64.wpow, Int_8.wpow, Int_16.wpow, Int_32.wpow, Int_64.wpow) (Word8.wpow, Word16.wpow, Word32.wpow, Word64.wpow) p
     | CatOp -> text_binop (^) p
     )
-  | T.Non -> impossible
+  | T.Non, _ -> impossible
   | _ -> raise (Invalid_argument "binop")
 
 
