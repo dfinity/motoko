@@ -1745,6 +1745,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `Blob` | `bytes` | `{ next: () -> Word8? }` | byte iterator, first to last
 | `Blob` | `vals` | `{ next: () -> Nat8? }` | byte iterator, first to last
 | | | |
+| `[var? T]` | `size` | `Nat` | number of elements
 | `[var? T]` | `get` | `Nat -> T` | indexed read function
 | `[var? T]` | `keys` | `{ next: () -> Nat? }` | index iterator, by ascending index
 | `[var? T]` | `vals` | `{ next: () -> T? }` | value iterator, by ascending index
