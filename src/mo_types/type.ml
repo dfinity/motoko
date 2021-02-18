@@ -1048,7 +1048,8 @@ and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
       | Typ _, _
       | _, Typ _ -> assert false
       | _, _ ->
-        {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
+        {lab = f1.lab; typ = lub' lubs glbs f1.typ f2.typ; depr = None}
+        ::lub_fields lubs glbs fs1' fs2'
 
 and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
@@ -1125,8 +1126,8 @@ and glb_fields lubs glbs fs1 fs2 : field list option =
       | Typ _, _
       | _, Typ _ -> assert false
       | _, _ ->
-        {f1 with typ = glb' lubs glbs f1.typ f2.typ} +?
-          glb_fields lubs glbs fs1' fs2'
+        {lab = f1.lab; typ = glb' lubs glbs f1.typ f2.typ; depr = None}
+        +? glb_fields lubs glbs fs1' fs2'
 
 and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> []
