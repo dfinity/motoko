@@ -5,6 +5,8 @@
   deprecated.
 
 * The `moc` now accepts the `-Werror` flag to turn warnings into errors.
+* The language server now returns documentation comments alongside
+  completions and hover notifications
 
 == 0.5.8 (2021-02-12)
 
