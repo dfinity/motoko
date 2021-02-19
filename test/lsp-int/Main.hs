@@ -77,7 +77,6 @@ definitionsTestCase project doc pos expected = do
   let actual = map (\(Location uri range) -> (uri, range)) response
   liftIO (shouldMatchList actual expected')
 
-
 -- | Discards all empty diagnostic reports (as those are merely used
 -- to clear out old reports)
 waitForActualDiagnostics :: Session [Diagnostic]
@@ -291,4 +290,26 @@ main = do
             doc
             -- MyDep.|
             (Position 6 6)
-            (`shouldContain` [("print_hello", Just "() -> Text", Just "")])
+            (`shouldContain` [("print_hello", Just "() -> Text", Nothing)])
+
+        log "Documentation in completions"
+        withDoc "app.mo" \doc -> do
+          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport Doc \"doc_comments\""
+          _ <- applyEdit doc edit
+          sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
+          let edit2 = TextEdit (Range (Position 5 0) (Position 5 0)) "\nDoc."
+          _ <- applyEdit doc edit2
+          completionTestCase
+            doc
+            -- Doc.|
+            (Position 6 4)
+            (`shouldMatchList`
+               [ ("e", Just "Nat", Just "I'm a doc comment")
+               , ("e1", Just "Nat", Nothing)
+               , ("e2", Just "Nat", Nothing)
+               , ("e3", Just "Nat", Just "Edgecase 3\nEdgecase 3")
+               , ("e4", Just "Nat", Just "Edgecase 4\nEdgecase 4")
+               , ("e5", Just "Nat", Just "Edgecase 5\n\nEdgecase 5")
+               , ("e6", Just "Nat", Just "")
+               , ("e7", Just "Nat", Just "")
+               ])
