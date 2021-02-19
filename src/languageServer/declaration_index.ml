@@ -257,7 +257,7 @@ let populate_definitions (project_root : string)
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def (lib, triv_table) def =
-    let find_doc_comment (parser_pos : Source.region) : string =
+    let find_doc_comment (parser_pos : Source.region) : string option =
       Lexer.PosHashtbl.find_opt triv_table
         Lexer.{ line = parser_pos.left.line; column = parser_pos.left.column }
       |> Option.get
@@ -278,12 +278,7 @@ let populate_definitions (project_root : string)
         match List.find_map find_binder fields with
         | None -> ValueDecl { value with definition = None }
         | Some (definition, doc_comment) ->
-            ValueDecl
-              {
-                value with
-                definition = Some definition;
-                doc_comment = Some doc_comment;
-              } )
+            ValueDecl { value with definition = Some definition; doc_comment } )
     | TypeDecl typ -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
         let find_type_binder field =
@@ -295,12 +290,8 @@ let populate_definitions (project_root : string)
         match List.find_map find_type_binder fields with
         | None -> TypeDecl typ
         | Some (type_definition, doc_comment) ->
-            TypeDecl
-              {
-                typ with
-                definition = Some type_definition;
-                doc_comment = Some doc_comment;
-              } )
+            TypeDecl { typ with definition = Some type_definition; doc_comment }
+        )
   in
   let opt_lib =
     List.find_opt

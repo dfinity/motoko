@@ -21,7 +21,7 @@ type trivia_info = {
   trailing_trivia : ST.void ST.trivia list;
 }
 
-val doc_comment_of_trivia_info : trivia_info -> string
+val doc_comment_of_trivia_info : trivia_info -> string option
 
 module PosHashtbl : Hashtbl.S with type key = pos
 

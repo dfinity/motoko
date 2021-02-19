@@ -12,25 +12,27 @@ type trivia_info = {
   trailing_trivia : ST.void ST.trivia list;
 }
 
-let doc_comment_of_trivia_info : trivia_info -> string =
+let doc_comment_of_trivia_info : trivia_info -> string option =
  fun info ->
-  String.concat "\n"
-    (List.filter_map
-       (function
-         | Source_token.Comment s -> (
-             match Lib.String.chop_prefix "///" s with
-             | Some "" -> Some ""
-             | Some line_comment ->
-                 (* We expect a documentation line comment to start with a space
-                  *  (which we remove here) *)
-                 Lib.String.chop_prefix " " line_comment
-             | None ->
-                 Option.bind
-                   (Lib.String.chop_prefix "/**" s)
-                   (Lib.String.chop_suffix "*/")
-                 |> Option.map String.trim )
-         | _ -> None)
-       info.leading_trivia)
+  let lines =
+    List.filter_map
+      (function
+        | Source_token.Comment s -> (
+            match Lib.String.chop_prefix "///" s with
+            | Some "" -> Some ""
+            | Some line_comment ->
+                (* We expect a documentation line comment to start with a space
+                 *  (which we remove here) *)
+                Lib.String.chop_prefix " " line_comment
+            | None ->
+                Option.bind
+                  (Lib.String.chop_prefix "/**" s)
+                  (Lib.String.chop_suffix "*/")
+                |> Option.map String.trim )
+        | _ -> None)
+      info.leading_trivia
+  in
+  if lines = [] then None else Some (String.concat "\n" lines)
 
 module PosHash = struct
   type t = pos
@@ -44,6 +46,7 @@ module PosHashtbl = Hashtbl.Make (PosHash)
 
 (* type triv_table = trivia_info IntHashtbl.t *)
 type triv_table = trivia_info PosHashtbl.t
+
 let empty_triv_table = PosHashtbl.create 0
 
 type source_token = ST.token * Lexing.position * Lexing.position
