@@ -155,7 +155,7 @@ let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; lookup_type; _ } ->
   let buf = Buffer.create 1024 in
   bprintf buf "[[module.%s]]\n= %s\n\n" current_path current_path;
-  bprintf buf "%s\n\n" module_comment;
+  Option.iter (bprintf buf "%s\n\n") module_comment;
   let env = { lookup_type } in
   List.iter (adoc_of_doc buf env) declarations;
   Buffer.contents buf
