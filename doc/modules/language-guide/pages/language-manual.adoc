@@ -78,6 +78,14 @@ Single or multi-line comments are any sequence of characters delimited by `+/*+`
 
 Comments delimited by `+/*+` and `+*/+` may be nested, provided the nesting is well-bracketed.
 
+[source, motoko]
+----
+/// I'm a documentation comment
+/// for a function
+----
+
+Documentation comments start with `///` followed by a space until the end of line, and get attached to the definition immediately following them.
+
 All comments are treated as whitespace.
 
 [[syntax-keywords]]

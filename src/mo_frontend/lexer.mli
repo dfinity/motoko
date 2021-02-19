@@ -21,9 +21,12 @@ type trivia_info = {
   trailing_trivia : ST.void ST.trivia list;
 }
 
+val doc_comment_of_trivia_info : trivia_info -> string option
+
 module PosHashtbl : Hashtbl.S with type key = pos
 
 type triv_table = trivia_info PosHashtbl.t
+val empty_triv_table : triv_table
 
 type parser_token = Parser.token * Lexing.position * Lexing.position
 

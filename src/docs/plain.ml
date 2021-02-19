@@ -216,6 +216,6 @@ let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
   bprintf buf "# %s\n" current_path;
-  bprintf buf "%s\n" module_comment;
+  Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf

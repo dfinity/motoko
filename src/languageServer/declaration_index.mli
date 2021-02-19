@@ -7,9 +7,19 @@ val empty : string -> t
 
 val string_of_index : t -> string
 
-type value_decl = { name : string; typ : Type.typ; definition : region option }
+type value_decl = {
+  name : string;
+  typ : Type.typ;
+  definition : region option;
+  doc_comment : string option;
+}
 
-type type_decl = { name : string; typ : Type.con; definition : region option }
+type type_decl = {
+  name : string;
+  typ : Type.con;
+  definition : region option;
+  doc_comment : string option;
+}
 
 type ide_decl = ValueDecl of value_decl | TypeDecl of type_decl
 

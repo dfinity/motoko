@@ -317,7 +317,7 @@ let html_of_docs : render_input -> Cow.Html.t =
       ( navigation
       ++ div ~cls:"documentation"
            ( h1 (string current_path)
-           ++ html_of_comment module_comment
+           ++ html_of_comment (Option.value ~default:"" module_comment)
            ++ list (List.map (html_of_doc env) declarations) ) )
   in
   html (header ++ bdy)
@@ -337,7 +337,8 @@ let make_index : render_input list -> string =
     a ~cls:"index-item-link"
       ~href:(Uri.of_string (input.current_path ^ ".html"))
       (string input.current_path)
-    ++ div ~cls:"index-item-comment" (html_of_comment input.module_comment)
+    ++ div ~cls:"index-item-comment"
+         (html_of_comment (Option.value ~default:"" input.module_comment))
   in
   let bdy =
     div ~cls:"index-container"
