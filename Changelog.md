@@ -1,5 +1,9 @@
 = Motoko compiler changelog
 
+* The syntax `public ("this is now deprecated") func foo() {}` can now be used
+  by library authors to mark module fields (functions, values and types) as
+  deprecated.
+
 * The `moc` now accepts the `-Werror` flag to turn warnings into errors.
 
 == 0.5.8 (2021-02-12)
