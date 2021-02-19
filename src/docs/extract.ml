@@ -192,8 +192,7 @@ struct
         None
 
   and extract_dec_field mk_xref dec_field =
-    if Syntax.is_public (dec_field.it.Syntax.vis)
-    then
+    if Syntax.is_public dec_field.it.Syntax.vis then
       extract_doc mk_xref dec_field.it.Syntax.dec
       |> Option.map (fun (xref, decl_doc) ->
              {
