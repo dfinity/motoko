@@ -17,6 +17,10 @@ assert(A.f(5) == 5);
 
 ignore (5 : A.T);
 
+do { let {f} = A; };
+do { let {f = x} = A; };
+do { let {} = A; };
+
 
 // lub does not warn:
 assert ((if true A else B).foo == 5);

@@ -1741,13 +1741,14 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
       pf.it.id.it (T.string_of_typ (T.Obj (s, tfs)))
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
     check_pat_fields env s tfs' pfs ve at
-  | T.{lab; typ; _}::tfs', pf::pfs' ->
+  | T.{lab; typ; depr}::tfs', pf::pfs' ->
     match compare pf.it.id.it lab with
     | -1 -> check_pat_fields env s [] pfs ve at
     | +1 -> check_pat_fields env s tfs' pfs ve at
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
+      Option.iter (warn env pf.at "M0154" "type field %s has a warning annotation:\n%s" lab) depr;
       let ve1 = check_pat env typ pf.it.pat in
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in

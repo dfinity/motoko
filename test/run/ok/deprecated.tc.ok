@@ -10,3 +10,7 @@ deprecated.mo:16.8-16.11: warning [M0154], field f has a warning annotation:
 deprecated function
 deprecated.mo:18.13-18.16: warning [M0154], type field T has a warning annotation:
 also types
+deprecated.mo:20.11-20.12: warning [M0154], type field f has a warning annotation:
+deprecated function
+deprecated.mo:21.11-21.16: warning [M0154], type field f has a warning annotation:
+deprecated function
