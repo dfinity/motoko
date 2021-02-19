@@ -1,7 +1,7 @@
 module A {
-  public deprecated "do not use foo anymore" let foo = 5;
-  public deprecated "deprecated function" func f(x : Nat) : Nat { x };
-  public deprecated "also types" type T = Int;
+  public("do not use foo anymore") let foo = 5;
+  public("deprecated function") func f(x : Nat) : Nat { x };
+  public("also types") type T = Int;
 
   public let baz : T = 5; // look, no warning
 };
