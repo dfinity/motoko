@@ -1,6 +1,9 @@
 = Motoko compiler changelog
 
+== 0.5.9 (2021-02-19)
+
 * The `moc` now accepts the `-Werror` flag to turn warnings into errors.
+
 * The language server now returns documentation comments alongside
   completions and hover notifications
 
