@@ -1344,6 +1344,11 @@ module Opt = struct
         )
     )
 
+  (* This function is used where conceptually, Opt.inject should be used, but
+  we know for sure that it wouldn’t do anything anyways *)
+  let inject_noop _env e = e
+
+
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
@@ -3262,6 +3267,10 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type];
       E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type];
       E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type];
+      E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
+      E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
+      E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
+      E.add_func_import env "ic0" "data_certificate_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3601,6 +3610,31 @@ module Dfinity = struct
       system_call env "ic0" "msg_cycles_refunded"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
+
+  let set_certified_data env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      Blob.as_ptr_len env ^^
+      system_call env "ic0" "certified_data_set"
+    | _ ->
+      E.trap_with env "cannot set certified data when running locally"
+
+  let get_certificate env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "data_certificate_present" ^^
+      G.if_ [I32Type]
+      begin
+        Opt.inject_noop env (
+          Blob.of_size_copy env
+            (fun env -> system_call env "ic0" "data_certificate_size")
+            (fun env -> system_call env "ic0" "data_certificate_copy") 0l
+        )
+      end (Opt.null_lit env)
+    | _ ->
+      E.trap_with env "cannot get certificate when running locally"
 
 end (* Dfinity *)
 
@@ -7376,6 +7410,14 @@ and compile_exp (env : E.t) ae exp =
     | SystemCyclesRefundedPrim, [] ->
       SR.UnboxedWord64,
       Dfinity.cycles_refunded env
+
+    | SetCertifiedData, [e1] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e1 ^^
+      Dfinity.set_certified_data env
+    | GetCertificate, [] ->
+      SR.Vanilla,
+      Dfinity.get_certificate env
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
