@@ -64,7 +64,7 @@ let un_prog prog =
   | Syntax.ModuleU (_, decs) -> Ok (imports, decs)
   | _ -> Error "Couldn't find a module expression"
 
-module PosTable = Lexer.PosHashtbl
+module PosTable = Trivia.PosHashtbl
 
 type extracted = {
   module_comment : string option;
@@ -77,7 +77,7 @@ module MakeExtract (Env : sig
 
   val imports : (string * string) list
 
-  val find_trivia : Source.region -> Lexer.trivia_info
+  val find_trivia : Source.region -> Trivia.trivia_info
 end) =
 struct
   let namespace : Namespace.t =
@@ -94,7 +94,7 @@ struct
           {
             name;
             typ = None;
-            doc = Lexer.doc_comment_of_trivia_info (Env.find_trivia at);
+            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
           }
     | Source.{ it = Syntax.AnnotP (p, ty); at; _ } ->
         Option.map
@@ -102,7 +102,7 @@ struct
             {
               x with
               typ = Some ty;
-              doc = Lexer.doc_comment_of_trivia_info (Env.find_trivia at);
+              doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
             })
           (extract_args p)
     | Source.{ it = Syntax.WildP; _ } -> None
@@ -127,7 +127,7 @@ struct
   let extract_obj_field_doc :
       Syntax.typ_field -> Syntax.typ_field * string option =
    fun ({ at; _ } as tf) ->
-    (tf, Lexer.doc_comment_of_trivia_info (Env.find_trivia at))
+    (tf, Trivia.doc_comment_of_trivia_info (Env.find_trivia at))
 
   let rec extract_doc mk_xref = function
     | Source.
@@ -177,19 +177,20 @@ struct
              {
                xref;
                doc_comment =
-                 Lexer.doc_comment_of_trivia_info (Env.find_trivia dec_field.at);
+                 Trivia.doc_comment_of_trivia_info
+                   (Env.find_trivia dec_field.at);
                declaration = decl_doc;
              })
     else None
 end
 
-let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
-    =
+let extract_docs :
+    Syntax.prog -> Trivia.triv_table -> (extracted, string) result =
  fun prog trivia_table ->
   let lookup_trivia (line, column) =
-    Lexer.PosHashtbl.find_opt trivia_table Lexer.{ line; column }
+    PosTable.find_opt trivia_table Trivia.{ line; column }
   in
-  let find_trivia (parser_pos : Source.region) : Lexer.trivia_info =
+  let find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)
     |> Option.get
   in
@@ -207,7 +208,7 @@ let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
       let docs = List.filter_map (Ex.extract_dec_field Fun.id) decls in
       Ok
         {
-          module_comment = Lexer.doc_comment_of_trivia_info module_docs;
+          module_comment = Trivia.doc_comment_of_trivia_info module_docs;
           lookup_type = Ex.lookup_type;
           docs;
         }

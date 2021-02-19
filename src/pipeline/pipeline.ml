@@ -74,26 +74,28 @@ let dump_ir flag prog_ir =
 
 type rel_path = string
 
-type parse_result = (Syntax.prog * Lexer.triv_table * rel_path) Diag.result
+type parse_result = (Syntax.prog * Trivia.triv_table * rel_path) Diag.result
 
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let parse_with mode lexer parser name : (Syntax.prog * Lexer.triv_table) Diag.result =
+let parse_with mode lexer parser name : (Syntax.prog * Trivia.triv_table) Diag.result =
   phase "Parsing" name;
   let open Diag.Syntax in
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   (* a back door to enable the `prim` syntax, for our test suite *)
   let tokenizer, get_trivia_table = Lexer.tokenizer mode lexer in
+  let triv_table = get_trivia_table () in
   let* mk_prog =
     try
+      Parser_lib.triv_table := triv_table;
       Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let prog = mk_prog name in
   dump_prog Flags.dump_parse prog;
-  Diag.return (prog, get_trivia_table ())
+  Diag.return (prog, triv_table)
 
 let parse_string' mode name s : parse_result =
   let open Diag.Syntax in
@@ -102,11 +104,11 @@ let parse_string' mode name s : parse_result =
   let* prog, triv_table = parse_with mode lexer parse name in
   Diag.return (prog, triv_table, name)
 
-let parse_string = parse_string' Lexer.mode
 let parse_string_with_trivia =
   parse_string' (Lexer.{Lexer.mode with with_trivia = true})
+let parse_string = parse_string_with_trivia
 
-let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
+let parse_file' mode at filename : (Syntax.prog * Trivia.triv_table * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
@@ -120,13 +122,11 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
     Diag.return (prog, triv_table, filename)
   )
 
-let parse_file at filename : parse_result =
-  parse_file' Lexer.mode at filename
-
 let parse_file_with_trivia at filename : parse_result =
   let mode = Lexer.{Lexer.mode with with_trivia = true} in
   parse_file' mode at filename
 
+let parse_file = parse_file_with_trivia
 
 (* Import file name resolution *)
 
@@ -268,12 +268,12 @@ and the newly added scopes, so these are returned separately.
 
 
 type load_result =
-  ((Syntax.lib * Lexer.triv_table) list * Syntax.prog list * Scope.scope) Diag.result
+  ((Syntax.lib * Trivia.triv_table) list * Syntax.prog list * Scope.scope) Diag.result
 
 type load_decl_result =
-  ((Syntax.lib * Lexer.triv_table) list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
+  ((Syntax.lib * Trivia.triv_table) list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let chase_imports parsefn senv0 imports : ((Syntax.lib * Lexer.triv_table) list * Scope.scope) Diag.result =
+let chase_imports parsefn senv0 imports : ((Syntax.lib * Trivia.triv_table) list * Scope.scope) Diag.result =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -299,7 +299,7 @@ let chase_imports parsefn senv0 imports : ((Syntax.lib * Lexer.triv_table) list 
         Diag.return ()
       else
         let lib, sscope = check_prim () in
-        libs := (lib, Lexer.empty_triv_table) :: !libs; (* NB: Conceptually an append *)
+        libs := (lib, Trivia.empty_triv_table) :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
     | Syntax.Unresolved -> assert false

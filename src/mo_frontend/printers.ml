@@ -219,7 +219,6 @@ let string_of_symbol symbol : string =
   | X (N N_typ_un) -> "<typ_un>"
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
-  | X (N N_depr) -> "<depr>"
   | X (N N_stab) -> "<stab>"
   | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
 

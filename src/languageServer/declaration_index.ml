@@ -242,7 +242,7 @@ let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
   | _ -> None
 
 let populate_definitions (project_root : string)
-    (libs : (Syntax.lib * Lexer.triv_table) list) (path : string)
+    (libs : (Syntax.lib * Trivia.triv_table) list) (path : string)
     (decls : ide_decl list) : ide_decl list =
   let is_let_bound dec_field =
     match dec_field.it.Syntax.dec.it with
@@ -258,10 +258,10 @@ let populate_definitions (project_root : string)
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def (lib, triv_table) def =
     let find_doc_comment (parser_pos : Source.region) : string option =
-      Lexer.PosHashtbl.find_opt triv_table
-        Lexer.{ line = parser_pos.left.line; column = parser_pos.left.column }
+      Trivia.PosHashtbl.find_opt triv_table
+        Trivia.{ line = parser_pos.left.line; column = parser_pos.left.column }
       |> Option.get
-      |> Lexer.doc_comment_of_trivia_info
+      |> Trivia.doc_comment_of_trivia_info
     in
     match def with
     | ValueDecl value -> (
@@ -331,7 +331,7 @@ let scan_actors : unit -> string list =
       |> List.filter (fun f -> Filename.extension f = ".did")
 
 let index_from_scope :
-    string -> t -> (Syntax.lib * Lexer.triv_table) list -> Scope.t -> t =
+    string -> t -> (Syntax.lib * Trivia.triv_table) list -> Scope.t -> t =
  fun project_root initial_index libs scope ->
   Type.Env.fold
     (fun path ty acc ->

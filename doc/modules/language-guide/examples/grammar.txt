@@ -232,7 +232,7 @@
 
 <vis> ::= 
     'private'
-    'public' ('(' <text> ')')?
+    'public'
     'system'
 
 <stab> ::= 

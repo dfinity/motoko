@@ -8,7 +8,6 @@ open Source
 open Operator
 open Parser_lib
 
-
 (* Position handling *)
 
 let position_to_pos position =
@@ -262,7 +261,6 @@ let share_dec_field (df : dec_field) =
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
-%type<Mo_def.Syntax.deprecation option> depr
 %type<Mo_def.Syntax.typ_tag> typ_tag
 %type<Mo_def.Syntax.typ_tag list> typ_variant
 %type<Mo_def.Syntax.typ_field> typ_field
@@ -757,12 +755,13 @@ dec_field :
 
 vis :
   | PRIVATE { Private @@ at $sloc }
-  | PUBLIC d=depr { Public d @@ at $sloc }
+  | PUBLIC {
+        let at = at $sloc in
+        let trivia = Trivia.find_trivia !triv_table at in
+        let depr = Trivia.deprecated_of_trivia_info trivia in
+        Public depr @@ at
+      }
   | SYSTEM { System @@ at $sloc }
-
-depr :
-  | (* empty *) { None }
-  | LPAR t=TEXT RPAR { Some (t @@ at $sloc) }
 
 stab :
   | FLEXIBLE { Some (Flexible @@ at $sloc) }

@@ -11,22 +11,9 @@
 *)
 
 module ST = Source_token
+open Trivia
 
 include module type of Lexer_lib
-
-type pos = { line : int; column : int }
-
-type trivia_info = {
-  leading_trivia : ST.line_feed ST.trivia list;
-  trailing_trivia : ST.void ST.trivia list;
-}
-
-val doc_comment_of_trivia_info : trivia_info -> string option
-
-module PosHashtbl : Hashtbl.S with type key = pos
-
-type triv_table = trivia_info PosHashtbl.t
-val empty_triv_table : triv_table
 
 type parser_token = Parser.token * Lexing.position * Lexing.position
 
