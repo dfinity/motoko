@@ -282,7 +282,7 @@ and check_typ_path' env path : T.con =
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
     (match T.lookup_typ_deprecation id.it fs with
-    | Some msg -> warn env path.at "M0153" "type field %s has a warning annotation:\n%s" id.it msg;
+    | Some msg -> warn env path.at "M0154" "type field %s has a warning annotation:\n%s" id.it msg;
     | None -> ()
     );
     try T.lookup_typ_field id.it fs with Invalid_argument _ ->
@@ -949,7 +949,7 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     in
     (match T.lookup_val_deprecation id.it tfs with
-    | Some msg -> warn env exp.at "M0153" "field %s has a warning annotation:\n%s" id.it msg;
+    | Some msg -> warn env exp.at "M0154" "field %s has a warning annotation:\n%s" id.it msg;
     | None -> ()
     );
     (match T.lookup_val_field id.it tfs with

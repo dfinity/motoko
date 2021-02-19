@@ -1,12 +1,12 @@
-deprecated.mo:11.9-11.14: warning [M0153], field foo has a warning annotation:
+deprecated.mo:11.9-11.14: warning [M0154], field foo has a warning annotation:
 do not use foo anymore
-deprecated.mo:12.9-12.14: warning [M0153], field foo has a warning annotation:
+deprecated.mo:12.9-12.14: warning [M0154], field foo has a warning annotation:
 do not use foo anymore
-deprecated.mo:14.8-14.11: warning [M0153], field f has a warning annotation:
+deprecated.mo:14.8-14.11: warning [M0154], field f has a warning annotation:
 deprecated function
-deprecated.mo:15.8-15.11: warning [M0153], field f has a warning annotation:
+deprecated.mo:15.8-15.11: warning [M0154], field f has a warning annotation:
 deprecated function
-deprecated.mo:16.8-16.11: warning [M0153], field f has a warning annotation:
+deprecated.mo:16.8-16.11: warning [M0154], field f has a warning annotation:
 deprecated function
-deprecated.mo:18.13-18.16: warning [M0153], type field T has a warning annotation:
+deprecated.mo:18.13-18.16: warning [M0154], type field T has a warning annotation:
 also types

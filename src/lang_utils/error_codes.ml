@@ -156,5 +156,5 @@ let error_codes : (string * string option) list =
     "M0150", Some([%blob "error_codes/M0150.adoc"]); (* Expected immutable field, found mutable 'var' field *)
     "M0151", Some([%blob "error_codes/M0151.adoc"]); (* missing field in object literal *)
     "M0152", Some([%blob "error_codes/M0152.adoc"]); (* Word field deprecation *)
-    "M0153", Some([%blob "error_codes/M0153.adoc"]); (* Warning annotation *)
+    "M0154", Some([%blob "error_codes/M0154.adoc"]); (* Warning annotation *)
   ]
