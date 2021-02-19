@@ -21,6 +21,9 @@ type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 type val_env  = (T.typ * avl) T.Env.t
 
+(* separate maps for values and types; entries only for _public_ elements *)
+type visibility_env = (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t
+
 let available env = T.Env.map (fun ty -> (ty, Available)) env
 
 let initial_scope =
@@ -1762,15 +1765,15 @@ and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it
 
 (* Objects *)
 
-and pub_fields dec_fields : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+and pub_fields dec_fields : visibility_env =
   List.fold_right pub_field dec_fields (T.Env.empty, T.Env.empty)
 
-and pub_field dec_field xs : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+and pub_field dec_field xs : visibility_env =
   match dec_field.it with
   | {vis = { it = Public depr; _}; dec; _} -> pub_dec depr dec xs
   | _ -> xs
 
-and pub_dec depr dec xs : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+and pub_dec depr dec xs : visibility_env =
   match dec.it with
   | ExpD _ -> xs
   | LetD (pat, _) -> pub_pat depr pat xs
@@ -1779,7 +1782,7 @@ and pub_dec depr dec xs : (region * deprecation option) T.Env.t * (region * depr
     pub_val_id depr {id with note = ()} (pub_typ_id depr id xs)
   | TypD (id, _, _) -> pub_typ_id depr id xs
 
-and pub_pat depr pat xs : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+and pub_pat depr pat xs : visibility_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id depr id xs
@@ -1794,10 +1797,10 @@ and pub_pat depr pat xs : (region * deprecation option) T.Env.t * (region * depr
 and pub_pat_field depr pf xs =
   pub_pat depr pf.it.pat xs
 
-and pub_typ_id depr id (xs, ys) : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+and pub_typ_id depr id (xs, ys) : visibility_env =
   (T.Env.add id.it (id.at, depr) xs, ys)
 
-and pub_val_id depr id (xs, ys) : (region * deprecation option) T.Env.t * (region * deprecation option) T.Env.t =
+and pub_val_id depr id (xs, ys) : visibility_env =
   (xs, T.Env.add id.it (id.at, depr) ys)
 
 
