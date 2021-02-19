@@ -463,7 +463,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
   <vis>? <stab>? <dec>                           field
 
 <vis> ::=                                      field visibility
-  public
+  public ('(' <text> ')')?
   private
   system
 
@@ -475,9 +475,15 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 The _visibility_ qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
 
 * An absent `<vis>?` qualifier defaults to `private` visibility.
+
 * Visibility `private` restricts access to `<id>` to the enclosing object, module or actor.
+
 * Visibility `public` extends `private` with external access to `<id>` using the dot notation `<exp>.<id>`.
++
+  The `public` visibility can carry a _warning text_ which will be shown to the programmer everytime this field is used; this is typically used to deprecate fields and warn a libray user about upcoming changes to the interface.
+
 * Visibility `system` extends `private` with access by the run-time system.
+
 * Visibility `system` _may only_ appear on `func` declarations that are actor fields, and  _must not_ appear anywhere else.
 
 The _stability_ qualifier `<stab>` determines the _upgrade_ behaviour of actor fields:
