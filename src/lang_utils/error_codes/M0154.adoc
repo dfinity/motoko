@@ -1,7 +1,7 @@
 = M0154
 
 You are using a field (typically a module field) that has a warning annotation
-attached to its defintion, e.g.
+attached to its definition, e.g.
 
   module SomeModule {
 
