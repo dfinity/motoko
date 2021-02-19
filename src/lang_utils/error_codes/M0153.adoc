@@ -1,0 +1,13 @@
+= M0153
+
+You are using a field (typically a module field) that has a warning annotation
+attached to its defintion, e.g.
+
+  module SomeModule {
+
+    public("The foo function is deprecated and will be removed next release")
+       func foo() {}
+
+  }
+
+The warnign should include an explanation provided by the author of that code.

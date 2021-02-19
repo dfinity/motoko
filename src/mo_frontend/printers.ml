@@ -138,6 +138,7 @@ let string_of_symbol symbol : string =
   | X (N N_catch) -> "<catch>"
   | X (N N_class_body) -> "<class_body>"
   | X (N N_dec) -> "<dec>"
+  | X (N N_dec_nonexp) -> "<dec_nonexp>"
   | X (N N_dec_field) -> "<dec_field>"
   | X (N N_deprecated_dec_list_unamb) -> "<deprecated_dec_list_unamb>"
   | X (N N_dec_nonvar) -> "<dec_nonvar>"
@@ -218,6 +219,7 @@ let string_of_symbol symbol : string =
   | X (N N_typ_un) -> "<typ_un>"
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
+  | X (N N_depr) -> "<depr>"
   | X (N N_stab) -> "<stab>"
   | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
 
