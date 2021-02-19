@@ -281,13 +281,15 @@ and check_typ_path' env path : T.con =
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
-    (match T.lookup_typ_deprecation id.it fs with
-    | Some msg -> warn env path.at "M0154" "type field %s has a warning annotation:\n%s" id.it msg;
-    | None -> ()
-    );
-    try T.lookup_typ_field id.it fs with Invalid_argument _ ->
-      error env id.at "M0030" "type field %s does not exist in type\n  %s"
-        id.it (T.string_of_typ_expand (T.Obj (s, fs)))
+    match T.lookup_typ_field id.it fs with
+      | c ->
+        Option.iter
+          (warn env path.at "M0154" "type field %s has a warning annotation:\n%s" id.it)
+          (T.lookup_typ_deprecation id.it fs);
+        c
+      | exception Invalid_argument _ ->
+        error env id.at "M0030" "type field %s does not exist in type\n  %s"
+          id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
 
 (* Type helpers *)
@@ -948,16 +950,16 @@ and infer_exp'' env exp : T.typ =
           "expected object type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
-    (match T.lookup_val_deprecation id.it tfs with
-    | Some msg -> warn env exp.at "M0154" "field %s has a warning annotation:\n%s" id.it msg;
-    | None -> ()
-    );
     (match T.lookup_val_field id.it tfs with
     | T.Pre ->
       error env exp.at "M0071"
         "cannot infer type of forward field reference %s"
         id.it
-    | t -> t
+    | t ->
+      Option.iter
+        (warn env exp.at "M0154" "field %s has a warning annotation:\n%s" id.it)
+        (T.lookup_val_deprecation id.it tfs);
+      t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
         "field %s does not exist in type\n  %s"
