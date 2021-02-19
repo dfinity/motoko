@@ -45,7 +45,6 @@
                  "class"
                  "continue"
                  "debug"
-                 "deprecated"
                  "else"
                  "flexible"
                  "for"
