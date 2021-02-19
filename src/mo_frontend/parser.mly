@@ -291,7 +291,7 @@ let share_dec_field (df : dec_field) =
 %type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
-%type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
+%type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar dec_nonexp
 %type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
 %type<Mo_def.Syntax.dec_field> dec_field
 %type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
@@ -745,17 +745,21 @@ exp_field :
     { field_var_dec d }
 
 dec_field :
-  | v=vis s=stab d=dec
+  | v=vis s=stab d=dec_nonexp
     { {dec = d; vis = v; stab = s} @@ at $sloc }
+  | s=stab d=dec_nonexp
+    { {dec = d; vis = Private @@ at $sloc; stab = s} @@ at $sloc }
+  | v=vis d=dec_nonexp
+    { {dec = d; vis = v; stab = None} @@ at $sloc }
+  | d=dec
+    { {dec = d; vis = Private @@ at $sloc; stab = None} @@ at $sloc }
 
 vis :
-  | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
   | PUBLIC { Public @@ at $sloc }
   | SYSTEM { System @@ at $sloc }
 
 stab :
-  | (* empty *) { None }
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
 
@@ -867,10 +871,14 @@ dec_nonvar :
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
 
-dec :
+dec_nonexp :
   | d=dec_var
     { d }
   | d=dec_nonvar
+    { d }
+
+dec :
+  | d=dec_nonexp
     { d }
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
