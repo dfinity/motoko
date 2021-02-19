@@ -151,14 +151,8 @@ and meths fs =
          list
       | _ ->
          let meth =
-           let open Idllib.Escape in
-           match unescape f.lab with
-           | Nat nat ->
-              I.{var = Lib.Uint32.to_string nat @@ no_region;
-                 meth = typ f.typ} @@ no_region
-           | Id id ->
-              I.{var = id @@ no_region;
-                 meth = typ f.typ} @@ no_region in
+           I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
+              meth = typ f.typ} @@ no_region in
          meth :: list
     ) fs []
 

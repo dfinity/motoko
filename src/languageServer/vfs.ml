@@ -119,5 +119,5 @@ and apply_change lines
 
 let parse_file vfs path =
   match read_file (uri_from_file path) vfs with
-  | None -> Pipeline.parse_file Source.no_region path
-  | Some file -> Pipeline.parse_string path file
+  | None -> Pipeline.parse_file_with_trivia Source.no_region path
+  | Some file -> Pipeline.parse_string_with_trivia path file

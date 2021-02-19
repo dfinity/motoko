@@ -1,12 +1,23 @@
 open Mo_types
 open Mo_config
 open Mo_def
+open Mo_frontend
 open Source
 open Syntax
 
-type value_decl = { name : string; typ : Type.typ; definition : region option }
+type value_decl = {
+  name : string;
+  typ : Type.typ;
+  definition : region option;
+  doc_comment : string option;
+}
 
-type type_decl = { name : string; typ : Type.con; definition : region option }
+type type_decl = {
+  name : string;
+  typ : Type.con;
+  definition : region option;
+  doc_comment : string option;
+}
 
 type ide_decl = ValueDecl of value_decl | TypeDecl of type_decl
 
@@ -217,8 +228,11 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
       fields
       |> List.map (fun Type.{ lab = name; typ; _ } ->
              match typ with
-             | Type.Typ con -> TypeDecl { name; typ = con; definition = None }
-             | typ -> ValueDecl { name; typ; definition = None })
+             | Type.Typ con ->
+                 TypeDecl
+                   { name; typ = con; definition = None; doc_comment = None }
+             | typ ->
+                 ValueDecl { name; typ; definition = None; doc_comment = None })
       |> Option.some
   | _ -> None
 
@@ -227,8 +241,9 @@ let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
   | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
-let populate_definitions (project_root : string) (libs : Syntax.lib list)
-    (path : string) (decls : ide_decl list) : ide_decl list =
+let populate_definitions (project_root : string)
+    (libs : (Syntax.lib * Lexer.triv_table) list) (path : string)
+    (decls : ide_decl list) : ide_decl list =
   let is_let_bound dec_field =
     match dec_field.it.Syntax.dec.it with
     | Syntax.LetD (pat, _) -> Some pat
@@ -241,30 +256,46 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
     | _ -> None
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
-  let find_def (lib : Syntax.lib) def =
+  let find_def (lib, triv_table) def =
+    let find_doc_comment (parser_pos : Source.region) : string option =
+      Lexer.PosHashtbl.find_opt triv_table
+        Lexer.{ line = parser_pos.left.line; column = parser_pos.left.column }
+      |> Option.get
+      |> Lexer.doc_comment_of_trivia_info
+    in
     match def with
-    | ValueDecl value ->
+    | ValueDecl value -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
-        let positioned_binder =
-          fields
-          |> List.filter_map is_let_bound
-          |> List.fold_left extract_binders PatternMap.empty
-          |> PatternMap.find_opt value.name
+        let find_binder field =
+          let open Lib.Option.Syntax in
+          let* pat = is_let_bound field in
+          let* binder_definition =
+            extract_binders PatternMap.empty pat
+            |> PatternMap.find_opt value.name
+          in
+          Some (binder_definition, find_doc_comment field.at)
         in
-        ValueDecl { value with definition = positioned_binder }
-    | TypeDecl typ ->
+        match List.find_map find_binder fields with
+        | None -> ValueDecl { value with definition = None }
+        | Some (definition, doc_comment) ->
+            ValueDecl { value with definition = Some definition; doc_comment } )
+    | TypeDecl typ -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
-        let type_definition =
-          fields
-          |> List.filter_map is_type_def
-          |> List.find_map (fun ty_id ->
-                 if ty_id.it = typ.name then Some ty_id.at else None)
+        let find_type_binder field =
+          let open Lib.Option.Syntax in
+          let* ty_id = is_type_def field in
+          if ty_id.it = typ.name then Some (ty_id.at, find_doc_comment field.at)
+          else None
         in
-        TypeDecl { typ with definition = type_definition }
+        match List.find_map find_type_binder fields with
+        | None -> TypeDecl typ
+        | Some (type_definition, doc_comment) ->
+            TypeDecl { typ with definition = Some type_definition; doc_comment }
+        )
   in
   let opt_lib =
     List.find_opt
-      (fun lib ->
+      (fun (lib, _) ->
         String.equal path (Lib.FilePath.make_absolute project_root lib.note))
       libs
   in
@@ -299,7 +330,8 @@ let scan_actors : unit -> string list =
       list_files_recursively idl_path
       |> List.filter (fun f -> Filename.extension f = ".did")
 
-let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
+let index_from_scope :
+    string -> t -> (Syntax.lib * Lexer.triv_table) list -> Scope.t -> t =
  fun project_root initial_index libs scope ->
   Type.Env.fold
     (fun path ty acc ->

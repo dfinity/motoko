@@ -165,11 +165,9 @@ and html_of_typ_binders : env -> Syntax.typ_bind list -> t =
 and html_of_typ_field : env -> Syntax.typ_field -> t =
  fun env field ->
   (* TODO mut might be wrong here *)
-  match field.Source.it with
-  | Syntax.ValField (id, typ, mut) ->
-      html_of_mut mut ++ string (id.Source.it ^ " : ") ++ html_of_type env typ
-  | Syntax.TypField (id, typ) ->
-      string ("type " ^ id.Source.it ^ " = ") ++ html_of_type env typ
+  html_of_mut field.Source.it.Syntax.mut
+  ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
+  ++ html_of_type env field.Source.it.Syntax.typ
 
 and html_of_typ_item : env -> Syntax.typ_item -> t =
  fun env (oid, t) ->
@@ -319,7 +317,7 @@ let html_of_docs : render_input -> Cow.Html.t =
       ( navigation
       ++ div ~cls:"documentation"
            ( h1 (string current_path)
-           ++ html_of_comment module_comment
+           ++ html_of_comment (Option.value ~default:"" module_comment)
            ++ list (List.map (html_of_doc env) declarations) ) )
   in
   html (header ++ bdy)
@@ -339,7 +337,8 @@ let make_index : render_input list -> string =
     a ~cls:"index-item-link"
       ~href:(Uri.of_string (input.current_path ^ ".html"))
       (string input.current_path)
-    ++ div ~cls:"index-item-comment" (html_of_comment input.module_comment)
+    ++ div ~cls:"index-item-comment"
+         (html_of_comment (Option.value ~default:"" input.module_comment))
   in
   let bdy =
     div ~cls:"index-container"
