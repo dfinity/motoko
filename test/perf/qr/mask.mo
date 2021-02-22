@@ -32,7 +32,7 @@ module {
 
     let masks = List.map<(Nat, Nat) -> Bool, List<Bool>>(tests, func (test) {
       let w = Common.width(version);
-      func mirror(n : Nat) : Nat { w - n - 1 };
+      func mirror(n : Nat) : Nat { w -+ n -+ 1 };
       List.map<(Nat, Nat), Bool>(Symbol.pathCoords(version), func (i, j) {
         test(mirror(i), mirror(j))
       })

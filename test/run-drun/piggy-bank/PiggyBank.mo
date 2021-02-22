@@ -16,7 +16,7 @@ shared(msg) actor class PiggyBank(
 
   public func deposit() : async () {
     let amount = Cycles.available();
-    let limit = capacity - savings;
+    let limit = capacity -+ savings;
     let acceptable =
       if (amount <= limit) amount
       else limit;
@@ -31,7 +31,7 @@ shared(msg) actor class PiggyBank(
     Cycles.add(amount);
     await benefit();
     let refund = Cycles.refunded();
-    savings -= amount - refund;
+    savings -+= amount -+ refund;
   };
 
 }

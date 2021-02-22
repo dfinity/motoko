@@ -60,7 +60,7 @@ public class Buffer<X> (initCapacity : Nat) {
     if (count == 0) { 
       null 
     } else {
-      count -= 1;
+      count -+= 1;
       ?elems[count]
     };
   };

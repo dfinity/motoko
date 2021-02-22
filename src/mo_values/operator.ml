@@ -12,6 +12,7 @@ type unop =
 type binop =
   | AddOp                                       (* x+y *)
   | SubOp                                       (* x-y *)
+  | SubPosOp                                    (* x-+y *)
   | MulOp                                       (* x*y *)
   | DivOp                                       (* x/y *)
   | ModOp                                       (* x%y *)
@@ -86,12 +87,15 @@ let word_binop (fword8, fword16, fword32, fword64) = function
   | T.Word64 -> fun v1 v2 -> Word64 (fword64 (as_word64 v1) (as_word64 v2))
   | _ -> raise (Invalid_argument "binop")
 
-let num_binop fnat (fnat8, fnat16, fnat32, fnat64) fint (fint8, fint16, fint32, fint64) fwords ffloat = function
+let nat_binop fnat (fnat8, fnat16, fnat32, fnat64) = function
   | T.Nat -> fun v1 v2 -> Int (fnat (as_int v1) (as_int v2))
   | T.Nat8 -> fun v1 v2 -> Nat8 (fnat8 (as_nat8 v1) (as_nat8 v2))
   | T.Nat16 -> fun v1 v2 -> Nat16 (fnat16 (as_nat16 v1) (as_nat16 v2))
   | T.Nat32 -> fun v1 v2 -> Nat32 (fnat32 (as_nat32 v1) (as_nat32 v2))
   | T.Nat64 -> fun v1 v2 -> Nat64 (fnat64 (as_nat64 v1) (as_nat64 v2))
+  | _ -> raise (Invalid_argument "nat_binop")
+
+let sign_binop fint (fint8, fint16, fint32, fint64) fwords ffloat = function
   | T.Int -> fun v1 v2 -> Int (fint (as_int v1) (as_int v2))
   | T.Int8 -> fun v1 v2 -> Int8 (fint8 (as_int8 v1) (as_int8 v2))
   | T.Int16 -> fun v1 v2 -> Int16 (fint16 (as_int16 v1) (as_int16 v2))
@@ -100,12 +104,17 @@ let num_binop fnat (fnat8, fnat16, fnat32, fnat64) fint (fint8, fint16, fint32, 
   | T.Float -> fun v1 v2 -> Float (ffloat (as_float v1) (as_float v2))
   | t -> word_binop fwords t
 
+let num_binop fnat fnatNs fint fintNs fwords ffloat p =
+  try nat_binop fnat fnatNs p with Invalid_argument _ ->
+    sign_binop fint fintNs fwords ffloat p
+
 let binop op t =
   match t with
   | T.Prim p ->
     (match op with
     | AddOp -> num_binop Nat.add (Nat8.add, Nat16.add, Nat32.add, Nat64.add) Int.add (Int_8.add, Int_16.add, Int_32.add, Int_64.add) (Word8.add, Word16.add, Word32.add, Word64.add) Float.add p
-    | SubOp -> num_binop Nat.sub (Nat8.sub, Nat16.sub, Nat32.sub, Nat64.sub) Int.sub (Int_8.sub, Int_16.sub, Int_32.sub, Int_64.sub) (Word8.sub, Word16.sub, Word32.sub, Word64.sub) Float.sub p
+    | SubOp -> sign_binop Int.sub (Int_8.sub, Int_16.sub, Int_32.sub, Int_64.sub) (Word8.sub, Word16.sub, Word32.sub, Word64.sub) Float.sub p
+    | SubPosOp -> nat_binop Nat.sub (Nat8.sub, Nat16.sub, Nat32.sub, Nat64.sub) p
     | MulOp -> num_binop Nat.mul (Nat8.mul, Nat16.mul, Nat32.mul, Nat64.mul) Int.mul (Int_8.mul, Int_16.mul, Int_32.mul, Int_64.mul) (Word8.mul, Word16.mul, Word32.mul, Word64.mul) Float.mul p
     | DivOp -> num_binop Nat.div (Nat8.div, Nat16.div, Nat32.div, Nat64.div) Int.div (Int_8.div, Int_16.div, Int_32.div, Int_64.div) (Word8.div_u, Word16.div_u, Word32.div_u, Word64.div_u) Float.div p
     | ModOp -> num_binop Nat.rem (Nat8.rem, Nat16.rem, Nat32.rem, Nat64.rem)
@@ -259,5 +268,5 @@ let has_binop op t = has binop op t
 let has_relop op t = has relop op t
 
 let type_unop op t = if t = T.nat then T.int else t
-let type_binop op t = t
+let type_binop op t = if t = T.nat && op = SubOp then T.int else t
 let type_relop op t = t

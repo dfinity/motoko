@@ -65,7 +65,7 @@ actor Await {
     if (n == 0) ()
     else {
       let a = Ack();
-      await RPA(n-1); // recurse
+      await RPA(n-+1); // recurse
       await a;
     };
   };
@@ -78,7 +78,7 @@ actor Await {
     if (n == 0) null
     else {
       let a = Request(n);
-      let tl = await RPR(n-1); // recurse
+      let tl = await RPR(n-+1); // recurse
       ?(await a,tl)
     }
   };
@@ -112,7 +112,7 @@ actor Await {
           };
           case null (assert false);
         };
-	i -= 1;
+        i -+= 1;
       };
   }
 };

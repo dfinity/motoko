@@ -66,7 +66,7 @@ actor client {
      Cycles.add(n);
      print("refund(" # debug_show(n) # ")");
      let a = wallet.refund(n);
-     await testRefunds( n - (1 : Nat64));
+     await testRefunds( n -+ 1 );
      await a;
      print("refunded: " # debug_show(Cycles.refunded()));
      assert (Cycles.refunded() == n);

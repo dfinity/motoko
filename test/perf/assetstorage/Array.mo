@@ -32,7 +32,7 @@ module {
           if (i < xsSize) {
             xs[i];
           } else {
-            ys[i - xsSize];
+            ys[i -+ xsSize];
           };
         });
       };
@@ -84,7 +84,7 @@ module {
     let size = xs.size();
     var i = size;
     while (i > 0) {
-      i -= 1;
+      i -+= 1;
       acc := f(xs[i], acc);
     };
     acc;

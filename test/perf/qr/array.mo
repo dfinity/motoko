@@ -29,7 +29,7 @@ module {
           if (i < xsLen) {
             xs[i];
           } else {
-            ys[i - xsLen];
+            ys[i -+ xsLen];
           };
         });
       };
@@ -84,7 +84,7 @@ module {
     let len = xs.size();
     var i = len;
     while (i > 0) {
-      i -= 1;
+      i -+= 1;
       acc := f(xs[i], acc);
     };
     acc;
@@ -156,7 +156,7 @@ module {
   public func tabulateVar<A>(len : Nat,  gen : Nat -> A) : [var A] {
     if (len == 0) { return [var] };
     let xs = Prim.Array_init<A>(len, gen 0);
-    for (i in range(1,len-1)) {
+    for (i in range(1,len-+1)) {
       xs[i] := gen i;
     };
     return xs;

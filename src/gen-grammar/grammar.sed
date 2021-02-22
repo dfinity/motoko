@@ -44,6 +44,7 @@ s/THROW/\'throw\'/g
 s/TEXT/<text>/g
 s/SWITCH/\'switch\'/g
 s/SUBOP/\'-\'/g
+s/SUBPOSOP/\'-+\'/g
 s/SUB/\'<:\'/g
 s/STABLE/\'stable\'/g
 s/SSHROP/\'+>>\'/g
@@ -80,6 +81,7 @@ s/MODULE/\'module\'/g
 s/MODOP/\'%\'/g
 s/MODASSIGN/\'%=\'/g
 s/MINUSASSIGN/\'-=\'/g
+s/MINUSPOSASSIGN/\'-+=\'/g
 s/LTOP/\' < \'/g
 s/LT/\'<\'/g
 s/LPAR/\'(\'/g

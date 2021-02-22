@@ -89,7 +89,7 @@ module {
         case null true;
         case (?(_, t)) {
           if (i == 0) { false }
-          else { lenIsEqLessThan<T>(t, i - 1) }
+          else { lenIsEqLessThan<T>(t, i -+ 1) }
         };
       };
     };
@@ -122,7 +122,7 @@ module {
       switch (n, l) {
       case (_, null)     { null };
       case (0, (?(h,t))) { ?h };
-      case (_, (?(_,t))) { nth<T>(t, n - 1) };
+      case (_, (?(_,t))) { nth<T>(t, n -+ 1) };
       }
     };
 
@@ -266,7 +266,7 @@ module {
       switch (l, n) {
       case (_, 0) { null };
       case (null,_) { null };
-      case (?(h, t), m) {?(h, take<T>(t, m - 1))};
+      case (?(h, t), m) {?(h, take<T>(t, m -+ 1))};
       }
     };
 
@@ -278,7 +278,7 @@ module {
       switch (l, n) {
         case (l_,     0) { l_ };
         case (null,   _) { null };
-        case ((?(h,t)), m) { drop<T>(t, m - 1) };
+        case ((?(h,t)), m) { drop<T>(t, m -+ 1) };
       }
     };
 
@@ -463,7 +463,7 @@ module {
               if (n == 1) {
                 (singleton<X>(h), t)
               } else {
-                let (l, r) = rec(n - 1, t);
+                let (l, r) = rec(n -+ 1, t);
                 (push<X>(h, l), r)
               }
             }

@@ -52,7 +52,7 @@ module {
 
   /// Returns the difference of `x` and `y`, `x - y`.
   /// Traps on underflow.
-  public func sub(x : Nat, y : Nat) : Nat { x - y };
+  public func sub(x : Nat, y : Nat) : Nat { x -+ y };
 
   /// Returns the product of `x` and `y`, `x * y`.
   public func mul(x : Nat, y : Nat) : Nat { x * y };

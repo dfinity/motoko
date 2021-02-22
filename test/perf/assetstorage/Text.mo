@@ -85,7 +85,7 @@ module {
     var n = i;
     while (n > 0) {
       ignore cs.next();
-      n -= 1;
+      n -+= 1;
     };
     n := j;
     while (n > 0) {
@@ -93,7 +93,7 @@ module {
         case null { assert false };
         case (?c) { r #= Prim.charToText(c) }
       };
-      n -= 1;
+      n -+= 1;
     };
     return r;
   };
@@ -159,7 +159,7 @@ module {
     object {
       public func next() : ?Char {
         if (i == 0) return null;
-        i -= 1;
+        i -+= 1;
         return cs.next();
       }
     }
@@ -464,7 +464,7 @@ module {
       diff -= 1;
     };
     switch (match(cs1)) {
-      case (#success) return ?extract(t, 0, s1 - s2);
+      case (#success) return ?extract(t, 0, s1 -+ s2);
       case _ return null;
     }
   };
@@ -525,7 +525,7 @@ module {
         }
       }
     };
-    extract(t, 0, t.size() - matchSize)
+    extract(t, 0, t.size() -+ matchSize)
   };
 
   /// Returns the subtext of `t` obtained by eliding all leading and trailing matches of [pattern](#type.Pattern) `p`.
@@ -568,7 +568,7 @@ module {
               }
             }
           };
-          return extract(t, start, t.size() - matchSize - start);
+          return extract(t, start, t.size() -+ matchSize -+ start);
         }
       }
     }

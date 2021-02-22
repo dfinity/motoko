@@ -12,7 +12,7 @@ func partition(a : [var Int], lo : Nat, hi : Nat) : Nat {
 
   loop {
     while (a[i] < pivot) i += 1;
-    while (a[j] > pivot) j -= 1;
+    while (a[j] > pivot) j -+= 1;
     if (i >= j) return j;
     swap(a, i, j);
   };

@@ -20,8 +20,8 @@ func natCompare (a : Nat, b : Nat) : Bool = a == b;
 func testNat(a : Nat, b : Nat) : [Nat] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat;
-  let diff1 = a - b;
-  let diff2 = (a - b) : Nat;
+  let diff1 = a -+ b;
+  let diff2 = (a -+ b) : Nat;
   let prod1 = a * b;
   let prod2 = (a * b) : Nat;
   let rat1 = a / b;
@@ -393,8 +393,8 @@ verify<Int8>([-13, 13, -18, -8, 65, 2, -3], testInt8(-13, -5),
 func testNat64(a : Nat64, b : Nat64) : [Nat64] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat64;
-  let diff1 = a - b;
-  let diff2 = (a - b) : Nat64;
+  let diff1 = a -+ b;
+  let diff2 = (a -+ b) : Nat64;
   let prod1 = a * b;
   let prod2 = (a * b) : Nat64;
   let rat1 = a / b;
@@ -417,8 +417,8 @@ verify<Nat64>([18, 8, 65, 2, 3, 371293], testNat64(13, 5),
 func testNat32(a : Nat32, b : Nat32) : [Nat32] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat32;
-  let diff1 = a - b;
-  let diff2 = (a - b) : Nat32;
+  let diff1 = a -+ b;
+  let diff2 = (a -+ b) : Nat32;
   let prod1 = a * b;
   let prod2 = (a * b) : Nat32;
   let rat1 = a / b;
@@ -441,8 +441,8 @@ verify<Nat32>([18, 12, 45, 5, 0/*, 243*/], testNat32(15, 3),
 func testNat16(a : Nat16, b : Nat16) : [Nat16] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat16;
-  let diff1 = a - b;
-  let diff2 = (a - b) : Nat16;
+  let diff1 = a -+ b;
+  let diff2 = (a -+ b) : Nat16;
   let prod1 = a * b;
   let prod2 = (a * b) : Nat16;
   let rat1 = a / b;
@@ -465,8 +465,8 @@ verify<Nat16>([18, 12, 45, 5, 0/*, 243*/], testNat16(15, 3),
 func testNat8(a : Nat8, b : Nat8) : [Nat8] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat8;
-  let diff1 = a - b;
-  let diff2 = (a - b) : Nat8;
+  let diff1 = a -+ b;
+  let diff2 = (a -+ b) : Nat8;
   let prod1 = a * b;
   let prod2 = (a * b) : Nat8;
   let rat1 = a / b;

@@ -39,10 +39,10 @@ module {
     let xsLen = List.len<Word8>(xs);
     let ysLen = List.len<Word8>(ys);
     if (xsLen < ysLen) {
-      xs := List.append<Word8>(List.replicate<Word8>(ysLen - xsLen, 0), xs);
+      xs := List.append<Word8>(List.replicate<Word8>(ysLen -+ xsLen, 0), xs);
     };
     if (xsLen > ysLen) {
-      ys := List.append<Word8>(List.replicate<Word8>(xsLen - ysLen, 0), xs);
+      ys := List.append<Word8>(List.replicate<Word8>(xsLen -+ ysLen, 0), xs);
     };
     let zs = List.zipWith<Word8, Word8, Word8>(xs, ys, f);
     let c = natFromBytes(zs);

@@ -132,6 +132,7 @@ rule token mode = parse
   | ">" { GT }
   | "+" { ADDOP }
   | "-" { SUBOP }
+  | "-+" { SUBPOSOP }
   | "*" { MULOP }
   | "/" { DIVOP }
   | "%" { MODOP }
@@ -153,6 +154,7 @@ rule token mode = parse
 
   | "+=" { PLUSASSIGN }
   | "-=" { MINUSASSIGN }
+  | "-+=" { MINUSPOSASSIGN }
   | "*=" { MULASSIGN }
   | "/=" { DIVASSIGN }
   | "%=" { MODASSIGN }

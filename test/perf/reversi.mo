@@ -66,16 +66,16 @@ actor {
     // Reset the board to initial state
     flexible func init() {
         // Reset to empty board
-        for (i in range(0, N * N - 1)) {
+        for (i in range(0, N * N -+ 1)) {
            Board[i] := empty; 
         };
 
         // initialize center 4 pieces
         let M = N / 2;
-        Board[(M - 1) * N + M - 1] := white;
-        Board[ M      * N + M    ] := white;
-        Board[(M - 1) * N + M    ] := black;
-        Board[ M      * N + M - 1] := black;
+        Board[(M -+ 1) * N + M -+ 1] := white;
+        Board[ M       * N + M     ] := white;
+        Board[(M -+ 1) * N + M     ] := black;
+        Board[ M       * N + M -+ 1] := black;
 
         // White moves first 
         next_color := white;
@@ -93,8 +93,8 @@ actor {
     // Render the board into a string
     flexible func render(board: Board) : Text {
         var str = "";
-        for (i in range(0, N-1)) {
-          for (j in range(0, N-1)) {
+        for (i in range(0, N-+1)) {
+          for (j in range(0, N-+1)) {
             if (board[i * N + j] == white) {
               str := str # "O";
             } else if (board[i * N + j] == black) {
@@ -117,7 +117,7 @@ actor {
 
     // Given a color, return its opponent color
     flexible func opponent(color: Color): Color {
-        return (3 - color);
+        return (3 -+ color);
     };
 
     // Check if a piece of the given color exists on the board using
@@ -160,8 +160,8 @@ actor {
     // a board that has the cells colored.
     flexible func valid_moves(board: Board, color: Color) : Board {
         let next : Board = Prim.Array_init<Nat>(N * N, empty);
-        for (i in range(0, N-1)) {
-          for (j in range(0, N-1)) {
+        for (i in range(0, N-+1)) {
+          for (j in range(0, N-+1)) {
             if (board[i * N + j] == empty) {
               for (p in [-1, 0, 1].vals()) {
                 for (q in [-1, 0, 1].vals()) {

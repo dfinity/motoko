@@ -12,13 +12,13 @@ actor a {
         Prim.debugPrint("not ok 1");
     };
     try {await async {
-        ignore ((1-1):Nat);
+        ignore ((1-+1):Nat);
         Prim.debugPrint("ok 2");
     }} catch e {
         Prim.debugPrint("not ok 2");
     };
     try {await async {
-        ignore ((0-1):Nat);
+        ignore ((0-+1):Nat);
         Prim.debugPrint("not ok 3");
     }} catch e {
         Prim.debugPrint("ok 3");

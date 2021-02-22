@@ -63,7 +63,7 @@ module {
       [6,28,54,80,106,132,158],
       [6,32,58,84,110,136,162],
       [6,26,54,82,110,138,166]
-    ][Version.unbox(version) - 1]
+    ][Version.unbox(version) -+ 1]
   };
 
   public func remainder(version : Version) : Nat {
@@ -72,7 +72,7 @@ module {
       0, 0, 0, 3, 3, 3, 3, 3, 3, 3,
       4, 4, 4, 4, 4, 4, 4, 3, 3, 3,
       3, 3, 3, 3, 0, 0, 0, 0, 0, 0
-    ][Version.unbox(version) - 1]
+    ][Version.unbox(version) -+ 1]
   };
 
   public func width(version : Version) : Nat {
@@ -81,7 +81,7 @@ module {
       061, 065, 069, 073, 077, 081, 085, 089, 093, 097,
       101, 105, 109, 113, 117, 121, 125, 129, 133, 137,
       141, 145, 149, 153, 157, 161, 165, 169, 173, 177
-    ][Version.unbox(version) - 1]
+    ][Version.unbox(version) -+ 1]
   };
 
   func match<X>(
@@ -89,7 +89,7 @@ module {
     level : ErrorCorrection,
     table : [X]
   ) : X {
-    let i = Version.unbox(version) - 1;
+    let i = Version.unbox(version) -+ 1;
     let j = switch level {
       case (#L) 0;
       case (#M) 1;

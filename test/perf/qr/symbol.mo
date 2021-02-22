@@ -36,7 +36,7 @@ module {
   func init(version : Version) : [var [var Bool]] {
     let w = Common.width(version);
     let matrix = Array.init<[var Bool]>(w, [var]);
-    for (i in Iter.range(0, w - 1)) {
+    for (i in Iter.range(0, w -+ 1)) {
       matrix[i] := Array.init<Bool>(w, false)
     };
     matrix
@@ -92,10 +92,10 @@ module {
 
   func finderTLCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let v = w - 8;
+    let v = w -+ 8;
     var coords = List.nil<Coordinate>();
-    for (i in Iter.range(v, w - 1)) {
-      for (j in Iter.range(v, w - 1)) {
+    for (i in Iter.range(v, w -+ 1)) {
+      for (j in Iter.range(v, w -+ 1)) {
         coords := List.push<Coordinate>((i, j), coords)
       }
     };
@@ -110,9 +110,9 @@ module {
 
   func finderTRCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let r = w - 8;
+    let r = w -+ 8;
     var coords = List.nil<Coordinate>();
-    for (i in Iter.range(r, w - 1)) {
+    for (i in Iter.range(r, w -+ 1)) {
       for (j in Iter.range(0, 7)) {
         coords := List.push<Coordinate>((i, j), coords)
       }
@@ -128,10 +128,10 @@ module {
 
   func finderBLCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let c = w - 8;
+    let c = w -+ 8;
     var coords = List.nil<Coordinate>();
     for (i in Iter.range(0, 7)) {
-      for (j in Iter.range(c, w - 1)) {
+      for (j in Iter.range(c, w -+ 1)) {
         coords := List.push<Coordinate>((i, j), coords)
       }
     };
@@ -156,15 +156,15 @@ module {
   func timingH(version : Version) : List<(Coordinate, Bool)> {
     let w = Common.width(version);
     let coords = timingHCoords(version);
-    let pattern = List.tabulate<Bool>(w - 16, func (n) { n % 2 == 0 });
+    let pattern = List.tabulate<Bool>(w -+ 16, func (n) { n % 2 == 0 });
     List.zip<Coordinate, Bool>(coords, pattern)
   };
 
   func timingHCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let r = w - 7;
+    let r = w -+ 7;
     var coords = List.nil<Coordinate>();
-    for (j in Iter.range(8, w - 9)) {
+    for (j in Iter.range(8, w -+ 9)) {
       coords := List.push<Coordinate>((r, j), coords)
     };
     coords
@@ -173,7 +173,7 @@ module {
   func timingV(version : Version) : List<(Coordinate, Bool)> {
     let w = Common.width(version);
     let coords = timingVCoords(version);
-    let pattern = List.tabulate<Bool>(w - 16, func (n) { n % 2 == 0 });
+    let pattern = List.tabulate<Bool>(w -+ 16, func (n) { n % 2 == 0 });
     List.zip<Coordinate, Bool>(coords, pattern)
   };
 
@@ -197,7 +197,7 @@ module {
 
   func hardcodeCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let c = w - 9;
+    let c = w -+ 9;
     List.singleton<Coordinate>((7, c))
   };
 
@@ -227,8 +227,8 @@ module {
 
   func formatHCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let r = w - 9;
-    let c = w - 8;
+    let r = w -+ 9;
+    let c = w -+ 8;
     var coords = List.nil<Coordinate>();
     for (j in Iter.range(0, 7)) {
       coords := List.push<Coordinate>((r, j), coords)
@@ -236,7 +236,7 @@ module {
     for (j in Iter.range(c, c)) {
       coords := List.push<Coordinate>((r, j), coords)
     };
-    for (j in Iter.range(c + 2, w - 1)) {
+    for (j in Iter.range(c + 2, w -+ 1)) {
       coords := List.push<Coordinate>((r, j), coords)
     };
     coords
@@ -244,15 +244,15 @@ module {
 
   func formatVCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let c = w - 9;
+    let c = w -+ 9;
     var coords = List.nil<Coordinate>();
     for (i in Iter.range(0, 6)) {
       coords := List.push<Coordinate>((i, c), coords)
     };
-    for (i in Iter.range(w - 9, w - 8)) {
+    for (i in Iter.range(w -+ 9, w -+ 8)) {
       coords := List.push<Coordinate>((i, c), coords)
     };
-    for (i in Iter.range(w - 6, w - 1)) {
+    for (i in Iter.range(w -+ 6, w -+ 1)) {
       coords := List.push<Coordinate>((i, c), coords)
     };
     List.rev<Coordinate>(coords)
@@ -285,7 +285,7 @@ module {
         List.concat<Nat>(List.replicate<List<Nat>>(n, idxs))
       };
       let w = Common.width(version);
-      List.zip<Nat, Nat>(go(3, w - 6, w - 1), go(5, 8, 10))
+      List.zip<Nat, Nat>(go(3, w -+ 6, w -+ 1), go(5, 8, 10))
     }
   };
 
@@ -303,7 +303,7 @@ module {
 
   func alignment(version : Version) : List<(Coordinate, Bool)> {
     let n = Common.alignments(version).size() ** 2;
-    let m = if (n < 4) 0 else n - 3;
+    let m = if (n < 4) 0 else n -+ 3;
     let coords = alignmentCoords(version);
     let pattern = Nat.natToBits(33084991);
     let cycles = List.concat<Bool>(List.replicate<List<Bool>>(m, pattern));
@@ -318,7 +318,7 @@ module {
     } else {
 
       let a = alignments[0];
-      let b = alignments[alignments.size() - 1];
+      let b = alignments[alignments.size() -+ 1];
       let reserved = List.fromArray<Coordinate>([(a, b), (b, a), (b, b)]);
       func isReserved(r : Nat, c : Nat) : Bool {
         List.exists<Coordinate>(reserved, func (x, y) {
@@ -330,8 +330,8 @@ module {
       for (r in Iter.fromArray<Nat>(alignments)) {
         for (c in Iter.fromArray<Nat>(alignments)) {
           if (not isReserved(r, c)) {
-            for (i in Iter.range(r - 2, r + 2)) {
-              for (j in Iter.range(c - 2, c + 2)) {
+            for (i in Iter.range(r -+ 2, r + 2)) {
+              for (j in Iter.range(c -+ 2, c + 2)) {
                 coords := List.push<Coordinate>((i, j), coords)
               }
             }
@@ -381,10 +381,10 @@ module {
   func traceCoords(version : Version) : List<Coordinate> {
 
     let w = Common.width(version);
-    let t = w - 7;
+    let t = w -+ 7;
 
     let up = List.concat<Nat>(List.map<Nat, List<Nat>>(
-      Iter.toList<Nat>(Iter.range(0, w - 1)),
+      Iter.toList<Nat>(Iter.range(0, w -+ 1)),
       func (i) { List.replicate<Nat>(2, i) }
     ));
     let down = List.rev<Nat>(up);
@@ -406,11 +406,11 @@ module {
       )
     };
 
-    let rows1 = rowwise(w - t, List.append<Nat>(up, down));
+    let rows1 = rowwise(w -+ t, List.append<Nat>(up, down));
     let rows2 = rowwise(6, List.append<Nat>(down, up));
 
-    let cols1 = columnwise(Iter.toList<Nat>(Iter.range(0, t - 1)));
-    let cols2 = columnwise(Iter.toList<Nat>(Iter.range(t + 1, w - 1)));
+    let cols1 = columnwise(Iter.toList<Nat>(Iter.range(0, t -+ 1)));
+    let cols2 = columnwise(Iter.toList<Nat>(Iter.range(t + 1, w -+ 1)));
 
     let coords = List.append<Coordinate>(
       List.zip<Nat, Nat>(rows1, cols1),

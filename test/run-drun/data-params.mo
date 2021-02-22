@@ -80,7 +80,7 @@ actor a {
     await a.sendi(1);
     await a.sendi(42);
     await a.sendi(-42);
-    await a.sendn(2**31 - 1); // highest compact
+    await a.sendn(2**31 -+ 1); // highest compact
     await a.sendfloat(42.0);
   };
 };

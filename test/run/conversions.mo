@@ -210,7 +210,7 @@ assert(Prim.intToWord8 (- 2 ** 64 - 1) == (255 : Word8));
 
 assert(Prim.natToWord8 (2 ** 64) == (0 : Word8));
 assert(Prim.natToWord8 (2 ** 64 + 1) == (1 : Word8));
-assert(Prim.natToWord8 (2 ** 64 - 1) == (255 : Word8));
+assert(Prim.natToWord8 (2 ** 64 -+ 1) == (255 : Word8));
 
 // Int <--> Word16
 
@@ -239,15 +239,15 @@ assert(Prim.intToWord16 (- 2 ** 64 - 1) == (65535 : Word16));
 
 assert(Prim.natToWord16 (2 ** 62) == (0 : Word16));
 assert(Prim.natToWord16 (2 ** 62 + 1) == (1 : Word16));
-assert(Prim.natToWord16 (2 ** 62 - 1) == (65535 : Word16));
+assert(Prim.natToWord16 (2 ** 62 -+ 1) == (65535 : Word16));
 
 assert(Prim.natToWord16 (2 ** 63) == (0 : Word16));
 assert(Prim.natToWord16 (2 ** 63 + 1) == (1 : Word16));
-assert(Prim.natToWord16 (2 ** 63 - 1) == (65535 : Word16));
+assert(Prim.natToWord16 (2 ** 63 -+ 1) == (65535 : Word16));
 
 assert(Prim.natToWord16 (2 ** 64) == (0 : Word16));
 assert(Prim.natToWord16 (2 ** 64 + 1) == (1 : Word16));
-assert(Prim.natToWord16 (2 ** 64 - 1) == (65535 : Word16));
+assert(Prim.natToWord16 (2 ** 64 -+ 1) == (65535 : Word16));
 
 // Int <--> Word32
 
@@ -276,13 +276,12 @@ assert(Prim.intToWord32 (- 2 ** 64 - 1) == (4294967295 : Word32));
 
 assert(Prim.natToWord32 (2 ** 62) == (0 : Word32));
 assert(Prim.natToWord32 (2 ** 62 + 1) == (1 : Word32));
-assert(Prim.natToWord32 (2 ** 62 - 1) == (4294967295 : Word32));
+assert(Prim.natToWord32 (2 ** 62 -+ 1) == (4294967295 : Word32));
 
 assert(Prim.natToWord32 (2 ** 63) == (0 : Word32));
 assert(Prim.natToWord32 (2 ** 63 + 1) == (1 : Word32));
-assert(Prim.natToWord32 (2 ** 63 - 1) == (4294967295 : Word32));
+assert(Prim.natToWord32 (2 ** 63 -+ 1) == (4294967295 : Word32));
 
 assert(Prim.natToWord32 (2 ** 64) == (0 : Word32));
 assert(Prim.natToWord32 (2 ** 64 + 1) == (1 : Word32));
-assert(Prim.natToWord32 (2 ** 64 - 1) == (4294967295 : Word32));
-
+assert(Prim.natToWord32 (2 ** 64 -+ 1) == (4294967295 : Word32));

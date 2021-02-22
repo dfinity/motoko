@@ -96,17 +96,17 @@ module {
 
       let zeroPadSize =
         if (dataSize + 7 > targetSize) {
-          targetSize - dataSize
+          targetSize -+ dataSize
         } else {
-          8 - dataSize % 8
+          8 -+ dataSize % 8
         };
       let zeroPad = List.replicate<Bool>(zeroPadSize, false);
 
-      var fillPadSize = targetSize - dataSize - zeroPadSize;
+      var fillPadSize = targetSize -+ dataSize -+ zeroPadSize;
       var fillPad = List.nil<Bool>();
       while (fillPadSize > 0) {
         let chunk = List.take<Bool>(Nat.natToBits(60433), fillPadSize);
-        fillPadSize -= List.len<Bool>(chunk);
+        fillPadSize -+= List.len<Bool>(chunk);
         fillPad := List.append<Bool>(fillPad, chunk);
       };
 

@@ -22,6 +22,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_TEXT -> TEXT "..."
       | T_SWITCH -> SWITCH
       | T_SUBOP -> SUBOP
+      | T_SUBPOSOP -> SUBPOSOP
       | T_SUB -> SUB
       | T_SSHROP -> SSHROP
       | T_SSHRASSIGN -> SSHRASSIGN
@@ -63,6 +64,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_MODOP -> MODOP
       | T_MODASSIGN -> MODASSIGN
       | T_MINUSASSIGN -> MINUSASSIGN
+      | T_MINUSPOSASSIGN -> MINUSPOSASSIGN
       | T_LTOP -> LTOP
       | T_LT -> LT
       | T_LPAR -> LPAR

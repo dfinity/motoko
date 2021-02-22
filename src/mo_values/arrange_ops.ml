@@ -9,6 +9,7 @@ let unop uo = match uo with
 let binop bo = match bo with
   | AddOp  -> Atom "AddOp"
   | SubOp  -> Atom "SubOp"
+  | SubPosOp  -> Atom "SubPosOp"
   | MulOp  -> Atom "MulOp"
   | DivOp  -> Atom "DivOp"
   | ModOp  -> Atom "ModOp"

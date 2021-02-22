@@ -6,14 +6,14 @@ func even(n : Nat) : Bool {
   if (n == 0) {
     return true;
   } else
-    return odd(n-step);
+    return odd(n-+step);
   };
 
 func odd(n : Nat) : Bool {
   if (n == 0) {
     return false;
   } else
-    return even(n-step);
+    return even(n-+step);
   };
 
 // There should be a bunch of calls to known functions here, but

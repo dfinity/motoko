@@ -27,7 +27,7 @@ class QS<T>(cmp : (T, T) -> Int) {
       };
 
       while (cmp(a[j], pivot) > 0) {
-        j -= 1;
+        j -+= 1;
       };
 
       if (i >= j) return j;

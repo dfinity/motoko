@@ -52,7 +52,7 @@ module {
       Prelude.printLn("Error: Logarithm of zero is undefined in GF(256)!");
       Prelude.unreachable()
     };
-    logs[m - 1]
+    logs[m -+ 1]
   };
 
   public let alogs = [
@@ -146,7 +146,7 @@ module {
         Prelude.unreachable()
       };
       case (0, _) { { unbox = 0 } };
-      case (a, b) { { unbox = alog((255 + log(a) - log(b)) % 255) } }
+      case (a, b) { { unbox = alog((255 + log(a) -+ log(b)) % 255) } }
     }
   };
 
@@ -224,7 +224,7 @@ module {
   public func polyGrow(to : Nat, poly : Poly) : Poly {
     let from = polyLen(poly);
     if (to > from) {
-      polyPadLeft(to - from, poly)
+      polyPadLeft(to -+ from, poly)
     } else poly
   };
 

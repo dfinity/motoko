@@ -6319,7 +6319,7 @@ let compile_binop env t op =
   | Type.(Prim Nat64),                        AddOp ->
     compile_Nat64_kernel env "add" BigNum.compile_add
       (additiveNat64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Add))))
-  | Type.(Prim Nat),                          SubOp -> BigNum.compile_unsigned_sub env
+  | Type.(Prim Nat),                          SubPosOp -> BigNum.compile_unsigned_sub env
   | Type.(Prim Int),                          SubOp -> BigNum.compile_signed_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
@@ -6339,7 +6339,7 @@ let compile_binop env t op =
   | Type.(Prim Int64),                        SubOp ->
     compile_Int64_kernel env "sub" BigNum.compile_signed_sub
       (additiveInt64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Sub))))
-  | Type.(Prim Nat64),                        SubOp ->
+  | Type.(Prim Nat64),                        SubPosOp ->
     compile_Nat64_kernel env "sub" BigNum.compile_unsigned_sub
       (fun env get_a get_b ->
         additiveNat64_shortcut
@@ -6359,8 +6359,8 @@ let compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
   | Type.(Prim Int32),                        SubOp -> compile_Int32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Int8|Int16 as ty)),           SubOp -> compile_smallInt_kernel env ty "sub" I32Op.Sub
-  | Type.(Prim Nat32),                        SubOp -> compile_Nat32_kernel env "sub" I64Op.Sub
-  | Type.(Prim (Nat8|Nat16 as ty)),           SubOp -> compile_smallNat_kernel env ty "sub" I32Op.Sub
+  | Type.(Prim Nat32),                        SubPosOp -> compile_Nat32_kernel env "sub" I64Op.Sub
+  | Type.(Prim (Nat8|Nat16 as ty)),           SubPosOp -> compile_smallNat_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Float),                        SubOp -> G.i (Binary (Wasm.Values.F64 F64Op.Sub))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> TaggedSmallWord.compile_word_mul env ty
   | Type.(Prim Int32),                        MulOp -> compile_Int32_kernel env "mul" I64Op.Mul

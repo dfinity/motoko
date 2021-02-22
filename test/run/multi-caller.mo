@@ -63,7 +63,7 @@ actor Ping {
   public shared(c) func call (n:Nat) : async () {
     if (n > 0) {
       assert (c.caller == (await Pong.getSelf()));
-      await Pong.call(n - 1);
+      await Pong.call(n -+ 1);
     };
   };
 };
@@ -83,7 +83,7 @@ actor Pong {
  public shared(c) func call (n:Nat) : async () {
     if (n > 0) {
       assert c.caller == (await Ping.getSelf());
-      await Ping.call(n - 1);
+      await Ping.call(n -+ 1);
     };
  };
 

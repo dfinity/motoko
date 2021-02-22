@@ -62,6 +62,7 @@ type token =
   | ASSERT
   | ADDOP
   | SUBOP
+  | SUBPOSOP
   | MULOP
   | DIVOP
   | MODOP
@@ -83,6 +84,7 @@ type token =
   | GT
   | PLUSASSIGN
   | MINUSASSIGN
+  | MINUSPOSASSIGN
   | MULASSIGN
   | DIVASSIGN
   | MODASSIGN
@@ -174,6 +176,7 @@ let to_parser_token :
   | ASSERT -> Ok Parser.ASSERT
   | ADDOP -> Ok Parser.ADDOP
   | SUBOP -> Ok Parser.SUBOP
+  | SUBPOSOP -> Ok Parser.SUBPOSOP
   | MULOP -> Ok Parser.MULOP
   | DIVOP -> Ok Parser.DIVOP
   | MODOP -> Ok Parser.MODOP
@@ -195,6 +198,7 @@ let to_parser_token :
   | GT -> Ok Parser.GT
   | PLUSASSIGN -> Ok Parser.PLUSASSIGN
   | MINUSASSIGN -> Ok Parser.MINUSASSIGN
+  | MINUSPOSASSIGN -> Ok Parser.MINUSPOSASSIGN
   | MULASSIGN -> Ok Parser.MULASSIGN
   | DIVASSIGN -> Ok Parser.DIVASSIGN
   | MODASSIGN -> Ok Parser.MODASSIGN
@@ -286,6 +290,7 @@ let string_of_parser_token = function
   | Parser.ASSERT -> "ASSERT"
   | Parser.ADDOP -> "ADDOP"
   | Parser.SUBOP -> "SUBOP"
+  | Parser.SUBPOSOP -> "SUBPOSOP"
   | Parser.MULOP -> "MULOP"
   | Parser.DIVOP -> "DIVOP"
   | Parser.MODOP -> "MODOP"
@@ -310,6 +315,7 @@ let string_of_parser_token = function
   | Parser.GT -> "GT"
   | Parser.PLUSASSIGN -> "PLUSASSIGN"
   | Parser.MINUSASSIGN -> "MINUSASSIGN"
+  | Parser.MINUSPOSASSIGN -> "MINUSPOSASSIGN"
   | Parser.MULASSIGN -> "MULASSIGN"
   | Parser.DIVASSIGN -> "DIVASSIGN"
   | Parser.MODASSIGN -> "MODASSIGN"

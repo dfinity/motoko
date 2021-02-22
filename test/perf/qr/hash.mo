@@ -68,7 +68,7 @@ module {
   };
 
   public let bitsPrintRev : Hash -> () = func(bits) {
-    for (j in Iter.range(0, length - 1)) {
+    for (j in Iter.range(0, length -+ 1)) {
       if (getHashBit(bits, j)) {
         Prim.debugPrint "1"
       } else {
@@ -78,7 +78,7 @@ module {
   };
 
   public let hashPrintRev : Hash -> () = func(bits) {
-    for (j in Iter.range(length - 1, 0)) {
+    for (j in Iter.range(length -+ 1, 0)) {
       if (getHashBit(bits, j)) {
         Prim.debugPrint "1"
       } else {

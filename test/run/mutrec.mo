@@ -2,7 +2,7 @@ func even(n : Nat) : Bool {
   if (n == 0) {
     return true;
   } else {
-    return odd(n-1);
+    return odd(n-+1);
   }
 };
 
@@ -10,7 +10,7 @@ func odd(n : Nat) : Bool {
   if (n == 0) {
     return false;
   } else {
-    return even(n-1);
+    return even(n-+1);
   }
 };
 

@@ -11,6 +11,7 @@ type unop =
 type binop =
   | AddOp                                       (* x+y *)
   | SubOp                                       (* x-y *)
+  | SubPosOp                                    (* x-+y *)
   | MulOp                                       (* x*y *)
   | DivOp                                       (* x/y *)
   | ModOp                                       (* x%y *)

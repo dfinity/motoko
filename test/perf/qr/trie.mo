@@ -267,7 +267,7 @@ public func fromList<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
      label profile_trie_fromList_end_empty : (Trie<K,V>) {
        #empty
      }
-     else if ( List.lenIsEqLessThan<(Key<K>,V)>(kvs, MAX_LEAF_COUNT - 1) )
+     else if ( List.lenIsEqLessThan<(Key<K>,V)>(kvs, MAX_LEAF_COUNT -+ 1) )
      label profile_trie_fromList_end_validleaf : (Trie<K,V>) {
        let len = List.len<(Key<K>,V)>(kvs);
        #leaf{count=len;keyvals=kvs}
@@ -945,7 +945,7 @@ public func disj<K,V,W,X>(
         case (#seq s) label profile_trie_buildNth_rec_seq : (?(K, ?Hash.Hash, V)) {
                let count_left = buildCount<K,V>(s.left);
                if (i < count_left) { rec(s.left,  i) }
-               else                { rec(s.right, i - count_left) }
+               else                { rec(s.right, i -+ count_left) }
              };
         }
       };
@@ -1095,7 +1095,7 @@ public func disj<K,V,W,X>(
       case (#branch b) {
              let count_left = count<K,V>(b.left);
              if (i < count_left) { rec(b.left,  i) }
-             else                { rec(b.right, i - count_left) }
+             else                { rec(b.right, i -+ count_left) }
            }
       }
     };

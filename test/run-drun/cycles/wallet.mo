@@ -36,7 +36,7 @@ shared(msg) actor class Wallet() {
   public shared func refund(
     amount : Nat64)
     : async () {
-    ignore Cycles.accept(Cycles.available() - amount);
+    ignore Cycles.accept(Cycles.available() -+ amount);
     print("refunding: " #  debug_show(amount));
   };
 
