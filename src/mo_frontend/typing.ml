@@ -885,7 +885,7 @@ and infer_exp'' env exp : T.typ =
       assert (!ot = Type.Pre);
       if not (Operator.has_binop op t) then
         error_bin_op env exp.at t1 t2
-      else if op = Operator.SubOp && t = T.nat then
+      else if op = Operator.SubOp && T.eq t T.nat then
         warn env exp.at "M0154" "operator may trap for inferred type\n  %s"
           (T.string_of_typ_expand t);
       ot := t
@@ -1324,7 +1324,7 @@ and check_exp' env0 t exp : T.typ =
     ot := t;
     check_exp env t exp1;
     check_exp env t exp2;
-    if env.weak && op = Operator.SubOp && t = T.nat then
+    if env.weak && op = Operator.SubOp && T.eq t T.nat then
       warn env exp.at "M0154" "operator may trap for inferred type\n  %s"
         (T.string_of_typ_expand t);
     t
