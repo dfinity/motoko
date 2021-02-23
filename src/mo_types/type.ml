@@ -693,6 +693,7 @@ let rel_list p rel eq xs1 xs2 =
 let rec rel_typ rel eq t1 t2 =
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
+  Printf.printf "%s" ".";
   match t1, t2 with
   (* Second-class types first, since they mustn't relate to Any/Non *)
   | Pre, _ | _, Pre ->
