@@ -19,6 +19,11 @@
  (libraries docs)
 )
 (executable
+ (name mo_bench)
+ (modules mo_bench)
+ (libraries pipeline core_bench core)
+)
+(executable
  (name didc)
  (modules didc)
  (libraries idllib source_id)

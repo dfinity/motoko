@@ -72,6 +72,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
+    pkgs.ocamlPackages.core
+    pkgs.ocamlPackages.core_bench
     pkgs.perl
     pkgs.removeReferencesTo
   ]; in
