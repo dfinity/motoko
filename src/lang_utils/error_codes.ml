@@ -154,5 +154,5 @@ let error_codes : (string * string option) list =
     "M0148", None; (* Block syntax is deprecated in this position *)
     "M0149", Some([%blob "error_codes/M0149.adoc"]); (* Expected mutable 'var' field, found immutable field *)
     "M0150", Some([%blob "error_codes/M0150.adoc"]); (* Expected immutable field, found mutable 'var' field *)
-    "M0151", Some([%blob "error_codes/M0151.adoc"]); (* Inferred type Nat for subtraction *)
+    "M0154", Some([%blob "error_codes/M0154.adoc"]); (* Inferred type Nat for subtraction *)
   ]

@@ -886,7 +886,7 @@ and infer_exp'' env exp : T.typ =
       if not (Operator.has_binop op t) then
         error_bin_op env exp.at t1 t2
       else if op = Operator.SubOp && t = T.nat then
-        warn env exp.at "M0151" "operator may trap for inferred type\n  %s"
+        warn env exp.at "M0154" "operator may trap for inferred type\n  %s"
           (T.string_of_typ_expand t);
       ot := t
     end;
@@ -1325,7 +1325,7 @@ and check_exp' env0 t exp : T.typ =
     check_exp env t exp1;
     check_exp env t exp2;
     if env.weak && op = Operator.SubOp && t = T.nat then
-      warn env exp.at "M0151" "operator may trap for inferred type\n  %s"
+      warn env exp.at "M0154" "operator may trap for inferred type\n  %s"
         (T.string_of_typ_expand t);
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
