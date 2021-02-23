@@ -39,7 +39,7 @@ Or you can insert a sign operator `+`, which also forces the expression to be of
   };
 ```
 
-This latter possiblity is particularly convenient in the case of comparisons, because it is always okay to perform them at type `Int`:
+This latter possibility is particularly convenient in the case of comparisons, because it is always okay to perform them at type `Int`:
 
 ```
   func g(n : Nat) {
