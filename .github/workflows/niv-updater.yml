@@ -1,4 +1,4 @@
-ame: Update niv dependencies (daily)
+name: Update niv dependencies (daily)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
