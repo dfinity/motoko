@@ -1,4 +1,5 @@
 open Type
+
 (* Collecting type constructors *)
 
 type vertex = Type.con * int
@@ -124,3 +125,68 @@ let edges cs =
   es
 
 
+module VertexMap = Map.Make(struct
+  type t = vertex
+  let compare = compare_vertex
+end)
+
+module EdgeMap = Map.Make(struct
+  type t = vertex
+  let compare = compare_vertex
+end)
+
+
+type state = {
+    mutable index : int;
+    mutable lowlink : int;
+    mutable onstack : bool
+  }
+
+let scc (vs, es) =
+  let sccs = ref [] in
+  let undefined = -1 in
+  let index = ref 0 in
+  let states = VertexSet.fold (fun v m ->
+    VertexMap.add v {index = undefined; lowlink = 0; onstack = false} m)
+    vs VertexMap.empty
+  in
+  let stack = ref [] in
+  let successors = EdgeSet.fold (fun (ci, w, dj) m ->
+     match VertexMap.find_opt ci m with
+     | None -> VertexMap.add ci (VertexSet.singleton dj) m
+     | Some ds -> VertexMap.add ci (VertexSet.add dj ds) m) es VertexMap.empty
+  in
+  let rec strongconnect v =
+    let sv = VertexMap.find v states in
+    sv.index <- !index;
+    sv.lowlink <- !index;
+    index := !index +1 ;
+    stack := v::!stack;
+    let ws = VertexMap.find v successors in
+    ws |> VertexSet.iter (fun w ->
+          let sw = VertexMap.find v states in
+          if sw.index = undefined then begin
+            strongconnect(w);
+            sv.lowlink <- min sv.lowlink sw.lowlink;
+            end
+          else
+            if sw.onstack then
+              sv.lowlink <- min sv.lowlink sw.index;
+            );
+    if sv.lowlink = sv.index then
+      let rec pop scc =
+        let w = List.hd !stack in
+        stack := List.tl !stack;
+        let sw = VertexMap.find w states in
+        sw.onstack <- false;
+        if compare_vertex w v <> 0
+        then pop (w::scc)
+        else sccs := scc :: !sccs
+      in
+      pop []
+  in
+  vs |> VertexSet.iter (fun v ->
+    let sv = VertexMap.find v states in
+    if sv.index = undefined then
+      strongconnect v);
+  !sccs
