@@ -1987,7 +1987,7 @@ and infer_block_decs env decs : Scope.t =
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
   (* TODO: check expansiveness here, before checking bounds *)
-  let _es = Mo_types.Expansive.edges scope_ce.Scope.con_env in
+  let _is_expansive = Mo_types.Expansive.check scope_ce.Scope.con_env in
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
