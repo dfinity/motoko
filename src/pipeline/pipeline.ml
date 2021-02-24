@@ -203,28 +203,45 @@ let lib_of_prog f prog : Syntax.lib  =
 
 (* Prelude *)
 
-let prelude_name = "prelude"
-
 let prelude_error phase (msgs : Diag.messages) =
   Printf.eprintf "%s prelude failed\n" phase;
   Diag.print_messages msgs;
   exit 1
 
-let check_prelude () : Syntax.prog * stat_env =
+let check_prelude senv0 : Syntax.prog * stat_env =
   let lexer = Lexing.from_string Prelude.prelude in
   let parse = Parser.Incremental.parse_prog in
-  match parse_with Lexer.mode_priv lexer parse prelude_name with
+  match parse_with Lexer.mode_priv lexer parse "prelude" with
   | Error es -> prelude_error "parsing" es
   | Ok ((prog, _), _ws) ->
-    let senv0 = Typing.initial_scope in
     match infer_prog senv0 prog with
     | Error es -> prelude_error "checking" es
     | Ok ((_t, sscope), _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
       prog, senv1
 
-let prelude, initial_stat_env = check_prelude ()
+let prelude, initial_stat_env0 = check_prelude Typing.initial_scope
 
+(* Internals *)
+
+let internals_error phase (msgs : Diag.messages) =
+  Printf.eprintf "%s internals failed\n" phase;
+  Diag.print_messages msgs;
+  exit 1
+
+let check_internals senv0 : Syntax.prog * stat_env =
+  let lexer = Lexing.from_string Prelude.internals in
+  let parse = Parser.Incremental.parse_prog in
+  match parse_with Lexer.mode_priv lexer parse "internals" with
+  | Error es -> internals_error "parsing" es
+  | Ok ((prog, _), _ws) ->
+    match infer_prog senv0 prog with
+    | Error es -> internals_error "checking" es
+    | Ok ((_t, sscope), _ws) ->
+      let senv1 = Scope.adjoin senv0 sscope in
+      prog, senv1
+
+let internals, initial_stat_env = check_internals initial_stat_env0
 
 (* The prim module *)
 
@@ -412,13 +429,19 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | Some denv2 -> Some (senv1, denv2)
     )
 
-let run_prelude () : dyn_env =
-  match interpret_prog Interpret.empty_scope prelude with
+let run_prelude denv : dyn_env =
+  match interpret_prog denv prelude with
   | None -> prelude_error "initializing" []
   | Some (_v, dscope) ->
-    Interpret.adjoin_scope Interpret.empty_scope dscope
+    Interpret.adjoin_scope denv dscope
 
-let initial_dyn_env = run_prelude ()
+let run_internals denv : dyn_env =
+  match interpret_prog denv internals with
+  | None -> internals_error "initializing" []
+  | Some (_v, dscope) ->
+    Interpret.adjoin_scope denv dscope
+
+let initial_dyn_env = run_internals (run_prelude Interpret.empty_scope)
 
 let initial_env = (initial_stat_env, initial_dyn_env)
 
@@ -528,7 +551,7 @@ let desugar_unit imports u name : Ir.prog =
   phase "Desugaring" name;
   let open Lowering.Desugar in
   let prog_ir' : Ir.prog = link_declarations
-    (import_prelude prelude @ imports)
+    (import_prelude prelude @ import_prelude internals @ imports)
     (transform_unit u) in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
