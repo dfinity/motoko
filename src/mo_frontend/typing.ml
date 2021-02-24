@@ -599,6 +599,10 @@ and check_inst_bounds env tbs inst at =
    or by expressions whose type is unambiguous and can be weakened only to Any
    or via lossy width subtyping on records.
 
+   The intuition is that for an explicit expression, the inferred type is a
+   "good enough" choice to resolve overloading of operators that have it as
+   an operand.
+
    Specifically, this excludes expression forms that are either overloaded
    or have a principal type like None or Null, that are subtypes of other
    non-trivial types. These must be excluded so that examples like the
@@ -606,6 +610,7 @@ and check_inst_bounds env tbs inst at =
 
      null == ?0
      [] == [0]
+     (break) == 0
 *)
 
 let is_explicit_lit l =
