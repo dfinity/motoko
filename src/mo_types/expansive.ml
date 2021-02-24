@@ -2,7 +2,7 @@ open Type
 
 (* Collecting type constructors *)
 
-let debug = 1
+let debug = 0
 
 type vertex = Type.con * int
 type edge = vertex * int * vertex
