@@ -1966,7 +1966,7 @@ and check_stab env sort scope dec_fields =
 (* Blocks and Declarations *)
 
 and infer_block env decs at : T.typ * Scope.scope =
-  let scope = infer_block_decs env decs in
+  let scope = infer_block_decs env decs at in
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
@@ -1982,12 +1982,13 @@ and infer_block env decs at : T.typ * Scope.scope =
   let t = infer_block_exps { env' with vals = ve } decs in
   t, scope
 
-and infer_block_decs env decs : Scope.t =
+and infer_block_decs env decs at : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
   (* TODO: check expansiveness here, before checking bounds *)
-  let _is_expansive = Mo_types.Expansive.check scope_ce.Scope.con_env in
+  if Mo_types.Expansive.is_expansive scope_ce.Scope.con_env then
+    error env at "M0666" "block contains expansive type definitions"; (* TBR *)
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
@@ -2064,7 +2065,7 @@ and infer_dec env dec : T.typ =
 
 
 and check_block env t decs at : Scope.t =
-  let scope = infer_block_decs env decs in
+  let scope = infer_block_decs env decs at in
   check_block_exps (adjoin env scope) t decs at;
   scope
 
