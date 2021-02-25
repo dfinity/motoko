@@ -205,9 +205,8 @@ let check_builtin what src senv0 : Syntax.prog * stat_env =
   let lexer = Lexing.from_string src in
   let parse = Parser.Incremental.parse_prog in
   match parse_with Lexer.mode_priv lexer parse what with
-  | Error es -> builtin_error "parsing" es
+  | Error es -> builtin_error "parsing" what es
   | Ok (prog, _ws) ->
-    let senv0 = Typing.initial_scope in
     match infer_prog senv0 prog with
     | Error es -> builtin_error "checking" what es
     | Ok ((_t, sscope), _ws) ->
