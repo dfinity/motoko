@@ -31,7 +31,6 @@ do {
   type C<T> = ?C< <A>A->A >; // accept
 };
 
-
 ignore module { // accept
   public type C<T,U> = ?N.D<T,U>;  // accept
   public module N = { public type D<T,U> = ?C<T,U>; }
@@ -44,7 +43,6 @@ do {
 do {
   type C<T> = {head:T; next: () -> C<{field: T}>};  // reject
 };
-
 
 do {
   type C<T,U> = ?C<(T,T),U>;  // reject
@@ -63,7 +61,6 @@ do {
   type D<T,U> = ?C<T,U>;
 };
 
-
 do {
    type P<T> = Nat;
    do { type C<T> = ?P<C<C<T>>>; } // reject, but would accept after unfolding P (too conservative?)
@@ -74,14 +71,12 @@ do {
    do { type C<T> = ?C<P<T>>; } // reject, but would accept after unfolding P (too conservative?)
 };
 
-
 do {
    type P<T> = Nat;
    type C<T> = ?P<C<C<T>>>;   // reject, but would accept after unfolding P (too conservative?)
 };
 
-
-ignore module { 
+ignore module {
   public type C<T,U> = ?N.D<T,?U>;  // reject
   public module N = { public type D<T,U> = ?C<T,U>; }
 };
