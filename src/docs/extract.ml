@@ -183,11 +183,10 @@ struct
     else None
 end
 
-let extract_docs :
-    Syntax.prog -> Trivia.triv_table -> (extracted, string) result =
- fun prog trivia_table ->
+let extract_docs : Syntax.prog -> (extracted, string) result =
+ fun prog ->
   let lookup_trivia (line, column) =
-    PosTable.find_opt trivia_table Trivia.{ line; column }
+    PosTable.find_opt prog.it.Syntax.trivia Trivia.{ line; column }
   in
   let find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)

@@ -4,7 +4,7 @@ open Mo_types
 
 module ResolveImport = Resolve_import
 
-type no_region_parse_fn = string -> (Syntax.prog * Trivia.triv_table * string) Diag.result
+type no_region_parse_fn = string -> (Syntax.prog * string) Diag.result
 type parse_fn = Source.region -> no_region_parse_fn
 
 val parse_file: parse_fn
@@ -19,7 +19,7 @@ val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope
 val chase_imports : parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
-  ((Syntax.lib * Trivia.triv_table) list * Scope.scope) Diag.result
+  (Syntax.lib list * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
 val run_stdin_from_file : string list -> string -> unit option
@@ -32,5 +32,5 @@ val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 
 (* For use in the IDE server *)
 type load_result =
-  ((Syntax.lib * Trivia.triv_table) list * Syntax.prog list * Scope.scope) Diag.result
+  (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
 val load_progs : parse_fn -> string list -> Scope.scope -> load_result
