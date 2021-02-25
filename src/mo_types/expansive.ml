@@ -4,33 +4,30 @@ open Type
 
 let debug = 0
 
-type vertex = Type.con * int
-type edge = vertex * int * vertex
-
-let compare_vertex (c,i) (d,j) =
+module Vertex = struct
+  type t = Type.con * int
+  let compare (c,i) (d,j) =
   match Con.compare c d with
   | 0 -> compare i j
   | n -> n
+end
 
-let compare_edge (c1, w1, d1) (c2, w2, d2) =
-  match compare_vertex c1 c2 with
+module Edge = struct
+  type t = Vertex.t * int * Vertex.t
+  let compare (c1, w1, d1) (c2, w2, d2) =
+  match Vertex.compare c1 c2 with
   | 0 ->
     begin
       match compare w1 w2 with
-      | 0 -> compare_vertex d1 d2
+      | 0 -> Vertex.compare d1 d2
       | n -> n
     end
   | n -> n
+end
 
-module VertexSet = Set.Make(struct
-  type t = vertex
-  let compare = compare_vertex
-end)
+module VertexSet = Set.Make(Vertex)
 
-module EdgeSet = Set.Make(struct
-   type t = edge
-   let compare = compare_edge
-end)
+module EdgeSet = Set.Make(Edge)
 
 let string_of_vertex (c, i) = Printf.sprintf "(%s,%i)" (Con.name c) i
 
@@ -43,7 +40,7 @@ let string_of_edge (ci,w,dj) =
 let string_of_edges es =
   Printf.sprintf "{ %s }" (String.concat "," (List.map string_of_edge (EdgeSet.elements es)))
 
-let rec edges_typ c cs i exp non (es:EdgeSet.t) t : EdgeSet.t =
+let rec edges_typ c cs i exp non (es : EdgeSet.t) t : EdgeSet.t =
   if debug > 1 then
     Printf.printf "{%s} {%s} %s\n"
     (string_of_vertices exp)
@@ -97,7 +94,7 @@ let rec edges_typ c cs i exp non (es:EdgeSet.t) t : EdgeSet.t =
     let exp1 = VertexSet.union exp non in
     List.fold_left (edges_field c cs i exp1 VertexSet.empty) es fs
   | Typ c ->
-    (* since constructors must be closed, no further edges possible *)
+    (* Since constructors must be closed, no further edges possible *)
     es
 
 and edges_bind c cs i exp non es tb =
@@ -109,7 +106,7 @@ and edges_field c cs i exp non es {lab; typ} =
 let edges_con cs c es : EdgeSet.t =
   match Con.kind c with
   | Def (tbs, t) ->
-    (* TODO tbs *)
+    (* TODO: tbs *)
     edges_typ c cs 0 VertexSet.empty VertexSet.empty es t
   | Abs (tbs, t) ->
     assert false
@@ -126,98 +123,44 @@ let vertices cs =
       | Abs (tbs, t) ->
         assert false) cs VertexSet.empty
 
-module VertexMap = Map.Make(struct
-  type t = vertex
-  let compare = compare_vertex
-end)
+module VertexMap = Map.Make(Vertex)
 
-module EdgeMap = Map.Make(struct
-  type t = vertex
-  let compare = compare_vertex
-end)
-
-
-type state = {
-    mutable index : int;
-    mutable lowlink : int;
-    mutable onstack : bool
-  }
-
-let sccs (vs, es) =
-  let sccs = ref [] in
-  let undefined = -1 in
-  let index = ref 0 in
-  let states = VertexSet.fold (fun v m ->
-    VertexMap.add v {index = undefined; lowlink = 0; onstack = false} m)
-    vs VertexMap.empty
-  in
-  let stack = ref [] in
-  let successors = EdgeSet.fold (fun (ci, w, dj) m ->
-     VertexMap.add ci (VertexSet.add dj (VertexMap.find ci m)) m)
-     es
-     (VertexSet.fold (fun v m -> VertexMap.add v VertexSet.empty m) vs VertexMap.empty)
-  in
-  let rec strongconnect v =
-    let sv = VertexMap.find v states in
-    sv.index <- !index;
-    sv.lowlink <- !index;
-    index := !index +1 ;
-    stack := v::!stack;
-    sv.onstack <- true;
-
-    let ws = VertexMap.find v successors in
-    ws |> VertexSet.iter (fun w ->
-          let sw = VertexMap.find w states in
-          if sw.index = undefined then begin
-            strongconnect(w);
-            sv.lowlink <- min sv.lowlink sw.lowlink;
-            end
-          else
-            if sw.onstack then
-              sv.lowlink <- min sv.lowlink sw.index;
-            );
-    if sv.lowlink = sv.index then
-      let rec pop scc =
-        let w = List.hd !stack in
-        stack := List.tl !stack;
-        let sw = VertexMap.find w states in
-        sw.onstack <- false;
-        let scc' = VertexSet.add w scc in
-        if compare_vertex w v <> 0
-        then pop scc'
-        else sccs := scc' :: !sccs
-      in
-      pop VertexSet.empty
-  in
-  vs |> VertexSet.iter (fun v ->
-    let sv = VertexMap.find v states in
-    if sv.index = undefined then
-      strongconnect v);
-  !sccs
+module Scc = Scc.Make(Vertex)
 
 let string_of_sccs sccs =
   Printf.sprintf "{ %s }" (String.concat ","
    (List.map string_of_vertices sccs))
 
-
 let is_expansive cs =
+  (* Collect vertices and labeled edges *)
   let vs = vertices cs in
   if debug > 0 then Printf.printf "\nvertices %s" (string_of_vertices vs);
   let es = edges cs in
   if debug > 0 then Printf.printf "\nedges %s" (string_of_edges es);
-  let vss = sccs (vs,es) in
+
+  (* Compute the strongly connected components (ignoring edge labels) *)
+  let unlabeled_es = EdgeSet.fold
+    (fun (ci, w, dj) -> Scc.EdgeSet.add (ci, dj)) es Scc.EdgeSet.empty
+  in
+  let vss = Scc.scc vs unlabeled_es in
   if debug > 0 then Printf.printf "\ncomponents %s" (string_of_sccs vss);
-  let numbering = List.mapi (fun i vs -> vs,i) vss in
+
+  (* Map each vertex to the number of its component *)
+  let numbering = List.mapi (fun i vs -> (vs,i)) vss in
   let component = List.fold_left (fun m (vs,i) ->
     VertexSet.fold (fun v m -> VertexMap.add v i m) vs m)
     VertexMap.empty numbering
   in
+
+  (* The constructor are expansive if some component (cycle) contains
+     an edge with non-zero weight *)
   let is_expansive = EdgeSet.exists
     (fun (ci, w, dj) ->
-      w > 0 &&
-        VertexMap.find ci component = VertexMap.find dj component) es
+      w > 0 && VertexMap.find ci component = VertexMap.find dj component) es
   in
   if debug > 0 then Printf.printf "is_expansive: %b" is_expansive;
+
+  (* Return Some error message if expansive, otherwise None *)
   if is_expansive then
     Some
       (Printf.sprintf
