@@ -228,5 +228,10 @@ let is_expansive cs =
         VertexMap.find ci component = VertexMap.find dj component) es
   in
   if debug > 0 then Printf.printf "is_expansive: %b" is_expansive;
-  is_expansive
+  if is_expansive then
+    Some
+      (Printf.sprintf
+         "\n  vertices:\n    %s\n  edges:\n    %s\n  components:\n    %s"
+         (string_of_vertices vs) (string_of_edges es) (string_of_sccs vss))
+  else None
 
