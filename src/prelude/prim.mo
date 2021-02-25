@@ -301,3 +301,6 @@ func cyclesAdd(amount: Nat64) : () {
   @cycles += amount;
 };
 
+// certified data
+func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
+func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob) ();
