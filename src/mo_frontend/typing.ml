@@ -2389,7 +2389,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
       recover_opt
         (fun prog ->
           let env = env_of_scope msgs scope in
-          let res = infer_block env prog.it prog.at in
+          let res = infer_block env prog.it.decls prog.at in
           res
         ) prog
     )
@@ -2411,7 +2411,7 @@ let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
-        let prog = List.concat_map (fun prog -> prog.Source.it) progs in
+        let prog = (CompUnit.combine_progs progs).it in
         let env = env_of_scope msgs scope in
         let rec go ds = function
           | [] -> ()
@@ -2422,8 +2422,8 @@ let check_actors scope progs : unit Diag.result =
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
         in
-        go [] prog
-      ) progs
+        go [] prog.decls
+        ) progs
     )
 
 let check_lib scope lib : Scope.t Diag.result =
@@ -2432,7 +2432,7 @@ let check_lib scope lib : Scope.t Diag.result =
       recover_opt
         (fun lib ->
           let env = env_of_scope msgs scope in
-          let (imports, cub) = lib.it in
+          let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;

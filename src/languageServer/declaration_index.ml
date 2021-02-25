@@ -1,7 +1,6 @@
 open Mo_types
 open Mo_config
 open Mo_def
-open Mo_frontend
 open Source
 open Syntax
 
@@ -237,8 +236,8 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   | _ -> None
 
 let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
-  match lib.it with
-  | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
+  match lib.it.body with
+  | { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
 let populate_definitions (project_root : string)

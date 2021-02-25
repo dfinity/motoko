@@ -1,4 +1,3 @@
-open Mo_frontend
 open Mo_def
 open Source
 
@@ -52,7 +51,7 @@ and class_doc = {
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
-  let imports, body = comp_unit.it in
+  let Syntax.{ imports; body; trivia } = comp_unit.it in
   let imports =
     List.map
       (fun i ->

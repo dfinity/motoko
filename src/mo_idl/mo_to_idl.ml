@@ -175,7 +175,7 @@ let gather_decs () =
 let actor progs =
   let open E in
   let prog = CompUnit.combine_progs progs in
-  let (_, cub) = (CompUnit.comp_unit_of_prog false prog).it in
+  let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
   match cub.it with
   | ProgU _ | ModuleU _ -> None
   | ActorU _ -> Some (typ cub.note.note_typ)

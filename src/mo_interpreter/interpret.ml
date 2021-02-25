@@ -962,7 +962,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+      interpret_block env p.it.decls (Some ve) (fun v -> vo := Some v)
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in
@@ -980,7 +980,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Import a module unchanged, and a class constructor as an asynchronous function.
    The conversion will be unnecessary once we declare classes as asynchronous. *)
 let import_lib env lib =
-  let (_, cub) = lib.it in
+  let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v

@@ -1,5 +1,5 @@
 module ST = Source_token
-open Trivia
+open Mo_def.Trivia
 include Lexer_lib
 
 type source_token = ST.token * Lexing.position * Lexing.position

@@ -238,9 +238,9 @@ let check_prim () : Syntax.lib * stat_env =
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
-    let cub = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
-    let lib = {it = ([],cub); at = no_region; Source.note = "@prim" } in
+    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it.decls in
+    let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
+    let lib = {it = { imports = []; body; trivia = Trivia.empty_triv_table }; at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
@@ -488,7 +488,7 @@ let run_stdin lexer (senv, denv) : env option =
       let env' = (senv', denv') in
       (* TBR: hack *)
       let t', v' =
-        if prog.Source.it <> [] && is_exp (Lib.List.last prog.Source.it)
+        if prog.Source.it.Syntax.decls <> [] && is_exp (Lib.List.last prog.Source.it.Syntax.decls)
         then t, v
         else Type.unit, Value.unit
       in
@@ -590,7 +590,7 @@ let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
   let rec go imports = function
     | [] -> imports
     | l :: libs ->
-      let (_, cub) = l.it in
+      let { Syntax.body = cub; _ } = l.it in
       match cub.it with
       | Syntax.ActorClassU _ ->
         let wasm = compile_unit_to_wasm mode imports l in

@@ -218,7 +218,7 @@ and dec' =
 (* Program (pre unit detection) *)
 
 type prog = (prog', string) Source.annotated_phrase
-and prog' = dec list
+and prog' = { decls : dec list; trivia : Trivia.triv_table }
 
 
 (* Compilation units *)
@@ -236,7 +236,11 @@ and comp_unit_body' =
 
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase
-and comp_unit' = import list * comp_unit_body
+and comp_unit' = {
+    imports : import list;
+    body : comp_unit_body;
+    trivia : Trivia.triv_table
+  }
 
 type lib = comp_unit
 

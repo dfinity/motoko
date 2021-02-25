@@ -1,5 +1,5 @@
 {
-open Trivia
+open Mo_def.Trivia
 open Source_token
 open Lexer_lib
 module Utf8 = Wasm.Utf8
