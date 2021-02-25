@@ -59,22 +59,22 @@ let rec edges_typ c cs i exp non (es:EdgeSet.t) t : EdgeSet.t =
     assert (j < i);
     es
   | (Prim _ | Any | Non | Pre ) -> es
+  | Con (d, ts) when ConSet.mem d cs ->
+    let exp1 = VertexSet.union exp non in
+    let _, es = List.fold_left
+      (fun (k, es) t ->
+        (k+1,
+         edges_typ c cs i exp1 (VertexSet.singleton (d, k)) es t))
+      (0, es)
+      ts
+    in
+    es
   | Con (d, ts) ->
     let exp1 = VertexSet.union exp non in
-    let rec go k ts es = match ts with
-      | [] -> es
-      | t1::ts1 ->
-        let es1 = edges_typ c cs i
-          exp1
-          (if ConSet.mem d cs then
-             VertexSet.singleton (d, k) (* is this the right index? *)
-           else VertexSet.empty)
-          es
-          t1
-        in
-        go (k+1) ts1 es1
-    in
-    go 0 ts es
+    List.fold_left
+      (edges_typ c cs i exp1 VertexSet.empty)
+      es
+      ts
   | (Opt t1 | Mut t1 | Array t1) ->
     edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t1
   | Async (_t1, t2) ->
@@ -82,18 +82,8 @@ let rec edges_typ c cs i exp non (es:EdgeSet.t) t : EdgeSet.t =
     edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t2
   | Tup ts ->
     let exp1 = VertexSet.union exp non in
-    let rec go ts es = match ts with
-      | [] -> es
-      | t1::ts1 ->
-        let es1 = edges_typ c cs i
-          exp1
-          VertexSet.empty
-          es
-          t1
-        in
-        go ts1 es1
-    in
-    go ts es
+    List.fold_left
+      (edges_typ c cs i exp1 VertexSet.empty) es ts
   | Func (s, _c, tbs, ts1, ts2) ->
     let i1 = i + List.length tbs in
     let exp1 = VertexSet.union exp non in
