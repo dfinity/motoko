@@ -1,67 +1,67 @@
-expansive.mo:40.4-42.2: type error [M0666], block contains expansive type definitions
+expansive.mo:40.4-42.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0) }
   edges:
     { (C,0) -1-> (C,0) }
   components:
     { { (C,0) } }
-expansive.mo:44.4-46.2: type error [M0666], block contains expansive type definitions
+expansive.mo:44.4-46.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0) }
   edges:
     { (C,0) -1-> (C,0) }
   components:
     { { (C,0) } }
-expansive.mo:49.4-51.2: type error [M0666], block contains expansive type definitions
+expansive.mo:49.4-51.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0),(C,1) }
   edges:
     { (C,0) -1-> (C,0),(C,1) -0-> (C,1) }
   components:
     { { (C,1) },{ (C,0) } }
-expansive.mo:53.4-55.2: type error [M0666], block contains expansive type definitions
+expansive.mo:53.4-55.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0) }
   edges:
     { (C,0) -1-> (C,0) }
   components:
     { { (C,0) } }
-expansive.mo:57.4-59.2: type error [M0666], block contains expansive type definitions
+expansive.mo:57.4-59.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0) }
   edges:
     { (C,0) -1-> (C,0) }
   components:
     { { (C,0) } }
-expansive.mo:61.4-64.2: type error [M0666], block contains expansive type definitions
+expansive.mo:61.4-64.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0),(C,1),(D,0),(D,1) }
   edges:
     { (C,0) -0-> (D,0),(C,1) -1-> (D,1),(D,0) -0-> (C,0),(D,1) -0-> (C,1) }
   components:
     { { (C,1),(D,1) },{ (C,0),(D,0) } }
-expansive.mo:69.7-69.35: type error [M0666], block contains expansive type definitions
+expansive.mo:69.7-69.35: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0) }
   edges:
     { (C,0) -0-> (C,0),(C,0) -1-> (C,0) }
   components:
     { { (C,0) } }
-expansive.mo:74.7-74.32: type error [M0666], block contains expansive type definitions
+expansive.mo:74.7-74.32: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0) }
   edges:
     { (C,0) -1-> (C,0) }
   components:
     { { (C,0) } }
-expansive.mo:78.4-81.2: type error [M0666], block contains expansive type definitions
+expansive.mo:78.4-81.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0),(P,0) }
   edges:
     { (C,0) -0-> (C,0),(C,0) -1-> (C,0),(C,0) -1-> (P,0) }
   components:
     { { (C,0) },{ (P,0) } }
-expansive.mo:84.8-87.2: type error [M0666], block contains expansive type definitions
+expansive.mo:84.8-87.2: type error [M0154], block contains expansive type definitions
   vertices:
     { (C,0),(C,1),(D,0),(D,1) }
   edges:

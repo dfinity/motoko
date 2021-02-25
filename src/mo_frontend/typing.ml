@@ -1990,7 +1990,7 @@ and infer_block_decs env decs at : Scope.t =
   begin match Mo_types.Expansive.is_expansive scope_ce.Scope.con_env with
   | None -> ()    (* TBR *)
   | Some msg ->
-    error env at "M0666" "block contains expansive type definitions%s" msg
+    error env at "M0154" "block contains expansive type definitions%s" msg
   end;
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
@@ -2293,7 +2293,7 @@ and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> () (* assert (T.eq_kind k' k) (* may diverge on expansive types *) *)
+  | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
   );
   T.ConSet.singleton c
 
