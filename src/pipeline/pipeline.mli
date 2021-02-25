@@ -9,9 +9,7 @@ type no_region_parse_fn = string -> (Syntax.prog * Trivia.triv_table * string) D
 type parse_fn = Source.region -> no_region_parse_fn
 
 val parse_file: parse_fn
-val parse_file_with_trivia: parse_fn
 val parse_string: string -> no_region_parse_fn
-val parse_string_with_trivia: string -> no_region_parse_fn
 
 val print_deps: string -> unit
 

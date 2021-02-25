@@ -103,9 +103,7 @@ let parse_string' mode name s : parse_result =
   let* prog, triv_table = parse_with mode lexer parse name in
   Diag.return (prog, triv_table, name)
 
-let parse_string_with_trivia =
-  parse_string' (Lexer.{Lexer.mode with with_trivia = true})
-let parse_string = parse_string_with_trivia
+let parse_string = parse_string' Lexer.mode
 
 let parse_file' mode at filename : (Syntax.prog * Trivia.triv_table * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
@@ -121,11 +119,7 @@ let parse_file' mode at filename : (Syntax.prog * Trivia.triv_table * rel_path) 
     Diag.return (prog, triv_table, filename)
   )
 
-let parse_file_with_trivia at filename : parse_result =
-  let mode = Lexer.{Lexer.mode with with_trivia = true} in
-  parse_file' mode at filename
-
-let parse_file = parse_file_with_trivia
+let parse_file = parse_file' Lexer.mode
 
 (* Import file name resolution *)
 
