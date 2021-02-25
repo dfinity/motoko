@@ -12,7 +12,7 @@ let opt_is_whitespace : 'a trivia option -> bool =
  fun x -> Option.fold ~none:false ~some:ST.is_whitespace x
 
 let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
-    (unit -> parser_token) * (unit -> triv_table) =
+    (unit -> parser_token) * triv_table =
   let trivia_table : triv_table = PosHashtbl.create 1013 in
   let lookahead : source_token option ref = ref None in
   (* We keep the trailing whitespace of the previous token
@@ -82,4 +82,4 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       { leading_trivia; trailing_trivia };
     (token, start, end_)
   in
-  (next_parser_token, fun () -> trivia_table)
+  (next_parser_token, trivia_table)

@@ -85,8 +85,7 @@ let parse_with mode lexer parser name : (Syntax.prog * Trivia.triv_table) Diag.r
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   (* a back door to enable the `prim` syntax, for our test suite *)
-  let tokenizer, get_trivia_table = Lexer.tokenizer mode lexer in
-  let triv_table = get_trivia_table () in
+  let tokenizer, triv_table = Lexer.tokenizer mode lexer in
   let* mk_prog =
     try
       Parser_lib.triv_table := triv_table;

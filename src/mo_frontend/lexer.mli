@@ -23,4 +23,4 @@ type parser_token = Parser.token * Lexing.position * Lexing.position
   the start position for every token.
 *)
 val tokenizer : mode -> Lexing.lexbuf ->
-    (unit -> parser_token) * (unit -> triv_table)
+    (unit -> parser_token) * triv_table
