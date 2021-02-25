@@ -24,6 +24,11 @@ do {
 };
 
 do {
+  type C<T,U> = ?D<U,T>;  // accept
+  type D<T,U> = ?C<U,T>;  // accept
+};
+
+do {
   type C<T> = <A>C<T>->C<T>; // accept
 };
 
