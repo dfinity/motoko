@@ -74,9 +74,9 @@ let rec edges_typ c cs i exp non (es : EdgeSet.t) t : EdgeSet.t =
       ts
   | (Opt t1 | Mut t1 | Array t1) ->
     edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t1
-  | Async (_t1, t2) ->
-    (* TODO: consider t1 *)
-    edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t2
+  | Async (t1, t2) ->
+    let es1 = edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t1 in
+    edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es1 t2
   | Tup ts ->
     let exp1 = VertexSet.union exp non in
     List.fold_left
@@ -106,8 +106,12 @@ and edges_field c cs i exp non es {lab; typ} =
 let edges_con cs c es : EdgeSet.t =
   match Con.kind c with
   | Def (tbs, t) ->
-    (* TODO: tbs *)
-    edges_typ c cs 0 VertexSet.empty VertexSet.empty es t
+    (* TODO: it's not clear we actually need to consider parameters bounds, since, unlike
+       function type parameters, they don't introduce new subgoals during subtyping *)
+    let es1 = List.fold_left
+      (edges_bind c cs 0 VertexSet.empty VertexSet.empty) es tbs
+    in
+    edges_typ c cs 0 VertexSet.empty VertexSet.empty es1 t
   | Abs (tbs, t) ->
     assert false
 

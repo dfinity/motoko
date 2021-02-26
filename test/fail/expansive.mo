@@ -85,3 +85,19 @@ ignore module {
   public type C<T,U> = ?N.D<T,?U>;  // reject
   public module N = { public type D<T,U> = ?C<T,U>; }
 };
+
+do {
+  type C<T> = <A <: C<T> >C<T>->C<T>; // accept
+};
+
+do {
+  type C<T> = <A <: C<?T> >C<T>->C<T>; // reject, bad cycle in arrow bounds
+};
+
+do {
+  type C<T <: C<T>> = ?C<T>; // accept
+};
+
+do {
+  type C<T <: C<?T>> = ?C<T>; // reject, too conservative? Cycle is only in parameter bounds...
+};
