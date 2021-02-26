@@ -1,8 +1,8 @@
 open Type
 
-(* Collecting type constructors *)
+let debug = 0 (* set to 1 to show graph in error message *)
 
-let debug = 1
+(* Collecting type constructors *)
 
 module Vertex = struct
   type t = Type.con * int
@@ -159,12 +159,13 @@ let is_expansive cs =
   | None -> None
   | Some ((c,i), _, (d,j)) ->
     let op, sbs, st = Pretty.strings_of_kind (Con.kind c) in
-    let x = match Con.kind c with Def(tbs, _) | Abs(tbs, _) -> (List.nth tbs i).var in
+    let def = Printf.sprintf "type %s%s %s %s" (Con.name c) sbs op st in
+    let x = match Con.kind c with Def(tbs, _) | Abs(tbs, _) ->
+      (List.nth tbs i).var in
     let dys = match Con.kind d with Def(tbs, _) | Abs(tbs, _) ->
       Printf.sprintf "%s<%s>" (Con.name d)
         (String.concat "," (List.mapi (fun k _ -> if i=k then "-"^x^"-" else "_") tbs))
     in
-    let def = Printf.sprintf "type %s%s %s %s" (Con.name c) sbs op st in
     Some (Printf.sprintf
       ":\n  %s\nis expansive, because %s occurs as an indirect argument of recursive type %s.\n(%s would be allowed as an immediate argument, but cannot be part of a larger type expression.)%s"
       def x dys x
