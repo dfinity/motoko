@@ -2,7 +2,7 @@ open Type
 
 (* Collecting type constructors *)
 
-let debug = 0
+let debug = 1
 
 module Vertex = struct
   type t = Type.con * int
@@ -41,11 +41,6 @@ let string_of_edges es =
   Printf.sprintf "{ %s }" (String.concat "," (List.map string_of_edge (EdgeSet.elements es)))
 
 let rec edges_typ c cs i exp non (es : EdgeSet.t) t : EdgeSet.t =
-  if debug > 1 then
-    Printf.printf "{%s} {%s} %s\n"
-    (string_of_vertices exp)
-    (string_of_vertices non)
-    (Type.string_of_typ t);
   match t with
   | Var (s, j) when j >= i  ->
     let ci = (c, j - i) in
@@ -135,19 +130,17 @@ let string_of_sccs sccs =
   Printf.sprintf "{ %s }" (String.concat ","
    (List.map string_of_vertices sccs))
 
+module Pretty = MakePretty(struct let show_stamps = false end)
+
 let is_expansive cs =
   (* Collect vertices and labeled edges *)
   let vs = vertices cs in
-  if debug > 0 then Printf.printf "\nvertices %s" (string_of_vertices vs);
   let es = edges cs in
-  if debug > 0 then Printf.printf "\nedges %s" (string_of_edges es);
-
   (* Compute the strongly connected components (ignoring edge labels) *)
   let unlabeled_es = EdgeSet.fold
     (fun (ci, w, dj) -> Scc.EdgeSet.add (ci, dj)) es Scc.EdgeSet.empty
   in
   let vss = Scc.scc vs unlabeled_es in
-  if debug > 0 then Printf.printf "\ncomponents %s" (string_of_sccs vss);
 
   (* Map each vertex to the number of its component *)
   let numbering = List.mapi (fun i vs -> (vs,i)) vss in
@@ -158,17 +151,25 @@ let is_expansive cs =
 
   (* The constructor are expansive if some component (cycle) contains
      an edge with non-zero weight *)
-  let is_expansive = EdgeSet.exists
+  let e_opt = List.find_opt
     (fun (ci, w, dj) ->
-      w > 0 && VertexMap.find ci component = VertexMap.find dj component) es
+      w > 0 && VertexMap.find ci component = VertexMap.find dj component) (EdgeSet.elements es)
   in
-  if debug > 0 then Printf.printf "is_expansive: %b" is_expansive;
-
-  (* Return Some error message if expansive, otherwise None *)
-  if is_expansive then
-    Some
-      (Printf.sprintf
-         "\n  vertices:\n    %s\n  edges:\n    %s\n  components:\n    %s"
-         (string_of_vertices vs) (string_of_edges es) (string_of_sccs vss))
-  else None
-
+  match e_opt with
+  | None -> None
+  | Some ((c,i), _, (d,j)) ->
+    let op, sbs, st = Pretty.strings_of_kind (Con.kind c) in
+    let x = match Con.kind c with Def(tbs, _) | Abs(tbs, _) -> (List.nth tbs i).var in
+    let dys = match Con.kind d with Def(tbs, _) | Abs(tbs, _) ->
+      Printf.sprintf "%s<%s>" (Con.name d)
+        (String.concat "," (List.mapi (fun k _ -> if i=k then "-"^x^"-" else "_") tbs))
+    in
+    let def = Printf.sprintf "type %s%s %s %s" (Con.name c) sbs op st in
+    Some (Printf.sprintf
+      ":\n  %s\nis expansive, because %s occurs as an indirect argument of recursive type %s.\n(%s would be allowed as an immediate argument, but cannot be part of a larger type expression.)%s"
+      def x dys x
+      (if debug > 0 then
+         Printf.sprintf
+           "\n  vertices:\n    %s\n  edges:\n    %s\n  components:\n    %s"
+           (string_of_vertices vs) (string_of_edges es) (string_of_sccs vss)
+       else ""))

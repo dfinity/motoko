@@ -101,3 +101,13 @@ do {
 do {
   type C<T <: C<?T>> = ?C<T>; // reject, too conservative? Cycle is only in parameter bounds...
 };
+
+do {
+  type C<T,U> = ?D<T,?T,Bool,Nat>;  // accept
+  type D<T,U,V,X> = ?C<T,U>;
+};
+
+do {
+  type C<T,U> = ?D<T,?U,Bool,Nat>;  // reject
+  type D<T,U,V,X> = ?C<T,U>;
+};
