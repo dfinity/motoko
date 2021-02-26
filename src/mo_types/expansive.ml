@@ -153,18 +153,21 @@ let is_expansive cs =
      an edge with non-zero weight *)
   let e_opt = List.find_opt
     (fun (ci, w, dj) ->
-      w > 0 && VertexMap.find ci component = VertexMap.find dj component) (EdgeSet.elements es)
+      w > 0 && VertexMap.find ci component = VertexMap.find dj component)
+    (EdgeSet.elements es)
   in
   match e_opt with
   | None -> None
   | Some ((c,i), _, (d,j)) ->
+    (* Construct an error messages with optional debug info *)
     let op, sbs, st = Pretty.strings_of_kind (Con.kind c) in
     let def = Printf.sprintf "type %s%s %s %s" (Con.name c) sbs op st in
     let x = match Con.kind c with Def(tbs, _) | Abs(tbs, _) ->
       (List.nth tbs i).var in
     let dys = match Con.kind d with Def(tbs, _) | Abs(tbs, _) ->
       Printf.sprintf "%s<%s>" (Con.name d)
-        (String.concat "," (List.mapi (fun k _ -> if i=k then "-"^x^"-" else "_") tbs))
+        (String.concat "," (List.mapi (fun k _ ->
+          if i = k then "-" ^ x ^"-" else "_") tbs))
     in
     Some (Printf.sprintf
       ":\n  %s\nis expansive, because %s occurs as an indirect argument of recursive type %s.\n(%s would be allowed as an immediate argument, but cannot be part of a larger type expression.)%s"
