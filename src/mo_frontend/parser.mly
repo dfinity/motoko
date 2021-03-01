@@ -903,11 +903,15 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
 
 parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
-    { fun filename -> { it = { decls = is @ ds; trivia = !triv_table }; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> { it = { decls = is @ ds; trivia }; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
   | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
-    { fun filename -> { it = { decls = is @ ds; trivia = !triv_table }; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> { it = { decls = is @ ds; trivia }; at = at $sloc ; note = filename} }
 
 import_list :
   | is=seplist(imp, semicolon) { raise (Imports is) }
