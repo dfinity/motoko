@@ -1,0 +1,39 @@
+= M0156
+
+This error means that a parameterized type definition, or set of type definitions, is too complicated for Motoko to accept.
+
+Motoko rejects type definitions that are expansive, in the sense that unfolding type definitions may produce an ever-increasing set of non-repeating types.
+
+For example, the type definition:
+
+  type List<T> = ?(T, List<T>);
+
+that recursively instantiates `List` with the same, `T`, is non-expansive and accepted, but the similar looking definition:
+
+```
+type Seq<T> = ?(T, Seq<[T]>);
+```
+
+that recursively instantiates `Seq` with a larger type, `[T]`, is *expansive* and rejected.
+
+If you encounter this error, try to restructure your type definitions to be non-expansive.
+
+Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions, say
+
+  type C<...,Xi,...> = T;
+  ...
+  type D<...,Yj,...> = U;
+
+is expansive, construct a directed graph whose vertices are the formal type parameters (identified by position), `C#i`, with the following `{0,1}`-labeled edges:
+
+* Each occurrence of parameter `C#i` as immediate, `j`-th argument to type `D<...,C#i,...>`, adds a (non-expansive) `0`-labeled edge `C#i -0-> D#j`.
+
+* Each occurrence of parameter `C#i` as a proper sub-expression of the `j`-th argument to type `D<...,T[C#i],..>` adds an *expansive* `1`-labeled edge `C#i -1-> D#j`.
+
+The graph is expansive if and only if it contains a cycle with at least one expansive edge.
+
+Examples:
+
+* Type `List<T>` is non-expansive because its graph, `{ List#0 -0-> List#0 }`, though cyclic, has no expansive edge.
+
+* Type `Seq<T>`, on the other hand, is expansive, because its graph, `{ Seq#0 -1-> Seq#0 }`, has a cycle that includes an expansive edge.

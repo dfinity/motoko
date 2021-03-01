@@ -1,6 +1,39 @@
 open Type
 
-let debug = 0 (* set to 1 to show graph in error message *)
+(*
+  Check the non-expansiveness criterion identified first by Viroli and
+  adopted by Pierce and Kennedy to ensure termination of sub-typing
+  in *nominal* type systems with generics and subtyping.
+
+  Given a set of mutually recursive type definitions, construct a graph
+  whose vertices are the formal parameters (identified by position),
+  `C#i`, and two sorts of labeled edges:
+
+  * an occurrence of parameter `C#i` as immediate `j`-th argument to
+    type `D<..,C#i,..>`, adds a (non-expansive) 0-labeled edge `C#i -0->D#j`.
+
+  * an occurrence of parameter `C#i` as a proper sub-term of the `j`-th
+    argument to type `D<...,T[C#i],..>` adds an (expansive) 1-labeled
+    edge `C#i -1-> D#j`.
+
+  The graph is expansive iff it contains a cycle with at least one
+  expansive edge.
+
+  Non-expansiveness (hopefully) ensures that the set of types
+  encountered during sub-typing, and added to the visited set, is
+  finite. In nominal systems, a visited set is used to reject a
+  cyclic sub-type check, but in our co-inductive setting, it is used
+  to succeed a cyclic check. In either case, it is used terminate the
+  procedure, which is what we care about.
+
+  To detect the existence of a cycle, we construct the plain graph
+  obtained by deleting labels (possibly identifying edges), compute
+  its strongly connected components (sccs), and then check whether
+  there is a 1-weighted edge (in the original graph) connecting any
+  two vertices of the *same* component of the sccs.
+*)
+
+let debug = false (* set to 1 to show graph in error message *)
 
 (* Collecting type constructors *)
 
@@ -172,7 +205,7 @@ let is_expansive cs =
     Some (Printf.sprintf
       ":\n  %s\nis expansive, because %s occurs as an indirect argument of recursive type %s.\n(%s would be allowed as an immediate argument, but cannot be part of a larger type expression.)%s"
       def x dys x
-      (if debug > 0 then
+      (if debug then
          Printf.sprintf
            "\n  vertices:\n    %s\n  edges:\n    %s\n  components:\n    %s"
            (string_of_vertices vs) (string_of_edges es) (string_of_sccs vss)
