@@ -595,6 +595,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat64;
       T.unit <: t
+    (* Certified Data *)
+    | SetCertifiedData, [e1] ->
+      typ e1 <: T.blob;
+      T.unit <: t
+    | GetCertificate, [] ->
+      T.Opt T.blob <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

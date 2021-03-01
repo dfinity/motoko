@@ -170,6 +170,11 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesAcceptPrim, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesAdd";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
+  (* Certified data *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
+    I.PrimE (I.SetCertifiedData, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
+    I.PrimE (I.GetCertificate, [])
   (* Other *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
