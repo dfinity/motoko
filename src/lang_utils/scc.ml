@@ -1,3 +1,13 @@
+(*
+  A naive implementation of Tarjan's algorithm.
+
+  Computes the strongly connected components of a directed graph, returning
+  the list of components in topological order.
+
+  Adapted from:
+  https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+*)
+
 module Make(Vertex : Set.OrderedType) :
   sig
     module VertexSet :
