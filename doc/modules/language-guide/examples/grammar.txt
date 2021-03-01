@@ -225,17 +225,16 @@
     'var'? <id> '=' <exp>
 
 <dec_field> ::= 
-    <vis> <stab> <dec_nonexp>
-    <stab> <dec_nonexp>
-    <vis> <dec_nonexp>
-    <dec>
+    <vis> <stab> <dec>
 
 <vis> ::= 
+    <empty>
     'private'
     'public'
     'system'
 
 <stab> ::= 
+    <empty>
     'flexible'
     'stable'
 
@@ -279,12 +278,9 @@
     <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
 
-<dec_nonexp> ::= 
+<dec> ::= 
     <dec_var>
     <dec_nonvar>
-
-<dec> ::= 
-    <dec_nonexp>
     <exp_nondec>
 
 <func_body> ::= 

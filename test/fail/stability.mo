@@ -4,6 +4,8 @@ actor {
    };
    stable type T = Int;  // reject
    flexible type U = Int; // reject
+   flexible ignore 666; // reject
+   flexible (); // reject
 
    stable var x : Int = 0; // accept
    stable var y : [var Int] = [var]; // accept
