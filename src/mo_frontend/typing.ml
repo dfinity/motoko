@@ -287,7 +287,7 @@ and check_typ_path' env path : T.con =
     match T.lookup_typ_field id.it fs with
       | c ->
         Option.iter
-          (warn env path.at "M0154" "type field %s has a warning annotation:\n%s" id.it)
+          (warn env path.at "M0154" "type field %s is deprecated:\n%s" id.it)
           (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
@@ -950,7 +950,7 @@ and infer_exp'' env exp : T.typ =
         id.it
     | t ->
       Option.iter
-        (warn env exp.at "M0154" "field %s has a warning annotation:\n%s" id.it)
+        (warn env exp.at "M0154" "field %s is deprecated:\n%s" id.it)
         (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
@@ -1751,7 +1751,7 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-      Option.iter (warn env pf.at "M0154" "type field %s has a warning annotation:\n%s" lab) depr;
+      Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) depr;
       let ve1 = check_pat env typ pf.it.pat in
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
