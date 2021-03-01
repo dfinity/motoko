@@ -1,8 +1,9 @@
 open Type
 
 (*
+
   Check the non-expansiveness criterion identified first by Viroli and
-  adopted by Pierce and Kennedy to ensure termination of sub-typing
+  adopted by Pierce and Kennedy [1] to ensure termination of sub-typing
   in *nominal* type systems with generics and subtyping.
 
   Given a set of mutually recursive type definitions, construct a graph
@@ -31,6 +32,13 @@ open Type
   its strongly connected components (sccs), and then check whether
   there is a 1-weighted edge (in the original graph) connecting any
   two vertices of the *same* component of the sccs.
+
+  [1] Andrew Kennedy Benjamin C. Pierce
+  International Workshop on Foundations and Developments of Object-Oriented Languages (FOOL/WOOD),
+  January 2007
+
+  https://www.microsoft.com/en-us/research/publication/on-decidability-of-nominal-subtyping-with-variance/
+
 *)
 
 let debug = false (* set to 1 to show graph in error message *)
