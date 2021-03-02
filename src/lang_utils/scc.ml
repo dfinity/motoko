@@ -20,6 +20,7 @@ module Make(Vertex : Set.OrderedType) :
 
   module Edge = struct
     type t = Vertex.t * Vertex.t
+    (* the lexicographic ordering on pairs *)
     let compare (v1, w1) (v2, w2) =
      match Vertex.compare v1 v2 with
      | 0 -> Vertex.compare w1 w2

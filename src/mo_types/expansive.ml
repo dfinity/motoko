@@ -24,7 +24,7 @@ open Type
   encountered during sub-typing, and added to the visited set, is
   finite. In nominal systems, a visited set is used to reject a
   cyclic sub-type check, but in our co-inductive setting, it is used
-  to succeed a cyclic check. In either case, it is used terminate the
+  to succeed a cyclic check. In either case, it is used to terminate the
   procedure, which is what we care about.
 
   To detect the existence of a cycle, we construct the plain graph
@@ -102,7 +102,7 @@ let rec edges_typ c cs i exp non (es : EdgeSet.t) t : EdgeSet.t =
       ts
     in
     es
-  | Con (d, ts) ->
+  | Con (d, ts) -> (* Cons from outer scopes are assumed to be non-expansive *)
     let exp1 = VertexSet.union exp non in
     List.fold_left
       (edges_typ c cs i exp1 VertexSet.empty)
@@ -142,8 +142,10 @@ and edges_field c cs i exp non es {lab; typ} =
 let edges_con cs c es : EdgeSet.t =
   match Con.kind c with
   | Def (tbs, t) ->
-    (* TODO: it's not clear we actually need to consider parameters bounds, since, unlike
-       function type parameters, they don't introduce new subgoals during subtyping *)
+    (* It's not clear we actually need to consider parameters bounds, since, unlike
+       function type parameters, they don't introduce new subgoals during subtyping.
+       But let's be conservative and consider them, until we find out that that's undesirable
+       and know its safe to ignore them here. *)
     let es1 = List.fold_left
       (edges_bind c cs 0 VertexSet.empty VertexSet.empty) es tbs
     in
@@ -184,10 +186,9 @@ let is_expansive cs =
   let vss = Scc.scc vs unlabeled_es in
 
   (* Map each vertex to the number of its component *)
-  let numbering = List.mapi (fun i vs -> (vs,i)) vss in
-  let component = List.fold_left (fun m (vs,i) ->
+  let component = List.fold_left (fun m (vs, i) ->
     VertexSet.fold (fun v m -> VertexMap.add v i m) vs m)
-    VertexMap.empty numbering
+    VertexMap.empty (List.mapi (fun i vs -> (vs, i)) vss)
   in
 
   (* The constructor are expansive if some component (cycle) contains
