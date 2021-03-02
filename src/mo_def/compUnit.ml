@@ -58,7 +58,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
         finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
-  go [] prog.it.decls
+  go [] prog.it.decs
 
 
 (* Lib as decs *)
@@ -114,12 +114,12 @@ let combine_progs (progs : prog list) : prog =
   let open Source in
   if progs = []
   then
-    { it = { decls = []; trivia = Trivia.empty_triv_table };
+    { it = { decs = []; trivia = Trivia.empty_triv_table };
       at = no_region; note = "empty"
     }
   else
     { it =
-        { decls = List.concat_map (fun p -> p.it.decls) progs;
+        { decs = List.concat_map (fun p -> p.it.decs) progs;
           trivia = Trivia.empty_triv_table
         };
       at = (Lib.List.last progs).at;

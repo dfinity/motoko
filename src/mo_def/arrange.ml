@@ -198,4 +198,4 @@ and dec d = match d.it with
       obj_sort s; id i'
     ] @ List.map dec_field dfs
 
-and prog prog = "Prog" $$ List.map dec prog.it.decls
+and prog prog = "Prog" $$ List.map dec prog.it.decs

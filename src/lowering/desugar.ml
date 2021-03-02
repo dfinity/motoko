@@ -777,7 +777,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
-  decs prelude.it.decls
+  decs prelude.it.decs
 
 let inject_decs extra_ds u =
   let open Ir in

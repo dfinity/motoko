@@ -905,13 +905,13 @@ parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
     {
       let trivia = !triv_table in
-      fun filename -> { it = { decls = is @ ds; trivia }; at = at $sloc ; note = filename} }
+      fun filename -> { it = { decs = is @ ds; trivia }; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
   | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
     {
       let trivia = !triv_table in
-      fun filename -> { it = { decls = is @ ds; trivia }; at = at $sloc ; note = filename} }
+      fun filename -> { it = { decs = is @ ds; trivia }; at = at $sloc ; note = filename} }
 
 import_list :
   | is=seplist(imp, semicolon) { raise (Imports is) }

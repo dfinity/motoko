@@ -238,7 +238,7 @@ let check_prim () : Syntax.lib * stat_env =
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it.decls in
+    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it.decs in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {it = { imports = []; body; trivia = Trivia.empty_triv_table }; at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
@@ -488,7 +488,7 @@ let run_stdin lexer (senv, denv) : env option =
       let env' = (senv', denv') in
       (* TBR: hack *)
       let t', v' =
-        if prog.Source.it.Syntax.decls <> [] && is_exp (Lib.List.last prog.Source.it.Syntax.decls)
+        if Option.fold ~none:false ~some:is_exp (Lib.List.last_opt prog.Source.it.Syntax.decs)
         then t, v
         else Type.unit, Value.unit
       in

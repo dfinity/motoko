@@ -962,7 +962,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      interpret_block env p.it.decls (Some ve) (fun v -> vo := Some v)
+      interpret_block env p.it.decs (Some ve) (fun v -> vo := Some v)
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in
