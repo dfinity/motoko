@@ -1,5 +1,22 @@
 = Motoko compiler changelog
 
+* User defined deprecations
+
+  Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
+
+  This lets our library writing users/us warn about upcoming breaking changes to library code.
+
+  As an example:
+  ```motoko
+  module {
+    /// @deprecated Use `bar` instead
+    public func foo() {}
+
+    public func bar() {}
+  }
+  ```
+  will emit a warning whenever `foo` is used.
+
 == 0.5.9 (2021-02-19)
 
 * The `moc` now accepts the `-Werror` flag to turn warnings into errors.
