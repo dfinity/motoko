@@ -2389,7 +2389,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
       recover_opt
         (fun prog ->
           let env = env_of_scope msgs scope in
-          let res = infer_block env prog.it.decs prog.at in
+          let res = infer_block env prog.it prog.at in
           res
         ) prog
     )
@@ -2422,7 +2422,7 @@ let check_actors scope progs : unit Diag.result =
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
         in
-        go [] prog.decs
+        go [] prog
         ) progs
     )
 
@@ -2441,8 +2441,8 @@ let check_lib scope lib : Scope.t Diag.result =
             | ModuleU _ ->
               if cub.at = no_region then begin
                 let r = Source.({
-                  left = { no_pos with file = lib.note };
-                  right = { no_pos with file = lib.note }})
+                  left = { no_pos with file = lib.note.filename };
+                  right = { no_pos with file = lib.note.filename }})
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
@@ -2472,6 +2472,6 @@ let check_lib scope lib : Scope.t Diag.result =
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
-          Scope.lib lib.note imp_typ
+          Scope.lib lib.note.filename imp_typ
         ) lib
     )

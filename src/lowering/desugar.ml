@@ -719,7 +719,7 @@ let actor_class_mod_exp id class_typ func =
           { T.lab = id; T.typ = fun_typ; depr = None }])))
 
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
-  let f = lib.note in
+  let f = lib.note.filename in
   let { body; _ } = lib.it in
   let id = match body.it with
     | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
@@ -777,7 +777,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
-  decs prelude.it.decs
+  decs prelude.it
 
 let inject_decs extra_ds u =
   let open Ir in
@@ -870,7 +870,7 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
   let { imports; body; _ } = u.it in
-  let f = u.note in
+  let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
   let imports' = List.concat_map transform_import imports in
