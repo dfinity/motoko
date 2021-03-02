@@ -1,8 +1,13 @@
 = Motoko compiler changelog
 
+* The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
+  For example, problematic types such as `type Seq<T> = ?(T, Seq<[T]>)` are rejected.
+
+* motoko base: `Time.Time` is now public
+
 == 0.5.9 (2021-02-19)
 
-* The `moc` now accepts the `-Werror` flag to turn warnings into errors.
+* The `moc` compiler now accepts the `-Werror` flag to turn warnings into errors.
 
 * The language server now returns documentation comments alongside
   completions and hover notifications
