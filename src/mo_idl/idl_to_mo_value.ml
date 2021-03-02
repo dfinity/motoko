@@ -23,6 +23,9 @@ let is_tuple_rec fs =
       | _ -> false
   in go Lib.Uint32.zero fs
 
+(* We are lazy and encode text values like blobs. Output not pretty, but works. *)
+let text_lit s = "\"" ^ Mo_values.Value.Blob.escape s ^ "\""
+
 (* Also compare with Mo_values.Show.show_val, which we cannot use here, because
    we don’t have the full type (although we could have that), and we have
    overloaded numeral here.
@@ -33,9 +36,8 @@ let rec value v = match v.it with
   | NullV -> "null"
   | OptV v -> parens ("?" ^ value v)
   | VecV vs -> "[" ^ String.concat ", " (List.map value vs) ^ "]"
-  | BlobV b -> "\"" ^ Mo_values.Value.Blob.escape b ^ "\""
-    (* We are lazy and encode text values like blobs. Output not pretty, but works. *)
-  | TextV s -> "\"" ^ Mo_values.Value.Blob.escape s ^ "\""
+  | BlobV b -> text_lit b
+  | TextV s -> text_lit s
   | RecordV fs ->
     if is_tuple_rec fs
     then "(" ^ String.concat ", " (List.map (fun f -> value (snd f.it)) fs) ^ ")"
@@ -43,8 +45,16 @@ let rec value v = match v.it with
   | VariantV f ->
     parens ("#" ^ Idl_to_mo.check_label (fst f.it) ^ parens (value (snd f.it)))
   | NumV n -> n
+  | ServiceV s ->
+    parens ("actor " ^ text_lit s ^ " : actor {}")
+  | FuncV (s, m) ->
+    parens ("actor " ^ text_lit s ^ " : actor { " ^ Idllib.Escape.escape_method m ^ " : shared () -> ()}")
+    ^ "." ^ Idllib.Escape.escape_method m
+  | PrincipalV s ->
+    "Prim.principalOfActor" ^ parens ("actor " ^ text_lit s ^ " : actor {}")
 and
   rec_field f = Idl_to_mo.check_label (fst f.it) ^ " = " ^ value (snd f.it)
+
 
 let args vs =
   parens (String.concat ", " (List.map value vs.it))

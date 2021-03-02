@@ -111,7 +111,7 @@ type completion_item = {
   ?insertTextFormat : int nullable;
   ?additionalTextEdits : text_edit list nullable;
   ?detail: string nullable;
-  ?documentation: string nullable;
+  ?documentation: markup_content nullable;
 }
 <ocaml field_prefix="completion_item_">
 

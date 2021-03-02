@@ -1,4 +1,5 @@
 = M0003
+
 This error means that a module tried to import itself.
 
 Erroneous code example (file is called `Self.mo`):

@@ -70,21 +70,21 @@ and typ_item = id option * typ
 type lit =
   | NullLit
   | BoolLit of bool
-  | NatLit of Value.Nat.t
-  | Nat8Lit of Value.Nat8.t
-  | Nat16Lit of Value.Nat16.t
-  | Nat32Lit of Value.Nat32.t
-  | Nat64Lit of Value.Nat64.t
-  | IntLit of Value.Int.t
-  | Int8Lit of Value.Int_8.t
-  | Int16Lit of Value.Int_16.t
-  | Int32Lit of Value.Int_32.t
-  | Int64Lit of Value.Int_64.t
-  | Word8Lit of Value.Word8.t
-  | Word16Lit of Value.Word16.t
-  | Word32Lit of Value.Word32.t
-  | Word64Lit of Value.Word64.t
-  | FloatLit of Value.Float.t
+  | NatLit of Numerics.Nat.t
+  | Nat8Lit of Numerics.Nat8.t
+  | Nat16Lit of Numerics.Nat16.t
+  | Nat32Lit of Numerics.Nat32.t
+  | Nat64Lit of Numerics.Nat64.t
+  | IntLit of Numerics.Int.t
+  | Int8Lit of Numerics.Int_8.t
+  | Int16Lit of Numerics.Int_16.t
+  | Int32Lit of Numerics.Int_32.t
+  | Int64Lit of Numerics.Int_64.t
+  | Word8Lit of Numerics.Word8.t
+  | Word16Lit of Numerics.Word16.t
+  | Word32Lit of Numerics.Word32.t
+  | Word64Lit of Numerics.Word64.t
+  | FloatLit of Numerics.Float.t
   | CharLit of Value.unicode
   | TextLit of string
   | BlobLit of string
@@ -117,7 +117,12 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private | System
+and vis' =
+  | Public of string option
+  | Private
+  | System
+
+let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
@@ -213,7 +218,7 @@ and dec' =
 (* Program (pre unit detection) *)
 
 type prog = (prog', string) Source.annotated_phrase
-and prog' = dec list
+and prog' = { decs : dec list; trivia : Trivia.triv_table }
 
 
 (* Compilation units *)
@@ -231,7 +236,11 @@ and comp_unit_body' =
 
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase
-and comp_unit' = import list * comp_unit_body
+and comp_unit' = {
+  imports : import list;
+  body : comp_unit_body;
+  trivia : Trivia.triv_table
+  }
 
 type lib = comp_unit
 
@@ -249,24 +258,24 @@ let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
   | IntLit n
-  | NatLit n      -> Value.Int.to_pretty_string n
-  | Int8Lit n     -> Value.Int_8.to_pretty_string n
-  | Int16Lit n    -> Value.Int_16.to_pretty_string n
-  | Int32Lit n    -> Value.Int_32.to_pretty_string n
-  | Int64Lit n    -> Value.Int_64.to_pretty_string n
-  | Nat8Lit n     -> Value.Nat8.to_pretty_string n
-  | Nat16Lit n    -> Value.Nat16.to_pretty_string n
-  | Nat32Lit n    -> Value.Nat32.to_pretty_string n
-  | Nat64Lit n    -> Value.Nat64.to_pretty_string n
-  | Word8Lit n    -> Value.Word8.to_pretty_string n
-  | Word16Lit n   -> Value.Word16.to_pretty_string n
-  | Word32Lit n   -> Value.Word32.to_pretty_string n
-  | Word64Lit n   -> Value.Word64.to_pretty_string n
+  | NatLit n      -> Numerics.Int.to_pretty_string n
+  | Int8Lit n     -> Numerics.Int_8.to_pretty_string n
+  | Int16Lit n    -> Numerics.Int_16.to_pretty_string n
+  | Int32Lit n    -> Numerics.Int_32.to_pretty_string n
+  | Int64Lit n    -> Numerics.Int_64.to_pretty_string n
+  | Nat8Lit n     -> Numerics.Nat8.to_pretty_string n
+  | Nat16Lit n    -> Numerics.Nat16.to_pretty_string n
+  | Nat32Lit n    -> Numerics.Nat32.to_pretty_string n
+  | Nat64Lit n    -> Numerics.Nat64.to_pretty_string n
+  | Word8Lit n    -> Numerics.Word8.to_pretty_string n
+  | Word16Lit n   -> Numerics.Word16.to_pretty_string n
+  | Word32Lit n   -> Numerics.Word32.to_pretty_string n
+  | Word64Lit n   -> Numerics.Word64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
   | BlobLit b     -> b
-  | FloatLit f    -> Value.Float.to_pretty_string f
+  | FloatLit f    -> Numerics.Float.to_pretty_string f
   | PreLit _      -> assert false
 
 

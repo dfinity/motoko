@@ -248,8 +248,8 @@ let interpret_lit env lit : V.value =
 let array_get a at =
   V.local_func 1 1 (fun c v k ->
     let n = V.as_int v in
-    if V.Nat.lt n (V.Nat.of_int (Array.length a))
-    then k (a.(V.Nat.to_int n))
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (Array.length a))
+    then k (a.(Numerics.Nat.to_int n))
     else trap at "array index out of bounds"
   )
 
@@ -257,15 +257,15 @@ let array_put a at =
   V.local_func 2 0 (fun c v k ->
     let v1, v2 = V.as_pair v in
     let n = V.as_int v1 in
-    if V.Nat.lt n (V.Nat.of_int (Array.length a))
-    then k (a.(V.Nat.to_int n) <- v2; V.Tup [])
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (Array.length a))
+    then k (a.(Numerics.Nat.to_int n) <- v2; V.Tup [])
     else trap at "array index out of bounds"
   )
 
 let array_size a at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (V.Nat.of_int (Array.length a)))
+    k (V.Int (Numerics.Nat.of_int (Array.length a)))
   )
 
 let array_keys a at =
@@ -276,7 +276,7 @@ let array_keys a at =
       V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
-        else let v = V.Opt (V.Int (V.Nat.of_int !i)) in incr i; k' v
+        else let v = V.Opt (V.Int (Numerics.Nat.of_int !i)) in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -302,7 +302,20 @@ let blob_bytes t at =
       V.local_func 0 1 (fun c v k' ->
         if !i = String.length t
         then k' V.Null
-        else let v = V.Opt V.(Word8 (Word8.of_int_u (Char.code (String.get t !i)))) in incr i; k' v
+        else let v = V.Opt V.(Word8 (Numerics.Word8.of_int (Char.code (String.get t !i)))) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
+let blob_vals t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun c v k' ->
+        if !i = String.length t
+        then k' V.Null
+        else let v = V.Opt V.(Nat8 (Numerics.Nat8.of_int (Char.code (String.get t !i)))) in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -310,7 +323,7 @@ let blob_bytes t at =
 let blob_size t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (V.Nat.of_int (String.length t)))
+    k (V.Int (Numerics.Nat.of_int (String.length t)))
   )
 
 let text_chars t at =
@@ -330,7 +343,7 @@ let text_chars t at =
 let text_len t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (V.Nat.of_int (List.length (Wasm.Utf8.decode t))))
+    k (V.Int (Numerics.Nat.of_int (List.length (Wasm.Utf8.decode t))))
   )
 
 (* Expressions *)
@@ -467,6 +480,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let f = match id.it with
           | "size" -> blob_size
           | "bytes" -> blob_bytes
+          | "vals" -> blob_vals
           | _ -> assert false
         in k (f b exp.at)
       | _ -> assert false
@@ -488,7 +502,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
@@ -729,16 +743,16 @@ and match_lit lit v : bool =
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> V.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> V.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> V.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> V.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> V.Nat64.eq n n'
-  | IntLit i, V.Int i' -> V.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> V.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
+  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
+  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
   | Word8Lit w, V.Word8 w' -> w = w'
   | Word16Lit w, V.Word16 w' -> w = w'
   | Word32Lit w, V.Word32 w' -> w = w'
@@ -948,7 +962,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+      interpret_block env p.it.decs (Some ve) (fun v -> vo := Some v)
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in
@@ -966,7 +980,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Import a module unchanged, and a class constructor as an asynchronous function.
    The conversion will be unnecessary once we declare classes as asynchronous. *)
 let import_lib env lib =
-  let (_, cub) = lib.it in
+  let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
