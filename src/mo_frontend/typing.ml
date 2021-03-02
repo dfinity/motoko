@@ -1982,7 +1982,7 @@ and check_stab env sort scope dec_fields =
 (* Blocks and Declarations *)
 
 and infer_block env decs at : T.typ * Scope.scope =
-  let scope = infer_block_decs env decs in
+  let scope = infer_block_decs env decs at in
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
@@ -1998,10 +1998,15 @@ and infer_block env decs at : T.typ * Scope.scope =
   let t = infer_block_exps { env' with vals = ve } decs in
   t, scope
 
-and infer_block_decs env decs : Scope.t =
+and infer_block_decs env decs at : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
+  begin match Mo_types.Expansive.is_expansive scope_ce.Scope.con_env with
+  | None -> ()
+  | Some msg ->
+    error env at "M0156" "block contains expansive type definitions%s" msg
+  end;
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
@@ -2078,7 +2083,7 @@ and infer_dec env dec : T.typ =
 
 
 and check_block env t decs at : Scope.t =
-  let scope = infer_block_decs env decs in
+  let scope = infer_block_decs env decs at in
   check_block_exps (adjoin env scope) t decs at;
   scope
 
@@ -2292,6 +2297,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' obj_sort.it dec_fields dec.at in
+    (* TODO(#2391): check k is closed, see case TypD *)
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
@@ -2302,7 +2308,7 @@ and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> assert (T.eq_kind k' k)
+  | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
   );
   T.ConSet.singleton c
 
