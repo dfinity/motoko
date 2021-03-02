@@ -217,8 +217,9 @@ and dec' =
 
 (* Program (pre unit detection) *)
 
-type prog = (prog', string) Source.annotated_phrase
-and prog' = { decs : dec list; trivia : Trivia.triv_table }
+type prog_note = { filename : string; trivia : Trivia.triv_table }
+type prog = (prog', prog_note) Source.annotated_phrase
+and prog' = dec list
 
 
 (* Compilation units *)
@@ -234,12 +235,10 @@ and comp_unit_body' =
  | ActorClassU of                            (* IC actor class, main or library *)
      sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
-
-type comp_unit = (comp_unit', string) Source.annotated_phrase
+type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
   imports : import list;
   body : comp_unit_body;
-  trivia : Trivia.triv_table
   }
 
 type lib = comp_unit

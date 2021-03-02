@@ -115,4 +115,4 @@ and triv m p = match p.it with
   | _ -> pat_err m p.at
 
 let prog p =
-  Diag.with_message_store (fun m -> List.iter (dec m) p.it.decs; Some ())
+  Diag.with_message_store (fun m -> List.iter (dec m) p.it; Some ())

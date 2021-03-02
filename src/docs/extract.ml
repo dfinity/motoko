@@ -51,7 +51,7 @@ and class_doc = {
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
-  let Syntax.{ imports; body; trivia } = comp_unit.it in
+  let Syntax.{ imports; body } = comp_unit.it in
   let imports =
     List.map
       (fun i ->
@@ -186,7 +186,7 @@ end
 let extract_docs : Syntax.prog -> (extracted, string) result =
  fun prog ->
   let lookup_trivia (line, column) =
-    PosTable.find_opt prog.it.Syntax.trivia Trivia.{ line; column }
+    PosTable.find_opt prog.note.Syntax.trivia Trivia.{ line; column }
   in
   let find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)

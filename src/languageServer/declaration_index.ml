@@ -256,7 +256,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def lib def =
     let find_doc_comment (parser_pos : Source.region) : string option =
-      Trivia.PosHashtbl.find_opt (lib.it : Syntax.comp_unit').trivia
+      Trivia.PosHashtbl.find_opt lib.note.trivia
         Trivia.{ line = parser_pos.left.line; column = parser_pos.left.column }
       |> Option.get
       |> Trivia.doc_comment_of_trivia_info
@@ -294,7 +294,8 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
   let opt_lib =
     List.find_opt
       (fun lib ->
-        String.equal path (Lib.FilePath.make_absolute project_root lib.note))
+        String.equal path
+          (Lib.FilePath.make_absolute project_root lib.note.filename))
       libs
   in
   match opt_lib with None -> decls | Some lib -> List.map (find_def lib) decls

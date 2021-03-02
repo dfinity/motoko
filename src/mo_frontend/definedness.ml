@@ -227,7 +227,7 @@ and group msgs (grp : group) : f =
 
 let check_prog prog =
   Diag.with_message_store (fun msgs ->
-    ignore (group msgs (decs msgs prog.it.decs));
+    ignore (group msgs (decs msgs prog.it));
     Some ()
   )
 
