@@ -4,9 +4,9 @@ type line_feed = LF | CRLF
 
 type 'l trivia = Comment of string | Space of int | Tab of int | Line of 'l
 
-type void
+type void = |
 
-let rec absurd : void -> 'a = fun v -> absurd v
+let absurd : void -> 'a = function _ -> .
 
 let map_trivia : ('a -> 'b) -> 'a trivia -> 'b trivia =
  fun f -> function
