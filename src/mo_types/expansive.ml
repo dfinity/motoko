@@ -81,63 +81,53 @@ let string_of_edge (ci,w,dj) =
 let string_of_edges es =
   Printf.sprintf "{ %s }" (String.concat "," (List.map string_of_edge (EdgeSet.elements es)))
 
-let rec edges_typ c cs i exp non (es : EdgeSet.t) t : EdgeSet.t =
-  match t with
-  | Var (s, j) when j >= i  ->
-    let ci = (c, j - i) in
-    let es1 = VertexSet.fold (fun dj es -> EdgeSet.add (ci, 1, dj) es) exp es in
-    let es2 = VertexSet.fold (fun dj es -> EdgeSet.add (ci, 0, dj) es) non es1 in
-    es2
-  | Var (s, j) ->
-    assert (j < i);
-    es
-  | (Prim _ | Any | Non | Pre ) -> es
-  | Con (d, ts) when ConSet.mem d cs ->
-    let exp1 = VertexSet.union exp non in
-    let _, es = List.fold_left
-      (fun (k, es) t ->
-        (k+1,
-         edges_typ c cs i exp1 (VertexSet.singleton (d, k)) es t))
-      (0, es)
-      ts
-    in
-    es
-  | Con (d, ts) -> (* Cons from outer scopes are assumed to be non-expansive *)
-    let exp1 = VertexSet.union exp non in
-    List.fold_left
-      (edges_typ c cs i exp1 VertexSet.empty)
+let edges_typ cs c (es : EdgeSet.t) t : EdgeSet.t =
+  let rec go_typs i exp non es ts =
+    List.fold_left (go_typ i exp non) es ts
+  and go_typ i exp non es t = match t with
+    | Var (s, j) when j >= i  ->
+      let ci = (c, j - i) in
+      let es1 = VertexSet.fold (fun dj es -> EdgeSet.add (ci, 1, dj) es) exp es in
+      let es2 = VertexSet.fold (fun dj es -> EdgeSet.add (ci, 0, dj) es) non es1 in
+      es2
+    | Var (s, j) ->
+      assert (j < i);
       es
-      ts
-  | (Opt t1 | Mut t1 | Array t1) ->
-    edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t1
-  | Async (t1, t2) ->
-    let es1 = edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es t1 in
-    edges_typ c cs i (VertexSet.union exp non) VertexSet.empty es1 t2
-  | Tup ts ->
-    let exp1 = VertexSet.union exp non in
-    List.fold_left
-      (edges_typ c cs i exp1 VertexSet.empty) es ts
-  | Func (s, _c, tbs, ts1, ts2) ->
-    let i1 = i + List.length tbs in
-    let exp1 = VertexSet.union exp non in
-    let es1 = List.fold_left
-      (edges_bind c cs i1 exp1 VertexSet.empty) es tbs in
-    let es2 = List.fold_left
-      (edges_typ c cs i1 exp1 VertexSet.empty) es1 ts1
-    in
-    List.fold_left (edges_typ c cs i1 exp1 VertexSet.empty) es2 ts2
-  | (Obj (_, fs) | Variant fs) ->
-    let exp1 = VertexSet.union exp non in
-    List.fold_left (edges_field c cs i exp1 VertexSet.empty) es fs
-  | Typ c ->
-    (* Since constructors must be closed, no further edges possible *)
-    es
-
-and edges_bind c cs i exp non es tb =
-  edges_typ c cs i exp non es tb.bound
-
-and edges_field c cs i exp non es {lab; typ} =
-  edges_typ c cs i exp non es typ
+    | (Prim _ | Any | Non | Pre ) -> es
+    | Con (d, ts) when ConSet.mem d cs ->
+      let exp1 = VertexSet.union exp non in
+      let _, es = List.fold_left
+        (fun (k, es) t ->
+          (k + 1,
+           go_typ i exp1 (VertexSet.singleton (d, k)) es t))
+        (0, es)
+        ts
+      in
+      es
+    | Con (_, ts) (* Cons from outer scopes are assumed to be non-expansive *)
+    | Tup ts ->
+      go_typs i (VertexSet.union exp non) VertexSet.empty es ts
+    | (Opt t1 | Mut t1 | Array t1) ->
+      go_typ i (VertexSet.union exp non) VertexSet.empty es t1
+    | Async (t1, t2) ->
+      go_typs i (VertexSet.union exp non) VertexSet.empty es [t1;t2]
+    | Func (s, _c, tbs, ts1, ts2) ->
+      let i1 = i + List.length tbs in
+      let exp1 = VertexSet.union exp non in
+      let es1 = go_typs i1 exp1 VertexSet.empty es
+        (List.map (fun tb -> tb.bound) tbs)
+      in
+      let es2 = go_typs i1 exp1 VertexSet.empty es1 ts1
+      in
+      go_typs i1 exp1 VertexSet.empty es2 ts2
+    | (Obj (_, fs) | Variant fs) ->
+      go_typs i (VertexSet.union exp non) VertexSet.empty es
+        (List.map (fun f -> f.typ) fs)
+    | Typ c ->
+      (* Since constructors must be closed, no further edges possible *)
+      es
+  in
+  go_typ 0 VertexSet.empty VertexSet.empty es t
 
 let edges_con cs c es : EdgeSet.t =
   match Con.kind c with
@@ -146,10 +136,10 @@ let edges_con cs c es : EdgeSet.t =
        function type parameters, they don't introduce new subgoals during subtyping.
        But let's be conservative and consider them, until we find out that that's undesirable
        and know its safe to ignore them here. *)
-    let es1 = List.fold_left
-      (edges_bind c cs 0 VertexSet.empty VertexSet.empty) es tbs
+    let es1 = List.fold_left (fun es tb ->
+      edges_typ cs c es tb.bound) es tbs
     in
-    edges_typ c cs 0 VertexSet.empty VertexSet.empty es1 t
+    edges_typ cs c es1 t
   | Abs (tbs, t) ->
     assert false
 
@@ -160,7 +150,7 @@ let vertices cs =
     (fun c vs ->
       match Con.kind c with
       | Def (tbs, t) ->
-        let ws = List.mapi (fun i _tb -> c,i) tbs in
+        let ws = List.mapi (fun i _tb -> (c, i)) tbs in
         List.fold_left (fun vs v -> VertexSet.add v vs) vs ws
       | Abs (tbs, t) ->
         assert false) cs VertexSet.empty
