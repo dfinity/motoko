@@ -1,5 +1,22 @@
 = Motoko compiler changelog
 
+* User defined deprecations
+
+  Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
+
+  This lets library authors warn about future breaking changes:
+
+  As an example:
+  ```motoko
+  module {
+    /// @deprecated Use `bar` instead
+    public func foo() {}
+
+    public func bar() {}
+  }
+  ```
+  will emit a warning whenever `foo` is used.
+  
 * The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
   For example, problematic types such as `type Seq<T> = ?(T, Seq<[T]>)` are rejected.
 
