@@ -74,39 +74,38 @@ let dump_ir flag prog_ir =
 
 type rel_path = string
 
-type parse_result = (Syntax.prog * Lexer.triv_table * rel_path) Diag.result
+type parse_result = (Syntax.prog * rel_path) Diag.result
 
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let parse_with mode lexer parser name : (Syntax.prog * Lexer.triv_table) Diag.result =
+let parse_with mode lexer parser name : Syntax.prog Diag.result =
   phase "Parsing" name;
   let open Diag.Syntax in
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   (* a back door to enable the `prim` syntax, for our test suite *)
-  let tokenizer, get_trivia_table = Lexer.tokenizer mode lexer in
+  let tokenizer, triv_table = Lexer.tokenizer mode lexer in
   let* mk_prog =
     try
+      Parser_lib.triv_table := triv_table;
       Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let prog = mk_prog name in
   dump_prog Flags.dump_parse prog;
-  Diag.return (prog, get_trivia_table ())
+  Diag.return prog
 
 let parse_string' mode name s : parse_result =
   let open Diag.Syntax in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
-  let* prog, triv_table = parse_with mode lexer parse name in
-  Diag.return (prog, triv_table, name)
+  let* prog = parse_with mode lexer parse name in
+  Diag.return (prog, name)
 
 let parse_string = parse_string' Lexer.mode
-let parse_string_with_trivia =
-  parse_string' (Lexer.{Lexer.mode with with_trivia = true})
 
-let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) Diag.result =
+let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
@@ -116,17 +115,11 @@ let parse_file' mode at filename : (Syntax.prog * Lexer.triv_table * rel_path) D
         messages in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
-    let* prog, triv_table = parse_with mode lexer parse filename in
-    Diag.return (prog, triv_table, filename)
+    let* prog = parse_with mode lexer parse filename in
+    Diag.return (prog, filename)
   )
 
-let parse_file at filename : parse_result =
-  parse_file' Lexer.mode at filename
-
-let parse_file_with_trivia at filename : parse_result =
-  let mode = Lexer.{Lexer.mode with with_trivia = true} in
-  parse_file' mode at filename
-
+let parse_file = parse_file' Lexer.mode
 
 (* Import file name resolution *)
 
@@ -139,7 +132,7 @@ let resolve_flags () =
     actor_idl_path = !Flags.actor_idl_path
   }
 
-let resolve_prog (prog, _, base) : resolve_result =
+let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
     (ResolveImport.resolve (resolve_flags ()) prog base)
@@ -151,7 +144,7 @@ let resolve_progs =
 (* Printing dependency information *)
 
 let print_deps (file : string) : unit =
-  let (prog, _, _) =  Diag.run (parse_file Source.no_region file) in
+  let (prog, _) =  Diag.run (parse_file Source.no_region file) in
   let imports = Diag.run (ResolveImport.collect_imports prog file) in
   List.iter (fun (url, path) ->
       match path with
@@ -213,7 +206,7 @@ let check_builtin what src senv0 : Syntax.prog * stat_env =
   let parse = Parser.Incremental.parse_prog in
   match parse_with Lexer.mode_priv lexer parse what with
   | Error es -> builtin_error "parsing" what es
-  | Ok ((prog, _), _ws) ->
+  | Ok (prog, _ws) ->
     match infer_prog senv0 prog with
     | Error es -> builtin_error "checking" what es
     | Ok ((_t, sscope), _ws) ->
@@ -241,13 +234,13 @@ let check_prim () : Syntax.lib * stat_env =
 
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error es -> prim_error "parsing" es
-  | Ok ((prog, triv_table), _ws) ->
+  | Ok (prog, _ws) ->
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
-    let cub = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
-    let lib = {it = ([],cub); at = no_region; Source.note = "@prim" } in
+    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it.decs in
+    let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
+    let lib = {it = { imports = []; body; trivia = Trivia.empty_triv_table }; at = no_region; Source.note = "@prim" } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
@@ -268,12 +261,12 @@ and the newly added scopes, so these are returned separately.
 
 
 type load_result =
-  ((Syntax.lib * Lexer.triv_table) list * Syntax.prog list * Scope.scope) Diag.result
+  (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
 
 type load_decl_result =
-  ((Syntax.lib * Lexer.triv_table) list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
+  (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let chase_imports parsefn senv0 imports : ((Syntax.lib * Lexer.triv_table) list * Scope.scope) Diag.result =
+let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -299,7 +292,7 @@ let chase_imports parsefn senv0 imports : ((Syntax.lib * Lexer.triv_table) list 
         Diag.return ()
       else
         let lib, sscope = check_prim () in
-        libs := (lib, Lexer.empty_triv_table) :: !libs; (* NB: Conceptually an append *)
+        libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
     | Syntax.Unresolved -> assert false
@@ -315,13 +308,13 @@ let chase_imports parsefn senv0 imports : ((Syntax.lib * Lexer.triv_table) list 
       else begin
         pending := add ri.Source.it !pending;
         let open Diag.Syntax in
-        let* prog, triv_table, base = parsefn ri.Source.at f in
+        let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
         let* () = go_set more_imports in
         let lib = lib_of_prog f prog in
         let* sscope = check_lib !senv lib in
-        libs := (lib, triv_table) :: !libs; (* NB: Conceptually an append *)
+        libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
         Diag.return ()
@@ -406,7 +399,7 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
   Option.bind
     (Diag.flush_messages (load_progs parse_file files senv0))
     (fun (libs, progs, senv1) ->
-      let denv1 = interpret_libs denv0 (List.map fst libs) in
+      let denv1 = interpret_libs denv0 libs in
       match interpret_progs denv1 progs with
       | None -> None
       | Some denv2 -> Some (senv1, denv2)
@@ -470,7 +463,7 @@ let parse_lexer lexer : parse_result =
     (* Reset beginning-of-line, too, to sync consecutive positions. *)
     lexer.lex_curr_p <- {lexer.lex_curr_p with pos_bol = 0};
     Error es
-  | Ok ((prog, triv_table), ws) -> Ok ((prog, triv_table, Filename.current_dir_name), ws)
+  | Ok (prog, ws) -> Ok ((prog, Filename.current_dir_name), ws)
 
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
@@ -484,7 +477,7 @@ let run_stdin lexer (senv, denv) : env option =
     if !Flags.verbose then printf "\n";
     None
   | Some (libs, prog, senv', t, sscope) ->
-    let denv' = interpret_libs denv (List.map fst libs) in
+    let denv' = interpret_libs denv libs in
     match interpret_prog denv' prog with
     | None ->
       if !Flags.verbose then printf "\n";
@@ -495,7 +488,7 @@ let run_stdin lexer (senv, denv) : env option =
       let env' = (senv', denv') in
       (* TBR: hack *)
       let t', v' =
-        if prog.Source.it <> [] && is_exp (Lib.List.last prog.Source.it)
+        if Option.fold ~none:false ~some:is_exp (Lib.List.last_opt prog.Source.it.Syntax.decs)
         then t, v
         else Type.unit, Value.unit
       in
@@ -508,7 +501,7 @@ let run_stdin_from_file files file =
   let* (senv, denv) = interpret_files initial_env files in
   let* (libs, prog, senv', t, sscope) =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
-  let denv' = interpret_libs denv (List.map fst libs) in
+  let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
   printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
   Some ()
@@ -597,7 +590,7 @@ let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
   let rec go imports = function
     | [] -> imports
     | l :: libs ->
-      let (_, cub) = l.it in
+      let { Syntax.body = cub; _ } = l.it in
       match cub.it with
       | Syntax.ActorClassU _ ->
         let wasm = compile_unit_to_wasm mode imports l in
@@ -629,7 +622,7 @@ let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
-  Diag.return (compile_progs mode do_link (List.map fst libs) progs)
+  Diag.return (compile_progs mode do_link libs progs)
 
 
 (* Interpretation (IR) *)
@@ -656,5 +649,5 @@ let interpret_ir_progs libs progs =
 
 let interpret_ir_files files =
   Option.map
-    (fun (libs, progs, senv) -> interpret_ir_progs (List.map fst libs) progs)
+    (fun (libs, progs, senv) -> interpret_ir_progs libs progs)
     (Diag.flush_messages (load_progs parse_file files initial_stat_env))

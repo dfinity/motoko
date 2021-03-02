@@ -1,7 +1,6 @@
 open Mo_types
 open Mo_config
 open Mo_def
-open Mo_frontend
 open Source
 open Syntax
 
@@ -226,7 +225,7 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   match ty with
   | Type.Obj ((Type.Module | Type.Actor), fields) ->
       fields
-      |> List.map (fun Type.{ lab = name; typ } ->
+      |> List.map (fun Type.{ lab = name; typ; _ } ->
              match typ with
              | Type.Typ con ->
                  TypeDecl
@@ -237,13 +236,12 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   | _ -> None
 
 let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
-  match lib.it with
-  | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
+  match lib.it.body with
+  | { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
-let populate_definitions (project_root : string)
-    (libs : (Syntax.lib * Lexer.triv_table) list) (path : string)
-    (decls : ide_decl list) : ide_decl list =
+let populate_definitions (project_root : string) (libs : Syntax.lib list)
+    (path : string) (decls : ide_decl list) : ide_decl list =
   let is_let_bound dec_field =
     match dec_field.it.Syntax.dec.it with
     | Syntax.LetD (pat, _) -> Some pat
@@ -256,12 +254,12 @@ let populate_definitions (project_root : string)
     | _ -> None
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
-  let find_def (lib, triv_table) def =
+  let find_def lib def =
     let find_doc_comment (parser_pos : Source.region) : string option =
-      Lexer.PosHashtbl.find_opt triv_table
-        Lexer.{ line = parser_pos.left.line; column = parser_pos.left.column }
+      Trivia.PosHashtbl.find_opt (lib.it : Syntax.comp_unit').trivia
+        Trivia.{ line = parser_pos.left.line; column = parser_pos.left.column }
       |> Option.get
-      |> Lexer.doc_comment_of_trivia_info
+      |> Trivia.doc_comment_of_trivia_info
     in
     match def with
     | ValueDecl value -> (
@@ -295,7 +293,7 @@ let populate_definitions (project_root : string)
   in
   let opt_lib =
     List.find_opt
-      (fun (lib, _) ->
+      (fun lib ->
         String.equal path (Lib.FilePath.make_absolute project_root lib.note))
       libs
   in
@@ -330,8 +328,7 @@ let scan_actors : unit -> string list =
       list_files_recursively idl_path
       |> List.filter (fun f -> Filename.extension f = ".did")
 
-let index_from_scope :
-    string -> t -> (Syntax.lib * Lexer.triv_table) list -> Scope.t -> t =
+let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
  fun project_root initial_index libs scope ->
   Type.Env.fold
     (fun path ty acc ->

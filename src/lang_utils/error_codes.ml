@@ -157,5 +157,6 @@ let error_codes : (string * string option) list =
     "M0151", Some([%blob "error_codes/M0151.adoc"]); (* missing field in object literal *)
     "M0152", Some([%blob "error_codes/M0152.adoc"]); (* Word field deprecation *)
     "M0153", Some([%blob "error_codes/M0153.adoc"]); (* IDL types not expressible in Motoko *)
+    "M0154", Some([%blob "error_codes/M0154.adoc"]); (* Deprecation annotation *)
     "M0156", Some([%blob "error_codes/M0156.adoc"]); (* block contains expansive type definitions *)
   ]

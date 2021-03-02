@@ -86,6 +86,9 @@ Comments delimited by `+/*+` and `+*/+` may be nested, provided the nesting is w
 
 Documentation comments start with `///` followed by a space until the end of line, and get attached to the definition immediately following them.
 
+Deprecation comments start with `/// @deprecated` followed by a space until the end of line, and get attached to the definition immediately following them.
+They are only recognized in front of `public` declarations.
+
 All comments are treated as whitespace.
 
 [[syntax-keywords]]
