@@ -2281,7 +2281,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' obj_sort.it dec_fields dec.at in
-    (* TODO: check k is closed, see case TypD *)
+    (* TODO(#2391): check k is closed, see case TypD *)
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
