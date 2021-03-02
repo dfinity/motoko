@@ -155,9 +155,9 @@ let print_deps (file : string) : unit =
 
 (* Checking *)
 
-let infer_prog senv prog
-  : (Type.typ * Scope.scope) Diag.result =
-  phase "Checking" prog.Source.note;
+let infer_prog senv prog : (Type.typ * Scope.scope) Diag.result =
+  let filename = prog.Source.note.Syntax.filename in
+  phase "Checking" filename;
   let r = Typing.infer_prog senv prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
@@ -167,7 +167,7 @@ let infer_prog senv prog
       dump_prog Flags.dump_tc prog;
     | Error _ -> ()
   end;
-  phase "Definedness" prog.Source.note;
+  phase "Definedness" filename;
   let open Diag.Syntax in
   let* t_sscope = r in
   let* () = Definedness.check_prog prog in
@@ -183,15 +183,17 @@ let rec check_progs senv progs : Scope.scope Diag.result =
     check_progs senv' ps
 
 let check_lib senv lib : Scope.scope Diag.result =
-  phase "Checking" (Filename.basename lib.Source.note);
+  let filename = lib.Source.note.Syntax.filename in
+  phase "Checking" (Filename.basename filename);
   let open Diag.Syntax in
   let* sscope = Typing.check_lib senv lib in
-  phase "Definedness" (Filename.basename lib.Source.note);
+  phase "Definedness" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
   Diag.return sscope
 
 let lib_of_prog f prog : Syntax.lib  =
- { (CompUnit.comp_unit_of_prog true prog) with Source.note = f }
+  let lib = CompUnit.comp_unit_of_prog true prog in
+  { lib with Source.note = { lib.Source.note with Syntax.filename = f } }
 
 
 (* Prelude and internals *)
@@ -238,9 +240,13 @@ let check_prim () : Syntax.lib * stat_env =
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it.decs in
+    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
-    let lib = {it = { imports = []; body; trivia = Trivia.empty_triv_table }; at = no_region; Source.note = "@prim" } in
+    let lib = {
+      it = { imports = []; body };
+      at = no_region;
+      note = { filename = "@prim"; trivia = Trivia.empty_triv_table }
+    } in
     match check_lib senv0 lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
@@ -368,7 +374,7 @@ let load_decl parse_one senv : load_decl_result =
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
-  phase "Interpreting" prog.Source.note;
+  phase "Interpreting" prog.Source.note.Syntax.filename;
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
   let result = Interpret.interpret_prog flags denv prog in
   Profiler.process_prog_result result ;
@@ -379,7 +385,7 @@ let rec interpret_libs denv libs : Interpret.scope =
   match libs with
   | [] -> denv
   | lib::libs' ->
-    phase "Interpreting" (Filename.basename lib.Source.note);
+     phase "Interpreting" (Filename.basename lib.Source.note.Syntax.filename);
     let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
     let dscope = interpret_lib flags denv lib in
     let denv' = adjoin_scope denv dscope in
@@ -407,7 +413,7 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
 
 let run_builtin prog denv : dyn_env =
   match interpret_prog denv prog with
-  | None -> builtin_error "initializing" prog.Source.note []
+  | None -> builtin_error "initializing" prog.Source.note.Syntax.filename []
   | Some (_v, dscope) ->
     Interpret.adjoin_scope denv dscope
 
@@ -488,7 +494,7 @@ let run_stdin lexer (senv, denv) : env option =
       let env' = (senv', denv') in
       (* TBR: hack *)
       let t', v' =
-        if Option.fold ~none:false ~some:is_exp (Lib.List.last_opt prog.Source.it.Syntax.decs)
+        if Option.fold ~none:false ~some:is_exp (Lib.List.last_opt prog.Source.it)
         then t, v
         else Type.unit, Value.unit
       in
@@ -600,7 +606,7 @@ let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
   in go [] libs
 
 and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
-  let name = u.Source.note in
+  let name = u.Source.note.Syntax.filename in
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
@@ -637,7 +643,7 @@ let import_libs libs : Lowering.Desugar.import_declaration =
 
 let interpret_ir_progs libs progs =
   let prog = CompUnit.combine_progs progs in
-  let name = prog.Source.note in
+  let name = prog.Source.note.Syntax.filename in
   let imports = import_libs libs in
   let u = CompUnit.comp_unit_of_prog false prog in
   let prog_ir = desugar_unit imports u name in

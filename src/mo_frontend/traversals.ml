@@ -84,4 +84,4 @@ and over_case (f : exp -> exp) (case : case) : case =
   { case with it = { case.it with exp = over_exp f case.it.exp } }
 
 and over_prog (f : exp -> exp) (prog : prog) : prog =
-  { prog with it = { prog.it with decs = List.map (over_dec f) prog.it.decs } }
+  { prog with it = List.map (over_dec f) prog.it }
