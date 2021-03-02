@@ -1,6 +1,4 @@
-type line_feed = LF | CRLF
-
-type 'l trivia = Comment of string | Space of int | Tab of int | Line of 'l
+open Mo_def.Trivia
 
 type token =
   | EOF
@@ -66,6 +64,14 @@ type token =
   | DIVOP
   | MODOP
   | POWOP
+  | WRAPADDOP
+  | WRAPSUBOP
+  | WRAPMULOP
+  | WRAPPOWOP
+  | WRAPADDASSIGN
+  | WRAPSUBASSIGN
+  | WRAPMULASSIGN
+  | WRAPPOWASSIGN
   | ANDOP
   | OROP
   | XOROP
@@ -178,6 +184,14 @@ let to_parser_token :
   | DIVOP -> Ok Parser.DIVOP
   | MODOP -> Ok Parser.MODOP
   | POWOP -> Ok Parser.POWOP
+  | WRAPADDOP -> Ok Parser.WRAPADDOP
+  | WRAPSUBOP -> Ok Parser.WRAPSUBOP
+  | WRAPMULOP -> Ok Parser.WRAPMULOP
+  | WRAPPOWOP -> Ok Parser.WRAPPOWOP
+  | WRAPADDASSIGN -> Ok Parser.WRAPADDASSIGN
+  | WRAPSUBASSIGN -> Ok Parser.WRAPSUBASSIGN
+  | WRAPMULASSIGN -> Ok Parser.WRAPMULASSIGN
+  | WRAPPOWASSIGN -> Ok Parser.WRAPPOWASSIGN
   | ANDOP -> Ok Parser.ANDOP
   | OROP -> Ok Parser.OROP
   | XOROP -> Ok Parser.XOROP
@@ -290,6 +304,14 @@ let string_of_parser_token = function
   | Parser.DIVOP -> "DIVOP"
   | Parser.MODOP -> "MODOP"
   | Parser.POWOP -> "POWOP"
+  | Parser.WRAPADDOP -> "WRAPADDOP"
+  | Parser.WRAPSUBOP -> "WRAPSUBOP"
+  | Parser.WRAPMULOP -> "WRAPMULOP"
+  | Parser.WRAPPOWOP -> "WRAPPOWOP"
+  | Parser.WRAPADDASSIGN -> "WRAPADDASSIGN"
+  | Parser.WRAPSUBASSIGN -> "WRAPSUBASSIGN"
+  | Parser.WRAPMULASSIGN -> "WRAPMULASSIGN"
+  | Parser.WRAPPOWASSIGN -> "WRAPPOWASSIGN"
   | Parser.ANDOP -> "ANDOP"
   | Parser.OROP -> "OROP"
   | Parser.XOROP -> "XOROP"
@@ -333,30 +355,6 @@ let string_of_parser_token = function
   | Parser.TEXT _ -> "TEXT of string"
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
-
-type void
-
-let rec absurd : void -> 'a = fun v -> absurd v
-
-let map_trivia : ('a -> 'b) -> 'a trivia -> 'b trivia =
- fun f -> function
-  | Comment str -> Comment str
-  | Space n -> Space n
-  | Tab n -> Tab n
-  | Line l -> Line (f l)
-
-let string_of_line_feed = function LF -> "LF" | CRLF -> "CRLF"
-
-let string_of_trivia : ('a -> string) -> 'a trivia -> string =
- fun f t ->
-  match t with
-  | Comment str -> str
-  | Space n -> Printf.sprintf "Space(%d)" n
-  | Tab n -> Printf.sprintf "Tab(%d)" n
-  | Line l -> Printf.sprintf "Line(%s)" (f l)
-
-let string_of_trivia_lf : line_feed trivia -> string =
-  string_of_trivia string_of_line_feed
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

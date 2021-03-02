@@ -54,6 +54,8 @@ You can use the following options with the `+moc+` command.
 
 |`+--hide-warnings+` |Hides compiler warnings.
 
+|`+-Werror+` |Treat warnings as errors.
+
 |`+--idl+` |Generates the interface description language specification.
 
 |`+-i+` |Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).

@@ -36,7 +36,7 @@ actor a {
                         ];
 
     // TODO(gabor), mutable arrays
-    let mut_arrs = [[var 42], [var 25], [77]]; // boring
+    let mut_arrs = [[var 42], [var 25], [var 77]]; // boring
 
     // TODO(gabor), mutable fields, see fail/type-inference.mo:13
 

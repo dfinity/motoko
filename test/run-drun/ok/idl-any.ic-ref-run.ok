@@ -1,5 +1,5 @@
 → update create_canister()
-← replied: (record {hymijyo = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → query any(null, "Foo")
@@ -53,7 +53,7 @@ debug.print: ok: Foo
 → query any(0x4449444c000268710003466f6f)
 debug.print: ok: Foo
 ← replied: ()
-→ query any(service "psokg-ww6vw-7o6", "Foo")
+→ query any(principal "psokg-ww6vw-7o6", "Foo")
 debug.print: ok: Foo
 ← replied: ()
 → query any(null, "Foo")

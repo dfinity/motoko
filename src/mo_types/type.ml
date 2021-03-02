@@ -64,7 +64,7 @@ and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and field = {lab : lab; typ : typ}
+and field = {lab : lab; typ : typ; depr : string option}
 
 and con = kind Con.t
 and kind =
@@ -90,10 +90,10 @@ module ConSet = ConEnv.Dom
 
 let compare_field f1 f2 =
   match f1,f2 with
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
-  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
-  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+  | {lab = l1; typ = Typ _; _}, {lab = l2; typ = Typ _; _} -> compare l1 l2
+  | {lab = l1; typ = Typ _; _}, {lab = l2; typ = _; _} -> -1
+  | {lab = l1; typ = _; _}, {lab = l2; typ = Typ _; _} -> 1
+  | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
 
 (* Short-hands *)
@@ -110,16 +110,16 @@ let char = Prim Char
 let principal = Prim Principal
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "canister_reject"; typ = unit }
+  { lab = "canister_reject"; typ = unit; depr = None}
 ]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system_fatal"; typ = unit};
-    { lab = "system_transient"; typ = unit};
-    { lab = "destination_invalid"; typ = unit};
-    { lab = "canister_error"; typ = unit};
-    { lab = "future"; typ = Prim Nat32};
+    { lab = "system_fatal"; typ = unit; depr = None};
+    { lab = "system_transient"; typ = unit; depr = None};
+    { lab = "destination_invalid"; typ = unit; depr = None};
+    { lab = "canister_error"; typ = unit; depr = None};
+    { lab = "future"; typ = Prim Nat32; depr = None};
   ])
 
 let throw = Prim Error
@@ -128,7 +128,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = Prim Principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller }])
+let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; depr = None}])
 
 let prim = function
   | "Null" -> Null
@@ -166,7 +166,7 @@ let codom c to_scope ts2 =  match c with
 
 let iter_obj t =
   Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
+    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); depr = None}])
 
 
 (* Shifting *)
@@ -194,8 +194,8 @@ let rec shift i n t =
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
 
-and shift_field i n {lab; typ} =
-  {lab; typ = shift i n typ}
+and shift_field i n {lab; typ; depr} =
+  {lab; typ = shift i n typ; depr}
 
 (*
 and shift_kind i n k =
@@ -245,8 +245,8 @@ let rec subst sigma t =
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
 
-and subst_field sigma {lab; typ} =
-  {lab; typ = subst sigma typ}
+and subst_field sigma {lab; typ; depr} =
+  {lab; typ = subst sigma typ; depr}
 
 (*
 and subst_kind sigma k =
@@ -295,8 +295,8 @@ let rec open' i ts t =
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
 
-and open_field i ts {lab; typ} =
-  {lab; typ = open' i ts typ}
+and open_field i ts {lab; typ; depr} =
+  {lab; typ = open' i ts typ; depr}
 
 (*
 and open_kind i ts k =
@@ -377,7 +377,7 @@ let as_async = function Async (t1, t2) -> (t1, t2) | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
-let as_con = function Con (c, ts) -> c,ts | _ -> invalid "as_con"
+let as_con = function Con (c, ts) -> c, ts | _ -> invalid "as_con"
 
 let as_seq t =
   match normalize t with
@@ -400,11 +400,11 @@ let as_prim_sub p t = match promote t with
   | _ -> invalid "as_prim_sub"
 let as_obj_sub ls t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Non -> Object, List.map (fun l -> {lab = l; typ = Non}) ls
+  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; depr = None}) ls
   | _ -> invalid "as_obj_sub"
 let as_variant_sub l t = match promote t with
   | Variant tfs -> tfs
-  | Non -> [{lab = l; typ = Non}]
+  | Non -> [{lab = l; typ = Non; depr = None}]
   | _ -> invalid "as_variant_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
@@ -453,11 +453,23 @@ let lookup_val_field l tfs =
   | None -> invalid "lookup_val_field"
 
 let lookup_typ_field l tfs =
-  let is_lab = function {typ = Typ _; lab} -> lab = l | _ -> false in
+  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
   | Some {typ = Typ c; _} -> c
   | _ -> invalid "lookup_typ_field"
 
+
+let lookup_val_deprecation l tfs =
+  let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
+  match List.find_opt is_lab tfs with
+  | Some tf -> tf.depr
+  | None -> invalid "lookup_val_deprecation"
+
+let lookup_typ_deprecation l tfs =
+  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
+  match List.find_opt is_lab tfs with
+  | Some tf -> tf.depr
+  | _ -> invalid "lookup_typ_deprecation"
 
 (* Span *)
 
@@ -516,8 +528,8 @@ let rec avoid' cons seen = function
 and avoid_bind cons seen tb=
   { tb with bound = avoid' cons seen tb.bound}
 
-and avoid_field cons seen {lab; typ} =
-  {lab; typ = avoid' cons seen typ}
+and avoid_field cons seen {lab; typ; depr} =
+  {lab; typ = avoid' cons seen typ; depr}
 
 and avoid_kind cons seen k =
   match k with
@@ -560,7 +572,7 @@ let rec cons' t cs =
 and cons_bind tb cs =
   cons' tb.bound cs
 
-and cons_field {lab; typ} cs =
+and cons_field {lab; typ; depr} cs =
   cons' typ cs
 
 let cons_kind k =
@@ -693,10 +705,17 @@ let rel_list p rel eq xs1 xs2 =
 let rec rel_typ rel eq t1 t2 =
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
-  (*  Printf.printf "%s %s\n" (!str t1) (!str t2); *)
   match t1, t2 with
+  (* Second-class types first, since they mustn't relate to Any/Non *)
   | Pre, _ | _, Pre ->
     assert false
+  | Mut t1', Mut t2' ->
+    eq_typ rel eq t1' t2'
+  | Typ c1, Typ c2 ->
+    eq_con eq c1 c2
+  | Mut _, _ | _, Mut _
+  | Typ _, _ | _, Typ _ ->
+    false
   | Any, Any ->
     true
   | _, Any when rel != eq ->
@@ -760,10 +779,6 @@ let rec rel_typ rel eq t1 t2 =
   | Async (t11, t12), Async (t21, t22) ->
     eq_typ rel eq t11 t21 &&
     rel_typ rel eq t12 t22
-  | Mut t1', Mut t2' ->
-    eq_typ rel eq t1' t2'
-  | Typ c1, Typ c2 ->
-    eq_con eq c1 c2
   | _, _ -> false
   end
 
@@ -861,6 +876,13 @@ let rec compatible_typ co t1 t2 =
   match promote t1, promote t2 with
   | Pre, _ | _, Pre ->
     assert false
+  | Mut t1', Mut t2' ->
+    compatible_typ co t1' t2'
+  | Typ _, Typ _ ->
+    true
+  | Mut _, _ | _, Mut _
+  | Typ _, _ | _, Typ _ ->
+    false
   | Any, Any ->
     true
   | Any, _ | _, Any ->
@@ -889,10 +911,6 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t12 t22
   | Func _, Func _ ->
     true
-  | Typ _, Typ _ ->
-    true
-  | Mut t1', Mut t2' ->
-    compatible_typ co t1' t2'
   | _, _ ->
     false
   end
@@ -977,186 +995,124 @@ and singleton t : bool = singleton_typ (ref S.empty) t
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
 
-let rec lub' lubs glbs t1 t2 =
+exception Mismatch
+
+let rec combine rel lubs glbs t1 t2 =
+  assert (rel == lubs || rel == glbs);
   if t1 == t2 then t1 else
-  match M.find_opt (t1, t2) !lubs with
+  match M.find_opt (t1, t2) !rel with
   | Some t -> t
+  | _ when eq t1 t2 ->
+    let t = if is_con t2 then t2 else t1 in
+    rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
+    t
   | _ ->
     match t1, t2 with
-    | _, Pre
-    | Pre, _ -> assert false
-    | _, Any
-    | Any, _ -> Any
-    | _, Non -> t1
-    | Non, _ -> t2
-    | Prim Nat, (Prim Int as t)
-    | (Prim Int as t), Prim Nat -> t
+    | Pre, _ | _, Pre ->
+      assert false
+    | Mut _, _ | _, Mut _
+    | Typ _, _ | _, Typ _ ->
+      raise Mismatch
+    | Any, t | t, Any ->
+      if rel == lubs then Any else t
+    | Non, t | t, Non ->
+      if rel == lubs then t else Non
+    | Prim Nat, Prim Int
+    | Prim Int, Prim Nat ->
+      Prim (if rel == lubs then Int else Nat)
     | Opt t1', Opt t2' ->
-      Opt (lub' lubs glbs t1' t2')
-    | Prim Null, Opt t' -> t2
-    | Opt t', Prim Null -> t1
-    | Variant t1', Variant t2' ->
-      Variant (lub_tags lubs glbs t1' t2')
+      Opt (combine rel lubs glbs t1' t2')
+    | (Opt _ as t), (Prim Null as t')
+    | (Prim Null as t'), (Opt _ as t) ->
+      if rel == lubs then t else t'
     | Array t1', Array t2' ->
-      Array (lub' lubs glbs t1' t2')
+      (try Array (combine rel lubs glbs t1' t2')
+      with Mismatch -> if rel == lubs then Any else Non)
+    | Variant t1', Variant t2' ->
+      Variant (combine_tags rel lubs glbs t1' t2')
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
-      Tup (List.map2 (lub' lubs glbs) ts1 ts2)
+      Tup (List.map2 (combine rel lubs glbs) ts1 ts2)
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-      Obj (s1, lub_fields lubs glbs tf1 tf2)
-    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
+      (try Obj (s1, combine_fields rel lubs glbs tf1 tf2)
+      with Mismatch -> assert (rel == glbs); Non)
+    | Func (s1, c1, bs1, ts11, ts12), Func (s2, c2, bs2, ts21, ts22) when
         s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
-        List.(length args1 = length args2 && length res1 = length res2) ->
-      combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
-    | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
-      Async (t11, lub' lubs glbs t12 t22)
-    | Async _, Async _ -> Any
-    | Con _, _
-    | _, Con _ ->
-      (* TODO(rossberg): fix handling of bounds *)
-      combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
-    | Typ _, _
-    | _, Typ _ -> assert false
-    | _ when eq t1 t2 -> t1
-    | _ -> Any
-
-and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
-  | _, [] -> []
-  | [], _ -> []
-  | f1::fs1', f2::fs2' ->
-    match compare_field f1 f2 with
-    | -1 -> lub_fields lubs glbs fs1' fs2
-    | +1 -> lub_fields lubs glbs fs1 fs2'
-    | _ ->
-      match f1.typ, f2.typ with
-      | Typ _, Typ _ ->
-        if eq f1.typ f2.typ then
-          f1::lub_fields lubs glbs fs1' fs2'
-        else
-          lub_fields lubs glbs fs1' fs2'
-      | Typ _, _
-      | _, Typ _ -> assert false
-      | _, _ ->
-        {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
-
-and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
-  | fs1, [] -> fs1
-  | [], fs2 -> fs2
-  | f1::fs1', f2::fs2' ->
-    match compare_field f1 f2 with
-    | -1 -> f1 :: lub_tags lubs glbs fs1' fs2
-    | +1 -> f2 :: lub_tags lubs glbs fs1 fs2'
-    | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ} :: lub_tags lubs glbs fs1' fs2'
-
-and glb' lubs glbs t1 t2 =
-  if t1 == t2 then t1 else
-  match M.find_opt (t1, t2) !glbs with
-  | Some t -> t
-  | _ ->
-    match t1, t2 with
-    | _, Pre
-    | Pre, _ -> assert false
-    | _, Any -> t1
-    | Any, _ -> t2
-    | _, Non
-    | Non, _ -> Non
-    | (Prim Nat as t), Prim Int
-    | Prim Int, (Prim Nat as t) -> t
-    | Opt t1', Opt t2' ->
-      Opt (glb' lubs glbs t1' t2')
-    | Variant t1', Variant t2' ->
-      Variant (glb_tags lubs glbs t1' t2')
-    | Prim Null, Opt _
-    | Opt _, Prim Null -> Prim Null
-    | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
-      Tup (List.map2 (glb' lubs glbs) ts1 ts2)
-    | Array t1', Array t2' ->
-      Array (glb' lubs glbs t1' t2')
-    | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-      (match glb_fields lubs glbs tf1 tf2 with
-      | None -> Non
-      | Some fs -> Obj (s1, fs)
+        List.(length ts11 = length ts21 && length ts12 = length ts22) ->
+      let ts = open_binds bs1 in
+      let cs = List.map (fun t -> fst (as_con t)) ts in
+      let opened = List.map (open_ ts) in
+      let closed = List.map (close cs) in
+      let rel' = if rel == lubs then glbs else lubs in
+      Func (
+        s1, c1, bs1,
+        closed (List.map2 (combine rel' lubs glbs) (opened ts11) (opened ts21)),
+        closed (List.map2 (combine rel lubs glbs) (opened ts12) (opened ts22))
       )
-    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
-        List.(length args1 = length args2 && length res1 = length res2) ->
-      combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
-      Async (t11, glb' lubs glbs t12 t22)
-    | Async _, Async _ -> Non
+      Async (t11, combine rel lubs glbs t12 t22)
     | Con _, _
     | _, Con _ ->
-      (* TODO(rossberg): fix handling of bounds *)
-      combine_con_parts t1 t2 "glb" glbs (glb' lubs glbs)
-    | Typ _, _
-    | _, Typ _ -> assert false
-    | _ when eq t1 t2 -> t1
-    | _ -> Non
+      if sub t1 t2 then
+        let t = if rel == glbs then t1 else t2 in
+        rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
+        t
+      else if sub t2 t1 then
+        let t = if rel == lubs then t1 else t2 in
+        rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
+        t
+      else
+        let op, expand =
+          if rel == lubs then "lub", promote else "glb", normalize in
+        let name = op ^ "<" ^ !str t1 ^ ", " ^ !str t2 ^ ">" in
+        let c = Con.fresh name (Abs ([], Pre)) in
+        let t = Con (c, []) in
+        rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
+        let t' =
+          (* When taking the glb of an abstract con and an incompatible type,
+           * normalisation will no further simplify t1 nor t2, so that t itself
+           * is returned via the extended relation. In that case, bottom is
+           * the correct result.
+           *)
+          match combine rel lubs glbs (expand t1) (expand t2) with
+          | t' when t' == t -> assert (rel == glbs); Non
+          | t' -> t'
+        in
+        set_kind c (Def ([], t'));
+        t'
+    | _, _ ->
+      if rel == lubs then Any else Non
 
-and glb_fields lubs glbs fs1 fs2 : field list option =
-  let (+?) h t_opt = match t_opt with
-    | None -> None
-    | Some t -> Some (h::t)
-  in
+and cons_if b x xs = if b then x::xs else xs
+
+and combine_fields rel lubs glbs fs1 fs2 =
   match fs1, fs2 with
-  | fs1, [] -> Some fs1
-  | [], fs2 -> Some fs2
+  | _, [] -> if rel == lubs then [] else fs1
+  | [], _ -> if rel == lubs then [] else fs2
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
-    | -1 -> f1 +? glb_fields lubs glbs fs1' fs2
-    | +1 -> f2 +? glb_fields lubs glbs fs1 fs2'
+    | -1 -> cons_if (rel == glbs) f1 (combine_fields rel lubs glbs fs1' fs2)
+    | +1 -> cons_if (rel == glbs) f2 (combine_fields rel lubs glbs fs1 fs2')
     | _ ->
-      match f1.typ, f2.typ with
-      | Typ _, Typ _ ->
-        if eq f1.typ f2.typ
-        then f1 +? glb_fields lubs glbs fs1' fs2'
-        else None
-      | Typ _, _
-      | _, Typ _ -> assert false
-      | _, _ ->
-        {f1 with typ = glb' lubs glbs f1.typ f2.typ} +?
-          glb_fields lubs glbs fs1' fs2'
+      match combine rel lubs glbs f1.typ f2.typ with
+      | typ ->
+       {lab = f1.lab; typ; depr = None} :: combine_fields rel lubs glbs fs1' fs2'
+      | exception Mismatch when rel == lubs ->
+        combine_fields rel lubs glbs fs1' fs2'
 
-and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
-  | fs1, [] -> []
-  | [], fs2 -> []
+and combine_tags rel lubs glbs fs1 fs2 =
+  match fs1, fs2 with
+  | _, [] -> if rel == lubs then fs1 else []
+  | [], _ -> if rel == lubs then fs2 else []
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
-    | -1 -> glb_tags lubs glbs fs1' fs2
-    | +1 -> glb_tags lubs glbs fs1 fs2'
+    | -1 -> cons_if (rel == lubs) f1 (combine_tags rel lubs glbs fs1' fs2)
+    | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
     | _ ->
-      {f1 with typ = glb' lubs glbs f1.typ f2.typ} ::
-        glb_tags lubs glbs fs1' fs2'
+      let typ = combine rel lubs glbs f1.typ f2.typ in
+      {lab = f1.lab; typ; depr = None} :: combine_tags rel lubs glbs fs1' fs2'
 
-and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
-  let open List in
-  let ts1 = open_binds bs1 in
-  let op = map (open_ ts1) in
-  let get_con = function | Con (c, []) -> c | _ -> assert false in
-  let cs = map get_con ts1 in
-  let cl = map (close cs) in
-  Func (
-    s, c, bs1,
-    cl (map2 (contra lubs glbs) (op args1) (op args2)),
-    cl (map2 (co lubs glbs) (op res1) (op res2))
-  )
-
-and combine_con_parts t1 t2 naming re how =
-  let s1, s2 = !str t1, !str t2 in
-  if s1 = s2 then t1 else
-  let c = Con.fresh (Printf.sprintf "@%s(%s, %s)" naming s1 s2) (Abs ([], Pre)) in
-  let t = Con (c, []) in
-  re := M.add (t2, t1) t (M.add (t1, t2) t !re);
-  let inner = how (normalize t1) (normalize t2) in
-  set_kind c (Def ([], inner));
-  (* check for short-circuiting opportunities *)
-  if eq inner t1
-  then (re := M.add (t2, t1) t1 (M.add (t1, t2) t1 !re); t1)
-  else if eq inner t2
-  then (re := M.add (t2, t1) t2 (M.add (t1, t2) t2 !re); t2)
-  else inner
-
-let lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
-let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
+let lub t1 t2 = let lubs = ref M.empty in combine lubs lubs (ref M.empty) t1 t2
+let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
 
 
 (* Environments *)
@@ -1343,7 +1299,7 @@ and string_of_typ' vs t =
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
-and string_of_field vs {lab; typ} =
+and string_of_field vs {lab; typ; depr} =
   match typ with
   | Typ c ->
     let op, sbs, st = strings_of_kind (Con.kind c) in
@@ -1353,7 +1309,7 @@ and string_of_field vs {lab; typ} =
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
 
-and string_of_tag vs {lab; typ} =
+and string_of_tag vs {lab; typ; depr} =
   match typ with
   | Tup [] -> sprintf "#%s" lab
   | _ -> sprintf "#%s : %s" lab (string_of_typ' vs typ)

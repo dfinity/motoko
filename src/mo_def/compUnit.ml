@@ -23,7 +23,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
   let f = prog.note in
 
-  let finish imports u = { it = (imports, u); note = f; at = no_region } in
+  let finish imports u = { it = { imports; body = u; trivia = prog.it.trivia }; note = f; at = no_region } in
   let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
 
   let rec go imports ds : comp_unit =
@@ -54,11 +54,11 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       if as_lib
       then
         (* Deprecated syntax, see Typing.check_lib *)
-        let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
+        let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) ds' in
         finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
-  go [] prog.it
+  go [] prog.it.decs
 
 
 (* Lib as decs *)
@@ -87,7 +87,7 @@ let obj_decs obj_sort at note id_opt fields =
 *)
 let decs_of_lib (cu : comp_unit) =
   let open Source in
-  let (imports, cub) = cu.it in
+  let { imports; body = cub; _ } = cu.it in
   let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
     { it = LetD (
       { it = VarP id; at; note; },
@@ -110,11 +110,18 @@ let decs_of_lib (cu : comp_unit) =
     assert false
 
 (* a hack to support compiling multiple files *)
-let combine_progs progs : prog =
+let combine_progs (progs : prog list) : prog =
   let open Source in
   if progs = []
-  then { it = []; at = no_region; note = "empty" }
-  else { it = List.concat_map (fun p -> p.it) progs
-       ; at = (Lib.List.last progs).at
-       ; note = (Lib.List.last progs).note
-       }
+  then
+    { it = { decs = []; trivia = Trivia.empty_triv_table };
+      at = no_region; note = "empty"
+    }
+  else
+    { it =
+        { decs = List.concat_map (fun p -> p.it.decs) progs;
+          trivia = Trivia.empty_triv_table
+        };
+      at = (Lib.List.last progs).at;
+      note = (Lib.List.last progs).note
+    }

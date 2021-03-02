@@ -6,6 +6,48 @@
   in many cases of literals, e.g., `x == 0` or `2 * x`, when `x` has a special
   type like `Nat8`.
 
+== 0.5.9 (2021-02-19)
+
+* The `moc` now accepts the `-Werror` flag to turn warnings into errors.
+
+* The language server now returns documentation comments alongside
+  completions and hover notifications
+
+== 0.5.8 (2021-02-12)
+
+* Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
+
+  The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
+  If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used. The corresponding assignment operators (`+%=` etc.) are also available.
+
+  Likewise, the bit fiddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
+  `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
+  operator (`>>`) is an unsigned right shift on `NatN` and a signed right shift
+  on `IntN`; the `+>>` operator is _not_ available on these types.
+
+  The motivation for this change is to eventually deprecate and remove the
+  `WordN` types.
+
+  Therefore, the wrapping arithmetic operations on `WordN` are deprecated and
+  their use will print a warning. See the user’s guide, section “Word types”,
+  for a migration guide.
+
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
+
+* `mo-doc` now generates cross-references for types in signatures in
+  both the Html as well as the Asciidoc output. So a signature like
+  `fromIter : I.Iter<Nat> -> List.List<Nat>` will now let you click on
+  `I.Iter` or `List.List` and take you to their definitions.
+
+* Bugfix: Certain ill-typed object literals are now prevented by the type
+  checker.
+
+* Bugfix: Avoid compiler aborting when object literals have more fields than
+  their type expects.
+
 == 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,

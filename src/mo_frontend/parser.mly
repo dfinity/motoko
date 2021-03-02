@@ -192,12 +192,12 @@ let share_stab stab_opt dec =
   | _ -> stab_opt
 
 let share_dec_field (df : dec_field) =
-  if df.it.vis.it = Public
-  then
+  match df.it.vis.it with
+  | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  else
+  | _ ->
     if is_sugared_func_or_module (df.it.dec) then
       {df with it =
         {df.it with stab =
@@ -223,12 +223,14 @@ let share_dec_field (df : dec_field) =
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
+%token WRAPADDOP WRAPSUBOP WRAPMULOP WRAPPOWOP
 %token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token HASH
 %token EQ LT GT
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
+%token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
 %token FLEXIBLE STABLE
 %token<string> DOT_NUM
@@ -248,13 +250,13 @@ let share_dec_field (df : dec_field) =
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
-%left ADDOP SUBOP HASH
-%left MULOP DIVOP MODOP
+%left ADDOP SUBOP WRAPADDOP WRAPSUBOP HASH
+%left MULOP WRAPMULOP DIVOP MODOP
 %left OROP
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
-%left POWOP
+%left POWOP WRAPPOWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
 %type<Mo_def.Syntax.typ_item> typ_item
@@ -492,6 +494,10 @@ lit :
   | DIVOP { DivOp }
   | MODOP { ModOp }
   | POWOP { PowOp }
+  | WRAPADDOP { WAddOp }
+  | WRAPSUBOP { WSubOp }
+  | WRAPMULOP { WMulOp }
+  | WRAPPOWOP { WPowOp }
   | ANDOP { AndOp }
   | OROP  { OrOp }
   | XOROP { XorOp }
@@ -522,6 +528,10 @@ lit :
   | DIVASSIGN { DivOp }
   | MODASSIGN { ModOp }
   | POWASSIGN { PowOp }
+  | WRAPADDASSIGN { WAddOp }
+  | WRAPSUBASSIGN { WSubOp }
+  | WRAPMULASSIGN { WMulOp }
+  | WRAPPOWASSIGN { WPowOp }
   | ANDASSIGN { AndOp }
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }
@@ -741,7 +751,11 @@ dec_field :
 vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
-  | PUBLIC { Public @@ at $sloc }
+  | PUBLIC {
+    let at = at $sloc in
+    let trivia = Trivia.find_trivia !triv_table at in
+    let depr = Trivia.deprecated_of_trivia_info trivia in
+    Public depr @@ at }
   | SYSTEM { System @@ at $sloc }
 
 stab :
@@ -889,11 +903,15 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
 
 parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
-    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> { it = { decs = is @ ds; trivia }; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
   | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
-    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> { it = { decs = is @ ds; trivia }; at = at $sloc ; note = filename} }
 
 import_list :
   | is=seplist(imp, semicolon) { raise (Imports is) }
