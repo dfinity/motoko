@@ -85,13 +85,13 @@ let rec check_typ env t =
   | PreT -> assert false
 and check_typs env ts = List.map (check_typ env) ts
 and check_field env f =
-  M.{lab = check_label f.it.label; typ = check_typ env f.it.typ}
+  M.{lab = check_label f.it.label; typ = check_typ env f.it.typ; depr = None}
 and check_variant_field env f =
   match f.it.typ.it with
-  | PrimT Null -> M.{lab = check_label f.it.label; typ = M.Tup []}
+  | PrimT Null -> M.{lab = check_label f.it.label; typ = M.Tup []; depr = None}
   | _ -> check_field env f
 and check_meth env (m: typ_meth) =
-  M.{lab = Idllib.Escape.escape_method m.it.var.it; typ = check_typ env m.it.meth}
+  M.{lab = Idllib.Escape.escape_method m.it.var.it; typ = check_typ env m.it.meth; depr = None}
 
 let check_prog (env: typ I.Env.t) actor : M.typ =
   match actor with
@@ -99,7 +99,7 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
      let fs = List.map (check_meth env) ms in
      let fs = M.Env.fold (fun id t fs ->
        match t with
-       | M.Con (c, _) -> M.{lab = id; typ = M.Typ c}::fs
+       | M.Con (c, _) -> M.{lab = id; typ = M.Typ c; depr = None}::fs
        | _ -> assert false) !m_env fs in
      M.Obj (M.Actor, List.sort M.compare_field fs)
   | None -> assert false

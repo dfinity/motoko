@@ -58,7 +58,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ}
+and field = {lab : lab; typ : typ; depr : string option}
 
 and con = kind Con.t
 and kind =
@@ -154,6 +154,9 @@ val arity : typ -> int
 
 val lookup_val_field : string -> field list -> typ
 val lookup_typ_field : string -> field list -> con
+
+val lookup_val_deprecation : string -> field list -> string option
+val lookup_typ_deprecation : string -> field list -> string option
 
 val compare_field : field -> field -> int
 
