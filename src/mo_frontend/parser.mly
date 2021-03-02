@@ -752,10 +752,10 @@ vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
   | PUBLIC {
-        let at = at $sloc in
-        let trivia = Trivia.find_trivia !triv_table at in
-        let depr = Trivia.deprecated_of_trivia_info trivia in
-        Public depr @@ at }
+    let at = at $sloc in
+    let trivia = Trivia.find_trivia !triv_table at in
+    let depr = Trivia.deprecated_of_trivia_info trivia in
+    Public depr @@ at }
   | SYSTEM { System @@ at $sloc }
 
 stab :

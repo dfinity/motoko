@@ -938,7 +938,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
-  let tf = T.{lab; typ=pf.it.pat.note; depr = None} in
+  let tf = T.{lab; typ = pf.it.pat.note; depr = None} in
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);

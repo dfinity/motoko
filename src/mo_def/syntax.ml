@@ -237,9 +237,9 @@ and comp_unit_body' =
 
 type comp_unit = (comp_unit', string) Source.annotated_phrase
 and comp_unit' = {
-    imports : import list;
-    body : comp_unit_body;
-    trivia : Trivia.triv_table
+  imports : import list;
+  body : comp_unit_body;
+  trivia : Trivia.triv_table
   }
 
 type lib = comp_unit
