@@ -4,7 +4,7 @@
 
   Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
 
-  This lets our library writing users/us warn about upcoming breaking changes to library code.
+  This lets library authors warn about future breaking changes:
 
   As an example:
   ```motoko
