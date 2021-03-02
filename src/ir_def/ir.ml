@@ -136,6 +136,8 @@ and prim =
   | SystemCyclesAvailablePrim
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
+  | SetCertifiedData
+  | GetCertificate
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
