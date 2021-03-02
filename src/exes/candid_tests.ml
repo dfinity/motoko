@@ -70,7 +70,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | TextualInput x ->
       match Pipeline.parse_values x with
       | Error msgs -> raise (TextualParseError (x, msgs))
-      | Ok (vals, _) -> Idl_to_mo_value.args vals
+      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ^ " : " ^ print_type ts ^ ")"
   in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
