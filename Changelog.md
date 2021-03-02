@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+== 0.5.10 (2021-03-02)
+
 * User defined deprecations
 
   Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
