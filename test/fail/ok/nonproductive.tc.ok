@@ -1,0 +1,5 @@
+nonproductive.mo:1.4-3.2: type error [M0157], block contains non-productive definition(s) C
+nonproductive.mo:5.4-7.2: type error [M0157], block contains non-productive definition(s) C
+nonproductive.mo:9.4-12.2: type error [M0157], block contains non-productive definition(s) C, D
+nonproductive.mo:14.4-17.2: type error [M0157], block contains non-productive definition(s) D
+nonproductive.mo:25.4-30.2: type error [M0157], block contains non-productive definition(s) C, D, E
