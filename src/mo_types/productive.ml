@@ -21,6 +21,7 @@ type info =
   | Productive
   | Param of int
 
+
 let rec rhs cs ce t : (info ConEnv.t * info) = match t with
   | Pre
   | Mut _ | Typ _ ->
@@ -29,35 +30,35 @@ let rec rhs cs ce t : (info ConEnv.t * info) = match t with
     (ce, Param j)
   | Con (d, ts) ->
     begin
-      let (ce', info) = productive_con cs d ce in
-      match info with
-      | (Nonproductive | Productive) -> (ce', info)
+      let ce' = visit_con cs d ce in
+      match ConEnv.find d ce' with
       | Param n ->
-        match Con.kind d with
-        | Def (tbs, t) ->
-          assert (n < List.length tbs); (* assume types are arity-correct *)
-          rhs cs ce' (List.nth ts n)
-        | Abs (tbs, t) ->
-          (* we could assert here since Defs should be closed *)
-          (ce', Productive)
+        begin
+          match Con.kind d with
+          | Def (tbs, t) ->
+            assert (n < List.length tbs); (* assume types are arity-correct *)
+            rhs cs ce' (List.nth ts n)
+          | Abs (tbs, t) ->
+            (* we could assert here since Defs should be closed *)
+            (ce', Productive)
+        end
+      | info -> (ce', info)
     end
   | _ ->  (* anything else is productive *)
     (ce, Productive)
 
-and productive_con cs c ce =
+and visit_con cs c ce =
   match ConEnv.find_opt c ce with
-  | Some info -> (ce, info)
+  | Some info -> ce
   | None ->
     if ConSet.mem c cs then
-      (ConEnv.add c Nonproductive ce, Nonproductive)
+      ConEnv.add c Nonproductive ce
     else
       let cs' = ConSet.add c cs in
       let (ce', info) = rhs cs' ce (match Con.kind c with Def (_, t) -> t | _ -> assert false) in
-      (ConEnv.add c info ce', info)
+      ConEnv.add c info ce'
 
 let non_productive cs =
-  let ce = ConSet.fold
-    (fun c ce -> let (ce', _) = productive_con ConSet.empty c ce in ce')
-    cs ConEnv.empty
+  let ce = ConSet.fold (visit_con ConSet.empty) cs ConEnv.empty
   in
   ConSet.filter (fun c -> ConEnv.find c ce = Nonproductive) cs
