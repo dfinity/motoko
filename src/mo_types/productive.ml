@@ -1,17 +1,19 @@
 open Type
 
 (*
-  Maintain a map from con to `{unproductive; productive; param  : int }`. After the analysis, this map says, for all type constructors, whether they are really unproductive, productive, or if their unfolding is equal to one of their parameters.
-* Maintain a stack of type defintion under scrutiness
+  Maintain a map from con to info = {Nonproductive, Productive, Param n}`.
+  After the analysis, this map says, for all type constructors, whether they are  really unproductive, productive, or if their unfolding is equal to one of their parameters.
+* Maintain a set of type definitions under scrutiny
 * For each type definition:
   * If it is already in the memo map, use that result. Else analyze it as follows, updating the memo map afterwards.
-  * If it is already on the stack, we have found a loop. Mark it as `unproductive`. Else push on the stack during the next step.
+  * If it is already in the set, we have found a loop. Mark it as `unproductive`. Else add to the setduring the next step.
   * Consider its RHS:
-    * If it is a concrete type, return `productive`.
-    * If it is the nth type parameter, return `param n`
+    * If it is a concrete type, return `Productive`.
+    * If it is the nth type parameter, return `Param n`
     * If it is a type application `T<t1,…,tn>`, recurse.
-      * If the recursion returns `productive` or `unproductive`, return that.
-      * If the recursion returns `param n`, loop to “Consider its RHS”, as if `tn` is the RHS.
+      * If recursion returns `Productive` or `Nonproductive`, return that.
+      * If recursion returns `Param n`, loop to “Consider its RHS”, as if `tn`
+        is the RHS.
 *)
 
 type info =
@@ -21,7 +23,8 @@ type info =
 
 let rec rhs cs ce t : (info ConEnv.t * info) = match t with
   | Pre
-  | Mut _ | Typ _ -> assert false
+  | Mut _ | Typ _ ->
+    assert false (* body of a Def shouldn't be 2nd class *)
   | Var (s, j) ->
     (ce, Param j)
   | Con (d, ts) ->
@@ -32,15 +35,13 @@ let rec rhs cs ce t : (info ConEnv.t * info) = match t with
       | Param n ->
         match Con.kind d with
         | Def (tbs, t) ->
+          assert (n < List.length tbs); (* assume types are arity-correct *)
           rhs cs ce' (List.nth ts n)
         | Abs (tbs, t) ->
+          (* we could assert here since Defs should be closed *)
           (ce', Productive)
     end
-  | Prim _ | Any | Non
-  | Tup _
-  | Opt _ | Array _
-  | Obj _ | Variant _ | Async _
-  | Func _ ->
+  | _ ->  (* anything else is productive *)
     (ce, Productive)
 
 and productive_con cs c ce =
@@ -60,5 +61,3 @@ let non_productive cs =
     cs ConEnv.empty
   in
   ConSet.filter (fun c -> ConEnv.find c ce = Nonproductive) cs
-
-

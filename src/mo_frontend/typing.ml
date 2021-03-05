@@ -590,6 +590,18 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
     | _  -> assert false
   in go tbs ts ats
 
+(* Check type definitions productive and non-expansive *)
+and check_con_env env at ce =
+  let cs = Productive.non_productive ce in
+  if not (T.ConSet.is_empty cs) then
+    error env at "M0157" "block contains non-productive definition(s) %s"
+      (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
+  begin match Mo_types.Expansive.is_expansive ce with
+  | None -> ()
+  | Some msg ->
+    error env at "M0156" "block contains expansive type definitions%s" msg
+  end;
+
 and infer_inst env tbs typs at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
@@ -2002,15 +2014,7 @@ and infer_block_decs env decs at : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
-  let cs = Productive.non_productive scope_ce.Scope.con_env in
-  if not (T.ConSet.is_empty cs) then
-    error env at "M0157" "block contains non-productive definition(s) %s"
-      (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
-  begin match Mo_types.Expansive.is_expansive scope_ce.Scope.con_env with
-  | None -> ()
-  | Some msg ->
-    error env at "M0156" "block contains expansive type definitions%s" msg
-  end;
+  check_con_env env' at scope_ce.Scope.con_env;
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
