@@ -1,5 +1,17 @@
 = Motoko compiler changelog
 
+* The `moc` compiler now rejects type definitions that are non-_productive_ (to ensure termination).
+
+  For example, problematic types such as:
+  ```motoko
+  type C = C;
+  type D<T, U> = D<U, T>;
+  type E<T> = F<T>;
+  type F<T> = E<T>;
+  type G<T> = Fst<G<T>, Any>;
+  ```
+  are now rejected.
+
 == 0.5.10 (2021-03-02)
 
 * User defined deprecations
@@ -18,7 +30,7 @@
   }
   ```
   will emit a warning whenever `foo` is used.
-  
+
 * The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
   For example, problematic types such as `type Seq<T> = ?(T, Seq<[T]>)` are rejected.
 
