@@ -105,3 +105,7 @@ do { // reject
 
   type G<T> = Fst<G<T>, Any>;
 };
+
+do {
+  class C<A>() { type D = A;};
+};
