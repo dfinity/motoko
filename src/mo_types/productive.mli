@@ -1,2 +1,2 @@
-(* the list of non productive types in cs *)
-val non_productive : Type.ConSet.t -> Type.con list
+(* the subset of non-productive types in cs *)
+val non_productive : Type.ConSet.t -> Type.ConSet.t

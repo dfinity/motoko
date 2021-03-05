@@ -57,7 +57,8 @@ and productive_con cs c ce =
 let non_productive cs =
   let ce = ConSet.fold
     (fun c ce -> let (ce', _) = productive_con ConSet.empty c ce in ce')
-    cs ConEnv.empty in
-  let nps = ConEnv.filter (fun c info -> info = Nonproductive) ce in
-  ConEnv.keys nps
+    cs ConEnv.empty
+  in
+  ConSet.filter (fun c -> ConEnv.find c ce = Nonproductive) cs
+
 

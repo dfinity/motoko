@@ -2003,15 +2003,9 @@ and infer_block_decs env decs at : Scope.t =
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
   let cs = Productive.non_productive scope_ce.Scope.con_env in
-  if cs <> [] then
+  if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition(s) %s"
-      (String.concat ", " (List.map Con.name cs))
-  begin match Mo_types.Expansive.is_expansive scope_ce.Scope.con_env with
-  | None -> ()
-  | Some msg ->
-    error env at "M0156" "block contains expansive type definitions%s" msg
-  end;
-
+      (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
   begin match Mo_types.Expansive.is_expansive scope_ce.Scope.con_env with
   | None -> ()
   | Some msg ->
