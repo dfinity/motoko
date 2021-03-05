@@ -33,7 +33,7 @@ let check_modes ms =
   | [{it=Query; _}] -> (M.Query, M.Promises)
   | _ -> assert false
 
-let check_label lab =
+let check_label lab : M.lab =
   match lab.it with
   | Named name -> Idllib.Escape.escape name
   | Id id -> Idllib.Escape.escape_num id
