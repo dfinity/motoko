@@ -594,7 +594,8 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
 and check_con_env env at ce =
   let cs = Productive.non_productive ce in
   if not (T.ConSet.is_empty cs) then
-    error env at "M0157" "block contains non-productive definition(s) %s"
+    error env at "M0157" "block contains non-productive definition%s %s"
+      (if T.ConSet.cardinal cs = 1 then "" else "s")
       (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
