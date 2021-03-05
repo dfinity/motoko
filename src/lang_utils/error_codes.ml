@@ -159,4 +159,5 @@ let error_codes : (string * string option) list =
     "M0153", Some([%blob "error_codes/M0153.adoc"]); (* IDL types not expressible in Motoko *)
     "M0154", Some([%blob "error_codes/M0154.adoc"]); (* Deprecation annotation *)
     "M0156", Some([%blob "error_codes/M0156.adoc"]); (* block contains expansive type definitions *)
+    "M0157", Some([%blob "error_codes/M0157.adoc"]); (* block contains non-productive type definitions *)
   ]
