@@ -70,11 +70,14 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | TextualInput x ->
       match Pipeline.parse_values x with
       | Error msgs -> raise (TextualParseError (x, msgs))
-      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ^ " : " ^ print_type ts ^ ")"
+      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ts ^ " : " ^ print_type ts ^ ")"
   in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
-  let ignore e = "ignore (" ^ e ^ ")\n" in
+  let ignore ts e =
+    let open Type in
+    if sub (seq ts) unit then e (* avoid warnign about redundant ignore *)
+    else "ignore (" ^ e ^ ")\n" in
 
   try
     let defs =
@@ -84,22 +87,22 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
         "type " ^ n ^ " = " ^ Type.string_of_typ mo_typ ^ ";\n"
       ) (Typing.Env.bindings tenv)) ^ "\n" in
 
-    let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
+    let ts = Idl_to_mo.check_typs tenv (test.it.ttyp) in
     match test.it.assertion with
     | ParsesAs (_, TextualInput _)
     | ParsesEqual (_, TextualInput _, TextualInput _)
     -> Error "all-textual test case" (* not interesting to us *)
     | ParsesAs (true, i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
+    -> Ok (defs ^ ignore ts (deser ts i), ShouldPass)
     | ParsesAs (false, i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
+    -> Ok (defs ^ ignore ts (deser ts i), ShouldTrap)
     | ParsesEqual (true, i1, i2)
-    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
+    -> Ok (defs ^ equal (deser ts i1) (deser ts i2), ShouldPass)
     | ParsesEqual (false, i1, i2)
-    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
+    -> Ok (defs ^ not_equal (deser ts i1) (deser ts i2), ShouldPass)
   with
     | Exception.UnsupportedCandidFeature what ->
-      Error (what ^ " not supported")
+      Error what
     | TextualParseError (x, msgs) ->
       Error (Printf.sprintf "Could not parse %S:\n%s" x
           (String.concat ", " (List.map Diag.string_of_message msgs))
