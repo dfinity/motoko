@@ -9,7 +9,6 @@ Motoko requires all type declarations to be productive.
 
 For example, the type definitions:
 
-```
   type Person = { first : Text; last : Text };
 
   type List<T> = ?(T, List<T>);
@@ -17,13 +16,11 @@ For example, the type definitions:
   type Fst<T, U> = T;
 
   type Ok<T> = Fst<Any, Ok<T>>;
-```
 
 are all productive and legal.
 
 But the type definitions,
 
-```
   type C = C;
 
   type D<T, U> = D<U, T>;
@@ -32,7 +29,6 @@ But the type definitions,
   type F<T> = E<T>;
 
   type G<T> = Fst<G<T>, Any>;
-```
 
 are all non-productive, since each definition will enter a loop after one or more
 expansions of its body.

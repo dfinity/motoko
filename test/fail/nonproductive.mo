@@ -109,3 +109,4 @@ do { // reject
 do {
   class C<A>() { type D = A;};
 };
+
