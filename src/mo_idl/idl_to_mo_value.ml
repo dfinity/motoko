@@ -59,10 +59,7 @@ let rec value v t =
     (* this will only line up if the record is written in tuple short hand order *)
     parens_comma (List.map2 (fun f t -> value (snd f.it) t) fs ts)
   | VariantV f, T.Variant tfs ->
-    let t1 =
-      try T.lookup_val_field (Idl_to_mo.check_label (fst (f.it))) tfs
-      with Invalid_argument _ ->
-        raise (UnsupportedCandidFeature "Subtyping in textual values (variant label)") in
+    let t1 = find_typ tfs f in
     if T.normalize t1 = T.unit
     then parens ("#" ^ Idl_to_mo.check_label (fst f.it))
     else parens ("#" ^ Idl_to_mo.check_label (fst f.it) ^ parens (value (snd f.it) t1))
