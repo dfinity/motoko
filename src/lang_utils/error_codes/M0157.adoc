@@ -2,34 +2,37 @@
 
 This error means that a type definition, or set of type definitions, is ill-defined.
 
-Motoko rejects type definitions that are _non-productive_.
+A type is _productive_ if recursively expanding any outermost type constructor in its definition
+eventually produces a type other than the application of a type constructor.
 
-A type is productive if expanding any outermost type applications in its body eventually
-produces a type other the application of another definition.
+Motoko requires all type declarations to be productive.
 
 For example, the type definitions:
 
+```
   type Person = { first : Text; last : Text };
 
   type List<T> = ?(T, List<T>);
 
   type Fst<T, U> = T;
 
-  type Ok<T> = Fst<Any, OK<T>>;
+  type Ok<T> = Fst<Any, Ok<T>>;
+```
 
-are all productive, and accepted by the compiler.
+are all productive and legal.
 
+But the type definitions,
 
-But the type definitions:
-
+```
   type C = C;
 
-  type D<T,U> = D<U, T>;
+  type D<T, U> = D<U, T>;
 
   type E<T> = F<T>;
   type F<T> = E<T>;
 
   type G<T> = Fst<G<T>, Any>;
+```
 
 are all non-productive, since each definition will enter a loop after one or more
 expansions of its body.

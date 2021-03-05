@@ -5,3 +5,6 @@ nonproductive.mo:14.4-17.2: type error [M0157], block contains non-productive de
 nonproductive.mo:25.4-30.2: type error [M0157], block contains non-productive definition(s) C, D, E
 nonproductive.mo:32.4-35.2: type error [M0157], block contains non-productive definition(s) D
 nonproductive.mo:44.15-44.26: type error [M0045], wrong number of type arguments: expected 2 but got 3
+nonproductive.mo:50.6-52.4: type error [M0157], block contains non-productive definition(s) D
+nonproductive.mo:65.17-65.28: type error [M0045], wrong number of type arguments: expected 2 but got 3
+nonproductive.mo:96.4-107.2: type error [M0157], block contains non-productive definition(s) C, D, E, F, G

@@ -80,3 +80,28 @@ do {
   type VarA = [var VarA];
   type Async = async ();
 };
+
+// examples from manual and explanation
+
+do { // accept
+  type Person = { first : Text; last : Text };
+
+  type List<T> = ?(T, List<T>);
+
+  type Fst<T, U> = T;
+
+  type Ok<T> = Fst<Any, Ok<T>>;
+};
+
+do { // reject
+  type Fst<T, U> = T;
+
+  type C = C;
+
+  type D<T, U> = D<U, T>;
+
+  type E<T> = F<T>;
+  type F<T> = E<T>;
+
+  type G<T> = Fst<G<T>, Any>;
+};
