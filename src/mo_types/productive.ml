@@ -65,4 +65,4 @@ let non_productive cs =
       map := ConEnv.add c info !map
   in
   ConSet.iter (visit_con ConSet.empty) cs;
-  ConSet.filter (fun c -> ConEnv.find c (!map) = Nonproductive) cs
+  ConSet.filter (fun c -> ConEnv.find c !map = Nonproductive) cs
