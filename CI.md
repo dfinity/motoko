@@ -15,7 +15,7 @@ Knowing if it is broken
 -----------------------
 
 **Use-case:**
-Everything is build and tested upon every push to a branch of the repository,
+Everything is built and tested upon every push to a branch of the repository,
 and the resulting status is visible (at derivation granularity) to developers.
 
 **Implementation:**
@@ -62,10 +62,10 @@ Push releases
 -------------
 
 **Use-case:**
-Tagged versions cause a tarball with a Motoko release to bes pushed to https://download.dfinity.systems/
+Tagged versions cause a tarball with a Motoko release to be pushed to https://download.dfinity.systems/
 
 **Implementation:**
-The jobs in `release.nix` detect tagged versions. In these case, the `release`
+The jobs in `release.nix` detect tagged versions. In these cases, the `release`
 jobs defined in `ci.nix`, with help from `nix/publish.nix`, will cause our
 Hydra instance to publish files via S3.
 
