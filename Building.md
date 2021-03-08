@@ -32,6 +32,8 @@ A good way to check that everything is fine, i.e. if this will pass CI, is to ru
 $ nix-build --no-out-link
 ```
 
+For more details on our CI and CI setup, see `CI.md`.
+
 
 ## Making releases
 
