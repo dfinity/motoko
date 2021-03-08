@@ -124,3 +124,11 @@ that only update `Changelog.md` do not require a human approver.
 
 **Implementation:**
 Mergify approves PRs that only change the `Changelog.md` file.
+
+Push generated base docs
+-------------
+**Use-case:**
+To be able to see and share the effects on the generated documentation for the base library, caused by a change to `mo-doc`, without needing the reviewer to generate the documentation locally.
+
+**Implementation:**
+Hydra uploads the build product of the `base-doc` CI job at a link that can be predicted from the PR number.
