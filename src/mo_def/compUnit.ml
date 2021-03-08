@@ -23,7 +23,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
   let f = prog.note in
 
-  let finish imports u = { it = { imports; body = u; trivia = prog.it.trivia }; note = f; at = no_region } in
+  let finish imports u = { it = { imports; body = u }; note = f; at = no_region } in
   let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
 
   let rec go imports ds : comp_unit =
@@ -58,7 +58,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
         finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
   in
-  go [] prog.it.decs
+  go [] prog.it
 
 
 (* Lib as decs *)
@@ -114,14 +114,12 @@ let combine_progs (progs : prog list) : prog =
   let open Source in
   if progs = []
   then
-    { it = { decs = []; trivia = Trivia.empty_triv_table };
-      at = no_region; note = "empty"
+    { it = [];
+      at = no_region;
+      note = { filename = "empty"; trivia = Trivia.empty_triv_table }
     }
   else
-    { it =
-        { decs = List.concat_map (fun p -> p.it.decs) progs;
-          trivia = Trivia.empty_triv_table
-        };
+    { it = List.concat_map (fun p -> p.it) progs;
       at = (Lib.List.last progs).at;
       note = (Lib.List.last progs).note
     }

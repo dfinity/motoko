@@ -592,6 +592,19 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
     | _  -> assert false
   in go tbs ts ats
 
+(* Check type definitions productive and non-expansive *)
+and check_con_env env at ce =
+  let cs = Productive.non_productive ce in
+  if not (T.ConSet.is_empty cs) then
+    error env at "M0157" "block contains non-productive definition%s %s"
+      (if T.ConSet.cardinal cs = 1 then "" else "s")
+      (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
+  begin match Mo_types.Expansive.is_expansive ce with
+  | None -> ()
+  | Some msg ->
+    error env at "M0156" "block contains expansive type definitions%s" msg
+  end;
+
 and infer_inst env tbs typs at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
@@ -2087,7 +2100,7 @@ and check_stab env sort scope dec_fields =
 (* Blocks and Declarations *)
 
 and infer_block env decs at : T.typ * Scope.scope =
-  let scope = infer_block_decs env decs in
+  let scope = infer_block_decs env decs at in
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
@@ -2103,10 +2116,11 @@ and infer_block env decs at : T.typ * Scope.scope =
   let t = infer_block_exps { env' with vals = ve } decs in
   t, scope
 
-and infer_block_decs env decs : Scope.t =
+and infer_block_decs env decs at : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
+  check_con_env env' at scope_ce.Scope.con_env;
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
@@ -2183,7 +2197,7 @@ and infer_dec env dec : T.typ =
 
 
 and check_block env t decs at : Scope.t =
-  let scope = infer_block_decs env decs in
+  let scope = infer_block_decs env decs at in
   check_block_exps (adjoin env scope) t decs at;
   scope
 
@@ -2397,6 +2411,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' obj_sort.it dec_fields dec.at in
+    (* TODO(#2391): check k is closed, see case TypD *)
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
@@ -2407,7 +2422,7 @@ and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> assert (T.eq_kind k' k)
+  | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
   );
   T.ConSet.singleton c
 
@@ -2494,7 +2509,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
       recover_opt
         (fun prog ->
           let env = env_of_scope msgs scope in
-          let res = infer_block env prog.it.decs prog.at in
+          let res = infer_block env prog.it prog.at in
           res
         ) prog
     )
@@ -2527,7 +2542,7 @@ let check_actors scope progs : unit Diag.result =
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
         in
-        go [] prog.decs
+        go [] prog
         ) progs
     )
 
@@ -2546,8 +2561,8 @@ let check_lib scope lib : Scope.t Diag.result =
             | ModuleU _ ->
               if cub.at = no_region then begin
                 let r = Source.({
-                  left = { no_pos with file = lib.note };
-                  right = { no_pos with file = lib.note }})
+                  left = { no_pos with file = lib.note.filename };
+                  right = { no_pos with file = lib.note.filename }})
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
@@ -2577,6 +2592,6 @@ let check_lib scope lib : Scope.t Diag.result =
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
-          Scope.lib lib.note imp_typ
+          Scope.lib lib.note.filename imp_typ
         ) lib
     )
