@@ -25,7 +25,6 @@ jobs:
           whitelist: 'dfinity,ic-ref,musl-wasi,common,niv'
           labels: |
             automerge-squash
-            ci-also-darwin
           keep_updating: true
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}
