@@ -356,13 +356,14 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit candid profiling-graphs;
+      inherit qc lsp unit candid;
     } // nixpkgs.lib.optionalAttrs internal {
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
       drun       = test_subdir "run-drun"   [ moc drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
       perf       = perf_subdir "perf"       [ moc drun ];
-    } // { recurseForDerivations = true; };
+      inherit profiling-graphs;
+    }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
