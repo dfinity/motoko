@@ -1,5 +1,20 @@
 = Motoko compiler changelog
 
+* The `moc` compiler no longer rejects occurrences of private or
+  local type definitions in public interfaces.
+
+  For example,
+
+  ```motoko
+  module {
+    type List = ?(Nat, List); // private
+    public func cons(n : Nat, l : List) : List { ?(n , l) };
+  }
+  ```
+
+  is now accepted, despite `List` being private and appearing in the type
+  of public member `cons`.
+
 * Type propagation for binary operators has been improved. If the type of one of
   the operands can be determined locally, then the other operand is checked
   against that expected type. This should help avoiding tedious type annotations
@@ -9,6 +24,7 @@
 * The `moc` compiler now rejects type definitions that are non-_productive_ (to ensure termination).
 
   For example, problematic types such as:
+
   ```motoko
   type C = C;
   type D<T, U> = D<U, T>;
@@ -16,6 +32,7 @@
   type F<T> = E<T>;
   type G<T> = Fst<G<T>, Any>;
   ```
+
   are now rejected.
 
 == 0.5.10 (2021-03-02)
@@ -27,6 +44,7 @@
   This lets library authors warn about future breaking changes:
 
   As an example:
+
   ```motoko
   module {
     /// @deprecated Use `bar` instead
@@ -35,6 +53,7 @@
     public func bar() {}
   }
   ```
+
   will emit a warning whenever `foo` is used.
 
 * The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
