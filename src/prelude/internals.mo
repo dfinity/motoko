@@ -418,3 +418,63 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
   return canister_id_;
 };
 
+
+/*
+Type representation
+
+The following type is used by the runtime to describe, well, motoko types. This
+is used in the implementation of generic code (equality, serialization,
+showing).
+
+Only `shared` values need to be supported here so far (e.g. no parametric
+functions).
+
+Values of this type are produced in an IR-to-IR pass; this way we get some
+type-checking.
+
+In contrast to normal Motoko values, these are coninductive, e.g. can be
+cyclic!
+*/
+
+// cf. Mo_types.typ
+type @TypRep = {
+  #null_;
+  #bool;
+  #nat;
+  #nat8;
+  #nat16;
+  #nat32;
+  #nat64;
+  #int;
+  #int8;
+  #int16;
+  #int32;
+  #int64;
+  #word8;
+  #word16;
+  #word32;
+  #word64;
+  #float;
+  #char;
+  #text;
+  #blob;
+  #error;
+  #principal;
+  #obj : ({#object_; #actor_; #module_; #memory}, @Fields);
+  #variant : @Fields;
+  #array : @TypRep;
+  #opt : @TypRep;
+  #tup : [@TypRep];
+  #func_; // TODO: function type arguments
+  #any;
+  #non;
+};
+
+// tuple, not record, as it is more compact.
+// Field names thus just documentation.
+type @Fields = [(
+  field_name : Text,
+  motoko_hash : Int32,
+  field_type : @TypRep,
+)];
+
