@@ -211,7 +211,7 @@ and dec' env d =
         in
         let l_typ = Type.unit in
         let body =
-          blockE (List.map2 (fun t i -> varD (id_of_var t) (typ_of_var i) (varE i)) temps ids) (
+          blockE (List.map2 (fun t i -> varD t (varE i)) temps ids) (
             loopE (
               labelE label l_typ (blockE
                 (List.map2 (fun a t -> letD (var_of_arg a) (immuteE (varE t))) as_ temps)

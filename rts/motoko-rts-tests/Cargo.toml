@@ -1,0 +1,9 @@
+[package]
+name = "motoko-rts-tests"
+version = "0.1.0"
+authors = ["Ömer Sinan Ağacan <omeragacan@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+motoko-rts = { path = "../motoko-rts/native" }
+quickcheck = "0.9"

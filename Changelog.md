@@ -1,15 +1,184 @@
 = Motoko compiler changelog
 
-* BREAKING CHANGE: actor creation is regarded as asynchronous:
-** Actor declarations are asynchronous and can only be used in asynchronous contexts.
-** The return type of an actor class, if specified, must be an
-   async actor type.
-** To support actor declaration, the top-level context of an interpreted program   is an asynchronous context, allowing implicit and explicit await expressions.
-** (Though breaking, this change mostly affects interpreted programs and compiled programs with explicate actor class return types)
+* Type propagation for binary operators has been improved. If the type of one of
+  the operands can be determined locally, then the other operand is checked
+  against that expected type. This should help avoiding tedious type annotations
+  in many cases of literals, e.g., `x == 0` or `2 * x`, when `x` has a special
+  type like `Nat8`.
 
-* RTS: Injecting a non-null value into an option type (`? <exp>`)
-  is the identity and no longer requires heap allocation.
-  This removes the memory-tax of using iterators.
+* The `moc` compiler now rejects type definitions that are non-_productive_ (to ensure termination).
+
+  For example, problematic types such as:
+  ```motoko
+  type C = C;
+  type D<T, U> = D<U, T>;
+  type E<T> = F<T>;
+  type F<T> = E<T>;
+  type G<T> = Fst<G<T>, Any>;
+  ```
+  are now rejected.
+
+== 0.5.10 (2021-03-02)
+
+* User defined deprecations
+
+  Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
+
+  This lets library authors warn about future breaking changes:
+
+  As an example:
+  ```motoko
+  module {
+    /// @deprecated Use `bar` instead
+    public func foo() {}
+
+    public func bar() {}
+  }
+  ```
+  will emit a warning whenever `foo` is used.
+
+* The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
+  For example, problematic types such as `type Seq<T> = ?(T, Seq<[T]>)` are rejected.
+
+* motoko base: `Time.Time` is now public
+
+== 0.5.9 (2021-02-19)
+
+* The `moc` compiler now accepts the `-Werror` flag to turn warnings into errors.
+
+* The language server now returns documentation comments alongside
+  completions and hover notifications
+
+== 0.5.8 (2021-02-12)
+
+* Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
+
+  The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
+  If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used. The corresponding assignment operators (`+%=` etc.) are also available.
+
+  Likewise, the bit fiddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
+  `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
+  operator (`>>`) is an unsigned right shift on `NatN` and a signed right shift
+  on `IntN`; the `+>>` operator is _not_ available on these types.
+
+  The motivation for this change is to eventually deprecate and remove the
+  `WordN` types.
+
+  Therefore, the wrapping arithmetic operations on `WordN` are deprecated and
+  their use will print a warning. See the user’s guide, section “Word types”,
+  for a migration guide.
+
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
+
+* `mo-doc` now generates cross-references for types in signatures in
+  both the Html as well as the Asciidoc output. So a signature like
+  `fromIter : I.Iter<Nat> -> List.List<Nat>` will now let you click on
+  `I.Iter` or `List.List` and take you to their definitions.
+
+* Bugfix: Certain ill-typed object literals are now prevented by the type
+  checker.
+
+* Bugfix: Avoid compiler aborting when object literals have more fields than
+  their type expects.
+
+== 0.5.7 (2021-02-05)
+
+* The type checker now exploits the expected type, if any,
+  when typing object literal expressions.
+  So `{ x = 0 } : { x : Nat8 }` now works as expected
+  instead of requiring an additional type annotation on `0`.
+
+== 0.5.6 (2021-01-22)
+
+* The compiler now reports errors and warnings with an additional _error code_
+  This code can be used to look up a more detailed description for a given error by passing the `--explain` flag with a code to the compiler.
+  As of now this isn't going to work for most codes because the detailed descriptions still have to be written.
+* Internal: The parts of the RTS that were written in C have been ported to Rust.
+
+== 0.5.5 (2021-01-15)
+
+* new `moc` command-line arguments `--args <file>` and `--args0 <file>` for
+  reading newline/NUL terminated arguments from `<file>`.
+* motoko base: documentation examples are executable in the browser
+
+== 0.5.4 (2021-01-07)
+
+* _Option blocks_ `do ? <block>` and _option checks_ `<exp> !`.
+  Inside an option block, an option check validates that its operand expression is not `null`.
+  If it is, the entire option block is aborted and evaluates to `null`.
+  This simplifies consecutive null handling by avoiding verbose `switch` expressions.
+
+  For example, the expression `do? { f(x!, y!) + z!.a }` evaluates to `null` if either `x`, `y` or `z` is `null`;
+  otherwise, it takes the options' contents and ultimately returns `?r`, where `r` is the result of the addition.
+
+* BREAKING CHANGE (Minor):
+  The light-weight `do <exp>` form of the recently added, more general `do <block-or-exp>` form,
+  is no longer legal syntax.
+  That is, the argument to a `do` or `do ?` expression *must* be a block `{ ... }`,
+  never a simple expression.
+
+== 0.5.3 (2020-12-10)
+
+* Nothing new, just release moc.js to CDN
+
+== 0.5.2 (2020-12-04)
+
+* Bugfix: gracefully handle importing ill-typed actor classes
+
+== 0.5.1 (2020-11-27)
+
+* BREAKING CHANGE: Simple object literals of the form `{a = foo(); b = bar()}`
+  no longer bind the field names locally. This enables writing expressions
+  like `func foo(a : Nat) { return {x = x} }`.
+
+  However, this breaks expressions like `{a = 1; b = a + 1}`. Such object
+  shorthands now have to be written differently, e.g., with an auxiliary
+  declaration, as in `let a = 1; {a = a; b = a + 1}`, or by using the "long"
+  object syntax `object {public let a = 1; public let b = a + 1}`.
+
+== 0.5.0 (2020-11-27)
+
+* BREAKING CHANGE: Free-standing blocks are disallowed
+
+  Blocks are only allowed as sub-expressions of control flow expressions like `
+  if`, `loop`, `case`, etc. In all other places, braces are always considered
+  to start an object literal.
+
+  To use blocks in other positions, the new `do <block>` expression can be
+  used.
+
+  The more liberal syntax is still allowed for now but deprecated, i.e.,
+  produces a warning.
+
+* BREAKING CHANGE: actor creation is regarded as asynchronous:
+
+  * Actor declarations are asynchronous and can only be used in asynchronous
+    contexts.
+  * The return type of an actor class, if specified, must be an async actor
+    type.
+  * To support actor declaration, the top-level context of an interpreted
+    program is an asynchronous context, allowing implicit and explicit await
+    expressions.
+
+  (Though breaking, this change mostly affects interpreted programs and
+  compiled programs with explicate actor class return types)
+
+* Candid support is updated to latest changes of the Candid spec, in particular
+  the ability to extend function with optional parameters in a backward
+  compatible way.
+
+  Motoko passes the official Candid compliance test suite.
+
+* RTS: Injecting a value into an option type (`? <exp>`) no longer
+  requires heap allocation in most cases. This removes the memory-tax
+  of using iterators.
+
+* Bugfix: Passing cycles to the instantiation of an actor class works now.
+
+* Various bug fixes and documentation improvements.
 
 == 0.4.6 (2020-11-13)
 
@@ -20,7 +189,7 @@
 * Candid compliance improvements:
   - Strict checking of utf8 strings
   - More liberal parsing of leb128-encoded numbers
-* New motoko-based:
+* New motoko-base:
   - The Random library is added
 
 == 0.4.5 (2020-10-06)
@@ -34,7 +203,7 @@
 * Bug fix: reject array indexing as non-static (could trap) (#2011)
 * Initialize tuple length fields (#1992)
 * Warns for structural equality on abstract types (#1972)
-* Funds Imperative API  (#1922)
+* Funds Imperative API (#1922)
 * Restrict subtyping (#1970)
 * Continue labels always have unit codomain (#1975)
 * Compile.ml: target and use new builder call pattern (#1974)

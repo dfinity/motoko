@@ -61,7 +61,7 @@ failures=no
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
@@ -85,7 +85,7 @@ function normalize () {
     # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/:0.1/g' |
+    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -310,7 +310,7 @@ do
 	then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
 	else
-          run comp $moc_with_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -348,7 +348,7 @@ do
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_cycles_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
             fi
           else

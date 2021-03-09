@@ -41,6 +41,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_RCURLY -> RCURLY
       | T_RBRACKET -> RBRACKET
       | T_QUEST -> QUEST
+      | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
       | T_PRIVATE -> PRIVATE
@@ -90,6 +91,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ELSE -> ELSE
       | T_DOT_NUM -> DOT_NUM "<num>"
       | T_DOT -> DOT
+      | T_DO -> DO
       | T_DIVOP -> DIVOP
       | T_DIVASSIGN -> DIVASSIGN
       | T_DEBUG_SHOW -> DEBUG_SHOW
@@ -114,3 +116,11 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_AND -> AND
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
+      | T_WRAPADDOP -> WRAPADDOP
+      | T_WRAPSUBOP -> WRAPSUBOP
+      | T_WRAPMULOP -> WRAPMULOP
+      | T_WRAPPOWOP -> WRAPPOWOP
+      | T_WRAPADDASSIGN -> WRAPADDASSIGN
+      | T_WRAPSUBASSIGN -> WRAPSUBASSIGN
+      | T_WRAPMULASSIGN -> WRAPMULASSIGN
+      | T_WRAPPOWASSIGN -> WRAPPOWASSIGN

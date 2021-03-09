@@ -94,6 +94,8 @@ let primE prim es =
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
+    | SystemCyclesAvailablePrim -> T.nat64
+    | SystemCyclesAcceptPrim -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -185,7 +187,7 @@ let optE e =
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
    at = no_region;
  }
 
@@ -415,8 +417,10 @@ let letP pat exp = LetD (pat, exp) @@ no_region
 
 let letD x exp = letP (varP x) exp
 
-let varD x t exp =
-  VarD (x, t, exp) @@ no_region
+let varD x exp =
+  let t = typ_of_var x in
+  assert (T.is_mut t);
+  VarD (id_of_var x, T.as_immut t, exp) @@ no_region
 
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in

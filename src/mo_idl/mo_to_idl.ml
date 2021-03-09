@@ -1,7 +1,9 @@
+open Mo_def
 open Mo_types
-open Mo_types.Type
+
 open Source
-module E = Mo_def.Syntax
+open Type
+module E = Syntax
 module I = Idllib.Syntax
 
 let env = ref Env.empty
@@ -125,7 +127,7 @@ let rec typ t =
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region
-and field {lab; typ=t} =
+and field {lab; typ=t; _} =
   let open Idllib.Escape in
   match unescape lab with
   | Nat nat ->
@@ -149,14 +151,8 @@ and meths fs =
          list
       | _ ->
          let meth =
-           let open Idllib.Escape in
-           match unescape f.lab with
-           | Nat nat ->
-              I.{var = Lib.Uint32.to_string nat @@ no_region;
-                 meth = typ f.typ} @@ no_region
-           | Id id ->
-              I.{var = id @@ no_region;
-                 meth = typ f.typ} @@ no_region in
+           I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
+              meth = typ f.typ} @@ no_region in
          meth :: list
     ) fs []
 
@@ -178,8 +174,8 @@ let gather_decs () =
 
 let actor progs =
   let open E in
-  let prog = combine_progs progs in
-  let (_, cub) = (comp_unit_of_prog false prog).it in
+  let prog = CompUnit.combine_progs progs in
+  let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
   match cub.it with
   | ProgU _ | ModuleU _ -> None
   | ActorU _ -> Some (typ cub.note.note_typ)

@@ -2,6 +2,7 @@ open Ir_def
 open Mo_def
 open Mo_types
 open Mo_values
+open Syntax
 
 open Source
 open Operator
@@ -23,11 +24,11 @@ let id_of_full_path (fp : string) : string =
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
-  | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
-  | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
-  | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
-  | NegOp, Int64Lit n -> Int64Lit (Value.Int_64.sub Value.Int_64.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Numerics.Int.sub Numerics.Int.zero n)
+  | NegOp, Int8Lit n -> Int8Lit (Numerics.Int_8.sub Numerics.Int_8.zero n)
+  | NegOp, Int16Lit n -> Int16Lit (Numerics.Int_16.sub Numerics.Int_16.zero n)
+  | NegOp, Int32Lit n -> Int32Lit (Numerics.Int_32.sub Numerics.Int_32.zero n)
+  | NegOp, Int64Lit n -> Int64Lit (Numerics.Int_64.sub Numerics.Int_64.zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
@@ -70,8 +71,20 @@ and exp' at note = function
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
-  | S.ObjE (s, es) ->
-    obj at s None es note.Note.typ
+  | S.DoOptE e ->
+    I.LabelE ("!", note.Note.typ, optE (exp e))
+  | S.BangE e ->
+    let ty = note.Note.typ in
+    let v = fresh_var "v" ty in
+    (switch_optE (exp e)
+      (* case null : *)
+      (breakE "!" (nullE()))
+      (* case ? v : *)
+      (varP v) (varE v) ty).it
+  | S.ObjBlockE (s, dfs) ->
+    obj_block at s None dfs note.Note.typ
+  | S.ObjE efs ->
+    obj note.Note.typ efs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -104,10 +117,19 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
-    | ["num";"conv";s1;s2] ->
+    | ["num"; "conv"; s1; s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
-      I.PrimE (I.NumConvPrim (p1, p2), [exp e])
+      I.PrimE (I.NumConvTrapPrim (p1, p2), [exp e])
+    | _ -> assert false
+    end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
+    when Lib.String.chop_prefix "num_wrap" p <> None ->
+    begin match String.split_on_char '_' p with
+    | ["num"; "wrap"; s1; s2] ->
+      let p1 = Type.prim s1 in
+      let p2 = Type.prim s2 in
+      I.PrimE (I.NumConvWrapPrim (p1, p2), [exp e])
     | _ -> assert false
     end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
@@ -148,6 +170,11 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesAcceptPrim, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesAdd";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
+  (* Certified data *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
+    I.PrimE (I.SetCertifiedData, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
+    I.PrimE (I.GetCertificate, [])
   (* Other *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
@@ -183,6 +210,10 @@ and exp' at note = function
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
+  | S.IgnoreE e ->
+    I.BlockE ([
+      { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
+        at = e.at; note = ()}], unitE)
 
 and url e at =
     (* Set position explicitly *)
@@ -208,14 +239,14 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj at s self_id es obj_typ =
+and obj_block at s self_id dfs obj_typ =
   match s.it with
   | T.Object | T.Module ->
-    build_obj at s.it self_id es obj_typ
-  | T.Actor -> build_actor at self_id es obj_typ
+    build_obj at s.it self_id dfs obj_typ
+  | T.Actor -> build_actor at self_id dfs obj_typ
   | T.Memory -> assert false
 
-and build_field {T.lab; T.typ} =
+and build_field {T.lab; T.typ;_} =
   { it = { I.name = lab
          ; I.var = lab
          }
@@ -227,7 +258,7 @@ and build_fields obj_typ =
     match obj_typ with
     | T.Obj (_, fields) ->
       (* TBR: do we need to sort val_fields?*)
-      let val_fields = List.filter (fun {T.lab;T.typ} -> not (T.is_typ typ)) fields in
+      let val_fields = List.filter (fun {T.lab; T.typ; _} -> not (T.is_typ typ)) fields in
       List.map build_field val_fields
     | _ -> assert false
 
@@ -271,14 +302,14 @@ and build_actor at self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t; depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let ds =
-    varD (id_of_var state) (T.Opt ty) (optE (primE (I.ICStableRead ty) []))
+    varD state (optE (primE (I.ICStableRead ty) []))
     ::
     nary_funcD get_state []
       (let v = fresh_var "v" ty in
@@ -329,7 +360,7 @@ and stabilize stab_opt d =
     ([(i, t)],
      fun get_state ->
      let v = fresh_var i t in
-     varD i t
+     varD (var i (T.Mut t))
        (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
          e
          (varP v) (varE v)
@@ -347,14 +378,34 @@ and stabilize stab_opt d =
   | (S.Stable, I.LetD _) ->
     assert false
 
-and build_obj at s self_id es obj_typ =
+and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
     | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
-  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
+  in I.BlockE (decs (List.map (fun df -> df.it.S.dec) dfs) @ ret_ds, ret_o)
+
+and exp_field ef =
+  let S.{mut; id; exp = e} = ef.it in
+  let typ = e.note.S.note_typ in
+  match mut.it with
+  | S.Var ->
+    let id' = fresh_var id.it (T.Mut typ) in
+    let d = varD id' (exp e) in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
+    (d, f)
+  | S.Const ->
+    let id' = fresh_var id.it typ in
+    let d = letD id' (exp e) in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    (d, f)
+
+and obj obj_typ efs =
+  let (ds, fs) = List.map exp_field efs |> List.split in
+  let obj_e = newObjE T.Object fs obj_typ in
+  I.BlockE(ds, obj_e)
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -400,6 +451,7 @@ and blob_dotE proj e =
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
     | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
+    | "vals" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
     |  _ -> assert false
 
 and text_dotE proj e =
@@ -426,7 +478,6 @@ and block force_unit ds =
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
-  | _ , S.IgnoreD _ (* redundant, but explicit *)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -439,7 +490,6 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
   | S.ExpD e -> (expD (exp e)).it
-  | S.IgnoreD e -> I.LetD ({ it = I.WildP; at = e.at; note = T.Any}, exp e)
   | S.LetD (p, e) ->
     let p' = pat p in
     let e' = exp e in
@@ -451,7 +501,7 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, es) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -478,13 +528,13 @@ and dec' at n d = match d with
         let (_, obj_typ) = T.as_async rng_typ in
         let c = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE (typ_arg c T.Scope T.scope_bound)
-          (wrap { it = obj at s (Some self_id) es (T.promote obj_typ);
+          (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
       else
        wrap
-        { it = obj at s (Some self_id) es rng_typ;
+        { it = obj_block at s (Some self_id) dfs rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
@@ -665,17 +715,17 @@ let actor_class_mod_exp id class_typ func =
           at = no_region;
           note = fun_typ }]
        (T.Obj(T.Module, List.sort T.compare_field [
-          { T.lab = id; T.typ = T.Typ class_con };
-          { T.lab = id; T.typ = fun_typ }])))
+          { T.lab = id; T.typ = T.Typ class_con; depr = None };
+          { T.lab = id; T.typ = fun_typ; depr = None }])))
 
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
-  let f = lib.note in
-  let (_, cub) = lib.it in
-  let id = match cub.it with
+  let f = lib.note.filename in
+  let { body; _ } = lib.it in
+  let id = match body.it with
     | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
     | _ -> assert false
   in
-  let fun_typ = T.normalize cub.note.S.note_typ in
+  let fun_typ = T.normalize body.note.S.note_typ in
   let s, cntrl, tbs, ts1, ts2 = T.as_func fun_typ in
   let cs = T.open_binds tbs in
   let c, _ = T.as_con (List.hd cs) in
@@ -698,11 +748,17 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   in
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
+  let available = fresh_var "available" T.nat64 in
+  let accepted = fresh_var "accepted" T.nat64 in
+  let cycles = var "@cycles" (T.Mut (T.nat64)) in
   let body =
     asyncE
       (typ_arg c' T.Scope T.scope_bound)
       (blockE [
          letD arg_blob (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
+         letD available (primE Ir.SystemCyclesAvailablePrim []);
+         letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
+         expD (assignE cycles (varE accepted));
          letD principal
            (awaitE (callE (varE create_actor_helper) cs'
              (tupE [wasm_blob;  varE arg_blob])))
@@ -721,7 +777,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
-  decs (prelude.it)
+  decs prelude.it
 
 let inject_decs extra_ds u =
   let open Ir in
@@ -800,7 +856,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     end
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
-  let (imports, body) = u.it in
+  let { imports; body; _ } = u.it in
   let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   inject_decs imports' body', initial_flavor
@@ -813,8 +869,8 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
    import_compiled_class (above) for compilation.
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
-  let (imports, body) = u.it in
-  let f = u.note in
+  let { imports; body; _ } = u.it in
+  let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
   let imports' = List.concat_map transform_import imports in

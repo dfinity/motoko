@@ -84,7 +84,7 @@ let quote ppf s =
   str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
   pp_close_box ppf ()
 let text ppf s =
-  if Escape.needs_quote s then quote ppf s else str ppf s
+  if Escape.needs_candid_quote s then quote ppf s else str ppf s
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;

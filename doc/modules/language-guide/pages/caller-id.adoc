@@ -16,9 +16,10 @@ The shared function can also declare an optional parameter of type `+{caller : P
 
 To illustrate how to access the caller of a shared function, consider the following:
 
+[source, motoko]
 ....
 shared(msg) func inc() : async () {
-  ... msg.caller ...
+  // ... msg.caller ...
 }
 ....
 
@@ -29,9 +30,10 @@ The calls to the `+inc()+` function do not change— at each call site, the call
 To access the caller of an actor class constructor, you use the same (optional) syntax on the actor class declaration.
 For example:
 
+[source, motoko]
 ....
 shared(msg) actor class Counter(init : Nat) {
-  ... msg.caller ...
+  // ... msg.caller ...
 }
 ....
 
@@ -56,4 +58,4 @@ include::../examples/Counters-caller-pat.mo[]
 NOTE: Simple actor declarations do not let you access their installer. If you need access to the installer of an actor, rewrite the actor declaration as a zero-argument actor class instead.
 
 Principals support equality, ordering, and hashing, so you can efficiently store principals in containers, for example, to maintain an allow or deny list.
-More operations on principals are available in link:../base-libraries/result{outfilesuffix}[Principal] base library.
+More operations on principals are available in link:../base-libraries/principal{outfilesuffix}[Principal] base library.

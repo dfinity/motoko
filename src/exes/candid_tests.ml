@@ -59,40 +59,54 @@ let print_type = function
 
 type expected_behaviour = ShouldPass | ShouldTrap
 
+exception TextualParseError of (string * Diag.messages)
+
 (* Turning a test case into a motoko program *)
 let mo_of_test tenv test : (string * expected_behaviour, string) result =
-  let deser ts x =
-    "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
-    "\"" ^ Value.Blob.escape x ^ "\"" in
+  let deser ts = function
+    | BinaryInput x ->
+      "(prim \"deserialize\" : Blob -> " ^ print_type ts ^ ") " ^
+      "\"" ^ Value.Blob.escape x ^ "\""
+    | TextualInput x ->
+      match Pipeline.parse_values x with
+      | Error msgs -> raise (TextualParseError (x, msgs))
+      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ts ^ " : " ^ print_type ts ^ ")"
+  in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
-  let ignore e = "ignore (" ^ e ^ ")\n" in
+  let ignore ts e =
+    let open Type in
+    if sub (seq ts) unit then e (* avoid warnign about redundant ignore *)
+    else "ignore (" ^ e ^ ")\n" in
 
   try
     let defs =
+      "import Prim \"mo:prim\";" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
         "type " ^ n ^ " = " ^ Type.string_of_typ mo_typ ^ ";\n"
       ) (Typing.Env.bindings tenv)) ^ "\n" in
 
-    let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
+    let ts = Idl_to_mo.check_typs tenv (test.it.ttyp) in
     match test.it.assertion with
-    | ParsesAs (true, BinaryInput i)
-    | ParsesEqual (_, BinaryInput i, TextualInput _)
-    | ParsesEqual (_, TextualInput _, BinaryInput  i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
-    | ParsesAs (false, BinaryInput i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
-    | ParsesEqual (true, BinaryInput i1, BinaryInput i2)
-    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
-    | ParsesEqual (false, BinaryInput i1, BinaryInput i2)
-    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
     | ParsesAs (_, TextualInput _)
     | ParsesEqual (_, TextualInput _, TextualInput _)
-    -> Error "all-textual test case"
+    -> Error "all-textual test case" (* not interesting to us *)
+    | ParsesAs (true, i)
+    -> Ok (defs ^ ignore ts (deser ts i), ShouldPass)
+    | ParsesAs (false, i)
+    -> Ok (defs ^ ignore ts (deser ts i), ShouldTrap)
+    | ParsesEqual (true, i1, i2)
+    -> Ok (defs ^ equal (deser ts i1) (deser ts i2), ShouldPass)
+    | ParsesEqual (false, i1, i2)
+    -> Ok (defs ^ not_equal (deser ts i1) (deser ts i2), ShouldPass)
   with
-    Idl_to_mo.UnsupportedCandidFeature what ->
-      Error (what ^ " not supported")
+    | Exception.UnsupportedCandidFeature what ->
+      Error what
+    | TextualParseError (x, msgs) ->
+      Error (Printf.sprintf "Could not parse %S:\n%s" x
+          (String.concat ", " (List.map Diag.string_of_message msgs))
+      )
 
 type result = Ok | Fail | Timeout
 
@@ -243,7 +257,7 @@ let () =
             (* Printf.printf "\n%s" src *)
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
-            match run_cmd "moc -wasi-system-api tmp.mo -o tmp.wasm" with
+            match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
             | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr)
             | (Ok, _, _) ->
               match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with

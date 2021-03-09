@@ -1,8 +1,8 @@
 { system ? builtins.currentSystem }:
 let
   sourcesnix = builtins.fetchurl {
-    url = https://raw.githubusercontent.com/nmattia/niv/v0.2.18/nix/sources.nix;
-    sha256 = "0vsjk1dj88kb40inlhb9xgfhm5dfhb6g3vyca62glk056sn4504l";
+    url = https://raw.githubusercontent.com/nmattia/niv/v0.2.19/nix/sources.nix;
+    sha256 = "1n92ka2rkdiib6ian6jh2b7fwvklnnwlp5yy5bv6ywm7m1y5hyfl";
   };
   nixpkgs_src = (import sourcesnix { sourcesFile = ./sources.json; inherit pkgs; }).nixpkgs;
 
@@ -13,6 +13,11 @@ let
         # add nix/sources.json
         (self: super: {
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
+        })
+
+	# add a newer version of niv
+        (self: super: {
+           niv = (import self.sources.niv { pkgs = super; }).niv;
         })
 
         # Selecting the ocaml version
@@ -30,7 +35,6 @@ let
                 inherit (self) ocamlPackages;
               };
             };
-            xargo = self.callPackage ./xargo.nix {};
           }
         )
 
@@ -40,7 +44,12 @@ let
           rust-channel = moz_overlay.rustChannelOf { date = "2020-07-22"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
-            targets = [ "wasm32-unknown-unknown" "wasm32-unknown-emscripten" ];
+            targets = [
+	       "wasm32-unknown-unknown"
+	       "wasm32-unknown-emscripten"
+	       "wasm32-wasi"
+	       "i686-unknown-linux-gnu"
+	    ];
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
@@ -48,7 +57,11 @@ let
             rustc = rustc-nightly;
             cargo = cargo-nightly;
           };
+          xargo = self.callPackage ./xargo.nix {};
         })
+
+	# wasm-profiler
+	(self: super: import ./wasm-profiler.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {

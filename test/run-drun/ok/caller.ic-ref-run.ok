@@ -1,6 +1,6 @@
 → update create_canister()
-← replied: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → update c1()
 ← replied: ()
@@ -13,9 +13,9 @@
 → query c6()
 ← replied: ()
 → update c7()
-← replied: (service "w7x7r-cok77-xa")
+← replied: (principal "w7x7r-cok77-xa")
 → query c8()
-← replied: (service "cvccv-qqaaq-aaaaa-aaaaa-c")
+← replied: (principal "cvccv-qqaaq-aaaaa-aaaaa-c")
 → query c9()
 ← replied: ((3085957257 : nat32))
 → query c10()

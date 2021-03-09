@@ -34,6 +34,7 @@ Concretely, you use the following syntax to declare stable or flexible variables
 The following is a simple example of how to declare a stable counter
 that can be upgraded while preserving the counter's value:
 
+[source, motoko]
 ....
 include::../examples/StableCounter.mo[]
 ....
@@ -41,6 +42,7 @@ include::../examples/StableCounter.mo[]
 ////
 The representation for stable variable signatures looks like a {proglang} actor type:
 
+[source.no-repl, motoko]
 ....
 actor {
   stable x : Nat;
@@ -116,4 +118,4 @@ The `+postupgrade+` system method resets `+entries+` to the empty array after `+
 
 == Upgrading the compiled program
 
-After you have deployed a {proglang} program with the appropriate `+stable+` variables or `+preupgrade+` and +`postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade the deployed code. For information about upgrading the deployed program, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister].
+After you have deployed a {proglang} program with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade the deployed code. For information about upgrading the deployed program, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister].

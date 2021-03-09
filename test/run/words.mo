@@ -17,7 +17,7 @@ func checkpointIndia() {};
 func checkpointJuliett() {};
 
 // Word64 operations
-{
+do {
     func printW64ln(w : Word64) {
       Prim.debugPrintNat(Prim.word64ToNat w);
     };
@@ -35,19 +35,19 @@ func checkpointJuliett() {};
     printW64ln(+c);
     printW64ln(-c);
     printW64ln(^c);
-    printW64ln(a + c);
-    printW64ln(c - a);
+    printW64ln(a +% c);
+    printW64ln(c -% a);
 
 // CHECK: call $checkpointAlpha
     checkpointAlpha();
 // This is a native Wasm i64 multiplication, there should be no shift involved!
 // CHECK-NOT: i64.shr_u
 // CHECK: call $printW64ln
-    printW64ln(a * b);
+    printW64ln(a *% b);
 
     printW64ln(a / b);
     printW64ln(c % a);
-    printW64ln(a ** 2);
+    printW64ln(a **% 2);
 
     printW64ln(a & c);
     printW64ln(a | c);
@@ -66,16 +66,16 @@ func checkpointJuliett() {};
     printBit(Prim.btstWord64(e, 63 : Word64)); // 20000 = 0x0000000000004e20 (result = false)
     printBit(Prim.btstWord64(e, 69 : Word64)); // 20000 = 0x0000000000004e20 (mod 64, result = true)
 
-    assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
-    assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));
-    assert (3 : Word64 ** (14 : Word64) == (4782969 : Word64));
-    assert (3 : Word64 ** (20 : Word64) == (3486784401 : Word64));
+    assert (3 : Word64 **% (4 : Word64) == (81 : Word64));
+    assert (3 : Word64 **% (7 : Word64) == (2187 : Word64));
+    assert (3 : Word64 **% (14 : Word64) == (4782969 : Word64));
+    assert (3 : Word64 **% (20 : Word64) == (3486784401 : Word64));
 };
 
 
 
 // Word32 operations
-{
+do {
     func printW32ln(w : Word32) {
       Prim.debugPrintNat(Prim.word32ToNat w);
     };
@@ -95,18 +95,18 @@ func checkpointJuliett() {};
     printW32ln(+c);
     printW32ln(-c);
     printW32ln(^c);
-    printW32ln(a + c);
-    printW32ln(c - a);
+    printW32ln(a +% c);
+    printW32ln(c -% a);
 
 // CHECK: call $checkpointCharlie
     checkpointCharlie();
 // This is a native Wasm i32 multiplication, there should be no shift involved!
 // CHECK-NOT: i32.shr_u
 // CHECK: call $printW32ln
-    printW32ln(a * b);
+    printW32ln(a *% b);
     printW32ln(a / b);
     printW32ln(c % a);
-    printW32ln(a ** 2);
+    printW32ln(a **% 2);
 
     printW32ln(a & c);
     printW32ln(a | c);
@@ -125,14 +125,14 @@ func checkpointJuliett() {};
     printBit(Prim.btstWord32(e, 31 : Word32)); // 20000 = 0x00004e20 (result = false)
     printBit(Prim.btstWord32(e, 37 : Word32)); // 20000 = 0x00004e20 (mod 32, result = true)
 
-    assert (3 : Word32 ** (4 : Word32) == (81 : Word32));
-    assert (3 : Word32 ** (7 : Word32) == (2187 : Word32));
-    assert (3 : Word32 ** (14 : Word32) == (4782969 : Word32));
-    assert (3 : Word32 ** (20 : Word32) == (3486784401 : Word32));
+    assert (3 : Word32 **% (4 : Word32) == (81 : Word32));
+    assert (3 : Word32 **% (7 : Word32) == (2187 : Word32));
+    assert (3 : Word32 **% (14 : Word32) == (4782969 : Word32));
+    assert (3 : Word32 **% (20 : Word32) == (3486784401 : Word32));
 };
 
 // Word16 operations
-{
+do {
     func printW16ln(w : Word16) {
       Prim.debugPrintNat(Prim.word16ToNat w);
     };
@@ -147,8 +147,8 @@ func checkpointJuliett() {};
     printW16ln(+c);
     printW16ln(-c);
     printW16ln(^c);
-    printW16ln(a + c);
-    printW16ln(c - a);
+    printW16ln(a +% c);
+    printW16ln(c -% a);
 
 // CHECK: call $checkpointDelta
     checkpointDelta();
@@ -161,10 +161,10 @@ func checkpointJuliett() {};
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
 // CHECK-NEXT: call $printW16ln
-    printW16ln(a * b);
+    printW16ln(a *% b);
     printW16ln(a / b);
     printW16ln(c % a);
-    printW16ln(a ** 2);
+    printW16ln(a **% 2);
 
     printW16ln(a & c);
     printW16ln(a | c);
@@ -212,14 +212,14 @@ func checkpointJuliett() {};
     printBit(Prim.btstWord16(e, 21 : Word16)); // 20000 = 0x4e20 (mod 16, result = true)
 
 
-    assert (3 : Word16 ** (0 : Word16) == (1 : Word16));
-    assert (3 : Word16 ** (1 : Word16) == (3 : Word16));
-    assert (3 : Word16 ** (4 : Word16) == (81 : Word16));
-    assert (3 : Word16 ** (7 : Word16) == (2187 : Word16));
+    assert (3 : Word16 **% (0 : Word16) == (1 : Word16));
+    assert (3 : Word16 **% (1 : Word16) == (3 : Word16));
+    assert (3 : Word16 **% (4 : Word16) == (81 : Word16));
+    assert (3 : Word16 **% (7 : Word16) == (2187 : Word16));
 };
 
 // Word8 operations
-{
+do {
     func printW8ln(w : Word8) {
       Prim.debugPrintNat(Prim.word8ToNat w);
     };
@@ -234,8 +234,8 @@ func checkpointJuliett() {};
     printW8ln(+c);
     printW8ln(-c);
     printW8ln(^c);
-    printW8ln(a + c);
-    printW8ln(c - a);
+    printW8ln(a +% c);
+    printW8ln(c -% a);
 // CHECK: call $checkpointHotel
     checkpointHotel();
 // this is the value of b
@@ -245,10 +245,10 @@ func checkpointJuliett() {};
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
 // CHECK-NEXT: call $printW8ln
-    printW8ln(a * b);
+    printW8ln(a *% b);
     printW8ln(a / b);
     printW8ln(c % a);
-    printW8ln(a ** 2);
+    printW8ln(a **% 2);
 
     printW8ln(a & c);
     printW8ln(a | c);
@@ -292,10 +292,10 @@ func checkpointJuliett() {};
     printBit(Prim.btstWord8(e, 5 : Word8)); // 200 = 0xC8 (result = false)
     printBit(Prim.btstWord8(e, 11 : Word8)); // 200 = 0xC8 (mod 8, result = true)
 
-    assert (3 : Word8 ** (0 : Word8) == (1 : Word8));
-    assert (3 : Word8 ** (3 : Word8) == (27 : Word8));
-    assert (3 : Word8 ** (4 : Word8) == (81 : Word8));
-    assert (3 : Word8 ** (5 : Word8) == (243 : Word8));
+    assert (3 : Word8 **% (0 : Word8) == (1 : Word8));
+    assert (3 : Word8 **% (3 : Word8) == (27 : Word8));
+    assert (3 : Word8 **% (4 : Word8) == (81 : Word8));
+    assert (3 : Word8 **% (5 : Word8) == (243 : Word8));
 };
 
 

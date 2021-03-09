@@ -130,7 +130,7 @@ module {
   reverse the list; tail recursive
   */
   public let rev : <T> List<T> -> List<T> =
-    func<T>(l : List<T>) : List<T> = {
+    func<T>(l : List<T>) : List<T> {
       func rec(l : List<T>, r : List<T>) : List<T> {
         switch l {
               case null     { r };
@@ -158,7 +158,7 @@ module {
   list.
   */
   public let map : <T,S>(List<T>, f : T -> S) -> List<S> =
-    func<T,S>(l : List<T>, f:T -> S) : List<S> = {
+    func<T,S>(l : List<T>, f:T -> S) : List<S> {
       switch l {
             case null     { null };
             case (?(h,t)) { ?(f(h),map<T,S>(t,f)) };
@@ -170,7 +170,7 @@ module {
   the given function (often called the _predicate_) is returns true.
   */
   public let filter : <T>(List<T>, p : T -> Bool) -> List<T> =
-    func<T>(l : List<T>, f:T -> Bool) : List<T> = {
+    func<T>(l : List<T>, f:T -> Bool) : List<T> {
       switch l {
         case null { null };
         case (?(h,t)) {
@@ -190,7 +190,7 @@ module {
   Also known as `partition`.
   */
   public let split : <T>(List<T>, f : T -> Bool) -> (List<T>, List<T>) =
-    func<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
+    func<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) {
       switch l {
         case null { (null, null) };
         case (?(h,t)) {
@@ -210,7 +210,7 @@ module {
   in a new list.
   */
   public let mapFilter : <T,S>(List<T>, f : T -> ?S) -> List<S> =
-    func<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
+    func<T,S>(l : List<T>, f:T -> ?S) : List<S> {
       switch l {
         case null { null };
         case (?(h,t)) {
@@ -226,7 +226,7 @@ module {
   Appends two lists.
   */
   public let append : <T>(List<T>, List<T>) -> List<T> =
-    func <T>(l : List<T>, m : List<T>) : List<T> = {
+    func <T>(l : List<T>, m : List<T>) : List<T> {
       func rec(l : List<T>) : List<T> {
         switch l {
         case null     { m };
@@ -241,7 +241,7 @@ module {
   */
   public let concat : <T>(List<List<T>>) -> List<T> =
     // tail recursive, but requires "two passes"
-    func<T>(l : List<List<T>>) : List<T> = {
+    func<T>(l : List<List<T>>) : List<T> {
       // 1/2: fold from left to right, reverse-appending the sublists...
       let r = foldLeft<List<T>, List<T>>(l, null, func(a,b) { revAppend<T>(a,b) });
       // 2/2: ...re-reverse the elements, to their original order:
@@ -262,7 +262,7 @@ module {
   full input list.
   */
   public let take : <T>(List<T>, n:Nat) -> List<T> =
-    func<T>(l : List<T>, n:Nat) : List<T> = {
+    func<T>(l : List<T>, n:Nat) : List<T> {
       switch (l, n) {
       case (_, 0) { null };
       case (null,_) { null };
@@ -274,7 +274,7 @@ module {
   "drops" an `n` element prefix from the given list.
   */
   public let drop : <T>(List<T>, n:Nat) -> List<T> =
-    func<T>(l : List<T>, n:Nat) : List<T> = {
+    func<T>(l : List<T>, n:Nat) : List<T> {
       switch (l, n) {
         case (l_,     0) { l_ };
         case (null,   _) { null };
@@ -286,7 +286,7 @@ module {
   fold list left-to-right using function `f`.
   */
   public let foldLeft : <T,S>(List<T>, S, f : (T,S) -> S) -> S =
-    func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+    func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S {
       switch l {
         case null     { a };
         case (?(h,t)) { foldLeft<T,S>(t, f(h,a), f) };
@@ -297,7 +297,7 @@ module {
   fold the list right-to-left using function `f`.
   */
   public let foldRight : <T,S>(List<T>, S, f : (T,S) -> S) -> S =
-    func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+    func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S {
       switch l {
         case null     { a };
         case (?(h,t)) { f(h, foldRight<T,S>(t, a, f)) };
@@ -308,7 +308,7 @@ module {
   Returns the first element for which given predicate `f` is true, if such an element exists.
   */
   public let find : <T>(l: List<T>, f : T -> Bool) -> ?T =
-    func<T>(l: List<T>, f:T -> Bool) : ?T = {
+    func<T>(l: List<T>, f:T -> Bool) : ?T {
       switch l {
         case null     { null };
         case (?(h,t)) { if (f(h)) { ?h } else { find<T>(t, f) } };
@@ -319,7 +319,7 @@ module {
   Returns true if there exists list element for which given predicate `f` is true
   */
   public let exists : <T>(List<T>, f : T -> Bool) -> Bool =
-    func<T>(l: List<T>, f:T -> Bool) : Bool = {
+    func<T>(l: List<T>, f:T -> Bool) : Bool {
       switch l {
         case null     { false };
         case (?(h,t)) { f(h) or exists<T>(t, f)};
@@ -330,7 +330,7 @@ module {
   Returns true if for all list element the given predicate `f` is true
   */
   public let all : <T>(List<T>, f : T -> Bool) -> Bool =
-    func<T>(l: List<T>, f:T -> Bool) : Bool = {
+    func<T>(l: List<T>, f:T -> Bool) : Bool {
       switch l {
         case null     { true };
         case (?(h,t)) { f(h) and all<T>(t, f) };

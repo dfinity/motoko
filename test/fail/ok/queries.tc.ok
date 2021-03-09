@@ -1,5 +1,5 @@
-queries.mo:13.5-13.20: type error, misplaced await
-queries.mo:17.5-17.13: type error, send capability required, but not available (need an enclosing async expression or function body)
-queries.mo:21.13-21.22: type error, send capability required, but not available (need an enclosing async expression or function body)
-queries.mo:22.5-22.20: type error, misplaced await
-queries.mo:26.5-26.14: type error, misplaced async expression; try enclosing in an async function
+queries.mo:13.5-13.20: type error [M0038], misplaced await
+queries.mo:17.5-17.13: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
+queries.mo:21.13-21.22: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
+queries.mo:22.5-22.20: type error [M0038], misplaced await
+queries.mo:26.5-26.14: type error [M0037], misplaced async expression; try enclosing in an async function

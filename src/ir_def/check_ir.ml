@@ -83,17 +83,14 @@ let initial_env flavor : env =
 
 exception CheckFailed of string
 
-let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
+let type_error at : string -> Diag.message = Diag.error_message at "M0000" "IR type"
 
 let error env at fmt =
     Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
 
-let check env at p fmt =
-  if p
-  then Printf.ikfprintf (fun () -> ()) () fmt
-  else error env at fmt
-
-
+let check env at p s =
+  if not p then
+    error env at "%s" s
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 
@@ -121,16 +118,17 @@ let disjoint_union env at fmt env1 env2 =
 (* Types *)
 
 let check_sub env at t1 t2 =
-  check env at (T.sub t1 t2) "subtype violation:\n  %s\n  %s\n"
-    (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
+  if not (T.sub t1 t2) then
+    error env at "subtype violation:\n  %s\n  %s\n"
+      (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
 let check_shared env at t =
-  check env at (T.shared t)
-    "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
+  if not (T.shared t) then
+    error env at "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
 let check_concrete env at t =
-  check env at (T.concrete t)
-    "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
+  if not (T.concrete t) then
+    error env at "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
 let has_prim_eq t =
   (* Which types have primitive equality implemented in the backend? *)
@@ -169,8 +167,8 @@ let rec check_typ env typ : unit =
         check_con env c;
         check_typ_bounds env tbs typs no_region
       | T.Abs (tbs, _) ->
-        check env no_region (T.ConSet.mem c env.cons) "free type constructor %s "
-          (T.string_of_typ typ);
+        if not (T.ConSet.mem c env.cons) then
+          error env no_region "free type constructor %s " (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
     end
   | T.Any -> ()
@@ -194,28 +192,28 @@ let rec check_typ env typ : unit =
       | T.Returns ->
         check env no_region (sort = T.Shared T.Write)
           "one-shot query function pointless";
-        check env no_region (ts2 = [])
-          "one-shot function cannot have non-unit return types:\n  %s"
-          (T.string_of_typ_expand (T.seq ts2));
+        if not (ts2 = []) then
+          error env no_region "one-shot function cannot have non-unit return types:\n  %s"
+            (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
         check env no_region (binds <> [])
           "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
-        check env no_region (sort <> T.Local)
-          "promising function cannot be local:\n  %s" (T.string_of_typ typ);
-        check env no_region (List.for_all T.shared ts2)
-          "message result is not sharable:\n  %s" (T.string_of_typ typ)
+        if not (sort <> T.Local) then
+          error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ typ);
+        if not (List.for_all T.shared ts2) then
+          error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
-        check env no_region (sort <> T.Local)
-          "replying function cannot be local:\n  %s" (T.string_of_typ typ);
-        check env no_region (List.for_all T.shared ts2)
-          "message result is not sharable:\n  %s" (T.string_of_typ typ)
-    end else
-        check env no_region (control = T.Returns)
-          "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
+        if not (sort <> T.Local) then
+          error env no_region"replying function cannot be local:\n  %s" (T.string_of_typ typ);
+        if not (List.for_all T.shared ts2) then
+          error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
+      end else
+     if not (control = T.Returns) then
+       error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
   | T.Async (typ1, typ2) ->
@@ -433,7 +431,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | OptPrim, [exp1] ->
       T.Opt (typ exp1) <: t
     | TagPrim i, [exp1] ->
-      T.Variant [{T.lab = i; typ = typ exp1}] <: t
+      T.Variant [{T.lab = i; typ = typ exp1; depr = None}] <: t
     | ActorDotPrim n, [exp1]
     | DotPrim n, [exp1] ->
       begin
@@ -556,8 +554,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (store_typ t1) "Invalid type argument to ICStableWrite";
       typ exp1 <: t1;
       T.unit <: t
-    | NumConvPrim (p1, p2), [e] ->
-      (* we could check if this conversion is supported *)
+    | NumConvWrapPrim (p1, p2), [e] ->
+      (* we should check if this conversion is supported *)
+      typ e <: T.Prim p1;
+      T.Prim p2 <: t
+    | NumConvTrapPrim (p1, p2), [e] ->
+      (* we should check if this conversion is supported *)
       typ e <: T.Prim p1;
       T.Prim p2 <: t
     | CastPrim (t1, t2), [e] ->
@@ -593,6 +595,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat64;
       T.unit <: t
+    (* Certified Data *)
+    | SetCertifiedData, [e1] ->
+      typ e1 <: T.blob;
+      T.unit <: t
+    | GetCertificate, [] ->
+      T.Opt T.blob <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -740,7 +748,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* check const annotation *)
   (* see ir_passes/const.ml for an explanation *)
   let check_var ctxt v =
-    check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
+    if not (T.Env.find v env.vals).const then
+      error env exp.at "const %s with non-const variable %s" ctxt v in
   if exp.note.Note.const
   then begin
     match exp.it with
@@ -840,8 +849,8 @@ and check_args env args =
   let rec go ve = function
     | [] -> ve
     | a::as_ ->
-      check env a.at (not (T.Env.mem a.it ve))
-        "duplicate binding for %s in argument list" a.it;
+      if (T.Env.mem a.it ve) then
+        error env a.at "duplicate binding for %s in argument list" a.it;
       check_typ env a.note;
       let val_info = {typ = a.note; const = false; loc_known = env.lvl = TopLvl } in
       let env' = T.Env.add a.it val_info ve in
@@ -857,8 +866,8 @@ and gather_pat env const ve0 pat : val_env =
     | LitP _ ->
       ve
     | VarP id ->
-      check env pat.at (not (T.Env.mem id ve0))
-        "duplicate binding for %s in block" id;
+      if T.Env.mem id ve0 then
+        error env pat.at "duplicate binding for %s in block" id;
       let val_info = {typ = pat.note; const; loc_known = env.lvl = TopLvl} in
       T.Env.add id val_info ve (*TBR*)
     | TupP pats ->
@@ -929,7 +938,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
-  let tf = T.{lab; typ=pf.it.pat.note} in
+  let tf = T.{lab; typ = pf.it.pat.note; depr = None} in
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
@@ -962,7 +971,7 @@ and type_exp_field env s f : T.field =
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
       "public actor field must have shared function type";
   end;
-  T.{lab = name; typ = t}
+  T.{lab = name; typ = t; depr = None}
 
 (* Declarations *)
 

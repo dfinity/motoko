@@ -1,9 +1,11 @@
 (* A common data type for diagnostic messages *)
 
 type severity = Warning | Error | Info
+type error_code = string
 
 type message = {
   sev : severity;
+  code : error_code;
   at : Source.region;
   cat : string;
   text : string
@@ -11,10 +13,11 @@ type message = {
 
 type messages = message list
 
-val fatal_error : Source.region -> string -> message
+val info_message : Source.region -> string -> string -> message
+val warning_message : Source.region -> error_code -> string -> string -> message
+val error_message : Source.region -> error_code -> string -> string -> message
 
 val string_of_message : message -> string
-val print_message : message -> unit
 val print_messages : messages -> unit
 
 (*
@@ -23,6 +26,10 @@ Both success and failure can come with messages)
 *)
 
 type 'a result = ('a * messages, messages) Stdlib.result
+
+val info : Source.region -> string -> string -> unit result
+val warn : Source.region -> error_code -> string -> string -> unit result
+val error : Source.region -> error_code -> string -> string -> 'a result
 
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result
@@ -33,9 +40,6 @@ val fold : ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result
 val flush_messages : 'a result -> 'a option
 val finally : (unit -> unit) -> 'a result -> 'a result
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
-
-val warn : Source.region -> string -> string -> unit result
-val error : Source.region -> string -> string -> 'a result
 
 module Syntax : sig
   val (let*) : 'a result -> ('a -> 'b result) -> 'b result

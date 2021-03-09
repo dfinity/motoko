@@ -1,1 +1,1 @@
-await-in-actor.mo:3.13-3.30: type error, misplaced await
+await-in-actor.mo:3.13-3.30: type error [M0038], misplaced await

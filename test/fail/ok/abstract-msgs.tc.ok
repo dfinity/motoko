@@ -1,19 +1,19 @@
-abstract-msgs.mo:2.28-2.37: type error, shared function has non-shared parameter type
+abstract-msgs.mo:2.31-2.40: type error [M0031], shared function has non-shared parameter type
   A/9
-abstract-msgs.mo:3.33-3.35: type error, shared function must have syntactic return type `()` or `async <typ>`
-abstract-msgs.mo:5.20-5.29: type error, shared function has non-shared parameter type
+abstract-msgs.mo:3.36-3.38: type error [M0035], shared function must have syntactic return type '()' or 'async <typ>'
+abstract-msgs.mo:5.23-5.32: type error [M0031], shared function has non-shared parameter type
   A/11
-abstract-msgs.mo:6.25-6.33: type error, shared function has non-shared return type
+abstract-msgs.mo:6.28-6.36: type error [M0032], shared function has non-shared return type
   ?A/11
-abstract-msgs.mo:10.34-10.35: type error, shared function has non-shared parameter type
+abstract-msgs.mo:10.37-10.38: type error [M0031], shared function has non-shared parameter type
   A/12
-abstract-msgs.mo:11.27-11.47: type error, shared function has non-shared return type
+abstract-msgs.mo:11.30-11.50: type error [M0032], shared function has non-shared return type
   A/13
-abstract-msgs.mo:14.30-14.31: type error, shared function has non-shared parameter type
+abstract-msgs.mo:14.33-14.34: type error [M0031], shared function has non-shared parameter type
   A/14
-abstract-msgs.mo:15.13-15.43: type error, shared function has non-shared return type
+abstract-msgs.mo:15.16-15.46: type error [M0032], shared function has non-shared return type
   A/15
-abstract-msgs.mo:16.31-16.32: type error, shared function has non-shared parameter type
+abstract-msgs.mo:16.34-16.35: type error [M0031], shared function has non-shared parameter type
   A/16
-abstract-msgs.mo:17.24-17.44: type error, shared function has non-shared return type
+abstract-msgs.mo:17.27-17.47: type error [M0032], shared function has non-shared return type
   A/17

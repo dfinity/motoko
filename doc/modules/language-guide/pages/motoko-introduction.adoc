@@ -43,6 +43,7 @@ In the case of {proglang}, each communicating component is an actor.
 
 As an example of _using_ actors, perhaps as an actor ourselves, consider this three-line program:
 
+[source.no-repl, motoko]
 ....
 let result1 = service1.computeAnswer(params);
 let result2 = service2.computeAnswer(params);

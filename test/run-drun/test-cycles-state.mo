@@ -11,7 +11,10 @@ actor a {
  let print = Prim.debugPrint;
 
  public func go() : async () {
+  if (Cycles.balance() == (0 : Nat64))
+    await Cycles.provisional_top_up_actor(a, 3_000_000_000_000);
 
+  Cycles.add(2_000_000_000_000);
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");
@@ -26,20 +29,20 @@ actor a {
 
 //  print(debug_show(Cycles.balance()));
 
-  { // check cycles available
+  do { // check cycles available
     Cycles.add(1000_000);
     let cs = await wallet.available();
     assert (cs == (1000_000: Nat64));
     assert (Cycles.refunded() == (1000_000 : Nat64));
   };
-  {
+  do {
     // check cycles reset to zero on send
     let cs = await wallet.available();
     assert (cs == (0: Nat64));
     assert (Cycles.refunded() == (0 : Nat64));
   };
 
-  {
+  do {
     // check cycles additive to zero on send
     Cycles.add(1000_000);
     Cycles.add(2000_000);
@@ -73,8 +76,12 @@ actor a {
  public func credit() : async () {
    let b = Cycles.balance();
    let a = Cycles.available();
-   ignore Cycles.accept(a);
-   assert (Cycles.balance() == b + a);
+   let acc = Cycles.accept(a);
+   // print("balance before " # debug_show(b));
+   // print("available " # debug_show(a));
+   // print("accepted " # debug_show(acc));
+   // print("balalance after " # debug_show(Cycles.balance()));
+   assert (Cycles.balance() == b + acc);
  };
 
 

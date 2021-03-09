@@ -26,15 +26,51 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let dup_var x = VarE (x.it @@ x.at) @? x.at
+let warn_deprecated_obj category at =
+  Diag.add_msg (Option.get !msg_store)
+    (Diag.warning_message at "M0147" "syntax"
+      ("object syntax is deprecated in this position, use "
+      ^ (if category = `Exp then "'{ {...} }'" else "'({...})'")))
 
-let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
+let warn_deprecated_block at =
+  Diag.add_msg (Option.get !msg_store)
+    (Diag.warning_message at "M0148" "syntax"
+      "block syntax is deprecated in this position, use 'do { ... }'")
+
+
+(* Helpers *)
+
+let scope_bind x at =
+  { var = Type.scope_var x @@ at;
+    sort = Type.Scope @@ at;
+    bound = PrimT "Any" @! at
+  } @= at
+
+let ensure_scope_bind var tbs =
+  match tbs with
+  | tb::_ when tb.it.sort.it = Type.Scope -> tbs
+  | _ -> scope_bind var no_region :: tbs
+
+let ensure_async_typ t_opt =
+  match t_opt with
+  | None -> t_opt
+  | Some { it = AsyncT _; _} -> t_opt
+  | Some t -> Some (AsyncT(scopeT no_region, t) @! no_region)
+
+let funcT (sort, tbs, t1, t2) =
+  match sort.it, t2.it with
+  | Type.Local, AsyncT _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
+  | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
+  | _ -> FuncT(sort, tbs, t1, t2)
+
+
+let dup_var x = VarE (x.it @@ x.at) @? x.at
 
 let name_exp e =
   match e.it with
   | VarE x -> [], e, dup_var x
   | _ ->
-    let x = anon "val" e.at @@ e.at in
+    let x = anon_id "val" e.at @@ e.at in
     [LetD (VarP x @! x.at, e) @? e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
@@ -66,6 +102,13 @@ let annot_pat p t_opt =
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
+
+let rec normalize_let p e =
+    match p.it with
+    | AnnotP(p', t) -> p', AnnotE(e, t) @? p.at
+    | ParP p' -> normalize_let p' e
+    | _ -> (p, e)
+
 let let_or_exp named x e' at =
   if named
   then LetD(VarP(x) @! at, e' @? at) @? at
@@ -73,16 +116,47 @@ let let_or_exp named x e' at =
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
+let field_var_dec d =
+  match d.it with
+  | VarD(x, e) ->
+    { mut = Syntax.Var @@ no_region;
+      id = x;
+      exp = e; } @@ d.at
+
+  | _ -> assert false
+
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-     | ObjE (sort, _) ->
-       sort.it = Type.Module
-     | FuncE _ ->
-       true
-     | _ -> false)
+    | ObjBlockE (sort, _) ->
+      sort.it = Type.Module
+    | FuncE _ ->
+      true
+    | _ -> false
+    )
   | _ -> false
+
+
+let func_exp f s tbs p t_opt is_sugar e =
+  match s.it, t_opt, e with
+  | Type.Local, Some {it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Shared _, _, _ ->
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, e)
+  | _ ->
+    FuncE(f, s, tbs, p, t_opt, is_sugar, e)
+
+let desugar_func_body sp x t_opt (is_sugar, e) =
+  if not is_sugar then
+    false, e (* body declared as EQ e *)
+  else (* body declared as immediate block *)
+    match sp.it, t_opt with
+    | _, Some {it = AsyncT _; _} ->
+      true, asyncE (scope_bind x.it e.at) e
+    | Type.Shared _, (None | Some { it = TupT []; _}) ->
+      true, ignore_asyncE (scope_bind x.it e.at) e
+    | _, _ -> (true, e)
+
 
 let share_typ t =
   match t.it with
@@ -97,9 +171,9 @@ let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as sp), tbs, p,
     ((None | Some { it = TupT []; _ }) as t_opt), true, e) ->
-    funcE (x, {sp with it = Type.Shared (Type.Write, WildP @! sp.at)}, tbs, p, t_opt, true, ignoreAsync x e) @? e.at
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true (ignore_asyncE (scope_bind x e.at) e) @? e.at
   | FuncE (x, ({it = Type.Local; _} as sp), tbs, p, t_opt, s, e) ->
-    funcE (x, {sp with it = Type.Shared (Type.Write, WildP @! sp.at)}, tbs, p, t_opt, s, e) @? e.at
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s e @? e.at
   | _ -> e
 
 let share_dec d =
@@ -117,27 +191,21 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
-let share_expfield (ef : exp_field) =
-  if ef.it.vis.it = Public
-  then
-    {ef with it = {ef.it with
-      dec = share_dec ef.it.dec;
-      stab = share_stab ef.it.stab ef.it.dec}}
-  else
-    if is_sugared_func_or_module (ef.it.dec) then
-      {ef with it =
-        {ef.it with stab =
-          match ef.it.stab with
-          | None -> Some (Flexible @@ ef.it.dec.at)
+let share_dec_field (df : dec_field) =
+  match df.it.vis.it with
+  | Public _ ->
+    {df with it = {df.it with
+      dec = share_dec df.it.dec;
+      stab = share_stab df.it.stab df.it.dec}}
+  | _ ->
+    if is_sugared_func_or_module (df.it.dec) then
+      {df with it =
+        {df.it with stab =
+          match df.it.stab with
+          | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
       }
-    else ef
-
-let rec normalize_let p e =
-    match p.it with
-    | AnnotP(p', t) -> p', AnnotE(e, t) @? p.at
-    | ParP p' -> normalize_let p' e
-    | _ -> (p, e)
+    else df
 
 %}
 
@@ -145,22 +213,24 @@ let rec normalize_let p e =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
+%token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
-%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
+%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
+%token WRAPADDOP WRAPSUBOP WRAPMULOP WRAPPOWOP
 %token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token HASH
 %token EQ LT GT
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
+%token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
 %token FLEXIBLE STABLE
 %token<string> DOT_NUM
@@ -180,15 +250,15 @@ let rec normalize_let p e =
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
-%left ADDOP SUBOP HASH
-%left MULOP DIVOP MODOP
+%left ADDOP SUBOP WRAPADDOP WRAPSUBOP HASH
+%left MULOP WRAPMULOP DIVOP MODOP
 %left OROP
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
-%left POWOP
+%left POWOP WRAPPOWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -197,7 +267,7 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.typ_field> typ_field
 %type<Mo_def.Syntax.typ_bind> typ_bind
 %type<Mo_def.Syntax.typ list> typ_args
-%type<Source.region -> Mo_def.Syntax.pat> pat_opt 
+%type<Source.region -> Mo_def.Syntax.pat> pat_opt
 %type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
 %type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
@@ -207,24 +277,27 @@ let rec normalize_let p e =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body exp_field_list_unamb
+%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
+%type<Mo_def.Syntax.exp_field list> deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin
+%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_opt
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
 %type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
 %type<unit option> option(EQ)
-%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) exp_block exp_bin(ob) exp_bin(bl) exp(bl)
+%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
-%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar dec_field
-%type<Mo_def.Syntax.dec list> dec_list_unamb
-%type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
+%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
+%type<Mo_def.Syntax.dec_field> dec_field
+%type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
+%type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
 %type<Mo_def.Syntax.case> catch case
-%type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
+%type<Mo_def.Syntax.exp> bl ob
 %type<Mo_def.Syntax.dec list> import_list
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
@@ -264,11 +337,11 @@ seplist1(X, SEP) :
 
 %inline id_opt :
   | id=id { fun _ _ -> true, id }
-  | (* empty *) { fun sort sloc -> false, anon sort (at sloc) @@ at sloc }
+  | (* empty *) { fun sort sloc -> false, anon_id sort (at sloc) @@ at sloc }
 
 %inline typ_id_opt :
   | id=typ_id { fun _ _ -> id }
-  | (* empty *) { fun sort sloc -> anon sort (at sloc) @= at sloc }
+  | (* empty *) { fun sort sloc -> anon_id sort (at sloc) @= at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -346,7 +419,7 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scope_typ no_region, t) @! at $sloc }
+    { AsyncT(scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -421,6 +494,10 @@ lit :
   | DIVOP { DivOp }
   | MODOP { ModOp }
   | POWOP { PowOp }
+  | WRAPADDOP { WAddOp }
+  | WRAPSUBOP { WSubOp }
+  | WRAPMULOP { WMulOp }
+  | WRAPPOWOP { WPowOp }
   | ANDOP { AndOp }
   | OROP  { OrOp }
   | XOROP { XorOp }
@@ -451,6 +528,10 @@ lit :
   | DIVASSIGN { DivOp }
   | MODASSIGN { ModOp }
   | POWASSIGN { PowOp }
+  | WRAPADDASSIGN { WAddOp }
+  | WRAPSUBASSIGN { WSubOp }
+  | WRAPMULASSIGN { WMulOp }
+  | WRAPPOWASSIGN { WPowOp }
   | ANDASSIGN { AndOp }
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }
@@ -462,10 +543,16 @@ lit :
   | CATASSIGN { CatOp }
 
 
-(* Default {} to block or object, respectively *)
-bl : { fun ds -> BlockE(ds) }
-ob : { fun ds -> ObjE(Type.Object @@ no_region,
-         List.map (fun d -> {dec = d; vis = Public @@ d.at; stab = None} @@ d.at) ds) }
+exp_obj :
+(* Activate when deprecated object syntax is removed
+  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
+    {  obj efs (at $sloc) @? at $sloc }
+*)
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY
+    { let efs = List.map field_var_dec ds in
+      ObjE efs @? at $sloc }
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
+    { ObjE efs @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -473,19 +560,11 @@ exp_plain :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
-exp_block :
-  | LCURLY ds=seplist(dec, semicolon) RCURLY
-    { BlockE(ds) @? at $sloc }
-
 exp_nullary(B) :
+  | e=B
+    { e }
   | e=exp_plain
     { e }
-  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
-    { e ds @? at $sloc }
-  | LCURLY efs=exp_field_list_unamb RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
-  | LCURLY ds=dec_list_unamb RCURLY
-    { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
@@ -496,14 +575,16 @@ exp_post(B) :
     { e }
   | LBRACKET m=var_opt es=seplist(exp_nonvar(ob), COMMA) RBRACKET
     { ArrayE(m, es) @? at $sloc }
-  | e1=exp_post(ob) LBRACKET e2=exp(ob) RBRACKET
+  | e1=exp_post(B) LBRACKET e2=exp(ob) RBRACKET
     { IdxE(e1, e2) @? at $sloc }
-  | e=exp_post(ob) s=DOT_NUM
+  | e=exp_post(B) s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
-  | e=exp_post(ob) DOT x=id
+  | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
-  | e1=exp_post(ob) inst=inst e2=exp_nullary(ob)
+  | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
     { CallE(e1, inst, e2) @? at $sloc }
+  | e1=exp_post(B) BANG
+    { BangE(e1) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -533,35 +614,35 @@ exp_un(B) :
 exp_bin(B) :
   | e=exp_un(B)
     { e }
-  | e1=exp_bin(ob) op=binop e2=exp_bin(ob)
+  | e1=exp_bin(B) op=binop e2=exp_bin(ob)
     { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin(ob) op=relop e2=exp_bin(ob)
+  | e1=exp_bin(B) op=relop e2=exp_bin(ob)
     { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin(ob) AND e2=exp_bin(ob)
+  | e1=exp_bin(B) AND e2=exp_bin(ob)
     { AndE(e1, e2) @? at $sloc }
-  | e1=exp_bin(ob) OR e2=exp_bin(ob)
+  | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
-  | e=exp_bin(ob) COLON t=typ
+  | e=exp_bin(B) COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 
 exp_nondec(B) :
   | e=exp_bin(B)
     { e }
-  | e1=exp_bin(ob) ASSIGN e2=exp(ob)
+  | e1=exp_bin(B) ASSIGN e2=exp(ob)
     { AssignE(e1, e2) @? at $sloc}
-  | e1=exp_bin(ob) op=binassign e2=exp(ob)
+  | e1=exp_bin(B) op=binassign e2=exp(ob)
     { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp(bl)
-    { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
-  | AWAIT e=exp(bl)
+  | ASYNC e=exp_nest
+    { AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | AWAIT e=exp_nest
     { AwaitE(e) @? at $sloc }
-  | ASSERT e=exp(bl)
+  | ASSERT e=exp_nest
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=annot_opt e=exp(bl)
+  | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in
       let e' =
@@ -578,30 +659,37 @@ exp_nondec(B) :
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
-  | DEBUG e=exp(bl)
+  | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
-  | IF b=exp_nullary(ob) e1=exp(bl) %prec IF_NO_ELSE
-    { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
-  | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)
+  | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
+    { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
+  | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nullary(ob) c=catch
+  | TRY e1=exp_nest c=catch
     { TryE(e1, [c]) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
-  | TRY e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
+  | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
 *)
-  | THROW e=exp(bl)
+  | THROW e=exp_nest
     { ThrowE(e) @? at $sloc }
   | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
-  | WHILE e1=exp_nullary(ob) e2=exp(bl)
+  | WHILE e1=exp_nullary(ob) e2=exp_nest
     { WhileE(e1, e2) @? at $sloc }
-  | LOOP e=exp(bl) %prec LOOP_NO_WHILE
+  | LOOP e=exp_nest %prec LOOP_NO_WHILE
     { LoopE(e, None) @? at $sloc }
-  | LOOP e1=exp(bl) WHILE e2=exp(bl)
+  | LOOP e1=exp_nest WHILE e2=exp_nest
     { LoopE(e1, Some e2) @? at $sloc }
-  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp(bl)
+  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp_nest
     { ForE(p, e1, e2) @? at $sloc }
+  | IGNORE e=exp_nest
+    { IgnoreE(e) @? at $sloc }
+  | DO e=block
+    { e }
+  | DO QUEST e=block
+    { DoOptE(e) @? at $sloc }
+
 
 exp_nonvar(B) :
   | e=exp_nondec(B)
@@ -615,30 +703,46 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
+exp_nest :
+  | e=block
+    { e }
+  | e=exp(bl)
+    { e }
+
+block :
+(* Activate once deprecated objects are removed
+  | LCURLY ds=seplist(dec, semicolon) RCURLY
+    { BlockE(ds) @? at $sloc }
+*)
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY
+    { BlockE(ds) @? at $sloc }
+  | LCURLY ds=deprecated_dec_list_unamb RCURLY
+    { BlockE(ds) @? at $sloc }
+
 case :
-  | CASE p=pat_nullary e=exp(bl)
+  | CASE p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
 catch :
-  | CATCH p=pat_nullary e=exp(bl)
+  | CATCH p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field_nonvar :
   | x=id EQ e=exp(ob)
-    { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
-      {dec = d; vis = Public @@ x.at; stab = None} @@ at $sloc }
+    { { mut = Syntax.Const @@ no_region;
+	id = x;
+	exp = e; } @@ at $sloc }
+(* TODO: activate once blocks and objects are no longer ambiguous
+  | x=id
+    { { mut = Syntax.Const @@ no_region;
+	id = x;
+	exp = VarE(x.it @@ x.at) @@ x.at } @@ at $sloc }
+*)
 
 exp_field :
   | ef=exp_field_nonvar { ef }
-  | d=dec_var { {dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc }
-
-exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
-  | ef=exp_field_nonvar
-    { [ef] }
-  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
-    { ef::efs }
-  | d=dec_var semicolon efs=exp_field_list_unamb
-    { ({dec = d; vis = Public @@ d.at; stab = None} @@ at $sloc) :: efs }
+  | d=dec_var
+    { field_var_dec d }
 
 dec_field :
   | v=vis s=stab d=dec
@@ -647,7 +751,11 @@ dec_field :
 vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
-  | PUBLIC { Public @@ at $sloc }
+  | PUBLIC {
+    let at = at $sloc in
+    let trivia = Trivia.find_trivia !triv_table at in
+    let depr = Trivia.deprecated_of_trivia_info trivia in
+    Public depr @@ at }
   | SYSTEM { System @@ at $sloc }
 
 stab :
@@ -710,10 +818,13 @@ pat_field :
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
-  | p=pat_nullary
+  | p=pat_plain
     { fun sloc -> p }
   | (* empty *)
     { fun sloc -> WildP @! sloc }
+  | p=deprecated_pat_opt
+    { fun sloc -> p }
+
 
 
 (* Declarations *)
@@ -733,10 +844,10 @@ dec_nonvar :
       let e =
         if s.it = Type.Actor then
           AwaitE
-            (AsyncE(scope_bind (anon "async" (at $sloc)),
-              (ObjE(s, List.map share_expfield efs) @? (at $sloc)))
+            (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+              (ObjBlockE(s, List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
-        else ObjE(s, efs)
+        else ObjBlockE(s, efs)
       in
       let_or_exp named x e (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
@@ -745,22 +856,20 @@ dec_nonvar :
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
       let named, x = xf "func" $sloc in
-      let (sugar, e) = desugar sp x t fb in
-      let_or_exp named x (funcE(x.it, sp, tps, p, t, sugar, e)) (at $sloc) }
+      let is_sugar, e = desugar_func_body sp x t fb in
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
-    { let x, efs = cb in
-      let efs', tps', t' =
+    { let x, dfs = cb in
+      let dfs', tps', t' =
         if s.it = Type.Actor then
-          (List.map share_expfield efs,
+          (List.map share_dec_field dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
 	   ensure_async_typ t)
-        else (efs, tps, t)
+        else (dfs, tps, t)
       in
-      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, efs') @? at $sloc }
-  | IGNORE e=exp(ob)
-    { IgnoreD e @? at $sloc }
+      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
@@ -770,28 +879,16 @@ dec :
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
 
-dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
-  | e=exp_nondec(ob)
-    { [ExpD e @? e.at] }
-  | d=dec_nonvar
-    { [d] }
-  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
-    { (ExpD e @? e.at) :: ds }
-  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
-    { d::ds }
-  | d=dec_var semicolon ds=dec_list_unamb
-    { d::ds }
-
 func_body :
-  | EQ e=exp(bl) { (false, e) }
-  | e=exp_block { (true, e) }
+  | EQ e=exp(ob) { (false, e) }
+  | e=block { (true, e) }
 
 obj_body :
-  | LCURLY efs=seplist(dec_field, semicolon) RCURLY { efs }
+  | LCURLY dfs=seplist(dec_field, semicolon) RCURLY { dfs }
 
 class_body :
-  | EQ xf=id_opt efs=obj_body { snd (xf "object" $sloc), efs }
-  | efs=obj_body { anon "object" (at $sloc) @@ at $sloc, efs }
+  | EQ xf=id_opt dfs=obj_body { snd (xf "object" $sloc), dfs }
+  | dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, dfs }
 
 
 (* Programs *)
@@ -806,16 +903,74 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
 
 parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
-    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> { it = is @ ds; at = at $sloc; note = { filename; trivia }} }
 
 parse_prog_interactive :
   | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
-    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> {
+        it = is @ ds;
+        at = at $sloc;
+        note = { filename; trivia }
+      }
+    }
 
 import_list :
   | is=seplist(imp, semicolon) { raise (Imports is) }
 
 parse_module_header :
   | start import_list EOF {}
+
+
+(* Deprecated block/object syntax *)
+
+(* Default {} to block or object, respectively *)
+bl :
+  | e=deprecated_exp_obj
+    { e }
+
+ob :
+  | e=exp_obj
+    { e }
+  | e=deprecated_exp_block
+    { e }
+
+deprecated_pat_opt :
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { warn_deprecated_obj `Pat (at $sloc);
+      ObjP(fps) @! at $sloc }
+
+deprecated_exp_obj :
+  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
+    { warn_deprecated_obj `Exp (at $sloc);
+      ObjE efs @? at $sloc }
+
+deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
+  | ef=exp_field_nonvar
+    { [ef] }
+  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
+    { ef::efs }
+  | d=dec_var semicolon efs=deprecated_exp_field_list_unamb
+    { field_var_dec d :: efs }
+
+deprecated_exp_block :
+  | LCURLY ds=deprecated_dec_list_unamb RCURLY
+    { warn_deprecated_block (at $sloc);
+      BlockE(ds) @? at $sloc }
+
+deprecated_dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
+  | e=exp_nondec(ob)
+    { [ExpD e @? e.at] }
+  | d=dec_nonvar
+    { [d] }
+  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
+    { (ExpD e @? e.at) :: ds }
+  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
+    { d::ds }
+  | d=dec_var semicolon ds=deprecated_dec_list_unamb
+    { d::ds }
 
 %%
