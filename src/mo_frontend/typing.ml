@@ -1140,13 +1140,8 @@ and infer_exp'' env exp : T.typ =
   | CallE (exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
-    let t, scope = infer_block env decs exp.at in
-    (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
-      error env exp.at "M0080"
-        "local class type %s is contained in inferred block type\n  %s"
-        (Con.to_string c)
-        (T.string_of_typ_expand t)
-    )
+    let t, _ = infer_block env decs exp.at in
+    t
   | NotE exp1 ->
     if not env.pre then check_exp_strong env T.bool exp1;
     T.bool
@@ -1924,16 +1919,6 @@ and pub_val_id depr id (xs, ys) : visibility_env =
 
 (* Object/Scope transformations *)
 
-and gather_typ con_env t =
-  match t with
-  | T.Obj (s, tfs) -> List.fold_right gather_typ_field tfs con_env
-  | _ -> con_env
-
-and gather_typ_field T.{lab; typ; _} con_env =
-  match typ with
-  | T.Typ  c -> T.ConSet.add c con_env
-  | t -> gather_typ con_env t
-
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
 
 and object_of_scope env sort dec_fields scope at =
@@ -1965,16 +1950,7 @@ and object_of_scope env sort dec_fields scope at =
         x.T.lab y.T.lab (T.string_of_obj_sort sort);
     ) tfs';
 
-  let t = T.Obj (sort, List.sort T.compare_field tfs') in
-  let accessible_cons = gather_typ T.ConSet.empty t in
-  let inaccessible_cons = T.ConSet.diff scope.Scope.con_env accessible_cons in
-  try
-    T.avoid_cons inaccessible_cons accessible_cons;
-    T.avoid inaccessible_cons t
-  with T.Unavoidable c ->
-    error env at "M0123" "local class type %s is contained in object or actor type\n  %s"
-      (Con.to_string c)
-      (T.string_of_typ_expand t)
+  T.Obj (sort, List.sort T.compare_field tfs')
 
 and is_actor_method dec : bool = match dec.it with
   | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}) ->

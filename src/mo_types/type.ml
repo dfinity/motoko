@@ -490,64 +490,6 @@ let rec span = function
   | Non -> Some 0
   | Typ _ -> Some 1
 
-(* Avoiding local constructors *)
-
-exception Unavoidable of con
-
-let rec avoid' cons seen = function
-  | (Prim _ | Var _ | Any | Non | Pre) as t -> t
-  | Con (c, ts) ->
-    if ConSet.mem c seen then raise (Unavoidable c) else
-    if ConSet.mem c cons then
-      match Con.kind c with
-      | Abs _ -> raise (Unavoidable c)
-      | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce tbs t ts)
-    else
-      (try Con (c, List.map (avoid' cons seen) ts) with Unavoidable d ->
-        match Con.kind c with
-        | Def (tbs, t) -> avoid' cons seen (reduce tbs t ts)
-        | Abs _ -> raise (Unavoidable d)
-      )
-  | Array t -> Array (avoid' cons seen t)
-  | Tup ts -> Tup (List.map (avoid' cons seen) ts)
-  | Func (s, c, tbs, ts1, ts2) ->
-    Func (
-      s, c,
-      List.map (avoid_bind cons seen) tbs,
-      List.map (avoid' cons seen) ts1,
-      List.map (avoid' cons seen) ts2
-    )
-  | Opt t -> Opt (avoid' cons seen t)
-  | Async (t1, t2) -> Async (avoid' cons seen t1, avoid' cons seen t2)
-  | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
-  | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
-  | Mut t -> Mut (avoid' cons seen t)
-  | Typ c ->
-    if ConSet.mem c cons then raise (Unavoidable c) else Typ c (* TBR *)
-
-and avoid_bind cons seen tb=
-  { tb with bound = avoid' cons seen tb.bound}
-
-and avoid_field cons seen {lab; typ; depr} =
-  {lab; typ = avoid' cons seen typ; depr}
-
-and avoid_kind cons seen k =
-  match k with
-  | Def (tbs, t) ->
-    Def (List.map (avoid_bind cons seen) tbs,
-         avoid' cons seen t)
-  | Abs (tbs, t) ->
-    Abs (List.map (avoid_bind cons seen) tbs,
-         avoid' cons seen t)
-
-and avoid_cons cons1 cons2 =
-  ConSet.iter (fun c -> Con.unsafe_set_kind c (avoid_kind cons1 ConSet.empty (Con.kind c))) cons2
-
-let avoid cons t =
-  if cons = ConSet.empty then t else
-   avoid' cons ConSet.empty t
-
-
 (* Collecting type constructors *)
 
 let rec cons' t cs =
