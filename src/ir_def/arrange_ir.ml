@@ -73,6 +73,8 @@ and prim = function
   | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
   | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
+  | DecodeUtf8        -> Atom "DecodeUtf8"
+  | EncodeUtf8        -> Atom "EncodeUtf8"
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"

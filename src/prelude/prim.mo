@@ -139,6 +139,10 @@ func charIsLowercase(c : Char) : Bool = (prim "char_is_lowercase" : Char -> Bool
 func charIsUppercase(c : Char) : Bool = (prim "char_is_uppercase" : Char -> Bool) c;
 func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bool) c;
 
+// Text conversion
+func decodeUtf8(b : Blob) : ?Text = (prim "decodeUtf8" : Blob -> ?Text) b;
+func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
+
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
 func clzWord8(w : Word8) : Word8 = (prim "clz8" : Word8 -> Word8) w;
