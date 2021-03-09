@@ -560,6 +560,9 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
+let typ_rep_translation =
+  transform_if "Translate type rep generation" Typrep.transform
+
 let eq_translation =
   transform_if "Translate polymorphic equality" Eq.transform
 
@@ -571,6 +574,7 @@ let analyze analysis_name analysis prog name =
 
 let ir_passes mode prog_ir name =
   (* translations that extend the progam and must be done before await/cps conversion *)
+  let prog_ir = typ_rep_translation true prog_ir name in
   let prog_ir = show_translation true prog_ir name in
   let prog_ir = eq_translation true prog_ir name in
   (* cps conversion and local transformations *)

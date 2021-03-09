@@ -497,6 +497,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | AssertPrim, [exp1] ->
       typ exp1 <: T.bool;
       T.unit <: t
+    | TypRep ot, [] ->
+      check (T.shared ot) "gen_typrep is not defined for operand type";
+      Construct.typRepT <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";

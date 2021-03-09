@@ -138,6 +138,14 @@ and exp' at note = function
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "gen_typrep";_}, _);note;_}, _, {it = S.LitE l; _}) ->
+    begin
+    if !l != NullLit then assert false;
+    match note.S.note_typ with
+    | T.Func (T.Local, T.Returns, [], [T.Opt t], _) ->
+      I.PrimE (I.TypRep t, [])
+    | _ -> assert false
+    end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->

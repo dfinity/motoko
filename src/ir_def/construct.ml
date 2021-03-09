@@ -185,6 +185,14 @@ let optE e =
    at = no_region;
  }
 
+let arrayE t es =
+  let effs = List.map eff es in
+  let eff = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (ArrayPrim (Const, t), es);
+    note = Note.{ def with typ = T.Array t; eff };
+    at = no_region;
+  }
+
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
    note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
@@ -353,6 +361,7 @@ let tupE exps =
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
   }
 
+(* TODO: Is it ok to share this value? *)
 let unitE = tupE []
 
 let breakE l exp =
@@ -505,16 +514,6 @@ let funcD ((id, typ) as f) x exp =
 let nary_funcD ((id, typ) as f) xs exp =
   letD f (nary_funcE id typ xs exp)
 
-(* Continuation types *)
-
-let answerT = T.unit
-
-let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
-
-let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
-
-let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
-
 (* Sequence expressions *)
 
 let seqE es =
@@ -626,3 +625,32 @@ let unreachableE =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE unitE
 
+(* Internal types *)
+
+(*
+These type definitions mirror the type definitions in prelude/internals.mo.
+It would be good to get rid of that duplication somehow, and use those
+in `prelude/internals.mo` directly.
+*)
+
+let answerT = T.unit
+
+let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
+
+let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
+
+let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
+
+let typRepT =
+  let open T in
+  let c = Con.fresh "TypRep" (Abs ([], Pre)) in
+  let t = Con (c, []) in
+  let rhs =
+    Variant [
+      { lab = "bool"; typ = T.unit; depr = None };
+      { lab = "int"; typ = T.unit; depr = None };
+      { lab = "opt"; typ = t; depr = None };
+      { lab = "tup"; typ = T.Array t; depr = None };
+    ] in
+  set_kind c (Def ([], rhs));
+  t
