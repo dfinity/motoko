@@ -84,6 +84,23 @@ Mergify reacts to the `automerge-squash` label. Once approved and CI passes, it
 merges master into the branch (using normal merge, which is important for
 stashed PRs) and then squash-merges the PR.
 
+Render and show generated base docs
+-----------------------------------
+**Use-case:**
+To be able to see and share the effects on the generated documentation for the base library, caused by a change to `mo-doc`, without needing the reviewer to generate the documentation locally.
+
+**Implementation:**
+Hydra hosts the build product of the `base-doc` CI job. This can be found via the Hydra job status page, and the there is a stable link for the latest build of `master` and of each PR.
+
+Render and show slides
+----------------------
+**Use-case:**
+To be able to see and share the “overview slides”, the rendered version should be hosted somewhere.
+
+**Implementation:**
+Hydra hosts the build product of the `overview-slides` CI job. This can be found via the Hydra job status page, and the there is a stable link for the latest build of `master` and of each PR.
+
+
 Performance changes are known
 -----------------------------
 
@@ -124,11 +141,3 @@ that only update `Changelog.md` do not require a human approver.
 
 **Implementation:**
 Mergify approves PRs that only change the `Changelog.md` file.
-
-Push generated base docs
--------------
-**Use-case:**
-To be able to see and share the effects on the generated documentation for the base library, caused by a change to `mo-doc`, without needing the reviewer to generate the documentation locally.
-
-**Implementation:**
-Hydra uploads the build product of the `base-doc` CI job at a link that can be predicted from the PR number.
