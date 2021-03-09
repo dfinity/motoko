@@ -30,7 +30,6 @@ jobs:
           whitelist: 'nixpkgs,musl-wasi'
           labels: |
             autoclose
-            ci-also-darwin
           keep_updating: true
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}

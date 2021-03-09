@@ -46,6 +46,7 @@ type env =
     in_prog : bool;
     context : exp' list;
     pre : bool;
+    weak : bool;
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
   }
@@ -63,6 +64,7 @@ let env_of_scope msgs scope =
     in_prog = true;
     context = [];
     pre = false;
+    weak = false;
     msgs;
     scopes = T.ConEnv.empty;
   }
@@ -906,7 +908,7 @@ and infer_exp'' env exp : T.typ =
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
   | ActorUrlE exp' ->
-    if not env.pre then check_exp env T.text exp';
+    if not env.pre then check_exp_strong env T.text exp';
     error env exp.at "M0058" "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
@@ -925,7 +927,10 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_binop op t) then
-        error_bin_op env exp.at t1 t2;
+        error_bin_op env exp.at t1 t2
+      else if op = Operator.SubOp && T.eq t T.nat then
+        warn env exp.at "M0155" "operator may trap for inferred type\n  %s"
+          (T.string_of_typ_expand t);
       ot := t
     end;
     check_deprecation_binop env exp.at t op;
@@ -937,7 +942,7 @@ and infer_exp'' env exp : T.typ =
       let t = Operator.type_relop op (T.lub (T.promote t1) (T.promote t2)) in
       if not (Operator.has_relop op t) then
         error_bin_op env exp.at t1 t2;
-      if not (T.eq t t1 || T.eq t t2) then
+      if not (T.eq t t1 || T.eq t t2) && not (T.sub T.nat t1 && T.sub T.nat t2) then
         if T.eq t1 t2 then
           warn env exp.at "M0061"
             "comparing abstract type\n  %s\nto itself at supertype\n  %s"
@@ -1052,7 +1057,7 @@ and infer_exp'' env exp : T.typ =
       let t1 = infer_exp_mut env exp1 in
       try
         let t2 = T.as_mut t1 in
-        check_exp env t2 exp2
+        check_exp_strong env t2 exp2
       with Invalid_argument _ ->
         error env exp.at "M0073" "expected mutable assignment target";
     end;
@@ -1069,7 +1074,7 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     (try
       let t = T.as_array_sub t1 in
-      if not env.pre then check_exp env T.nat exp2;
+      if not env.pre then check_exp_strong env T.nat exp2;
       t
     with Invalid_argument _ ->
       error env exp1.at "M0075"
@@ -1104,7 +1109,7 @@ and infer_exp'' env exp : T.typ =
           rets = Some codom;
           (* async = None; *) }
       in
-      check_exp (adjoin_vals env'' ve2) codom exp1;
+      check_exp_strong (adjoin_vals env'' ve2) codom exp1;
       if Type.is_shared_sort sort then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at "M0031"
@@ -1138,22 +1143,22 @@ and infer_exp'' env exp : T.typ =
     let t, _ = infer_block env decs exp.at in
     t
   | NotE exp1 ->
-    if not env.pre then check_exp env T.bool exp1;
+    if not env.pre then check_exp_strong env T.bool exp1;
     T.bool
   | AndE (exp1, exp2) ->
     if not env.pre then begin
-      check_exp env T.bool exp1;
-      check_exp env T.bool exp2
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.bool exp2
     end;
     T.bool
   | OrE (exp1, exp2) ->
     if not env.pre then begin
-      check_exp env T.bool exp1;
-      check_exp env T.bool exp2
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.bool exp2
     end;
     T.bool
   | IfE (exp1, exp2, exp3) ->
-    if not env.pre then check_exp env T.bool exp1;
+    if not env.pre then check_exp_strong env T.bool exp1;
     let t2 = infer_exp env exp2 in
     let t3 = infer_exp env exp3 in
     let t = T.lub t2 t3 in
@@ -1180,19 +1185,19 @@ and infer_exp'' env exp : T.typ =
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
-      check_exp env T.bool exp1;
-      check_exp env T.unit exp2
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.unit exp2
     end;
     T.unit
   | LoopE (exp1, None) ->
     if not env.pre then begin
-      check_exp env T.unit exp1
+      check_exp_strong env T.unit exp1
     end;
     T.Non
   | LoopE (exp1, Some exp2) ->
     if not env.pre then begin
-      check_exp env T.unit exp1;
-      check_exp env T.bool exp2
+      check_exp_strong env T.unit exp1;
+      check_exp_strong env T.bool exp2
     end;
     T.unit
   | ForE (pat, exp1, exp2) ->
@@ -1205,7 +1210,7 @@ and infer_exp'' env exp : T.typ =
         if not (T.sub T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
         let ve = check_pat_exhaustive warn env t2' pat in
-        check_exp (adjoin_vals env ve) T.unit exp2
+        check_exp_strong (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ | Not_found ->
         local_error env exp1.at "M0082"
           "expected iterable type, but expression has type\n  %s"
@@ -1218,7 +1223,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp (add_lab env id.it t) t exp1;
     t
   | DebugE exp1 ->
-    if not env.pre then check_exp env T.unit exp1;
+    if not env.pre then check_exp_strong env T.unit exp1;
     T.unit
   | BreakE (id, exp1) ->
     (match T.Env.find_opt id.it env.labs with
@@ -1238,7 +1243,7 @@ and infer_exp'' env exp : T.typ =
       | Some T.Pre ->
         local_error env exp.at "M0084" "cannot infer return type"
       | Some t ->
-        check_exp env t exp1
+        check_exp_strong env t exp1
       | None ->
         local_error env exp.at "M0085" "misplaced return"
     end;
@@ -1246,7 +1251,7 @@ and infer_exp'' env exp : T.typ =
   | ThrowE exp1 ->
     if not env.pre then begin
       check_ErrorCap env "throw" exp.at;
-      check_exp env T.throw exp1
+      check_exp_strong env T.throw exp1
     end;
     T.Non
   | AsyncE (typ_bind, exp1) ->
@@ -1289,15 +1294,15 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | AssertE exp1 ->
-    if not env.pre then check_exp env T.bool exp1;
+    if not env.pre then check_exp_strong env T.bool exp1;
     T.unit
   | AnnotE (exp1, typ) ->
     let t = check_typ env typ in
-    if not env.pre then check_exp env t exp1;
+    if not env.pre then check_exp_strong env t exp1;
     t
   | IgnoreE exp1 ->
     if not env.pre then begin
-      check_exp env T.Any exp1;
+      check_exp_strong env T.Any exp1;
       if T.sub exp1.note.note_typ T.unit then
         warn env exp.at "M0089" "redundant ignore, operand already has type ()"
     end;
@@ -1309,11 +1314,11 @@ and infer_bin_exp env exp1 exp2 =
   match is_explicit_exp exp1, is_explicit_exp exp2 with
   | true, false ->
     let t1 = T.normalize (infer_exp env exp1) in
-    if not env.pre then check_exp env t1 exp2;
+    if not env.pre then check_exp_weak env t1 exp2;
     t1, t1
   | false, true ->
     let t2 = T.normalize (infer_exp env exp2) in
-    if not env.pre then check_exp env t2 exp1;
+    if not env.pre then check_exp_weak env t2 exp1;
     t2, t2
   | _ ->
     let t1 = T.normalize (infer_exp env exp1) in
@@ -1325,6 +1330,12 @@ and infer_exp_field env rf =
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
   T.{ lab = id.it; typ = t1; depr = None }
+
+and check_exp_strong env t exp =
+  check_exp {env with weak = false} t exp
+
+and check_exp_weak env t exp =
+  check_exp {env with weak = true} t exp
 
 and check_exp env t exp =
   assert (not env.pre);
@@ -1343,7 +1354,7 @@ and check_exp' env0 t exp : T.typ =
     check_lit env t lit exp.at;
     t
   | ActorUrlE exp', t' ->
-    check_exp env T.text exp';
+    check_exp_strong env T.text exp';
     begin match T.normalize t' with
     | T.(Obj (Actor, _)) -> t'
     | _ -> error env exp.at "M0090" "actor reference must have an actor type"
@@ -1356,6 +1367,9 @@ and check_exp' env0 t exp : T.typ =
     ot := t;
     check_exp env t exp1;
     check_exp env t exp2;
+    if env.weak && op = Operator.SubOp && T.eq t T.nat then
+      warn env exp.at "M0155" "operator may trap for inferred type\n  %s"
+        (T.string_of_typ_expand t);
     check_deprecation_binop env exp.at t op;
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
@@ -1421,7 +1435,7 @@ and check_exp' env0 t exp : T.typ =
     ignore (check_block env t decs exp.at);
     t
   | IfE (exp1, exp2, exp3), _ ->
-    check_exp env T.bool exp1;
+    check_exp_strong env T.bool exp1;
     check_exp env t exp2;
     check_exp env t exp3;
     t
@@ -1464,7 +1478,7 @@ and check_exp' env0 t exp : T.typ =
         rets = Some t2;
         async = C.NullCap; }
     in
-    check_exp (adjoin_vals env' ve2) t2 exp;
+    check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
   | CallE (exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
@@ -1506,7 +1520,7 @@ and check_exp_field env (ef : exp_field) fts =
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let t = Lib.Option.get t_expect_opt T.Any in
-  let n = match inst.it with None -> 0 | Some typs ->  List.length typs in
+  let n = match inst.it with None -> 0 | Some typs -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
@@ -1529,7 +1543,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       let ts = check_inst_bounds env tbs typs at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
-      if not env.pre then check_exp env t_arg' exp2;
+      if not env.pre then check_exp_strong env t_arg' exp2;
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in

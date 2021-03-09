@@ -7,7 +7,7 @@ overview-slides.html : overview-slides.md
 	  -t revealjs -s -o overview-slides.html overview-slides.md \
 	  -V theme=moon \
 	  --strip-comments \
-	  -V revealjs-url=https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.8.0 \
+	  -V revealjs-url=https://cdn.jsdelivr.net/npm/reveal.js@4.1.0 \
 	  #--standalone \
 	  # -V width="\"100%\"" \
 	  # -V height="\"100%\"" \
