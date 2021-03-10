@@ -35,7 +35,7 @@
 
   are now rejected.
 
-* motoko base: `Blob` now contains `decodeUtf8` and `encodeUtf8`.
+* motoko base: `Text` now contains `decodeUtf8` and `encodeUtf8`.
 
 == 0.5.10 (2021-03-02)
 
