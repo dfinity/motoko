@@ -2392,10 +2392,7 @@ and check_closed env id k at =
     let op, sbs, st = T.strings_of_kind k in
     error env at "M0137"
       "type %s%s %s %s references type parameter%s %s from an outer scope"
-      id.it
-      sbs
-      op
-      st
+      id.it sbs op st
       (if T.ConSet.cardinal free_params = 1 then "" else "s")
       (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
