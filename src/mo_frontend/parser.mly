@@ -37,6 +37,9 @@ let warn_deprecated_block at =
     (Diag.warning_message at "M0148" "syntax"
       "block syntax is deprecated in this position, use 'do { ... }'")
 
+let syntax_error at code msg =
+  Diag.add_msg (Option.get !msg_store)
+    (Diag.error_message at code "syntax" msg)
 
 (* Helpers *)
 
@@ -206,6 +209,14 @@ let share_dec_field (df : dec_field) =
           | some -> some}
       }
     else df
+
+and objblock s dec_fields =
+  List.iter (fun df ->
+    match df.it.vis.it, df.it.dec.it with
+    | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
+      syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
+    | _ -> ()) dec_fields;
+  ObjBlockE(s, dec_fields)
 
 %}
 
@@ -845,9 +856,9 @@ dec_nonvar :
         if s.it = Type.Actor then
           AwaitE
             (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (ObjBlockE(s, List.map share_dec_field efs) @? (at $sloc)))
+              (objblock s (List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
-        else ObjBlockE(s, efs)
+        else objblock s efs
       in
       let_or_exp named x e (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
