@@ -238,6 +238,12 @@ let natE n =
     note = Note.{ def with typ = T.nat }
   }
 
+let nat32E n =
+  { it = LitE (Nat32Lit n);
+    at = no_region;
+    note = Note.{ def with typ = T.(Prim Nat32) }
+  }
+
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
@@ -665,12 +671,13 @@ let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
 
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
 
-let typRepT =
+let (typRepT, typRepFieldT) =
   let open T in
   let typRepC = Con.fresh "TypRep" (Abs ([], Pre)) in
   let typRepT = Con (typRepC, []) in
-  let fieldsC = Con.fresh "Fields" (Abs ([], Pre)) in
-  let fieldsT = Con (fieldsC, []) in
+  let fieldC = Con.fresh "Field" (Abs ([], Pre)) in
+  let fieldT = Con (fieldC, []) in
+  let fieldsT = Array fieldT in
   let objSortT = Variant (List.sort compare_field (
     List.map (fun lab -> { lab; typ = T.unit; depr = None }) [
       "object_"; "actor_"; "module_"; "memory"
@@ -686,14 +693,14 @@ let typRepT =
       "func_"; "any"; "non"
     ] @ List.map (fun (lab,typ) -> { lab; typ; depr = None }) [
       ("ref", Array (Mut typRepT));
-      ("obj", Tup [objSortT; fieldsT]);
+      ("obj", Tup [objSortT; Array fieldT]);
       ("variant", fieldsT);
       ("array", typRepT);
       ("opt", typRepT);
       ("tup", Array typRepT);
     ]
   )) in
-  let fieldsRhs = Array (Tup [text; Prim Int32; typRepT]) in
+  let fieldRhs = Tup [text; Prim Nat32; typRepT] in
   set_kind typRepC (Def ([], typRepRhs));
-  set_kind fieldsC (Def ([], fieldsRhs));
-  typRepT
+  set_kind fieldC (Def ([], fieldRhs));
+  typRepT, fieldT

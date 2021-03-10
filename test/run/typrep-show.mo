@@ -8,12 +8,42 @@
 
 import Prim "mo:prim";
 
-Prim.debugPrint (debug_show ((prim "gen_typrep" : ?Bool -> @TypRep) null));
-Prim.debugPrint (debug_show ((prim "gen_typrep" : ?(Bool, Int) -> @TypRep) null));
+do {
+  type T = Bool;
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+do {
+  type T = ();
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+do {
+  type T = ([Bool],?Int);
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+do {
+  type T = {first_name: Text; last_name: Text; points : Int};
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+do {
+  type T = {#monday; #tuesday; #gotboredday};
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+do {
+  type T = {#monday; #tuesday; #gotboredday};
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+do {
+  type T = shared Text -> async Text;
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
 
 // This is infinite, cannot print that:
-// type T = ??T;
-// Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+/*
+do {
+  type T = ?T
+  Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+};
+*/
 
 
 //SKIP run

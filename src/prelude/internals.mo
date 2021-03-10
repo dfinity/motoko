@@ -426,8 +426,9 @@ The following type is used by the runtime to describe, well, motoko types. This
 is used in the implementation of generic code (equality, serialization,
 showing).
 
-Only `shared` values need to be supported here so far (e.g. no parametric
-functions).
+Only `shared` values need to be supported here so far. Therefore we take short-cuts:
+ * no parametric fuctions
+ * no mutable object fields
 
 Values of this type are produced in an IR-to-IR pass; this way we get some
 type-checking.
@@ -461,8 +462,8 @@ type @TypRep = {
   #blob;
   #error;
   #principal;
-  #obj : ({#object_; #actor_; #module_; #memory}, @Fields);
-  #variant : @Fields;
+  #obj : ({#object_; #actor_; #module_; #memory}, [@Field]);
+  #variant : [@Field];
   #array : @TypRep;
   #opt : @TypRep;
   #tup : [@TypRep];
@@ -473,9 +474,9 @@ type @TypRep = {
 
 // tuple, not record, as it is more compact.
 // Field names thus just documentation.
-type @Fields = [(
+type @Field = (
   field_name : Text,
-  motoko_hash : Int32,
+  motoko_hash : Nat32,
   field_type : @TypRep,
-)];
+);
 

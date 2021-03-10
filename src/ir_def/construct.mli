@@ -63,6 +63,7 @@ val mutArrayE : typ -> exp list -> exp
 val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
 val natE : Mo_values.Numerics.Nat.t -> exp
+val nat32E : Mo_values.Numerics.Nat32.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
@@ -142,4 +143,5 @@ val contT : typ -> typ
 val err_contT : typ
 val cpsT : typ -> typ
 val typRepT : typ
+val typRepFieldT : typ
 

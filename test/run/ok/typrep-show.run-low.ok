@@ -1,2 +1,7 @@
 #ref([var #bool])
-#ref([var #tup([#ref([var #bool]), #ref([var #int])])])
+#ref([var #tup([])])
+#ref([var #tup([#ref([var #array(#ref([var #bool]))]), #ref([var #opt(#ref([var #int]))])])])
+#ref([var #obj(#object_, [("first_name", 650_209_274, #ref([var #text])), ("last_name", 898_649_108, #ref([var #text])), ("points", 1_999_508_003, #ref([var #int]))])])
+#ref([var #variant([("gotboredday", 987_113_604, #ref([var #tup([])])), ("monday", 1_197_631_248, #ref([var #tup([])])), ("tuesday", 323_181_965, #ref([var #tup([])]))])])
+#ref([var #variant([("gotboredday", 987_113_604, #ref([var #tup([])])), ("monday", 1_197_631_248, #ref([var #tup([])])), ("tuesday", 323_181_965, #ref([var #tup([])]))])])
+#ref([var #func_])

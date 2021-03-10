@@ -44,23 +44,86 @@ let lexp_for t : lexp =
 
 (* Returns the new declarations, as well as a list of further types it needs *)
 
+let tag_for_prim : T.prim -> string = function
+  | T.Null -> "null_"
+  | T.Bool -> "bool"
+  | T.Nat -> "nat"
+  | T.Nat8 -> "nat8"
+  | T.Nat16 -> "nat16"
+  | T.Nat32 -> "nat32"
+  | T.Nat64 -> "nat64"
+  | T.Int -> "int"
+  | T.Int8 -> "int8"
+  | T.Int16 -> "int16"
+  | T.Int32 -> "int32"
+  | T.Int64 -> "int64"
+  | T.Word8 -> "word8"
+  | T.Word16 -> "word16"
+  | T.Word32 -> "word32"
+  | T.Word64 -> "word64"
+  | T.Float -> "float"
+  | T.Char -> "char"
+  | T.Text -> "text"
+  | T.Blob -> "blob"
+  | T.Error -> "error"
+  | T.Principal -> "principal"
+
+let tag_for_sort : T.obj_sort -> string = function
+  | T.Object -> "object_"
+  | T.Actor -> "actor"
+  | T.Module -> "module_"
+  | T.Memory -> "memory"
+
+let fields_for : T.field list -> exp = fun tfs ->
+  arrayE typRepFieldT (List.filter_map (fun tf ->
+    if T.is_typ tf.T.typ then None else Some (tupE [
+      textE tf.T.lab;
+      nat32E (Mo_values.Numerics.Nat32.wrapping_of_big_int
+        (Big_int.big_int_of_int32 (Hash.hash tf.T.lab))
+      );
+      exp_for tf.T.typ
+    ])
+  ) tfs)
+
 let rhs_for : T.typ -> Ir.exp = fun t ->
   match T.normalize t with
-  | T.(Prim Bool) ->
-    tagE "bool" unitE
-  | T.(Prim Int) ->
-    tagE "int" unitE
-  | T.Tup ts ->
-    tagE "tup" (arrayE typRepT (List.map exp_for ts))
+  | T.(Prim p) ->
+    tagE (tag_for_prim p) unitE
+  | T.Obj (s, fs) ->
+    tagE "obj" (tupE [
+      tagE (tag_for_sort s) unitE;
+      fields_for fs;
+    ])
+  | T.Variant fs ->
+    tagE "variant" (fields_for fs)
+  | T.Array (T.Mut t) ->
+    (* mutable and immutable arrays have the same representation *)
+    tagE "array" (exp_for t)
+  | T.Array t ->
+    tagE "array" (exp_for t)
   | T.Opt t ->
     tagE "opt" (exp_for t)
-  | _ ->
-    raise (Invalid_argument ("Typrep.decl_for :" ^ T.string_of_typ_expand t))
+  | T.Tup ts ->
+    tagE "tup" (arrayE typRepT (List.map exp_for ts))
+  | T.Func _ ->
+    tagE "func_" unitE
+  | T.Any ->
+    tagE "any" unitE
+  | T.Non ->
+    tagE "non" unitE
+  | T.Var _ | T.Con _ | T.Async _ | T.Mut _ | T.Typ _ | T.Pre -> assert false
 
 let subterms_of : T.typ -> T.typ list = fun t ->
-  match T.normalize t with
-  | T.Tup ts -> ts
-  | T.Opt t -> [t]
+  let open T in
+  match normalize t with
+  | Obj (_,tfs) -> List.filter_map (fun tf ->
+      if is_typ tf.typ then None else Some tf.typ
+    ) tfs
+  | Variant tfs -> List.map (fun tf -> tf.typ) tfs
+  | Array t -> [t]
+  | Opt t -> [t]
+  | Tup ts -> ts
+  | Func _ -> [] (* todo *)
   | _ -> []
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)
@@ -79,7 +142,12 @@ let decls : T.typ M.t -> Ir.dec list = fun roots ->
       go (subterms_of t @ todo)
   in go roots;
 
-  (* Now generate declarations *)
+  (* Now generate declarations: First declare a ref
+     for every type, then assign to it.
+
+     Possible optimization: save a lot of extra allocations if we only use #ref
+     when needed, e.g. to break loops.
+   *)
   List.map (fun (_h, t) ->
     letD (var_for t) (mutArrayE typRepT [tagE "any" unitE])
   ) (M.bindings !seen) @
