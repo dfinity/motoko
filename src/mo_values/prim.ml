@@ -313,4 +313,15 @@ let prim =
   | "char_is_alphabetic" ->
       fun _ v k -> k (Bool (Uucp.Alpha.is_alphabetic (Uchar.of_int (as_char v))))
 
+  | "decodeUtf8" ->
+      fun _ v k ->
+        let s = as_blob v in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (Opt (Text s))
+          | exception Wasm.Utf8.Utf8 -> k Null
+        end
+
+  | "encodeUtf8" ->
+      fun _ v k -> k (Blob (as_text v))
+
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

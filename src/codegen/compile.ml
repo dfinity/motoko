@@ -776,6 +776,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
@@ -2957,6 +2958,15 @@ module Text = struct
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
+
+  let of_blob env =
+    let (set_blob, get_blob) = new_local env "blob" in
+    set_blob ^^
+    get_blob ^^ Blob.as_ptr_len env ^^
+    E.call_import env "rts" "utf8_valid" ^^
+    G.if_ [I32Type] (Opt.inject_noop env get_blob) (Opt.null_lit env)
+
+
   let iter env =
     E.call_import env "rts" "text_iter"
   let iter_done env =
@@ -7317,6 +7327,11 @@ and compile_exp (env : E.t) ae exp =
     (* Coercions for abstract types *)
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
+
+    | DecodeUtf8, [_] ->
+      const_sr SR.Vanilla (Text.of_blob env)
+    | EncodeUtf8, [_] ->
+      const_sr SR.Vanilla (Text.to_blob env)
 
     (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
