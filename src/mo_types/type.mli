@@ -177,10 +177,6 @@ module S : Set.S with type elt = typ
 val normalize : typ -> typ
 val promote : typ -> typ
 
-exception Unavoidable of con
-val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
-val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
-
 val opaque : typ -> bool
 val concrete : typ -> bool
 val shared : typ -> bool
