@@ -1998,19 +1998,10 @@ and infer_obj env s dec_fields at : T.typ =
       ) dec_fields;
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
-    check_class_fields env dec_fields;
     check_system_fields env s scope dec_fields;
     check_stab env s scope dec_fields;
   end;
   t
-
-and check_class_fields env dec_fields =
-    List.iter (fun df ->
-    match df.it.vis.it, df.it.dec.it with
-    | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
-      error env df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
-    | _ -> ())
-  dec_fields
 
 and check_system_fields env sort scope dec_fields =
   List.iter (fun df ->
