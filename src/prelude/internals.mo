@@ -438,6 +438,7 @@ cyclic!
 
 // cf. Mo_types.typ
 type @TypRep = {
+  #ref : [var @TypRep];
   #null_;
   #bool;
   #nat;

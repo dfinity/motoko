@@ -10,8 +10,10 @@ import Prim "mo:prim";
 
 Prim.debugPrint (debug_show ((prim "gen_typrep" : ?Bool -> @TypRep) null));
 Prim.debugPrint (debug_show ((prim "gen_typrep" : ?(Bool, Int) -> @TypRep) null));
-type T = ??T;
-Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
+
+// This is infinite, cannot print that:
+// type T = ??T;
+// Prim.debugPrint (debug_show ((prim "gen_typrep" : ?T -> @TypRep) null));
 
 
 //SKIP run

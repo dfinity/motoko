@@ -59,8 +59,10 @@ val ic_callE : exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
 val arrayE : typ -> exp list -> exp
+val mutArrayE : typ -> exp list -> exp
 val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
+val natE : Mo_values.Numerics.Nat.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
@@ -77,6 +79,7 @@ val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> Type.lab -> typ -> exp
+val idxE : exp -> exp -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
 val tupE : exp list -> exp

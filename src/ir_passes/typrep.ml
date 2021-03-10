@@ -1,4 +1,7 @@
 (* Translates away calls to the `TypRep` prim *)
+
+(* NB: This code re-caluculates the typ_hash many times. Could be optimized. *)
+
 open Ir_def
 open Mo_types
 
@@ -28,49 +31,66 @@ let add_type env t : unit =
 
 (* Definition names *)
 
-let name_for t =
-  "@typ_rep<" ^ typ_hash t ^ ">"
-
-let var_for t : Construct.var = var (name_for t) typRepT
-
-let exp_for t : exp = varE (var_for t)
+let name_for t = "@typ_rep<" ^ typ_hash t ^ ">"
+let var_for t : Construct.var = var (name_for t) T.(Array (Mut typRepT))
+let exp_for t : exp = tagE "ref" (varE (var_for t))
+let lexp_for t : lexp =
+  { it = IdxLE (varE (var_for t), natE Mo_values.Numerics.Int.zero)
+  ; at = no_region
+  ; note = T.(Mut typRepT)
+  }
 
 (* Synthesizing a single show function *)
 
 (* Returns the new declarations, as well as a list of further types it needs *)
 
-
-let decl_for : T.typ -> Ir.dec * T.typ list = fun t ->
+let rhs_for : T.typ -> Ir.exp = fun t ->
   match T.normalize t with
   | T.(Prim Bool) ->
-    letD (var_for t) (tagE "bool" unitE),
-    []
+    tagE "bool" unitE
   | T.(Prim Int) ->
-    letD (var_for t) (tagE "int" unitE),
-    []
+    tagE "int" unitE
   | T.Tup ts ->
-    letD (var_for t) (tagE "tup" (arrayE typRepT (List.map exp_for ts))),
-    ts
+    tagE "tup" (arrayE typRepT (List.map exp_for ts))
   | T.Opt t ->
-    letD (var_for t) (tagE "opt" (exp_for t)),
-    [t]
+    tagE "opt" (exp_for t)
   | _ ->
     raise (Invalid_argument ("Typrep.decl_for :" ^ T.string_of_typ_expand t))
+
+let subterms_of : T.typ -> T.typ list = fun t ->
+  match T.normalize t with
+  | T.Tup ts -> ts
+  | T.Opt t -> [t]
+  | _ -> []
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)
 
 let decls : T.typ M.t -> Ir.dec list = fun roots ->
-  let seen = ref M.empty in
+  let roots = List.map snd (M.bindings roots) in
 
+  (* Enumerate all subterms (Depth-first traversal) *)
+  let seen = ref M.empty in
   let rec go = function
-    | [] -> []
+    | [] -> ()
     | t::todo when M.mem (typ_hash t) !seen ->
       go todo
     | t::todo ->
-      seen := M.add (typ_hash t) () !seen;
-      let (decl, deps) = decl_for t in
-      decl :: go (deps @ todo)
-  in go (List.map snd (M.bindings roots))
+      seen := M.add (typ_hash t) t !seen;
+      go (subterms_of t @ todo)
+  in go roots;
+
+  (* Now generate declarations *)
+  List.map (fun (_h, t) ->
+    letD (var_for t) (mutArrayE typRepT [tagE "any" unitE])
+  ) (M.bindings !seen) @
+  List.map (fun (_h, t) ->
+    expD {
+      it = AssignE (lexp_for t, rhs_for t);
+      at = no_region;
+      note = Note.{def with typ = T.unit}
+    }
+  ) (M.bindings !seen)
+
 
 (* The AST traversal *)
 

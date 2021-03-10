@@ -1,1 +1,2 @@
-(unknown location): execution error, accessing identifier before its definition
+#ref([var #bool])
+#ref([var #tup([#ref([var #bool]), #ref([var #int])])])

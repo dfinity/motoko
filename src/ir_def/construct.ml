@@ -193,6 +193,14 @@ let arrayE t es =
     at = no_region;
   }
 
+let mutArrayE t es =
+  let effs = List.map eff es in
+  let eff = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (ArrayPrim (Var, t), es);
+    note = Note.{ def with typ = T.Array (T.Mut t); eff };
+    at = no_region;
+  }
+
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
    note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
@@ -223,6 +231,12 @@ let blockE decs exp =
       at = no_region;
       note = Note.{ def with typ; eff }
     }
+
+let natE n =
+  { it = LitE (NatLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat }
+  }
 
 let textE s =
   { it = LitE (TextLit s);
@@ -308,6 +322,16 @@ let dotE exp name typ =
       eff = eff exp
     }
   }
+
+let idxE exp1 exp2 =
+  { it = PrimE (IdxPrim, [exp1; exp2]);
+    at = no_region;
+    note = Note.{ def with
+      typ = T.as_array (typ exp1);
+      eff = max_eff (eff exp1) (eff exp2)
+    }
+  }
+
 
 let switch_optE exp1 exp2 pat exp3 typ1  =
   { it =
@@ -643,14 +667,33 @@ let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
 
 let typRepT =
   let open T in
-  let c = Con.fresh "TypRep" (Abs ([], Pre)) in
-  let t = Con (c, []) in
-  let rhs =
-    Variant [
-      { lab = "bool"; typ = T.unit; depr = None };
-      { lab = "int"; typ = T.unit; depr = None };
-      { lab = "opt"; typ = t; depr = None };
-      { lab = "tup"; typ = T.Array t; depr = None };
-    ] in
-  set_kind c (Def ([], rhs));
-  t
+  let typRepC = Con.fresh "TypRep" (Abs ([], Pre)) in
+  let typRepT = Con (typRepC, []) in
+  let fieldsC = Con.fresh "Fields" (Abs ([], Pre)) in
+  let fieldsT = Con (fieldsC, []) in
+  let objSortT = Variant (List.sort compare_field (
+    List.map (fun lab -> { lab; typ = T.unit; depr = None }) [
+      "object_"; "actor_"; "module_"; "memory"
+    ]
+  )) in
+  let typRepRhs = Variant (List.sort compare_field (
+    List.map (fun lab -> { lab; typ = T.unit; depr = None }) [
+      "null_"; "bool"; "nat"; "int";
+      "nat8"; "nat16"; "nat32"; "nat64";
+      "int8"; "int16"; "int32"; "int64";
+      "word8"; "word16"; "word32"; "word64";
+      "float"; "char"; "text"; "blob"; "error"; "principal";
+      "func_"; "any"; "non"
+    ] @ List.map (fun (lab,typ) -> { lab; typ; depr = None }) [
+      ("ref", Array (Mut typRepT));
+      ("obj", Tup [objSortT; fieldsT]);
+      ("variant", fieldsT);
+      ("array", typRepT);
+      ("opt", typRepT);
+      ("tup", Array typRepT);
+    ]
+  )) in
+  let fieldsRhs = Array (Tup [text; Prim Int32; typRepT]) in
+  set_kind typRepC (Def ([], typRepRhs));
+  set_kind fieldsC (Def ([], fieldsRhs));
+  typRepT

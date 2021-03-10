@@ -1,16 +1,2 @@
-#bool
-pattern failed
-Error: failed to run main module `_out/typrep-show.wasm`
-
-Caused by:
-    0: failed to invoke command default
-    1: wasm trap: unreachable
-       wasm backtrace:
-         0: 4,word16:u,word32:u,word64:u,word8:u)>
-         1: @text_of_array
-         2: 5,word16:u,word32:u,word64:u,word8:u)>
-         3: @text_of_variant
-         4: 4,word16:u,word32:u,word64:u,word8:u)>
-         5: init
-         6: _start
-       
+#ref([var #bool])
+#ref([var #tup([#ref([var #bool]), #ref([var #int])])])
