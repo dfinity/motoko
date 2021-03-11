@@ -754,7 +754,7 @@ and rel_tags rel eq tfs1 tfs2 =
     | 0 ->
       rel_typ rel eq tf1.typ tf2.typ &&
       rel_tags rel eq tfs1' tfs2'
-    | +1 when rel != eq ->
+  | +1 when rel != eq ->
       rel_tags rel eq tfs1 tfs2'
     | _ -> false
     )
@@ -1118,7 +1118,7 @@ let string_of_con' vs c =
   let s = Con.to_string' Cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
-let rec string_of_typ_nullary vs = function
+let rec string_of_typ_nullary ppf vs = function
   | Pre -> "???"
   | Any -> "Any"
   | Non -> "None"
@@ -1127,46 +1127,46 @@ let rec string_of_typ_nullary vs = function
   | Con (c, []) -> string_of_con' vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con' vs c)
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (String.concat ", " (List.map (string_of_typ' ppf vs) ts))
   | Tup ts ->
     sprintf "(%s%s)"
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (String.concat ", " (List.map (string_of_typ' ppf vs) ts))
       (if List.length ts = 1 then "," else "")
   | Array (Mut t) ->
-    sprintf "[var %s]" (string_of_typ_nullary vs t)
+    sprintf "[var %s]" (string_of_typ_nullary ppf vs t)
   | Array t ->
-    sprintf "[%s]" (string_of_typ_nullary vs t)
+    sprintf "[%s]" (string_of_typ_nullary ppf vs t)
   | Obj (Object, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field ppf vs) fs))
   | Variant [] -> "{#}"
   | Variant fs ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_tag ppf vs) fs))
   | Typ c ->
-    sprintf "= (type %s)" (string_of_kind (Con.kind c))
-  | t -> sprintf "(%s)" (string_of_typ' vs t)
+    sprintf "= (type %s)" (string_of_kind' ppf (Con.kind c))
+  | t -> sprintf "(%s)" (string_of_typ' ppf vs t)
 
-and string_of_dom parens vs ts =
-  let dom = string_of_typ_nullary vs (seq ts) in
+and string_of_dom ppf parens vs ts =
+  let dom = string_of_typ_nullary ppf vs (seq ts) in
   match ts with
   | [Tup _] -> sprintf "(%s)" dom
   | _ -> if parens && dom.[0] <> '(' then sprintf "(%s)" dom else dom
 
-and string_of_cod vs ts =
-  let cod = string_of_typ' vs (seq ts) in
+and string_of_cod ppf vs ts =
+  let cod = string_of_typ' ppf vs (seq ts) in
   match ts with
   | [Tup _] -> sprintf "(%s)" cod
   | _ -> cod
 
-and string_of_control_cod sugar c vs ts =
+and string_of_control_cod ppf sugar c vs ts =
   match c, ts with
   (* sugar *)
   | Returns, [Async (_,t)] when sugar ->
-    sprintf "async %s" (string_of_typ' vs t)
+    sprintf "async %s" (string_of_typ' ppf vs t)
   | Promises, ts when sugar ->
-    sprintf "async %s" (string_of_cod vs ts)
+    sprintf "async %s" (string_of_cod ppf vs ts)
   (* explicit *)
-  | (Returns | Promises), _ -> string_of_cod vs ts
-  | Replies, _ -> sprintf "replies %s"  (string_of_cod vs ts)
+  | (Returns | Promises), _ -> string_of_cod ppf vs ts
+  | Replies, _ -> sprintf "replies %s"  (string_of_cod ppf vs ts)
 
 and can_sugar t = match t with
   | Func(s, Promises, tbs, ts1, ts2)
@@ -1199,7 +1199,7 @@ and can_omit n t =
     end
   in go n t
 
-and string_of_typ' vs t =
+and string_of_typ' ppf vs t =
   match t with
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
@@ -1208,53 +1208,53 @@ and string_of_typ' vs t =
     (match tbs with
     | [tb] ->
        sprintf "%s%s -> %s" (string_of_func_sort s)
-        (string_of_dom false (vs'vs) ts1)
-        (string_of_control_cod true c (vs'vs) ts2)
+        (string_of_dom ppf false (vs'vs) ts1)
+        (string_of_control_cod ppf true c (vs'vs) ts2)
     | _ ->
-      let bs = string_of_binds (vs'vs) vs'' tbs' in
+      let bs = string_of_binds ppf (vs'vs) vs'' tbs' in
       sprintf "%s%s%s -> %s"
-        (string_of_func_sort s) bs (string_of_dom (bs <> "") (vs'vs) ts1)
-        (string_of_control_cod true c (vs'vs) ts2)
+        (string_of_func_sort s) bs (string_of_dom ppf (bs <> "") (vs'vs) ts1)
+        (string_of_control_cod ppf true c (vs'vs) ts2)
     )
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_dom false vs ts1)
-      (string_of_control_cod false c vs ts2)
+      (string_of_dom ppf false vs ts1)
+      (string_of_control_cod ppf false c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     let vs'vs = vs' @ vs in
-    let bs = string_of_binds (vs'vs) vs' tbs in
+    let bs = string_of_binds ppf (vs'vs) vs' tbs in
     sprintf "%s%s%s -> %s"
-      (string_of_func_sort s) bs (string_of_dom (bs <> "") (vs'vs) ts1)
-      (string_of_control_cod false c (vs'vs) ts2)
+      (string_of_func_sort s) bs (string_of_dom ppf (bs <> "") (vs'vs) ts1)
+      (string_of_control_cod ppf false c (vs'vs) ts2)
   | Opt t ->
-    sprintf "?%s"  (string_of_typ_nullary vs t)
+    sprintf "?%s"  (string_of_typ_nullary ppf vs t)
   | Async (t1, t2) ->
     (match t1 with
-     | Var(_, n) when fst (List.nth vs n) = "" -> sprintf "async %s" (string_of_typ_nullary vs t2)
-     | _ -> sprintf "async<%s> %s" (string_of_typ' vs t1) (string_of_typ_nullary vs t2))
+     | Var(_, n) when fst (List.nth vs n) = "" -> sprintf "async %s" (string_of_typ_nullary ppf vs t2)
+     | _ -> sprintf "async<%s> %s" (string_of_typ' ppf vs t1) (string_of_typ_nullary ppf vs t2))
   | Obj (s, fs) ->
-    sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary vs (Obj (Object, fs)))
+    sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary ppf vs (Obj (Object, fs)))
   | Typ c ->
-    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind (Con.kind c))
+    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind' ppf (Con.kind c))
   | Mut t ->
-    sprintf "var %s" (string_of_typ' vs t)
-  | t -> string_of_typ_nullary vs t
+    sprintf "var %s" (string_of_typ' ppf vs t)
+  | t -> string_of_typ_nullary ppf vs t
 
-and string_of_field vs {lab; typ; depr} =
+and string_of_field ppf vs {lab; typ; depr} =
   match typ with
   | Typ c ->
-    let op, sbs, st = strings_of_kind (Con.kind c) in
+    let op, sbs, st = strings_of_kind' ppf (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
   | Mut t' ->
-    sprintf "var %s : %s" lab (string_of_typ' vs t')
+    sprintf "var %s : %s" lab (string_of_typ' ppf vs t')
   | _ ->
-    sprintf "%s : %s" lab (string_of_typ' vs typ)
+    sprintf "%s : %s" lab (string_of_typ' ppf vs typ)
 
-and string_of_tag vs {lab; typ; depr} =
+and string_of_tag ppf vs {lab; typ; depr} =
   match typ with
   | Tup [] -> sprintf "#%s" lab
-  | _ -> sprintf "#%s : %s" lab (string_of_typ' vs typ)
+  | _ -> sprintf "#%s : %s" lab (string_of_typ' ppf vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
@@ -1264,34 +1264,30 @@ and name_of_var vs v =
   | [] -> v
   | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
 
-and string_of_bind vs v {bound; _} =
+and string_of_bind ppf vs v ({bound; _}:bind) =
   string_of_var v ^
-  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
+  (if bound = Any then "" else " <: " ^ string_of_typ' ppf vs bound)
 
-and string_of_binds vs vs' = function
+and string_of_binds ppf vs vs' = function
   | [] -> ""
-  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
+  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind ppf vs) vs' tbs) ^ ">"
 
 
-and strings_of_kind k =
+and strings_of_kind' ppf k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
     | Abs (tbs, t) -> "<:", tbs, t
   in
   let vs = vars_of_binds [] tbs in
-  op, string_of_binds vs vs tbs, string_of_typ' vs t
+  op, string_of_binds ppf vs vs tbs, string_of_typ' ppf vs t
 
-and string_of_kind k =
-  let op, sbs, st = strings_of_kind k in
+and string_of_kind' ppf k =
+  let op, sbs, st = strings_of_kind' ppf k in
   sprintf "%s %s%s" op sbs st
 
-let string_of_con : con -> string = string_of_con' []
-let string_of_typ : typ -> string = string_of_typ' []
-let _ = str := string_of_typ
-
-let rec string_of_typ_expand t =
-  let s = string_of_typ t in
+let rec string_of_typ_expand' ppf t =
+  let s = string_of_typ' ppf [] t in
   match t with
   | Con (c, ts) ->
     (match Con.kind c with
@@ -1299,9 +1295,40 @@ let rec string_of_typ_expand t =
     | Def _ ->
       match normalize t with
       | Prim _ | Any | Non -> s
-      | t' -> s ^ " = " ^ string_of_typ_expand t'
+      | t' -> s ^ " = " ^ string_of_typ_expand' ppf t'
     )
   | _ -> s
+
+
+let with_str_formater f x =
+  let b = Buffer.create 16 in
+  let ppf = Format.formatter_of_buffer b in
+  f ppf x;
+  Format.pp_print_flush ppf ();
+  Buffer.contents b
+
+let string_of_con : con -> string = string_of_con' []
+
+let string_of_typ : typ -> string =
+  let ppf = () in
+  string_of_typ' ppf []
+
+let string_of_kind : kind -> string =
+  let ppf = () in
+  string_of_kind' ppf
+
+let strings_of_kind : kind -> string * string * string =
+  let ppf = () in
+  strings_of_kind' ppf
+
+let string_of_typ_expand : typ -> string =
+  let ppf = () in
+  string_of_typ_expand' ppf
+
+let _ = str := string_of_typ
+
+
+
 end
 
 module type Pretty = sig
