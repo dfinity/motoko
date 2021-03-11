@@ -1,4 +1,4 @@
-type-equivalence.mo:26.26-26.31: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-type-equivalence.mo:27.26-27.31: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-type-equivalence.mo:26.26-26.31: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-type-equivalence.mo:27.26-27.31: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-equivalence.mo:26.26-26.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-equivalence.mo:27.26-27.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-equivalence.mo:26.26-26.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-equivalence.mo:27.26-27.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead

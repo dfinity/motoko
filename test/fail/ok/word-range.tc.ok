@@ -1,120 +1,120 @@
-word-range.mo:5.9-5.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:6.9-6.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:7.9-7.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:8.9-8.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:9.9-9.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:10.9-10.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:11.9-11.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:12.9-12.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:13.9-13.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:14.9-14.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:15.9-15.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:16.9-16.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:17.9-17.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:18.9-18.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:19.9-19.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:20.9-20.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:21.9-21.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:22.9-22.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:23.9-23.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:24.9-24.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:25.9-25.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:26.9-26.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:27.9-27.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:28.9-28.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:31.9-31.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:32.9-32.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:33.9-33.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:34.9-34.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:35.9-35.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:36.9-36.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:37.9-37.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:38.9-38.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:39.9-39.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:40.9-40.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:41.9-41.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:42.9-42.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:43.9-43.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:44.9-44.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:45.9-45.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:46.9-46.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:47.9-47.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:48.9-48.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:49.9-49.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:50.9-50.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:51.9-51.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:52.9-52.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:53.9-53.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:54.9-54.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:5.9-5.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:6.9-6.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:7.9-7.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:8.9-8.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:9.9-9.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:10.9-10.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
-word-range.mo:11.9-11.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:12.9-12.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:13.9-13.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:14.9-14.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:15.9-15.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:16.9-16.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
-word-range.mo:17.9-17.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:18.9-18.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:19.9-19.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:20.9-20.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:21.9-21.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:22.9-22.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
-word-range.mo:23.9-23.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:24.9-24.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:25.9-25.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:26.9-26.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:27.9-27.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:28.9-28.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
-word-range.mo:31.9-31.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:5.9-5.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:6.9-6.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:7.9-7.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:8.9-8.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:9.9-9.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:10.9-10.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:11.9-11.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:12.9-12.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:13.9-13.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:14.9-14.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:15.9-15.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:16.9-16.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:17.9-17.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:18.9-18.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:19.9-19.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:20.9-20.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:21.9-21.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:22.9-22.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:23.9-23.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:24.9-24.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:25.9-25.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:26.9-26.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:27.9-27.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:28.9-28.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:31.9-31.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:32.9-32.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:33.9-33.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:34.9-34.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:35.9-35.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:36.9-36.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:37.9-37.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:38.9-38.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:39.9-39.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:40.9-40.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:41.9-41.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:42.9-42.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:43.9-43.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:44.9-44.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:45.9-45.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:46.9-46.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:47.9-47.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:48.9-48.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:49.9-49.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:50.9-50.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:51.9-51.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:52.9-52.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:53.9-53.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:54.9-54.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:5.9-5.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:6.9-6.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:7.9-7.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:8.9-8.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:9.9-9.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:10.9-10.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:11.9-11.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:12.9-12.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:13.9-13.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:14.9-14.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:15.9-15.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:16.9-16.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:17.9-17.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:18.9-18.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:19.9-19.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:20.9-20.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:21.9-21.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:22.9-22.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:23.9-23.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:24.9-24.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:25.9-25.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:26.9-26.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:27.9-27.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:28.9-28.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:31.9-31.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
 word-range.mo:31.17-31.20: type error [M0048], literal out of range for type Word8
-word-range.mo:32.9-32.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:32.9-32.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
 word-range.mo:32.17-32.22: type error [M0048], literal out of range for type Word8
-word-range.mo:33.9-33.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:33.9-33.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
 word-range.mo:33.17-33.21: type error [M0048], literal out of range for type Word8
-word-range.mo:34.9-34.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:34.9-34.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
 word-range.mo:34.17-34.23: type error [M0048], literal out of range for type Word8
-word-range.mo:35.9-35.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:35.9-35.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
 word-range.mo:35.17-35.21: type error [M0048], literal out of range for type Word8
-word-range.mo:36.9-36.14: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
+word-range.mo:36.9-36.14: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
 word-range.mo:36.17-36.22: type error [M0048], literal out of range for type Word8
-word-range.mo:37.9-37.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:37.9-37.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
 word-range.mo:37.18-37.23: type error [M0048], literal out of range for type Word16
-word-range.mo:38.9-38.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:38.9-38.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
 word-range.mo:38.18-38.25: type error [M0048], literal out of range for type Word16
-word-range.mo:39.9-39.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:39.9-39.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
 word-range.mo:39.18-39.24: type error [M0048], literal out of range for type Word16
-word-range.mo:40.9-40.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:40.9-40.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
 word-range.mo:40.18-40.26: type error [M0048], literal out of range for type Word16
-word-range.mo:41.9-41.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:41.9-41.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
 word-range.mo:41.18-41.24: type error [M0048], literal out of range for type Word16
-word-range.mo:42.9-42.15: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+word-range.mo:42.9-42.15: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
 word-range.mo:42.18-42.25: type error [M0048], literal out of range for type Word16
-word-range.mo:43.9-43.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:43.9-43.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
 word-range.mo:43.18-43.28: type error [M0048], literal out of range for type Word32
-word-range.mo:44.9-44.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:44.9-44.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
 word-range.mo:44.18-44.29: type error [M0048], literal out of range for type Word32
-word-range.mo:45.9-45.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:45.9-45.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
 word-range.mo:45.18-45.29: type error [M0048], literal out of range for type Word32
-word-range.mo:46.9-46.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:46.9-46.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
 word-range.mo:46.18-46.30: type error [M0048], literal out of range for type Word32
-word-range.mo:47.9-47.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:47.9-47.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
 word-range.mo:47.18-47.29: type error [M0048], literal out of range for type Word32
-word-range.mo:48.9-48.15: warning [M0153], the Word32 type is deprecated, please use Nat32 or Int32 instead
+word-range.mo:48.9-48.15: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
 word-range.mo:48.18-48.29: type error [M0048], literal out of range for type Word32
-word-range.mo:49.9-49.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:49.9-49.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
 word-range.mo:49.18-49.44: type error [M0048], literal out of range for type Word64
-word-range.mo:50.9-50.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:50.9-50.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
 word-range.mo:50.18-50.37: type error [M0048], literal out of range for type Word64
-word-range.mo:51.9-51.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:51.9-51.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
 word-range.mo:51.18-51.45: type error [M0048], literal out of range for type Word64
-word-range.mo:52.9-52.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:52.9-52.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
 word-range.mo:52.18-52.38: type error [M0048], literal out of range for type Word64
-word-range.mo:53.9-53.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:53.9-53.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
 word-range.mo:53.18-53.44: type error [M0048], literal out of range for type Word64
-word-range.mo:54.9-54.15: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+word-range.mo:54.9-54.15: warning [M0159], the Word64 type is deprecated, please use Nat64 or Int64 instead
 word-range.mo:54.18-54.37: type error [M0048], literal out of range for type Word64

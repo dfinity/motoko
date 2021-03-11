@@ -1,1 +1,1 @@
-show.mo:34.34-34.40: warning [M0153], the Word16 type is deprecated, please use Nat16 or Int16 instead
+show.mo:34.34-34.40: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
