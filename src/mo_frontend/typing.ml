@@ -199,7 +199,7 @@ let check_deprecation_binop env at t op =
   | _, _ -> ()
 
 let check_word_deprecation env at c =
-  let msg n = warn env at "M0153" "the Word%d type is deprecated, please use Nat%d or Int%d instead" n n n in
+  let msg n = warn env at "M0159" "the Word%d type is deprecated, please use Nat%d or Int%d instead" n n n in
   match Con.kind c with
     | T.(Def ([], Prim Word8))  -> msg 8
     | T.(Def ([], Prim Word16)) -> msg 16
@@ -843,9 +843,10 @@ let array_obj t =
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
+  let bytes_depr = "the bytes() iterator is deprecated, please use vals(). See M0159 for details" in
   let open T in
   Object,
-  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)]); depr = None};
+  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)]); depr = Some bytes_depr};
     {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
   ]
