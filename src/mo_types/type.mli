@@ -58,7 +58,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ}
+and field = {lab : lab; typ : typ; depr : string option}
 
 and con = kind Con.t
 and kind =
@@ -155,6 +155,9 @@ val arity : typ -> int
 val lookup_val_field : string -> field list -> typ
 val lookup_typ_field : string -> field list -> con
 
+val lookup_val_deprecation : string -> field list -> string option
+val lookup_typ_deprecation : string -> field list -> string option
+
 val compare_field : field -> field -> int
 
 
@@ -173,10 +176,6 @@ module S : Set.S with type elt = typ
 
 val normalize : typ -> typ
 val promote : typ -> typ
-
-exception Unavoidable of con
-val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
-val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
 val opaque : typ -> bool
 val concrete : typ -> bool

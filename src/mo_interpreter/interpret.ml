@@ -980,7 +980,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Import a module unchanged, and a class constructor as an asynchronous function.
    The conversion will be unnecessary once we declare classes as asynchronous. *)
 let import_lib env lib =
-  let (_, cub) = lib.it in
+  let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
@@ -1001,4 +1001,4 @@ let interpret_lib flags scope lib : scope =
       vo := Some (import v))
   );
   Scheduler.run ();
-  lib_scope lib.note (Option.get !vo) scope
+  lib_scope lib.note.filename (Option.get !vo) scope

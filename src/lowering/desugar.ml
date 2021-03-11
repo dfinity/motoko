@@ -2,6 +2,7 @@ open Ir_def
 open Mo_def
 open Mo_types
 open Mo_values
+open Syntax
 
 open Source
 open Operator
@@ -131,6 +132,10 @@ and exp' at note = function
       I.PrimE (I.NumConvWrapPrim (p1, p2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "decodeUtf8";_},_);_}, _, e) ->
+    I.PrimE (I.DecodeUtf8, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "encodeUtf8";_},_);_}, _, e) ->
+    I.PrimE (I.EncodeUtf8, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
@@ -169,6 +174,11 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesAcceptPrim, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesAdd";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
+  (* Certified data *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
+    I.PrimE (I.SetCertifiedData, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
+    I.PrimE (I.GetCertificate, [])
   (* Other *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
@@ -240,7 +250,7 @@ and obj_block at s self_id dfs obj_typ =
   | T.Actor -> build_actor at self_id dfs obj_typ
   | T.Memory -> assert false
 
-and build_field {T.lab; T.typ} =
+and build_field {T.lab; T.typ;_} =
   { it = { I.name = lab
          ; I.var = lab
          }
@@ -252,7 +262,7 @@ and build_fields obj_typ =
     match obj_typ with
     | T.Obj (_, fields) ->
       (* TBR: do we need to sort val_fields?*)
-      let val_fields = List.filter (fun {T.lab;T.typ} -> not (T.is_typ typ)) fields in
+      let val_fields = List.filter (fun {T.lab; T.typ; _} -> not (T.is_typ typ)) fields in
       List.map build_field val_fields
     | _ -> assert false
 
@@ -296,7 +306,7 @@ and build_actor at self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t}) ids in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t; depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
@@ -709,17 +719,17 @@ let actor_class_mod_exp id class_typ func =
           at = no_region;
           note = fun_typ }]
        (T.Obj(T.Module, List.sort T.compare_field [
-          { T.lab = id; T.typ = T.Typ class_con };
-          { T.lab = id; T.typ = fun_typ }])))
+          { T.lab = id; T.typ = T.Typ class_con; depr = None };
+          { T.lab = id; T.typ = fun_typ; depr = None }])))
 
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
-  let f = lib.note in
-  let (_, cub) = lib.it in
-  let id = match cub.it with
+  let f = lib.note.filename in
+  let { body; _ } = lib.it in
+  let id = match body.it with
     | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
     | _ -> assert false
   in
-  let fun_typ = T.normalize cub.note.S.note_typ in
+  let fun_typ = T.normalize body.note.S.note_typ in
   let s, cntrl, tbs, ts1, ts2 = T.as_func fun_typ in
   let cs = T.open_binds tbs in
   let c, _ = T.as_con (List.hd cs) in
@@ -771,7 +781,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
-  decs (prelude.it)
+  decs prelude.it
 
 let inject_decs extra_ds u =
   let open Ir in
@@ -850,7 +860,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     end
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
-  let (imports, body) = u.it in
+  let { imports; body; _ } = u.it in
   let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   inject_decs imports' body', initial_flavor
@@ -863,8 +873,8 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
    import_compiled_class (above) for compilation.
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
-  let (imports, body) = u.it in
-  let f = u.note in
+  let { imports; body; _ } = u.it in
+  let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
   let imports' = List.concat_map transform_import imports in

@@ -31,13 +31,14 @@ known_untested_codes = {
     "M0053", # did not manage to trigger
     "M0054", # cannot infer type of primitive expression. Could be internal
     "M0068", # mode-specific
-    "M0080", # did not manage to trigger
+    "M0080", # DEFUNCT Local class type is contained in inferred block type
     "M0084", # when would the return type be inferred?
     "M0092", # async scopes
     "M0094", # hard to trigger (check_exp only applies with no type variables, but shared functions have type variables)
     "M0099", # hard to trigger (syntactic checks hit first)
     "M0100", # hard to trigger (syntactic checks hit first)
     "M0108", # mode-specific
+    "M0123", # DEFUNCT Local class type contained in object or actor type
     "M0144", # bad import, but seems to be shadowed by non-static expression
     # defunct codes:
     "M0052",

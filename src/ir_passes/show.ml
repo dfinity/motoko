@@ -218,7 +218,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (
       switch_variantE
         (argE t)
-        (List.map (fun {T.lab = l; typ = t'} ->
+        (List.map (fun {T.lab = l; typ = t'; _} ->
           let t' = T.normalize t' in
           l,
           (varP (argVar t')), (* Shadowing, but that's fine *)
