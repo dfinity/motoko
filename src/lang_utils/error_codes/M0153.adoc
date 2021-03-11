@@ -1,6 +1,6 @@
 = M0153
 
-The word types (`Word8` etc.) are deprecated, please use `Nat8` or `Int8`
+The word types (`Word8` etc.) are deprecated, please use `Nat8` or `Int8` and friends
 instead. Things to keep in mind:
 
  * The operators `+`, `-`, `*` and `**` were warpping on word types. To get the
