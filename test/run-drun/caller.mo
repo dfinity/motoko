@@ -39,7 +39,7 @@ actor a {
   // NB: The following tests are more about Blob than Principal
   // Maybe move to their own tests once we have intro forms for blobs
 
-  public shared query({caller}) func c9() : async Word32 {
+  public shared query({caller}) func c9() : async Nat32 {
     Prim.hashBlob (Prim.blobOfPrincipal caller);
   };
 
