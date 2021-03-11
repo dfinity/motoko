@@ -2354,22 +2354,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
     let k = T.Def (T.close_binds cs tbs, T.close cs t) in
-    begin
-      let is_typ_param c =
-        match Con.kind c with
-        | T.Def _ -> false
-        | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
-        | T.Abs( _, _) -> true in
-      let typ_params = T.ConSet.filter is_typ_param env.cons in
-      let cs_k = T.cons_kind k in
-      let free_params = T.ConSet.inter typ_params cs_k in
-      if not (T.ConSet.is_empty free_params) then
-        error env dec.at "M0137"
-          "type definition %s %s references type parameter(s) %s from an outer scope"
-          id.it
-          (T.string_of_kind k)
-          (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
-    end;
+    check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -2387,12 +2372,29 @@ and infer_dec_typdecs env dec : Scope.t =
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' obj_sort.it dec_fields dec.at in
-    (* TODO(#2391): check k is closed, see case TypD *)
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
+    check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
+
+and check_closed env id k at =
+  let is_typ_param c =
+    match Con.kind c with
+    | T.Def _ -> false
+    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
+    | T.Abs( _, _) -> true in
+  let typ_params = T.ConSet.filter is_typ_param env.cons in
+  let cs_k = T.cons_kind k in
+  let free_params = T.ConSet.inter typ_params cs_k in
+  if not (T.ConSet.is_empty free_params) then
+    let op, sbs, st = T.strings_of_kind k in
+    error env at "M0137"
+      "type %s%s %s %s references type parameter%s %s from an outer scope"
+      id.it sbs op st
+      (if T.ConSet.cardinal free_params = 1 then "" else "s")
+      (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
 and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
