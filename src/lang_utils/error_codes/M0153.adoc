@@ -3,7 +3,7 @@
 The word types (`Word8` etc.) are deprecated, please use `Nat8` or `Int8` and friends
 instead. Things to keep in mind:
 
- * The operators `+`, `-`, `*` and `**` were warpping on word types. To get the
+ * The operators `+`, `-`, `*` and `**` were wrapping on word types. To get the
    same behaviour on `NatN` and `IntN` types, use the wrapping variants (`+%`,
    `-%`, `*%` and `**%`)
 
