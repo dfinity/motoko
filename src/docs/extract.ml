@@ -1,4 +1,3 @@
-open Mo_frontend
 open Mo_def
 open Source
 
@@ -39,7 +38,7 @@ and type_doc = {
 and doc_type =
   | DTPlain of Syntax.typ
   (* One level unwrapping of an object type with documentation on its fields *)
-  | DTObj of Syntax.typ * (Syntax.typ_field * string) list
+  | DTObj of Syntax.typ * (Syntax.typ_field * string option) list
 
 (* TODO We'll also want to unwrap variants here *)
 and class_doc = {
@@ -50,32 +49,9 @@ and class_doc = {
   sort : Syntax.obj_sort;
 }
 
-let string_of_leading : Lexer.trivia_info -> string =
- fun info ->
-  String.concat "\n"
-    (List.filter_map
-       (function
-         | Source_token.Comment s -> (
-             match Lib.String.chop_prefix "///" s with
-             | Some "" -> Some ""
-             | Some line_comment ->
-                 (* We expect a documentation line comment to start with a space
-                  *  (which we remove here) *)
-                 Lib.String.chop_prefix " " line_comment
-             | None ->
-                 Option.bind
-                   (Lib.String.chop_prefix "/**" s)
-                   (Lib.String.chop_suffix "*/")
-                 |> Option.map String.trim )
-         | _ -> None)
-       info.Lexer.leading_trivia)
-
-let _print_leading : Lexer.trivia_info -> unit =
- fun info -> print_endline (string_of_leading info)
-
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
-  let imports, body = comp_unit.it in
+  let Syntax.{ imports; body } = comp_unit.it in
   let imports =
     List.map
       (fun i ->
@@ -87,10 +63,10 @@ let un_prog prog =
   | Syntax.ModuleU (_, decs) -> Ok (imports, decs)
   | _ -> Error "Couldn't find a module expression"
 
-module PosTable = Lexer.PosHashtbl
+module PosTable = Trivia.PosHashtbl
 
 type extracted = {
-  module_comment : string;
+  module_comment : string option;
   lookup_type : Syntax.path -> Xref.t option;
   docs : doc list;
 }
@@ -100,7 +76,7 @@ module MakeExtract (Env : sig
 
   val imports : (string * string) list
 
-  val find_trivia : Source.region -> Lexer.trivia_info
+  val find_trivia : Source.region -> Trivia.trivia_info
 end) =
 struct
   let namespace : Namespace.t =
@@ -117,7 +93,7 @@ struct
           {
             name;
             typ = None;
-            doc = Some (string_of_leading (Env.find_trivia at));
+            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
           }
     | Source.{ it = Syntax.AnnotP (p, ty); at; _ } ->
         Option.map
@@ -125,7 +101,7 @@ struct
             {
               x with
               typ = Some ty;
-              doc = Some (string_of_leading (Env.find_trivia at));
+              doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
             })
           (extract_args p)
     | Source.{ it = Syntax.WildP; _ } -> None
@@ -147,8 +123,10 @@ struct
     | Syntax.AnnotE (e, ty) -> Value { name; typ = Some ty }
     | _ -> Value { name; typ = None }
 
-  let extract_obj_field_doc : Syntax.typ_field -> Syntax.typ_field * string =
-   fun ({ at; _ } as tf) -> (tf, string_of_leading (Env.find_trivia at))
+  let extract_obj_field_doc :
+      Syntax.typ_field -> Syntax.typ_field * string option =
+   fun ({ at; _ } as tf) ->
+    (tf, Trivia.doc_comment_of_trivia_info (Env.find_trivia at))
 
   let rec extract_doc mk_xref = function
     | Source.
@@ -192,25 +170,25 @@ struct
         None
 
   and extract_dec_field mk_xref dec_field =
-    if dec_field.it.Syntax.vis.it <> Syntax.Public then None
-    else
+    if Syntax.is_public dec_field.it.Syntax.vis then
       extract_doc mk_xref dec_field.it.Syntax.dec
       |> Option.map (fun (xref, decl_doc) ->
              {
                xref;
                doc_comment =
-                 Some (string_of_leading (Env.find_trivia dec_field.at));
+                 Trivia.doc_comment_of_trivia_info
+                   (Env.find_trivia dec_field.at);
                declaration = decl_doc;
              })
+    else None
 end
 
-let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
-    =
- fun prog trivia_table ->
+let extract_docs : Syntax.prog -> (extracted, string) result =
+ fun prog ->
   let lookup_trivia (line, column) =
-    Lexer.PosHashtbl.find_opt trivia_table Lexer.{ line; column }
+    PosTable.find_opt prog.note.Syntax.trivia Trivia.{ line; column }
   in
-  let find_trivia (parser_pos : Source.region) : Lexer.trivia_info =
+  let find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)
     |> Option.get
   in
@@ -228,7 +206,7 @@ let extract_docs : Syntax.prog -> Lexer.triv_table -> (extracted, string) result
       let docs = List.filter_map (Ex.extract_dec_field Fun.id) decls in
       Ok
         {
-          module_comment = string_of_leading module_docs;
+          module_comment = Trivia.doc_comment_of_trivia_info module_docs;
           lookup_type = Ex.lookup_type;
           docs;
         }

@@ -31,7 +31,10 @@ let selfcallE ts e1 e2 e3 =
 }
 
 let error_ty =
-  T.(Tup [ Variant [{lab = "error"; typ = unit};{lab = "system"; typ = unit}]; text])
+  T.(Tup [ Variant [
+    {lab = "error"; typ = unit; depr = None};
+    {lab = "system"; typ = unit; depr = None}
+  ]; text])
 
 let errorMessageE e =
   projE (primE (CastPrim (T.error, error_ty)) [e]) 1
@@ -223,8 +226,8 @@ let transform mode prog =
     | DeserializePrim ts ->  DeserializePrim (List.map t_typ ts)
     | p -> p
 
-  and t_field {lab; typ} =
-    { lab; typ = t_typ typ }
+  and t_field {lab; typ; depr} =
+    { lab; typ = t_typ typ; depr }
   in
 
   let rec t_exp (exp: exp) =

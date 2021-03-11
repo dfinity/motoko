@@ -124,6 +124,8 @@ and prim =
   | DeserializePrim of Type.typ list  (* Candid deserialization prim *)
   | NumConvTrapPrim of Type.prim * Type.prim
   | NumConvWrapPrim of Type.prim * Type.prim
+  | DecodeUtf8
+  | EncodeUtf8
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
   | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
@@ -136,6 +138,8 @@ and prim =
   | SystemCyclesAvailablePrim
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
+  | SetCertifiedData
+  | GetCertificate
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)

@@ -2,9 +2,10 @@
 let
   nixpkgs = import ./nix { };
   inject-rev = drv: drv.overrideAttrs (attrs: { rev = src.rev; });
+  removeRecurseForDerivations = nixpkgs.lib.filterAttrsRecursive (k: v: k != "recurseForDerivations");
 
-  linux = import ./default.nix { system = "x86_64-linux"; };
-  darwin = import ./default.nix { system = "x86_64-darwin"; };
+  linux = removeRecurseForDerivations (import ./default.nix { system = "x86_64-linux"; });
+  darwin = removeRecurseForDerivations (import ./default.nix { system = "x86_64-darwin"; });
 
   as_tarball = dir: derivations:
     nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz" {

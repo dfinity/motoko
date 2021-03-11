@@ -1,6 +1,74 @@
 = Motoko compiler changelog
 
-* The `moc` now accepts the `-Werror` flag to turn warnings into errors.
+* The `moc` compiler no longer rejects occurrences of private or
+  local type definitions in public interfaces.
+
+  For example,
+
+  ```motoko
+  module {
+    type List = ?(Nat, List); // private
+    public func cons(n : Nat, l : List) : List { ?(n , l) };
+  }
+  ```
+
+  is now accepted, despite `List` being private and appearing in the type
+  of public member `cons`.
+
+* Type propagation for binary operators has been improved. If the type of one of
+  the operands can be determined locally, then the other operand is checked
+  against that expected type. This should help avoiding tedious type annotations
+  in many cases of literals, e.g., `x == 0` or `2 * x`, when `x` has a special
+  type like `Nat8`.
+
+* The `moc` compiler now rejects type definitions that are non-_productive_ (to ensure termination).
+
+  For example, problematic types such as:
+
+  ```motoko
+  type C = C;
+  type D<T, U> = D<U, T>;
+  type E<T> = F<T>;
+  type F<T> = E<T>;
+  type G<T> = Fst<G<T>, Any>;
+  ```
+
+  are now rejected.
+
+* motoko base: `Text` now contains `decodeUtf8` and `encodeUtf8`.
+
+== 0.5.10 (2021-03-02)
+
+* User defined deprecations
+
+  Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
+
+  This lets library authors warn about future breaking changes:
+
+  As an example:
+
+  ```motoko
+  module {
+    /// @deprecated Use `bar` instead
+    public func foo() {}
+
+    public func bar() {}
+  }
+  ```
+
+  will emit a warning whenever `foo` is used.
+
+* The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
+  For example, problematic types such as `type Seq<T> = ?(T, Seq<[T]>)` are rejected.
+
+* motoko base: `Time.Time` is now public
+
+== 0.5.9 (2021-02-19)
+
+* The `moc` compiler now accepts the `-Werror` flag to turn warnings into errors.
+
+* The language server now returns documentation comments alongside
+  completions and hover notifications
 
 == 0.5.8 (2021-02-12)
 

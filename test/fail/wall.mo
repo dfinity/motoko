@@ -7,6 +7,6 @@ do {
 };
 
 do {
- ignore (true == 1);
+ ignore [true, 1];
 };
 

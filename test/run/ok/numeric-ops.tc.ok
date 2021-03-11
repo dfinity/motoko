@@ -16,6 +16,8 @@ numeric-ops.mo:221.36-221.42: warning [M0153], the Word32 type is deprecated, pl
 numeric-ops.mo:225.21-225.27: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
 numeric-ops.mo:225.33-225.39: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
 numeric-ops.mo:225.44-225.50: warning [M0153], the Word64 type is deprecated, please use Nat64 or Int64 instead
+numeric-ops.mo:23.15-23.20: warning [M0155], operator may trap for inferred type
+  Nat
 numeric-ops.mo:152.20-152.25: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
 numeric-ops.mo:152.31-152.36: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead
 numeric-ops.mo:152.41-152.46: warning [M0153], the Word8 type is deprecated, please use Nat8 or Int8 instead

@@ -149,14 +149,9 @@ and plain_of_typ_binders :
 and plain_of_typ_field :
     Buffer.t -> (Syntax.path -> string) -> Syntax.typ_field -> unit =
  fun buf render_path field ->
-  match field.Source.it with
-  | Syntax.ValField (id, typ, mut) ->
-      plain_of_mut buf mut;
-      bprintf buf "%s : " id.it;
-      plain_of_typ buf render_path typ
-  | Syntax.TypField (id, typ) ->
-      bprintf buf "type %s = " id.it;
-      plain_of_typ buf render_path typ
+  plain_of_mut buf field.it.Syntax.mut;
+  bprintf buf "%s : " field.it.Syntax.id.it;
+  plain_of_typ buf render_path field.it.Syntax.typ
 
 and plain_of_typ_item :
     Buffer.t -> (Syntax.path -> string) -> Syntax.typ_item -> unit =
@@ -221,6 +216,6 @@ let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
   bprintf buf "# %s\n" current_path;
-  bprintf buf "%s\n" module_comment;
+  Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf

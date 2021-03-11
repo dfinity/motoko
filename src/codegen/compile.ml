@@ -776,6 +776,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
@@ -1343,6 +1344,11 @@ module Opt = struct
           ]
         )
     )
+
+  (* This function is used where conceptually, Opt.inject should be used, but
+  we know for sure that it wouldn’t do anything anyways *)
+  let inject_noop _env e = e
+
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
@@ -2952,6 +2958,15 @@ module Text = struct
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
+
+  let of_blob env =
+    let (set_blob, get_blob) = new_local env "blob" in
+    set_blob ^^
+    get_blob ^^ Blob.as_ptr_len env ^^
+    E.call_import env "rts" "utf8_valid" ^^
+    G.if_ [I32Type] (Opt.inject_noop env get_blob) (Opt.null_lit env)
+
+
   let iter env =
     E.call_import env "rts" "text_iter"
   let iter_done env =
@@ -3262,6 +3277,10 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type];
       E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type];
       E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type];
+      E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
+      E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
+      E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
+      E.add_func_import env "ic0" "data_certificate_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3601,6 +3620,31 @@ module Dfinity = struct
       system_call env "ic0" "msg_cycles_refunded"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
+
+  let set_certified_data env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      Blob.as_ptr_len env ^^
+      system_call env "ic0" "certified_data_set"
+    | _ ->
+      E.trap_with env "cannot set certified data when running locally"
+
+  let get_certificate env =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      system_call env "ic0" "data_certificate_present" ^^
+      G.if_ [I32Type]
+      begin
+        Opt.inject_noop env (
+          Blob.of_size_copy env
+            (fun env -> system_call env "ic0" "data_certificate_size")
+            (fun env -> system_call env "ic0" "data_certificate_copy") 0l
+        )
+      end (Opt.null_lit env)
+    | _ ->
+      E.trap_with env "cannot get certificate when running locally"
 
 end (* Dfinity *)
 
@@ -3951,7 +3995,7 @@ module Serialization = struct
         get_x ^^ Opt.is_some env ^^
         G.if_ [] (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
-        List.fold_right (fun (i, {lab = l; typ = t}) continue ->
+        List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
             G.if_ []
@@ -4141,7 +4185,7 @@ module Serialization = struct
           ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t )
           ( write_byte (compile_unboxed_const 0l) )
       | Variant vs ->
-        List.fold_right (fun (i, {lab = l; typ = t}) continue ->
+        List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
             G.if_ []
@@ -4749,7 +4793,7 @@ module Serialization = struct
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
           ReadBuf.read_sleb128 env get_typ_buf ^^ set_arg_typ ^^
 
-          List.fold_right (fun (h, {lab = l; typ = t}) continue ->
+          List.fold_right (fun (h, {lab = l; typ = t; _}) continue ->
               get_tag ^^ compile_eq_const (Lib.Uint32.to_int32 h) ^^
               G.if_ [I32Type]
                 ( Variant.inject env l (
@@ -7284,6 +7328,11 @@ and compile_exp (env : E.t) ae exp =
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
+    | DecodeUtf8, [_] ->
+      const_sr SR.Vanilla (Text.of_blob env)
+    | EncodeUtf8, [_] ->
+      const_sr SR.Vanilla (Text.to_blob env)
+
     (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
       const_sr SR.Vanilla (E.call_import env "rts" "blob_of_principal")
@@ -7376,6 +7425,14 @@ and compile_exp (env : E.t) ae exp =
     | SystemCyclesRefundedPrim, [] ->
       SR.UnboxedWord64,
       Dfinity.cycles_refunded env
+
+    | SetCertifiedData, [e1] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e1 ^^
+      Dfinity.set_certified_data env
+    | GetCertificate, [] ->
+      SR.Vanilla,
+      Dfinity.get_certificate env
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
