@@ -45,15 +45,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "next-moc",
+        "branch": "joachim/no-word-hash",
         "description": "The Motoko base library",
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "25c152b0c4d2249fe9f5e57b8b2050d1406a0334",
-        "sha256": "09858582fpdcmbfimga96pknya2ih39hrglcwxaiv39gngx5gj9p",
+        "rev": "6736117b24e0eea6a3b550aca723daeb1d8c104c",
+        "sha256": "1v20nqp88g2371mzkymlfs2zdp3skkaz5s90kj8rvrklvjyzsq7w",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/25c152b0c4d2249fe9f5e57b8b2050d1406a0334.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/6736117b24e0eea6a3b550aca723daeb1d8c104c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
