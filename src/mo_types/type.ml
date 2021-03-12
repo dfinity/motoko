@@ -1123,6 +1123,7 @@ let string_of_con' vs c =
   let s = Con.to_string' Cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
+(* If modified, adjust start_with_parens_nullary below to match *)
 let rec string_of_typ_nullary vs ppf = function
   | Pre -> pr ppf "???"
   | Any -> pr ppf "Any"
@@ -1153,20 +1154,34 @@ let rec string_of_typ_nullary vs ppf = function
     fprintf ppf "=@ (type@ %a)" (string_of_kind') (Con.kind c)
   | t -> fprintf ppf "(%a)" (string_of_typ' vs) t
 
-(*
-and string_of_dom ppf parens vs ts =
-  let dom = string_of_typ_nullary ppf vs (seq ts) in
-  match ts with
-  | [Tup _] -> sprintf "(%s)" dom
-  | _ -> if parens && dom.[0] <> '(' then sprintf "(%s)" dom else dom 
- *)
-and string_of_dom parens vs ppf ts =
-  match ts with
-  | [Tup _] -> fprintf ppf "(%a)" (string_of_typ_nullary vs) (seq ts)
-  | _ ->
-    (* if parens && dom.[0] <> '(' then sprintf "(%s)" dom else dom  *) (* restore hack *)
-    fprintf ppf "(%a)" (string_of_typ_nullary vs) (seq ts)
+(* naively follows structure of string_of_typ_nullary, keep in sync *)
+and starts_with_parens_nullary t =
+  match t with
+  | Pre -> false
+  | Any -> false
+  | Non -> false
+  | Prim p -> false
+  | Var (s, i) -> false
+  | Con (c, []) -> false
+  | Con (c, ts) -> false
+  | Tup ts -> true
+  | Array (Mut t) -> false
+  | Array t -> false
+  | Obj (Object, fs) -> false
+  | Variant [] -> false
+  | Variant fs -> false
+  | Typ c -> false
+  | t -> true
 
+and string_of_dom parens vs ppf ts =
+  let t = seq ts in
+  match ts with
+  | [Tup _] -> fprintf ppf "(%a)" (string_of_typ_nullary vs) t
+  | _ ->
+    if parens && not (starts_with_parens_nullary t) then
+      fprintf ppf "(%a)" (string_of_typ_nullary vs) t
+    else
+      fprintf ppf "%a" (string_of_typ_nullary vs) t
 
 and string_of_cod vs ppf ts =
   match ts with
@@ -1248,7 +1263,6 @@ and string_of_typ' vs ppf t =
       (string_of_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
       (string_of_control_cod false c (vs'vs)) ts2
   | Opt t ->
-    (* GOT HERE *)
     fprintf ppf "?%a"  (string_of_typ_nullary vs) t
   | Async (t1, t2) ->
     (match t1 with
@@ -1283,9 +1297,9 @@ and string_of_field vs ppf {lab; typ; depr} =
 and string_of_tag vs ppf {lab; typ; depr} =
   match typ with
   | Tup [] -> fprintf ppf "#%s" lab
-  | _ -> fprintf ppf "#%s : %a"
-           lab
-           (string_of_typ' vs) typ
+  | _ ->
+    fprintf ppf "#%s : %a" lab
+      (string_of_typ' vs) typ
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
@@ -1299,7 +1313,7 @@ and string_of_bind vs ppf (v, {bound; _}) =
   if bound = Any then
     pr ppf (string_of_var v)
   else
-    fprintf ppf "%s@ <: @%a"
+    fprintf ppf "%s <:@ %a"
       (string_of_var v)
       (string_of_typ' vs) bound
 
@@ -1343,7 +1357,8 @@ let rec string_of_typ_expand' ppf t =
 let with_str_formatter f x =
   let b = Buffer.create 16 in
   let ppf = Format.formatter_of_buffer b in
-  f ppf x;
+  Format.pp_set_geometry ppf ~max_indent:2 ~margin:(1000000010-1); (* hack to output all on one line *)
+  fprintf ppf "@[%a@]" f x;
   Format.pp_print_flush ppf ();
   Buffer.contents b
 
