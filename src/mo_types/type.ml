@@ -754,7 +754,7 @@ and rel_tags rel eq tfs1 tfs2 =
     | 0 ->
       rel_typ rel eq tf1.typ tf2.typ &&
       rel_tags rel eq tfs1' tfs2'
-  | +1 when rel != eq ->
+    | +1 when rel != eq ->
       rel_tags rel eq tfs1 tfs2'
     | _ -> false
     )
@@ -1155,30 +1155,27 @@ let rec string_of_typ_nullary vs ppf = function
   | t -> fprintf ppf "(%a)" (string_of_typ' vs) t
 
 (* naively follows structure of string_of_typ_nullary, keep in sync *)
-and starts_with_parens_nullary t =
+and starts_without_parens_nullary t =
   match t with
-  | Pre -> false
-  | Any -> false
-  | Non -> false
-  | Prim p -> false
-  | Var (s, i) -> false
-  | Con (c, []) -> false
-  | Con (c, ts) -> false
-  | Tup ts -> true
-  | Array (Mut t) -> false
-  | Array t -> false
-  | Obj (Object, fs) -> false
-  | Variant [] -> false
-  | Variant fs -> false
-  | Typ c -> false
-  | t -> true
+  | Pre
+  | Any
+  | Non
+  | Prim _
+  | Var _
+  | Con _ -> true
+  | Tup _ -> false
+  | Array _
+  | Obj _
+  | Variant _
+  | Typ _ -> true
+  | t -> false
 
 and string_of_dom parens vs ppf ts =
   let t = seq ts in
   match ts with
   | [Tup _] -> fprintf ppf "(%a)" (string_of_typ_nullary vs) t
   | _ ->
-    if parens && not (starts_with_parens_nullary t) then
+    if parens && starts_without_parens_nullary t then
       fprintf ppf "(%a)" (string_of_typ_nullary vs) t
     else
       fprintf ppf "%a" (string_of_typ_nullary vs) t
