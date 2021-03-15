@@ -4,7 +4,7 @@
 
 {proglang} is designed for distributed programming with actors.
 
-Before you begin writing programs for distributed processing using actors, you should be familiar with a few of the basic building blocks of amy programming language and with {proglang} in particular. 
+Before you begin writing programs for distributed processing using actors, you should be familiar with a few of the basic building blocks of any programming language and with {proglang} in particular. 
 To get you started, this section introduces the following key concepts and terms that are used throughout the remainder of the documentation and that are essential to learning to program in {proglang}:
 
 * program
