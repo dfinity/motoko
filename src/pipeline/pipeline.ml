@@ -56,7 +56,9 @@ let print_scope senv scope dve =
   print_dyn_ve senv dve
 
 let print_val _senv v t =
-  printf "%s : %s\n" (Value.string_of_val !Flags.print_depth v) (Type.string_of_typ t)
+  Format.printf "@[<hv 2>%s :@ %a@]@."
+    (Value.string_of_val !Flags.print_depth v)
+    Type.pp_typ t
 
 
 (* Dumping *)

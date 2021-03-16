@@ -1133,26 +1133,26 @@ let rec pp_typ_nullary vs ppf = function
     pr ppf (try string_of_var (List.nth vs i) with _ -> Printf.sprintf "??? %s %i" s i)
   | Con (c, []) -> pr ppf (string_of_con' vs c)
   | Con (c, ts) ->
-    fprintf ppf "%s<%a>" (string_of_con' vs c)
+    fprintf ppf "@[%s<@[<1>%a@]>@]" (string_of_con' vs c)
       (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
   | Tup ts ->
-    fprintf ppf "(%a%s)"
+    fprintf ppf "@[<1>(%a%s)@]"
       (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
       (if List.length ts = 1 then "," else "")
   | Array (Mut t) ->
-    fprintf ppf "[var %a]" (pp_typ_nullary vs) t
+    fprintf ppf "@[<1>[var %a]@]" (pp_typ_nullary vs) t
   | Array t ->
-    fprintf ppf "[%a]" (pp_typ_nullary vs) t
+    fprintf ppf "@[<1>[%a]@]" (pp_typ_nullary vs) t
   | Obj (Object, fs) ->
-    fprintf ppf "{%a}"
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field vs)) fs
   | Variant [] -> pr ppf "{#}"
   | Variant fs ->
-    fprintf ppf "{%a}"
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
   | Typ c ->
-    fprintf ppf "=@ (type@ %a)" (pp_kind) (Con.kind c)
-  | t -> fprintf ppf "(%a)" (pp_typ' vs) t
+    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" pp_kind (Con.kind c)
+  | t -> fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) t
 
 (* naively follows structure of pp_typ_nullary, keep in sync *)
 and starts_without_parens_nullary t =
@@ -1173,28 +1173,28 @@ and starts_without_parens_nullary t =
 and pp_dom parens vs ppf ts =
   let t = seq ts in
   match ts with
-  | [Tup _] -> fprintf ppf "(%a)" (pp_typ_nullary vs) t
+  | [Tup _] -> fprintf ppf "@[<1>(%a)@]" (pp_typ_nullary vs) t
   | _ ->
     if parens && starts_without_parens_nullary t then
-      fprintf ppf "(%a)" (pp_typ_nullary vs) t
+      fprintf ppf "@[<1>(%a)@]" (pp_typ_nullary vs) t
     else
-      fprintf ppf "%a" (pp_typ_nullary vs) t
+      pp_typ_nullary vs ppf t
 
 and pp_cod vs ppf ts =
   match ts with
-  | [Tup _] -> fprintf ppf "(%a)" (pp_typ' vs) (seq ts)
+  | [Tup _] -> fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) (seq ts)
   | _ -> pp_typ' vs ppf (seq ts)
 
 and pp_control_cod sugar c vs ppf ts =
   match c, ts with
   (* sugar *)
   | Returns, [Async (_,t)] when sugar ->
-    fprintf ppf "async@ %a" (pp_typ' vs) t
+    fprintf ppf "@[<2>async@ %a@]" (pp_typ' vs) t
   | Promises, ts when sugar ->
-    fprintf ppf "async@ %a" (pp_cod vs) ts
+    fprintf ppf "@[<2>async@ %a@]" (pp_cod vs) ts
   (* explicit *)
   | (Returns | Promises), _ -> pp_cod vs ppf ts
-  | Replies, _ -> fprintf ppf "replies@ %a"  (pp_cod vs) ts
+  | Replies, _ -> fprintf ppf "@[<2>replies@ %a@]"  (pp_cod vs) ts
 
 and can_sugar t = match t with
   | Func(s, Promises, tbs, ts1, ts2)
@@ -1235,67 +1235,63 @@ and pp_typ' vs ppf t =
     let vs'vs = vs' @ vs in
     (match tbs with
     | [tb] ->
-      fprintf ppf "%s%a@ ->@ %a"
+      fprintf ppf "@[%s%a ->@ %a@]"
         (string_of_func_sort s)
         (pp_dom false (vs'vs)) ts1
         (pp_control_cod true c (vs'vs)) ts2
     | _ ->
-      fprintf ppf "%s%a%a@ ->@ %a"
+      fprintf ppf "@[%s%a%a ->@ %a@]"
         (string_of_func_sort s)
         (pp_binds (vs'vs) vs'') tbs'
         (pp_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
         (pp_control_cod true c (vs'vs)) ts2
     )
   | Func (s, c, [], ts1, ts2) ->
-    fprintf ppf "%s%a@ ->@ %a"
+    fprintf ppf "@[%s%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_dom false vs) ts1
       (pp_control_cod false c vs) ts2
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     let vs'vs = vs' @ vs in
-    fprintf ppf "%s%a%a@ ->@ %a"
+    fprintf ppf "@[%s%a%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_binds (vs'vs) vs') tbs
       (pp_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
       (pp_control_cod false c (vs'vs)) ts2
   | Opt t ->
-    fprintf ppf "?%a"  (pp_typ_nullary vs) t
+    fprintf ppf "@[<1>?%a@]"  (pp_typ_nullary vs) t
   | Async (t1, t2) ->
     (match t1 with
      | Var(_, n) when fst (List.nth vs n) = "" ->
-       fprintf ppf "async %a" (pp_typ_nullary vs) t2
+       fprintf ppf "@[<2>async@ %a@]" (pp_typ_nullary vs) t2
      | _ ->
-       fprintf ppf "async<%a>@ %a"
+       fprintf ppf "@[<2>async<%a>@ %a@]"
          (pp_typ' vs) t1
          (pp_typ_nullary vs) t2)
   | Obj (s, fs) ->
-    fprintf ppf "%s%a"
+    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort s)
-      (pp_typ_nullary vs) (Obj (Object, fs))
-  | Typ c ->
-    fprintf ppf "= (%s,%a)"
-      (Con.to_string c)
-      (pp_kind) (Con.kind c)
+      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
   | Mut t ->
-    fprintf ppf "var %a" (pp_typ' vs) t
+    fprintf ppf "@[<1>var@ %a@]" (pp_typ' vs) t
   | t -> pp_typ_nullary vs ppf t
 
 and pp_field vs ppf {lab; typ; depr} =
   match typ with
   | Typ c ->
     let op, sbs, st = strings_of_kind' (Con.kind c) in
-    fprintf ppf "type %s%a %s %a" lab sbs () op st ()
+    fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
   | Mut t' ->
-    fprintf ppf "var %s :@ %a" lab (pp_typ' vs) t'
+    fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
-    fprintf ppf "%s : %a" lab (pp_typ' vs) typ
+    fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
 
 and pp_tag vs ppf {lab; typ; depr} =
   match typ with
   | Tup [] -> fprintf ppf "#%s" lab
   | _ ->
-    fprintf ppf "#%s : %a" lab
+    fprintf ppf "@[<2>#%s :@ %a@]" lab
       (pp_typ' vs) typ
 
 and vars_of_binds vs bs =
@@ -1310,14 +1306,14 @@ and pp_bind vs ppf (v, {bound; _}) =
   if bound = Any then
     pr ppf (string_of_var v)
   else
-    fprintf ppf "%s <:@ %a"
+    fprintf ppf "%s <: %a"
       (string_of_var v)
       (pp_typ' vs) bound
 
 and pp_binds vs vs' ppf = function
   | [] -> ()
   | tbs ->
-    fprintf ppf "<%a>"
+    fprintf ppf "@[<1><%a>@]"
       (pp_print_list ~pp_sep:comma (pp_bind vs)) (List.combine vs' tbs)
 
 
@@ -1345,8 +1341,8 @@ let rec pp_typ_expand' ppf t =
       match normalize t with
       | Prim _ | Any | Non -> pp_typ' [] ppf t
       | t' -> fprintf ppf "%a = %a"
-                (pp_typ' []) t
-                pp_typ_expand' t'
+        (pp_typ' []) t
+        pp_typ_expand' t'
     )
   | _ -> pp_typ' [] ppf t
 
