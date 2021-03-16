@@ -1134,10 +1134,10 @@ let rec pp_typ_nullary vs ppf = function
   | Con (c, []) -> pr ppf (string_of_con' vs c)
   | Con (c, ts) ->
     fprintf ppf "%s<%a>" (string_of_con' vs c)
-      (pp_print_list ~pp_sep:comma (pp_typ vs)) ts
+      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
   | Tup ts ->
     fprintf ppf "(%a%s)"
-      (pp_print_list ~pp_sep:comma (pp_typ vs)) ts
+      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
       (if List.length ts = 1 then "," else "")
   | Array (Mut t) ->
     fprintf ppf "[var %a]" (pp_typ_nullary vs) t
@@ -1152,7 +1152,7 @@ let rec pp_typ_nullary vs ppf = function
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
   | Typ c ->
     fprintf ppf "=@ (type@ %a)" (pp_kind) (Con.kind c)
-  | t -> fprintf ppf "(%a)" (pp_typ vs) t
+  | t -> fprintf ppf "(%a)" (pp_typ' vs) t
 
 (* naively follows structure of pp_typ_nullary, keep in sync *)
 and starts_without_parens_nullary t =
@@ -1182,14 +1182,14 @@ and pp_dom parens vs ppf ts =
 
 and pp_cod vs ppf ts =
   match ts with
-  | [Tup _] -> fprintf ppf "(%a)" (pp_typ vs) (seq ts)
-  | _ -> pp_typ vs ppf (seq ts)
+  | [Tup _] -> fprintf ppf "(%a)" (pp_typ' vs) (seq ts)
+  | _ -> pp_typ' vs ppf (seq ts)
 
 and pp_control_cod sugar c vs ppf ts =
   match c, ts with
   (* sugar *)
   | Returns, [Async (_,t)] when sugar ->
-    fprintf ppf "async@ %a" (pp_typ vs) t
+    fprintf ppf "async@ %a" (pp_typ' vs) t
   | Promises, ts when sugar ->
     fprintf ppf "async@ %a" (pp_cod vs) ts
   (* explicit *)
@@ -1227,7 +1227,7 @@ and can_omit n t =
     end
   in go n t
 
-and pp_typ vs ppf t =
+and pp_typ' vs ppf t =
   match t with
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
@@ -1267,7 +1267,7 @@ and pp_typ vs ppf t =
        fprintf ppf "async %a" (pp_typ_nullary vs) t2
      | _ ->
        fprintf ppf "async<%a>@ %a"
-         (pp_typ vs) t1
+         (pp_typ' vs) t1
          (pp_typ_nullary vs) t2)
   | Obj (s, fs) ->
     fprintf ppf "%s%a"
@@ -1278,7 +1278,7 @@ and pp_typ vs ppf t =
       (Con.to_string c)
       (pp_kind) (Con.kind c)
   | Mut t ->
-    fprintf ppf "var %a" (pp_typ vs) t
+    fprintf ppf "var %a" (pp_typ' vs) t
   | t -> pp_typ_nullary vs ppf t
 
 and pp_field vs ppf {lab; typ; depr} =
@@ -1287,16 +1287,16 @@ and pp_field vs ppf {lab; typ; depr} =
     let op, sbs, st = strings_of_kind' (Con.kind c) in
     fprintf ppf "type %s%a %s %a" lab sbs () op st ()
   | Mut t' ->
-    fprintf ppf "var %s :@ %a" lab (pp_typ vs) t'
+    fprintf ppf "var %s :@ %a" lab (pp_typ' vs) t'
   | _ ->
-    fprintf ppf "%s : %a" lab (pp_typ vs) typ
+    fprintf ppf "%s : %a" lab (pp_typ' vs) typ
 
 and pp_tag vs ppf {lab; typ; depr} =
   match typ with
   | Tup [] -> fprintf ppf "#%s" lab
   | _ ->
     fprintf ppf "#%s : %a" lab
-      (pp_typ vs) typ
+      (pp_typ' vs) typ
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
@@ -1312,7 +1312,7 @@ and pp_bind vs ppf (v, {bound; _}) =
   else
     fprintf ppf "%s <:@ %a"
       (string_of_var v)
-      (pp_typ vs) bound
+      (pp_typ' vs) bound
 
 and pp_binds vs vs' ppf = function
   | [] -> ()
@@ -1330,7 +1330,7 @@ and strings_of_kind' k =
   let vs = vars_of_binds [] tbs in
   op,
   (fun ppf () -> pp_binds vs vs ppf tbs),
-  (fun ppf () -> pp_typ vs ppf t)
+  (fun ppf () -> pp_typ' vs ppf t)
 
 and pp_kind ppf k =
   let op, sbs, st = strings_of_kind' k in
@@ -1340,16 +1340,18 @@ let rec pp_typ_expand' ppf t =
   match t with
   | Con (c, ts) ->
     (match Con.kind c with
-    | Abs _ -> pp_typ [] ppf t
+    | Abs _ -> pp_typ' [] ppf t
     | Def _ ->
       match normalize t with
-      | Prim _ | Any | Non -> pp_typ [] ppf t
+      | Prim _ | Any | Non -> pp_typ' [] ppf t
       | t' -> fprintf ppf "%a = %a"
-                (pp_typ []) t
+                (pp_typ' []) t
                 pp_typ_expand' t'
     )
-  | _ -> pp_typ [] ppf t
+  | _ -> pp_typ' [] ppf t
 
+
+let pp_typ = pp_typ' []
 
 let with_str_formatter f x =
   let b = Buffer.create 16 in
@@ -1363,7 +1365,7 @@ let string_of_con : con -> string = string_of_con' []
 
 let string_of_typ typ : string =
   with_str_formatter (fun ppf ->
-    pp_typ [] ppf) typ
+    pp_typ' [] ppf) typ
 
 let string_of_kind k : string =
   with_str_formatter (fun ppf ->
@@ -1384,6 +1386,7 @@ let _ = str := string_of_typ
 end
 
 module type Pretty = sig
+  val pp_typ : Format.formatter -> typ -> unit
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string

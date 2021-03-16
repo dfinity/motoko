@@ -88,17 +88,17 @@ let type_info at text : Diag.message =
   Diag.info_message at "type" text
 
 let error env at code fmt =
-  Printf.ksprintf
+  Format.kasprintf
     (fun s -> Diag.add_msg env.msgs (type_error at code s); raise Recover) fmt
 
 let local_error env at code fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
+  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
 
 let warn env at code fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
+  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
 
 let info env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
+  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
 
 let flag_of_compile_mode mode =
   match mode with
@@ -305,7 +305,7 @@ let error_shared env t at code fmt =
   | Some t1 ->
     let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
       (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
-    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error at code (s1^s)); raise Recover) fmt
+    Format.kasprintf (fun s1 -> Diag.add_msg env.msgs (type_error at code (s1^s)); raise Recover) fmt
 
 let as_domT t =
   match t.Source.it with
