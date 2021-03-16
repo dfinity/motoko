@@ -140,7 +140,7 @@ let error_codes : (string * string option) list =
     "M0134", None; (* Class body type mismatch *)
     "M0135", None; (* Actor class has non-async return type *)
     "M0136", None; (* Empty block type mismatch *)
-    "M0137", None; (* Type definition references type paramater from outer scope *)
+    "M0137", Some([%blob "error_codes/M0137.adoc"]); (* Type definition references type paramater from outer scope *)
     "M0138", None; (* Actor classes are not supported *)
     "M0139", None; (* Inner actor classes are not supported *)
     "M0140", None; (* Actor classes with type parameters are not supported *)
@@ -161,4 +161,5 @@ let error_codes : (string * string option) list =
     "M0155", Some([%blob "error_codes/M0155.adoc"]); (* Inferred type Nat for subtraction *)
     "M0156", Some([%blob "error_codes/M0156.adoc"]); (* block contains expansive type definitions *)
     "M0157", Some([%blob "error_codes/M0157.adoc"]); (* block contains non-productive type definitions *)
+    "M0158", Some([%blob "error_codes/M0158.adoc"]); (* a public class cannot be anonymous, please provide a name *)
   ]

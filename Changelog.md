@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+== 0.5.11 (2021-03-12)
+
 * The `moc` compiler no longer rejects occurrences of private or
   local type definitions in public interfaces.
 
@@ -34,6 +36,8 @@
   ```
 
   are now rejected.
+
+* motoko base: `Text` now contains `decodeUtf8` and `encodeUtf8`.
 
 == 0.5.10 (2021-03-02)
 

@@ -565,6 +565,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | EncodeUtf8, [e] ->
+      typ e <: T.text;
+      T.blob <: t
+    | DecodeUtf8, [e] ->
+      typ e <: T.blob;
+      T.(Opt text) <: t
     | BlobOfIcUrl, [e] ->
       typ e <: T.text;
       T.blob <: t
