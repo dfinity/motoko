@@ -136,15 +136,9 @@
         "version": "v0.2.0"
     },
     "wasm-profiler": {
-        "branch": "main",
-        "description": "A (hacky) wasm instruction profiler",
-        "homepage": null,
-        "owner": "dfinity",
-        "repo": "wasm-profiler",
+        "branch": "master",
+        "repo": "ssh://git@github.com/dfinity/wasm-profiler",
         "rev": "7cfb023e6f1d9a522fc56d24c35ace6d7f981f49",
-        "sha256": "1yzhafazry6v6pspc639xl2qrbi5cpqhnnyl4ngs9nk13z5yn7ln",
-        "type": "tarball",
-        "url": "https://github.com/dfinity/wasm-profiler/archive/7cfb023e6f1d9a522fc56d24c35ace6d7f981f49.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+        "type": "git"
     }
 }
