@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "b319e249ab76a02bc7c8401319362cb70fa55f92",
-        "sha256": "1ag27q3qdlikkhlljpsszjqvs6jkzzm551fqgf7lzwfkrgq14g9d",
+        "rev": "8be6ddf577368b4d81931b800e7507acca67fa4a",
+        "sha256": "16xl3g3wm8zm229c8n7d0lzgp6490xrsnq8flad1fj5a8frx29n1",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/b319e249ab76a02bc7c8401319362cb70fa55f92.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/8be6ddf577368b4d81931b800e7507acca67fa4a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "dfinity": {
@@ -50,10 +50,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "25c152b0c4d2249fe9f5e57b8b2050d1406a0334",
-        "sha256": "09858582fpdcmbfimga96pknya2ih39hrglcwxaiv39gngx5gj9p",
+        "rev": "5db68438d731b6afcab69798af4db6aa6338468f",
+        "sha256": "0axpa081s49sakvmb6wa4p8lyy5nh4w6mrqrivxcn2qvbm3r9ihl",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/25c152b0c4d2249fe9f5e57b8b2050d1406a0334.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/5db68438d731b6afcab69798af4db6aa6338468f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -137,14 +137,8 @@
     },
     "wasm-profiler": {
         "branch": "main",
-        "description": "A (hacky) wasm instruction profiler",
-        "homepage": null,
-        "owner": "dfinity",
-        "repo": "wasm-profiler",
+        "repo": "ssh://git@github.com/dfinity/wasm-profiler",
         "rev": "7cfb023e6f1d9a522fc56d24c35ace6d7f981f49",
-        "sha256": "1yzhafazry6v6pspc639xl2qrbi5cpqhnnyl4ngs9nk13z5yn7ln",
-        "type": "tarball",
-        "url": "https://github.com/dfinity/wasm-profiler/archive/7cfb023e6f1d9a522fc56d24c35ace6d7f981f49.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+        "type": "git"
     }
 }
