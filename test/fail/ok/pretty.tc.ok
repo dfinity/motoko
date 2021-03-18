@@ -1,0 +1,37 @@
+pretty.mo:23.20-23.21: type error [M0096], expression of type 
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  }
+cannot produce expected type 
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  } ->
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  }
+pretty.mo:25.25-25.26: type error [M0096], expression of type 
+  Int
+cannot produce expected type 
+  Nat
+pretty.mo:28.23-28.24: type error [M0096], expression of type 
+  Int
+cannot produce expected type 
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  }
