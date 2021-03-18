@@ -1332,7 +1332,9 @@ and pp_kind ppf k =
   let op, sbs, st = strings_of_kind' k in
   fprintf ppf "%s %a%a" op sbs () st ()
 
-let rec pp_typ_expand' ppf t =
+let pp_typ = pp_typ' []
+
+let rec pp_typ_expand ppf t =
   match t with
   | Con (c, ts) ->
     (match Con.kind c with
@@ -1342,12 +1344,9 @@ let rec pp_typ_expand' ppf t =
       | Prim _ | Any | Non -> pp_typ' [] ppf t
       | t' -> fprintf ppf "%a = %a"
         (pp_typ' []) t
-        pp_typ_expand' t'
+        pp_typ_expand t'
     )
   | _ -> pp_typ' [] ppf t
-
-
-let pp_typ = pp_typ' []
 
 let with_str_formatter f x =
   let b = Buffer.create 16 in
@@ -1374,7 +1373,7 @@ let strings_of_kind k : string * string * string =
 
 let string_of_typ_expand typ : string =
   with_str_formatter (fun ppf ->
-    pp_typ_expand' ppf) typ
+    pp_typ_expand ppf) typ
 
 let _ = str := string_of_typ
 
@@ -1383,6 +1382,7 @@ end
 
 module type Pretty = sig
   val pp_typ : Format.formatter -> typ -> unit
+  val pp_typ_expand : Format.formatter -> typ -> unit
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string
