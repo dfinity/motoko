@@ -1123,7 +1123,7 @@ let string_of_con' vs c =
   let s = Con.to_string' Cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
-(* If modified, adjust start_with_parens_nullary below to match *)
+(* If modified, adjust start_without_parens_nullary below to match *)
 let rec pp_typ_nullary vs ppf = function
   | Pre -> pr ppf "???"
   | Any -> pr ppf "Any"
@@ -1243,7 +1243,7 @@ and pp_typ' vs ppf t =
       fprintf ppf "@[<2>%s%a%a ->@ %a@]"
         (string_of_func_sort s)
         (pp_binds (vs'vs) vs'') tbs'
-        (pp_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
+        (pp_dom (tbs <> []) (vs'vs)) ts1
         (pp_control_cod true c (vs'vs)) ts2
     )
   | Func (s, c, [], ts1, ts2) ->
@@ -1257,7 +1257,7 @@ and pp_typ' vs ppf t =
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_binds (vs'vs) vs') tbs
-      (pp_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
+      (pp_dom (tbs <> []) (vs'vs)) ts1
       (pp_control_cod false c (vs'vs)) ts2
   | Opt t ->
     fprintf ppf "@[<1>?%a@]"  (pp_typ_nullary vs) t
