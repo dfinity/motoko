@@ -1235,26 +1235,26 @@ and pp_typ' vs ppf t =
     let vs'vs = vs' @ vs in
     (match tbs with
     | [tb] ->
-      fprintf ppf "@[%s%a ->@ %a@]"
+      fprintf ppf "@[<2>%s%a ->@ %a@]"
         (string_of_func_sort s)
         (pp_dom false (vs'vs)) ts1
         (pp_control_cod true c (vs'vs)) ts2
     | _ ->
-      fprintf ppf "@[%s%a%a ->@ %a@]"
+      fprintf ppf "@[<2>%s%a%a ->@ %a@]"
         (string_of_func_sort s)
         (pp_binds (vs'vs) vs'') tbs'
         (pp_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
         (pp_control_cod true c (vs'vs)) ts2
     )
   | Func (s, c, [], ts1, ts2) ->
-    fprintf ppf "@[%s%a ->@ %a@]"
+    fprintf ppf "@[<2>%s%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_dom false vs) ts1
       (pp_control_cod false c vs) ts2
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     let vs'vs = vs' @ vs in
-    fprintf ppf "@[%s%a%a ->@ %a@]"
+    fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_binds (vs'vs) vs') tbs
       (pp_dom (tbs <> []) (vs'vs)) ts1 (* TBR *)
