@@ -2,8 +2,21 @@
 -- Checking modules.mo:
 type List<T> = ?(T, List<T>)
 type Stack = List<Int>
-let Collections : module {List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}}
-let List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
+let Collections :
+  module {
+    List :
+      module {
+        type List<T> = ?(T, List<T>);
+        cons : <T>(T, List<T>) -> List<T>;
+        nil : <T>() -> List<T>
+      }
+  }
+let List :
+  module {
+    type List<T> = ?(T, List<T>);
+    cons : <T>(T, List<T>) -> List<T>;
+    nil : <T>() -> List<T>
+  }
 let empty : ?(Int, List<Int>)
 let push : (Int, Stack) -> Stack
 -- Definedness modules.mo:
