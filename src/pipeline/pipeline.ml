@@ -24,15 +24,20 @@ let phase heading name =
 
 let print_ce =
   Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.strings_of_kind (Con.kind c) in
-    printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
+    let eq, params, typ = Type.pps_of_kind (Con.kind c) in
+    Format.printf "@[<hv 2>type %s%a %s@ %a@]@."
+      (Con.to_string c)
+      params ()
+      eq
+      typ ()
   )
 
 let print_stat_ve =
   Type.Env.iter (fun x t ->
     let t' = Type.as_immut t in
-    printf "%s %s : %s\n"
-      (if t == t' then "let" else "var") x (Type.string_of_typ t')
+    Format.printf "@[<hv 2>%s %s :@ %a@]@."
+      (if t == t' then "let" else "var") x
+      Type.pp_typ t'
   )
 
 let print_dyn_ve scope =
@@ -42,12 +47,12 @@ let print_dyn_ve scope =
     let t' = as_immut t in
     match normalize t' with
     | Obj (Module, fs) ->
-      printf "%s %s : module {...}\n"
+      Format.printf "@[<hv 2>%s %s : module {...}@]@."
         (if t == t' then "let" else "var") x
     | _ ->
-      printf "%s %s : %s = %s\n"
+      Format.printf "@[<hv 2>%s %s :@ %a =@ %s@]@."
         (if t == t' then "let" else "var") x
-        (Type.string_of_typ t')
+        Type.pp_typ t'
         (Value.string_of_def !Flags.print_depth d)
   )
 

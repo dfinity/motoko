@@ -1280,7 +1280,7 @@ and pp_typ' vs ppf t =
 and pp_field vs ppf {lab; typ; depr} =
   match typ with
   | Typ c ->
-    let op, sbs, st = strings_of_kind' (Con.kind c) in
+    let op, sbs, st = pps_of_kind (Con.kind c) in
     fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
   | Mut t' ->
     fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
@@ -1317,7 +1317,7 @@ and pp_binds vs vs' ppf = function
       (pp_print_list ~pp_sep:comma (pp_bind vs)) (List.combine vs' tbs)
 
 
-and strings_of_kind' k =
+and pps_of_kind k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
@@ -1329,7 +1329,7 @@ and strings_of_kind' k =
   (fun ppf () -> pp_typ' vs ppf t)
 
 and pp_kind ppf k =
-  let op, sbs, st = strings_of_kind' k in
+  let op, sbs, st = pps_of_kind k in
   fprintf ppf "%s %a%a" op sbs () st ()
 
 let pp_typ = pp_typ' []
@@ -1368,7 +1368,7 @@ let string_of_kind k : string =
 
 (* TODO *)
 let strings_of_kind k : string * string * string =
-  let op, sbs, st = strings_of_kind' k in
+  let op, sbs, st = pps_of_kind k in
   op, with_str_formatter sbs (), with_str_formatter st ()
 
 let string_of_typ_expand typ : string =
@@ -1383,6 +1383,10 @@ end
 module type Pretty = sig
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
+  val pps_of_kind : kind ->
+    string *
+    (Format.formatter -> unit -> unit) *
+    (Format.formatter -> unit -> unit)
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string

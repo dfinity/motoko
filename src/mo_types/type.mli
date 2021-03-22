@@ -240,6 +240,10 @@ val string_of_func_sort : func_sort -> string
 module type Pretty = sig
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
+  val pps_of_kind : kind ->
+    string *
+    (Format.formatter -> unit -> unit) *
+    (Format.formatter -> unit -> unit)
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string
