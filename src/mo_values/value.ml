@@ -1,4 +1,3 @@
-open Printf
 open Numerics
 
 (* Environments *)
@@ -175,65 +174,100 @@ let string_of_string lsep s rsep =
 
 let pos_sign b = if b then "+" else ""
 
-let rec string_of_val_nullary d = function
-  | Null -> "null"
-  | Bool b -> if b then "true" else "false"
-  | Int n when Int.(ge n zero) -> Int.to_pretty_string n
-  | Int8 n when Int_8.(n = zero) -> Int_8.to_pretty_string n
-  | Int16 n when Int_16.(n = zero) -> Int_16.to_pretty_string n
-  | Int32 n when Int_32.(n = zero) -> Int_32.to_pretty_string n
-  | Int64 n when Int_64.(n = zero) -> Int_64.to_pretty_string n
-  | Nat8 n -> Nat8.to_pretty_string n
-  | Nat16 n -> Nat16.to_pretty_string n
-  | Nat32 n -> Nat32.to_pretty_string n
-  | Nat64 n -> Nat64.to_pretty_string n
-  | Word8 w -> "0x" ^ Word8.to_pretty_string w
-  | Word16 w -> "0x" ^ Word16.to_pretty_string w
-  | Word32 w -> "0x" ^ Word32.to_pretty_string w
-  | Word64 w -> "0x" ^ Word64.to_pretty_string w
-  | Float f -> Float.to_pretty_string f
-  | Char c -> string_of_string '\'' [c] '\''
-  | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
-  | Blob b -> "\"" ^ Blob.escape b ^ "\""
+open Format
+
+let pr = pp_print_string
+
+let comma ppf () = fprintf ppf ",@ "
+
+let semi ppf () = fprintf ppf ";@ "
+
+let rec pp_val_nullary d ppf = function
+  | Null -> pr ppf "null"
+  | Bool b -> pr ppf (if b then "true" else "false")
+  | Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
+  | Int8 n when Int_8.(n = zero) -> pr ppf (Int_8.to_pretty_string n)
+  | Int16 n when Int_16.(n = zero) -> pr ppf (Int_16.to_pretty_string n)
+  | Int32 n when Int_32.(n = zero) -> pr ppf (Int_32.to_pretty_string n)
+  | Int64 n when Int_64.(n = zero) -> pr ppf (Int_64.to_pretty_string n)
+  | Nat8 n -> pr ppf (Nat8.to_pretty_string n)
+  | Nat16 n -> pr ppf (Nat16.to_pretty_string n)
+  | Nat32 n -> pr ppf (Nat32.to_pretty_string n)
+  | Nat64 n -> pr ppf (Nat64.to_pretty_string n)
+  | Word8 w -> pr ppf ("0x" ^ Word8.to_pretty_string w)
+  | Word16 w -> pr ppf ("0x" ^ Word16.to_pretty_string w)
+  | Word32 w -> pr ppf ("0x" ^ Word32.to_pretty_string w)
+  | Word64 w -> pr ppf ("0x" ^ Word64.to_pretty_string w)
+  | Float f -> pr ppf (Float.to_pretty_string f)
+  | Char c ->  pr ppf (string_of_string '\'' [c] '\'')
+  | Text t -> pr ppf (string_of_string '\"' (Wasm.Utf8.decode t) '\"')
+  | Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | Tup vs ->
-    sprintf "(%s%s)"
-      (String.concat ", " (List.map (string_of_val d) vs))
-      (if List.length vs = 1 then "," else "")
+   fprintf ppf "@[<1>(%a%s)@]"
+     (pp_print_list ~pp_sep:comma (pp_val d)) vs
+     (if List.length vs = 1 then "," else "")
   | Obj ve ->
-    if d = 0 then "{...}" else
-    sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
-      sprintf "%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve)))
+    if d = 0 then pr ppf "{...}" else
+(*    sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
+      sprintf "%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve))) *)
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
+      (pp_print_list ~pp_sep:semi (pp_field d)) (Env.bindings ve)
   | Array a ->
+(*    
     sprintf "[%s]" (String.concat ", "
-      (List.map (string_of_val d) (Array.to_list a)))
-  | Func (_, _) -> "func"
-  | v -> "(" ^ string_of_val d v ^ ")"
+      (List.map (string_of_val d) (Array.to_list a)))*)
+    fprintf ppf "@[<1>[%a]@]"
+      (pp_print_list ~pp_sep:comma (pp_val d)) (Array.to_list a)
+  | Func (_, _) -> pr ppf "func"
+  | v ->
+    (* "(" ^ string_of_val d v ^ ")" *)
+    fprintf ppf "@[<1>(%a)@]" (pp_val d) v
 
-and string_of_val d = function
-  | Int i -> Int.to_pretty_string i
-  | Int8 i -> Int_8.(pos_sign (gt i zero) ^ to_pretty_string i)
-  | Int16 i -> Int_16.(pos_sign (gt i zero) ^ to_pretty_string i)
-  | Int32 i -> Int_32.(pos_sign (gt i zero) ^ to_pretty_string i)
-  | Int64 i -> Int_64.(pos_sign (gt i zero) ^ to_pretty_string i)
-  | Opt v -> sprintf "?%s" (string_of_val_nullary d v)
-  | Variant (l, Tup []) -> sprintf "#%s" l
-  | Variant (l, Tup vs) -> sprintf "#%s%s" l (string_of_val d (Tup vs))
-  | Variant (l, v) -> sprintf "#%s(%s)" l (string_of_val d v)
+and pp_field d ppf (lab, v) =
+    fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) v
+
+and pp_val d ppf = function
+  | Int i -> pr ppf (Int.to_pretty_string i)
+  | Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | Opt v -> fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) v
+  | Variant (l, Tup []) -> fprintf ppf "#%s" l
+  | Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (Tup vs)
+  | Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) v
   | Async {result; waiters = []} ->
-    sprintf "async %s" (string_of_res d result)
+    fprintf ppf "@[<2>async@ %a@]" (pp_res d) result
   | Async {result; waiters} ->
-    sprintf "async[%d] %s"
-      (List.length waiters) (string_of_res d result)
-  | Mut r -> sprintf "%s" (string_of_val d !r)
-  | v -> string_of_val_nullary d v
+    fprintf ppf "@[<2>async[%d]@ %a@]"
+      (List.length waiters) (pp_res d) result
+  | Mut r -> pp_val d ppf !r
+  | v -> pp_val_nullary d ppf v
 
-and string_of_res d result =
+and pp_res d ppf result =
   match Lib.Promise.value_opt result with
-  | Some (Error v)-> sprintf "Error %s" (string_of_val_nullary d v)
-  | Some (Ok v) -> string_of_val_nullary d v
-  | None -> "_"
+  | Some (Error v)-> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) v
+  | Some (Ok v) -> pp_val_nullary d ppf v
+  | None -> pr ppf "_"
 
-and string_of_def d def =
+and pp_def d ppf def =
   match Lib.Promise.value_opt def with
-  | Some v -> string_of_val d v
-  | None -> "_"
+  | Some v -> pp_val d ppf v
+  | None -> pr ppf "_"
+
+
+let with_str_formatter f x =
+  let b = Buffer.create 16 in
+  let ppf = Format.formatter_of_buffer b in
+  Format.pp_set_geometry ppf ~max_indent:2 ~margin:(1000000010-1); (* hack to output all on one line *)
+  fprintf ppf "@[%a@]" f x;
+  Format.pp_print_flush ppf ();
+  Buffer.contents b
+
+let string_of_val d v : string =
+  with_str_formatter (fun ppf ->
+    pp_val d ppf) v
+
+let string_of_def d def : string =
+  with_str_formatter (fun ppf ->
+    pp_def d ppf) def

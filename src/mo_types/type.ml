@@ -1117,8 +1117,11 @@ module MakePretty(Cfg : sig val show_stamps : bool end) =
 open Format
 
 let pr = pp_print_string
+
 let comma ppf () = fprintf ppf ",@ "
+
 let semi ppf () = fprintf ppf ";@ "
+
 let string_of_con' vs c =
   let s = Con.to_string' Cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
