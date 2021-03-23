@@ -50,10 +50,10 @@ let print_dyn_ve scope =
       Format.printf "@[<hv 2>%s %s : module {...}@]@."
         (if t == t' then "let" else "var") x
     | _ ->
-      Format.printf "@[<hv 2>%s %s :@ %a =@ %s@]@."
+      Format.printf "@[<hv 2>%s %s :@ %a =@ %a@]@."
         (if t == t' then "let" else "var") x
         Type.pp_typ t'
-        (Value.string_of_def !Flags.print_depth d)
+        (Value.pp_def !Flags.print_depth) d
   )
 
 let print_scope senv scope dve =
@@ -61,8 +61,8 @@ let print_scope senv scope dve =
   print_dyn_ve senv dve
 
 let print_val _senv v t =
-  Format.printf "@[<hv 2>%s :@ %a@]@."
-    (Value.string_of_val !Flags.print_depth v)
+  Format.printf "@[<hv 2>%a :@ %a@]@."
+    (Value.pp_val !Flags.print_depth) v
     Type.pp_typ t
 
 
@@ -516,7 +516,9 @@ let run_stdin_from_file files file =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
+  Format.printf "@[<hv 2>%a :@ %a@]@."
+    (Value.pp_val 10) v
+    Type.pp_typ t;
   Some ()
 
 let run_files_and_stdin files =
