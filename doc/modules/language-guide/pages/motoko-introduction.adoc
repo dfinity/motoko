@@ -4,7 +4,7 @@
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
-{proglang} is a modern programming language you can use specifically for link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC} platform] programs or as a general-purpose language for programs running on other platforms.
+{proglang} is a modern programming language you can use specifically for link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} platform] programs or as a general-purpose language for programs running on other platforms.
 
 == Approachability
 
@@ -20,12 +20,12 @@ Specifically, {proglang} programs are _type sound_ since {proglang} includes a p
 The {proglang} type system statically checks that each {proglang} program will execute safely, without internal type errors, on all possible inputs. 
 Consequently, entire classes of common programming pitfalls that are common in other languages are ruled out, including null pointer errors, mis-matched argument and result types and many others.
 
-To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC}].
+To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 [[pitch-actors]]
 == Each microservice as an _actor_
 
-{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC}].
+{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
 
