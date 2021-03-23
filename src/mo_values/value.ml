@@ -203,19 +203,14 @@ let rec pp_val_nullary d ppf = function
   | Text t -> pr ppf (string_of_string '\"' (Wasm.Utf8.decode t) '\"')
   | Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | Tup vs ->
-   fprintf ppf "@[<1>(%a%s)@]"
-     (pp_print_list ~pp_sep:comma (pp_val d)) vs
-     (if List.length vs = 1 then "," else "")
+    fprintf ppf "@[<1>(%a%s)@]"
+      (pp_print_list ~pp_sep:comma (pp_val d)) vs
+      (if List.length vs = 1 then "," else "")
   | Obj ve ->
     if d = 0 then pr ppf "{...}" else
-(*    sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
-      sprintf "%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve))) *)
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field d)) (Env.bindings ve)
   | Array a ->
-(*    
-    sprintf "[%s]" (String.concat ", "
-      (List.map (string_of_val d) (Array.to_list a)))*)
     fprintf ppf "@[<1>[%a]@]"
       (pp_print_list ~pp_sep:comma (pp_val d)) (Array.to_list a)
   | Func (_, _) -> pr ppf "func"
@@ -255,19 +250,10 @@ and pp_def d ppf def =
   | Some v -> pp_val d ppf v
   | None -> pr ppf "_"
 
-
-let with_str_formatter f x =
-  let b = Buffer.create 16 in
-  let ppf = Format.formatter_of_buffer b in
-  Format.pp_set_geometry ppf ~max_indent:2 ~margin:(1000000010-1); (* hack to output all on one line *)
-  fprintf ppf "@[%a@]" f x;
-  Format.pp_print_flush ppf ();
-  Buffer.contents b
-
 let string_of_val d v : string =
-  with_str_formatter (fun ppf ->
+  Lib.Format.with_str_formatter (fun ppf ->
     pp_val d ppf) v
 
 let string_of_def d def : string =
-  with_str_formatter (fun ppf ->
+  Lib.Format.with_str_formatter (fun ppf ->
     pp_def d ppf) def
