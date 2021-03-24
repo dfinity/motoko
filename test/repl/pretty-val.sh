@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Tests that shorthand variants come out without parens
 moc -i <<__END__
+import Prim "mo:prim";
+
+let a_small = Prim.Array_init(5,"hello");
+let a_large = Prim.Array_init(100,"hello");
+
+let a_small = Prim.Array_tabulate<Nat>(5,func i { i });
+let a_large = Prim.Array_tabulate<Nat>(100,func i { i } );
 
 func a<T>(x : T, y : T) : [T] { [x,y] } ;
 let a1 = a(#A, #B);
@@ -43,6 +50,23 @@ let v1 = v(#Foo, #Bar);
 let v2 = v(v1, v1);
 let v3 = v(v2, v2);
 let v4 = v(v3, v3);
-let v5 = v(p4, p4);
+let v5 = v(v4, v4);
+
+func o<T,U>(x:T): ?T { ?x } ;
+let o1 = o(666);
+let o2 = o(o1);
+let o3 = o(o2);
+let o4 = o(o3);
+let o5 = o(o4);
+
+class c<T,U>(x:T, y:U) {
+  public type List<T> = ?(T, List<T>);
+  public let (A,B) = (x,y)
+} ;
+let c1 = c(#A, #B);
+let c2 = c(c1, c1);
+let c3 = c(c2, c2);
+let c4 = c(c3, c3);
+let c5 = c(c4, c4);
 
 __END__
