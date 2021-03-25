@@ -228,7 +228,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
-    define_show t unreachableE,
+    define_show t (unreachableE ()),
     []
   | _ -> assert false (* Should be prevented by can_show *)
 
