@@ -22,3 +22,6 @@ does not have expected type
   Nat
 bad-unops.mo:10.21-10.23: type error [M0111], operator pattern cannot consume expected type
   Int
+bad-unops.mo:14.22-14.27: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+bad-unops.mo:15.22-15.27: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+bad-unops.mo:16.22-16.27: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
