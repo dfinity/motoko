@@ -632,6 +632,46 @@ let is_shared_func t =
 let shared t = serializable false t
 let stable t = serializable true t
 
+(* Polarities *)
+let polarities cons t =
+  let pos = ref ConSet.empty in
+  let neg = ref ConSet.empty in
+  let seen = ref S.empty in
+  let rec go p n t =
+    match t with
+    | Con (c, ts) when ConSet.mem c cons ->
+      if p then pos := ConSet.add c (!pos);
+      if n then neg := ConSet.add c (!neg)
+    | t ->
+    if S.mem t !seen then () (* this cacheing seems dodgy since the effect depends on p and n, cache for (p,n,t) instead? *)
+    else begin
+      seen := S.add t !seen;
+      match t with
+      | Var _ | Pre -> assert false
+      | Prim _ | Any | Non -> ()
+      | Con (c, ts) ->
+        (match Con.kind c with
+        | Abs _ -> ()
+        | Def (_, t) -> go p n (open_ ts t) (* TBR this may fail to terminate *)
+        )
+      | Array t | Opt t -> go p n t
+      | Mut t -> go true true t
+      | Async (t1, t2) ->
+          go true true t1;
+          go p n t2 (* t1 is a phantom type *)
+      | Tup ts -> List.iter (go p n) ts
+      | Obj (_, fs) | Variant fs -> List.iter (fun f -> go p n f.typ) fs
+      | Func (s, c, tbs, ts1, ts2) ->
+        let ts = open_binds tbs in
+        List.iter (fun tb -> go true true (open_ ts tb.bound)) tbs; (* bound invariant? *)
+        List.iter (go (not p) (not n)) (List.map (open_ ts) ts1);
+        List.iter (go p n) (List.map (open_ ts) ts2)
+      | Typ c -> () (* TBR  assumed closed *)
+    end
+  in
+  go true false t;
+  (!pos,!neg)
+
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")

@@ -25,13 +25,18 @@ let verify_inst tbs subs ts =
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
   List.for_all (fun (t1, t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
-let bi_match_subs scope_opt tbs subs =
+let bi_match_subs scope_opt tbs subs typ_opt =
   let ts = open_binds tbs in
 
   let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
   let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
   let cs = List.map (fun t -> fst (as_con t)) ts in
+
+  let (pos, neg) = match typ_opt with
+    | Some t -> polarities (ConSet.of_list cs) (open_ ts t)
+    | None -> ConSet.empty, ConSet.empty
+  in
 
   let flexible =
     let cons = ConSet.of_list cs in
@@ -230,9 +235,24 @@ let bi_match_subs scope_opt tbs subs =
   and bi_match_bind ts rel eq inst any tb1 tb2 =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
+  and desc c =
+    let p =
+      match ConSet.mem c pos, ConSet.mem c neg with
+      | true, false -> "+ "
+      | false, true -> "- "
+      | true, true -> "+/- "
+      | false, false -> ""
+    in
+    Printf.sprintf "%s%s" p (Con.name c)
+
   and fail_under_constrained lb c ub =
+    match ConSet.mem c pos, ConSet.mem c neg with
+    | true, false -> ub
+    | false, true -> lb
+    | false, false -> Non
+    | true, true ->
     let lb = string_of_typ lb in
-    let c = Con.name c in
+    let c = desc c in
     let ub = string_of_typ ub in
     raise (Bimatch (Printf.sprintf
       "implicit instantiation of type parameter %s is under-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  =/=  %s\nso that explicit type instantiation is required"
@@ -240,7 +260,7 @@ let bi_match_subs scope_opt tbs subs =
 
   and fail_over_constrained lb c ub =
     let lb = string_of_typ lb in
-    let c = Con.name c in
+    let c = desc c in
     let ub = string_of_typ ub in
     raise (Bimatch (Printf.sprintf
       "implicit instantiation of type parameter %s is over-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  </:  %s\nso that no valid instantiation exists"
@@ -257,16 +277,20 @@ let bi_match_subs scope_opt tbs subs =
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
     let ce = ConSet.of_list cs in
     List.iter2 (fun c bd -> if mentions bd ce then fail_open_bound c bd) cs bds;
+
+    let l = ConSet.fold (fun c l -> ConEnv.add c Non l) pos ConEnv.empty in
+    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) neg ConEnv.empty in
+
     let l, u = match scope_opt, tbs with
       | Some c, {sort = Scope; _}::tbs ->
         let c0 = List.hd cs in
-        ConEnv.singleton c0 c,
-        ConEnv.singleton c0 c
+        ConEnv.add c0 c l,
+        ConEnv.add c0 c u
       | None, {sort = Scope; _}::tbs ->
         raise (Bimatch "scope instantiation required but no scope available")
       | _, _ ->
-        ConEnv.empty,
-        ConEnv.empty
+        l,
+        u
     in
     match
       bi_match_list bi_match_typ
@@ -276,7 +300,11 @@ let bi_match_subs scope_opt tbs subs =
       let us = List.map
         (fun c ->
           match ConEnv.find_opt c l, ConEnv.find_opt c u with
-          | None, None -> Non
+          | None, None ->
+            let ub = bound c in
+            if eq Non ub then
+              ub
+            else fail_under_constrained Non c ub
           | None, Some ub -> glb ub (bound c)
           | Some lb, None ->
             if sub lb (bound c) then

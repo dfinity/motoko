@@ -195,7 +195,8 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
-
+(* Split cs into positive and negative occurrences (not nec. disjoint) *)
+val polarities :  ConSet.t -> typ -> ConSet.t * ConSet.t
 
 (* Equivalence and Subtyping *)
 

@@ -16,7 +16,7 @@ open Type
    For every pair (t1, t2) in `subs`,  one of `t1` or `t2` must be closed
    w.r.t `tbs` and the other may be "open" mentioning parameters in `tbs`
    by index (Var i, i < |`tbs`|).
-   (This a pre-condition that avoid the need for full unitication.)
+   (This a pre-condition that avoid the need for full unification.)
 
    The ordering on instantiations `ts` is determined pointwise depending on the
    occurrence of that variable in `subs` and is:
@@ -32,4 +32,5 @@ exception Bimatch of string
 
 val bi_match_subs :
   scope option -> bind list -> (typ * typ) list ->
+  typ option ->
   typ list (* raises Bimatch *)

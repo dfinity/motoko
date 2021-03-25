@@ -1570,7 +1570,9 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *)
         let ts =
           Bi_match.bi_match_subs (scope_of_env env) tbs
-            [(t2, t_arg); (t_ret, t)] in
+            [(t2, t_arg); (t_ret, t)]
+            (match t_expect_opt with None -> Some t_ret | Some _ -> None)
+        in
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
         ts, t_arg', t_ret'
