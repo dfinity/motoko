@@ -18,7 +18,7 @@ should not break type safety or other guarantees of the language.
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
-func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
+func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
 
 // Printing
 
@@ -40,7 +40,7 @@ func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> N
 
 // Hashing
 
-func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
+func hashBlob(b : Blob) : Nat32 { (prim "crc32Hash" : Blob -> Nat32) b };
 
 // Total conversions (fixed to big)
 
