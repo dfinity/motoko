@@ -3,8 +3,8 @@ This modules provides an interface to a SAT solver for boolean satisfiability
 problems with Horn clauses.
 
 Or, put less fancy: one can define boolean variables and implications between
-them. Variables are optimistically believed to be true until, until there is
-evidence that they have to be false. The user this module is then notified that
+them. Variables are optimistically believed to be true unless there is
+evidence that they have to be false. The user of this module is then notified that
 they are indeed false.
 *)
 
@@ -49,6 +49,6 @@ exactly once. This happens during the execution of `when_false v k` or
 `required_for`.
 
 If the callback is not invoked ater all variables and impliciations have been
-registered, the the variable is certain to be true.
+registered, then the variable is certain to be true.
 *)
 val when_false : t -> unit Lazy.t -> unit

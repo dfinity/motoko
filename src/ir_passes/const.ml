@@ -45,9 +45,9 @@ open Lbool
 
   As always, recursion makes things harder. But not too much, thanks to a trick:
   we pass down a custom type called `Lbool.t`. It denotes a boolean value,
-  just we do not know which one yet.  But we can still regiser implications on
+  just we do not know which one yet.  But we can still register implications on
   these values. Internally, these lazy_bool values keep track of their
-  dependencies, and propagate more knowledge automatically. When one of them
+  dependencies, and propagate additional information automatically. When one of them
   knows it is going to be surely false, then it updates the corresponding
   `note.const` field. See lbool.mli for more on that.
 
