@@ -133,7 +133,7 @@ let rec expand_nottag tfs n ls : desc list =
   let l = pick_tag ls tfs in
   Tag (Any, l) :: expand_nottag tfs (n + 1) (TagSet.add l ls)
 
-
+(* TODO: pretty print *)
 let rec string_of_desc t = function
   | Any -> "_"
   | Val v -> V.string_of_val 100 v

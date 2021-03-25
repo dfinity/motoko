@@ -1,5 +1,8 @@
 = Motoko compiler changelog
 
+* The `moc` interpreter now pretty-prints value (as well as types) in the repl,
+  producing more readable output for larger values.
+
 == 0.5.12 (2021-03-23)
 
 * The `moc` compiler now pretty-prints types in error messages and the repl,

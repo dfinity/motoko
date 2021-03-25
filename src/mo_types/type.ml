@@ -1117,8 +1117,11 @@ module MakePretty(Cfg : sig val show_stamps : bool end) =
 open Format
 
 let pr = pp_print_string
+
 let comma ppf () = fprintf ppf ",@ "
+
 let semi ppf () = fprintf ppf ";@ "
+
 let string_of_con' vs c =
   let s = Con.to_string' Cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
@@ -1348,31 +1351,23 @@ let rec pp_typ_expand ppf t =
     )
   | _ -> pp_typ' [] ppf t
 
-let with_str_formatter f x =
-  let b = Buffer.create 16 in
-  let ppf = Format.formatter_of_buffer b in
-  Format.pp_set_geometry ppf ~max_indent:2 ~margin:(1000000010-1); (* hack to output all on one line *)
-  fprintf ppf "@[%a@]" f x;
-  Format.pp_print_flush ppf ();
-  Buffer.contents b
 
 let string_of_con : con -> string = string_of_con' []
 
 let string_of_typ typ : string =
-  with_str_formatter (fun ppf ->
+  Lib.Format.with_str_formatter (fun ppf ->
     pp_typ' [] ppf) typ
 
 let string_of_kind k : string =
-  with_str_formatter (fun ppf ->
+  Lib.Format.with_str_formatter (fun ppf ->
     pp_kind ppf) k
 
-(* TODO *)
 let strings_of_kind k : string * string * string =
   let op, sbs, st = pps_of_kind k in
-  op, with_str_formatter sbs (), with_str_formatter st ()
+  op, Lib.Format.with_str_formatter sbs (), Lib.Format.with_str_formatter st ()
 
 let string_of_typ_expand typ : string =
-  with_str_formatter (fun ppf ->
+  Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
 let _ = str := string_of_typ
