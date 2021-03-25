@@ -1,5 +1,15 @@
 = Motoko compiler changelog
 
+== 0.5.12 (2021-03-23)
+
+* The `moc` compiler now pretty-prints types in error messages and the repl,
+  producing more readable output for larger types.
+
+* motoko base: fixed bug in `Text.mo` affecting partial matches in,
+  for example, `Text.replace` (GH issue #234).
+
+== 0.5.11 (2021-03-12)
+
 * The `moc` compiler no longer rejects occurrences of private or
   local type definitions in public interfaces.
 
