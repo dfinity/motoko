@@ -67,6 +67,7 @@ and prim = function
   | AwaitPrim         -> Atom "AwaitPrim"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
+  | TypRep t          -> "TypRep" $$ [typ t]
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t

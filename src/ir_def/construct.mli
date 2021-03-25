@@ -58,8 +58,12 @@ val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
+val arrayE : typ -> exp list -> exp
+val mutArrayE : typ -> exp list -> exp
 val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
+val natE : Mo_values.Numerics.Nat.t -> exp
+val nat32E : Mo_values.Numerics.Nat32.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
@@ -76,6 +80,7 @@ val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> Type.lab -> typ -> exp
+val idxE : exp -> exp -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
 val tupE : exp list -> exp
@@ -113,13 +118,6 @@ val nary_funcD : var -> var list -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 
-(* Continuations *)
-
-val answerT : typ
-val contT : typ -> typ
-val err_contT : typ
-val cpsT : typ -> typ
-
 (* Sequence expressions *)
 
 val seqE : exp list -> exp
@@ -130,3 +128,20 @@ val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)
+
+(* Internal types *)
+
+(*
+These type definitions mirror the type definitions in prelude/internals.mo.
+It would be good to get rid of that duplication somehow, and use those
+in `prelude/internals.mo` directly.
+*)
+
+
+val answerT : typ
+val contT : typ -> typ
+val err_contT : typ
+val cpsT : typ -> typ
+val typRepT : typ
+val typRepFieldT : typ
+
