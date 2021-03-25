@@ -45,15 +45,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "next-moc",
+        "branch": "claudio/next-moc-polarities",
         "description": "The Motoko base library",
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "b515e23764c065f431328bce89f1f825f285dc6a",
-        "sha256": "1wdvhmbk0kmhcvkh2xnxzsjxicv7d0h293h2c7n6qvdqd16fs406",
+        "rev": "843f76a2e596c8f43ae665f7fc608f8b34f80f08",
+        "sha256": "0z0ydlk957a9gr8gvlyrdvcpjv53jajb676nl9hlycrfd6hngbya",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/b515e23764c065f431328bce89f1f825f285dc6a.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/843f76a2e596c8f43ae665f7fc608f8b34f80f08.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
