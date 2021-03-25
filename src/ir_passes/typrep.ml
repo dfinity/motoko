@@ -13,7 +13,7 @@ open Typ_hash
 
 (* Environment *)
 
-(* We go through the file and collect all type arguments to `show`.
+(* We go through the file and collect all type arguments to `TypRep`.
    We store them in `params`, indexed by their `type_id`
 *)
 
@@ -40,9 +40,7 @@ let lexp_for t : lexp =
   ; note = T.(Mut typRepT)
   }
 
-(* Synthesizing a single show function *)
-
-(* Returns the new declarations, as well as a list of further types it needs *)
+(* Synthesizing a single TypRep value *)
 
 let tag_for_prim : T.prim -> string = function
   | T.Null -> "null_"
@@ -85,6 +83,8 @@ let fields_for : T.field list -> exp = fun tfs ->
     ])
   ) tfs)
 
+(* The type rep value for the given type *)
+
 let rhs_for : T.typ -> Ir.exp = fun t ->
   match T.normalize t with
   | T.(Prim p) ->
@@ -112,6 +112,8 @@ let rhs_for : T.typ -> Ir.exp = fun t ->
   | T.Non ->
     tagE "non" unitE
   | T.Var _ | T.Con _ | T.Async _ | T.Mut _ | T.Typ _ | T.Pre -> assert false
+
+(* The subterms of this type *)
 
 let subterms_of : T.typ -> T.typ list = fun t ->
   let open T in
@@ -163,9 +165,9 @@ let decls : T.typ M.t -> Ir.dec list = fun roots ->
 (* The AST traversal *)
 
 (* Does two things:
- - collects all uses of `debug_show` in the `env`
+ - collects all uses of `TypRep` in the `env`
  - for each actor, resets the environment, recurses,
-   and adds the show functions (this keeps closed actors closed)
+   and adds the generated declarations (this keeps closed actors closed)
 *)
 
 let rec t_exps env decs = List.map (t_exp env) decs
