@@ -33,16 +33,21 @@ let bi_match_subs scope_opt tbs subs typ_opt =
 
   let cs = List.map (fun t -> fst (as_con t)) ts in
 
-  let (pos, neg) = match typ_opt with
-    | Some t -> polarities (ConSet.of_list cs) (open_ ts t)
-    | None -> ConSet.empty, ConSet.empty
+  let cons = ConSet.of_list cs in
+
+  let flexible c = ConSet.mem c cons in
+
+  let polarities =
+    match typ_opt with
+    | Some t ->
+      Type.polarities cons (open_ ts t)
+    | None ->
+      ConSet.fold (fun c ce -> ConEnv.add c Neutral ce) cons ConEnv.empty
   in
 
-  let flexible =
-    let cons = ConSet.of_list cs in
-    fun c -> ConSet.mem c cons in
+  let polarity c = ConEnv.find c polarities in
 
-  let mentions typ ce = not (ConSet.is_empty (ConSet.inter (cons typ) ce)) in
+  let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
@@ -236,21 +241,20 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
   and desc c =
-    let p =
-      match ConSet.mem c pos, ConSet.mem c neg with
-      | true, false -> "+ "
-      | false, true -> "- "
-      | true, true -> "+/- "
-      | false, false -> ""
+    let p = match polarity c with
+      | Pos -> "+ "
+      | Neg -> "- "
+      | Invariant -> "+/- "
+      | Neutral -> ""
     in
     Printf.sprintf "%s%s" p (Con.name c)
 
   and fail_under_constrained lb c ub =
-    match ConSet.mem c pos, ConSet.mem c neg with
-    | true, false -> ub
-    | false, true -> lb
-    | false, false -> Non
-    | true, true ->
+    match polarity c with
+    | Pos -> ub
+    | Neg -> lb
+    | Neutral -> Non
+    | Invariant ->
     let lb = string_of_typ lb in
     let c = desc c in
     let ub = string_of_typ ub in
@@ -275,11 +279,13 @@ let bi_match_subs scope_opt tbs subs typ_opt =
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
-    let ce = ConSet.of_list cs in
-    List.iter2 (fun c bd -> if mentions bd ce then fail_open_bound c bd) cs bds;
+    List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
 
-    let l = ConSet.fold (fun c l -> ConEnv.add c Non l) pos ConEnv.empty in
-    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) neg ConEnv.empty in
+    let pos = ConEnv.filter (fun c p ->  p = Pos || p = Invariant) polarities in
+    let l = ConEnv.fold (fun c _ l -> ConEnv.add c Non l) pos ConEnv.empty in
+
+    let neg = ConEnv.filter (fun c p ->  p = Neg || p = Invariant) polarities in
+    let u = ConEnv.fold (fun c _ u -> ConEnv.add c (bound c) u) neg ConEnv.empty in
 
     let l, u = match scope_opt, tbs with
       | Some c, {sort = Scope; _}::tbs ->

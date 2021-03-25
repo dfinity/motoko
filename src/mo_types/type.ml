@@ -634,48 +634,69 @@ let stable t = serializable true t
 
 (* Polarities *)
 
+type polarity = Neutral | Pos | Neg | Invariant
+
+let join p1 p2 =
+  match p1, p2 with
+  | other, Neutral
+  | Neutral, other -> other
+  | Pos, Neg
+  | Neg, Pos -> Invariant
+  | other, Invariant -> Invariant
+  | Invariant, other -> Invariant
+  | Pos, Pos ->  Pos
+  | Neg, Neg -> Neg
+
+let flip p =
+  match p with
+  | Neutral -> Neutral
+  | Pos -> Neg
+  | Neg -> Pos
+  | Invariant -> Invariant
+
 module PS = Set.Make
-  (struct type t = bool * bool * typ let compare = compare end)
+  (struct type t = polarity * typ let compare = compare end)
 
 let polarities cons t =
-  let pos = ref ConSet.empty in
-  let neg = ref ConSet.empty in
+  let map = ref
+    (ConSet.fold (fun c ce -> ConEnv.add c Neutral ce) cons ConEnv.empty)
+  in
   let seen = ref PS.empty in
-  let rec go p n t =
+  let rec go p t =
     match t with
     | Con (c, []) when ConSet.mem c cons ->
-      (if p then pos := ConSet.add c (!pos));
-      (if n then neg := ConSet.add c (!neg))
+      map := ConEnv.add c (join p (ConEnv.find c !map)) (!map)
     | t ->
-    if PS.mem (p, n, t) !seen then ()
+    if PS.mem (p,t) !seen then ()
     else begin
-      seen := PS.add (p, n, t) !seen;
+      seen := PS.add (p,t) !seen;
       match t with
       | Var _ | Pre -> assert false
       | Prim _ | Any | Non -> ()
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> ()
-        | Def (_, t) -> go p n (open_ ts t) (* TBR this may fail to terminate *)
+        | Def (_, t) -> go p (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t | Opt t -> go p n t
-      | Mut t -> go true true t
+      | Array t | Opt t -> go p t
+      | Mut t -> go Invariant t
       | Async (t1, t2) ->
-          go true true t1;
-          go p n t2
-      | Tup ts -> List.iter (go p n) ts
-      | Obj (_, fs) | Variant fs -> List.iter (fun f -> go p n f.typ) fs
+          go Invariant t1;
+          go p t2
+      | Tup ts -> List.iter (go p) ts
+      | Obj (_, fs) | Variant fs -> List.iter (fun f -> go p f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         let ts = open_binds tbs in
         List.iter (fun tb ->
-          go true true (open_ ts tb.bound)) tbs;   (* bound are invariant *)
-        List.iter (go (not p) (not n)) (List.map (open_ ts) ts1);
-        List.iter (go p n) (List.map (open_ ts) ts2)
+          go Invariant (open_ ts tb.bound)) tbs;   (* bound are invariant *)
+        List.iter (go (flip p)) (List.map (open_ ts) ts1);
+        List.iter (go p) (List.map (open_ ts) ts2)
       | Typ c -> () (* TBR  assumed closed *)
     end
   in
-  go true false t;
-  (!pos,!neg)
+  go Pos t;
+  !map
+
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
