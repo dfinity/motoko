@@ -162,4 +162,5 @@ let error_codes : (string * string option) list =
     "M0156", Some([%blob "error_codes/M0156.adoc"]); (* block contains expansive type definitions *)
     "M0157", Some([%blob "error_codes/M0157.adoc"]); (* block contains non-productive type definitions *)
     "M0158", Some([%blob "error_codes/M0158.adoc"]); (* a public class cannot be anonymous, please provide a name *)
+    "M0159", Some([%blob "error_codes/M0159.adoc"]); (* Word deprecation *)
   ]

@@ -1,3 +1,14 @@
+module Format =
+struct
+  let with_str_formatter f x =
+    let b = Buffer.create 16 in
+    let ppf = Format.formatter_of_buffer b in
+    Format.pp_set_geometry ppf ~max_indent:2 ~margin:(1000000010-1); (* hack to output all on one line *)
+    Format.fprintf ppf "@[%a@]" f x;
+    Format.pp_print_flush ppf ();
+    Buffer.contents b
+end
+
 module Fun =
 struct
   let curry f x y = f (x, y)
