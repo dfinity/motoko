@@ -118,7 +118,7 @@ actor Life {
   stable var state : State = do {
     let n = 32;
     let len = (n * n) / 64 + 1;
-    let words = P.Array_init(len, 0 : Word64);
+    let words = P.Array_init<Word64>(len, 0);
     for (i in words.keys()) {
       var word : Word64 = 0;
       for (j in below(64)) {
