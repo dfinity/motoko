@@ -417,10 +417,10 @@ rec {
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
 
-  overview-slides = stdenv.mkDerivation {
-    name = "overview-slides";
+  docs = stdenv.mkDerivation {
+    name = "docs";
     src = subpath ./doc;
-    buildInputs = [ nixpkgs.pandoc nixpkgs.bash ];
+    buildInputs = [ nixpkgs.pandoc nixpkgs.bash nixpkgs.asciidoctor ];
 
     buildPhase = ''
       patchShebangs .
@@ -430,8 +430,10 @@ rec {
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
+      mv index.html $out/
       mkdir -p $out/nix-support
-      echo "report guide $out overview-slides.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
+      echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -573,7 +575,7 @@ rec {
       base-src
       base-tests
       base-doc
-      overview-slides
+      docs
       ic-ref
       shell
       check-formatting
@@ -601,7 +603,7 @@ rec {
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
-        overview-slides.buildInputs ++
+        docs.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           nixpkgs.ocamlPackages.merlin
