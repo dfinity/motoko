@@ -1,0 +1,4 @@
+type-inclusion.mo:68.26-68.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-inclusion.mo:69.26-69.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-inclusion.mo:68.26-68.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+type-inclusion.mo:69.26-69.31: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead

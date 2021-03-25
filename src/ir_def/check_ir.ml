@@ -63,9 +63,14 @@ type env =
     rets : ret_env;
     async : T.con option;
     seen : con_env ref;
+    check_run : int;
   }
 
+let last_run : int ref = ref 0
+
 let initial_env flavor : env =
+  let check_run = !last_run + 1 in
+  last_run := check_run;
   { flavor;
     lvl = TopLvl;
     vals = T.Env.empty;
@@ -76,6 +81,7 @@ let initial_env flavor : env =
                        | (NullCap | ErrorCap) -> None
                        | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
+    check_run;
   }
 
 
@@ -359,6 +365,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
+  (* check for aliasing *)
+  if exp.note.Note.check_run = env.check_run
+  then
+    Printf.eprintf "IR has aliasing (or Check_ir visits nodes twice):\n%s"
+      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+  exp.note <- { exp.note with Note.check_run = env.check_run };
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;

@@ -1,0 +1,5 @@
+caller.mo:50.53-50.58: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+caller.mo:50.53-50.58: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+caller.mo:50.53-50.58: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+caller.mo:51.7-51.42: warning [M0154], field bytes is deprecated:
+the bytes() iterator is deprecated, please use vals(). See M0159 for details

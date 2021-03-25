@@ -1,6 +1,4 @@
 // test pretty printing of small and large types
-import Prim "mo:prim";
-
 type T = { aaaaaaaaaaaaaaaaaaa: Nat;
            bbbbbbbbbbbbbbbbbbb: Nat;
            ccccccccccccccccccc: Nat;
@@ -29,7 +27,17 @@ func h(x : Int) : T { x }; // reject
 
 func i(x : T) : Nat { x }; // reject
 
-Prim.foo; // reject
+module LargeModule {
+ public let bar1 = 0;
+ public let bar2 = 0;
+ public let bar3 = 0;
+ public let bar4 = 0;
+ public let bar5 = 0;
+ public let bar6 = 0;
+ public let bar7 = 0;
+ public let bar8 = 0;
+};
+LargeModule.foo; // reject
 
 do {
    (1,2,3,4,5,6,7,8,9,10,12,13,14,15,16,17,18,19,20) : (); // reject
