@@ -52,7 +52,7 @@ open Lbool
   `note.const` field. See lbool.mli for more on that.
 
   This analysis relies on the fact that AST notes are mutable. So sharing AST
-  nodes would be bad. Maybe Check_ir should check for the absence of sharing.
+  nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
 
 (* The environment *)
