@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests that shorthand variants come out without parens
+# Tests pretty printing of values and types
 moc -i <<__END__
 import Prim "mo:prim";
 
