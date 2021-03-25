@@ -633,19 +633,23 @@ let shared t = serializable false t
 let stable t = serializable true t
 
 (* Polarities *)
+
+module PS = Set.Make
+  (struct type t = bool * bool * typ let compare = compare end)
+
 let polarities cons t =
   let pos = ref ConSet.empty in
   let neg = ref ConSet.empty in
-  let seen = ref S.empty in
+  let seen = ref PS.empty in
   let rec go p n t =
     match t with
-    | Con (c, ts) when ConSet.mem c cons ->
-      if p then pos := ConSet.add c (!pos);
-      if n then neg := ConSet.add c (!neg)
+    | Con (c, []) when ConSet.mem c cons ->
+      (if p then pos := ConSet.add c (!pos));
+      (if n then neg := ConSet.add c (!neg))
     | t ->
-    if S.mem t !seen then () (* this cacheing seems dodgy since the effect depends on p and n, cache for (p,n,t) instead? *)
+    if PS.mem (p, n, t) !seen then ()
     else begin
-      seen := S.add t !seen;
+      seen := PS.add (p, n, t) !seen;
       match t with
       | Var _ | Pre -> assert false
       | Prim _ | Any | Non -> ()
@@ -658,12 +662,13 @@ let polarities cons t =
       | Mut t -> go true true t
       | Async (t1, t2) ->
           go true true t1;
-          go p n t2 (* t1 is a phantom type *)
+          go p n t2
       | Tup ts -> List.iter (go p n) ts
       | Obj (_, fs) | Variant fs -> List.iter (fun f -> go p n f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         let ts = open_binds tbs in
-        List.iter (fun tb -> go true true (open_ ts tb.bound)) tbs; (* bound invariant? *)
+        List.iter (fun tb ->
+          go true true (open_ ts tb.bound)) tbs;   (* bound are invariant *)
         List.iter (go (not p) (not n)) (List.map (open_ ts) ts1);
         List.iter (go p n) (List.map (open_ ts) ts2)
       | Typ c -> () (* TBR  assumed closed *)

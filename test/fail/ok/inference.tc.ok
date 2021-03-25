@@ -6,17 +6,6 @@ inference.mo:62.13-62.44: type error [M0096], expression of type
   None -> Any
 cannot produce expected type
   Any -> Any
-inference.mo:66.1-66.40: type error [M0098], cannot implicitly instantiate function of type
-  <T>(T -> T) -> ()
-to argument of type
-  Any -> None
-to produce result of type
-  ()
-because implicit instantiation of type parameter T is under-constrained with
-  None  <:  T  <:  Any
-where
-  None  =/=  Any
-so that explicit type instantiation is required
 inference.mo:67.1-67.40: type error [M0098], cannot implicitly instantiate function of type
   <T>(T -> T) -> ()
 to argument of type
