@@ -663,26 +663,23 @@ let polarities cons t =
   in
   let seen = ref PS.empty in
   let rec go p t =
-    match t with
-    | Con (c, []) when ConSet.mem c cons ->
-      map := ConEnv.add c (join p (ConEnv.find c !map)) (!map)
-    | t ->
     if PS.mem (p,t) !seen then ()
     else begin
       seen := PS.add (p,t) !seen;
       match t with
       | Var _ | Pre -> assert false
       | Prim _ | Any | Non -> ()
+      | Con (c, []) when ConSet.mem c cons ->
+        map := ConEnv.add c (join p (ConEnv.find c !map)) (!map)
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> ()
-        | Def (_, t) -> go p (open_ ts t) (* TBR this may fail to terminate *)
-        )
+        | Def (_, t) -> go p (open_ ts t)) (* TBR this may fail to terminate *)
       | Array t | Opt t -> go p t
       | Mut t -> go Invariant t
       | Async (t1, t2) ->
-          go Invariant t1;
-          go p t2
+        go Invariant t1;
+        go p t2
       | Tup ts -> List.iter (go p) ts
       | Obj (_, fs) | Variant fs -> List.iter (fun f -> go p f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
