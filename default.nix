@@ -428,7 +428,9 @@ rec {
       # Make this a git repo, to please antora
       git -C .. init
       git add .
-      git commit --author 'Nobody <>' -m 'Dummy commit for antora'
+      git config --global user.name "Nobody"
+      git config --global user.email "nobody@example.com"
+      git commit -m 'Dummy commit for antora'
       HOME=$PWD antora antora-test-playbook.yml
     '';
 
