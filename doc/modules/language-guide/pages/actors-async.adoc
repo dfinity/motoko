@@ -76,7 +76,7 @@ completes the future when it returns a result, either a value or error.
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-[source#counter-actor,motoko]
+[source#counter,motoko]
 ----
 include::../examples/counter-actor-sugar.mo[]
 ----
@@ -134,7 +134,7 @@ To access the result of an `async` value, the receiver of the future use an  `*a
 For example, to use the result of `Counter.read()` above, we can first bind the
 future to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
 
-[source.include_counter-actor, motoko]
+[source.include_counter, motoko]
 ----
 let a : async Nat = Counter.read();
 let n : Nat = await a;
@@ -147,7 +147,7 @@ This line may suspend execution until the future has been completed.
 
 Typically, one rolls the two steps into one and one just awaits an asynchronous call directly:
 
-[source.include_counter-actor, motoko]
+[source.include_counter, motoko]
 ----
 let n : Nat = await Counter.read();
 ----
@@ -260,7 +260,7 @@ TODO: scoped awaits (if at all)
 ////
 
 
-[#actor_classes_intro]
+[#actor_classes]
 == Actor classes generalize actors
 
 An actor _class_ generalizes a single actor declaration to the declaration of family of actors satisfying the same interface.
@@ -273,7 +273,7 @@ For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
 .Counters.mo
-[source#Counters_mo, motoko]
+[source#Counters, motoko]
 ----
 include::../examples/Counters.mo[]
 ----
@@ -282,7 +282,7 @@ If this class is stored in file `+Counters.mo+`, then
 we can import the file as a module and use it to
 create several actors with different initial values:
 
-[source.include_Counters_mo, motoko]
+[source.include_Counters, motoko]
 ----
 import Counters "Counters";
 

@@ -204,7 +204,7 @@ a package of two entities that share a common name.
 
 Consider this example `class` for counters that start at zero:
 
-[source#counter_class, motoko]
+[source#counter, motoko]
 ....
 class Counter() {
   var c = 0;
@@ -218,7 +218,7 @@ class Counter() {
 The value of this definition is that we can _construct_ new counters,
 each starting with their own unique state, initially at zero:
 
-[source#cinit.include_counter_class, motoko]
+[source#cinit.include_counter, motoko]
 ....
 let c1 = Counter();
 let c2 = Counter();
