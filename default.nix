@@ -428,8 +428,7 @@ rec {
       # Make this a git repo, to please antora
       git -C .. init
       git add .
-      git commit -m 'Dummy commit for antora'
-      git -C .. ls-files
+      git commit --author 'Nobody <>' -m 'Dummy commit for antora'
       HOME=$PWD antora antora-test-playbook.yml
     '';
 
