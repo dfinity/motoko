@@ -99,3 +99,8 @@ do {
   func invNeutral<T,U>(x : T, f : U -> U) : T { x };
   ignore invNeutral(1,func (x:Int) : Nat { 0 }); // accept
 };
+
+do {
+  func invNeutral<T,U>(x : T, f : U -> (U,U)) : T { x };
+  ignore invNeutral(1,func (x:{#A;#B;#C}) : ({#A},{#B}) { (#A,#B) }); // accept
+};
