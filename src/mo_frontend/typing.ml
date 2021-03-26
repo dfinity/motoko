@@ -1587,11 +1587,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         in
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
-
+(*
         if not env.pre then
           info env at "inferred instantiation <%s>"
             (String.concat ", " (List.map T.string_of_typ ts));
-
+*)
         ts, t_arg', t_ret'
       with Bi_match.Bimatch msg ->
         error env at "M0098"
