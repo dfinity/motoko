@@ -420,19 +420,25 @@ rec {
   docs = stdenv.mkDerivation {
     name = "docs";
     src = subpath ./doc;
-    buildInputs = [ nixpkgs.pandoc nixpkgs.bash nixpkgs.asciidoctor ];
+    buildInputs = [ nixpkgs.pandoc nixpkgs.bash nixpkgs.antora nixpkgs.gitMinimal];
 
     buildPhase = ''
       patchShebangs .
       make
+      # Make this a git repo, to please antora
+      git -C .. init
+      git add .
+      git commit -m 'Dummy commit for antora'
+      git -C .. ls-files
+      HOME=$PWD antora antora-test-playbook.yml
     '';
 
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
-      mv index.html $out/
+      mv build/site/* $out/
       mkdir -p $out/nix-support
-      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out motoko/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
       echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
