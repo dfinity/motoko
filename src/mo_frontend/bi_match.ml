@@ -253,7 +253,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     match polarity c with
     | Pos -> lb
     | Neg -> ub
-    | Neutral -> Non
+    | Neutral -> lb
     | Invariant ->
       let lb = string_of_typ lb in
       let c = desc c in
