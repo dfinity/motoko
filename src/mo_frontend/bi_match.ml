@@ -249,18 +249,18 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     in
     Printf.sprintf "%s%s" p (Con.name c)
 
-  and fail_under_constrained lb c ub =
+  and choose_under_constrained lb c ub =
     match polarity c with
-    | Pos -> ub
-    | Neg -> lb
+    | Pos -> lb
+    | Neg -> ub
     | Neutral -> Non
     | Invariant ->
-    let lb = string_of_typ lb in
-    let c = desc c in
-    let ub = string_of_typ ub in
-    raise (Bimatch (Printf.sprintf
-      "implicit instantiation of type parameter %s is under-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  =/=  %s\nso that explicit type instantiation is required"
-      c lb c ub lb ub))
+      let lb = string_of_typ lb in
+      let c = desc c in
+      let ub = string_of_typ ub in
+      raise (Bimatch (Printf.sprintf
+        "implicit instantiation of type parameter %s is under-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  =/=  %s\nso that explicit type instantiation is required"
+        c lb c ub lb ub))
 
   and fail_over_constrained lb c ub =
     let lb = string_of_typ lb in
@@ -310,7 +310,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
             let ub = bound c in
             if eq Non ub then
               ub
-            else fail_under_constrained Non c ub
+            else choose_under_constrained Non c ub
           | None, Some ub -> glb ub (bound c)
           | Some lb, None ->
             if sub lb (bound c) then
@@ -321,7 +321,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
             if eq lb ub then
               ub
             else if sub lb ub then
-              fail_under_constrained lb c ub
+              choose_under_constrained lb c ub
             else
               fail_over_constrained lb c ub)
         cs
