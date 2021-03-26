@@ -81,18 +81,14 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         None
       else
         let l =
-          match ConEnv.find_opt con2 l with
-          | Some t1' ->
-            let lub = lub t1 t1' in
-            ConEnv.add con2 lub l
-          | None -> ConEnv.add con2 t1 l
+          let t1' = ConEnv.find con2 l in
+          let lub = lub t1 t1' in
+          ConEnv.add con2 lub l
         in
         let u = if rel != eq then u else
-          match ConEnv.find_opt con2 u with
-          | Some t1' ->
-            let glb = glb t1 t1' in
-            ConEnv.add con2 glb u
-          | None -> ConEnv.add con2 t1 u
+          let t1' = ConEnv.find con2 u in
+          let glb = glb t1 t1' in
+          ConEnv.add con2 glb u
         in
         Some (l, u)
     | Con (con1, ts1), _ when flexible con1 ->
@@ -101,18 +97,14 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         None
       else
         let l = if rel != eq then l else
-          match ConEnv.find_opt con1 l with
-          | Some t2' ->
-            let lub = lub t2 t2' in
-            ConEnv.add con1 lub l
-          | None -> ConEnv.add con1 t2 l
+          let t2' = ConEnv.find con1 l in
+          let lub = lub t2 t2' in
+          ConEnv.add con1 lub l
         in
         let u =
-          match ConEnv.find_opt con1 u with
-          | Some t2' ->
-            let glb = glb t2 t2' in
-            ConEnv.add con1 glb u
-          | None -> ConEnv.add con1 t2 u
+          let t2' = ConEnv.find con1 u in
+          let glb = glb t2 t2' in
+          ConEnv.add con1 glb u
         in
         Some (l, u)
     | Con (con1, ts1), Con (con2, ts2) ->
@@ -253,7 +245,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     match polarity c with
     | Pos -> lb
     | Neg -> ub
-    | Neutral -> Non
+    | Neutral -> lb
     | Invariant ->
       let lb = string_of_typ lb in
       let c = desc c in
@@ -281,11 +273,8 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
     List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
 
-    let pos = ConEnv.filter (fun c p ->  p = Pos || p = Invariant) polarities in
-    let l = ConEnv.fold (fun c _ l -> ConEnv.add c Non l) pos ConEnv.empty in
-
-    let neg = ConEnv.filter (fun c p ->  p = Neg || p = Invariant) polarities in
-    let u = ConEnv.fold (fun c _ u -> ConEnv.add c (bound c) u) neg ConEnv.empty in
+    let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
+    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
 
     let l, u = match scope_opt, tbs with
       | Some c, {sort = Scope; _}::tbs ->
@@ -305,19 +294,8 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | Some (l, u) ->
       let us = List.map
         (fun c ->
-          match ConEnv.find_opt c l, ConEnv.find_opt c u with
-          | None, None ->
-            let ub = bound c in
-            if eq Non ub then
-              ub
-            else choose_under_constrained Non c ub
-          | None, Some ub -> glb ub (bound c)
-          | Some lb, None ->
-            if sub lb (bound c) then
-              lb
-            else fail_over_constrained lb c (bound c)
-          | Some lb, Some ub ->
-            let ub = glb ub (bound c) in
+          match ConEnv.find c l, ConEnv.find c u with
+          | lb, ub ->
             if eq lb ub then
               ub
             else if sub lb ub then
