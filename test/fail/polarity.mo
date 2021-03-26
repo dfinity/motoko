@@ -85,3 +85,17 @@ do {
   }
 };
 
+do {
+  func contraNeutral<T,U>(x : T, f : U -> ()) : T { x };
+  ignore contraNeutral(1,func (x:Nat){}); // accept
+};
+
+do {
+  func coNeutral<T,U>(x : T, f : () -> U) : T { x };
+  ignore coNeutral(1,func () : Nat { 0 }); // accept
+};
+
+do {
+  func invNeutral<T,U>(x : T, f : U -> U) : T { x };
+  ignore invNeutral(1,func (x:Int) : Nat { 0 }); // accept
+};
