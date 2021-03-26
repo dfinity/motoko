@@ -59,6 +59,10 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | _, _ -> None
   in
 
+  let update c op t ce =
+    ConEnv.add c (op t (ConEnv.find c ce)) ce
+  in
+
   let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
@@ -79,34 +83,16 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       assert (ts2 = []);
       if mentions t1 any || not (denotable t1) then
         None
-      else
-        let l =
-          let t1' = ConEnv.find con2 l in
-          let lub = lub t1 t1' in
-          ConEnv.add con2 lub l
-        in
-        let u = if rel != eq then u else
-          let t1' = ConEnv.find con2 u in
-          let glb = glb t1 t1' in
-          ConEnv.add con2 glb u
-        in
-        Some (l, u)
+      else Some
+       (update con2 lub t1 l,
+        if rel != eq then u else update con2 glb t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
-      else
-        let l = if rel != eq then l else
-          let t2' = ConEnv.find con1 l in
-          let lub = lub t2 t2' in
-          ConEnv.add con1 lub l
-        in
-        let u =
-          let t2' = ConEnv.find con1 u in
-          let glb = glb t2 t2' in
-          ConEnv.add con1 glb u
-        in
-        Some (l, u)
+      else Some
+        ((if rel != eq then l else update con1 lub t2 l),
+         update con1 glb t2 u)
     | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
