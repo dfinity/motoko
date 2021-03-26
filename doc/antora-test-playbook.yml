@@ -21,7 +21,8 @@ content:
 
 ui:
   bundle:
-    url: https://github.com/dfinity/antora-sdk/raw/master/build/ui-bundle.zip
+    # local copy of https://github.com/dfinity/antora-sdk/raw/master/build/ui-bundle.zip
+    url: ./test-ui-bundle.zip
     snapshot: true
 
 asciidoc:
