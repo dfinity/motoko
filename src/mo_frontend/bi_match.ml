@@ -1,7 +1,24 @@
 open Mo_types
 open Type
 
+(*  TODO: consider turning of show_stamps (but then do it elsewhere too)
 open MakePretty(struct let show_stamps = false end)
+*)
+
+let pp_rel ppf (t1, rel, t2) =
+  Format.fprintf ppf "@[<hv 2>%a  %s @ %a@]"
+    pp_typ t1
+    rel
+    pp_typ t2
+
+let pp_constraint ppf (lb, c, ub) =
+  Format.fprintf ppf "@[<hv 2>%a  <: @ @[<hv 2>%s  <: @ %a@]@]"
+    pp_typ lb
+    (Con.name c)
+    pp_typ ub
+
+let display_constraint = Lib.Format.display pp_constraint
+let display_rel = Lib.Format.display pp_rel
 
 (* Bi-Matching *)
 
@@ -218,42 +235,30 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   and bi_match_bind ts rel eq inst any tb1 tb2 =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-  and desc c =
-    let p = match polarity c with
-      | Pos -> "+ "
-      | Neg -> "- "
-      | Invariant -> "+/- "
-      | Neutral -> ""
-    in
-    Printf.sprintf "%s%s" p (Con.name c)
-
   and choose_under_constrained lb c ub =
     match polarity c with
     | Pos -> lb
     | Neg -> ub
     | Neutral -> lb
     | Invariant ->
-      let lb = string_of_typ lb in
-      let c = desc c in
-      let ub = string_of_typ ub in
-      raise (Bimatch (Printf.sprintf
-        "implicit instantiation of type parameter %s is under-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  =/=  %s\nso that explicit type instantiation is required"
-        c lb c ub lb ub))
+      raise (Bimatch (Format.asprintf
+        "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+        (Con.name c)
+        display_constraint (lb, c, ub)
+        display_rel (lb,"=/=",ub)))
 
   and fail_over_constrained lb c ub =
-    let lb = string_of_typ lb in
-    let c = desc c in
-    let ub = string_of_typ ub in
-    raise (Bimatch (Printf.sprintf
-      "implicit instantiation of type parameter %s is over-constrained with\n  %s  <:  %s  <:  %s\nwhere\n  %s  </:  %s\nso that no valid instantiation exists"
-      c lb c ub lb ub))
+    raise (Bimatch (Format.asprintf
+      "implicit instantiation of type parameter %s is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
+      (Con.name c)
+      display_constraint (lb, c, ub)
+      display_rel (lb, "</:", ub)))
 
   and fail_open_bound c bd =
     let c = Con.name c in
-    let bd = string_of_typ bd in
-    raise (Bimatch (Printf.sprintf
-      "type parameter %s has an open bound\n  %s\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
-      c bd))
+    raise (Bimatch (Format.asprintf
+      "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+      c (Lib.Format.display pp_typ) bd))
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
@@ -301,10 +306,10 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       let tts =
         List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
       in
-      raise (Bimatch (Printf.sprintf
-        "no instantiation of %s makes\n  %s"
+      raise (Bimatch (Format.asprintf
+        "no instantiation of %s makes%s"
         (String.concat ", " (List.map string_of_con cs))
-        (String.concat "\nand\n  "
+        (String.concat "\nand"
           (List.map (fun (t1, t2) ->
-            Printf.sprintf "%s  <:  %s" (string_of_typ t1) (string_of_typ t2))
+            Format.asprintf "%a" display_rel (t1, "<:", t2))
             tts))))

@@ -78,11 +78,9 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
-let display_typ ppf typ =
-  Format.fprintf ppf "@\n@[<v 2>  %a@]" T.pp_typ typ
+let display_typ = Lib.Format.display T.pp_typ
 
-let display_typ_expand ppf typ =
-  Format.fprintf ppf "@\n@[<v 2>  %a@]" T.pp_typ_expand typ
+let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
 let type_error at code text : Diag.message =
   Diag.error_message at code "type" text

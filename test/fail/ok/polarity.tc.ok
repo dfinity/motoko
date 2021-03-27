@@ -38,8 +38,8 @@ polarity.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate funct
   <A>() -> Inv<A>
 to argument of type
   ()
-because implicit instantiation of type parameter +/- A is under-constrained with
-  None  <:  +/- A  <:  Any
+because implicit instantiation of type parameter A is under-constrained with
+  None  <:  A  <:  Any
 where
   None  =/=  Any
 so that explicit type instantiation is required

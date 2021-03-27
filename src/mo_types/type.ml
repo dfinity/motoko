@@ -685,7 +685,7 @@ let polarities cons t =
       | Func (s, c, tbs, ts1, ts2) ->
         let ts = open_binds tbs in
         List.iter (fun tb ->
-          go Invariant (open_ ts tb.bound)) tbs;   (* bound are invariant *)
+          go Invariant (open_ ts tb.bound)) tbs; (* bounds are invariant *)
         List.iter (go (flip p)) (List.map (open_ ts) ts1);
         List.iter (go p) (List.map (open_ ts) ts2)
       | Typ c -> () (* TBR  assumed closed *)
@@ -1444,7 +1444,8 @@ module type Pretty = sig
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+      (Format.formatter -> unit -> unit)
+
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string
