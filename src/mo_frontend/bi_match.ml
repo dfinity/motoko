@@ -59,7 +59,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | Some t ->
       Type.polarities cons (open_ ts t)
     | None ->
-      ConSet.fold (fun c ce -> ConEnv.add c Neutral ce) cons ConEnv.empty
+      ConSet.fold (fun c ce -> ConEnv.add c Polarity.Neutral ce) cons ConEnv.empty
   in
 
   let polarity c = ConEnv.find c polarities in
@@ -110,6 +110,8 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       else Some
         ((if rel != eq then l else update lub con1 t2 l),
          update glb con1 t2 u)
+    | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
+      assert false
     | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
@@ -237,10 +239,10 @@ let bi_match_subs scope_opt tbs subs typ_opt =
 
   and choose_under_constrained lb c ub =
     match polarity c with
-    | Pos -> lb
-    | Neg -> ub
-    | Neutral -> lb
-    | Invariant ->
+    | Polarity.Pos -> lb
+    | Polarity.Neg -> ub
+    | Polarity.Neutral -> lb
+    | Polarity.Invariant ->
       raise (Bimatch (Format.asprintf
         "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
         (Con.name c)

@@ -632,32 +632,36 @@ let is_shared_func t =
 let shared t = serializable false t
 let stable t = serializable true t
 
-(* Polarities *)
+(* Polarities (of type variables) *)
 
-type polarity = Neutral | Pos | Neg | Invariant
+module Polarity = struct
+  type t = Neutral | Pos | Neg | Invariant
+  let join p1 p2 =
+    match p1, p2 with
+    | other, Neutral
+    | Neutral, other -> other
+    | Pos, Neg
+    | Neg, Pos -> Invariant
+    | other, Invariant -> Invariant
+    | Invariant, other -> Invariant
+    | Pos, Pos ->  Pos
+    | Neg, Neg -> Neg
 
-let join p1 p2 =
-  match p1, p2 with
-  | other, Neutral
-  | Neutral, other -> other
-  | Pos, Neg
-  | Neg, Pos -> Invariant
-  | other, Invariant -> Invariant
-  | Invariant, other -> Invariant
-  | Pos, Pos ->  Pos
-  | Neg, Neg -> Neg
+  let flip p =
+    match p with
+    | Neutral -> Neutral
+    | Pos -> Neg
+    | Neg -> Pos
+    | Invariant -> Invariant
 
-let flip p =
-  match p with
-  | Neutral -> Neutral
-  | Pos -> Neg
-  | Neg -> Pos
-  | Invariant -> Invariant
+end
+
 
 module PS = Set.Make
-  (struct type t = polarity * typ let compare = compare end)
+  (struct type t = Polarity.t * typ let compare = compare end)
 
 let polarities cons t =
+  let open Polarity in
   let map = ref
     (ConSet.fold (fun c ce -> ConEnv.add c Neutral ce) cons ConEnv.empty)
   in
