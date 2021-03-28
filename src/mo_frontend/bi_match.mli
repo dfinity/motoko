@@ -32,7 +32,7 @@ open Type
    The inference algorithm infers the lower and upper bounds of each instantiation given the constraints
    in `subs` (and initial bounds on tbs).
 
-   Given a parameter, `T`, if its inferred upper and lower bound coincide, the instantiation is the lower(=upper) type.
+   Given a parameter, `T`, if its inferred upper and lower bound coincide, the instantiation is the lower (=upper) type.
    Otherwise:
    * if the lower bound is (a proper) supertype of the upper bound, reject (no sastifying instantiation of `T` exists).
    * if the lower bound is (a proper) subtype of the upper bound and `T` occurs in `ret_opt` as:
@@ -46,7 +46,21 @@ open Type
 
 exception Bimatch of string
 
+(* General parameter inference for a conjunction of subtype problems *)
 val bi_match_subs :
-  scope option -> bind list -> (typ * typ) list ->
-  typ option ->
+  scope option ->
+  bind list ->               (* type parameters to instantiate *)
+  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
+                                left or right, but never both sides *)
+  typ option ->              (* optional return type mentioning tbs
+                                determining polarities *)
+  typ list (* raises Bimatch *)
+
+
+(* Parameter inference for function calls *)
+val bi_match_call :
+  scope option ->
+  (bind list * typ * typ) -> (* function type *)
+  typ ->                     (* argument type *)
+  typ option ->              (* optional expected result type *)
   typ list (* raises Bimatch *)
