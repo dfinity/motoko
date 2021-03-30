@@ -420,7 +420,7 @@ rec {
   docs = stdenv.mkDerivation {
     name = "docs";
     src = subpath ./doc;
-    buildInputs = [ nixpkgs.pandoc nixpkgs.bash nixpkgs.antora nixpkgs.gitMinimal ];
+    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
