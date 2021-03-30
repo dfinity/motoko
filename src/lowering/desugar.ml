@@ -132,6 +132,10 @@ and exp' at note = function
       I.PrimE (I.NumConvWrapPrim (p1, p2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "decodeUtf8";_},_);_}, _, e) ->
+    I.PrimE (I.DecodeUtf8, [exp e])
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "encodeUtf8";_},_);_}, _, e) ->
+    I.PrimE (I.EncodeUtf8, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
@@ -182,7 +186,7 @@ and exp' at note = function
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
-  | S.BlockE [] -> unitE.it
+  | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
   | S.NotE e -> (notE (exp e)).it
@@ -195,7 +199,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if !Mo_config.Flags.release_mode then unitE.it else (exp e).it
+  | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
@@ -213,7 +217,7 @@ and exp' at note = function
   | S.IgnoreE e ->
     I.BlockE ([
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
-        at = e.at; note = ()}], unitE)
+        at = e.at; note = ()}], (unitE ()))
 
 and url e at =
     (* Set position explicitly *)
@@ -314,7 +318,7 @@ and build_actor at self_id es obj_typ =
     nary_funcD get_state []
       (let v = fresh_var "v" ty in
        switch_optE (immuteE (varE state))
-         (unreachableE)
+         (unreachableE ())
          (varP v) (varE v)
          ty)
     ::
@@ -361,7 +365,7 @@ and stabilize stab_opt d =
      fun get_state ->
      let v = fresh_var i t in
      varD (var i (T.Mut t))
-       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
          e
          (varP v) (varE v)
          t))
@@ -371,7 +375,7 @@ and stabilize stab_opt d =
      fun get_state ->
      let v = fresh_var i t in
      letP p
-       (switch_optE (dotE (callE (varE get_state) [] unitE) i (T.Opt t))
+       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
          e
          (varP v) (varE v)
          t))

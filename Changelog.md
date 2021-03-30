@@ -1,5 +1,28 @@
 = Motoko compiler changelog
 
+== 0.5.13 (2021-03-25)
+
+* The `moc` interpreter now pretty-prints values (as well as types) in the
+  repl, producing more readable output for larger values.
+
+* The family of `Word` types are deprecated, and mentioning them produces a warning.
+  These type will be removed completely in a subsequent release.
+  See the user’s guide, section “Word types”, for a migration guide.
+
+* motoko base: because of this deprecation, the `Char.from/toWord32()`
+  functions are removed. Migrate away from `Word` types, or use
+  `Word32.from/ToChar` for now.
+
+== 0.5.12 (2021-03-23)
+
+* The `moc` compiler now pretty-prints types in error messages and the repl,
+  producing more readable output for larger types.
+
+* motoko base: fixed bug in `Text.mo` affecting partial matches in,
+  for example, `Text.replace` (GH issue #234).
+
+== 0.5.11 (2021-03-12)
+
 * The `moc` compiler no longer rejects occurrences of private or
   local type definitions in public interfaces.
 
@@ -34,6 +57,8 @@
   ```
 
   are now rejected.
+
+* motoko base: `Text` now contains `decodeUtf8` and `encodeUtf8`.
 
 == 0.5.10 (2021-03-02)
 

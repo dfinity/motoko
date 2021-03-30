@@ -212,10 +212,10 @@ let prim =
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
   | "idlHash" -> fun _ v k ->
     let s = as_text v in
-    k (Word32 (Word32.wrapping_of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))
+    k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))
   | "crc32Hash" -> fun _ v k -> let s = as_blob v in
     let i = Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)) in
-    k (Word32 (Word32.wrapping_of_big_int (Big_int.big_int_of_int32 i)))
+    k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 i)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
@@ -312,5 +312,16 @@ let prim =
 
   | "char_is_alphabetic" ->
       fun _ v k -> k (Bool (Uucp.Alpha.is_alphabetic (Uchar.of_int (as_char v))))
+
+  | "decodeUtf8" ->
+      fun _ v k ->
+        let s = as_blob v in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (Opt (Text s))
+          | exception Wasm.Utf8.Utf8 -> k Null
+        end
+
+  | "encodeUtf8" ->
+      fun _ v k -> k (Blob (as_text v))
 
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

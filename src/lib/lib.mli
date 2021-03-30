@@ -1,5 +1,11 @@
 (* Things that should be in the OCaml library... *)
 
+module Format :
+sig
+  (* Pretty-print to infinite line *)
+  val with_str_formatter : (Format.formatter -> 'a -> unit) -> 'a -> string
+end
+
 module Fun :
 sig
   val curry : ('a * 'b -> 'c) -> ('a -> 'b -> 'c)

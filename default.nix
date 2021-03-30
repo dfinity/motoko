@@ -8,7 +8,7 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let subpath = p: import ./nix/gitSource.nix p; in
+let subpath = import ./nix/gitSource.nix; in
 
 let only_internal = x:
   if internal then x

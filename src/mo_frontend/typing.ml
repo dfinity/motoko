@@ -78,6 +78,12 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
+let display_typ ppf typ =
+  Format.fprintf ppf "@\n@[<v 2>  %a@]" T.pp_typ typ
+
+let display_typ_expand ppf typ =
+  Format.fprintf ppf "@\n@[<v 2>  %a@]" T.pp_typ_expand typ
+
 let type_error at code text : Diag.message =
   Diag.error_message at code "type" text
 
@@ -88,17 +94,17 @@ let type_info at text : Diag.message =
   Diag.info_message at "type" text
 
 let error env at code fmt =
-  Printf.ksprintf
+  Format.kasprintf
     (fun s -> Diag.add_msg env.msgs (type_error at code s); raise Recover) fmt
 
 let local_error env at code fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
+  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
 
 let warn env at code fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
+  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
 
 let info env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
+  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
 
 let flag_of_compile_mode mode =
   match mode with
@@ -171,9 +177,9 @@ let coverage' warnOrError category env f x t at =
   List.iter (fun at -> warn env at "M0146" "this pattern is never matched") unreached;
   if uncovered <> [] then
     warnOrError env at "M0145"
-      ("this %s of type\n  %s\ndoes not cover value\n  %s" : (_, _, _, _) format4)
+      ("this %s of type%a\ndoes not cover value\n  %s" : (_, _, _, _) format4 )
       category
-      (Type.string_of_typ_expand t)
+      display_typ_expand t
       (String.concat " or\n  " uncovered)
 
 let coverage_cases category env cases t at =
@@ -197,6 +203,16 @@ let check_deprecation_binop env at t op =
   | Prim (Word8|Word16|Word32|Word64), MulOp -> word_op_warn "*"
   | Prim (Word8|Word16|Word32|Word64), PowOp -> word_op_warn "**"
   | _, _ -> ()
+
+let check_word_deprecation env at c =
+  let msg n = warn env at "M0159" "the Word%d type is deprecated, please use Nat%d or Int%d instead" n n n in
+  match Con.kind c with
+    | T.(Def ([], Prim Word8))  -> msg 8
+    | T.(Def ([], Prim Word16)) -> msg 16
+    | T.(Def ([], Prim Word32)) -> msg 32
+    | T.(Def ([], Prim Word64)) -> msg 64
+    | _ -> ()
+
 
 (* Types *)
 
@@ -248,8 +264,8 @@ let rec check_obj_path env path : T.obj_sort * (T.field list) =
     (s, fs)
   | t ->
     error env path.at "M0023"
-      "expected module, object, or actor type, but path expression produces type\n  %s"
-      (T.string_of_typ_expand t)
+      "expected module, object, or actor type, but path expression produces type%a"
+      display_typ_expand t
 
 and check_obj_path' env path : T.typ =
   match path.it with
@@ -269,8 +285,8 @@ and check_obj_path' env path : T.typ =
       error env id.at "M0027" "cannot infer type of forward field reference %s" id.it
     | t -> t
     | exception Invalid_argument _ ->
-      error env id.at "M0028" "field %s does not exist in type\n  %s"
-        id.it (T.string_of_typ_expand (T.Obj (s, fs)))
+      error env id.at "M0028" "field %s does not exist in type%a"
+        id.it display_typ_expand (T.Obj (s, fs))
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
@@ -293,8 +309,8 @@ and check_typ_path' env path : T.con =
           (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
-        error env id.at "M0030" "type field %s does not exist in type\n  %s"
-          id.it (T.string_of_typ_expand (T.Obj (s, fs)))
+        error env id.at "M0030" "type field %s does not exist in type%a"
+          id.it display_typ_expand (T.Obj (s, fs))
 
 
 (* Type helpers *)
@@ -303,9 +319,12 @@ let error_shared env t at code fmt =
   match T.find_unshared t with
   | None -> error env at code fmt
   | Some t1 ->
-    let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
-      (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
-    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error at code (s1^s)); raise Recover) fmt
+    let s =
+      Format.asprintf "\ntype%a\nis or contains non-shared type%a"
+        display_typ_expand t
+        display_typ_expand t1
+    in
+    Format.kasprintf (fun s1 -> Diag.add_msg env.msgs (type_error at code (s1^s)); raise Recover) fmt
 
 let as_domT t =
   match t.Source.it with
@@ -423,6 +442,7 @@ and check_typ' env typ : T.typ =
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
+    check_word_deprecation env typ.at c;
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
@@ -448,20 +468,21 @@ and check_typ' env typ : T.typ =
     if not env.pre then begin
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
-        error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
+        error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type%a"
+          display_typ_expand t1;
       List.iter (fun t ->
         if not (T.shared t) then
           error_shared env t typ.at "M0032"
-            "shared function has non-shared return type\n  %s"
-            (T.string_of_typ_expand t);
+            "shared function has non-shared return type%a"
+            display_typ_expand t;
       ) ts2;
       match c, ts2 with
       | T.Returns, [] when sort.it = T.Shared T.Write -> ()
       | T.Promises, _ -> ()
       | _ ->
         error env typ2.at "M0041"
-          "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand (T.seq ts2))
+          "shared function has non-async result type%a"
+          display_typ_expand (T.seq ts2)
       end;
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
@@ -475,8 +496,9 @@ and check_typ' env typ : T.typ =
     let t0 = check_typ env typ0 in
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
-      error_shared env t typ.at "M0033" "async has non-shared content type\n  %s"
-        (T.string_of_typ_expand t);
+      error_shared env t typ.at
+        "M0033" "async has non-shared content type%a"
+        display_typ_expand t;
     T.Async (t0, t)
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
@@ -493,8 +515,9 @@ and check_typ_field env s typ_field : T.field =
   let t = infer_mut mut (check_typ env typ) in
   if not env.pre && s = T.Actor then begin
     if not (T.is_shared_func t) then
-      error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
-        id.it (T.string_of_typ_expand t)
+      error env typ.at "M0042" "actor field %s must have shared function type, but has type%a"
+        id.it
+        display_typ_expand t
   end;
   T.{lab = id.it; typ = t; depr = None}
 
@@ -584,9 +607,9 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
         let u = T.open_ ts tb.T.bound in
         if not (T.sub t u) then
           local_error env at' "M0046"
-            "type argument\n  %s\ndoes not match parameter bound\n  %s"
-            (T.string_of_typ_expand t)
-            (T.string_of_typ_expand u);
+            "type argument%a\ndoes not match parameter bound%a"
+            display_typ_expand t
+            display_typ_expand u;
         go tbs' ts' ats'
     | [], [], [] -> ()
     | _  -> assert false
@@ -812,8 +835,9 @@ let check_lit env t lit at =
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
       error env at "M0050"
-        "literal of type\n  %s\ndoes not have expected type\n  %s"
-        (T.string_of_typ t') (T.string_of_typ_expand t)
+        "literal of type%a\ndoes not have expected type%a"
+        display_typ t'
+        display_typ_expand t
 
 
 (* Coercions *)
@@ -832,9 +856,10 @@ let array_obj t =
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
+  let bytes_depr = "the bytes() iterator is deprecated, please use vals(). See M0159 for details" in
   let open T in
   Object,
-  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)]); depr = None};
+  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)]); depr = Some bytes_depr};
     {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
   ]
@@ -855,9 +880,9 @@ let error_duplicate env kind id =
 
 let error_bin_op env at t1 t2 =
   error env at "M0060"
-    "operator is not defined for operand types\n  %s\nand\n  %s"
-    (T.string_of_typ_expand t1)
-    (T.string_of_typ_expand t2)
+    "operator is not defined for operand types%a\nand%a"
+    display_typ_expand t1
+    display_typ_expand t2
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -870,8 +895,8 @@ and infer_exp_promote env exp : T.typ =
   let t' = T.promote t in
   if t' = T.Pre then
     error env exp.at "M0053"
-      "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
-      (T.string_of_typ_expand  t);
+      "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type%a"
+      display_typ_expand t;
   t'
 
 and infer_exp' f env exp : T.typ =
@@ -916,8 +941,8 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_unop op t) then
-        error env exp.at "M0059" "operator is not defined for operand type\n  %s"
-          (T.string_of_typ_expand t);
+        error env exp.at "M0059" "operator is not defined for operand type%a"
+          display_typ_expand t;
       ot := t;
     end;
     t
@@ -929,8 +954,8 @@ and infer_exp'' env exp : T.typ =
       if not (Operator.has_binop op t) then
         error_bin_op env exp.at t1 t2
       else if op = Operator.SubOp && T.eq t T.nat then
-        warn env exp.at "M0155" "operator may trap for inferred type\n  %s"
-          (T.string_of_typ_expand t);
+        warn env exp.at "M0155" "operator may trap for inferred type%a"
+          display_typ_expand t;
       ot := t
     end;
     check_deprecation_binop env exp.at t op;
@@ -945,15 +970,15 @@ and infer_exp'' env exp : T.typ =
       if not (T.eq t t1 || T.eq t t2) && not (T.sub T.nat t1 && T.sub T.nat t2) then
         if T.eq t1 t2 then
           warn env exp.at "M0061"
-            "comparing abstract type\n  %s\nto itself at supertype\n  %s"
-            (T.string_of_typ_expand t1)
-            (T.string_of_typ_expand t)
+            "comparing abstract type%a\nto itself at supertype%a"
+            display_typ_expand t1
+            display_typ_expand t
         else
           warn env exp.at "M0062"
-            "comparing incompatible types\n  %s\nand\n  %s\nat common supertype\n  %s"
-            (T.string_of_typ_expand t1)
-            (T.string_of_typ_expand t2)
-            (T.string_of_typ_expand t);
+            "comparing incompatible types%a\nand%a\nat common supertype%a"
+            display_typ_expand t1
+            display_typ_expand t2
+            display_typ_expand t;
       ot := t;
     end;
     T.bool
@@ -961,8 +986,8 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       let t = infer_exp_promote env exp1 in
       if not (Show.can_show t) then
-        error env exp.at "M0063" "show is not defined for operand type\n  %s"
-          (T.string_of_typ_expand t);
+        error env exp.at "M0063" "show is not defined for operand type%a"
+          display_typ_expand t;
       ot := t
     end;
     T.text
@@ -985,8 +1010,8 @@ and infer_exp'' env exp : T.typ =
         T.as_opt_sub t1
       with Invalid_argument _ ->
         error env exp1.at "M0065"
-          "expected option type before '!', but expression produces type\n  %s"
-          (T.string_of_typ_expand t1)
+          "expected option type before '!', but expression produces type%a"
+          display_typ_expand t1
     end
   | TagE (id, exp1) ->
     let t1 = infer_exp env exp1 in
@@ -998,12 +1023,13 @@ and infer_exp'' env exp : T.typ =
       match List.nth_opt ts n with
       | Some t -> t
       | None ->
-        error env exp.at "M0066" "tuple projection %n is out of bounds for type\n  %s"
-          n (T.string_of_typ_expand t1)
+        error env exp.at "M0066" "tuple projection %n is out of bounds for type%a"
+          n
+          display_typ_expand t1
     with Invalid_argument _ ->
       error env exp1.at "M0067"
-        "expected tuple type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1)
+        "expected tuple type, but expression produces type%a"
+        display_typ_expand t1
     )
   | ObjBlockE (obj_sort, dec_fields) ->
     if obj_sort.it = T.Actor then begin
@@ -1034,8 +1060,8 @@ and infer_exp'' env exp : T.typ =
       try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
       try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
         error env exp1.at "M0070"
-          "expected object type, but expression produces type\n  %s"
-          (T.string_of_typ_expand t1)
+          "expected object type, but expression produces type%a"
+          display_typ_expand t1
     in
     (match T.lookup_val_field id.it tfs with
     | T.Pre ->
@@ -1049,8 +1075,9 @@ and infer_exp'' env exp : T.typ =
       t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
-        "field %s does not exist in type\n  %s"
-        id.it (T.string_of_typ_expand t1)
+        "field %s does not exist in type%a"
+        id.it
+        display_typ_expand t1
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -1067,8 +1094,8 @@ and infer_exp'' env exp : T.typ =
     let t1 = List.fold_left T.lub T.Non ts in
     if not env.pre && inconsistent t1 ts then
       warn env exp.at "M0074"
-        "this array has type %s because elements have inconsistent types"
-        (T.string_of_typ (T.Array t1));
+        "this array has type%a\nbecause elements have inconsistent types"
+        display_typ (T.Array t1);
     T.Array (match mut.it with Const -> t1 | Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
@@ -1078,8 +1105,8 @@ and infer_exp'' env exp : T.typ =
       t
     with Invalid_argument _ ->
       error env exp1.at "M0075"
-        "expected array type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1)
+        "expected array type, but expression produces type%a"
+        display_typ_expand t1
     )
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
@@ -1113,13 +1140,13 @@ and infer_exp'' env exp : T.typ =
       if Type.is_shared_sort sort then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at "M0031"
-            "shared function has non-shared parameter type\n  %s"
-            (T.string_of_typ_expand t1);
+            "shared function has non-shared parameter type%a"
+            display_typ_expand t1;
         List.iter (fun t ->
           if not (T.shared t) then
             error_shared env t typ.at "M0032"
-              "shared function has non-shared return type\n  %s"
-              (T.string_of_typ_expand t);
+              "shared function has non-shared return type%a"
+              display_typ_expand t;
         ) ts2;
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
@@ -1131,8 +1158,8 @@ and infer_exp'' env exp : T.typ =
             error env exp1.at "M0079"
               "shared function with async result type has non-async body"
         | _ ->
-          error env typ.at "M0041" "shared function has non-async result type\n  %s"
-            (T.string_of_typ_expand codom)
+          error env typ.at "M0041" "shared function has non-async result type%a"
+            display_typ_expand codom
       end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
@@ -1164,10 +1191,10 @@ and infer_exp'' env exp : T.typ =
     let t = T.lub t2 t3 in
     if not env.pre && inconsistent t [t2; t3] then
       warn env exp.at "M0081"
-        "this if has type %s because branches have inconsistent types,\ntrue produces\n  %s\nfalse produces\n  %s"
-        (T.string_of_typ t)
-        (T.string_of_typ_expand t2)
-        (T.string_of_typ_expand t3);
+        "this if has type%a\nbecause branches have inconsistent types,\ntrue produces%a\nfalse produces%a"
+        display_typ t
+        display_typ_expand t2
+        display_typ_expand t3;
     t
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
@@ -1213,8 +1240,8 @@ and infer_exp'' env exp : T.typ =
         check_exp_strong (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ | Not_found ->
         local_error env exp1.at "M0082"
-          "expected iterable type, but expression has type\n  %s"
-          (T.string_of_typ_expand t1)
+          "expected iterable type, but expression has type%a"
+          display_typ_expand t1
       );
     end;
     T.unit
@@ -1269,8 +1296,8 @@ and infer_exp'' env exp : T.typ =
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
     if not (T.shared t') then
-      error_shared env t' exp1.at "M0033" "async type has non-shared content type\n  %s"
-        (T.string_of_typ_expand t');
+      error_shared env t' exp1.at "M0033" "async type has non-shared content type%a"
+        display_typ_expand t';
     T.Async (t1, t')
   | AwaitE exp1 ->
     let t0 = check_AwaitCap env "await" exp.at in
@@ -1290,8 +1317,8 @@ and infer_exp'' env exp : T.typ =
        t3
     with Invalid_argument _ ->
       error env exp1.at "M0088"
-        "expected async type, but expression has type\n  %s"
-        (T.string_of_typ_expand t1)
+        "expected async type, but expression has type%a"
+        display_typ_expand t1
     )
   | AssertE exp1 ->
     if not env.pre then check_exp_strong env T.bool exp1;
@@ -1368,8 +1395,8 @@ and check_exp' env0 t exp : T.typ =
     check_exp env t exp1;
     check_exp env t exp2;
     if env.weak && op = Operator.SubOp && T.eq t T.nat then
-      warn env exp.at "M0155" "operator may trap for inferred type\n  %s"
-        (T.string_of_typ_expand t);
+      warn env exp.at "M0155" "operator may trap for inferred type%a"
+        display_typ_expand t;
     check_deprecation_binop env exp.at t op;
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
@@ -1382,8 +1409,9 @@ and check_exp' env0 t exp : T.typ =
     List.iter (fun ft ->
       if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
       then local_error env exp.at "M0151"
-        "object literal is missing field %s from expected type\n  %s"
-        ft.T.lab (T.string_of_typ_expand t);
+        "object literal is missing field %s from expected type%a"
+        ft.T.lab
+        display_typ_expand t;
     ) fts;
     t
   | OptE exp1, _ when T.is_opt t ->
@@ -1401,9 +1429,9 @@ and check_exp' env0 t exp : T.typ =
   | ArrayE (mut, exps), T.Array t' ->
     if (mut.it = Var) <> T.is_mut t' then
       local_error env exp.at "M0091"
-        "%smutable array expression cannot produce expected type\n  %s"
+        "%smutable array expression cannot produce expected type%a"
         (if mut.it = Const then "im" else "")
-        (T.string_of_typ_expand (T.Array t'));
+        display_typ_expand (T.Array t');
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
@@ -1412,10 +1440,10 @@ and check_exp' env0 t exp : T.typ =
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then begin
       local_error env exp.at "M0092"
-        "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
-        (T.string_of_typ_expand t1)
-        (T.string_of_typ_expand t1')
-        (associated_region env t1 exp.at)
+        "async at scope%a\ncannot produce expected scope%a%s%s"
+        display_typ_expand t1
+        display_typ_expand t1'
+        (associated_region env t1 exp.at) (*FIX ME?*)
         (associated_region env t1' exp.at);
       scope_info env t1 exp.at;
       scope_info env t1' exp.at
@@ -1470,8 +1498,9 @@ and check_exp' env0 t exp : T.typ =
         (if s = T.Local then "non-" else "");
     if not (T.sub t2 codom) then
       error env exp.at "M0095"
-        "function return type\n  %s\ndoes not match expected return type\n  %s"
-        (T.string_of_typ_expand t2) (T.string_of_typ_expand codom);
+        "function return type%a\ndoes not match expected return type%a"
+        display_typ_expand t2
+        display_typ_expand codom;
     let env' =
       { env with
         labs = T.Env.empty;
@@ -1484,9 +1513,9 @@ and check_exp' env0 t exp : T.typ =
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
-        "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand t')
-        (T.string_of_typ_expand t);
+        "expression of type%a\ncannot produce expected type%a"
+        display_typ_expand t'
+        display_typ_expand t;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
@@ -1496,9 +1525,9 @@ and check_exp' env0 t exp : T.typ =
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
-        "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand t')
-        (T.string_of_typ_expand t);
+        "expression of type%a\ncannot produce expected type%a"
+        display_typ_expand t'
+        display_typ_expand t;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -1507,13 +1536,15 @@ and check_exp_field env (ef : exp_field) fts =
   match ft_opt with
   | Some { T.typ = T.Mut t; _ } ->
     if mut.it <> Syntax.Var then
-      error env ef.at "M0149" "expected mutable 'var' field %s of type\n  %s\nbut found immutable field (insert 'var'?)"
-        id.it (T.string_of_typ t);
+      error env ef.at "M0149" "expected mutable 'var' field %s of type%a\nbut found immutable field (insert 'var'?)"
+        id.it
+        display_typ t;
     check_exp env t exp
   | Some { T.typ = t; _ } ->
     if mut.it = Syntax.Var then
-      error env ef.at "M0150" "expected immutable field %s of type\n  %s\nbut found mutable 'var' field (delete 'var'?)"
-        id.it (T.string_of_typ t);
+      error env ef.at "M0150" "expected immutable field %s of type%a\nbut found mutable 'var' field (delete 'var'?)"
+        id.it
+        display_typ t;
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
@@ -1526,8 +1557,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
       local_error env exp1.at "M0097"
-        "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1);
+        "expected function type, but expression produces type%a"
+        display_typ_expand t1;
       if inst.it = None then
         info env (Source.between exp1.at exp2.at)
           "this looks like an unintended function call, perhaps a missing ';'?";
@@ -1557,11 +1588,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         ts, t_arg', t_ret'
       with Bi_match.Bimatch msg ->
         error env at "M0098"
-          "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\nbecause %s"
-          (T.string_of_typ t1)
-          (T.string_of_typ t2)
+          "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
+          display_typ t1
+          display_typ t2
           (if Option.is_none t_expect_opt then ""
-           else Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
+           else Format.asprintf "\nto produce result of type%a" display_typ t) (* FIX ME *)
           msg
   in
   inst.note <- ts;
@@ -1569,12 +1600,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     if Type.is_shared_sort sort then begin
       if not (T.concrete t_arg') then
         error env exp1.at "M0099"
-          "shared function argument contains abstract type\n  %s"
-          (T.string_of_typ_expand t_arg');
+          "shared function argument contains abstract type%a"
+          display_typ_expand t_arg';
       if not (T.concrete t_ret') then
         error env exp2.at "M0100"
-          "shared function call result contains abstract type\n  %s"
-          (T.string_of_typ_expand t_ret');
+          "shared function call result contains abstract type%a"
+          display_typ_expand t_ret';
     end
   end;
   (* note t_ret' <: t checked by caller if necessary *)
@@ -1593,10 +1624,10 @@ and infer_case env t_pat t case =
   let t'' = T.lub t t' in
   if not env.pre && inconsistent t'' [t; t'] then
     warn env case.at "M0101"
-      "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
-      (T.string_of_typ t'')
-      (T.string_of_typ_expand t)
-      (T.string_of_typ_expand t');
+      "the switch has type%a\nbecause branches have inconsistent types,\nthis case produces type%a\nthe previous produce type%a"
+      display_typ t''
+      display_typ_expand t
+      display_typ_expand t';
   t''
 
 and check_cases env t_pat t cases =
@@ -1638,8 +1669,8 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t1 = T.Prim (infer_lit env lit pat.at) in
     let t = Operator.type_unop op t1 in
     if not (Operator.has_unop op t) then
-      error env pat.at "M0059" "operator is not defined for operand type\n  %s"
-        (T.string_of_typ_expand t);
+      error env pat.at "M0059" "operator is not defined for operand type%a"
+        display_typ_expand t;
     t, T.Env.empty
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
@@ -1659,9 +1690,9 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t = T.lub t1 t2 in
     if not (T.compatible t1 t2) then
       error env pat.at "M0104"
-        "pattern branches have incompatible types,\nleft consumes\n  %s\nright consumes\n  %s"
-        (T.string_of_typ_expand t1)
-        (T.string_of_typ_expand t2);
+        "pattern branches have incompatible types,\nleft consumes%a\nright consumes%a"
+        display_typ_expand t1
+        display_typ_expand t2;
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
     t, T.Env.empty
@@ -1735,8 +1766,8 @@ and check_pat' env t pat : Scope.val_env =
   | LitP lit ->
     if not env.pre then begin
       if T.opaque t then
-        error env pat.at "M0110" "literal pattern cannot consume expected type\n  %s"
-          (T.string_of_typ_expand t);
+        error env pat.at "M0110" "literal pattern cannot consume expected type%a"
+          display_typ_expand t;
       if T.sub t T.Non
       then ignore (infer_lit env lit pat.at)
       else check_lit env t lit pat.at
@@ -1745,8 +1776,8 @@ and check_pat' env t pat : Scope.val_env =
   | SignP (op, lit) ->
     if not env.pre then begin
       if not (Operator.has_unop op (T.promote t)) then
-        error env pat.at "M0111" "operator pattern cannot consume expected type\n  %s"
-          (T.string_of_typ_expand t);
+        error env pat.at "M0111" "operator pattern cannot consume expected type%a"
+          display_typ_expand t;
       if T.sub t T.Non
       then ignore (infer_lit env lit pat.at)
       else check_lit env t lit pat.at
@@ -1754,32 +1785,32 @@ and check_pat' env t pat : Scope.val_env =
     T.Env.empty
   | TupP pats ->
     let ts = try T.as_tup_sub (List.length pats) t with Invalid_argument _ ->
-      error env pat.at "M0112" "tuple pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand t)
+      error env pat.at "M0112" "tuple pattern cannot consume expected type%a"
+         display_typ_expand t
     in check_pats env ts pats T.Env.empty pat.at
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let s, tfs =
       try T.as_obj_sub (List.map (fun (pf : pat_field) -> pf.it.id.it) pfs') t
       with Invalid_argument _ ->
-        error env pat.at "M0113" "object pattern cannot consume expected type\n  %s"
-          (T.string_of_typ_expand t)
+        error env pat.at "M0113" "object pattern cannot consume expected type%a"
+          display_typ_expand t
     in
     if not env.pre && s = T.Actor then
-      local_error env pat.at "M0114" "object pattern cannot consume actor type\n  %s"
-        (T.string_of_typ_expand t);
+      local_error env pat.at "M0114" "object pattern cannot consume actor type%a"
+        display_typ_expand t;
     check_pat_fields env s tfs pfs' T.Env.empty pat.at
   | OptP pat1 ->
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
-      error env pat.at "M0115" "option pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand t)
+      error env pat.at "M0115" "option pattern cannot consume expected type%a"
+        display_typ_expand t
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
       try T.lookup_val_field id.it (T.as_variant_sub id.it t)
       with Invalid_argument _ | Not_found ->
-        error env pat.at "M0116" "variant pattern cannot consume expected type\n  %s"
-          (T.string_of_typ_expand t)
+        error env pat.at "M0116" "variant pattern cannot consume expected type%a"
+          display_typ_expand t
     in check_pat env t1 pat1
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -1791,9 +1822,9 @@ and check_pat' env t pat : Scope.val_env =
     let t' = check_typ env typ in
     if not (T.sub t t') then
       error env pat.at "M0117"
-        "pattern of type\n  %s\ncannot consume expected type\n  %s"
-        (T.string_of_typ_expand t')
-        (T.string_of_typ_expand t);
+        "pattern of type%a\ncannot consume expected type%a"
+        display_typ_expand t'
+        display_typ_expand t;
     check_pat env t pat1
   | ParP pat1 ->
     check_pat env t pat1
@@ -1853,8 +1884,9 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
   | _, [] -> ve
   | [], pf::_ ->
     error env pf.at "M0119"
-      "object field %s is not contained in expected type\n  %s"
-      pf.it.id.it (T.string_of_typ (T.Obj (s, tfs)))
+      "object field %s is not contained in expected type%a"
+      pf.it.id.it
+      display_typ (T.Obj (s, tfs))
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
     check_pat_fields env s tfs' pfs ve at
   | T.{lab; typ; depr}::tfs', pf::pfs' ->
@@ -1983,8 +2015,9 @@ and infer_obj env s dec_fields at : T.typ =
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
           error env (fst (T.Env.find lab pub_val)) "M0124"
-            "public actor field %s has non-shared function type\n  %s"
-            lab (T.string_of_typ_expand typ)
+            "public actor field %s has non-shared function type%a"
+            lab
+            display_typ_expand typ
       ) tfs;
       List.iter (fun df ->
         if is_public df.it.vis && not (is_actor_method df.it.dec) && not (is_typ_dec df.it.dec) then
@@ -2017,8 +2050,9 @@ and check_system_fields env sort scope dec_fields =
             begin
               let t1 = T.Env.find id.it scope.Scope.val_env in
               if not (T.sub t1 t) then
-                local_error env df.at "M0127" "system function %s is declared with type\n  %s\ninstead of expected type\n  %s" id.it
-                  (T.string_of_typ t1) (T.string_of_typ t)
+                local_error env df.at "M0127" "system function %s is declared with type%a\ninstead of expected type%a" id.it
+                   display_typ t1
+                   display_typ t
             end
           else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->
@@ -2047,7 +2081,8 @@ and check_stab env sort scope dec_fields =
       let t1 = T.as_immut t in
       if not (T.stable t1) then
         local_error env at "M0131"
-          "variable %s is declared stable but has non-stable type\n  %s" id (T.string_of_typ t1)
+          "variable %s is declared stable but has non-stable type%a" id
+          display_typ t1
   in
   let idss = List.map (fun df ->
     match sort, df.it.stab, df.it.dec.it with
@@ -2132,8 +2167,8 @@ and infer_dec env dec : T.typ =
       in
       if obj_sort.it = T.Actor && not (T.shared t_pat) then
         error_shared env t_pat pat.at "M0034"
-          "shared constructor has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand t_pat);
+          "shared constructor has non-shared parameter type%a"
+          display_typ_expand t_pat;
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
@@ -2156,9 +2191,9 @@ and infer_dec env dec : T.typ =
         let t'' = check_typ env'' typ in
         if not (T.sub t' t'') then
           local_error env dec.at "M0134"
-            "class body of type\n  %s\ndoes not match expected type\n  %s"
-            (T.string_of_typ_expand t')
-            (T.string_of_typ_expand t'')
+            "class body of type%a\ndoes not match expected type%a"
+            display_typ_expand t'
+            display_typ_expand t''
       | Some typ, T.Actor ->
         local_error env dec.at "M0135" "actor class has non-async return type"
       | _, T.Memory -> assert false
@@ -2181,8 +2216,8 @@ and check_block_exps env t decs at =
   match decs with
   | [] ->
     if not (T.sub T.unit t) then
-      local_error env at "M0136" "empty block cannot produce expected type\n  %s"
-        (T.string_of_typ_expand t)
+      local_error env at "M0136" "empty block cannot produce expected type%a"
+        display_typ_expand t
   | [dec] ->
     check_dec env t dec
   | dec::decs' ->
@@ -2198,9 +2233,9 @@ and check_dec env t dec =
     let t' = infer_dec env dec in
     if not (T.eq t T.unit || T.sub t' t) then
       local_error env dec.at "M0096"
-        "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand t')
-        (T.string_of_typ_expand t)
+        "expression of type%a\ncannot produce expected type%a"
+        display_typ_expand t'
+        display_typ_expand t
 
 and infer_val_path env exp : T.typ option =
   match exp.it with
@@ -2354,22 +2389,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
     let k = T.Def (T.close_binds cs tbs, T.close cs t) in
-    begin
-      let is_typ_param c =
-        match Con.kind c with
-        | T.Def _ -> false
-        | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
-        | T.Abs( _, _) -> true in
-      let typ_params = T.ConSet.filter is_typ_param env.cons in
-      let cs_k = T.cons_kind k in
-      let free_params = T.ConSet.inter typ_params cs_k in
-      if not (T.ConSet.is_empty free_params) then
-        error env dec.at "M0137"
-          "type definition %s %s references type parameter(s) %s from an outer scope"
-          id.it
-          (T.string_of_kind k)
-          (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
-    end;
+    check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -2387,12 +2407,29 @@ and infer_dec_typdecs env dec : Scope.t =
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' obj_sort.it dec_fields dec.at in
-    (* TODO(#2391): check k is closed, see case TypD *)
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
+    check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
+
+and check_closed env id k at =
+  let is_typ_param c =
+    match Con.kind c with
+    | T.Def _ -> false
+    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
+    | T.Abs( _, _) -> true in
+  let typ_params = T.ConSet.filter is_typ_param env.cons in
+  let cs_k = T.cons_kind k in
+  let free_params = T.ConSet.inter typ_params cs_k in
+  if not (T.ConSet.is_empty free_params) then
+    let op, sbs, st = T.strings_of_kind k in
+    error env at "M0137"
+      "type %s%s %s %s references type parameter%s %s from an outer scope"
+      id.it sbs op st
+      (if T.ConSet.cardinal free_params = 1 then "" else "s")
+      (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
 and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);

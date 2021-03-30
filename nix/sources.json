@@ -6,16 +6,16 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "238fd2a3fc4569089c7f25bf4ac429aeaa47a6c4",
-        "sha256": "15ah7xn1nhc38ks7x5csmpx346saj4mbv2hrk7srpaf8vijbbvnq",
+        "rev": "f642dbf840d77ca4afdeb33cb2b7dd61948d3688",
+        "sha256": "1lrmv7v5i782242myfgafslhfz0cpjwpgrwkslaxcp3c2114cy3n",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/238fd2a3fc4569089c7f25bf4ac429aeaa47a6c4.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/f642dbf840d77ca4afdeb33cb2b7dd61948d3688.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "a9b332019ee8995046c411fe8af54a9c47894fb5",
+        "rev": "c3b61b6ad8d91e2bbe7eb6383cf6cd3bb9aa33c9",
         "type": "git"
     },
     "esm": {
@@ -50,10 +50,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "91ca9b2573d39b2969b1c9ea8c5a807c5e2f7191",
-        "sha256": "0ajifjwlyjrlxymfijdryr4wzg55grjrc9diq40kijb8z87cz2ri",
+        "rev": "7daaa0b00edd2e27812d00b4e58965f5e97699cd",
+        "sha256": "0ya0dk337jcgcq9004gipxy29svgfqarhhmw8ciw1x1ham47gysw",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/91ca9b2573d39b2969b1c9ea8c5a807c5e2f7191.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/7daaa0b00edd2e27812d00b4e58965f5e97699cd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -134,17 +134,5 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
-    },
-    "wasm-profiler": {
-        "branch": "main",
-        "description": "A (hacky) wasm instruction profiler",
-        "homepage": null,
-        "owner": "dfinity",
-        "repo": "wasm-profiler",
-        "rev": "7cfb023e6f1d9a522fc56d24c35ace6d7f981f49",
-        "sha256": "1yzhafazry6v6pspc639xl2qrbi5cpqhnnyl4ngs9nk13z5yn7ln",
-        "type": "tarball",
-        "url": "https://github.com/dfinity/wasm-profiler/archive/7cfb023e6f1d9a522fc56d24c35ace6d7f981f49.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

@@ -18,7 +18,7 @@ should not break type safety or other guarantees of the language.
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
-func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
+func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
 
 // Printing
 
@@ -40,7 +40,7 @@ func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> N
 
 // Hashing
 
-func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
+func hashBlob(b : Blob) : Nat32 { (prim "crc32Hash" : Blob -> Nat32) b };
 
 // Total conversions (fixed to big)
 
@@ -138,6 +138,10 @@ func charIsWhitespace(c : Char) : Bool = (prim "char_is_whitespace" : Char -> Bo
 func charIsLowercase(c : Char) : Bool = (prim "char_is_lowercase" : Char -> Bool) c;
 func charIsUppercase(c : Char) : Bool = (prim "char_is_uppercase" : Char -> Bool) c;
 func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bool) c;
+
+// Text conversion
+func decodeUtf8(b : Blob) : ?Text = (prim "decodeUtf8" : Blob -> ?Text) b;
+func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
 
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;

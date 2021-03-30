@@ -1,0 +1,15 @@
+literals.mo:5.12-5.17: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+literals.mo:6.13-6.19: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+literals.mo:7.12-7.18: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+literals.mo:5.12-5.17: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+literals.mo:6.13-6.19: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+literals.mo:7.12-7.18: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+literals.mo:5.12-5.17: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+literals.mo:6.13-6.19: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+literals.mo:7.12-7.18: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+literals.mo:5.12-5.17: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+literals.mo:5.27-5.32: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
+literals.mo:6.13-6.19: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+literals.mo:6.31-6.37: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
+literals.mo:7.12-7.18: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead
+literals.mo:7.35-7.41: warning [M0159], the Word32 type is deprecated, please use Nat32 or Int32 instead

@@ -24,15 +24,20 @@ let phase heading name =
 
 let print_ce =
   Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.strings_of_kind (Con.kind c) in
-    printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
+    let eq, params, typ = Type.pps_of_kind (Con.kind c) in
+    Format.printf "@[<hv 2>type %s%a %s@ %a@]@."
+      (Con.to_string c)
+      params ()
+      eq
+      typ ()
   )
 
 let print_stat_ve =
   Type.Env.iter (fun x t ->
     let t' = Type.as_immut t in
-    printf "%s %s : %s\n"
-      (if t == t' then "let" else "var") x (Type.string_of_typ t')
+    Format.printf "@[<hv 2>%s %s :@ %a@]@."
+      (if t == t' then "let" else "var") x
+      Type.pp_typ t'
   )
 
 let print_dyn_ve scope =
@@ -42,13 +47,13 @@ let print_dyn_ve scope =
     let t' = as_immut t in
     match normalize t' with
     | Obj (Module, fs) ->
-      printf "%s %s : module {...}\n"
+      Format.printf "@[<hv 2>%s %s : module {...}@]@."
         (if t == t' then "let" else "var") x
     | _ ->
-      printf "%s %s : %s = %s\n"
+      Format.printf "@[<hv 2>%s %s :@ %a =@ %a@]@."
         (if t == t' then "let" else "var") x
-        (Type.string_of_typ t')
-        (Value.string_of_def !Flags.print_depth d)
+        Type.pp_typ t'
+        (Value.pp_def !Flags.print_depth) d
   )
 
 let print_scope senv scope dve =
@@ -56,7 +61,9 @@ let print_scope senv scope dve =
   print_dyn_ve senv dve
 
 let print_val _senv v t =
-  printf "%s : %s\n" (Value.string_of_val !Flags.print_depth v) (Type.string_of_typ t)
+  Format.printf "@[<hv 2>%a :@ %a@]@."
+    (Value.pp_val !Flags.print_depth) v
+    Type.pp_typ t
 
 
 (* Dumping *)
@@ -509,7 +516,9 @@ let run_stdin_from_file files file =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  printf "%s : %s\n" (Value.string_of_val 10 v) (Type.string_of_typ t);
+  Format.printf "@[<hv 2>%a :@ %a@]@."
+    (Value.pp_val 10) v
+    Type.pp_typ t;
   Some ()
 
 let run_files_and_stdin files =

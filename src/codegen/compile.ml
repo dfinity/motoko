@@ -776,6 +776,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
@@ -2957,6 +2958,15 @@ module Text = struct
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
+
+  let of_blob env =
+    let (set_blob, get_blob) = new_local env "blob" in
+    set_blob ^^
+    get_blob ^^ Blob.as_ptr_len env ^^
+    E.call_import env "rts" "utf8_valid" ^^
+    G.if_ [I32Type] (Opt.inject_noop env get_blob) (Opt.null_lit env)
+
+
   let iter env =
     E.call_import env "rts" "text_iter"
   let iter_done env =
@@ -5497,13 +5507,12 @@ end (* Var *)
 (* FIX ME: calling into the prelude will not work if we ever need to compile a program
    that requires top-level cps conversion;
    use new prims instead *)
-module Prelude = struct
+module Internals = struct
   let call_prelude_function env ae var =
-    match Var.get_val env ae var with
-    | (SR.Const(_, Const.Fun mk_fi), code) ->
-      code ^^
-        compile_unboxed_zero ^^ (* A dummy closure *)
-          G.i (Call (nr (mk_fi ())))
+    match VarEnv.lookup_var ae var with
+    | Some (VarEnv.Const(_, Const.Fun mk_fi)) ->
+       compile_unboxed_zero ^^ (* A dummy closure *)
+       G.i (Call (nr (mk_fi ())))
     | _ -> assert false
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
@@ -5560,8 +5569,8 @@ module FuncDec = struct
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       message_start env sort ^^
       (* cycles *)
-      Prelude.reset_cycles env outer_ae ^^
-      Prelude.reset_refund env outer_ae ^^
+      Internals.reset_cycles env outer_ae ^^
+      Internals.reset_refund env outer_ae ^^
       (* reply early for a oneway *)
       (if control = Type.Returns
        then
@@ -6818,7 +6827,7 @@ and compile_exp (env : E.t) ae exp =
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
           let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
-          let add_cycles = Prelude.add_cycles env ae in
+          let add_cycles = Internals.add_cycles env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
@@ -7318,6 +7327,11 @@ and compile_exp (env : E.t) ae exp =
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
+    | DecodeUtf8, [_] ->
+      const_sr SR.Vanilla (Text.of_blob env)
+    | EncodeUtf8, [_] ->
+      const_sr SR.Vanilla (Text.to_blob env)
+
     (* textual to bytes *)
     | BlobOfIcUrl, [_] ->
       const_sr SR.Vanilla (E.call_import env "rts" "blob_of_principal")
@@ -7360,7 +7374,7 @@ and compile_exp (env : E.t) ae exp =
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
-      let add_cycles = Prelude.add_cycles env ae in
+      let add_cycles = Internals.add_cycles env ae in
       compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
@@ -7510,7 +7524,7 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-    let add_cycles = Prelude.add_cycles env ae in
+    let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
