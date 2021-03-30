@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-parity-wasm = { git = "https://github.com/nomeata/parity-wasm", branch = "joachim/name_section_parsing" }
+parity-wasm = "0.42.2"
 structopt = "0.3"
 clap = "2.33"
 

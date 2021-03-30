@@ -73,8 +73,9 @@ checksum = "1482821306169ec4d07f6aca392a4681f66c75c9918aa49641a2595db64053cb"
 
 [[package]]
 name = "parity-wasm"
-version = "0.42.1"
-source = "git+https://github.com/nomeata/parity-wasm?branch=joachim/name_section_parsing#0569deee1355aa2ddb2e0ef5693d6888bc685f02"
+version = "0.42.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be5e13c266502aadf83426d87d81a0f5d1ef45b8027f5a471c360abfe4bfae92"
 
 [[package]]
 name = "proc-macro-error"
