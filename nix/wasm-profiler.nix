@@ -1,6 +1,7 @@
 pkgs:
 let
-  wasm-profiler-src = pkgs.sources.wasm-profiler;
+  subpath = import ./gitSource.nix;
+  wasm-profiler-src = subpath ../wasm-profiler;
 in {
   wasm-profiler-instrument =
     pkgs.rustPlatform.buildRustPackage {
