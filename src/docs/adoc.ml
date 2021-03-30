@@ -36,8 +36,16 @@ let adoc_render_path : env -> Syntax.path -> string =
   | None -> Plain.string_of_path path
   | Some xref -> adoc_link xref (Plain.string_of_path path)
 
+let render_fns env =
+  Plain.
+    {
+      render_path = adoc_render_path env;
+      render_open_bracket = "pass:[[]";
+      render_close_bracket = "pass:[]]";
+    }
+
 let adoc_of_type : Buffer.t -> env -> Syntax.typ -> unit =
- fun buf env ty -> Plain.plain_of_typ buf (adoc_render_path env) ty
+ fun buf env ty -> Plain.plain_of_typ buf (render_fns env) ty
 
 let opt_typ : Buffer.t -> env -> Syntax.typ option -> unit =
  fun buf env ->
@@ -46,7 +54,7 @@ let opt_typ : Buffer.t -> env -> Syntax.typ option -> unit =
       adoc_of_type buf env ty)
 
 let adoc_of_typ_bind : Buffer.t -> env -> Syntax.typ_bind -> unit =
- fun buf env -> Plain.plain_of_typ_bind buf (adoc_render_path env)
+ fun buf env -> Plain.plain_of_typ_bind buf (render_fns env)
 
 let adoc_of_function_arg : Buffer.t -> env -> function_arg_doc -> unit =
  fun buf env arg ->
