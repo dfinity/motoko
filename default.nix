@@ -420,18 +420,20 @@ rec {
   docs = stdenv.mkDerivation {
     name = "docs";
     src = subpath ./doc;
-    buildInputs = [ nixpkgs.pandoc nixpkgs.bash nixpkgs.antora nixpkgs.gitMinimal];
+    buildInputs = [ nixpkgs.pandoc nixpkgs.bash nixpkgs.antora nixpkgs.gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
-      make
       # Make this a git repo, to please antora
       git -C .. init
       git add .
       git config user.name "Nobody"
       git config user.email "nobody@example.com"
       git commit -m 'Dummy commit for antora'
-      HOME=$PWD antora antora-test-playbook.yml
+      export HOME=$PWD
+      export MOC_JS=${js.moc}/bin/moc.js
+      export MOTOKO_BASE=${base-src}
+      make
     '';
 
     installPhase = ''
