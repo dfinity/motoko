@@ -1,7 +1,7 @@
 open Mo_types
 open Type
 
-(*  TODO: consider turning of show_stamps (but then do it elsewhere too)
+(*  TODO: consider turning off show_stamps (but then do it elsewhere too)
 open MakePretty(struct let show_stamps = false end)
 *)
 
@@ -111,6 +111,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         ((if rel != eq then l else update lub con1 t2 l),
          update glb con1 t2 u)
     | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
+      (* Because we do matching, not unification, we never relate two flexible variables *)
       assert false
     | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
