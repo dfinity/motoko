@@ -1,6 +1,6 @@
 # This is a small antora playbook for local testing
 # It is based on antora-playbook.yml in repo dfinity-docs-playbook
-# but stripped down to only build the languages guile
+# but stripped down to only build the language guide
 #
 # Build with
 #
