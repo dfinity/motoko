@@ -195,13 +195,6 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
-(* Polarities of parameters in typ *)
-module Polarity : sig
-  type t = Neutral | Pos | Neg | Invariant
-end
-
-val polarities :  ConSet.t -> typ -> Polarity.t ConEnv.t
-
 (* Equivalence and Subtyping *)
 
 val eq : typ -> typ -> bool

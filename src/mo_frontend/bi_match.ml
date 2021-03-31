@@ -1,7 +1,7 @@
 open Mo_types
 open Type
 
-(*  TODO: consider turning off show_stamps (but then do it elsewhere too)
+(* TODO: consider turning off show_stamps (but then do it elsewhere too)
 open MakePretty(struct let show_stamps = false end)
 *)
 
@@ -57,7 +57,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   let polarities =
     match typ_opt with
     | Some t ->
-      Type.polarities cons (open_ ts t)
+      Polarity.polarities cons (open_ ts t)
     | None ->
       ConSet.fold (fun c ce -> ConEnv.add c Polarity.Neutral ce) cons ConEnv.empty
   in
