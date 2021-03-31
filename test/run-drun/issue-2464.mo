@@ -23,7 +23,7 @@ actor class Maker() {
     private stable var callers : [Principal] = [];
 
     public func newCaller(callee: Principal) : async Principal {
-        let callerActor = await Caller.Caller(callee);
+        let callerActor : actor {} = await Caller.Caller(callee);
         let callerId = Prim.principalOfActor(callerActor);
         callers := append<Principal>(callers, [callerId]);
 

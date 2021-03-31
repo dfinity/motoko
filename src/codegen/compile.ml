@@ -3700,6 +3700,8 @@ module Serialization = struct
 
   open Typ_hash
 
+  let val_fields fs = List.filter (fun f -> not (Type.is_typ f.Type.typ)) fs
+
   let sort_by_hash fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
@@ -3763,7 +3765,8 @@ module Serialization = struct
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
-            List.iter (fun f -> go f.typ) fs
+            List.iter (fun f -> go f.typ)
+              (val_fields fs)
           | Array (Mut t) -> go (Array t)
           | Array t -> go t
           | Opt t -> go t
@@ -3836,9 +3839,9 @@ module Serialization = struct
         add_sleb128 idl_record;
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
-          add_leb128_32 h;
-          add_idx f.typ
-        ) (sort_by_hash fs)
+            add_leb128_32 h;
+            add_idx f.typ)
+          (sort_by_hash (val_fields fs))
       | Array (Mut t) ->
         add_sleb128 idl_alias; add_idx (Array t)
       | Array t ->
@@ -3874,8 +3877,8 @@ module Serialization = struct
         List.iter (fun f ->
           add_leb128 (String.length f.lab);
           Buffer.add_string buf f.lab;
-          add_idx f.typ
-        ) fs
+          add_idx f.typ)
+          (val_fields fs)
       | Mut t ->
         add_sleb128 idl_alias; add_idx t
       | _ -> assert false in
@@ -3968,9 +3971,8 @@ module Serialization = struct
           ) ts
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h, f) ->
-          get_x ^^ Object.load_idx_raw env f.Type.lab ^^
-          size env f.typ
-          ) (sort_by_hash fs)
+         get_x ^^ Object.load_idx_raw env f.Type.lab ^^ size env f.typ)
+         (sort_by_hash (val_fields fs))
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
@@ -4163,10 +4165,10 @@ module Serialization = struct
           write env t
         ) ts
       | Obj ((Object | Memory), fs) ->
-        G.concat_map (fun (_h,f) ->
+        G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
-        ) (sort_by_hash fs)
+        ) (sort_by_hash (val_fields fs))
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
@@ -4685,7 +4687,7 @@ module Serialization = struct
                   | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
-          ) (sort_by_hash fs)) ^^
+          ) (sort_by_hash (val_fields fs))) ^^
 
           (* skip all possible trailing extra fields *)
           get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
