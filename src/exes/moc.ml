@@ -111,7 +111,7 @@ let set_out_file files ext =
     | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
     | ns -> eprintf "moc: no output file specified"; exit 1
   end
-  
+
 (* Main *)
 
 let exit_on_none = function
@@ -190,7 +190,7 @@ let () =
   Sys.catch_break true; - enable to get stacktrace on interrupt
   (useful for debugging infinite loops)
   *)
-  Printexc.record_backtrace true;
+  Internal_error.setup_handler ();
   Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
