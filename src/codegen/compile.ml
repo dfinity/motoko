@@ -3839,9 +3839,9 @@ module Serialization = struct
         add_sleb128 idl_record;
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
-            add_leb128_32 h;
-            add_idx f.typ)
-          (sort_by_hash (val_fields fs))
+          add_leb128_32 h;
+          add_idx f.typ
+        ) (sort_by_hash (val_fields fs))
       | Array (Mut t) ->
         add_sleb128 idl_alias; add_idx (Array t)
       | Array t ->
@@ -3877,8 +3877,8 @@ module Serialization = struct
         List.iter (fun f ->
           add_leb128 (String.length f.lab);
           Buffer.add_string buf f.lab;
-          add_idx f.typ)
-          (val_fields fs)
+          add_idx f.typ
+       )  (val_fields fs)
       | Mut t ->
         add_sleb128 idl_alias; add_idx t
       | _ -> assert false in
@@ -3971,8 +3971,9 @@ module Serialization = struct
           ) ts
       | Obj ((Object | Memory), fs) ->
         G.concat_map (fun (_h, f) ->
-         get_x ^^ Object.load_idx_raw env f.Type.lab ^^ size env f.typ)
-         (sort_by_hash (val_fields fs))
+          get_x ^^ Object.load_idx_raw env f.Type.lab ^^
+          size env f.typ
+        ) (sort_by_hash (val_fields fs))
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
