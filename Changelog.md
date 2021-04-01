@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+* install default crash handler, prompting users to report backtrace for compiler bugs
+
 == 0.5.13 (2021-03-25)
 
 * The `moc` interpreter now pretty-prints values (as well as types) in the
