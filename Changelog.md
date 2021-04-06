@@ -1,5 +1,7 @@
 = Motoko compiler changelog
 
+* When the compiler itself crashes, it will now ask the user to report the backtrace at the DFINITY forum
+
 == 0.5.13 (2021-03-25)
 
 * The `moc` interpreter now pretty-prints values (as well as types) in the
