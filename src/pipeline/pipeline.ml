@@ -310,6 +310,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
     | Syntax.Unresolved -> assert false
     | Syntax.LibPath f ->
+      let f = Lib.FilePath.normalise f in
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
