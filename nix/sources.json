@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "d13886f5ec0676749e03874089c08dcb47137a9b",
+        "rev": "f1c811db21b474e16fbaaaf1e70219d34eeb3947",
         "type": "git"
     },
     "esm": {
@@ -50,10 +50,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "b515e23764c065f431328bce89f1f825f285dc6a",
-        "sha256": "1wdvhmbk0kmhcvkh2xnxzsjxicv7d0h293h2c7n6qvdqd16fs406",
+        "rev": "7daaa0b00edd2e27812d00b4e58965f5e97699cd",
+        "sha256": "0ya0dk337jcgcq9004gipxy29svgfqarhhmw8ciw1x1ham47gysw",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/b515e23764c065f431328bce89f1f825f285dc6a.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/7daaa0b00edd2e27812d00b4e58965f5e97699cd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -134,11 +134,5 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
-    },
-    "wasm-profiler": {
-        "branch": "main",
-        "repo": "ssh://git@github.com/dfinity/wasm-profiler",
-        "rev": "7cfb023e6f1d9a522fc56d24c35ace6d7f981f49",
-        "type": "git"
     }
 }

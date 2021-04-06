@@ -7,7 +7,7 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let subpath = p: import ./nix/gitSource.nix p; in
+let subpath = import ./nix/gitSource.nix; in
 
 let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
