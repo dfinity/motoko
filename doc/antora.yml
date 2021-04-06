@@ -1,5 +1,7 @@
-name: docs
+name: motoko
 version: 'master'
 asciidoc:
   attributes:
     page-repl: true@
+nav:
+  - modules/language-guide/lang-nav.adoc
