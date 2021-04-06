@@ -1,5 +1,5 @@
 // test principal defaulting of underconstrained type parameters according to
-// their polarity in the result.
+// their variance in the result.
 // TIP: best visually verified in VSCode
 
 do {
@@ -10,7 +10,7 @@ do {
     }
   };
 
-  let co = Co(); // accept, A positive so lower bound `None` ok
+  let co = Co(); // accept, A covariant so lower bound `None` ok
   ignore co : Co<None>; // accept
   ignore co : Co<Any>; // accept
   let a : ? None = co.get(); // accept
@@ -25,7 +25,7 @@ do {
     }
   };
 
-  let contra = Contra(); // accept, A negative so upper bound `Any` ok
+  let contra = Contra(); // accept, A contravariant so upper bound `Any` ok
   ignore contra : Contra<Any>; // accept
   ignore contra : Contra<None>; // accept
   contra.put(10); // accept
@@ -40,7 +40,7 @@ do {
     }
   };
 
-  let bound = Bound(); // accept, A negative so upper bound `Nat` ok
+  let bound = Bound(); // accept, A contravariant so upper bound `Nat` ok
   ignore bound : Bound<Any>; // reject
   ignore bound : Bound<Nat>; // accept
   ignore bound : Bound<None>; // accept
@@ -49,7 +49,7 @@ do {
 };
 
 do {
-  class Non<A>() { // bi-variant in A
+  class Non<A>() { // bivariant in A
     var item : ?Any = null;
     public func put(i : Any) {
       item := ?i
@@ -86,21 +86,21 @@ do {
 };
 
 do {
-  func contraNeutral<T,U>(x : T, f : U -> ()) : T { x };
-  ignore contraNeutral(1,func (x:Nat){}); // accept
+  func contraBi<T,U>(x : T, f : U -> ()) : T { x };
+  ignore contraBi(1,func (x:Nat){}); // accept
 };
 
 do {
-  func coNeutral<T,U>(x : T, f : () -> U) : T { x };
-  ignore coNeutral(1,func () : Nat { 0 }); // accept
+  func coBi<T,U>(x : T, f : () -> U) : T { x };
+  ignore coBi(1,func () : Nat { 0 }); // accept
 };
 
 do {
-  func invNeutral<T,U>(x : T, f : U -> U) : T { x };
-  ignore invNeutral(1,func (x:Int) : Nat { 0 }); // accept
+  func invBi<T,U>(x : T, f : U -> U) : T { x };
+  ignore invBi(1,func (x:Int) : Nat { 0 }); // accept
 };
 
 do {
-  func invNeutral<T,U>(x : T, f : U -> (U,U)) : T { x };
-  ignore invNeutral(1,func (x:{#A;#B;#C}) : ({#A},{#B}) { (#A,#B) }); // accept
+  func invBi<T,U>(x : T, f : U -> (U,U)) : T { x };
+  ignore invBi(1,func (x:{#A;#B;#C}) : ({#A},{#B}) { (#A,#B) }); // accept
 };

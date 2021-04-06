@@ -1,18 +1,18 @@
 open Mo_types
 
-(* Polarities of variables *)
+(* Variance of type variables *)
 
 (*
   Given a type, a variable is
-  * Neutral if it has no occurrence
-  * Pos(itive) if it only occurs in covariant position
-  * Neg(ative) if it only occurs in contravariant positions
+  * Bivariant if it has no occurrence
+  * Covariant if it only occurs in positive positions
+  * Contraviant if it only occurs in negative positions
   * Invariant if it occurs in both positive and negative positions
 *)
 
-type t = Neutral | Pos | Neg | Invariant
+type t = Bivariant | Covariant | Contravariant | Invariant
 
-(* `polarities cons typ` maps each variable in `cons` to
-    its polarity in `typ`
+(* `variances cons typ` maps each variable in `cons` to
+    its variance in `typ`
 *)
-val polarities : Type.ConSet.t -> Type.typ -> t Type.ConEnv.t
+val variances : Type.ConSet.t -> Type.typ -> t Type.ConEnv.t

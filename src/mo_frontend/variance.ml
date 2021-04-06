@@ -1,34 +1,34 @@
-(* Polarities (of type variables) in a type *)
+(* Variance (of type variables) in a type *)
 open Mo_types
 open Type
 
 (* NB: Polarities form a simple lattice with
-   Invariant
-     / \
-   Neg Pos
-     \ /
-   Neutral
+      Invariant
+     /        \
+    Covariant  Contravariant
+     \        /
+      Bivariant
 *)
-type t = Neutral | Pos | Neg | Invariant
+type t = Bivariant | Covariant | Contravariant | Invariant
 
 
 (* Least upper bound of two polarities *)
 let join p1 p2 =
   match p1, p2 with
-  | other, Neutral
-  | Neutral, other -> other
-  | Pos, Neg
-  | Neg, Pos -> Invariant
+  | other, Bivariant
+  | Bivariant, other -> other
+  | Covariant, Contravariant
+  | Contravariant, Covariant -> Invariant
   | other, Invariant -> Invariant
   | Invariant, other -> Invariant
-  | Pos, Pos ->  Pos
-  | Neg, Neg -> Neg
+  | Covariant, Covariant ->  Covariant
+  | Contravariant, Contravariant -> Contravariant
 
 let flip p =
     match p with
-    | Neutral -> Neutral
-    | Pos -> Neg
-    | Neg -> Pos
+    | Bivariant -> Bivariant
+    | Covariant -> Contravariant
+    | Contravariant -> Covariant
     | Invariant -> Invariant
 
 module PS = Set.Make
@@ -37,9 +37,9 @@ module PS = Set.Make
     type t = pol * typ let compare = compare
   end)
 
-let polarities cons t =
+let variances cons t =
   let map = ref
-    (ConSet.fold (fun c ce -> ConEnv.add c Neutral ce) cons ConEnv.empty)
+    (ConSet.fold (fun c ce -> ConEnv.add c Bivariant ce) cons ConEnv.empty)
   in
   let seen = ref PS.empty in
   let rec go p t =
@@ -71,5 +71,5 @@ let polarities cons t =
       | Typ c -> () (* TBR  assumed closed *)
     end
   in
-  go Pos t;
+  go Covariant t;
   !map

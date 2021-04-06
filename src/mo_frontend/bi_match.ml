@@ -54,15 +54,15 @@ let bi_match_subs scope_opt tbs subs typ_opt =
 
   let flexible c = ConSet.mem c cons in
 
-  let polarities =
+  let variances =
     match typ_opt with
     | Some t ->
-      Polarity.polarities cons (open_ ts t)
+      Variance.variances cons (open_ ts t)
     | None ->
-      ConSet.fold (fun c ce -> ConEnv.add c Polarity.Neutral ce) cons ConEnv.empty
+      ConSet.fold (fun c ce -> ConEnv.add c Variance.Bivariant ce) cons ConEnv.empty
   in
 
-  let polarity c = ConEnv.find c polarities in
+  let variance c = ConEnv.find c variances in
 
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
 
@@ -239,11 +239,11 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
   and choose_under_constrained lb c ub =
-    match polarity c with
-    | Polarity.Pos -> lb
-    | Polarity.Neg -> ub
-    | Polarity.Neutral -> lb
-    | Polarity.Invariant ->
+    match variance c with
+    | Variance.Covariant -> lb
+    | Variance.Contravariant -> ub
+    | Variance.Bivariant -> lb
+    | Variance.Invariant ->
       raise (Bimatch (Format.asprintf
         "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
         (Con.name c)
