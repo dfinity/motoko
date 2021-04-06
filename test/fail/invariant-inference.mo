@@ -16,6 +16,11 @@ do {
 };
 
 do { 
-  let a = [var 0] : [var Int ]; // accepted as [var Nat] 
+  let a = [var 0] : [var Int]; // accepted as [var Int] 
+  a[0] := -1; // accepted
+};
+
+do { 
+  let a : [var Int] = [var 0]; // ditto, accepted as [var Int] 
   a[0] := -1; // accepted
 };
