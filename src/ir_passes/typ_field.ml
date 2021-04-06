@@ -27,18 +27,19 @@ let transform prog =
 
      Eventually, pipeline will allow us to pass the con_renaming to downstream program
      fragments, then we would simply start with an empty con_renaming and the prelude.
+
+     (c.f. async.ml.)
   *)
   in
 
-
-  (* Boiler-plate homomorphic translation *)
-  let rec t_typ (t:T.typ) =
+  (* Mostly boiler-plate homomorphic translation *)
+  let rec t_typ t =
     match t with
-    (* The only interesting case - all others are homomorphic *)
+    (* The only interesting case *)
     | Obj (s, fs) ->
       Obj (s,
-        List.concat_map (fun f ->
-          if is_typ f.typ then [] else [t_field f])
+        List.filter_map (fun f ->
+          if is_typ f.typ then None else Some (t_field f))
         fs)
     | T.Prim _
     | Var _ -> t
@@ -105,7 +106,7 @@ let transform prog =
     { lab; typ = t_typ typ; depr }
   in
 
-  let rec t_exp (exp: exp) =
+  let rec t_exp (exp : exp) =
     { it = t_exp' exp;
       note = Note.{ def with
         typ = t_typ exp.note.typ;
@@ -113,7 +114,7 @@ let transform prog =
       };
       at = exp.at;
     }
-  and t_exp' (exp:exp) =
+  and t_exp' (exp : exp) =
     let exp' = exp.it in
     match exp' with
     | LitE _ -> exp'
@@ -156,7 +157,7 @@ let transform prog =
       note = t_typ lexp.note;
       at = lexp.at;
     }
-  and t_lexp' (lexp':lexp') =
+  and t_lexp' (lexp' : lexp') =
     match lexp' with
     | VarLE _ -> lexp'
     | DotLE (exp1, id) ->
