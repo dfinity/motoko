@@ -1,4 +1,0 @@
-none-instantiation.mo:9.10-9.12: type error [M0050], literal of type
-  Nat
-does not have expected type
-  None

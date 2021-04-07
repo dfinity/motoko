@@ -23,7 +23,7 @@ actor Life {
     public func size() : Nat { n };
 
     let grid = P.Array_tabulate(n, func (i : Nat) : [var Cell] {
-      let a = P.Array_init(n, false);
+      let a = P.Array_init<Bool>(n, false);
       let si = state[i];
       assert (si.size() == n);
       for (j in si.keys()) {

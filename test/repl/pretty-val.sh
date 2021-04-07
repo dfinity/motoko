@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Tests that shorthand variants come out without parens
+# Tests pretty printing of values and types
 moc -i <<__END__
 import Prim "mo:prim";
 
-let a_small = Prim.Array_init(5,"hello");
-let a_large = Prim.Array_init(100,"hello");
+let a_small = Prim.Array_init<Text>(5,"hello");
+let a_large = Prim.Array_init<Text>(100,"hello");
 
 let a_small = Prim.Array_tabulate<Nat>(5,func i { i });
 let a_large = Prim.Array_tabulate<Nat>(100,func i { i } );
@@ -31,7 +31,7 @@ let m3 = m(m2, m2);
 let m4 = m(m3, m3);
 let m5 = m(m4, m4);
 
-func f<T,U>(f : T->U) : (T->U)->(T->U) { func g {g}; } ;
+func f<T,U>(f : T->U) : (U->T)->(T->U) { func g {f}; } ;
 let f1 = f(func (#A) : {#B} {#B});
 let f2 = f(f1);
 let f3 = f(f2);
