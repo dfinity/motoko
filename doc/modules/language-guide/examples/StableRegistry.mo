@@ -7,7 +7,7 @@ actor Registry {
 
   stable var entries : [(Text, Nat)] = [];
 
-  let map = Map.fromIter(
+  let map = Map.fromIter<Text,Nat>(
     entries.vals(), 10, Text.equal, Text.hash);
 
   public func register(name : Text) : async () {

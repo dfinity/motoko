@@ -90,8 +90,8 @@ do {
 };
 
 do {
-   func p<T,U>(f : T->U) : (T->U)->(T->U) { func g {g}; } ;
-   let p1 = p(func (#A) : {#B} {#B});
+   func p<T,U>(f : T->U) : (U->T)->(T->U) { func g {f}; } ;
+   let p1 = p<{#A},{#B}>(func (#A) : {#B} {#B});
    p1 : (); // reject
    let p2 = p(p1);
    p2 : (); // reject
@@ -104,7 +104,7 @@ do {
 };
 
 do {
-   func p<T,U>(f : <V>T->U) : <W>(<X>T->U)->(<Y>T->U) { func g {g}; } ;
+   func p<T,U>(f : <V>T->U) : <W>(<X>U->T)->(<Y>T->U) { func g {f}; } ;
    let p1 = p(func<Z>(#A) : {#B} {#B});
    p1 : (); // reject
    let p2 = p(p1);
