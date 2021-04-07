@@ -1,6 +1,6 @@
 --- type-components.run
 +++ type-components.run-low
-@@ -1,77 +1 @@
+@@ -1,77 +0,0 @@
 -type-components.mo:4.20-4.21: internal error, Not_found
 -
 -Last environment:
@@ -78,4 +78,3 @@
 -f = 1
 -x = 1
 -
-+Fatal error: exception "Assert_failure mo_types/typ_hash.ml:141:13"
