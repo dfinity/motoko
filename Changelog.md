@@ -1,8 +1,37 @@
-= Motoko compiler changelog
+# Motoko compiler changelog
+
+* BREAKING CHANGE (Minor): Type parameter inference will no longer default
+  under-constrained type parameters that are invariant in the result, but
+  require an explicit type argument.
+  This is to avoid confusing the user by inferring non-principal types.
+
+  For example, given (invariant) class `Box<A>`:
+
+  ```motoko
+    class Box<A>(a : A) { public var value = a; };
+  ```
+
+  the code
+
+  ```motoko
+    let box = Box(0); // rejected
+  ```
+
+  is rejected as ambiguous and requires an instantiation, type annotation or
+  expected type. For example:
+
+  ```motoko
+    let box1 = Box<Int>(0); // accepted
+    let box2 : Box<Nat> = Box(0); // accepted
+  ```
+
+  Note that types `Box<Int>` and `Box<Nat>` are unrelated by subtyping,
+  so neither is best (or principal) in the ambiguous, rejected case.
 
 * motoko-base: The `Text.hash` function was changed to a better one.
   If you stored hashes as stable values (which you really shouldn't!)
   you must rehash after upgrading.
+
 * When the compiler itself crashes, it will now ask the user to report the backtrace at the DFINITY forum
 
 == 0.5.13 (2021-03-25)
