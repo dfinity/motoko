@@ -3876,7 +3876,7 @@ module Serialization = struct
           add_leb128 (String.length f.lab);
           Buffer.add_string buf f.lab;
           add_idx f.typ
-       ) fs
+        ) fs
       | Mut t ->
         add_sleb128 idl_alias; add_idx t
       | _ -> assert false in
@@ -3971,7 +3971,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           size env f.typ
-        ) (sort_by_hash fs)
+          ) (sort_by_hash fs)
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->

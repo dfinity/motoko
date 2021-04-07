@@ -48,7 +48,7 @@ and pat' =
   | TupP of pat list                           (* tuple *)
   | ObjP of pat_field list                     (* object *)
   | OptP of pat                                (* option *)
-  | TagP of Type.lab * pat                           (* variant *)
+  | TagP of Type.lab * pat                     (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
 
 and pat_field = pat_field' Source.phrase
@@ -202,7 +202,7 @@ type flavor = {
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
   has_poly_eq : bool; (* Polymorphic equality *)
-  serialized : bool; (* Shared function arguments are serialized *) (* unused? *)
+  serialized : bool; (* Shared function arguments are serialized *) (* unused legacy? *)
 }
 
 let full_flavor : flavor = {

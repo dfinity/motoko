@@ -111,11 +111,10 @@ let rec go = function
   | Mut t -> ((Unary, "M"), [t])
 
   | Obj (s, fs) ->
-    let fs_vals = List.filter (fun f -> not (is_typ f.typ)) fs in
-    ( ( Labeled (List.map (fun f -> f.lab ^ if is_mut f.typ then "!" else "") fs_vals),
+    ( ( Labeled (List.map (fun f -> f.lab ^ if is_mut f.typ then "!" else "") fs),
         (match s with Object -> "r" | Module -> "rm" | Memory -> "rs" | Actor -> "ra")
       )
-    , List.map (fun f -> as_immut f.typ) fs_vals
+    , List.map (fun f -> as_immut f.typ) fs
     )
   | Variant fs ->
     ( ( Labeled (List.map (fun f -> f.lab) fs),
