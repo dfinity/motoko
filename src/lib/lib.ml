@@ -7,6 +7,9 @@ struct
     Format.fprintf ppf "@[%a@]" f x;
     Format.pp_print_flush ppf ();
     Buffer.contents b
+
+  let display pp ppf x =
+    Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
 end
 
 module Fun =

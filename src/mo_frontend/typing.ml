@@ -78,11 +78,9 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
-let display_typ ppf typ =
-  Format.fprintf ppf "@\n@[<v 2>  %a@]" T.pp_typ typ
+let display_typ = Lib.Format.display T.pp_typ
 
-let display_typ_expand ppf typ =
-  Format.fprintf ppf "@\n@[<v 2>  %a@]" T.pp_typ_expand typ
+let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
 let type_error at code text : Diag.message =
   Diag.error_message at code "type" text
@@ -1550,7 +1548,7 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
-  let t = Lib.Option.get t_expect_opt T.Any in
+  (*  let t = Lib.Option.get t_expect_opt T.Any in *)
   let n = match inst.it with None -> 0 | Some typs -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
@@ -1579,20 +1577,33 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
       try
-        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *)
+        (* i.e. exists minimal ts .
+                t2 <: open_ ts t_arg /\
+                t_expect_opt == Some t -> open ts_ t_ret <: t *)
         let ts =
-          Bi_match.bi_match_subs (scope_of_env env) tbs
-            [(t2, t_arg); (t_ret, t)] in
+          Bi_match.bi_match_call
+            (scope_of_env env)
+            (tbs, t_arg, t_ret)
+            t2
+            t_expect_opt
+        in
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
+(*
+        if not env.pre then
+          info env at "inferred instantiation <%s>"
+            (String.concat ", " (List.map T.string_of_typ ts));
+*)
         ts, t_arg', t_ret'
       with Bi_match.Bimatch msg ->
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
           display_typ t2
-          (if Option.is_none t_expect_opt then ""
-           else Format.asprintf "\nto produce result of type%a" display_typ t) (* FIX ME *)
+          (match t_expect_opt with
+           | None -> ""
+           | Some t ->
+             Format.asprintf "\nto produce result of type%a" display_typ t)
           msg
   in
   inst.note <- ts;

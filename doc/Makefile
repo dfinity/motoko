@@ -1,4 +1,4 @@
-all: overview-slides.html
+all: overview-slides.html antora
 
 SHELL=bash
 
@@ -14,3 +14,11 @@ overview-slides.html : overview-slides.md
 	  # -V margin=0 \
 	  # # -V minScale=2 \
 	  # # -V maxScale=2
+
+
+antora:
+	rm -rf build
+	antora antora-test-playbook.yml
+	./patch-antora-js.sh
+
+.PHONY: antora

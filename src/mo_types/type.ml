@@ -633,6 +633,7 @@ let is_shared_func t =
 let shared t = serializable false t
 let stable t = serializable true t
 
+
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
@@ -1382,7 +1383,8 @@ module type Pretty = sig
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+      (Format.formatter -> unit -> unit)
+
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string
