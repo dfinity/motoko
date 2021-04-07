@@ -197,6 +197,7 @@ should hold.
 *)
 
 type flavor = {
+  has_typ : bool; (* Type components Type.Typ *)
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
@@ -205,6 +206,7 @@ type flavor = {
 }
 
 let full_flavor : flavor = {
+  has_typ = true;
   has_await = true;
   has_async_typ = true;
   has_show = true;
