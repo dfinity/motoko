@@ -197,16 +197,16 @@ should hold.
 *)
 
 type flavor = {
-  has_typ : bool; (* Type components Type.Typ *)
+  has_typ_field : bool; (* Typ(e) fields *)
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
   has_poly_eq : bool; (* Polymorphic equality *)
-  serialized : bool; (* Shared function arguments are serialized *)
+  serialized : bool; (* Shared function arguments are serialized *) (* unused? *)
 }
 
 let full_flavor : flavor = {
-  has_typ = true;
+  has_typ_field = true;
   has_await = true;
   has_async_typ = true;
   has_show = true;
@@ -246,7 +246,7 @@ let map_prim t_typ t_id p =
   | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
   | TupPrim
   | ProjPrim _
-  | OptPrim _
+  | OptPrim
   | TagPrim _
   | DotPrim _
   | ActorDotPrim _ -> p

@@ -266,7 +266,7 @@ and check_typ_field env s tf : unit =
   match tf.T.typ, s with
   | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
   | T.Typ c, Some _ ->
-    check env no_region env.flavor.Ir.has_typ
+    check env no_region env.flavor.Ir.has_typ_field
      "typ field in non-typ_field flavor";
     check_con env c
   | t, Some T.Actor when not (T.is_shared_func t) ->

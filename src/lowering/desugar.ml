@@ -801,7 +801,7 @@ let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
 let initial_flavor : Ir.flavor =
-  { I.has_typ = true
+  { I.has_typ_field = true
   ; I.has_await = true
   ; I.has_async_typ = true
   ; I.has_show = true

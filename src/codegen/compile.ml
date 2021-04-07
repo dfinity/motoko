@@ -7999,7 +7999,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
   | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
 
 and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
-  assert (not flavor.has_typ);
+  assert (not flavor.has_typ_field);
   assert (not flavor.has_poly_eq);
   assert (not flavor.has_show);
   assert (not flavor.has_await);

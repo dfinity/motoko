@@ -202,6 +202,6 @@ let transform prog =
     | ActorU (args_opt, ds, fs, {pre; post}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { pre = t_exp pre; post = t_exp post }, t_typ t)
-  and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_typ = false } )
+  and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_typ_field = false } )
 in
   t_prog prog
