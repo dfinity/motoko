@@ -109,7 +109,7 @@ and pats rho ps  =
      (p'::ps', rho'')
 
 and case rho (c : case) =
-    {c with it = case' rho c.it}
+  {c with it = case' rho c.it}
 and case' rho { pat = p; exp = e} =
   let (p', rho') = pat rho p in
   let e' = exp rho' e in

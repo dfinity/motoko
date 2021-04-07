@@ -205,24 +205,7 @@ let transform mode prog =
         Type.set_kind clone (t_kind (Con.kind c));
         clone
 
-  and prim = function
-    | CallPrim typs -> CallPrim (List.map t_typ typs)
-    | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
-    | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
-    | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
-    | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
-    | ShowPrim ot -> ShowPrim (t_typ ot)
-    | NumConvWrapPrim (p1, p2) -> NumConvWrapPrim (p1, p2)
-    | NumConvTrapPrim (p1, p2) -> NumConvTrapPrim (p1, p2)
-    | CastPrim (t1, t2) -> CastPrim (t_typ t1, t_typ t2)
-    | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
-    | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
-    | SelfRef t -> SelfRef (t_typ t)
-    | ICStableRead t -> ICStableRead (t_typ t)
-    | ICStableWrite t -> ICStableWrite (t_typ t)
-    | SerializePrim ts -> SerializePrim (List.map t_typ ts)
-    | DeserializePrim ts ->  DeserializePrim (List.map t_typ ts)
-    | p -> p
+  and t_prim p = Ir.map_prim t_typ (fun id -> id) p
 
   and t_field {lab; typ; depr} =
     { lab; typ = t_typ typ; depr }
@@ -288,7 +271,7 @@ let transform mode prog =
          (varE nary_async))
         .it
     | PrimE (p, exps) ->
-      PrimE (prim p, List.map t_exp exps)
+      PrimE (t_prim p, List.map t_exp exps)
     | BlockE b ->
       BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
