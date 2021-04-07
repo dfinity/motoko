@@ -556,7 +556,7 @@ let concrete t =
         let ts = open_binds tbs in
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
-      | Typ c -> assert false (* TBR *)
+      | Typ c -> true (* could also be false? *)
     end
   in go t
 
