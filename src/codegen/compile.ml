@@ -3700,7 +3700,6 @@ module Serialization = struct
 
   open Typ_hash
 
-  let val_fields fs = List.filter (fun f -> not (Type.is_typ f.Type.typ)) fs
 
   let sort_by_hash fs =
     List.sort
@@ -3765,8 +3764,7 @@ module Serialization = struct
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
-            List.iter (fun f -> go f.typ)
-              (val_fields fs)
+            List.iter (fun f -> go f.typ) fs
           | Array (Mut t) -> go (Array t)
           | Array t -> go t
           | Opt t -> go t
@@ -3841,7 +3839,7 @@ module Serialization = struct
         List.iter (fun (h, f) ->
           add_leb128_32 h;
           add_idx f.typ
-        ) (sort_by_hash (val_fields fs))
+        ) (sort_by_hash fs)
       | Array (Mut t) ->
         add_sleb128 idl_alias; add_idx (Array t)
       | Array t ->
@@ -3878,7 +3876,7 @@ module Serialization = struct
           add_leb128 (String.length f.lab);
           Buffer.add_string buf f.lab;
           add_idx f.typ
-       )  (val_fields fs)
+       ) fs
       | Mut t ->
         add_sleb128 idl_alias; add_idx t
       | _ -> assert false in
@@ -3973,7 +3971,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           size env f.typ
-        ) (sort_by_hash (val_fields fs))
+        ) (sort_by_hash fs)
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
@@ -4169,7 +4167,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
-        ) (sort_by_hash (val_fields fs))
+        ) (sort_by_hash fs)
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
@@ -4688,7 +4686,7 @@ module Serialization = struct
                   | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
-          ) (sort_by_hash (val_fields fs))) ^^
+          ) (sort_by_hash fs)) ^^
 
           (* skip all possible trailing extra fields *)
           get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
