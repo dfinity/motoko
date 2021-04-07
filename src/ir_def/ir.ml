@@ -236,7 +236,7 @@ let map_obj_pat f pfs =
 let replace_obj_pat pfs pats =
   List.map2 (fun ({Source.it={name; pat=_}; _} as pf) pat -> {pf with Source.it={name; pat}}) pfs pats
 
-(* Helper for transforming prims *)
+(* Helper for transforming prims, without missing embedded typs and ids *)
 
 let map_prim t_typ t_id p =
   match p with
@@ -259,7 +259,7 @@ let map_prim t_typ t_id p =
   | ThrowPrim -> p
   | ShowPrim t -> ShowPrim (t_typ t)
   | SerializePrim ts -> SerializePrim (List.map t_typ ts)
-  | DeserializePrim ts ->  DeserializePrim (List.map t_typ ts)
+  | DeserializePrim ts -> DeserializePrim (List.map t_typ ts)
   | NumConvTrapPrim _
   | NumConvWrapPrim _
   | DecodeUtf8
@@ -285,5 +285,5 @@ let map_prim t_typ t_id p =
   | ICCallerPrim
   | ICCallPrim -> p
   | ICStableWrite t -> ICStableWrite (t_typ t)
-  | ICStableRead  t -> ICStableRead (t_typ t)
+  | ICStableRead t -> ICStableRead (t_typ t)
 
