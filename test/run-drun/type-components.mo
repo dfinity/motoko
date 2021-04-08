@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 // test type components are ignored for typ_hash applications (eq, debug, serialization)
 actor a {
   private class C(x:Int) {
@@ -13,9 +14,10 @@ actor a {
   let eqC = C(0) == C(0);
   let eqD = D(0) == D(0);
 
-  // typ components aren't showable, but if they were, these would be problematic
-  // let tc = debug_show(C(1));
-  // let td = debug_show(D(1));
+  let tc = debug_show(C(1));
+  let td = debug_show(D(1));
+  Prim.debugPrint(tc);
+  Prim.debugPrint(td);
 
   public func f(c : C) : async C { return C(1) };
 

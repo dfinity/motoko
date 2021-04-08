@@ -567,7 +567,7 @@ let tailcall_optimization =
   transform_if "Tailcall optimization" Tailcall.transform
 
 let typ_field_translation =
-  transform_if "Elide type components" Typ_field.transform
+  transform_if "Erase type components" Erase_typ_field.transform
 
 let show_translation =
   transform_if "Translate show" Show.transform
