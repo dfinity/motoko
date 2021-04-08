@@ -1,5 +1,4 @@
 import Array "mo:base/Array";
-
 import Principal "mo:base/Principal";
 import Cycles "mo:base/ExperimentalCycles";
 import Buckets "Buckets";
@@ -36,12 +35,18 @@ actor Map {
     await bucket.put(k, v);
   };
 
-  public func getPrincipalOfBucket(i : Nat) : async ?Principal {
+  public query func getPrincipalOfBucket(i : Nat) : async ?Principal {
     switch (buckets[i]) {
       case null null;
       case (?bucket) ? Principal.fromActor(bucket);
     };
   };
 
+  public query func getBucket(i : Nat) : async ?Bucket {
+    switch (buckets[i]) {
+      case null null;
+      case (?bucket) ? bucket;
+    };
+  };
 
 };
