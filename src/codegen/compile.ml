@@ -3742,7 +3742,6 @@ module Serialization = struct
 
   open Typ_hash
 
-
   let sort_by_hash fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
