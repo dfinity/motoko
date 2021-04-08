@@ -89,7 +89,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor (initial_state ()) empty_scope)
+let last_env = ref (env_of_scope { trace = false; print_depth = 2} (Ir.full_flavor ()) (initial_state ()) empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
