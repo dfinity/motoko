@@ -3118,6 +3118,48 @@ module Arr = struct
     ) ^^
     get_r
 
+  let ofBlob env =
+    Func.share_code1 env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
+      let (set_len, get_len) = new_local env "len" in
+      let (set_r, get_r) = new_local env "r" in
+
+      get_blob ^^ Blob.len env ^^ set_len ^^
+
+      get_len ^^ alloc env ^^ set_r ^^
+
+      get_len ^^ from_0_to_n env (fun get_i ->
+        get_r ^^ get_i ^^ idx env ^^
+        get_blob ^^ Blob.payload_ptr_unskewed ^^
+        get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
+        TaggedSmallWord.msb_adjust Type.Nat8 ^^
+        store_ptr
+      ) ^^
+
+      get_r
+    )
+
+  let toBlob env =
+    Func.share_code1 env "Arr.toBlob" ("array", I32Type) [I32Type] (fun env get_a ->
+      let (set_len, get_len) = new_local env "len" in
+      let (set_r, get_r) = new_local env "r" in
+
+      get_a ^^ Heap.load_field len_field ^^ set_len ^^
+
+      get_len ^^ Blob.alloc env ^^ set_r ^^
+
+      get_len ^^ from_0_to_n env (fun get_i ->
+        get_r ^^ Blob.payload_ptr_unskewed ^^
+        get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_a ^^ get_i ^^ idx env ^^
+        load_ptr ^^
+        TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
+      ) ^^
+
+      get_r
+    )
+
 end (* Array *)
 
 module Tuple = struct
@@ -7304,6 +7346,11 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       compile_exp_vanilla env ae e ^^
       Dfinity.print_text env
+
+    | OtherPrim ("blobToArray"|"blobToArrayMut"), e ->
+      const_sr SR.Vanilla (Arr.ofBlob env)
+    | OtherPrim ("arrayToBlob"|"arrayMutToBlob"), e ->
+      const_sr SR.Vanilla (Arr.toBlob env)
 
     (* Other prims, binary*)
     | OtherPrim "Array.init", [_;_] ->
