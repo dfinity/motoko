@@ -928,7 +928,7 @@ The optional `<shared>` qualifier specifies whether the function value is shared
 [[async-types]]
 === Async types
 
-`async <typ>` specifies a future producing a value of a type `<typ>`.
+`async <typ>` specifies a future producing a value of type `<typ>`.
 
 Future types typically appear as the result type of a `shared` function that produces an `await`-able value.
 
@@ -1994,31 +1994,34 @@ The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in se
 [[exp-do]]
 === Do
 
-The expression `do <block>` allows placing a block in positions where the syntax does not otherwise allow it.
-It has type `T` provided `<block>` has type `T`.
+The do expression `do <block>` allows the use of a block as an expression, in positions where the syntax would not directly allow a block.
 
-A `do` expression evaluates by evaluating `<block>` and returning its result.
+The expression `do <block>` has type `T` provided `<block>` has type `T`.
+
+The `do` expression evaluates by evaluating `<block>` and returning its result.
 
 [[exp-do-opt]]
 === Option block
 
 The option block `do ? <block>` introduces scoped handling of null values.
-It has type `?T` provided `<block>` has type `T`.
+
+The expression `do ? <bock>` has type `?T` provided `<block>` has type `T`.
 
 The `do ? <block>` expression evaluates `<block>` and returns its result as an optional value.
 
 Within `<block>` the null break expression `<exp1> !` exits the nearest enclosing `do ?` block with value `null` whenever `<exp1>` has value `null`, or continues evaluation with the
-contents of `<exp1>`'s option value. (See <<exp-null-break>>.)
+contents of ``<exp1>``'s option value. (See <<exp-null-break>>.)
 
 Option blocks nest with the target of a null break determined by the nearest enclosing option block.
 
-[[exp-null-break]
+[[exp-null-break]]
 === Null break
 
 The null break expression `<exp> !` invokes scoped handling of null values and
 returns the contents of an option value or changes control-flow when the value is `null`.
 
 It has type `T` provided:
+
 * the expression appears in the body, `<block>`, of an enclosing option block of the form `do ? <block>` (see <<exp-do-opt>>).
 * `<exp>` has option type `? T`.
 
