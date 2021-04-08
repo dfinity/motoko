@@ -261,6 +261,23 @@ let prim =
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "blobToArray" -> fun _ v k ->
+    k (Array (Array.of_seq (Seq.map (fun c ->
+      Nat8 (Nat8.of_int (Char.code c))
+    ) (String.to_seq (Value.as_blob v)))))
+  | "blobToArrayMut" -> fun _ v k ->
+    k (Array (Array.of_seq (Seq.map (fun c ->
+      Mut (ref (Nat8 (Nat8.of_int (Char.code c))))
+    ) (String.to_seq (Value.as_blob v)))))
+  | "arrayToBlob" -> fun _ v k ->
+    k (Blob (String.of_seq (Seq.map (fun v ->
+      Char.chr (Nat8.to_int (Value.as_nat8 v))
+    ) (Array.to_seq (Value.as_array v)))))
+  | "arrayMutToBlob" -> fun _ v k ->
+    k (Blob (String.of_seq (Seq.map (fun v ->
+      Char.chr (Nat8.to_int (Value.as_nat8 !(Value.as_mut v)))
+    ) (Array.to_seq (Value.as_array v)))))
+
   | "cast" -> fun _ v k -> k v
 
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
