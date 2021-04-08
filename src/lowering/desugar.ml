@@ -800,13 +800,6 @@ let inject_decs extra_ds u =
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
-let initial_flavor : Ir.flavor =
-  { I.has_await = true
-  ; I.has_async_typ = true
-  ; I.has_show = true
-  ; I.has_poly_eq = true
-  ; I.serialized = false
-  }
 
 let transform_import (i : S.import) : import_declaration =
   let (id, f, ir) = i.it in
@@ -863,7 +856,7 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in
   let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
-  inject_decs imports' body', initial_flavor
+  inject_decs imports' body', Ir.full_flavor()
 
 
 (* Import a unit by composing IR.

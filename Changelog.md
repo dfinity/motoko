@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+* Bugfix: Type components in objects/actors/modules correctly ignored
+  when involved in serialization, equality and `debug_show`.
+
 * BREAKING CHANGE (Minor): Type parameter inference will no longer default
   under-constrained type parameters that are invariant in the result, but
   require an explicit type argument.

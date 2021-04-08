@@ -4205,7 +4205,7 @@ module Serialization = struct
           write env t
         ) ts
       | Obj ((Object | Memory), fs) ->
-        G.concat_map (fun (_h,f) ->
+        G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
         ) (sort_by_hash fs)
@@ -8040,10 +8040,14 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
     let (const, fill) = compile_const_exp env pre_ae e in
     (fun ae -> destruct_const_pat ae p const),
     (fun env ae -> fill env ae)
-
   | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
 
-and compile_init_func mod_env ((cu, _flavor) : Ir.prog) =
+and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
+  assert (not flavor.has_typ_field);
+  assert (not flavor.has_poly_eq);
+  assert (not flavor.has_show);
+  assert (not flavor.has_await);
+  assert (not flavor.has_async_typ);
   match cu with
   | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->

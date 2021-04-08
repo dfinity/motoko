@@ -556,7 +556,8 @@ let concrete t =
         let ts = open_binds tbs in
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
-      | Typ c -> assert false (* TBR *)
+      | Typ c -> (* assumes type defs are closed *)
+        true (* so we can transmit actors with typ fields *)
     end
   in go t
 
@@ -1227,7 +1228,7 @@ and can_omit n t =
         List.for_all (fun tb -> (go i' tb.bound)) tbs &&
         List.for_all (go i') ts1  &&
         List.for_all (go i') ts2
-      | Typ c -> true (* assuming type defs are closed *)
+      | Typ c -> true (* assumes type defs are closed *)
     end
   in go n t
 

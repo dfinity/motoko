@@ -244,6 +244,7 @@ let structural_equality t =
               Bool
                 (List.for_all
                    (fun f ->
+                     T.is_typ f.T.typ ||
                      as_bool
                        (go f.T.typ (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
                    fs) )
