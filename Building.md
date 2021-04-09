@@ -59,6 +59,20 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
 The `release` branch should thus always reference the latest release commit.
 
+After releasing the compiler you can update `motoko-base`'s `master`
+branch to the `next-moc` branch.
+
+* Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
+* Change into `motoko-base`
+* `git switch next-moc; git pull`
+* `git switch -c username/update-moc-0.4.2`
+* Update the `moc_version` env variable in `.github/workflows/ci.yml`
+  and `.github/workflows/package-set.yml` to the new released version
+* `git add .github/ && git commit -m "Motoko 0.4.2"`
+
+Make a PR off of that branch and merge it using a _normal merge_ (not
+squash merge) once CI passes
+
 ## Development without nix-shell
 
 You can get a development environment without having to use `nix-shell`
