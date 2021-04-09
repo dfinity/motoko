@@ -50,10 +50,10 @@ cat >> build/site/_/js/vendor/dfinity/motoko-base/flat <<__END__
 __END__
 
 
-echo "Patching build/site/motoko/*/*.html"
-sed -i -e 's,https://download.dfinity.systems/motoko/[0-9\.]*/js/moc-interpreter-[0-9\.]*.js,../../_/js/vendor/moc.js,' build/site/motoko/*/*.html
+echo "Patching build/site/docs/*/*.html"
+sed -i -e 's,https://download.dfinity.systems/motoko/[0-9\.]*/js/moc-interpreter-[0-9\.]*.js,../../_/js/vendor/moc.js,' build/site/docs/*/*.html
 # shellcheck disable=SC2016
-sed -i -e 's,https://data.jsdelivr.com/v1/package/gh/${repo}@${version}/flat,../../_/js/vendor/${repo}/flat,' build/site/motoko/*/*.html
+sed -i -e 's,https://data.jsdelivr.com/v1/package/gh/${repo}@${version}/flat,../../_/js/vendor/${repo}/flat,' build/site/docs/*/*.html
 # shellcheck disable=SC2016
-sed -i -e 's,https://cdn.jsdelivr.net/gh/${repo}@${version},../../_/js/vendor/${repo},' build/site/motoko/*/*.html
+sed -i -e 's,https://cdn.jsdelivr.net/gh/${repo}@${version},../../_/js/vendor/${repo},' build/site/docs/*/*.html
 

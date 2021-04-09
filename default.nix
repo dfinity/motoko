@@ -441,7 +441,7 @@ rec {
       mv overview-slides.html $out/
       mv build/site/* $out/
       mkdir -p $out/nix-support
-      echo "report guide $out motoko/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
       echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
