@@ -1,4 +1,4 @@
-name: motoko
+name: docs
 version: 'master'
 asciidoc:
   attributes:
