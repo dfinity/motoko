@@ -1,7 +1,6 @@
 # Motoko compiler changelog
 
-* Bugfix: Type components in objects/actors/modules correctly ignored
-  when involved in serialization, equality and `debug_show`.
+== 0.5.14 (2021-04-09)
 
 * BREAKING CHANGE (Minor): Type parameter inference will no longer default
   under-constrained type parameters that are invariant in the result, but
@@ -31,11 +30,18 @@
   Note that types `Box<Int>` and `Box<Nat>` are unrelated by subtyping,
   so neither is best (or principal) in the ambiguous, rejected case.
 
+* Bugfix: Type components in objects/actors/modules correctly ignored
+  when involved in serialization, equality and `debug_show`, preventing
+  the compiler from crashing.
+
 * motoko-base: The `Text.hash` function was changed to a better one.
   If you stored hashes as stable values (which you really shouldn't!)
   you must rehash after upgrading.
 
-* When the compiler itself crashes, it will now ask the user to report the backtrace at the DFINITY forum
+* motoko-base: Conversion functions between `Blob` and `[Nat8]` are provided.
+
+* When the compiler itself crashes, it will now ask the user to report the
+  backtrace at the DFINITY forum
 
 == 0.5.13 (2021-03-25)
 
