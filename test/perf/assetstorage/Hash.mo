@@ -61,7 +61,7 @@ module {
   // should this really be public?
   public func hashNat8(key : [Hash]) : Hash {
     var hash = Prim.natToNat32(0);
-    for (wordOfKey in key.vals()) {
+    for (natOfKey in key.vals()) {
       hash := hash +% natOfKey;
       hash := hash +% hash << 10;
       hash := hash ^ (hash >> 6);
