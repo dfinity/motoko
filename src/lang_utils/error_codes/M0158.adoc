@@ -1,0 +1,13 @@
+= M0158
+
+This error means that you declared a public class without providing it with a name.
+
+Erroneous code example:
+
+  public class () {};
+
+If you encounter this error, you should probably name the class or make it private.
+
+  public class C () {};
+
+Public fields must be named since they determine the interface of the enclosing object.
