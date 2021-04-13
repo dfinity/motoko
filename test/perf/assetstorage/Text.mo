@@ -10,7 +10,7 @@
 import Char "Char";
 import Iter "Iter";
 import Hash "Hash";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 

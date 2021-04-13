@@ -19,7 +19,7 @@
 ///
 /// A "buffer" is a mutable sequence that grows, either one element at a
 /// time, or one (second) buffer at time.
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 

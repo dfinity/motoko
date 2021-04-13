@@ -2,7 +2,7 @@
 Internal definitions.
 
 This file defines types and values that should always be in scope (because they
-are used by the desugarer, by ir-to-ir-passes or by `mo:prim`), but not user
+are used by the desugarer, by ir-to-ir-passes or by `mo:⛔`), but not user
 visible. All names here are prefixed with `@`, so they are invisible from user
 code, and cannot be shadowed.
 */

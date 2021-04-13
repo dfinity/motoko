@@ -1,4 +1,4 @@
-import Prim = "mo:prim";
+import Prim = "mo:⛔";
 import Cycles = "../cycles/cycles"
 
 actor class C() = c {

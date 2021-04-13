@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   flexible let xs = [0, 1, 2, 3, 4];
   flexible let ys = [];

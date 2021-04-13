@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 Prim.debugPrint (debug_show ("" : Blob));
 Prim.debugPrint (debug_show ("\00\01\02" : Blob));

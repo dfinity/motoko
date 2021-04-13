@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 assert (Prim.encodeUtf8 ("FooBär☃") == ("FooBär☃" : Blob));
 assert (Prim.encodeUtf8 ("Foo" # "Bär" # "☃") == ("FooBär☃" : Blob));

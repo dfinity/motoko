@@ -3,7 +3,7 @@
 /// Most operations on integers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).
 /// This module provides equivalent functions and `Text` conversion.
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Prelude "Prelude";
 import Hash "Hash";
 

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor {
   public type Either = { #left: Word32; #right: Char; #fix: Either };

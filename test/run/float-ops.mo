@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 assert (Prim.floatAbs(9.7) == 9.7);
 assert (Prim.floatAbs(-9.7) == 9.7);

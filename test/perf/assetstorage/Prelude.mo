@@ -4,7 +4,7 @@
 /// belong in the _language_ (compiler-internal) prelude sometime, after
 /// some further experience and discussion.  Until then, they live here.
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 

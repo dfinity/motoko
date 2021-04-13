@@ -62,7 +62,7 @@ let%test "it parses a simple module header" =
 
 let%test "it parses a simple module header that contains a prim import" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
-    "import Prim \"mo:prim\"" [ ("Prim", "mo:prim") ]
+    "import Prim \"mo:⛔\"" [ ("Prim", "mo:⛔") ]
 
 let%test "it parses a simple module header with package paths" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"

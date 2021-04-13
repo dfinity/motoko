@@ -1,5 +1,5 @@
 /// Characters
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
 
   /// Convert character `c` to a word containing its Unicode scalar value.
