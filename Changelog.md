@@ -1,5 +1,16 @@
 # Motoko compiler changelog
 
+* **BREAKING CHANGE**
+
+  The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
+  This also removed the `blob.bytes()` iterator.
+
+  Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
+  modules.
+
+  This concludes the transition to the other fixed-width types that began with
+  version 0.5.8
+
 == 0.5.15 (2021-04-13)
 
 * Bugfix: `Blob.toArray` was broken.
@@ -174,33 +185,6 @@
 
 * Bugfix: Avoid compiler aborting when object literals have more fields than
   their type expects.
-
-* **BREAKING CHANGE**
-
-  The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
-  This also removed the `blob.bytes()` iterator.
-
-  Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
-  modules, and wrapping conversion functions were added to the other number
-  types.
-
-* Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
-
-  The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
-  If wrapping semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
-  can be used.
-
-  Likewise, the bit fidddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
-  `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
-  operator (`>>`) is a unsigned right shift on `NatN` and a signed right shift
-  on `IntN`; the `+>>` operator is _not_ available on these types.
-
-  The motivation for this change is to eventually deprecate and remove the
-  `WordN` types.
-
-* For values `x` of type `Blob`, an iterator over the elements of the blob
-  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
-  as type `Nat8`.
 
 == 0.5.7 (2021-02-05)
 
