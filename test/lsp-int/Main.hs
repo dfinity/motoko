@@ -214,7 +214,7 @@ main = do
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "nat32ToNat")
                          *> pure (c^.label, c^.detail)) actual)
-             ([("nat32ToNat", Just "Natd32 -> Nat")]))
+             ([("nat32ToNat", Just "Nat32 -> Nat")]))
 
         log "Completing not-yet-imported modules"
         withDoc "ListClient.mo" \doc -> do
