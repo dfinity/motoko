@@ -206,7 +206,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (
       switch_variantE
         (argE t)
-        (List.map (fun {T.lab = l; typ = t'} ->
+        (List.map (fun {T.lab = l; typ = t'; _} ->
           let t' = T.normalize t' in
           l,
           (varP (argVar t')), (* Shadowing, but that's fine *)
@@ -216,7 +216,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
-    define_show t unreachableE,
+    define_show t (unreachableE ()),
     []
   | _ -> assert false (* Should be prevented by can_show *)
 
@@ -339,4 +339,5 @@ and t_comp_unit = function
 (* Entry point for the program transformation *)
 
 let transform (cu, flavor) =
+  assert (not flavor.has_typ_field); (* required for hash_typ *)
   (t_comp_unit cu, {flavor with has_show = false})

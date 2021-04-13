@@ -290,7 +290,7 @@ let array_vals a at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
-let blob_bytes t at =
+let blob_vals t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
@@ -475,7 +475,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b ->
         let f = match id.it with
           | "size" -> blob_size
-          | "bytes" -> blob_bytes
           | "vals" -> blob_vals
           | _ -> assert false
         in k (f b exp.at)
@@ -972,7 +971,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Import a module unchanged, and a class constructor as an asynchronous function.
    The conversion will be unnecessary once we declare classes as asynchronous. *)
 let import_lib env lib =
-  let (_, cub) = lib.it in
+  let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
@@ -993,4 +992,4 @@ let interpret_lib flags scope lib : scope =
       vo := Some (import v))
   );
   Scheduler.run ();
-  lib_scope lib.note (Option.get !vo) scope
+  lib_scope lib.note.filename (Option.get !vo) scope

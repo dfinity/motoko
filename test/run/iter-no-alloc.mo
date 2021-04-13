@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 let iters = 10_000;
 
@@ -7,7 +7,7 @@ func iter<A>(what : Text, xs : [A]) {
   for (_ in xs.keys()) {};
   for (_ in xs.vals()) {};
   let after = Prim.rts_heap_size();
-  Prim.debugPrint("Allocation per iteration (" # what # "): " # debug_show ((after-before) / iters));
+  Prim.debugPrint("Allocation per iteration (" # what # "): " # debug_show ((after-before) / iters : Nat));
 };
 
 type FixOpt = ?FixOpt;

@@ -7,7 +7,7 @@
  */
 
 import List "list";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 

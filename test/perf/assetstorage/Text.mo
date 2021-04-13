@@ -10,7 +10,7 @@
 import Char "Char";
 import Iter "Iter";
 import Hash "Hash";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 
@@ -378,7 +378,7 @@ module {
     if (s2 > s1) return false;
     let match = matchOfPattern(p);
     var cs1 = t.chars();
-    var diff = s1 - s2;
+    var diff : Nat = s1 - s2;
     while (diff > 0)  {
       ignore cs1.next();
       diff -= 1;
@@ -448,7 +448,7 @@ module {
     if (s2 > s1) return null;
     let match = matchOfPattern(p);
     var cs1 = t.chars();
-    var diff = s1 - s2;
+    var diff : Nat = s1 - s2;
     while (diff > 0) {
       ignore cs1.next();
       diff -= 1;

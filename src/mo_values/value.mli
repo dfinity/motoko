@@ -107,5 +107,8 @@ val compare : value -> value -> int
 
 (* Pretty Printing *)
 
+val pp_val : int -> Format.formatter -> value -> unit
+val pp_def : int -> Format.formatter -> def -> unit
+
 val string_of_val : int -> value -> string
 val string_of_def : int -> def -> string

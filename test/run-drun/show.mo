@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 Prim.debugPrint(debug_show (true));
 Prim.debugPrint(debug_show (false));
 Prim.debugPrint(debug_show (-42000000000000));

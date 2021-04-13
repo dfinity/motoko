@@ -7,7 +7,7 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let subpath = p: import ./nix/gitSource.nix p; in
+let subpath = import ./nix/gitSource.nix; in
 
 let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
@@ -286,6 +286,7 @@ rec {
     qc = testDerivation {
       buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
+	export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
@@ -296,6 +297,7 @@ rec {
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
+	export LANG=C.utf8 # for haskell
         lsp-int ${mo-ide}/bin/mo-ide .
       '';
     };
@@ -357,7 +359,7 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       inherit qc lsp unit candid profiling-graphs;
-    };
+    } // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
@@ -405,6 +407,7 @@ rec {
       moc = mk "moc";
       moc_interpreter = mk "moc_interpreter";
       didc = mk "didc";
+      recurseForDerivations = true;
     };
 
   inherit drun;
@@ -416,21 +419,32 @@ rec {
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
 
-  overview-slides = stdenv.mkDerivation {
-    name = "overview-slides";
+  docs = stdenv.mkDerivation {
+    name = "docs";
     src = subpath ./doc;
-    buildInputs = [ nixpkgs.pandoc nixpkgs.bash ];
+    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
+      # Make this a git repo, to please antora
+      git -C .. init
+      git add .
+      git config user.name "Nobody"
+      git config user.email "nobody@example.com"
+      git commit -m 'Dummy commit for antora'
+      export HOME=$PWD
+      export MOC_JS=${js.moc}/bin/moc.js
+      export MOTOKO_BASE=${base-src}
       make
     '';
 
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
+      mv build/site/* $out/
       mkdir -p $out/nix-support
-      echo "report guide $out overview-slides.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -572,7 +586,7 @@ rec {
       base-src
       base-tests
       base-doc
-      overview-slides
+      docs
       ic-ref
       shell
       check-formatting
@@ -600,8 +614,8 @@ rec {
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
-        overview-slides.buildInputs ++
-        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
+        docs.buildInputs ++
+        builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat

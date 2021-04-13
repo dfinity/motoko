@@ -1,4 +1,179 @@
-= Motoko compiler changelog
+# Motoko compiler changelog
+
+== 0.5.15 (2021-04-13)
+
+* Bugfix: `Blob.toArray` was broken.
+
+== 0.5.14 (2021-04-09)
+
+* BREAKING CHANGE (Minor): Type parameter inference will no longer default
+  under-constrained type parameters that are invariant in the result, but
+  require an explicit type argument.
+  This is to avoid confusing the user by inferring non-principal types.
+
+  For example, given (invariant) class `Box<A>`:
+
+  ```motoko
+    class Box<A>(a : A) { public var value = a; };
+  ```
+
+  the code
+
+  ```motoko
+    let box = Box(0); // rejected
+  ```
+
+  is rejected as ambiguous and requires an instantiation, type annotation or
+  expected type. For example:
+
+  ```motoko
+    let box1 = Box<Int>(0); // accepted
+    let box2 : Box<Nat> = Box(0); // accepted
+  ```
+
+  Note that types `Box<Int>` and `Box<Nat>` are unrelated by subtyping,
+  so neither is best (or principal) in the ambiguous, rejected case.
+
+* Bugfix: Type components in objects/actors/modules correctly ignored
+  when involved in serialization, equality and `debug_show`, preventing
+  the compiler from crashing.
+
+* motoko-base: The `Text.hash` function was changed to a better one.
+  If you stored hashes as stable values (which you really shouldn't!)
+  you must rehash after upgrading.
+
+* motoko-base: Conversion functions between `Blob` and `[Nat8]` are provided.
+
+* When the compiler itself crashes, it will now ask the user to report the
+  backtrace at the DFINITY forum
+
+== 0.5.13 (2021-03-25)
+
+* The `moc` interpreter now pretty-prints values (as well as types) in the
+  repl, producing more readable output for larger values.
+
+* The family of `Word` types are deprecated, and mentioning them produces a warning.
+  These type will be removed completely in a subsequent release.
+  See the user’s guide, section “Word types”, for a migration guide.
+
+* motoko base: because of this deprecation, the `Char.from/toWord32()`
+  functions are removed. Migrate away from `Word` types, or use
+  `Word32.from/ToChar` for now.
+
+== 0.5.12 (2021-03-23)
+
+* The `moc` compiler now pretty-prints types in error messages and the repl,
+  producing more readable output for larger types.
+
+* motoko base: fixed bug in `Text.mo` affecting partial matches in,
+  for example, `Text.replace` (GH issue #234).
+
+== 0.5.11 (2021-03-12)
+
+* The `moc` compiler no longer rejects occurrences of private or
+  local type definitions in public interfaces.
+
+  For example,
+
+  ```motoko
+  module {
+    type List = ?(Nat, List); // private
+    public func cons(n : Nat, l : List) : List { ?(n , l) };
+  }
+  ```
+
+  is now accepted, despite `List` being private and appearing in the type
+  of public member `cons`.
+
+* Type propagation for binary operators has been improved. If the type of one of
+  the operands can be determined locally, then the other operand is checked
+  against that expected type. This should help avoiding tedious type annotations
+  in many cases of literals, e.g., `x == 0` or `2 * x`, when `x` has a special
+  type like `Nat8`.
+
+* The `moc` compiler now rejects type definitions that are non-_productive_ (to ensure termination).
+
+  For example, problematic types such as:
+
+  ```motoko
+  type C = C;
+  type D<T, U> = D<U, T>;
+  type E<T> = F<T>;
+  type F<T> = E<T>;
+  type G<T> = Fst<G<T>, Any>;
+  ```
+
+  are now rejected.
+
+* motoko base: `Text` now contains `decodeUtf8` and `encodeUtf8`.
+
+== 0.5.10 (2021-03-02)
+
+* User defined deprecations
+
+  Declarations in modules can now be annotated with a deprecation comment, which make the compiler emit warnings on usage.
+
+  This lets library authors warn about future breaking changes:
+
+  As an example:
+
+  ```motoko
+  module {
+    /// @deprecated Use `bar` instead
+    public func foo() {}
+
+    public func bar() {}
+  }
+  ```
+
+  will emit a warning whenever `foo` is used.
+
+* The `moc` compiler now rejects type definitions that are _expansive_, to help ensure termination.
+  For example, problematic types such as `type Seq<T> = ?(T, Seq<[T]>)` are rejected.
+
+* motoko base: `Time.Time` is now public
+
+== 0.5.9 (2021-02-19)
+
+* The `moc` compiler now accepts the `-Werror` flag to turn warnings into errors.
+
+* The language server now returns documentation comments alongside
+  completions and hover notifications
+
+== 0.5.8 (2021-02-12)
+
+* Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
+
+  The conventional arithmetic operators on `NatN` and `IntN` trap on overflow.
+  If wrap-around semantics is desired, the operators `+%`, `-%`, `*%` and `**%`
+  can be used. The corresponding assignment operators (`+%=` etc.) are also available.
+
+  Likewise, the bit fiddling operators (`&`, `|`, `^`, `<<`, `>>`, `<<>`,
+  `<>>` etc.) are now also available on `NatN` and `IntN`. The right shift
+  operator (`>>`) is an unsigned right shift on `NatN` and a signed right shift
+  on `IntN`; the `+>>` operator is _not_ available on these types.
+
+  The motivation for this change is to eventually deprecate and remove the
+  `WordN` types.
+
+  Therefore, the wrapping arithmetic operations on `WordN` are deprecated and
+  their use will print a warning. See the user’s guide, section “Word types”,
+  for a migration guide.
+
+* For values `x` of type `Blob`, an iterator over the elements of the blob
+  `x.vals()` is introduced. It works like `x.bytes()`, but returns the elements
+  as type `Nat8`.
+
+* `mo-doc` now generates cross-references for types in signatures in
+  both the Html as well as the Asciidoc output. So a signature like
+  `fromIter : I.Iter<Nat> -> List.List<Nat>` will now let you click on
+  `I.Iter` or `List.List` and take you to their definitions.
+
+* Bugfix: Certain ill-typed object literals are now prevented by the type
+  checker.
+
+* Bugfix: Avoid compiler aborting when object literals have more fields than
+  their type expects.
 
 * **BREAKING CHANGE**
 

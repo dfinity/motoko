@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 shared actor class One(a : Text) {
    Prim.debugPrint(a);

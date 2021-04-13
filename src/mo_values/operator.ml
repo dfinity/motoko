@@ -115,11 +115,11 @@ let binop op t =
     | AddOp -> num_binop Nat.add Int.add (Nat8.add, Nat16.add, Nat32.add, Nat64.add, Int_8.add, Int_16.add, Int_32.add, Int_64.add) Float.add p
     | SubOp -> num_binop Nat.sub Int.sub (Nat8.sub, Nat16.sub, Nat32.sub, Nat64.sub, Int_8.sub, Int_16.sub, Int_32.sub, Int_64.sub) Float.sub p
     | MulOp -> num_binop Nat.mul Int.mul (Nat8.mul, Nat16.mul, Nat32.mul, Nat64.mul, Int_8.mul, Int_16.mul, Int_32.mul, Int_64.mul) Float.mul p
-    | DivOp -> num_binop Nat.div Nat.div (Nat8.div, Nat16.div, Nat32.div, Nat64.div, Int_8.div, Int_16.div, Int_32.div, Int_64.div) Float.div p
-    | ModOp -> num_binop Nat.rem Nat.rem (Nat8.rem, Nat16.rem, Nat32.rem, Nat64.rem, Int_8.rem, Int_16.rem, Int_32.rem, Int_64.rem) Float.rem p
-    | PowOp -> num_binop Nat.pow Nat.pow (Nat8.pow, Nat16.pow, Nat32.pow, Nat64.pow, Int_8.pow, Int_16.pow, Int_32.pow, Int_64.pow) Float.pow p
+    | DivOp -> num_binop Nat.div Int.div (Nat8.div, Nat16.div, Nat32.div, Nat64.div, Int_8.div, Int_16.div, Int_32.div, Int_64.div) Float.div p
+    | ModOp -> num_binop Nat.rem Int.rem (Nat8.rem, Nat16.rem, Nat32.rem, Nat64.rem, Int_8.rem, Int_16.rem, Int_32.rem, Int_64.rem) Float.rem p
+    | PowOp -> num_binop Nat.pow Int.pow (Nat8.pow, Nat16.pow, Nat32.pow, Nat64.pow, Int_8.pow, Int_16.pow, Int_32.pow, Int_64.pow) Float.pow p
     | AndOp -> fixed_binop (Nat8.and_, Nat16.and_, Nat32.and_, Nat64.and_, Int_8.and_, Int_16.and_, Int_32.and_, Int_64.and_) p
-    | OrOp -> fixed_binop (Nat8.or_, Nat16.or_, Nat32.or_, Nat64.or_, Int_8.or_, Int_16.or_, Int_32.or_, Int_64.or_) p
+    | OrOp  -> fixed_binop (Nat8.or_, Nat16.or_, Nat32.or_, Nat64.or_, Int_8.or_, Int_16.or_, Int_32.or_, Int_64.or_) p
     | XorOp -> fixed_binop (Nat8.xor, Nat16.xor, Nat32.xor, Nat64.xor, Int_8.xor, Int_16.xor, Int_32.xor, Int_64.xor) p
     | ShLOp -> fixed_binop (Nat8.shl, Nat16.shl, Nat32.shl, Nat64.shl, Int_8.shl, Int_16.shl, Int_32.shl, Int_64.shl) p
     | ShROp -> fixed_binop (Nat8.shr, Nat16.shr, Nat32.shr, Nat64.shr, Int_8.shr, Int_16.shr, Int_32.shr, Int_64.shr) p
@@ -221,6 +221,7 @@ let structural_equality t =
               Bool
                 (List.for_all
                    (fun f ->
+                     T.is_typ f.T.typ ||
                      as_bool
                        (go f.T.typ (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
                    fs) )

@@ -45,11 +45,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
-   `push`
-   -------------
-   aka "list cons"
-   */
+  /// Documentation for `push`
   public func push<T>(x : T, l : List<T>) : List<T> =
     ?(x, l);
 

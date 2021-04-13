@@ -61,7 +61,7 @@ failures=()
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
@@ -348,7 +348,7 @@ do
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_cycles_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
             fi
           else

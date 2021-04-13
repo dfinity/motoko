@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Cycles "cycles";
 
 shared(msg) actor class Wallet() {

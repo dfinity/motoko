@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 func hashInt(x : Int) : Nat32 {
   var n = x;

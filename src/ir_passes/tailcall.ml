@@ -100,7 +100,7 @@ and exp' env e  : exp' = match e.it with
                  info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
-      (blockE (assignEs temps (exp env e2)) (breakE label unitE)).it
+      (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
     | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)

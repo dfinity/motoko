@@ -63,9 +63,14 @@ type env =
     rets : ret_env;
     async : T.con option;
     seen : con_env ref;
+    check_run : int;
   }
 
+let last_run : int ref = ref 0
+
 let initial_env flavor : env =
+  let check_run = !last_run + 1 in
+  last_run := check_run;
   { flavor;
     lvl = TopLvl;
     vals = T.Env.empty;
@@ -76,6 +81,7 @@ let initial_env flavor : env =
                        | (NullCap | ErrorCap) -> None
                        | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
+    check_run;
   }
 
 
@@ -259,7 +265,10 @@ and check_con env c =
 and check_typ_field env s tf : unit =
   match tf.T.typ, s with
   | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
-  | T.Typ c, Some _ -> check_con env c
+  | T.Typ c, Some _ ->
+    check env no_region env.flavor.Ir.has_typ_field
+     "typ field in non-typ_field flavor";
+    check_con env c
   | t, Some T.Actor when not (T.is_shared_func t) ->
     error env no_region "actor field %s must have shared function type" tf.T.lab
   | t, _ -> check_typ env t
@@ -355,6 +364,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
+  (* check for aliasing *)
+  if exp.note.Note.check_run = env.check_run
+  then
+    Printf.eprintf "IR has aliasing (or Check_ir visits nodes twice):\n%s"
+      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+  exp.note <- { exp.note with Note.check_run = env.check_run };
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;
@@ -427,7 +442,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | OptPrim, [exp1] ->
       T.Opt (typ exp1) <: t
     | TagPrim i, [exp1] ->
-      T.Variant [{T.lab = i; typ = typ exp1}] <: t
+      T.Variant [{T.lab = i; typ = typ exp1; depr = None}] <: t
     | ActorDotPrim n, [exp1]
     | DotPrim n, [exp1] ->
       begin
@@ -561,6 +576,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | EncodeUtf8, [e] ->
+      typ e <: T.text;
+      T.blob <: t
+    | DecodeUtf8, [e] ->
+      typ e <: T.blob;
+      T.(Opt text) <: t
     | BlobOfIcUrl, [e] ->
       typ e <: T.text;
       T.blob <: t
@@ -591,6 +612,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat64;
       T.unit <: t
+    (* Certified Data *)
+    | SetCertifiedData, [e1] ->
+      typ e1 <: T.blob;
+      T.unit <: t
+    | GetCertificate, [] ->
+      T.Opt T.blob <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -928,7 +955,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
-  let tf = T.{lab; typ=pf.it.pat.note} in
+  let tf = T.{lab; typ = pf.it.pat.note; depr = None} in
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
@@ -961,7 +988,7 @@ and type_exp_field env s f : T.field =
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
       "public actor field must have shared function type";
   end;
-  T.{lab = name; typ = t}
+  T.{lab = name; typ = t; depr = None}
 
 (* Declarations *)
 

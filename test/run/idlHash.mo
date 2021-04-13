@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 func testHash(s : Text, h : Nat32) {
   Prim.debugPrint("Hash for " # s);

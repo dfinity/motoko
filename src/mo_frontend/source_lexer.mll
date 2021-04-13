@@ -1,4 +1,5 @@
 {
+open Mo_def.Trivia
 open Source_token
 open Lexer_lib
 module Utf8 = Wasm.Utf8
@@ -190,7 +191,6 @@ rule token mode = parse
   (* If you add keywords, please also update
      - src/idllib/escape.ml
      - emacs/motoko-mode.el
-     - guide/guide.md
   *)
   | "actor" { ACTOR }
   | "and" { AND }

@@ -1,0 +1,17 @@
+= M0156
+
+This error means that a parameterized type definition, or set of type definitions, is too complicated for Motoko to accept.
+
+Motoko rejects type definitions that are expansive, in the sense that unfolding type definitions may produce an ever-expanding set of types.
+
+For example, the type definition:
+
+  type List<T> = ?(T, List<T>),
+
+that recursively instantiates `List` at the same parameter `T`, is non-expansive and accepted, but the similar looking definition:
+
+  type Seq<T> = ?(T, Seq<[T]>),
+
+that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is *expansive* and rejected.
+
+If you encounter this error, try to restructure your type definitions to be non-expansive.

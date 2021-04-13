@@ -13,7 +13,7 @@ import List "list";
 import Nat "nat";
 import Option "option";
 import Prelude "prelude";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Text "text";
 import Trie "trie";
 import Util "util";

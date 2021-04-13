@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   public func sendi(n : Int) : async () {
     Prim.debugPrint(debug_show ("sendi", n));

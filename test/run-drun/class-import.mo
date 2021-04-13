@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
 import M0 "class-import/empty";
 import M1 "class-import/one";

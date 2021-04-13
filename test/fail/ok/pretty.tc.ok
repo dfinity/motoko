@@ -1,0 +1,469 @@
+pretty.mo:22.20-22.21: type error [M0096], expression of type
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  }
+cannot produce expected type
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  } ->
+    {
+      aaaaaaaaaaaaaaaaaaa : Nat;
+      bbbbbbbbbbbbbbbbbbb : Nat;
+      ccccccccccccccccccc : Nat;
+      ddddddddddddddddddd : Nat;
+      eeeeeeeeeeeeeeeeeee : Nat
+    }
+pretty.mo:24.25-24.26: type error [M0096], expression of type
+  Int
+cannot produce expected type
+  Nat
+pretty.mo:26.23-26.24: type error [M0096], expression of type
+  Int
+cannot produce expected type
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  }
+pretty.mo:28.23-28.24: type error [M0096], expression of type
+  {
+    aaaaaaaaaaaaaaaaaaa : Nat;
+    bbbbbbbbbbbbbbbbbbb : Nat;
+    ccccccccccccccccccc : Nat;
+    ddddddddddddddddddd : Nat;
+    eeeeeeeeeeeeeeeeeee : Nat
+  }
+cannot produce expected type
+  Nat
+pretty.mo:40.1-40.12: type error [M0072], field foo does not exist in type
+  module {
+    bar1 : Nat;
+    bar2 : Nat;
+    bar3 : Nat;
+    bar4 : Nat;
+    bar5 : Nat;
+    bar6 : Nat;
+    bar7 : Nat;
+    bar8 : Nat
+  }
+pretty.mo:43.4-43.53: type error [M0096], expression of type
+  (Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat,
+   Nat, Nat, Nat, Nat)
+cannot produce expected type
+  ()
+pretty.mo:47.4-47.57: type error [M0096], expression of type
+  (Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat,
+   (Nat, Nat, Nat, (Nat, Nat, Nat, Nat, Nat, Nat)))
+cannot produce expected type
+  ()
+pretty.mo:53.4-53.6: type error [M0096], expression of type
+  ({#A}, {#B})
+cannot produce expected type
+  ()
+pretty.mo:55.4-55.6: type error [M0096], expression of type
+  (({#A}, {#B}), ({#A}, {#B}))
+cannot produce expected type
+  ()
+pretty.mo:57.4-57.6: type error [M0096], expression of type
+  ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))
+cannot produce expected type
+  ()
+pretty.mo:59.4-59.6: type error [M0096], expression of type
+  (((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
+   ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))))
+cannot produce expected type
+  ()
+pretty.mo:61.4-61.6: type error [M0096], expression of type
+  ((((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
+    ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))),
+   (((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
+    ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))))
+cannot produce expected type
+  ()
+pretty.mo:67.4-67.6: type error [M0096], expression of type
+  {A : {#A}; B : {#B}}
+cannot produce expected type
+  ()
+pretty.mo:69.4-69.6: type error [M0096], expression of type
+  {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+cannot produce expected type
+  ()
+pretty.mo:71.4-71.6: type error [M0096], expression of type
+  {
+    A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+    B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+  }
+cannot produce expected type
+  ()
+pretty.mo:73.4-73.6: type error [M0096], expression of type
+  {
+    A :
+      {
+        A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+        B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+      };
+    B :
+      {
+        A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+        B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+      }
+  }
+cannot produce expected type
+  ()
+pretty.mo:75.4-75.6: type error [M0096], expression of type
+  {
+    A :
+      {
+        A :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          };
+        B :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          }
+      };
+    B :
+      {
+        A :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          };
+        B :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          }
+      }
+  }
+cannot produce expected type
+  ()
+pretty.mo:81.4-81.6: type error [M0096], expression of type
+  module {A : {#A}; B : {#B}}
+cannot produce expected type
+  ()
+pretty.mo:83.4-83.6: type error [M0096], expression of type
+  module {A : module {A : {#A}; B : {#B}}; B : module {A : {#A}; B : {#B}}}
+cannot produce expected type
+  ()
+pretty.mo:85.4-85.6: type error [M0096], expression of type
+  module {
+    A :
+      module {
+        A : module {A : {#A}; B : {#B}};
+        B : module {A : {#A}; B : {#B}}
+      };
+    B :
+      module {
+        A : module {A : {#A}; B : {#B}};
+        B : module {A : {#A}; B : {#B}}
+      }
+  }
+cannot produce expected type
+  ()
+pretty.mo:87.4-87.6: type error [M0096], expression of type
+  module {
+    A :
+      module {
+        A :
+          module {
+            A : module {A : {#A}; B : {#B}};
+            B : module {A : {#A}; B : {#B}}
+          };
+        B :
+          module {
+            A : module {A : {#A}; B : {#B}};
+            B : module {A : {#A}; B : {#B}}
+          }
+      };
+    B :
+      module {
+        A :
+          module {
+            A : module {A : {#A}; B : {#B}};
+            B : module {A : {#A}; B : {#B}}
+          };
+        B :
+          module {
+            A : module {A : {#A}; B : {#B}};
+            B : module {A : {#A}; B : {#B}}
+          }
+      }
+  }
+cannot produce expected type
+  ()
+pretty.mo:89.4-89.6: type error [M0096], expression of type
+  module {
+    A :
+      module {
+        A :
+          module {
+            A :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              };
+            B :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              }
+          };
+        B :
+          module {
+            A :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              };
+            B :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              }
+          }
+      };
+    B :
+      module {
+        A :
+          module {
+            A :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              };
+            B :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              }
+          };
+        B :
+          module {
+            A :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              };
+            B :
+              module {
+                A : module {A : {#A}; B : {#B}};
+                B : module {A : {#A}; B : {#B}}
+              }
+          }
+      }
+  }
+cannot produce expected type
+  ()
+pretty.mo:95.4-95.6: type error [M0096], expression of type
+  ({#B} -> {#A}) -> {#A} -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:97.4-97.6: type error [M0096], expression of type
+  (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:99.4-99.6: type error [M0096], expression of type
+  ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+    (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:101.4-101.6: type error [M0096], expression of type
+  (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+     (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+    ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+      (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:103.4-103.6: type error [M0096], expression of type
+  ((((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+      (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+     ((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+       (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+    (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+       (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+      ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+        (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:107.62-107.63: type error [M0103], cannot infer type of variable
+pretty.mo:109.4-109.6: type error [M0096], expression of type
+  <W>(<X>({#B}) -> {#A}) -> <Y>({#A}) -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:111.4-111.6: type error [M0096], expression of type
+  <W>(<X>(<Y>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+    <Y>(<X>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:113.4-113.6: type error [M0096], expression of type
+  <W>(<X>(<Y>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+        <X.1>(<Y>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+    <Y>(<X>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+      <Y.1>(<X>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:115.4-115.6: type error [M0096], expression of type
+  <W>(<X>(<Y>(<X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+            <Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+        <X.1>(<Y>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+          <X.1>(<Y>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+    <Y>(<X>(<Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+          <X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+      <Y.1>(<X>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+        <Y.1>(<X>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:117.4-117.6: type error [M0096], expression of type
+  <W>(<X>(<Y>(<X.1>(<Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+                <X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+            <Y.1>(<X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+              <Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+        <X.1>(<Y>(<X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+                <Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+          <X.1>(<Y>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+            <X.1>(<Y>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+    <Y>(<X>(<Y.1>(<X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+              <Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+          <X.1>(<Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+            <X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+      <Y.1>(<X>(<Y.1>(<X.1>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}) ->
+              <X.1>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+        <Y.1>(<X>(<Y.1>({#A}) -> {#B}) -> <X.1>({#B}) -> {#A}) ->
+          <Y.1>(<X>({#B}) -> {#A}) -> <Y.1>({#A}) -> {#B}
+cannot produce expected type
+  ()
+pretty.mo:123.4-123.6: type error [M0096], expression of type
+  ?(Nat, Nat)
+cannot produce expected type
+  ()
+pretty.mo:125.4-125.6: type error [M0096], expression of type
+  ?(?(Nat, Nat), ?(Nat, Nat))
+cannot produce expected type
+  ()
+pretty.mo:127.4-127.6: type error [M0096], expression of type
+  ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))
+cannot produce expected type
+  ()
+pretty.mo:129.4-129.6: type error [M0096], expression of type
+  ?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
+    ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))))
+cannot produce expected type
+  ()
+pretty.mo:131.4-131.6: type error [M0096], expression of type
+  ?(?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
+      ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))),
+    ?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
+      ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))))
+cannot produce expected type
+  ()
+pretty.mo:137.4-137.6: type error [M0096], expression of type
+  {#A : {#Foo}; #B : {#Bar}}
+cannot produce expected type
+  ()
+pretty.mo:139.4-139.6: type error [M0096], expression of type
+  {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+cannot produce expected type
+  ()
+pretty.mo:141.4-141.6: type error [M0096], expression of type
+  {
+    #A : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
+    #B : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+  }
+cannot produce expected type
+  ()
+pretty.mo:143.4-143.6: type error [M0096], expression of type
+  {
+    #A :
+      {
+        #A :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
+        #B :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+      };
+    #B :
+      {
+        #A :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
+        #B :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+      }
+  }
+cannot produce expected type
+  ()
+pretty.mo:145.4-145.6: type error [M0096], expression of type
+  {
+    #A :
+      {
+        #A :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          };
+        #B :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          }
+      };
+    #B :
+      {
+        #A :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          };
+        #B :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          }
+      }
+  }
+cannot produce expected type
+  ()

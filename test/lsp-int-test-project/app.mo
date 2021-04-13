@@ -1,5 +1,5 @@
 import Stack "ListClient";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Entry "entrypoint";
 
 actor {

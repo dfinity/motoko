@@ -37,6 +37,9 @@ let warn_deprecated_block at =
     (Diag.warning_message at "M0148" "syntax"
       "block syntax is deprecated in this position, use 'do { ... }'")
 
+let syntax_error at code msg =
+  Diag.add_msg (Option.get !msg_store)
+    (Diag.error_message at code "syntax" msg)
 
 (* Helpers *)
 
@@ -192,12 +195,12 @@ let share_stab stab_opt dec =
   | _ -> stab_opt
 
 let share_dec_field (df : dec_field) =
-  if df.it.vis.it = Public
-  then
+  match df.it.vis.it with
+  | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  else
+  | _ ->
     if is_sugared_func_or_module (df.it.dec) then
       {df with it =
         {df.it with stab =
@@ -206,6 +209,14 @@ let share_dec_field (df : dec_field) =
           | some -> some}
       }
     else df
+
+and objblock s dec_fields =
+  List.iter (fun df ->
+    match df.it.vis.it, df.it.dec.it with
+    | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
+      syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
+    | _ -> ()) dec_fields;
+  ObjBlockE(s, dec_fields)
 
 %}
 
@@ -749,7 +760,11 @@ dec_field :
 vis :
   | (* empty *) { Private @@ no_region }
   | PRIVATE { Private @@ at $sloc }
-  | PUBLIC { Public @@ at $sloc }
+  | PUBLIC {
+    let at = at $sloc in
+    let trivia = Trivia.find_trivia !triv_table at in
+    let depr = Trivia.deprecated_of_trivia_info trivia in
+    Public depr @@ at }
   | SYSTEM { System @@ at $sloc }
 
 stab :
@@ -839,9 +854,9 @@ dec_nonvar :
         if s.it = Type.Actor then
           AwaitE
             (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (ObjBlockE(s, List.map share_dec_field efs) @? (at $sloc)))
+              (objblock s (List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
-        else ObjBlockE(s, efs)
+        else objblock s efs
       in
       let_or_exp named x e (at $sloc) }
   | sp=shared_pat_opt FUNC xf=id_opt
@@ -897,11 +912,20 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
 
 parse_prog :
   | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
-    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> { it = is @ ds; at = at $sloc; note = { filename; trivia }} }
 
 parse_prog_interactive :
   | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
-    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+    {
+      let trivia = !triv_table in
+      fun filename -> {
+        it = is @ ds;
+        at = at $sloc;
+        note = { filename; trivia }
+      }
+    }
 
 import_list :
   | is=seplist(imp, semicolon) { raise (Imports is) }

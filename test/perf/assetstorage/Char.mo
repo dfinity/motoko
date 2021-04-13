@@ -1,5 +1,5 @@
 /// Characters
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
   /// Convert character `c` to single character text.
   public let toText : (c : Char) -> Text = Prim.charToText;

@@ -41,7 +41,9 @@ let argspec = Arg.align [
 
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings"; ]
+  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
+  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as werrors";
+  ]
 
   @ Args.error_args
 
@@ -109,7 +111,7 @@ let set_out_file files ext =
     | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
     | ns -> eprintf "moc: no output file specified"; exit 1
   end
-  
+
 (* Main *)
 
 let exit_on_none = function
@@ -188,10 +190,16 @@ let () =
   Sys.catch_break true; - enable to get stacktrace on interrupt
   (useful for debugging infinite loops)
   *)
-  Printexc.record_backtrace true;
+  Internal_error.setup_handler ();
   Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := (!mode = Compile || !mode = Idl);
+
+  if !Flags.warnings_are_errors && (not !Flags.print_warnings)
+  then begin
+    eprintf "moc: --hide-warnings and -Werror together do not make sense"; exit 1
+  end;
+
   process_profiler_flags ();
   try
     process_files !args

@@ -1,4 +1,4 @@
-import P = "mo:prim";
+import P = "mo:⛔";
 
 actor Life {
 
@@ -118,7 +118,7 @@ actor Life {
   stable var state : State = do {
     let n = 32;
     let len = (n * n) / 64 + 1;
-    let words = P.Array_init(len, 0 : Nat64);
+    let words = P.Array_init<Nat64>(len, 0);
     for (i in words.keys()) {
       var word : Nat64 = 0;
       for (j in below(64)) {

@@ -130,7 +130,8 @@ and mut m = match m.it with
   | Var   -> Atom "Var"
 
 and vis v = match v.it with
-  | Public  -> Atom "Public"
+  | Public None -> Atom "Public"
+  | Public (Some m) -> "Public" $$ [Atom m]
   | Private -> Atom "Private"
   | System -> Atom "System"
 

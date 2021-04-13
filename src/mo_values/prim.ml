@@ -195,10 +195,6 @@ let prim =
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
-  | "blob_bytes_iter" -> fun _ v k ->
-    let s = String.to_seq (Value.as_blob v) in
-    let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
-    k (Iter (ref (Seq.map valuation s)))
   | "blob_vals_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_blob v) in
     let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
@@ -236,6 +232,23 @@ let prim =
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "blobToArray" -> fun _ v k ->
+    k (Array (Array.of_seq (Seq.map (fun c ->
+      Nat8 (Nat8.of_int (Char.code c))
+    ) (String.to_seq (Value.as_blob v)))))
+  | "blobToArrayMut" -> fun _ v k ->
+    k (Array (Array.of_seq (Seq.map (fun c ->
+      Mut (ref (Nat8 (Nat8.of_int (Char.code c))))
+    ) (String.to_seq (Value.as_blob v)))))
+  | "arrayToBlob" -> fun _ v k ->
+    k (Blob (String.of_seq (Seq.map (fun v ->
+      Char.chr (Nat8.to_int (Value.as_nat8 v))
+    ) (Array.to_seq (Value.as_array v)))))
+  | "arrayMutToBlob" -> fun _ v k ->
+    k (Blob (String.of_seq (Seq.map (fun v ->
+      Char.chr (Nat8.to_int (Value.as_nat8 !(Value.as_mut v)))
+    ) (Array.to_seq (Value.as_array v)))))
+
   | "cast" -> fun _ v k -> k v
 
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -287,5 +300,16 @@ let prim =
 
   | "char_is_alphabetic" ->
       fun _ v k -> k (Bool (Uucp.Alpha.is_alphabetic (Uchar.of_int (as_char v))))
+
+  | "decodeUtf8" ->
+      fun _ v k ->
+        let s = as_blob v in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (Opt (Text s))
+          | exception Wasm.Utf8.Utf8 -> k Null
+        end
+
+  | "encodeUtf8" ->
+      fun _ v k -> k (Blob (as_text v))
 
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

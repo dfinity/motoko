@@ -3,7 +3,7 @@
 import Buffer "Buffer";
 import I "IterType";
 import Option "Option";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Result "Result";
 
 module {

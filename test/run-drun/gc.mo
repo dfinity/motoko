@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // check blob and text iterator objects survive gc correctly
 actor {
   public shared func testBytes() : async () {

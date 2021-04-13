@@ -12,7 +12,7 @@ import Iter "iter";
 import List "list";
 import Nat "nat";
 import Option "option";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Text "text";
 import Util "util";
 import Version "version";

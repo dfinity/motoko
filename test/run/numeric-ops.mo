@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // Testing utility
 
@@ -148,7 +148,6 @@ func testFloat(a : Float, b : Float) : [Float] {
 };
 
 verify<Float>([3, -3, 8, -2, 15, 0.6, 243.0], testFloat(3.0, 5.0), func (a : Float, b : Float) : Bool = a == b);
-
 
 func testInt64(a : Int64, b : Int64) : [Int64] {
   let pos1 = + a;

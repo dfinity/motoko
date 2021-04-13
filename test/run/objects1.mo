@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 let p = object {public let x = 3; let y = 2; public func get_y() : Int = y};
 assert(p.x == 3);

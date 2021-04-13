@@ -1,9 +1,9 @@
-import P "mo:prim";
+import P "mo:⛔";
 // This test would fail with OOM if stable serialization did not preserve sharing of mutable arrays.
 // Note that it does fail with OOM if we replace 'a' with an immutable array, for which sharing is not preserved. 
 // Our users may not thank us that we only preserve sharing for mutable data, but nothing else.
 actor {
-  stable let a = P.Array_init(65536, 0);
+  stable let a = P.Array_init<Nat>(65536, 0);
   // stable let a = P.Array_tabulate(65536,func (_:Nat) : Nat { 0 });  // leads to explosion due to exponential serialized size
   stable let a1 = [a, a];
   stable let a2 = [a1, a1];

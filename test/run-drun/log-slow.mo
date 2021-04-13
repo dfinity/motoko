@@ -1,7 +1,7 @@
 // These are rather long-running tests, not advisable for wasm-run!
 //SKIP comp-ref
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 class range(x : Nat, y : Nat) {
   var i = x;

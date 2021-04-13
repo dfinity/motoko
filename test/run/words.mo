@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // CHECK: func $init
 
@@ -37,8 +37,8 @@ do {
 // CHECK: call $printN64ln
     printN64ln(c);
     printN64ln(^c);
-    printN64ln(a + c);
-    printN64ln(c - a);
+    printN64ln(a +% c);
+    printN64ln(c -% a);
 
 // CHECK: call $checkpointAlpha
     checkpointAlpha();
@@ -154,8 +154,8 @@ do {
 
     printN16ln(c);
     printN16ln(^c);
-    printN16ln(a + c);
-    printN16ln(c - a);
+    printN16ln(a +% c);
+    printN16ln(c -% a);
 
 // CHECK: call $checkpointDelta
     checkpointDelta();

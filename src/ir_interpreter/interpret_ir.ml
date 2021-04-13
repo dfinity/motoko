@@ -89,7 +89,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor (initial_state ()) empty_scope)
+let last_env = ref (env_of_scope { trace = false; print_depth = 2} (Ir.full_flavor ()) (initial_state ()) empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
@@ -404,6 +404,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k v1
       | ActorOfIdBlob t, [v1] ->
         k v1
+      | DecodeUtf8, [v1] ->
+        let s = V.as_blob v1 in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (V.Opt (V.Text s))
+          | exception Wasm.Utf8.Utf8 -> k V.Null
+        end
+      | EncodeUtf8, [v1] ->
+        k (V.Blob (V.as_text v1))
       | BlobOfIcUrl, [v1] ->
         begin match Ic.Url.decode_principal (V.as_text v1) with
           | Ok bytes -> k (V.Blob bytes)

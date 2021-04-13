@@ -113,7 +113,12 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private | System
+and vis' =
+  | Public of string option
+  | Private
+  | System
+
+let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
@@ -208,7 +213,8 @@ and dec' =
 
 (* Program (pre unit detection) *)
 
-type prog = (prog', string) Source.annotated_phrase
+type prog_note = { filename : string; trivia : Trivia.triv_table }
+type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = dec list
 
 
@@ -225,9 +231,11 @@ and comp_unit_body' =
  | ActorClassU of                            (* IC actor class, main or library *)
      sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
-
-type comp_unit = (comp_unit', string) Source.annotated_phrase
-and comp_unit' = import list * comp_unit_body
+type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
+and comp_unit' = {
+  imports : import list;
+  body : comp_unit_body;
+  }
 
 type lib = comp_unit
 

@@ -24,6 +24,7 @@ let can_show t =
       | Variant cts ->
         List.for_all (fun f -> go f.typ) cts
       | Non -> true
+      | Typ _ -> true
       | _ -> false
     end
   in go t
@@ -68,7 +69,11 @@ let rec show_val t v =
     Printf.sprintf "[%s]"
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
   | T.Obj (_, fts), Value.Obj fs ->
-    Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
+    Printf.sprintf "{%s}"
+      (String.concat "; "
+         (List.filter_map (fun ft ->
+            if T.is_typ ft.T.typ then None else
+            Some (show_field fs ft)) fts))
   | T.Variant fs, Value.Variant (l, v) ->
     begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
     | Some {T.typ = T.Tup []; _} -> Printf.sprintf "#%s" l
@@ -77,7 +82,9 @@ let rec show_val t v =
     | _ -> assert false
     end
   | _ ->
-    Printf.eprintf "show_val: %s : %s\n" (Value.string_of_val 2 v) (T.string_of_typ t);
+    Format.eprintf "@[show_val: %a : %a@.@]"
+      (Value.pp_val 2) v
+      T.pp_typ t;
     assert false
 
 and show_field fs ft =

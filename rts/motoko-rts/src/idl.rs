@@ -6,6 +6,7 @@ use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::trap_with_prefix;
 use crate::types::Words;
 use crate::utf8::utf8_validate;
+use core::cmp::min;
 
 //
 // IDL constants
@@ -118,9 +119,10 @@ unsafe extern "C" fn parse_idl_header(
     // Let the caller know about the table size
     *typtbl_size_out = n_types;
 
-    // Go through the table
+    // Allocate the type table to be passed out
     let typtbl: *mut *mut u8 = alloc(Words(n_types)) as *mut _;
 
+    // Go through the table
     for i in 0..n_types {
         *typtbl.add(i as usize) = (*buf).ptr;
 
@@ -159,13 +161,35 @@ unsafe extern "C" fn parse_idl_header(
             }
             // Annotations
             for _ in 0..leb128_decode(buf) {
-                buf.advance(1)
+                let a = read_byte(buf);
+                if !(1 <= a && a <= 2) {
+                    idl_trap_with("func annotation not within 1..2");
+                }
             }
         } else if ty == IDL_CON_service {
+            let mut last_len: u32 = 0 as u32;
+            let mut last_p = core::ptr::null_mut();
             for _ in 0..leb128_decode(buf) {
                 // Name
-                let size = leb128_decode(buf);
-                buf.advance(size);
+                let len = leb128_decode(buf);
+                let p = (*buf).ptr;
+                buf.advance(len);
+                // Method names must be valid unicode
+                utf8_validate(p as *const _, len);
+                // Method names must be in order
+                if last_p != core::ptr::null_mut() {
+                    let cmp = libc::memcmp(
+                        last_p as *mut libc::c_void,
+                        p as *mut libc::c_void,
+                        min(last_len, len) as usize,
+                    );
+                    if cmp > 0 || (cmp == 0 && last_len >= len) {
+                        idl_trap_with("service method names out of order");
+                    }
+                }
+                last_len = len;
+                last_p = p;
+
                 // Type
                 let t = sleb128_decode(buf);
                 check_typearg(t, n_types);
@@ -174,6 +198,40 @@ unsafe extern "C" fn parse_idl_header(
             // Future type
             let n = leb128_decode(buf);
             buf.advance(n);
+        }
+    }
+
+    // Now that we have the indices, we can go through it again
+    // and validate that all service method types are really function types
+    // (We could not do that in the first run because of possible forward
+    // references
+    for i in 0..n_types {
+        // do not modify the main buf
+        let mut tmp_buf = Buf {
+            end: (*buf).end,
+            ptr: *typtbl.add(i as usize),
+        };
+
+        let ty = sleb128_decode(&mut tmp_buf);
+        if ty == IDL_CON_service {
+            for _ in 0..leb128_decode(&mut tmp_buf) {
+                // Name
+                let len = leb128_decode(&mut tmp_buf);
+                Buf::advance(&mut tmp_buf, len);
+                // Type
+                let t = sleb128_decode(&mut tmp_buf);
+                if !(t >= 0 && (t as u32) < n_types) {
+                    idl_trap_with("service method arg not a constructor type");
+                }
+                let mut tmp_buf2 = Buf {
+                    end: (*buf).end,
+                    ptr: *typtbl.add(t as usize),
+                };
+                let mty = sleb128_decode(&mut tmp_buf2);
+                if mty != IDL_CON_func {
+                    idl_trap_with("service method arg not a function type");
+                }
+            }
         }
     }
 
@@ -194,6 +252,18 @@ unsafe fn read_byte_tag(buf: *mut Buf) -> u8 {
         idl_trap_with("skip_any: byte tag not 0 or 1");
     }
     b
+}
+
+unsafe fn skip_blob(buf: *mut Buf) {
+    let len = leb128_decode(buf);
+    buf.advance(len);
+}
+
+unsafe fn skip_text(buf: *mut Buf) {
+    let len = leb128_decode(buf);
+    let p = (*buf).ptr;
+    buf.advance(len); // advance first; does the bounds check
+    utf8_validate(p as *const _, len);
 }
 
 // Assumes buf is the encoding of type t, and fast-forwards past that
@@ -229,19 +299,13 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
             IDL_PRIM_nat64 | IDL_PRIM_int64 | IDL_PRIM_float64 => {
                 buf.advance(8);
             }
-            IDL_PRIM_text => {
-                let len = leb128_decode(buf);
-                let p = (*buf).ptr;
-                buf.advance(len); // advance first; does the bounds check
-                utf8_validate(p as *const _, len);
-            }
+            IDL_PRIM_text => skip_text(buf),
             IDL_PRIM_empty => {
                 idl_trap_with("skip_any: encountered empty");
             }
             IDL_REF_principal => {
                 if read_byte_tag(buf) != 0 {
-                    let len = leb128_decode(buf);
-                    buf.advance(len);
+                    skip_blob(buf);
                 }
             }
             _ => {
@@ -295,10 +359,23 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 skip_any(buf, typtbl, it, 0);
             }
             IDL_CON_func => {
-                idl_trap_with("skip_any: func");
+                if read_byte_tag(buf) == 0 {
+                    idl_trap_with("skip_any: skipping references");
+                } else {
+                    if read_byte_tag(buf) == 0 {
+                        idl_trap_with("skip_any: skipping references");
+                    } else {
+                        skip_blob(buf)
+                    }
+                    skip_text(buf)
+                }
             }
             IDL_CON_service => {
-                idl_trap_with("skip_any: service");
+                if read_byte_tag(buf) == 0 {
+                    idl_trap_with("skip_any: skipping references");
+                } else {
+                    skip_blob(buf)
+                }
             }
             IDL_CON_alias => {
                 // See Note [mutable stable values] in codegen/compile.ml
