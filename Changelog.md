@@ -2,7 +2,7 @@
 
 == 0.5.15 (2021-04-13)
 
-* Bugfix: Blob.ofArray was broken.
+* Bugfix: `Blob.toArray` was broken.
 
 == 0.5.14 (2021-04-09)
 
