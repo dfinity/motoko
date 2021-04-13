@@ -30,7 +30,7 @@ let%test "it should parse a prim import" =
 let%test "it should fail to parse a malformed prim import" =
   (* TODO This should be erroring *)
   (* parse_test "mo:⛔/bar" (Error "") *)
-  parse_test "mo:⛔/bar" (Ok (Package ("prim", "bar")))
+  parse_test "mo:⛔/bar" (Ok (Package ("⛔", "bar")))
 
 let%test "it should parse an ic import" =
   parse_test "ic:5h74t-uga73-7nadi" (Error "invalid principal. Did you mean \"bfozs-kwa73-7nadi\"?")
