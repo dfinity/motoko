@@ -2783,8 +2783,9 @@ module Blob = struct
   *)
 
   let header_size = Int32.add Tagged.header_size 1l
-
   let len_field = Int32.add Tagged.header_size 0l
+
+  let len env = Heap.load_field len_field
 
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
@@ -2807,7 +2808,7 @@ module Blob = struct
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
       get_x ^^ payload_ptr_unskewed ^^
-      get_x ^^ Heap.load_field len_field
+      get_x ^^ len env
     )
 
   let of_ptr_size env = Func.share_code2 env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
@@ -2859,8 +2860,8 @@ module Blob = struct
         let (set_a, get_a) = new_local env "a" in
         let (set_b, get_b) = new_local env "b" in
 
-        get_x ^^ Heap.load_field len_field ^^ set_len1 ^^
-        get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
+        get_x ^^ len env ^^ set_len1 ^^
+        get_y ^^ len env ^^ set_len2 ^^
 
         (* Find mininum length *)
         begin if op = EqOp then
@@ -2916,8 +2917,6 @@ module Blob = struct
       end
   )
 
-  let len env =
-    Heap.load_field len_field ^^ BigNum.from_word32 env
   let iter env =
     E.call_import env "rts" "blob_iter"
   let iter_done env =
@@ -3415,7 +3414,7 @@ module Dfinity = struct
       let (set_blob, get_blob) = new_local env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
       get_blob ^^ Blob.payload_ptr_unskewed ^^
-      get_blob ^^ Heap.load_field Blob.len_field ^^
+      get_blob ^^ Blob.len env ^^
       print_ptr_len env
     )
 
@@ -4024,7 +4023,7 @@ module Serialization = struct
         )
       | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
+        get_x ^^ Blob.len env ^^ set_len ^^
         size_word env get_len ^^
         inc_data_size get_len
       | Prim Text ->
@@ -4239,7 +4238,7 @@ module Serialization = struct
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
+        get_x ^^ Blob.len env ^^ set_len ^^
         write_word get_len ^^
         get_data_buf ^^
         get_x ^^ Blob.payload_ptr_unskewed ^^
@@ -4945,7 +4944,7 @@ module Serialization = struct
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
 
-      get_blob ^^ Heap.load_field Blob.len_field ^^ set_data_size ^^
+      get_blob ^^ Blob.len env ^^ set_data_size ^^
       get_blob ^^ Blob.payload_ptr_unskewed ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
@@ -7122,7 +7121,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
 
     | OtherPrim "blob_size", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env
+      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env ^^ BigNum.from_word32 env
     | OtherPrim ("blob_bytes_iter"|"blob_vals_iter"), [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
     | OtherPrim "blob_iter_done", [e] ->
