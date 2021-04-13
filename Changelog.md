@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+* Bugfix: Blob.ofArray was broken.
+
 == 0.5.14 (2021-04-09)
 
 * BREAKING CHANGE (Minor): Type parameter inference will no longer default
