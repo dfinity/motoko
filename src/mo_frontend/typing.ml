@@ -811,7 +811,6 @@ let array_obj t =
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
-  let bytes_depr = "the bytes() iterator is deprecated, please use vals(). See M0159 for details" in
   let open T in
   Object,
   [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
