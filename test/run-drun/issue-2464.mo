@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Caller "issue-2464/caller";
 
 actor class Maker() {

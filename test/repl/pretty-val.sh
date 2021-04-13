@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests pretty printing of values and types
 moc -i <<__END__
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 let a_small = Prim.Array_init<Text>(5,"hello");
 let a_large = Prim.Array_init<Text>(100,"hello");

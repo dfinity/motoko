@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // test flattening of awaitable, shared function arguments
 
 let a = actor {

@@ -111,7 +111,7 @@ encodingProps = testGroup "Encoding" $
 
 
 withPrim :: Line -> Line
-withPrim = (fromString "import Prim \"mo:prim\";" <>)
+withPrim = (fromString "import Prim \"mo:⛔\";" <>)
 
 runner :: Embedder -> ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
 runner embedder reqOutcome relevant name testCase =

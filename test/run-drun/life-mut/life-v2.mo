@@ -1,4 +1,4 @@
-import P = "mo:prim";
+import P = "mo:⛔";
 
 actor Life {
 

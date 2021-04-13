@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor class Node(i : Nat) {
 
   type Key = Nat;

@@ -10,7 +10,7 @@ import Array "array";
 import List "list";
 import Nat "nat";
 import Prelude "prelude";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Util "util"
 
 module {

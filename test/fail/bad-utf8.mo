@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 do {
 Prim.debugPrint("Zero byte: >\00<");
 };

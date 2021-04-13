@@ -3,7 +3,7 @@
 = `Trie` -- Functional map
 */
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import P "prelude";
 import Option "option";
 import Hash "hash";

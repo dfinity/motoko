@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 type Tree<A> = {#leaf : A; #branch : (Tree<A>, Tree<A>)};
 

@@ -1,5 +1,5 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 func serUnit() : Blob = (prim "serialize" : () -> Blob) ();
 func deserUnit(x : Blob) : () = (prim "deserialize" : Blob -> ()) x;

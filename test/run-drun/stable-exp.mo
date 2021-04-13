@@ -1,4 +1,4 @@
-import P "mo:prim";
+import P "mo:⛔";
 // This test would fail with OOM if stable serialization did not preserve sharing of mutable arrays.
 // Note that it does fail with OOM if we replace 'a' with an immutable array, for which sharing is not preserved. 
 // Our users may not thank us that we only preserve sharing for mutable data, but nothing else.

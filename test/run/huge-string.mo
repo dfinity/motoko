@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 /*
 This uses repeated self-concatenation to build a huge string

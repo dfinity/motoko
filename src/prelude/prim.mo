@@ -2,7 +2,7 @@
 The primitive definitions.
 
 This module should contain everything that cannot be implemented in plain
-Motoko. It is available via `import Prim "mo:prim"`. Normal user code would
+Motoko. It is available via `import Prim "mo:⛔"`. Normal user code would
 usually not import that module directly, but through `base`, which takes
 care of providing a proper module structure, e.g. exposing `Array_tabulate`
 through `Array.tabulate`.

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 type List<T> = ?{head : T; var tail : List<T>};
 

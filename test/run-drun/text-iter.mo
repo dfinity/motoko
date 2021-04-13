@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 let s = "hello world!";
 
 Prim.debugPrint "via `debugPrint`:";

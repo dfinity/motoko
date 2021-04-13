@@ -1,6 +1,6 @@
 /// Hash values
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Iter "Iter";
 
 module {

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
   public func match (b : Int) : async () {
     assert (switch b {
