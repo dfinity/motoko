@@ -42,6 +42,8 @@ known_untested_codes = {
     "M0144", # bad import, but seems to be shadowed by non-static expression
     # defunct codes:
     "M0052",
+    "M0147",
+    "M0148",
     }
 
 def populate_error_codes():
