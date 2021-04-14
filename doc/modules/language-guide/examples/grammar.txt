@@ -267,7 +267,6 @@
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
 
-
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>
 

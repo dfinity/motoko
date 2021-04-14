@@ -26,17 +26,6 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let warn_deprecated_obj category at =
-  Diag.add_msg (Option.get !msg_store)
-    (Diag.warning_message at "M0147" "syntax"
-      ("object syntax is deprecated in this position, use "
-      ^ (if category = `Exp then "'{ {...} }'" else "'({...})'")))
-
-let warn_deprecated_block at =
-  Diag.add_msg (Option.get !msg_store)
-    (Diag.warning_message at "M0148" "syntax"
-      "block syntax is deprecated in this position, use 'do { ... }'")
-
 let syntax_error at code msg =
   Diag.add_msg (Option.get !msg_store)
     (Diag.error_message at code "syntax" msg)
@@ -220,7 +209,7 @@ and objblock s dec_fields =
 
 %}
 
-%token EOF
+%token EOF DISALLOWED
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
@@ -269,7 +258,7 @@ and objblock s dec_fields =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP WRAPPOWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest deprecated_exp_obj deprecated_exp_block
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
 %type<Mo_def.Syntax.vis> vis
@@ -286,15 +275,14 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
 %type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
-%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
+%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
-%type<Mo_def.Syntax.exp_field list> deprecated_exp_field_list_unamb
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
 %type<Mo_def.Syntax.path> path
-%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin deprecated_pat_opt
+%type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
 %type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
@@ -305,7 +293,6 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
 %type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
 %type<Mo_def.Syntax.dec_field> dec_field
-%type<Mo_def.Syntax.dec list> deprecated_dec_list_unamb
 %type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.exp> bl ob
@@ -554,15 +541,11 @@ lit :
   | CATASSIGN { CatOp }
 
 
+bl : DISALLOWED { PrimE("dummy") @? at $sloc }
+ob : e=exp_obj { e }
+
 exp_obj :
-(* Activate when deprecated object syntax is removed
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    {  obj efs (at $sloc) @? at $sloc }
-*)
-  | LCURLY ds=seplist(dec_var, semicolon) RCURLY
-    { let efs = List.map field_var_dec ds in
-      ObjE efs @? at $sloc }
-  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
     { ObjE efs @? at $sloc }
 
 exp_plain :
@@ -721,13 +704,7 @@ exp_nest :
     { e }
 
 block :
-(* Activate once deprecated objects are removed
   | LCURLY ds=seplist(dec, semicolon) RCURLY
-    { BlockE(ds) @? at $sloc }
-*)
-  | LCURLY ds=seplist(dec_var, semicolon) RCURLY
-    { BlockE(ds) @? at $sloc }
-  | LCURLY ds=deprecated_dec_list_unamb RCURLY
     { BlockE(ds) @? at $sloc }
 
 case :
@@ -833,8 +810,6 @@ pat_opt :
     { fun sloc -> p }
   | (* empty *)
     { fun sloc -> WildP @! sloc }
-  | p=deprecated_pat_opt
-    { fun sloc -> p }
 
 
 
@@ -934,54 +909,5 @@ import_list :
 
 parse_module_header :
   | start import_list EOF {}
-
-
-(* Deprecated block/object syntax *)
-
-(* Default {} to block or object, respectively *)
-bl :
-  | e=deprecated_exp_obj
-    { e }
-
-ob :
-  | e=exp_obj
-    { e }
-  | e=deprecated_exp_block
-    { e }
-
-deprecated_pat_opt :
-  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
-    { warn_deprecated_obj `Pat (at $sloc);
-      ObjP(fps) @! at $sloc }
-
-deprecated_exp_obj :
-  | LCURLY efs=deprecated_exp_field_list_unamb RCURLY
-    { warn_deprecated_obj `Exp (at $sloc);
-      ObjE efs @? at $sloc }
-
-deprecated_exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
-  | ef=exp_field_nonvar
-    { [ef] }
-  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
-    { ef::efs }
-  | d=dec_var semicolon efs=deprecated_exp_field_list_unamb
-    { field_var_dec d :: efs }
-
-deprecated_exp_block :
-  | LCURLY ds=deprecated_dec_list_unamb RCURLY
-    { warn_deprecated_block (at $sloc);
-      BlockE(ds) @? at $sloc }
-
-deprecated_dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
-  | e=exp_nondec(ob)
-    { [ExpD e @? e.at] }
-  | d=dec_nonvar
-    { [d] }
-  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
-    { (ExpD e @? e.at) :: ds }
-  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
-    { d::ds }
-  | d=dec_var semicolon ds=deprecated_dec_list_unamb
-    { d::ds }
 
 %%
