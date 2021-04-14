@@ -47,7 +47,8 @@ let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
 let t_async as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
+     [T.Opt (T.Func(T.Local, T.Returns, [], [], []))])
 
 let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
@@ -227,7 +228,12 @@ let transform mode prog =
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
-      ((t_exp a) -*- (t_exp kr)).it
+      let resume = fresh_var "resume" (T.Func(T.Local,T.Returns,[],[],[])) in
+      (switch_optE ((t_exp a) -*- (t_exp kr))
+        (unitE()) (* suspend *)
+        (varP resume) (varE resume -*- unitE()) (* resume *)
+        T.unit
+      ).it
     | PrimE (CPSAsync t0, [exp1]) ->
       let t0 = t_typ t0 in
       let tb, ts1 = match typ exp1 with

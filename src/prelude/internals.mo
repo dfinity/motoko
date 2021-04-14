@@ -283,7 +283,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 };
 
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();
+type @Async<T> = (@Cont<T>,@Cont<Error>) -> ?(() -> ());
 
 type @Refund = Nat64;
 type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
@@ -336,7 +336,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>) {
+  func enqueue(k : @Cont<T>, r : @Cont<Error>) : ?(() -> ()) {
     switch result {
       case null {
         let ws_ = ws;
@@ -352,13 +352,13 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
           @reset_cycles();
           @reset_refund();
           r(e) };
+	null
       };
       case (? (#ok (r, t))) {
-        @refund := r;
-        k(t)
+        ? (func () { @refund := r; k(t) });
       };
       case (? (#error e)) {
-        r(e)
+        ? (func () { r(e) });
       };
     };
   };
