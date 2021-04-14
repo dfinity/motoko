@@ -1,7 +1,7 @@
 # Motoko compiler changelog
 
-* BREAKING CHANGE: The old-style object and block syntax deprecated in 0.5.0
-  is finally removed.
+* BREAKING CHANGE:
+  The old-style object and block syntax deprecated in 0.5.0 is finally removed.
 
 * Record punning: As already supported in patterns, short object syntax in
   expressions now allows omitting the right-hand side if it is an identifier
@@ -14,6 +14,20 @@
   {a = a; b = 1; var c = c}
   ```
   assuming respective variables are in scope.
+
+* BREAKING CHANGE:
+  The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
+  This also removed the `blob.bytes()` iterator.
+
+  Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
+  modules.
+
+  This concludes the transition to the other fixed-width types that began with
+  version 0.5.8
+
+== 0.5.15 (2021-04-13)
+
+* Bugfix: `Blob.toArray` was broken.
 
 == 0.5.14 (2021-04-09)
 

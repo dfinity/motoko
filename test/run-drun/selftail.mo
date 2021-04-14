@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // a single function that can be evaluated recursively or tail-recursively
 func f (tailCall:Bool, n:Int, acc:Int) : Int {
     if (n<=0)

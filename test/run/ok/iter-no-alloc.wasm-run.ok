@@ -1,6 +1,6 @@
 Allocation per iteration (Nat): 0
-Allocation per iteration (Word16): 0
-Allocation per iteration (Word32): 0
+Allocation per iteration (Nat16): 0
+Allocation per iteration (Nat32): 0
 Allocation per iteration (?Nat, all null): 0
 Allocation per iteration (FixOpt, all ?null): 8
 Allocation per iteration (FixOpt, all ??null): 8

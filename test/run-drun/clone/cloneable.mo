@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Cycles "../cycles/cycles";
 
 // A simple Clonable class implementing a clone method without recursion.

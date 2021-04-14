@@ -1,6 +1,6 @@
 /// Error handling with the Result type.
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import P "Prelude";
 import Order "Order";
 

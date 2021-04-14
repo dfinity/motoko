@@ -172,7 +172,7 @@ let find_with_prefix : string -> string -> t -> (string * ide_decl list) list =
   Index.bindings modules
   |> List.map (fun (p, ds) ->
          let import_path =
-           if p = "@prim" then "mo:prim"
+           if p = "@prim" then "mo:⛔"
            else shorten_import_path package_map ic_aliases base p
          in
          (import_path, List.filter (decl_has_prefix prefix) ds))

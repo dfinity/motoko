@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor counter = {
   flexible var c = 1;
   public func inc() : async () {

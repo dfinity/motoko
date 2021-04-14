@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 Prim.debugPrint(debug_show (true));
 Prim.debugPrint(debug_show (false));
@@ -69,7 +69,6 @@ Prim.debugPrint(debug_show (#bar ([])));
 Prim.debugPrint(debug_show (#bar 42));
 Prim.debugPrint(debug_show (#bar (-42)));
 Prim.debugPrint(debug_show (#foo 42 : {#foo : Int; #bar : Text}));
-Prim.debugPrint(debug_show (42 : Word16));
 Prim.debugPrint(debug_show (42 : Nat8));
 Prim.debugPrint(debug_show (42 : Int32));
 Prim.debugPrint(debug_show (Prim.intToInt64 (-42)));

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor a {
   class range(x : Nat, y : Nat) {

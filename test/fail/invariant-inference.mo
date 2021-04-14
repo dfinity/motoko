@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // illustrate inconsistency of non-principal mutable array literal inference and 
 // principal type parameter inference
 do {

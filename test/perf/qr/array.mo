@@ -3,7 +3,7 @@
 = `Array` -- Arrays
 */
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
   public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
     if (a.size() != b.size()) {

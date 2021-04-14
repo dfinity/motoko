@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // test type components are ignored for typ_hash applications (eq, debug, serialization)
 actor a {
   private class C(x:Int) {

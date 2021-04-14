@@ -31,10 +31,6 @@ type prim =
   | Int16
   | Int32
   | Int64
-  | Word8
-  | Word16
-  | Word32
-  | Word64
   | Float
   | Char
   | Text
@@ -143,10 +139,6 @@ let prim = function
   | "Int16" -> Int16
   | "Int32" -> Int32
   | "Int64" -> Int64
-  | "Word8" -> Word8
-  | "Word16" -> Word16
-  | "Word32" -> Word32
-  | "Word64" -> Word64
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
@@ -479,9 +471,9 @@ let rec span = function
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
   | Prim (Nat | Int | Float | Text | Blob | Error | Principal) -> None
-  | Prim (Nat8 | Int8 | Word8) -> Some 0x100
-  | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
-  | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
+  | Prim (Nat8 | Int8) -> Some 0x100
+  | Prim (Nat16 | Int16) -> Some 0x10000
+  | Prim (Nat32 | Int32 | Nat64 | Int64 | Char) -> None  (* for all practical purposes *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Variant fs -> Some (List.length fs)
   | Array _ | Func _ | Any -> None
@@ -1089,10 +1081,6 @@ let string_of_prim = function
   | Int32 -> "Int32"
   | Int64 -> "Int64"
   | Float -> "Float"
-  | Word8 -> "Word8"
-  | Word16 -> "Word16"
-  | Word32 -> "Word32"
-  | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
   | Blob -> "Blob"

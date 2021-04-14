@@ -1,4 +1,0 @@
-issue1356.mo:37.17-37.22: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
-issue1356.mo:43.18-43.24: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead
-issue1356.mo:37.17-37.22: warning [M0159], the Word8 type is deprecated, please use Nat8 or Int8 instead
-issue1356.mo:43.18-43.24: warning [M0159], the Word16 type is deprecated, please use Nat16 or Int16 instead

@@ -249,12 +249,6 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 
 |`Blob`
 |blob
-|`bytes`
-|the blob's bytes
-|`Word8`
-
-|`Blob`
-|blob
 |`vals`
 |the blob's bytes
 |`Nat8`

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   public func sendi(n : Int) : async () {
     Prim.debugPrint(debug_show ("sendi", n));
@@ -29,9 +29,6 @@ actor a {
   };
   public func sendLabeledOpt(lo:?Text) : async () {
     Prim.debugPrint(debug_show ("sendLabeledOpt", lo))
-  };
-  public func sendwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : async () {
-    Prim.debugPrint(debug_show ("sendwords", w8, w16, w32, w64))
   };
   public func sendnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : async () {
     Prim.debugPrint(debug_show ("sendnats", n8, n16, n32, n64))
@@ -66,8 +63,6 @@ actor a {
     await a.sendn(10000000000000);
     await a.sendi(10000000000000);
     await a.sendi(-20000000000000);
-    await a.sendwords(1,2,3,4);
-    await a.sendwords(-1,-2,-3,-4);
     await a.sendnats(1,2,3,4);
     await a.sendints(1,2,3,4);
     await a.sendints(-1,-2,-3,-4);

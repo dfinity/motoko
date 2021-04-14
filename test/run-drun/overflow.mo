@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // We have these tests in run-drun because we want to check that certain
 // traps are happening, and a good way to test this is if a message gets
 // aborted.
@@ -40,6 +40,30 @@ actor a {
         Prim.debugPrint("ok 6");
     }} catch e {
         Prim.debugPrint("not ok 6");
+    };
+    try {await async {
+        ignore (-128 / -1 : Int8);
+        Prim.debugPrint("not ok 7");
+    }} catch e {
+        Prim.debugPrint("ok 7");
+    };
+    try {await async {
+        ignore (-32_768 / -1 : Int16);
+        Prim.debugPrint("not ok 8");
+    }} catch e {
+        Prim.debugPrint("ok 8");
+    };
+    try {await async {
+        ignore (-2_147_483_648 / -1 : Int32);
+        Prim.debugPrint("not ok 9");
+    }} catch e {
+        Prim.debugPrint("ok 9");
+    };
+    try {await async {
+        ignore (-9_223_372_036_854_775_808 / -1 : Int64);
+        Prim.debugPrint("not ok 10");
+    }} catch e {
+        Prim.debugPrint("ok 10");
     };
   }
 };

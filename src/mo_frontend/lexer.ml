@@ -50,7 +50,7 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         when opt_is_whitespace (Lib.List.hd_opt (acc @ List.rev !last_trailing))
              && first (peek ()) = ST.GT ->
           let _, _, end_ = next () in
-          (acc, (Parser.USHROP, start, end_))
+          (acc, (Parser.SHROP, start, end_))
       | Ok t -> (List.rev acc, (t, start, end_))
       | Error t -> eat_leading (t :: acc)
     in

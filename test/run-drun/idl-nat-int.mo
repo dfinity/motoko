@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor {
   public query func absolute(x:Int) : async Nat {

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 Prim.debugPrint (debug_show ("" : Blob));
 Prim.debugPrint (debug_show ("\00\01\02" : Blob));
@@ -11,34 +11,6 @@ assert (("\00":Blob) > ("":Blob));
 assert (("\00":Blob) >= ("":Blob));
 assert (("\00":Blob) < ("\01":Blob));
 assert (("\00":Blob) <= ("\01":Blob));
-
-do {
-let i1 = ("\00\01☃":Blob).bytes();
-switch(i1.next()) {
-  case (?b) { assert (b == (0:Word8)); };
-  case null { assert false; };
-};
-switch(i1.next()) {
-  case (?b) { assert (b == (1:Word8)); };
-  case null { assert false; };
-};
-switch(i1.next()) {
-  case (?b) { assert (b == (0xe2:Word8)); };
-  case null { assert false; };
-};
-switch(i1.next()) {
-  case (?b) { assert (b == (0x98:Word8)); };
-  case null { assert false; };
-};
-switch(i1.next()) {
-  case (?b) { assert (b == (0x83:Word8)); };
-  case null { assert false; };
-};
-switch(i1.next()) {
-  case (?b) { assert false; };
-  case null {};
-};
-};
 
 do {
 let i1 = ("\00\01☃":Blob).vals();

@@ -40,10 +40,6 @@ and value =
   | Nat16 of Nat16.t
   | Nat32 of Nat32.t
   | Nat64 of Nat64.t
-  | Word8 of Word8.t
-  | Word16 of Word16.t
-  | Word32 of Word32.t
-  | Word64 of Word64.t
   | Float of Float.t
   | Char of unicode
   | Text of string
@@ -90,10 +86,6 @@ let as_nat8 = function Nat8 w -> w | _ -> invalid "as_nat8"
 let as_nat16 = function Nat16 w -> w | _ -> invalid "as_nat16"
 let as_nat32 = function Nat32 w -> w | _ -> invalid "as_nat32"
 let as_nat64 = function Nat64 w -> w | _ -> invalid "as_nat64"
-let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
-let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
-let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
-let as_word64 = function Word64 w -> w | _ -> invalid "as_word64"
 let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
@@ -194,10 +186,6 @@ let rec pp_val_nullary d ppf = function
   | Nat16 n -> pr ppf (Nat16.to_pretty_string n)
   | Nat32 n -> pr ppf (Nat32.to_pretty_string n)
   | Nat64 n -> pr ppf (Nat64.to_pretty_string n)
-  | Word8 w -> pr ppf ("0x" ^ Word8.to_pretty_string w)
-  | Word16 w -> pr ppf ("0x" ^ Word16.to_pretty_string w)
-  | Word32 w -> pr ppf ("0x" ^ Word32.to_pretty_string w)
-  | Word64 w -> pr ppf ("0x" ^ Word64.to_pretty_string w)
   | Float f -> pr ppf (Float.to_pretty_string f)
   | Char c ->  pr ppf (string_of_string '\'' [c] '\'')
   | Text t -> pr ppf (string_of_string '\"' (Wasm.Utf8.decode t) '\"')
