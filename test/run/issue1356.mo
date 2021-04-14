@@ -34,13 +34,13 @@ func matchInt(n : Int) : Bool =
 // CHECK-NEXT:   i32.const 2147483646
 // CHECK-NEXT:   $B_eq
 
-func match8(n : Word8) : Bool = switch n { case 42 true; case _ false };
+func match8(n : Nat8) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match8
 // CHECK:        i32.const 704643072
 // CHECK-NEXT:   i32.eq
 // N.B.: 704643072 == 0x2a000000 == 42 << 24
 
-func match16(n : Word16) : Bool = switch n { case 42 true; case _ false };
+func match16(n : Nat16) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match16
 // CHECK:        i32.const 2752512
 // CHECK-NEXT:   i32.eq

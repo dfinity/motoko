@@ -18,10 +18,6 @@ type lit =
   | Int16Lit of Numerics.Int_16.t
   | Int32Lit of Numerics.Int_32.t
   | Int64Lit of Numerics.Int_64.t
-  | Word8Lit of Numerics.Word8.t
-  | Word16Lit of Numerics.Word16.t
-  | Word32Lit of Numerics.Word32.t
-  | Word64Lit of Numerics.Word64.t
   | FloatLit of Numerics.Float.t
   | CharLit of Value.unicode
   | TextLit of string
@@ -176,10 +172,6 @@ let string_of_lit = function
   | Nat16Lit n    -> Numerics.Nat16.to_pretty_string n
   | Nat32Lit n    -> Numerics.Nat32.to_pretty_string n
   | Nat64Lit n    -> Numerics.Nat64.to_pretty_string n
-  | Word8Lit n    -> Numerics.Word8.to_pretty_string n
-  | Word16Lit n   -> Numerics.Word16.to_pretty_string n
-  | Word32Lit n   -> Numerics.Word32.to_pretty_string n
-  | Word64Lit n   -> Numerics.Word64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t

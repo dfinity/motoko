@@ -232,10 +232,6 @@ let interpret_lit env lit : V.value =
   | Int16Lit i -> V.Int16 i
   | Int32Lit i -> V.Int32 i
   | Int64Lit i -> V.Int64 i
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
@@ -290,19 +286,6 @@ let array_vals a at =
         if !i = Array.length a
         then k' V.Null
         else let v = V.Opt a.(!i) in incr i; k' v
-      )
-    in k (V.Obj (V.Env.singleton "next" next))
-  )
-
-let blob_bytes t at =
-  V.local_func 0 1 (fun c v k ->
-    V.as_unit v;
-    let i = ref 0 in
-    let next =
-      V.local_func 0 1 (fun c v k' ->
-        if !i = String.length t
-        then k' V.Null
-        else let v = V.Opt V.(Word8 (Numerics.Word8.of_int (Char.code (String.get t !i)))) in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -479,7 +462,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b ->
         let f = match id.it with
           | "size" -> blob_size
-          | "bytes" -> blob_bytes
           | "vals" -> blob_vals
           | _ -> assert false
         in k (f b exp.at)
@@ -753,10 +735,6 @@ and match_lit lit v : bool =
   | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
   | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
   | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
-  | Word8Lit w, V.Word8 w' -> w = w'
-  | Word16Lit w, V.Word16 w' -> w = w'
-  | Word32Lit w, V.Word32 w' -> w = w'
-  | Word64Lit w, V.Word64 w' -> w = w'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'

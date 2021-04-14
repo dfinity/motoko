@@ -19,8 +19,7 @@ type binop =
   | OrOp
   | XorOp
   | ShLOp
-  | UShROp
-  | SShROp
+  | ShROp
   | RotLOp
   | RotROp
   | WAddOp                                      (* wrapping operators... *)

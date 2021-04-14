@@ -261,13 +261,11 @@ sig
   val xor : t -> t -> t
   val shl : t -> t -> t
   val shr : t -> t -> t
-  val shr_s : t -> t -> t (* deprecated, remove with +>> *)
   val rotl : t -> t -> t
   val rotr : t -> t -> t
 
   val wrapping_of_big_int : Big_int.big_int -> t
 
-  val wrapping_neg : t -> t
   val wadd : t -> t -> t
   val wsub : t -> t -> t
   val wmul : t -> t -> t
@@ -322,7 +320,6 @@ struct
   let xor = on_words WordRep.xor
   let shl = on_words WordRep.shl
   let shr = on_words (if Rep.signed then WordRep.shr_s else WordRep.shr_u)
-  let shr_s = on_words WordRep.shr_s
   let rotl = on_words WordRep.rotl
   let rotr = on_words WordRep.rotr
 
@@ -330,7 +327,6 @@ struct
   (* wrapping operations *)
   let wrapping_of_big_int i = from_word (WordRep.of_big_int i)
 
-  let wrapping_neg = on_word WordRep.neg
   let wadd = on_words WordRep.add
   let wsub = on_words WordRep.sub
   let wmul = on_words WordRep.mul
@@ -340,68 +336,6 @@ struct
     else raise (Invalid_argument "negative exponent")
 end
 
-(* A variant of Ranged, with always uses wrapping behaviour
-   and has a wider accepted range for literals.
-   Only used for the deprecated word types.
-*)
-module Wrapping (WordRep : WordType) : BitNumType =
-struct
-  include WordRep
-
-  let of_big_int i =
-    let open Big_int in
-    if lt_big_int i (power_int_positive_int 2 WordRep.bitwidth) &&
-       ge_big_int i (minus_big_int (power_int_positive_int 2 (WordRep.bitwidth - 1)))
-    then WordRep.of_big_int i
-    else raise (Invalid_argument "value out of bounds")
-
-  let signed = false
-
-  let abs i = i
-
-  let div = WordRep.div_u
-  let rem = WordRep.rem_u
-
-  let lt = WordRep.lt_u
-  let le = WordRep.le_u
-  let gt = WordRep.gt_u
-  let ge = WordRep.ge_u
-  let compare w1 w2 = Big_int.compare_big_int (to_big_int w1) (to_big_int w2)
-
-  let of_int = WordRep.of_int_u
-  let to_int w = Big_int.int_of_big_int (WordRep.to_big_int w)
-
-  let of_string s =
-    of_big_int (Big_int.big_int_of_string (String.concat "" (String.split_on_char '_' s)))
-
-  let base = of_int_u 16
-  let digs =
-    [|"0"; "1"; "2"; "3"; "4"; "5"; "6"; "7";
-      "8"; "9"; "A"; "B"; "C"; "D"; "E"; "F"|]
-  let to_pretty_string =
-    let rec to_pretty_string' w i s =
-      if w = zero then s else
-      let dig = digs.(to_int (WordRep.rem_u w base)) in
-      let s' = dig ^ (if i = 4 then "_" else "") ^ s in
-      to_pretty_string' (WordRep.div_u w base) (i mod 4 + 1) s'
-    in
-    fun w -> if w = zero then "0" else to_pretty_string' w 0 ""
-  let to_string = to_pretty_string
-
-
-  (* bit-wise operations *)
-  let shr = WordRep.shr_u
-
-
-  (* wrapping operations *)
-  let wrapping_of_big_int i = WordRep.of_big_int i
-
-  let wrapping_neg = WordRep.neg
-  let wadd = WordRep.add
-  let wsub = WordRep.sub
-  let wmul = WordRep.mul
-  let wpow a b = WordRep.pow a b
-end
 module Nat8 = Ranged (Nat) (Word8Rep)
 module Nat16 = Ranged (Nat) (Word16Rep)
 module Nat32 = Ranged (Nat) (Word32Rep)
@@ -411,8 +345,3 @@ module Int_8 = Ranged (Int) (Word8Rep)
 module Int_16 = Ranged (Int) (Word16Rep)
 module Int_32 = Ranged (Int) (Word32Rep)
 module Int_64 = Ranged (Int) (Word64Rep)
-
-module Word8 = Wrapping (Word8Rep)
-module Word16 = Wrapping (Word16Rep)
-module Word32 = Wrapping (Word32Rep)
-module Word64 = Wrapping (Word64Rep)

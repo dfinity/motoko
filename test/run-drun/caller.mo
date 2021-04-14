@@ -47,8 +47,8 @@ actor a {
       (Prim.blobOfPrincipal caller).size();
   };
 
-  public shared query({caller}) func c11() : async ?Word8 {
-      (Prim.blobOfPrincipal caller).bytes().next();
+  public shared query({caller}) func c11() : async ?Nat8 {
+      (Prim.blobOfPrincipal caller).vals().next();
   };
 
 };

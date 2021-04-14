@@ -15,10 +15,6 @@ let as_big_int = function
   | Type.Int16 -> fun v -> Int_16.to_big_int (as_int16 v)
   | Type.Int32 -> fun v -> Int_32.to_big_int (as_int32 v)
   | Type.Int64 -> fun v -> Int_64.to_big_int (as_int64 v)
-  | Type.Word8 -> fun v -> Word8.to_big_int (as_word8 v)
-  | Type.Word16 -> fun v -> Word16.to_big_int (as_word16 v)
-  | Type.Word32 -> fun v -> Word32.to_big_int (as_word32 v)
-  | Type.Word64 -> fun v -> Word64.to_big_int (as_word64 v)
   | Type.Char -> fun v -> Big_int.big_int_of_int (as_char v)
   | t -> raise (Invalid_argument ("Value.as_big_int: " ^ Type.string_of_typ (Type.Prim t)))
 
@@ -47,10 +43,6 @@ let of_big_int_wrap = function
   | Type.Int16 -> fun i -> Int16 (Int_16.wrapping_of_big_int i)
   | Type.Int32 -> fun i -> Int32 (Int_32.wrapping_of_big_int i)
   | Type.Int64 -> fun i -> Int64 (Int_64.wrapping_of_big_int i)
-  | Type.Word8 -> fun i -> Word8 (Word8.wrapping_of_big_int i)
-  | Type.Word16 -> fun i -> Word16 (Word16.wrapping_of_big_int i)
-  | Type.Word32 -> fun i -> Word32 (Word32.wrapping_of_big_int i)
-  | Type.Word64 -> fun i -> Word64 (Word64.wrapping_of_big_int i)
   | t -> raise (Invalid_argument ("Value.of_big_int_wrap: " ^ Type.string_of_typ (Type.Prim t)))
 
 (*
@@ -65,8 +57,7 @@ let num_conv_trap_prim t1 t2 =
   | T.Int, (T.Int8|T.Int16|T.Int32|T.Int64)
   | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
   | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int
-  | (T.Word8|T.Word16|T.Word32|T.Word64), T.Nat
-  | (T.Nat32|T.Word32), T.Char
+  | T.Nat32, T.Char
   -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
@@ -134,10 +125,6 @@ let prim =
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. popcnt w)
-        | Word16 w -> Word16 (Word16.popcnt w)
-        | Word32 w -> Word32 (Word32.popcnt w)
-        | Word64 w -> Word64 (Word64.popcnt w)
         | Nat8  w -> Nat8  (Nat8. popcnt w)
         | Nat16 w -> Nat16 (Nat16.popcnt w)
         | Nat32 w -> Nat32 (Nat32.popcnt w)
@@ -151,10 +138,6 @@ let prim =
   | "clz8" | "clz16" | "clz32" | "clz64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. clz w)
-        | Word16 w -> Word16 (Word16.clz w)
-        | Word32 w -> Word32 (Word32.clz w)
-        | Word64 w -> Word64 (Word64.clz w)
         | Nat8  w -> Nat8  (Nat8. clz w)
         | Nat16 w -> Nat16 (Nat16.clz w)
         | Nat32 w -> Nat32 (Nat32.clz w)
@@ -168,10 +151,6 @@ let prim =
   | "ctz8" | "ctz16" | "ctz32" | "ctz64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. ctz w)
-        | Word16 w -> Word16 (Word16.ctz w)
-        | Word32 w -> Word32 (Word32.ctz w)
-        | Word64 w -> Word64 (Word64.ctz w)
         | Nat8  w -> Nat8  (Nat8. ctz w)
         | Nat16 w -> Nat16 (Nat16.ctz w)
         | Nat32 w -> Nat32 (Nat32.ctz w)
@@ -186,10 +165,6 @@ let prim =
      fun _ v k ->
      let w, a = as_pair v
      in k (match w with
-           | Word8  y -> Word8  Word8. (and_ y (shl (of_int 1) (as_word8  a)))
-           | Word16 y -> Word16 Word16.(and_ y (shl (of_int 1) (as_word16 a)))
-           | Word32 y -> Word32 Word32.(and_ y (shl (of_int 1) (as_word32 a)))
-           | Word64 y -> Word64 Word64.(and_ y (shl (of_int 1) (as_word64 a)))
            | Nat8  y -> Nat8  Nat8. (and_ y (shl (of_int 1) (as_nat8  a)))
            | Nat16 y -> Nat16 Nat16.(and_ y (shl (of_int 1) (as_nat16 a)))
            | Nat32 y -> Nat32 Nat32.(and_ y (shl (of_int 1) (as_nat32 a)))
@@ -220,10 +195,6 @@ let prim =
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
-  | "blob_bytes_iter" -> fun _ v k ->
-    let s = String.to_seq (Value.as_blob v) in
-    let valuation b = Word8 (Word8.of_int (Char.code b)) in
-    k (Iter (ref (Seq.map valuation s)))
   | "blob_vals_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_blob v) in
     let valuation b = Nat8 (Nat8.of_int (Char.code b)) in

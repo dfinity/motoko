@@ -44,13 +44,11 @@ sig
   val xor : t -> t -> t
   val shl : t -> t -> t
   val shr : t -> t -> t
-  val shr_s : t -> t -> t (* deprecated, remove with +>> *)
   val rotl : t -> t -> t
   val rotr : t -> t -> t
 
   val wrapping_of_big_int : Big_int.big_int -> t
 
-  val wrapping_neg : t -> t
   val wadd : t -> t -> t
   val wsub : t -> t -> t
   val wmul : t -> t -> t
@@ -77,7 +75,3 @@ module Nat8 : BitNumType
 module Nat16 : BitNumType
 module Nat32 : BitNumType
 module Nat64 : BitNumType
-module Word8 : BitNumType
-module Word16 : BitNumType
-module Word32 : BitNumType
-module Word64 : BitNumType

@@ -186,32 +186,6 @@ let coverage_cases category env cases t at =
 let coverage_pat warnOrError env pat t =
   coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
 
-(* Deprecation *)
-
-let check_deprecation_binop env at t op =
-  let open Type in
-  let open Operator in
-  let word_op_warn s =
-    warn env at "M0152" "the arithmetic operation %s on %s is deprecated, use %s%% instead"
-      s (T.string_of_typ_expand t) s
-  in
-  match t, op with
-  | Prim (Word8|Word16|Word32|Word64), AddOp -> word_op_warn "+"
-  | Prim (Word8|Word16|Word32|Word64), SubOp -> word_op_warn "-"
-  | Prim (Word8|Word16|Word32|Word64), MulOp -> word_op_warn "*"
-  | Prim (Word8|Word16|Word32|Word64), PowOp -> word_op_warn "**"
-  | _, _ -> ()
-
-let check_word_deprecation env at c =
-  let msg n = warn env at "M0159" "the Word%d type is deprecated, please use Nat%d or Int%d instead" n n n in
-  match Con.kind c with
-    | T.(Def ([], Prim Word8))  -> msg 8
-    | T.(Def ([], Prim Word16)) -> msg 16
-    | T.(Def ([], Prim Word32)) -> msg 32
-    | T.(Def ([], Prim Word64)) -> msg 64
-    | _ -> ()
-
-
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -440,7 +414,6 @@ and check_typ' env typ : T.typ =
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
-    check_word_deprecation env typ.at c;
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
@@ -746,10 +719,6 @@ let check_int8 env = check_lit_val env T.Int8 Numerics.Int_8.of_string
 let check_int16 env = check_lit_val env T.Int16 Numerics.Int_16.of_string
 let check_int32 env = check_lit_val env T.Int32 Numerics.Int_32.of_string
 let check_int64 env = check_lit_val env T.Int64 Numerics.Int_64.of_string
-let check_word8 env = check_lit_val env T.Word8 Numerics.Word8.of_string
-let check_word16 env = check_lit_val env T.Word16 Numerics.Word16.of_string
-let check_word32 env = check_lit_val env T.Word32 Numerics.Word32.of_string
-let check_word64 env = check_lit_val env T.Word64 Numerics.Word64.of_string
 let check_float env = check_lit_val env T.Float Numerics.Float.of_string
 
 let check_text env at s =
@@ -772,10 +741,6 @@ let infer_lit env lit at : T.prim =
   | Int16Lit _ -> T.Int16
   | Int32Lit _ -> T.Int32
   | Int64Lit _ -> T.Int64
-  | Word8Lit _ -> T.Word8
-  | Word16Lit _ -> T.Word16
-  | Word32Lit _ -> T.Word32
-  | Word64Lit _ -> T.Word64
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
@@ -817,14 +782,6 @@ let check_lit env t lit at =
     lit := Int32Lit (check_int32 env at s)
   | T.Prim T.Int64, PreLit (s, (T.Nat | T.Int)) ->
     lit := Int64Lit (check_int64 env at s)
-  | T.Prim T.Word8, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Word8Lit (check_word8 env at s)
-  | T.Prim T.Word16, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Word16Lit (check_word16 env at s)
-  | T.Prim T.Word32, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Word32Lit (check_word32 env at s)
-  | T.Prim T.Word64, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Word64Lit (check_word64 env at s)
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) ->
     lit := FloatLit (check_float env at s)
   | T.Prim T.Blob, PreLit (s, T.Text) ->
@@ -854,11 +811,9 @@ let array_obj t =
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
-  let bytes_depr = "the bytes() iterator is deprecated, please use vals(). See M0159 for details" in
   let open T in
   Object,
-  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)]); depr = Some bytes_depr};
-    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
+  [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
   ]
 
@@ -956,7 +911,6 @@ and infer_exp'' env exp : T.typ =
           display_typ_expand t;
       ot := t
     end;
-    check_deprecation_binop env exp.at t op;
     t
   | RelE (ot, exp1, op, exp2) ->
     if not env.pre then begin
@@ -1395,7 +1349,6 @@ and check_exp' env0 t exp : T.typ =
     if env.weak && op = Operator.SubOp && T.eq t T.nat then
       warn env exp.at "M0155" "operator may trap for inferred type%a"
         display_typ_expand t;
-    check_deprecation_binop env exp.at t op;
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;

@@ -13,8 +13,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_XORASSIGN -> XORASSIGN
       | T_WHILE -> WHILE
       | T_VAR -> VAR
-      | T_USHROP -> USHROP
-      | T_USHRASSIGN -> USHRASSIGN
+      | T_SHROP -> SHROP
+      | T_SHRASSIGN -> SHRASSIGN
       | T_UNDERSCORE -> UNDERSCORE
       | T_TYPE -> TYPE
       | T_TRY -> TRY
@@ -23,8 +23,6 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SWITCH -> SWITCH
       | T_SUBOP -> SUBOP
       | T_SUB -> SUB
-      | T_SSHROP -> SSHROP
-      | T_SSHRASSIGN -> SSHRASSIGN
       | T_SHLOP -> SHLOP
       | T_SHLASSIGN -> SHLASSIGN
       | T_SHARED -> SHARED

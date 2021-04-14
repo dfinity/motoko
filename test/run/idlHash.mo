@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 
-func testHash(s : Text, h : Word32) {
+func testHash(s : Text, h : Nat32) {
   Prim.debugPrint("Hash for " # s);
   Prim.debugPrint("Expected: " # debug_show h);
   Prim.debugPrint("Actual:   " # debug_show (Prim.idlHash s));

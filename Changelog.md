@@ -1,5 +1,16 @@
 # Motoko compiler changelog
 
+* **BREAKING CHANGE**
+
+  The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
+  This also removed the `blob.bytes()` iterator.
+
+  Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
+  modules.
+
+  This concludes the transition to the other fixed-width types that began with
+  version 0.5.8
+
 == 0.5.15 (2021-04-13)
 
 * Bugfix: `Blob.toArray` was broken.
