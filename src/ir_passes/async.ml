@@ -228,10 +228,12 @@ let transform mode prog =
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
-      let resume = fresh_var "resume" (T.Func(T.Local,T.Returns,[],[],[])) in
+      let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
       (switch_optE ((t_exp a) -*- (t_exp kr))
         (unitE()) (* suspend *)
-        (varP resume) (varE resume -*- unitE()) (* resume *)
+        (varP resume) (* yield and resume *)
+          (* try await async (); resume() catch e -> r(e) *)
+          (selfcallE [] (ic_replyE [] (unitE())) (varE resume) (projE (t_exp kr) 1))
         T.unit
       ).it
     | PrimE (CPSAsync t0, [exp1]) ->
