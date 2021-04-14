@@ -708,7 +708,7 @@ As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
 left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
 The right-shift preserves the two's-complement sign.
-All shift and rotate amounts are considered modulo the word's width *n*.
+All shift and rotate amounts are considered modulo the numbers's bit width *n*.
 
 Bounded integer types are not in subtype relationship with each other or with
 other arithmetic types, and their literals need type annotation if
@@ -734,7 +734,7 @@ As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
 left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
 The right-shift is logical.
-All shift and rotate amounts are considered modulo the word's width *n*.
+All shift and rotate amounts are considered modulo the number's bit width *n*.
 
 The corresponding module in the base library provides conversion functions:
 Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
