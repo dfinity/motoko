@@ -140,6 +140,3 @@ s/OR/\'or\'/g
 s/AND/\'and\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/
-/    '{' <list(<dec_var>, ';')> '}'/d
-/<exp_field_nonvar>/,+2d
-s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/

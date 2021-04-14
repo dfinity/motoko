@@ -108,15 +108,6 @@ let let_or_exp named x e' at =
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
-let field_var_dec d =
-  match d.it with
-  | VarD(x, e) ->
-    { mut = Syntax.Var @@ no_region;
-      id = x;
-      exp = e; } @@ d.at
-
-  | _ -> assert false
-
 let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp) ->
     dec.at = pat.at && pat.at = exp.at &&
@@ -291,7 +282,7 @@ and objblock s dec_fields =
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
-%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar
+%type<Mo_def.Syntax.exp_field> exp_field
 %type<Mo_def.Syntax.dec_field> dec_field
 %type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
 %type<Mo_def.Syntax.case> catch case
@@ -715,22 +706,12 @@ catch :
   | CATCH p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
-exp_field_nonvar :
-  | x=id EQ e=exp(ob)
-    { { mut = Syntax.Const @@ no_region;
-	id = x;
-	exp = e; } @@ at $sloc }
-(* TODO: activate once blocks and objects are no longer ambiguous
-  | x=id
-    { { mut = Syntax.Const @@ no_region;
-	id = x;
-	exp = VarE(x.it @@ x.at) @@ x.at } @@ at $sloc }
-*)
-
 exp_field :
-  | ef=exp_field_nonvar { ef }
-  | d=dec_var
-    { field_var_dec d }
+  | m=var_opt x=id t=annot_opt
+    { let e = VarE(x.it @@ x.at) @? x.at in
+      { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
+  | m=var_opt x=id t=annot_opt EQ e=exp(ob)
+    { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
 
 dec_field :
   | v=vis s=stab d=dec

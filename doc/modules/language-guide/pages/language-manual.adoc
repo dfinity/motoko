@@ -579,9 +579,8 @@ The syntax of a _pattern_ is as follows:
   <pat> or <pat>                                 disjunctive pattern
 
 <pat-field> ::=                                object pattern fields
-  <id> = <pat>                                   field
-  <id>                                           punned field
-  <id> : <typ>                                   typed punned field
+  <id> (: <typ>) = <pat>                         field
+  <id> (: <typ>)                                 punned field
 ```
 
 
@@ -1799,10 +1798,16 @@ The tag and contents of a variant value can be tested and accessed using a <<pat
 Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list of expression fields:
 
 ```bnf
-<exp-field> ::= var? <id> = <exp>
+<exp-field> ::=                                object expression fields
+  var? <id> (: <typ>) = <exp>                    field
+  var? <id> (: <typ)                             punned field
 ```
 Such an object literal, sometimes called a *record*, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
 However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
+
+Object expressions support _punning_ for concision.
+A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ> ` is short-hand for `<id> = <id> : <typ>`. Both
+bind the matched value of the field named `<id>` to the identifier `<id>`.
 
 [[exp-proj]]
 === Object projection (member access)

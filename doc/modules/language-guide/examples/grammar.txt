@@ -222,7 +222,8 @@
     'catch' <pat_nullary> <exp_nest>
 
 <exp_field> ::= 
-    'var'? <id> '=' <exp>
+    'var'? <id> (':' <typ>)?
+    'var'? <id> (':' <typ>)? '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>

@@ -150,7 +150,6 @@ let string_of_symbol symbol : string =
   | X (N N_exp_nest) -> "<exp_nest>"
   | X (N N_block) -> "<block>"
   | X (N N_exp_field) -> "<exp_field>"
-  | X (N N_exp_field_nonvar) -> "<exp_field_nonvar>"
   | X (N N_exp_nondec_bl_) -> "<exp_nondec(bl)>"
   | X (N N_exp_nondec_ob_) -> "<exp_nondec(ob)>"
   | X (N N_exp_nonvar_bl_) -> "<exp_nonvar(bl)>"
