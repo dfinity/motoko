@@ -402,7 +402,7 @@ let rec loc slot =
   | Prim Nat32 -> Location.local slot [ dw_OP_dup; dw_OP_lit1; dw_OP_and; dw_OP_bra; 5; 0;
                                                  dw_OP_lit1; dw_OP_shr; dw_OP_skip; 3; 0;
                                                  dw_OP_plus_uconst; unskew + past_tag; dw_OP_deref; dw_OP_stack_value ]
-  (* FIXME: for Int64|Word64|Nat64|Nat|Int the heap check is ignored for now *)
+  (* FIXME: for Int64|Nat64|Nat|Int the heap check is ignored for now *)
   | Prim Int64 -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_const4u; 0xFF; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
   | Prim Nat64 -> Location.local slot [ dw_OP_lit1; dw_OP_shr; dw_OP_const4u; 0x7F; 0xFF; 0xFF; 0xFF; dw_OP_and; dw_OP_stack_value ]
   | Prim (Nat|Int) -> Location.local slot [ dw_OP_lit1; dw_OP_shra; dw_OP_stack_value ]
