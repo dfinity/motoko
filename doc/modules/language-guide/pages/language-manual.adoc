@@ -740,37 +740,6 @@ The corresponding module in the base library provides conversion functions:
 Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
 conversion to the bounded natural type of the same size.
 
-[IMPORTANT]
-====
-The `WordN` types will be deprecated in favor of the `NatN` and `IntN` types. This happens in two phases:
-
-1. First, the wrapping arithmetic operations on word types (`+`, `-`, `*` or `**`) are deprecated, and the explicitly wrapping variants should be used (`+%`, +`-%`, `*%` and `**%`).
-
-2. In the next phase, the `Word` types themselves are removed.
-
-Developers can choose to follow these phases, and be guided by the deprecation
-warnings, or can migrate away from using the `WordN` types now. In that case:
-
- * Choose `NatN` or `IntN` as needed (typically `NatN`).
-
- * For each use of `+`, `-`, `*` or `**`, decide whether you want to preserve
-   the wrapping behaviour, in which case you use `+%`, +`-%`, `*%` or `**%`, or
-   if you actually want the trapping behaviour of arithmetic on `NatN`/`IntN`.
-
- * For each use of `Word8.fromInt`, decide whether you want wrapping or
-   trapping behaviour. Use `fromNat`/`fromInt` or `fromIntWrap` accordingly.
-
- * Instead of `Char.fromWord32` and `Char.toWord32`, use `Char.fromNat32` and `Char.toNat32`.
-
- * For each use of `>>` or `+>>`, decide if the right-shift on `Nat` resp.
-   `Int` gives you the desired semantics. If not, convert to the other type
-   before shifting.
-
- * Use `blob.vals()` instead of `blob.bytes()`, to get a `Nat8`-iterator.
-
-====
-
-
 [[type-Blob]]
 === Type `Blob`
 
