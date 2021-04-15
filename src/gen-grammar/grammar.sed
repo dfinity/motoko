@@ -138,10 +138,3 @@ s/OR/\'or\'/g
 s/AND/\'and\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/
-/    '{' <list(<dec_var>, ';')> '}'/d
-s/    '{' <deprecated_exp_field_list_unamb> '}'/    '{' <list(<exp_field>, ';')> '}'/
-s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
-/    <deprecated_pat_opt>/d
-/^<deprecated_/,$d
-/<exp_field_nonvar>/,+2d
-s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/
