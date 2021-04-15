@@ -45,6 +45,30 @@ actor a {
     ignore(0/0);
   };
 
+
+  public func ping3(): async () {
+    throw (Prim.error("fail"));
+  };
+
+  // this observes how far the trap rolls back
+  public func bar3(): async () {
+    s := 1;
+    let f = ping3();
+    s := 2;
+    try { 
+      await f; 
+      assert false
+    } 
+    catch e { assert Prim.errorMessage e == "fail";};
+    s := 3; // this will not be rolled back!
+    try { 
+      await f; 
+      assert false
+    } catch e { assert Prim.errorMessage e == "fail";};
+    ignore(0/0);
+  };
+
+
   public func go() : async () {
     try {
       await bar0();
@@ -67,6 +91,12 @@ actor a {
       Prim.debugPrint(debug_show s);
     };
 
+    try {
+      await bar3();
+      Prim.debugPrint("Huh, bar2() replied?");
+    } catch _ {
+      Prim.debugPrint(debug_show s);
+    };
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
