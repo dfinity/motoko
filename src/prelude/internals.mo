@@ -352,7 +352,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
           @reset_cycles();
           @reset_refund();
           r(e) };
-	null
+	  null
       };
       case (? (#ok (r, t))) {
         ? (func () { @refund := r; k(t) });
@@ -396,4 +396,3 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
   });
   return canister_id_;
 };
-
