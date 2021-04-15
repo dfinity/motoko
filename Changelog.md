@@ -21,6 +21,8 @@
   This concludes the transition to the other fixed-width types that began with
   version 0.5.8
 
+* motoko-base: fixed bug in `Text.compareWith`.
+
 == 0.5.15 (2021-04-13)
 
 * Bugfix: `Blob.toArray` was broken.

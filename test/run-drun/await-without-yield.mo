@@ -6,7 +6,7 @@ actor a {
   public func ping(): async () {
   };
 
-  // this observes how far the trap rolls back
+ // this observes how far the trap rolls back
   public func bar(): async () {
     s := 1;
     let f = ping();
