@@ -93,7 +93,7 @@ actor a {
 
     try {
       await bar3();
-      Prim.debugPrint("Huh, bar2() replied?");
+      Prim.debugPrint("Huh, bar3() replied?");
     } catch _ {
       Prim.debugPrint(debug_show s);
     };
