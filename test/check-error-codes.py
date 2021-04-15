@@ -38,9 +38,6 @@ known_untested_codes = {
     "M0100", # hard to trigger (syntactic checks hit first)
     "M0108", # mode-specific
     "M0144", # bad import, but seems to be shadowed by non-static expression
-    # defunct codes:
-    "M0147",
-    "M0148",
     }
 
 def populate_error_codes():
