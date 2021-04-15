@@ -2,6 +2,7 @@ import Prim "mo:⛔";
 actor a {
 
   var s = 0;
+
   public func ping(): async () {
   };
 

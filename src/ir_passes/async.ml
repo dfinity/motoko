@@ -141,7 +141,7 @@ let letSeq ts e d_of_vs =
     (letP p e)::d_of_vs (xs)
 
 (* name e in f unless named already *)
-let letOpt e f =
+let ensureNamed e f =
   match e.it with
   | VarE v -> f (var v (typ e))
   | _ ->
@@ -236,7 +236,7 @@ let transform mode prog =
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
-      (letOpt (t_exp kr) (fun vkr ->
+      (ensureNamed (t_exp kr) (fun vkr ->
          let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
          (switch_optE ((t_exp a) -*- varE vkr)
             (unitE()) (* suspend *)
