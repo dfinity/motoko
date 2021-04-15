@@ -2,6 +2,7 @@ open Mo_def.Trivia
 
 type token =
   | EOF
+  | DISALLOWED
   | LET
   | VAR
   | LPAR
@@ -120,6 +121,7 @@ type token =
 let to_parser_token :
     token -> (Parser.token, line_feed trivia) result = function
   | EOF -> Ok Parser.EOF
+  | DISALLOWED -> Ok Parser.DISALLOWED
   | LET -> Ok Parser.LET
   | VAR -> Ok Parser.VAR
   | LPAR -> Ok Parser.LPAR
@@ -237,6 +239,7 @@ let to_parser_token :
 
 let string_of_parser_token = function
   | Parser.EOF -> "EOF"
+  | Parser.DISALLOWED -> "DISALLOWED"
   | Parser.LET -> "LET"
   | Parser.VAR -> "VAR"
   | Parser.LPAR -> "LPAR"

@@ -1,7 +1,21 @@
 # Motoko compiler changelog
 
-* **BREAKING CHANGE**
+* BREAKING CHANGE:
+  The old-style object and block syntax deprecated in 0.5.0 is finally removed.
 
+* Record punning: As already supported in patterns, short object syntax in
+  expressions now allows omitting the right-hand side if it is an identifier
+  of the same name as the label. That is,
+  ```
+  {a; b = 1; var c}
+  ```
+  is short for
+  ```
+  {a = a; b = 1; var c = c}
+  ```
+  assuming respective variables are in scope.
+
+* BREAKING CHANGE:
   The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
   This also removed the `blob.bytes()` iterator.
 

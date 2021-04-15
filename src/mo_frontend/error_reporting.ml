@@ -92,6 +92,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_DO -> DO
       | T_DIVOP -> DIVOP
       | T_DIVASSIGN -> DIVASSIGN
+      | T_DISALLOWED -> DISALLOWED
       | T_DEBUG_SHOW -> DEBUG_SHOW
       | T_DEBUG -> DEBUG
       | T_CONTINUE -> CONTINUE
