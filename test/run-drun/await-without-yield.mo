@@ -11,7 +11,7 @@ actor a {
     let f = ping();
     s := 2;
     await f;
-    s := 3; // this will be rolled back!
+    s := 3; // this will not be rolled back!
     await f;
     ignore(0/0);
   };
