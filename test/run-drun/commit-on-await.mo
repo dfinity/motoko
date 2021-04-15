@@ -55,14 +55,14 @@ actor a {
     s := 1;
     let f = ping3();
     s := 2;
-    try { 
-      await f; 
+    try {
+      await f;
       assert false
-    } 
+    }
     catch e { assert Prim.errorMessage e == "fail";};
     s := 3; // this will not be rolled back!
-    try { 
-      await f; 
+    try {
+      await f;
       assert false
     } catch e { assert Prim.errorMessage e == "fail";};
     ignore(0/0);
