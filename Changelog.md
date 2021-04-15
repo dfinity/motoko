@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+* BREAKING CHANGE (Minor):
+
+  * `await` on a completed future now also commits state and suspends
+    computation, to ensure every await, regardless of its future's state,
+	is a commit point for state changes and tentative message sends.
+
+	(Previously, only awaits on pending futures would force a commit
+    and suspend, while awaits on completed futures would continue
+    execution without an incremental commit, trading safety for speed.)
+
 * **BREAKING CHANGE**
 
   The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
