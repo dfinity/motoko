@@ -161,7 +161,7 @@ Otherwise the result is some error, and `await f` propagates the error to the
 consumer of `await f`.
 
 Awaiting a future a second time will just produce the same result, including re-throwing any error stored in the future.
-Suspension occurs even if the future is already complete, to ensure any state changes prior to the `await` are committed.
+Suspension occurs even if the future is already complete; this ensures state changes and message sends prior to _every_ `await` are committed.
 
 
 WARNING: A function that does not `await` in its body is guaranteed to
