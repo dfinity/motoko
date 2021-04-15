@@ -139,7 +139,7 @@ drunScriptWantFuzz :: Turtle.FilePath -> String -> PropertyM IO ()
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
-      testCase = "{ var str = \"\"; for (c in \""
+      testCase = "do { var str = \"\"; for (c in \""
                  <> s <> "\".chars()) { str #= Prim.charToText c }; assert (str == \"" <> s <> "\") }"
 
       s = concatMap escape str
