@@ -10,7 +10,7 @@ actor Atomicity {
   // an atomic method
   public func atomic() : async () {
     s := 1;
-    let _ = ping();
+    ignore ping();
     ignore 0/0; // trap!
   };
 
