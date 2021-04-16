@@ -25,6 +25,17 @@
   This concludes the transition to the other fixed-width types that began with
   version 0.5.8
 
+* BREAKING CHANGE (Minor):
+ `await` on a completed future now also commits state and suspends
+  computation, to ensure every await, regardless of its future's state,
+  is a commit point for state changes and tentative message sends.
+
+  (Previously, only awaits on pending futures would force a commit
+   and suspend, while awaits on completed futures would continue
+   execution without an incremental commit, trading safety for speed.)
+
+* motoko-base: fixed bug in `Text.compareWith`.
+
 == 0.5.15 (2021-04-13)
 
 * Bugfix: `Blob.toArray` was broken.
