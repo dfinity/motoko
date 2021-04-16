@@ -1,18 +1,24 @@
 # Motoko compiler changelog
 
+== 0.6.0 (2021-04-16)
+
 * BREAKING CHANGE:
   The old-style object and block syntax deprecated in 0.5.0 is finally removed.
 
 * Record punning: As already supported in patterns, short object syntax in
   expressions now allows omitting the right-hand side if it is an identifier
   of the same name as the label. That is,
-  ```
+
+  ```motoko
   {a; b = 1; var c}
   ```
+
   is short for
-  ```
+
+  ```motoko
   {a = a; b = 1; var c = c}
   ```
+
   assuming respective variables are in scope.
 
 * BREAKING CHANGE:
@@ -270,8 +276,8 @@
 
 * BREAKING CHANGE: Free-standing blocks are disallowed
 
-  Blocks are only allowed as sub-expressions of control flow expressions like `
-  if`, `loop`, `case`, etc. In all other places, braces are always considered
+  Blocks are only allowed as sub-expressions of control flow expressions like
+  `if`, `loop`, `case`, etc. In all other places, braces are always considered
   to start an object literal.
 
   To use blocks in other positions, the new `do <block>` expression can be
@@ -314,10 +320,10 @@
 * Improved error messages
 * Initial DWARF support
 * Candid compliance improvements:
-  - Strict checking of utf8 strings
-  - More liberal parsing of leb128-encoded numbers
+  * Strict checking of utf8 strings
+  * More liberal parsing of leb128-encoded numbers
 * New motoko-base:
-  - The Random library is added
+  * The Random library is added
 
 == 0.4.5 (2020-10-06)
 
