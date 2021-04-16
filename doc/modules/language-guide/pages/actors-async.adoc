@@ -190,9 +190,9 @@ interfere with its operation: each `await` suspends execution, allowing an inter
 to change the state of the actor.
 By design, the explicit ``await``s make the potential points of interference clear to the reader.
 
-== Traps and Commit points
+== Traps and Commit Points
 
-A trap is a non-recoverable runtime failure caused by division-by-zero,  out-of-bounds array indexing, numeric overflow or assert failure.
+A trap is a non-recoverable runtime failure caused by, for example, division-by-zero,  out-of-bounds array indexing, numeric overflow, cycle exhaustion or assertion failure.
 
 A shared function call that executes without executing an `await` expression
 never suspends and executes atomically.
