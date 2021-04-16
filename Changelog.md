@@ -1,15 +1,5 @@
 # Motoko compiler changelog
 
-* BREAKING CHANGE (Minor):
-
-  * `await` on a completed future now also commits state and suspends
-    computation, to ensure every await, regardless of its future's state,
-	is a commit point for state changes and tentative message sends.
-
-	(Previously, only awaits on pending futures would force a commit
-    and suspend, while awaits on completed futures would continue
-    execution without an incremental commit, trading safety for speed.)
-
 * BREAKING CHANGE:
   The old-style object and block syntax deprecated in 0.5.0 is finally removed.
 
@@ -34,6 +24,15 @@
 
   This concludes the transition to the other fixed-width types that began with
   version 0.5.8
+
+* BREAKING CHANGE (Minor):
+ `await` on a completed future now also commits state and suspends
+  computation, to ensure every await, regardless of its future's state,
+  is a commit point for state changes and tentative message sends.
+
+  (Previously, only awaits on pending futures would force a commit
+   and suspend, while awaits on completed futures would continue
+   execution without an incremental commit, trading safety for speed.)
 
 * motoko-base: fixed bug in `Text.compareWith`.
 
