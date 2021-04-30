@@ -366,26 +366,38 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
-let @ic00 = actor "aaaaa-aa" : actor {
-  create_canister : () -> async { canister_id : Principal };
-  install_code : {
-    mode : { #install; #reinstall; #upgrade };
-    canister_id : Principal;
-    wasm_module : Blob;
-    arg : Blob;
-    compute_allocation : ?Nat;
-    memory_allocation : ?Nat;
-  } -> async ()
+// Subset of IC management canister interface required for our use
+module @ManagementCanister = {
+  public type wasm_module = Blob;
+  public type canister_settings = {
+    controller : ?Principal;
+    compute_allocation: ?Nat;
+    memory_allocation: ?Nat;
+    freezing_threshold: ?Nat;
+  };
+  public type ic =
+   actor {
+     create_canister : {
+       settings : ?canister_settings
+     } -> async { canister_id : Principal };
+     install_code : {
+       mode : { #install; #reinstall; #upgrade };
+       canister_id : Principal;
+       wasm_module : wasm_module;
+       arg : Blob;
+     } -> async ()
+   }
 };
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let @ic00 = actor "aaaaa-aa" : @ManagementCanister.ic;
   let available = (prim "cyclesAvailable" : () -> Nat64) ();
   let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
   @cycles += accepted;
   let { canister_id = canister_id_ } =
-    await @ic00.create_canister();
+    await @ic00.create_canister({settings = null});
   await @ic00.install_code({
     mode = #install;
     canister_id = canister_id_;
