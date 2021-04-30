@@ -378,17 +378,17 @@ module @ManagementCanister = {
 };
 
 let @ic00 = actor "aaaaa-aa" :
-   actor {
-     create_canister : {
-       settings : ?@ManagementCanister.canister_settings
-     } -> async { canister_id : Principal };
-     install_code : {
-       mode : { #install; #reinstall; #upgrade };
-       canister_id : Principal;
-       wasm_module : @ManagementCanister.wasm_module;
-       arg : Blob;
-     } -> async ()
-   };
+  actor {
+    create_canister : {
+      settings : ?@ManagementCanister.canister_settings
+    } -> async { canister_id : Principal };
+    install_code : {
+      mode : { #install; #reinstall; #upgrade };
+      canister_id : Principal;
+      wasm_module : @ManagementCanister.wasm_module;
+      arg : Blob;
+    } -> async ()
+ };
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
