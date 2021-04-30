@@ -375,24 +375,24 @@ module @ManagementCanister = {
     memory_allocation: ?Nat;
     freezing_threshold: ?Nat;
   };
-  public type ic =
+};
+
+let @ic00 = actor "aaaaa-aa" :
    actor {
      create_canister : {
-       settings : ?canister_settings
+       settings : ?@ManagementCanister.canister_settings
      } -> async { canister_id : Principal };
      install_code : {
        mode : { #install; #reinstall; #upgrade };
        canister_id : Principal;
-       wasm_module : wasm_module;
+       wasm_module : @ManagementCanister.wasm_module;
        arg : Blob;
      } -> async ()
-   }
-};
+   };
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  let @ic00 = actor "aaaaa-aa" : @ManagementCanister.ic;
   let available = (prim "cyclesAvailable" : () -> Nat64) ();
   let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
   @cycles += accepted;
