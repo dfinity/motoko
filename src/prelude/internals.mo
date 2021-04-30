@@ -366,7 +366,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   (enqueue, fulfill, fail)
 };
 
-// subset of IC managment canister interface
+// Subset of IC management canister interface required for our use
 module @ManagementCanister = {
   public type wasm_module = Blob;
   public type canister_settings = {
@@ -389,11 +389,10 @@ module @ManagementCanister = {
    }
 };
 
-let @ic00 = actor "aaaaa-aa" : @ManagementCanister.ic;
-
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+  let @ic00 = actor "aaaaa-aa" : @ManagementCanister.ic;
   let available = (prim "cyclesAvailable" : () -> Nat64) ();
   let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
   @cycles += accepted;
