@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "f3e48f7b4f2c3ee66ac168748343e076d06cca7e",
+        "rev": "16f88d9e11f8d55249a9d0272f94457f03125bb2",
         "type": "git"
     },
     "esm": {
@@ -27,9 +27,9 @@
         "version": "3.2.25"
     },
     "ic-ref": {
-        "branch": "release-0.15",
+        "branch": "release-0.17",
         "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "0567b1c25c33564e238a5c3f473ea311b24e5e5d",
+        "rev": "0da8f01f0a4d6fce0a4f2c14ff767789311dbfa2",
         "type": "git"
     },
     "libtommath": {
