@@ -2,7 +2,7 @@
 
 == 0.6.1 (2021-04-30)
 
-* Internal: Update to IC interface spec 0.17 (breaking change to signature of `create_canister`)
+* Internal: Update to IC interface spec 0.17 (adapt to breaking change to signature of `create_canister`)
 
 == 0.6.0 (2021-04-16)
 
