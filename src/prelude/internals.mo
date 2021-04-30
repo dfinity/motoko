@@ -403,8 +403,6 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
     canister_id = canister_id_;
     wasm_module = wasm_module_;
     arg = arg_;
-    compute_allocation = null;
-    memory_allocation = null;
   });
   return canister_id_;
 };
