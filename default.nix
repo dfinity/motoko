@@ -18,17 +18,82 @@ let ic-ref = ic-ref-pkgs.ic-ref; in
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
+
 let
-  rtsBuildInputs = with nixpkgs; [
-    clang_10 # for native/wasm building
-    lld_10 # for wasm building
-    llvmPackages_10.bintools
-    rustc-nightly
-    cargo-nightly
-    xargo
-    wasmtime
-    rust-bindgen
-    rustfmt
+  rustc-custom = stdenv.mkDerivation rec {
+    name = "rustc-custom";
+    rev = "e327a823d8b64e294e490efeca7829f383aa119d";
+    src = nixpkgs.fetchgit {
+      url = "https://github.com/rust-lang/rust";
+      rev = "e327a823d8b64e294e490efeca7829f383aa119d";
+      sha256 = "1jw64zdf0ikvgnxn72rpbl548s5wzgbc47sx920944872651b7bl";
+    };
+
+    buildInputs = [
+      nixpkgs.llvm_10
+      nixpkgs.python3
+      nixpkgs.curl
+      nixpkgs.cacert
+      nixpkgs.cmake
+      nixpkgs.ninja
+      nixpkgs.libxml2
+      nixpkgs.openssl
+      nixpkgs.pkgconfig
+      # https://github.com/sfackler/rust-openssl/issues/948
+      nixpkgs.libiconv
+    ];
+
+    configurePhase = ''
+      echo -n "Using llvm-config version "
+      ${nixpkgs.llvm_10}/bin/llvm-config --version
+
+      {
+        echo 'changelog-seen = 2'
+
+        echo '[build]'
+        echo 'extended = true'
+        echo 'tools = ["cargo", "src"]'
+
+        echo '[target.x86_64-unknown-linux-gnu]'
+        echo 'llvm-config = "${nixpkgs.llvm_10}/bin/llvm-config"'
+
+        echo '[install]'
+        echo "prefix = \"$out\""
+        echo "sysconfdir = \"$out/etc\""
+      } > config.toml
+
+      echo "config.toml contents:"
+      echo "-------------------------------------------------------------------"
+      cat config.toml
+      echo "-------------------------------------------------------------------"
+    '';
+
+    buildPhase = ''
+      mkdir home
+      export HOME=$PWD/home
+      ./x.py build
+    '';
+
+    installPhase = ''
+      ./x.py install
+    '';
+  };
+in
+
+let
+  rtsBuildInputs = [
+    nixpkgs.clang_10 # for native/wasm building
+    nixpkgs.lld_10 # for wasm building
+    nixpkgs.llvmPackages_10.bintools
+    nixpkgs.wasmtime
+    nixpkgs.rust-bindgen
+
+    rustc-custom
+
+    # For some reason we can't build rustfmt component in the rustc-custom
+    # derivation above (probably a bug in the Rust repo) so we use the one from
+    # nixpkgs
+    nixpkgs.rustfmt
   ];
 
   llvmEnv = ''
@@ -152,7 +217,6 @@ rec {
       buildInputs = rtsBuildInputs;
 
       preBuild = ''
-        export XARGO_HOME=$PWD/xargo-home
         export CARGO_HOME=$PWD/cargo-home
 
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
@@ -414,7 +478,6 @@ rec {
   inherit (nixpkgs) wabt wasmtime wasm;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  inherit (nixpkgs) xargo;
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
