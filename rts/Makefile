@@ -201,11 +201,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 
 
 $(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
-	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Z build-std
+	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Z build-std=core
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
 $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
-	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Z build-std
+	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Z build-std=core
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
@@ -214,7 +214,7 @@ $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs)
 
 .PHONY: test
 test: $(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
-	cd motoko-rts-tests && cargo build --target=wasm32-wasi -Z build-std
+	cd motoko-rts-tests && cargo build --target=wasm32-wasi -Z build-std=core
 	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 #
