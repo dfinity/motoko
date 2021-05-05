@@ -1,7 +1,7 @@
+use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::rts_trap_with;
-use crate::tommath_bindings;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
@@ -305,75 +305,39 @@ pub struct FwdPtr {
 #[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
-    // The data following is the `mp_int` struct, except `dp` is a skewed pointer to a blob or 0 on
-    // initialization. When calling tommath functions we allocate a `mp_int` struct on stack with
-    // `with_mp_int_ptr` with `dp` pointing to the blob's payload, and update the `dp` field after
-    // the library function in case it reallocates (with `bigint::mp_realloc`) or initializes it
-    // (with `bigint::mp_calloc`).
-    pub mp_int_used: libc::c_int,
-    pub mp_int_alloc: libc::c_int,
-    pub mp_int_sign: libc::c_int,
-    // NULL or skewed pointer to a Blob
-    pub mp_int_dp: SkewedPtr,
+    /// The data following now must describe is the `mp_int` struct.
+    /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
+    /// the data within this object before it is used.
+    /// (NB: If we have a non-moving GC, we can make this an invaiant)
+    pub mp_int: mp_int,
+    // data follows ..
 }
 
 impl BigInt {
-    pub unsafe fn blob_field(self: *mut BigInt) -> *mut SkewedPtr {
-        &mut (*self).mp_int_dp
+    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
-    /// Allocates an immutable `mp_int` struct on stack, to be passed to tommath functions
-    pub unsafe fn with_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
-    where
-        F: FnMut(&tommath_bindings::mp_int) -> A,
-    {
-        let dp = (*self).mp_int_dp;
-
-        let mut mp_int = tommath_bindings::mp_int {
-            used: (*self).mp_int_used,
-            alloc: (*self).mp_int_alloc,
-            sign: (*self).mp_int_sign,
-            dp: if dp.0 == 0 {
-                core::ptr::null_mut()
-            } else {
-                ((*self).mp_int_dp.unskew() as *const Blob).add(1) as *mut _
-            },
-        };
-
-        f(&mut mp_int)
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
+        self.add(1) as *mut mp_digit // skip closure header
     }
 
-    /// Allocates a mutable `mp_int` struct on stack, to be passed to tommath functions
-    pub unsafe fn with_mut_mp_int_ptr<F, A>(self: *mut BigInt, mut f: F) -> A
-    where
-        F: FnMut(&mut tommath_bindings::mp_int) -> A,
-    {
-        let dp = (*self).mp_int_dp;
+    pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
+        (ptr as *mut u32).sub(size_of::<BigInt>().0 as usize) as *mut BigInt
+    }
 
-        let mut mp_int = tommath_bindings::mp_int {
-            used: (*self).mp_int_used,
-            alloc: (*self).mp_int_alloc,
-            sign: (*self).mp_int_sign,
-            dp: if dp.0 == 0 {
-                core::ptr::null_mut()
-            } else {
-                ((*self).mp_int_dp.unskew() as *const Blob).add(1) as *mut _
-            },
-        };
-
-        let ret = f(&mut mp_int);
-
-        // mp_int struct could be modified by the library, update heap value
-        (*self).mp_int_used = mp_int.used;
-        (*self).mp_int_alloc = mp_int.alloc;
-        (*self).mp_int_sign = mp_int.sign;
-        if !mp_int.dp.is_null() {
-            // We initialize the field as NULL in `bigint_alloc`, so if it's not NULL then it's
-            // changed and we update it
-            (*self).mp_int_dp = skew((mp_int.dp as *const Blob).sub(1) as usize);
-        }
-
-        ret
+    /// Returns pointer to the `mp_int` struct
+    ///
+    /// It fixes up the dp pointer. Instead of doing it here
+    /// this could be done on allocation and every object move.
+    ///
+    /// Note that this returns a `const` pointer. This is very nice, as together with the const
+    /// annotation on the libtommath API, this should prevent us from passing this pointer to a
+    /// libtommath function that tries to change it. For example, we cannot confuse input and
+    /// output parameters of mp_add() this way.
+    pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
+        (*self).mp_int.dp = self.payload_addr();
+        &(*self).mp_int
     }
 }
 
@@ -474,7 +438,10 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_BITS32 => size_of::<Bits32>(),
 
-        TAG_BIGINT => size_of::<BigInt>(),
+        TAG_BIGINT => {
+            let bigint = obj as *mut BigInt;
+            size_of::<BigInt>() + bigint.len().to_words()
+        }
 
         TAG_CONCAT => size_of::<Concat>(),
 

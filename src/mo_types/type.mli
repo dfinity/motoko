@@ -23,10 +23,6 @@ type prim =
   | Int16
   | Int32
   | Int64
-  | Word8
-  | Word16
-  | Word32
-  | Word64
   | Float
   | Char
   | Text
@@ -58,7 +54,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ}
+and field = {lab : lab; typ : typ; depr : string option}
 
 and con = kind Con.t
 and kind =
@@ -155,6 +151,9 @@ val arity : typ -> int
 val lookup_val_field : string -> field list -> typ
 val lookup_typ_field : string -> field list -> con
 
+val lookup_val_deprecation : string -> field list -> string option
+val lookup_typ_deprecation : string -> field list -> string option
+
 val compare_field : field -> field -> int
 
 
@@ -174,10 +173,6 @@ module S : Set.S with type elt = typ
 val normalize : typ -> typ
 val promote : typ -> typ
 
-exception Unavoidable of con
-val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
-val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
-
 val opaque : typ -> bool
 val concrete : typ -> bool
 val shared : typ -> bool
@@ -195,8 +190,6 @@ val span : typ -> int option
 
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
-
-
 
 (* Equivalence and Subtyping *)
 
@@ -239,6 +232,12 @@ val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 
 module type Pretty = sig
+  val pp_typ : Format.formatter -> typ -> unit
+  val pp_typ_expand : Format.formatter -> typ -> unit
+  val pps_of_kind : kind ->
+    string *
+    (Format.formatter -> unit -> unit) *
+    (Format.formatter -> unit -> unit)
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string

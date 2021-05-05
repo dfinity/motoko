@@ -45,11 +45,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
-   `push`
-   -------------
-   aka "list cons"
-   */
+  /// Documentation for `push`
   public func push<T>(x : T, l : List<T>) : List<T> =
     ?(x, l);
 
@@ -58,7 +54,7 @@ public type List<T> = ?(T, List<T>);
    ----------
    last element, optionally; tail recursive
    */
-  public func last<T>(l : List<T>) : ?T = {
+  public func last<T>(l : List<T>) : ?T {
     switch l {
     case null        { null };
     case (?(x,null)) { ?x };
@@ -71,7 +67,7 @@ public type List<T> = ?(T, List<T>);
    --------
    treat the list as a stack; combines the usual operations `head` and (non-failing) `tail` into one operation
    */
-  public func pop<T>(l : List<T>) : (?T, List<T>) = {
+  public func pop<T>(l : List<T>) : (?T, List<T>) {
     switch l {
     case null      { (null, null) };
     case (?(h, t)) { (?h, t) };
@@ -146,7 +142,7 @@ public type List<T> = ?(T, List<T>);
    ---------
    array-like list access, but in linear time; tail recursive
    */
-  public func nth<T>(l : List<T>, n : Nat) : ?T = {
+  public func nth<T>(l : List<T>, n : Nat) : ?T {
     switch (n, l) {
     case (_, null)     { null };
     case (0, (?(h,t))) { ?h };
@@ -159,7 +155,7 @@ public type List<T> = ?(T, List<T>);
    --------
    reverse the list; tail recursive
    */
-  public func rev<T>(l : List<T>) : List<T> = {
+  public func rev<T>(l : List<T>) : List<T> {
     func rec(l : List<T>, r : List<T>) : List<T> {
       switch l {
 	    case null     { r };
@@ -174,7 +170,7 @@ public type List<T> = ?(T, List<T>);
    ---------
    Called `app` in SML Basis, and `iter` in OCaml; tail recursive
    */
-  public func iter<T>(l : List<T>, f:T -> ()) : () = {
+  public func iter<T>(l : List<T>, f:T -> ()) : () {
     func rec(l : List<T>) : () {
       switch l {
 	    case null     { () };
@@ -191,7 +187,7 @@ public type List<T> = ?(T, List<T>);
 
    Note: need mutable Cons tails for tail-recursive map.
    */
-  public func map<T,S>(l : List<T>, f:T -> S) : List<S> = {
+  public func map<T,S>(l : List<T>, f:T -> S) : List<S> {
     func rec(l : List<T>) : List<S> {
       switch l {
 	    case null     { null };
@@ -206,7 +202,7 @@ public type List<T> = ?(T, List<T>);
    ----------
    filter the list elements; non-tail recursive
    */
-  public func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
+  public func filter<T>(l : List<T>, f:T -> Bool) : List<T> {
     func rec(l : List<T>) : List<T> {
       switch l {
 	    case null     { null };
@@ -221,7 +217,7 @@ public type List<T> = ?(T, List<T>);
    ----------
    split the list elements; non-tail recursive
    */
-  public func split<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
+  public func split<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) {
     func rec(l : List<T>) : (List<T>, List<T>) =
       label profile_list_split_rec : (List<T>, List<T>) {
       switch l {
@@ -239,7 +235,7 @@ public type List<T> = ?(T, List<T>);
    --------------
    map and filter the list elements; non-tail recursive
    */
-  public func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
+  public func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> {
     func rec(l : List<T>) : List<S> {
       switch l {
 	    case null     { null };
@@ -259,7 +255,7 @@ public type List<T> = ?(T, List<T>);
    ---------
    append two lists; non-tail recursive
    */
-  public func append<T>(l : List<T>, m : List<T>) : List<T> = {
+  public func append<T>(l : List<T>, m : List<T>) : List<T> {
     func rec(l : List<T>) : List<T> {
       switch l {
       case null     { m };
@@ -274,9 +270,9 @@ public type List<T> = ?(T, List<T>);
    -----------
    concat (aka "list join"); tail recursive, but requires "two passes"
    */
-  public func concat<T>(l : List<List<T>>) : List<T> = {
+  public func concat<T>(l : List<List<T>>) : List<T> {
     // 1/2: fold from left to right, reverse-appending the sublists...
-    let r =
+    let r = do
       { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
 	      foldLeft<List<T>, List<T>>(l, null, f)
       };
@@ -289,7 +285,7 @@ public type List<T> = ?(T, List<T>);
    -------------
    See SML Basis library; tail recursive
    */
-  public func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
+  public func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> {
     switch l1 {
     case null     { l2 };
     case (?(h,t)) { revAppend<T>(t, ?(h,l2)) };
@@ -302,7 +298,7 @@ public type List<T> = ?(T, List<T>);
    "take" `n` elements from the prefix of the given list.
    If the given list has fewer than `n` elements, we return the full input list.
    */
-  public func take<T>(l : List<T>, n:Nat) : List<T> = {
+  public func take<T>(l : List<T>, n:Nat) : List<T> {
     switch (l, n) {
     case (_, 0) { null };
     case (null,_) { null };
@@ -314,7 +310,7 @@ public type List<T> = ?(T, List<T>);
    `drop`
    ----------
    */
-  public func drop<T>(l : List<T>, n:Nat) : List<T> = {
+  public func drop<T>(l : List<T>, n:Nat) : List<T> {
     switch (l, n) {
     case (l_,     0) { l_ };
     case (null,   _) { null };
@@ -327,8 +323,8 @@ public type List<T> = ?(T, List<T>);
    ---------------
    fold list left-to-right using function `f`; tail recursive
    */
-  public func foldLeft<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
-    func rec(l:List<T>, a:S) : S = {
+  public func foldLeft<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S {
+    func rec(l:List<T>, a:S) : S {
       switch l {
       case null     { a };
       case (?(h,t)) { rec(t, f(h,a)) };
@@ -342,8 +338,8 @@ public type List<T> = ?(T, List<T>);
    ------------
    fold the list right-to-left using function `f`; non-tail recursive
    */
-  public func foldRight<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
-    func rec(l:List<T>) : S = {
+  public func foldRight<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S {
+    func rec(l:List<T>) : S {
       switch l {
       case null     { a };
       case (?(h,t)) { f(h, rec(t)) };
@@ -357,7 +353,7 @@ public type List<T> = ?(T, List<T>);
    -----------
    test if there exists list element for which given predicate is true
    */
-  public func find<T>(l: List<T>, f:T -> Bool) : ?T = {
+  public func find<T>(l: List<T>, f:T -> Bool) : ?T {
     func rec(l:List<T>) : ?T {
       switch l {
 	    case null     { null };
@@ -372,7 +368,7 @@ public type List<T> = ?(T, List<T>);
    ---------
    test if there exists list element for which given predicate is true
    */
-  public func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
+  public func exists<T>(l: List<T>, f:T -> Bool) : Bool {
     func rec(l:List<T>) : Bool {
       switch l {
 	    case null     { false };
@@ -389,7 +385,7 @@ public type List<T> = ?(T, List<T>);
    -------
    test if given predicate is true for all list elements
    */
-  public func all<T>(l: List<T>, f:T -> Bool) : Bool = {
+  public func all<T>(l: List<T>, f:T -> Bool) : Bool {
     func rec(l:List<T>) : Bool {
       switch l {
 	    case null     { true };

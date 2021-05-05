@@ -1,7 +1,0 @@
-empty
-() tested
-one
-"one" tested
-("one", "two")
-("one", "two")tested
-class-import/trap.mo:5.6-5.18: execution error, assertion failure

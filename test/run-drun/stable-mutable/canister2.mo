@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
 
   flexible let array = [var 0, 0, 0];

@@ -56,12 +56,12 @@ done
 
 shift $((OPTIND-1))
 
-failures=no
+failures=()
 
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
@@ -192,7 +192,7 @@ do
   if ! [ -r $file ]
   then
     echo "File $file does not exist."
-    failures=yes
+    failures+=("$file")
     continue
   fi
 
@@ -209,7 +209,7 @@ do
   else
     echo "Unknown file extension in $file"
     echo "Supported extensions: .mo .sh .wat .did .drun"
-    failures=yes
+    failures+=("$file")
     continue
   fi
 
@@ -348,7 +348,7 @@ do
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_cycles_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
             fi
           else
@@ -491,21 +491,22 @@ do
       fi
     done
   else
-    for file in $diff_files
+    for diff_file in $diff_files
     do
-      if [ -e $ok/$file.ok -o -e $out/$file ]
+      if [ -e $ok/$diff_file.ok -o -e $out/$diff_file ]
       then
-        diff -a -u -N --label "$file (expected)" $ok/$file.ok --label "$file (actual)" $out/$file
-        if [ $? != 0 ]; then failures=yes; fi
+        diff -a -u -N --label "$diff_file (expected)" $ok/$diff_file.ok --label "$diff_file (actual)" $out/$diff_file
+        if [ $? != 0 ]; then failures+=("$file");fi
       fi
     done
   fi
   popd >/dev/null
 done
 
-if [ $failures = yes ]
+if [ ${#failures[@]} -gt 0  ]
 then
-  echo "Some tests failed."
+  echo "Some tests failed:"
+  echo "${failures[@]}"
   exit 1
 else
   $ECHO "All tests passed."

@@ -11,10 +11,10 @@ let can_show t =
       seen := S.add t !seen;
       match normalize t with
       | Prim (Bool|Nat|Int|Text|Blob|Char|Null|Principal) -> true
-      | Prim (Nat8|Int8|Word8)
-      | Prim (Nat16|Int16|Word16)
-      | Prim (Nat32|Int32|Word32)
-      | Prim (Nat64|Int64|Word64) -> true
+      | Prim (Nat8|Int8)
+      | Prim (Nat16|Int16)
+      | Prim (Nat32|Int32)
+      | Prim (Nat64|Int64) -> true
       | Prim Float -> true
       | Tup ts' -> List.for_all go ts'
       | Opt t' -> go t'
@@ -24,6 +24,7 @@ let can_show t =
       | Variant cts ->
         List.for_all (fun f -> go f.typ) cts
       | Non -> true
+      | Typ _ -> true
       | _ -> false
     end
   in go t
@@ -38,21 +39,17 @@ let rec show_val t v =
   let t = T.normalize t in
   match t, v with
   | T.(Prim Bool), Value.Bool b -> if b then "true" else "false"
-  | T.(Prim Nat), Value.Int i -> Value.Int.to_string i
-  | T.(Prim Nat8), Value.Nat8 i -> Value.Nat8.to_string i
-  | T.(Prim Nat16), Value.Nat16 i -> Value.Nat16.to_string i
-  | T.(Prim Nat32), Value.Nat32 i -> Value.Nat32.to_string i
-  | T.(Prim Nat64), Value.Nat64 i -> Value.Nat64.to_string i
-  | T.(Prim Int), Value.Int i -> Value.Int.(sign (gt i zero) (to_string i))
-  | T.(Prim Int8), Value.Int8 i -> Value.Int_8.(sign (gt i zero) (to_string i))
-  | T.(Prim Int16), Value.Int16 i -> Value.Int_16.(sign (gt i zero) (to_string i))
-  | T.(Prim Int32), Value.Int32 i -> Value.Int_32.(sign (gt i zero) (to_string i))
-  | T.(Prim Int64), Value.Int64 i -> Value.Int_64.(sign (gt i zero) (to_string i))
-  | T.(Prim Word8), Value.Word8 i -> "0x" ^ Value.Word8.to_string i
-  | T.(Prim Word16), Value.Word16 i -> "0x" ^ Value.Word16.to_string i
-  | T.(Prim Word32), Value.Word32 i -> "0x" ^ Value.Word32.to_string i
-  | T.(Prim Word64), Value.Word64 i -> "0x" ^ Value.Word64.to_string i
-  | T.(Prim Float), Value.Float i -> Value.Float.to_string i
+  | T.(Prim Nat), Value.Int i -> Numerics.Int.to_string i
+  | T.(Prim Nat8), Value.Nat8 i -> Numerics.Nat8.to_string i
+  | T.(Prim Nat16), Value.Nat16 i -> Numerics.Nat16.to_string i
+  | T.(Prim Nat32), Value.Nat32 i -> Numerics.Nat32.to_string i
+  | T.(Prim Nat64), Value.Nat64 i -> Numerics.Nat64.to_string i
+  | T.(Prim Int), Value.Int i -> Numerics.Int.(sign (gt i zero) (to_string i))
+  | T.(Prim Int8), Value.Int8 i -> Numerics.Int_8.(sign (gt i zero) (to_string i))
+  | T.(Prim Int16), Value.Int16 i -> Numerics.Int_16.(sign (gt i zero) (to_string i))
+  | T.(Prim Int32), Value.Int32 i -> Numerics.Int_32.(sign (gt i zero) (to_string i))
+  | T.(Prim Int64), Value.Int64 i -> Numerics.Int_64.(sign (gt i zero) (to_string i))
+  | T.(Prim Float), Value.Float i -> Numerics.Float.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
   | T.(Prim Blob), Value.Blob s -> "\"" ^ Value.Blob.escape s ^ "\""
   | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"
@@ -72,7 +69,11 @@ let rec show_val t v =
     Printf.sprintf "[%s]"
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
   | T.Obj (_, fts), Value.Obj fs ->
-    Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
+    Printf.sprintf "{%s}"
+      (String.concat "; "
+         (List.filter_map (fun ft ->
+            if T.is_typ ft.T.typ then None else
+            Some (show_field fs ft)) fts))
   | T.Variant fs, Value.Variant (l, v) ->
     begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
     | Some {T.typ = T.Tup []; _} -> Printf.sprintf "#%s" l
@@ -81,7 +82,9 @@ let rec show_val t v =
     | _ -> assert false
     end
   | _ ->
-    Printf.eprintf "show_val: %s : %s\n" (Value.string_of_val 2 v) (T.string_of_typ t);
+    Format.eprintf "@[show_val: %a : %a@.@]"
+      (Value.pp_val 2) v
+      T.pp_typ t;
     assert false
 
 and show_field fs ft =

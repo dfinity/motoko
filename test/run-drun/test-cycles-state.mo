@@ -1,4 +1,4 @@
-import Prim = "mo:prim";
+import Prim = "mo:⛔";
 import Cycles = "cycles/cycles";
 import WalletLib = "cycles/wallet";
 
@@ -11,7 +11,10 @@ actor a {
  let print = Prim.debugPrint;
 
  public func go() : async () {
+  if (Cycles.balance() == (0 : Nat64))
+    await Cycles.provisional_top_up_actor(a, 3_000_000_000_000);
 
+  Cycles.add(2_000_000_000_000);
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");

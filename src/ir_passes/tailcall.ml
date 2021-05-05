@@ -100,7 +100,7 @@ and exp' env e  : exp' = match e.it with
                  info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
-      (blockE (assignEs temps (exp env e2)) (breakE label unitE)).it
+      (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
     | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
@@ -211,7 +211,7 @@ and dec' env d =
         in
         let l_typ = Type.unit in
         let body =
-          blockE (List.map2 (fun t i -> varD (id_of_var t) (typ_of_var i) (varE i)) temps ids) (
+          blockE (List.map2 (fun t i -> varD t (varE i)) temps ids) (
             loopE (
               labelE label l_typ (blockE
                 (List.map2 (fun a t -> letD (var_of_arg a) (immuteE (varE t))) as_ temps)

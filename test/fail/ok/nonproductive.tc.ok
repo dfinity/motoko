@@ -1,0 +1,11 @@
+nonproductive.mo:1.4-3.2: type error [M0157], block contains non-productive definition C
+nonproductive.mo:5.4-7.2: type error [M0157], block contains non-productive definition C
+nonproductive.mo:9.4-12.2: type error [M0157], block contains non-productive definitions C, D
+nonproductive.mo:14.4-17.2: type error [M0157], block contains non-productive definition D
+nonproductive.mo:25.4-30.2: type error [M0157], block contains non-productive definitions C, D, E
+nonproductive.mo:32.4-35.2: type error [M0157], block contains non-productive definition D
+nonproductive.mo:44.15-44.26: type error [M0045], wrong number of type arguments: expected 2 but got 3
+nonproductive.mo:50.6-52.4: type error [M0157], block contains non-productive definition D
+nonproductive.mo:65.17-65.28: type error [M0045], wrong number of type arguments: expected 2 but got 3
+nonproductive.mo:96.4-107.2: type error [M0157], block contains non-productive definitions C, D, E, F, G
+nonproductive.mo:110.18-110.28: type error [M0137], type D = A/10 references type parameter A/10 from an outer scope

@@ -65,7 +65,7 @@ val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
 val ignoreE : exp -> exp
 
-val unitE : exp
+val unitE : unit -> exp
 val boolE : bool -> exp
 val nullE : unit -> exp
 
@@ -89,8 +89,8 @@ val forE : pat -> exp -> exp -> exp
 val loopWhileE : exp -> exp -> exp
 val whileE : exp -> exp -> exp
 
-val falseE : exp
-val trueE : exp
+val falseE : unit -> exp
+val trueE : unit -> exp
 val notE : exp -> exp
 val andE : exp -> exp -> exp
 val orE : exp -> exp -> exp
@@ -100,13 +100,13 @@ val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
 val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
-val unreachableE : exp
+val unreachableE : unit -> exp
 
 (* Declarations *)
 
 val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
-val varD : id -> typ -> exp -> dec
+val varD : var -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var -> var list -> exp -> dec

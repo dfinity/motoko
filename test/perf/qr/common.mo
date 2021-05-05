@@ -2,7 +2,6 @@
  * Module     : common.mo
  * Copyright  : 2020 DFINITY Stiftung
  * License    : Apache 2.0 with LLVM Exception
- * Maintainer : Enzo Haussecker <enzo@dfinity.org>
  * Stability  : stable
  */
 
@@ -89,7 +88,7 @@ module {
     level : ErrorCorrection,
     table : [X]
   ) : X {
-    let i = Version.unbox(version) - 1;
+    let i : Nat = Version.unbox(version) - 1;
     let j = switch level {
       case (#L) 0;
       case (#M) 1;

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 /* test generic self-tail-recursion */
 
 let bound:Int = 100000;

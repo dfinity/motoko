@@ -10,7 +10,7 @@
 /// **NOTE:** Since cycles measure computational resources, the value of
 /// `balance()` can change from one call to the next.
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
 
   /// Returns the actor's current balance of cycles as `amount`.

@@ -1,6 +1,6 @@
 // actor references
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor a {
   public func go() : async () {

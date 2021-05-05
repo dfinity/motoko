@@ -112,15 +112,6 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
             push_mark_stack((*variant).field, heap_base);
         }
 
-        TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
-            let blob_ptr = *bigint.blob_field();
-            debug_assert!(
-                blob_ptr.is_tagged_scalar() || (blob_ptr.unskew() as *mut Obj).tag() == TAG_BLOB
-            );
-            push_mark_stack(blob_ptr, heap_base);
-        }
-
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             push_mark_stack(concat.text1(), heap_base);
@@ -132,7 +123,7 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
             push_mark_stack((*obj_ind).field, heap_base);
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't include pointers, skip
         }
 
@@ -248,12 +239,6 @@ unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
             thread(field_addr, heap_base);
         }
 
-        TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
-            let field_addr = bigint.blob_field();
-            thread(field_addr, heap_base);
-        }
-
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
@@ -268,7 +253,7 @@ unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
             thread(field_addr, heap_base);
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't have pointers, skip
         }
 

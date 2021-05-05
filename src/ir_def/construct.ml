@@ -187,7 +187,7 @@ let optE e =
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
    at = no_region;
  }
 
@@ -281,14 +281,14 @@ let ifE exp1 exp2 exp3 typ =
     }
   }
 
-let falseE = boolE false
-let trueE = boolE true
+let falseE () = boolE false
+let trueE () = boolE true
 let notE : Ir.exp -> Ir.exp = fun e ->
-  primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE]
-let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 falseE T.bool
-let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 trueE e2 T.bool
+  primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE ()]
+let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 (falseE ()) T.bool
+let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 (trueE ()) e2 T.bool
 let rec conjE : Ir.exp list -> Ir.exp = function
-  | [] -> trueE
+  | [] -> trueE ()
   | [x] -> x
   | (x::xs) -> andE x (conjE xs)
 
@@ -353,7 +353,7 @@ let tupE exps =
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
   }
 
-let unitE = tupE []
+let unitE () = tupE []
 
 let breakE l exp =
   { it = PrimE (BreakPrim l, [exp]);
@@ -417,8 +417,10 @@ let letP pat exp = LetD (pat, exp) @@ no_region
 
 let letD x exp = letP (varP x) exp
 
-let varD x t exp =
-  VarD (x, t, exp) @@ no_region
+let varD x exp =
+  let t = typ_of_var x in
+  assert (T.is_mut t);
+  VarD (id_of_var x, T.as_immut t, exp) @@ no_region
 
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in
@@ -620,7 +622,7 @@ let forE pat exp1 exp2 =
     )
   )
 
-let unreachableE =
+let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
-  loopE unitE
+  loopE (unitE ())
 

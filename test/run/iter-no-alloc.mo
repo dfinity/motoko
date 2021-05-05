@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 let iters = 10_000;
 
@@ -7,14 +7,14 @@ func iter<A>(what : Text, xs : [A]) {
   for (_ in xs.keys()) {};
   for (_ in xs.vals()) {};
   let after = Prim.rts_heap_size();
-  Prim.debugPrint("Allocation per iteration (" # what # "): " # debug_show ((after-before) / iters));
+  Prim.debugPrint("Allocation per iteration (" # what # "): " # debug_show ((after-before) / iters : Nat));
 };
 
 type FixOpt = ?FixOpt;
 
 iter("Nat", Prim.Array_tabulate<Nat>(iters,func x = x));
-iter("Word16", Prim.Array_tabulate<Word16>(iters,func x = Prim.natToWord16 x));
-iter("Word32", Prim.Array_tabulate<Word32>(iters,func x = Prim.natToWord32 x));
+iter("Nat16", Prim.Array_tabulate<Nat16>(iters,func x = Prim.natToNat16 x));
+iter("Nat32", Prim.Array_tabulate<Nat32>(iters,func x = Prim.natToNat32 x));
 iter("?Nat, all null", Prim.Array_tabulate<?Nat>(iters,func x = null));
 iter("FixOpt, all ?null", Prim.Array_tabulate<FixOpt>(iters,func x = ?null));
 iter("FixOpt, all ??null", Prim.Array_tabulate<FixOpt>(iters,func x = ??null));

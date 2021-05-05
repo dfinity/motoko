@@ -180,7 +180,7 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
       (* TBR: optimization - no need to name the last trivial argument *)
-      k -@- naryE (List.rev (e1 :: vs))
+      k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
       match eff e1 with
       | T.Triv ->
@@ -218,7 +218,7 @@ and c_loop context k e1 =
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (varE loop -*- unitE)
+      (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
@@ -414,7 +414,7 @@ and c_dec context dec (k:kont) =
 and c_decs context decs k =
   match decs with
   | [] ->
-    k -@- unitE
+    k -@- unitE ()
   | dec :: decs ->
     c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 
@@ -520,7 +520,7 @@ and t_comp_unit context = function
         let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
         let e = fresh_var "e" T.catch in
         ProgU [
-          funcD throw e (assertE falseE);
+          funcD throw e (assertE (falseE ()));
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end

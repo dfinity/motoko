@@ -618,7 +618,8 @@ let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : 
       em1.name with
       function_names = em1.name.function_names @ ns2.function_names;
       locals_names = em1.name.locals_names @ ns2.locals_names;
-    }
+      };
+    motoko = em1.motoko;
   }
 
 (* The main linking function *)
