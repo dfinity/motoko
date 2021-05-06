@@ -16,9 +16,6 @@ mod print;
 #[cfg(feature = "gc")]
 mod gc;
 
-#[cfg(feature = "gc")]
-mod mark_compact;
-
 #[cfg(debug_assertions)]
 pub mod debug;
 

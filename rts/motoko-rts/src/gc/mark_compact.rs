@@ -6,8 +6,24 @@ use crate::mem::memcpy_words;
 use crate::rts_trap_with;
 use crate::types::*;
 
-#[no_mangle]
-pub(crate) unsafe extern "C" fn mark_compact(
+use super::{
+    closure_table_loc, get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP,
+};
+
+pub(crate) unsafe fn collect() {
+    let old_hp = HP;
+    let heap_base = get_heap_base();
+
+    mark_compact(heap_base, old_hp, get_static_roots(), closure_table_loc());
+
+    let reclaimed = old_hp - HP;
+    note_reclaimed(Bytes(reclaimed));
+
+    let new_live_size = HP - heap_base;
+    note_live_size(Bytes(new_live_size));
+}
+
+unsafe fn mark_compact(
     heap_base: u32,
     heap_end: u32,
     static_roots: SkewedPtr,

@@ -8,8 +8,8 @@ mod alloc_impl;
 
 pub use alloc_impl::alloc_words;
 
-// #[cfg(feature = "gc")]
-// pub(crate) use alloc_impl::grow_memory;
+#[cfg(feature = "gc")]
+pub(crate) use alloc_impl::grow_memory;
 
 use crate::rts_trap_with;
 use crate::types::{size_of, Array, Blob, Bytes, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB};
