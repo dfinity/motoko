@@ -29,8 +29,9 @@ fn main() {
         text::test();
         leb128::test();
         bitmap::test();
-        // Mark stack tests only work with Wasm allocator, so disabled for now until we implement a
-        // way to run tests on Wasm
+        // Mark stack requires that nothing will be allocated since the mark stack allocation until
+        // we're done with it, which is difficult to guarantee in a test environment as the test
+        // code can allocate stuff.
         // mark_stack::test();
     }
 }
