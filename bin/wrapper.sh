@@ -18,7 +18,7 @@ declare -A envs # list of expected environment variables with paths to products
 # Define build products here
 real[moc]=src/moc
 hint[moc]="make -C $rel_root/src moc"
-envs[moc]="MOC_RTS MOC_DEBUG_RTS"
+envs[moc]="MOC_RTS_COPYING_GC MOC_RTS_COMPACTING_GC MOC_DEBUG_RTS_COPYING_GC MOC_DEBUG_RTS_COMPACTING_GC"
 real[mo-ld]=src/mo-ld
 hint[mo-ld]="make -C $rel_root/src mo-ld"
 real[didc]=src/didc
@@ -28,11 +28,17 @@ hint[deser]="make -C $rel_root/src deser"
 real[candid-tests]=src/candid-tests
 hint[candid-tests]="make -C $rel_root/src candid-tests"
 
-real[MOC_RTS]=rts/mo-rts.wasm
-hint[MOC_RTS]="make -C $rel_root/rts"
+real[MOC_RTS_COPYING_GC]=rts/mo-rts-copying-gc.wasm
+hint[MOC_RTS_COPYING_GC]="make -C $rel_root/rts"
 
-real[MOC_DEBUG_RTS]=rts/mo-rts-debug.wasm
-hint[MOC_DEBUG_RTS]="make -C $rel_root/rts"
+real[MOC_DEBUG_RTS_COPYING_GC]=rts/mo-rts-copying-gc-debug.wasm
+hint[MOC_DEBUG_RTS_COPYING_GC]="make -C $rel_root/rts"
+
+real[MOC_RTS_COMPACTING_GC]=rts/mo-rts-compacting-gc.wasm
+hint[MOC_RTS_COMPACTING_GC]="make -C $rel_root/rts"
+
+real[MOC_DEBUG_RTS_COMPACTING_GC]=rts/mo-rts-compacting-gc-debug.wasm
+hint[MOC_DEBUG_RTS_COMPACTING_GC]="make -C $rel_root/rts"
 
 # This is the command we want to run
 exe=$(basename "$0")

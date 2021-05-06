@@ -1,14 +1,13 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
+use crate::closure_table::closure_table_loc;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::rts_trap_with;
 use crate::types::*;
 
-use super::{
-    closure_table_loc, get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP,
-};
+use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP};
 
 pub(crate) unsafe fn collect() {
     let old_hp = HP;

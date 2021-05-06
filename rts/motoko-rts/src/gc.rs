@@ -1,7 +1,9 @@
+#[cfg(not(feature = "compacting_gc"))]
 mod copying;
+
+#[cfg(feature = "compacting_gc")]
 mod mark_compact;
 
-use crate::closure_table::closure_table_loc;
 use crate::types::*;
 
 extern "C" {
@@ -61,6 +63,9 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
+    #[cfg(feature = "compacting_gc")]
     mark_compact::collect();
-    // copying::collect();
+
+    #[cfg(not(feature = "compacting_gc"))]
+    copying::collect();
 }

@@ -19,6 +19,7 @@ let load_file env =
     Printf.eprintf "Environment variable MOC_DEBUG_RTS not set. Please run moc via the bin/moc wrapper (which should be in your PATH in the nix-shell).";
     exit 1
 
-let wasm : string Lazy.t = lazy (load_file "MOC_RTS")
-
-let wasm_debug : string Lazy.t = lazy (load_file "MOC_DEBUG_RTS")
+let copying_gc_wasm : string Lazy.t = lazy (load_file "MOC_RTS_COPYING_GC")
+let copying_gc_debug_wasm : string Lazy.t = lazy (load_file "MOC_DEBUG_RTS_COPYING_GC")
+let compacting_gc_wasm : string Lazy.t = lazy (load_file "MOC_RTS_COMPACTING_GC")
+let compacting_gc_debug_wasm : string Lazy.t = lazy (load_file "MOC_DEBUG_RTS_COMPACTING_GC")
