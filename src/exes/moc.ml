@@ -100,7 +100,12 @@ let argspec = Arg.align [
   Arg.Unit
     (fun () -> Flags.sanity := true),
   " enable sanity checking in the RTS and generated code";
+
+  "--compacting-gc",
+  Arg.Unit (fun () -> Flags.compacting_gc := true),
+  " link with compacting GC instead of copying GC";
     ]
+
   @  Args.inclusion_args
 
 
