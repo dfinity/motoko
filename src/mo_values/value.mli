@@ -32,10 +32,6 @@ and value =
   | Nat16 of Nat16.t
   | Nat32 of Nat32.t
   | Nat64 of Nat64.t
-  | Word8 of Word8.t
-  | Word16 of Word16.t
-  | Word32 of Word32.t
-  | Word64 of Word64.t
   | Float of Float.t
   | Char of unicode
   | Text of string
@@ -86,10 +82,6 @@ val as_nat8 : value -> Nat8.t
 val as_nat16 : value -> Nat16.t
 val as_nat32 : value -> Nat32.t
 val as_nat64 : value -> Nat64.t
-val as_word8 : value -> Word8.t
-val as_word16 : value -> Word16.t
-val as_word32 : value -> Word32.t
-val as_word64 : value -> Word64.t
 val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string

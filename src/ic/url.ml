@@ -56,11 +56,11 @@ let parse (f: string) : (parsed, string) result =
   | Some suffix ->
     begin match Stdlib.String.index_opt suffix '/' with
     | None ->
-      if suffix = "prim"
+      if suffix = "prim" || suffix = "⛔"
       then Ok Prim
       else Ok (Package (suffix, ""))
     | Some i ->
-      if suffix = "prim"
+      if suffix = "prim" || suffix = "⛔"
       then Error "The prim package has no modules"
       else
         let pkg = Stdlib.String.sub suffix 0 i in

@@ -566,6 +566,9 @@ let async_lowering mode =
 let tailcall_optimization =
   transform_if "Tailcall optimization" Tailcall.transform
 
+let typ_field_translation =
+  transform_if "Erase type components" Erase_typ_field.transform
+
 let show_translation =
   transform_if "Translate show" Show.transform
 
@@ -579,6 +582,8 @@ let analyze analysis_name analysis prog name =
   then Check_ir.check_prog !Flags.verbose analysis_name prog
 
 let ir_passes mode prog_ir name =
+  (* erase typ components from objects *)
+  let prog_ir = typ_field_translation true prog_ir name in
   (* translations that extend the progam and must be done before await/cps conversion *)
   let prog_ir = show_translation true prog_ir name in
   let prog_ir = eq_translation true prog_ir name in

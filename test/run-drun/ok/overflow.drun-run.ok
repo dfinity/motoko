@@ -6,4 +6,8 @@ debug.print: ok 3
 debug.print: ok 4
 debug.print: ok 5
 debug.print: ok 6
+debug.print: ok 7
+debug.print: ok 8
+debug.print: ok 9
+debug.print: ok 10
 ingress Completed: Reply: 0x4449444c0000

@@ -137,18 +137,6 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Int64) ->
     define_show t (invoke_prelude_show "@text_of_Int64" t (argE t)),
     []
-  | T.(Prim Word8) ->
-    define_show t (invoke_prelude_show "@text_of_Word8" t (argE t)),
-    []
-  | T.(Prim Word16) ->
-    define_show t (invoke_prelude_show "@text_of_Word16" t (argE t)),
-    []
-  | T.(Prim Word32) ->
-    define_show t (invoke_prelude_show "@text_of_Word32" t (argE t)),
-    []
-  | T.(Prim Word64) ->
-    define_show t (invoke_prelude_show "@text_of_Word64" t (argE t)),
-    []
   | T.(Prim Float) ->
     define_show t (invoke_prelude_show "@text_of_Float" t (argE t)),
     []
@@ -351,4 +339,5 @@ and t_comp_unit = function
 (* Entry point for the program transformation *)
 
 let transform (cu, flavor) =
+  assert (not flavor.has_typ_field); (* required for hash_typ *)
   (t_comp_unit cu, {flavor with has_show = false})

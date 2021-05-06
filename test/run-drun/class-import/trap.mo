@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 shared actor class Trap(trap : Bool) {
 
    if trap { // conditionally generate a trap on install

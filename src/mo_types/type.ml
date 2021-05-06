@@ -31,10 +31,6 @@ type prim =
   | Int16
   | Int32
   | Int64
-  | Word8
-  | Word16
-  | Word32
-  | Word64
   | Float
   | Char
   | Text
@@ -143,10 +139,6 @@ let prim = function
   | "Int16" -> Int16
   | "Int32" -> Int32
   | "Int64" -> Int64
-  | "Word8" -> Word8
-  | "Word16" -> Word16
-  | "Word32" -> Word32
-  | "Word64" -> Word64
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
@@ -479,9 +471,9 @@ let rec span = function
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
   | Prim (Nat | Int | Float | Text | Blob | Error | Principal) -> None
-  | Prim (Nat8 | Int8 | Word8) -> Some 0x100
-  | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
-  | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
+  | Prim (Nat8 | Int8) -> Some 0x100
+  | Prim (Nat16 | Int16) -> Some 0x10000
+  | Prim (Nat32 | Int32 | Nat64 | Int64 | Char) -> None  (* for all practical purposes *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Variant fs -> Some (List.length fs)
   | Array _ | Func _ | Any -> None
@@ -556,7 +548,8 @@ let concrete t =
         let ts = open_binds tbs in
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
-      | Typ c -> assert false (* TBR *)
+      | Typ c -> (* assumes type defs are closed *)
+        true (* so we can transmit actors with typ fields *)
     end
   in go t
 
@@ -631,6 +624,7 @@ let is_shared_func t =
 
 let shared t = serializable false t
 let stable t = serializable true t
+
 
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
@@ -1087,10 +1081,6 @@ let string_of_prim = function
   | Int32 -> "Int32"
   | Int64 -> "Int64"
   | Float -> "Float"
-  | Word8 -> "Word8"
-  | Word16 -> "Word16"
-  | Word32 -> "Word32"
-  | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
   | Blob -> "Blob"
@@ -1226,7 +1216,7 @@ and can_omit n t =
         List.for_all (fun tb -> (go i' tb.bound)) tbs &&
         List.for_all (go i') ts1  &&
         List.for_all (go i') ts2
-      | Typ c -> true (* assuming type defs are closed *)
+      | Typ c -> true (* assumes type defs are closed *)
     end
   in go n t
 
@@ -1381,7 +1371,8 @@ module type Pretty = sig
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+      (Format.formatter -> unit -> unit)
+
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string

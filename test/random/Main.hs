@@ -111,7 +111,7 @@ encodingProps = testGroup "Encoding" $
 
 
 withPrim :: Line -> Line
-withPrim = (fromString "import Prim \"mo:prim\";" <>)
+withPrim = (fromString "import Prim \"mo:⛔\";" <>)
 
 runner :: Embedder -> ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
 runner embedder reqOutcome relevant name testCase =
@@ -139,7 +139,7 @@ drunScriptWantFuzz :: Turtle.FilePath -> String -> PropertyM IO ()
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
-      testCase = "{ var str = \"\"; for (c in \""
+      testCase = "do { var str = \"\"; for (c in \""
                  <> s <> "\".chars()) { str #= Prim.charToText c }; assert (str == \"" <> s <> "\") }"
 
       s = concatMap escape str

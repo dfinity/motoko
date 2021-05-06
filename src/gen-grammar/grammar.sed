@@ -43,8 +43,8 @@ s/XOROP/\'^\'/g
 s/XORASSIGN/\'^=\'/g
 s/WHILE/\'while\'/g
 s/VAR/\'var\'/g
-s/USHROP/\' >>\'/g
-s/USHRASSIGN/\'>>=\'/g
+s/SHROP/\' >>\'/g
+s/SHRASSIGN/\'>>=\'/g
 s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
 s/TRY/\'try\'/g
@@ -54,8 +54,6 @@ s/SWITCH/\'switch\'/g
 s/SUBOP/\'-\'/g
 s/SUB/\'<:\'/g
 s/STABLE/\'stable\'/g
-s/SSHROP/\'+>>\'/g
-s/SSHRASSIGN/\'+>>=\'/g
 s/SHLOP/\'<<\'/g
 s/SHLASSIGN/\'<<=\'/g
 s/SHARED/\'shared\'/g
@@ -140,10 +138,3 @@ s/OR/\'or\'/g
 s/AND/\'and\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/
-/    '{' <list(<dec_var>, ';')> '}'/d
-s/    '{' <deprecated_exp_field_list_unamb> '}'/    '{' <list(<exp_field>, ';')> '}'/
-s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
-/    <deprecated_pat_opt>/d
-/^<deprecated_/,$d
-/<exp_field_nonvar>/,+2d
-s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/

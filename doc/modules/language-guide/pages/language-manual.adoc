@@ -290,7 +290,6 @@ Equality and inequality are structural and based on the observable content of th
 | `^`   | B | exclusive or
 | `<<`  | B | shift left
 | `␣>>` | B | shift right *(must be preceded by whitespace)*
-| `+>>` | B | signed shift right (only on `Word`-types)
 | `<<>` | B | rotate left
 | `<>>` | B | rotate right
 
@@ -327,7 +326,6 @@ Equality and inequality are structural and based on the observable content of th
 | `^=`   | B | in place exclusive or
 | `<\<=`  | B | in place shift left
 | `>>=`  | B | in place shift right
-| `+>>=` | B | in place signed shift right (only on `Word`-types)
 | `<<>=` | B | in place rotate left
 | `<>>=` | B | in place rotate right
 | `+%=`   | B | in place add (wrap-on-overflow)
@@ -579,9 +577,8 @@ The syntax of a _pattern_ is as follows:
   <pat> or <pat>                                 disjunctive pattern
 
 <pat-field> ::=                                object pattern fields
-  <id> = <pat>                                   field
-  <id>                                           punned field
-  <id> : <typ>                                   typed punned field
+  <id> (: <typ>) = <pat>                         field
+  <id> (: <typ>)                                 punned field
 ```
 
 
@@ -644,10 +641,6 @@ The category of a type determines the operators (unary, binary, relational and i
 | `Nat16`  | A, O | non-negative 16-bit integer values with checked arithmetic
 | `Nat32`  | A, O | non-negative 32-bit integer values with checked arithmetic
 | `Nat64`  | A, O | non-negative 64-bit integer values with checked arithmetic
-| `Word8` | A, B, O | unsigned 8-bit integers with bitwise operations
-| `Word16` | A, B, O | unsigned 16-bit integers with bitwise operations
-| `Word32` | A, B, O | unsigned 32-bit integers with bitwise operations
-| `Word64` | A, B, O | unsigned 64-bit integers with bitwise operations
 | `Blob` | O | binary blobs with iterators
 | `Principal` | O | principals
 | `Error` | | (opaque) error values
@@ -664,7 +657,7 @@ The type `Bool` of category L (Logical) has values `true` and `false` and is sup
 === Type `Char`
 
 A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
-set. Characters can be converted to `Word32`, and `Word32`s in the
+set. Characters can be converted to `Nat32`, and `Nat32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
 if outside of this range). With `charToText` a character can be
 converted into a text of length 1.
@@ -714,7 +707,7 @@ As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
 left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
 The right-shift preserves the two's-complement sign.
-All shift and rotate amounts are considered modulo the word's width *n*.
+All shift and rotate amounts are considered modulo the numbers's bit width *n*.
 
 Bounded integer types are not in subtype relationship with each other or with
 other arithmetic types, and their literals need type annotation if
@@ -740,69 +733,11 @@ As bitwise types, these types support bitwise operations *and* `(&)`,
 *or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
 left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
 The right-shift is logical.
-All shift and rotate amounts are considered modulo the word's width *n*.
+All shift and rotate amounts are considered modulo the number's bit width *n*.
 
 The corresponding module in the base library provides conversion functions:
 Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
 conversion to the bounded natural type of the same size.
-
-[[word-types]]
-=== Word types
-
-The types `Word8`, `Word16`, `Word32` and `Word64` represent
-fixed-width bit patterns of width *n* (8, 16, 32 and 64).
-All word types have categories A (Arithmetic), B (Bitwise) and  O (Ordered).
-As arithmetic types, word types implementing numeric wrap-around
-(modulo *2^n*).
-As bitwise types, word types support bitwise operations *and* `(&)`,
-*or* `(|)` and *exclusive-or* `(^)`. Further, words can be rotated
-left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`,
-as well as right with two's-complement sign preserved `(+>>)`.
-All shift and rotate amounts are considered modulo the word's width
-*n*.
-
-Conversions to `Int` and `Nat`, named `word`*n*`ToInt` and
-`word`*n*`ToNat`, are exact and expose the word's bit-pattern as
-two's complement values, resp. natural numbers. Reverse conversions,
-named `intToWord`*n* and `natToWord`*n* are potentially lossy, but the
-round-trip property holds modulo *2^n*. The former choose the
-two's-complement representation for negative integers.
-
-Word types are not in subtype relationship with each other or with
-other arithmetic types, and their literals need type annotation, e.g.
-`(-42 : Word16)`. For negative literals the two's-complement
-representation is applied.
-
-[IMPORTANT]
-====
-The `WordN` types will be deprecated in favor of the `NatN` and `IntN` types. This happens in two phases:
-
-1. First, the wrapping arithmetic operations on word types (`+`, `-`, `*` or `**`) are deprecated, and the explicitly wrapping variants should be used (`+%`, +`-%`, `*%` and `**%`).
-
-2. In the next phase, the `Word` types themselves are removed.
-
-Developers can choose to follow these phases, and be guided by the deprecation
-warnings, or can migrate away from using the `WordN` types now. In that case:
-
- * Choose `NatN` or `IntN` as needed (typically `NatN`).
-
- * For each use of `+`, `-`, `*` or `**`, decide whether you want to preserve
-   the wrapping behaviour, in which case you use `+%`, +`-%`, `*%` or `**%`, or
-   if you actually want the trapping behaviour of arithmetic on `NatN`/`IntN`.
-
- * For each use of `Word8.fromInt`, decide whether you want wrapping or
-   trapping behaviour. Use `fromNat`/`fromInt` or `fromIntWrap` accordingly.
-
- * Instead of `Char.fromWord32` and `Char.toWord32`, use `Char.fromNat32` and `Char.toNat32`.
-
- * For each use of `>>` or `+>>`, decide if the right-shift on `Nat` resp.
-   `Int` gives you the desired semantics. If not, convert to the other type
-   before shifting.
-
- * Use `blob.vals()` instead of `blob.bytes()`, to get a `Nat8`-iterator.
-
-====
-
 
 [[type-Blob]]
 === Type `Blob`
@@ -928,7 +863,7 @@ The optional `<shared>` qualifier specifies whether the function value is shared
 [[async-types]]
 === Async types
 
-`async <typ>` specifies a future producing a value of a type `<typ>`.
+`async <typ>` specifies a future producing a value of type `<typ>`.
 
 Future types typically appear as the result type of a `shared` function that produces an `await`-able value.
 
@@ -1799,10 +1734,16 @@ The tag and contents of a variant value can be tested and accessed using a <<pat
 Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list of expression fields:
 
 ```bnf
-<exp-field> ::= var? <id> = <exp>
+<exp-field> ::=                                object expression fields
+  var? <id> (: <typ>) = <exp>                    field
+  var? <id> (: <typ>)                             punned field
 ```
 Such an object literal, sometimes called a *record*, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
 However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
+
+Object expressions support _punning_ for concision.
+A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ> ` is short-hand for `<id> = <id> : <typ>`. Both
+associate the field named `<id>` with the value of the identifier `<id>`.
 
 [[exp-proj]]
 === Object projection (member access)
@@ -1832,7 +1773,6 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 | `Text` | `chars` | `{ next: () -> Char? }` | character iterator, first to last
 | | | |
 | `Blob` | `size` | `Nat` | size in bytes
-| `Blob` | `bytes` | `{ next: () -> Word8? }` | byte iterator, first to last
 | `Blob` | `vals` | `{ next: () -> Nat8? }` | byte iterator, first to last
 | | | |
 | `[var? T]` | `size` | `Nat` | number of elements
@@ -1847,7 +1787,7 @@ If `r` is `trap`, then the result is `trap`.
 Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T`
 whose semantics is given by the Description column of the previous table.
 
-NOTE: the `chars`, `bytes`, `vals`, `keys` and `vals` members
+NOTE: the `chars`, `vals`, `keys` and `vals` members
 produce stateful *iterator objects* than can be
 consumed by `for` expressions (see <<exp-for>>).
 
@@ -1994,31 +1934,34 @@ The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in se
 [[exp-do]]
 === Do
 
-The expression `do <block>` allows placing a block in positions where the syntax does not otherwise allow it.
-It has type `T` provided `<block>` has type `T`.
+The do expression `do <block>` allows the use of a block as an expression, in positions where the syntax would not directly allow a block.
 
-A `do` expression evaluates by evaluating `<block>` and returning its result.
+The expression `do <block>` has type `T` provided `<block>` has type `T`.
+
+The `do` expression evaluates by evaluating `<block>` and returning its result.
 
 [[exp-do-opt]]
 === Option block
 
 The option block `do ? <block>` introduces scoped handling of null values.
-It has type `?T` provided `<block>` has type `T`.
+
+The expression `do ? <bock>` has type `?T` provided `<block>` has type `T`.
 
 The `do ? <block>` expression evaluates `<block>` and returns its result as an optional value.
 
 Within `<block>` the null break expression `<exp1> !` exits the nearest enclosing `do ?` block with value `null` whenever `<exp1>` has value `null`, or continues evaluation with the
-contents of `<exp1>`'s option value. (See <<exp-null-break>>.)
+contents of ``<exp1>``'s option value. (See <<exp-null-break>>.)
 
 Option blocks nest with the target of a null break determined by the nearest enclosing option block.
 
-[[exp-null-break]
+[[exp-null-break]]
 === Null break
 
 The null break expression `<exp> !` invokes scoped handling of null values and
 returns the contents of an option value or changes control-flow when the value is `null`.
 
 It has type `T` provided:
+
 * the expression appears in the body, `<block>`, of an enclosing option block of the form `do ? <block>` (see <<exp-do-opt>>).
 * `<exp>` has option type `? T`.
 
@@ -2239,9 +2182,16 @@ The `await` expression `await <exp>` has type `T` provided:
 * `T` is shared,
 * the `await` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a future. If the future is complete with value `v`, then `await <exp>` evaluates to value `v`.
-If the future is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
+// Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a future. If the future is complete with value `v`, then `await <exp>` evaluates to value `v`.
+// If the future is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
+// If the `future` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed (if ever).
+
+Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a future.
 If the `future` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed (if ever).
+If the future is complete with value `v`, then `await <exp>` suspends evaluation and schedules resumption of execution with value `v`.
+If the future is complete with (thrown) error value `e`, then `await <exp>` suspends evaluation and schedules resumption of execution by re-throwing the error `e`.
+
+Note: suspending computation on `await`, regardless of the dynamic status of the future, ensures that all tentative state changes and message sends prior to the `await` are committed and irrevocable.
 
 WARNING: between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 

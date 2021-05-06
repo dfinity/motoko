@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
   // top-level tuple
   public query func len2(x:Text, y:Text) : async (Int,Int) {

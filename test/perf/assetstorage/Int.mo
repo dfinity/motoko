@@ -3,7 +3,7 @@
 /// Most operations on integers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).
 /// This module provides equivalent functions and `Text` conversion.
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Prelude "Prelude";
 import Hash "Hash";
 
@@ -51,30 +51,6 @@ module {
   /// Returns the maximum of `x` and `y`.
   public func max(x : Int, y : Int) : Int {
     if (x < y) { y } else { x };
-  };
-
-  // TODO: (re)move me?
-  public func hash(i : Int) : Hash.Hash {
-    let j = Prim.intToWord32(i);
-    Hash.hashWord8(
-      [j & (255 << 0),
-       j & (255 << 8),
-       j & (255 << 16),
-       j & (255 << 24)
-      ]);
-  };
-
-  // TODO: (re)move me?
-  /// WARNING: May go away (?)
-  public func hashAcc(h1 : Hash.Hash, i : Int) : Hash.Hash {
-    let j = Prim.intToWord32(i);
-    Hash.hashWord8(
-      [h1,
-       j & (255 << 0),
-       j & (255 << 8),
-       j & (255 << 16),
-       j & (255 << 24)
-      ]);
   };
 
   /// Returns `x == y`.

@@ -69,13 +69,6 @@ let pick_int (type t) (module Num : Numerics.NumType with type t = t) to_val vs 
   done;
   Val (to_val !x)
 
-let pick_word (type t) (module Num : Numerics.NumType with type t = t) to_val vs =
-  let x = ref Num.zero in
-  while ValSet.mem (to_val !x) vs do
-    x := Num.add (Num.of_int 1) !x
-  done;
-  Val (to_val !x)
-
 let pick_char vs =
   let x = ref 0 in
   while ValSet.mem (V.Char !x) vs do
@@ -96,10 +89,6 @@ let pick_val vs = function
   | T.Int16 -> pick_int (module Numerics.Int_16) (fun x -> V.Int16 x) vs
   | T.Int32 -> pick_int (module Numerics.Int_32) (fun x -> V.Int32 x) vs
   | T.Int64 -> pick_int (module Numerics.Int_64) (fun x -> V.Int64 x) vs
-  | T.Word8 -> pick_word (module Numerics.Word8) (fun x -> V.Word8 x) vs
-  | T.Word16 -> pick_word (module Numerics.Word16) (fun x -> V.Word16 x) vs
-  | T.Word32 -> pick_word (module Numerics.Word32) (fun x -> V.Word32 x) vs
-  | T.Word64 -> pick_word (module Numerics.Word64) (fun x -> V.Word64 x) vs
   | T.Char -> pick_char vs
   | T.Text
   | T.Blob
@@ -180,10 +169,6 @@ let value_of_lit = function
   | Int16Lit w -> V.Int16 w
   | Int32Lit w -> V.Int32 w
   | Int64Lit w -> V.Int64 w
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit z -> V.Float z
   | CharLit c -> V.Char c
   | TextLit t -> V.Text t

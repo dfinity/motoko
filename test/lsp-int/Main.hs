@@ -167,7 +167,7 @@ main = do
           hoverTestCase
             doc
             (Position 8 39)
-            (Just "natToWord8 : Nat -> Word8")
+            (Just "natToNat8 : Nat -> Nat8")
 
         log "Definition tests"
         withDoc "definitions.mo" \doc -> do
@@ -212,9 +212,9 @@ main = do
           actual <- getCompletions doc (Position 15 6)
           liftIO
             (shouldBe
-             (mapMaybe (\c -> guard (c^.label == "word32ToNat")
+             (mapMaybe (\c -> guard (c^.label == "nat32ToNat")
                          *> pure (c^.label, c^.detail)) actual)
-             ([("word32ToNat", Just "Word32 -> Nat")]))
+             ([("nat32ToNat", Just "Nat32 -> Nat")]))
 
         log "Completing not-yet-imported modules"
         withDoc "ListClient.mo" \doc -> do

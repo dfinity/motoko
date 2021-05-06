@@ -1,3 +1,3 @@
 // equality on singletons should not hide side effects
-import Prim "mo:prim";
+import Prim "mo:⛔";
 ignore (Prim.debugPrint "Look, ma!" == ());

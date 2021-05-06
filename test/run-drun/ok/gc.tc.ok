@@ -1,2 +1,0 @@
-gc.mo:6.15-6.25: warning [M0154], field bytes is deprecated:
-the bytes() iterator is deprecated, please use vals(). See M0159 for details

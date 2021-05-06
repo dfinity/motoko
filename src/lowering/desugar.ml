@@ -454,7 +454,6 @@ and blob_dotE proj e =
     callE (varE f) [] e in
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
-    | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
     | "vals" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
     |  _ -> assert false
 
@@ -586,10 +585,6 @@ and lit l = match l with
   | S.Int16Lit x -> I.Int16Lit x
   | S.Int32Lit x -> I.Int32Lit x
   | S.Int64Lit x -> I.Int64Lit x
-  | S.Word8Lit x -> I.Word8Lit x
-  | S.Word16Lit x -> I.Word16Lit x
-  | S.Word32Lit x -> I.Word32Lit x
-  | S.Word64Lit x -> I.Word64Lit x
   | S.FloatLit x -> I.FloatLit x
   | S.CharLit x -> I.CharLit x
   | S.TextLit x -> I.TextLit x
@@ -800,13 +795,6 @@ let inject_decs extra_ds u =
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
-let initial_flavor : Ir.flavor =
-  { I.has_await = true
-  ; I.has_async_typ = true
-  ; I.has_show = true
-  ; I.has_poly_eq = true
-  ; I.serialized = false
-  }
 
 let transform_import (i : S.import) : import_declaration =
   let (id, f, ir) = i.it in
@@ -863,7 +851,7 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in
   let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
-  inject_decs imports' body', initial_flavor
+  inject_decs imports' body', Ir.full_flavor()
 
 
 (* Import a unit by composing IR.

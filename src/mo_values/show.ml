@@ -11,10 +11,10 @@ let can_show t =
       seen := S.add t !seen;
       match normalize t with
       | Prim (Bool|Nat|Int|Text|Blob|Char|Null|Principal) -> true
-      | Prim (Nat8|Int8|Word8)
-      | Prim (Nat16|Int16|Word16)
-      | Prim (Nat32|Int32|Word32)
-      | Prim (Nat64|Int64|Word64) -> true
+      | Prim (Nat8|Int8)
+      | Prim (Nat16|Int16)
+      | Prim (Nat32|Int32)
+      | Prim (Nat64|Int64) -> true
       | Prim Float -> true
       | Tup ts' -> List.for_all go ts'
       | Opt t' -> go t'
@@ -24,6 +24,7 @@ let can_show t =
       | Variant cts ->
         List.for_all (fun f -> go f.typ) cts
       | Non -> true
+      | Typ _ -> true
       | _ -> false
     end
   in go t
@@ -48,10 +49,6 @@ let rec show_val t v =
   | T.(Prim Int16), Value.Int16 i -> Numerics.Int_16.(sign (gt i zero) (to_string i))
   | T.(Prim Int32), Value.Int32 i -> Numerics.Int_32.(sign (gt i zero) (to_string i))
   | T.(Prim Int64), Value.Int64 i -> Numerics.Int_64.(sign (gt i zero) (to_string i))
-  | T.(Prim Word8), Value.Word8 i -> "0x" ^ Numerics.Word8.to_string i
-  | T.(Prim Word16), Value.Word16 i -> "0x" ^ Numerics.Word16.to_string i
-  | T.(Prim Word32), Value.Word32 i -> "0x" ^ Numerics.Word32.to_string i
-  | T.(Prim Word64), Value.Word64 i -> "0x" ^ Numerics.Word64.to_string i
   | T.(Prim Float), Value.Float i -> Numerics.Float.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
   | T.(Prim Blob), Value.Blob s -> "\"" ^ Value.Blob.escape s ^ "\""
@@ -72,7 +69,11 @@ let rec show_val t v =
     Printf.sprintf "[%s]"
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
   | T.Obj (_, fts), Value.Obj fs ->
-    Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
+    Printf.sprintf "{%s}"
+      (String.concat "; "
+         (List.filter_map (fun ft ->
+            if T.is_typ ft.T.typ then None else
+            Some (show_field fs ft)) fts))
   | T.Variant fs, Value.Variant (l, v) ->
     begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
     | Some {T.typ = T.Tup []; _} -> Printf.sprintf "#%s" l

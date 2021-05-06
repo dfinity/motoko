@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 func id<T>(x:T):T { x }; // used to suppress const optimization
 
 func foo(n : Nat8, b: Bool, t: Text ) {

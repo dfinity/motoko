@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 let before = Prim.rts_heap_size();
 func higher_order(foo: () -> ()) = foo();

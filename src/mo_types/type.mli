@@ -23,10 +23,6 @@ type prim =
   | Int16
   | Int32
   | Int64
-  | Word8
-  | Word16
-  | Word32
-  | Word64
   | Float
   | Char
   | Text
@@ -194,8 +190,6 @@ val span : typ -> int option
 
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
-
-
 
 (* Equivalence and Subtyping *)
 

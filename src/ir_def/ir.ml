@@ -18,10 +18,6 @@ type lit =
   | Int16Lit of Numerics.Int_16.t
   | Int32Lit of Numerics.Int_32.t
   | Int64Lit of Numerics.Int_64.t
-  | Word8Lit of Numerics.Word8.t
-  | Word16Lit of Numerics.Word16.t
-  | Word32Lit of Numerics.Word32.t
-  | Word64Lit of Numerics.Word64.t
   | FloatLit of Numerics.Float.t
   | CharLit of Value.unicode
   | TextLit of string
@@ -48,7 +44,7 @@ and pat' =
   | TupP of pat list                           (* tuple *)
   | ObjP of pat_field list                     (* object *)
   | OptP of pat                                (* option *)
-  | TagP of id * pat                           (* variant *)
+  | TagP of Type.lab * pat                     (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
 
 and pat_field = pat_field' Source.phrase
@@ -176,10 +172,6 @@ let string_of_lit = function
   | Nat16Lit n    -> Numerics.Nat16.to_pretty_string n
   | Nat32Lit n    -> Numerics.Nat32.to_pretty_string n
   | Nat64Lit n    -> Numerics.Nat64.to_pretty_string n
-  | Word8Lit n    -> Numerics.Word8.to_pretty_string n
-  | Word16Lit n   -> Numerics.Word16.to_pretty_string n
-  | Word32Lit n   -> Numerics.Word32.to_pretty_string n
-  | Word64Lit n   -> Numerics.Word64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
@@ -197,21 +189,20 @@ should hold.
 *)
 
 type flavor = {
+  has_typ_field : bool; (* Typ(e) fields *)
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
   has_show : bool; (* ShowE *)
   has_poly_eq : bool; (* Polymorphic equality *)
-  serialized : bool; (* Shared function arguments are serialized *)
 }
 
-let full_flavor : flavor = {
+let full_flavor () : flavor = {
+  has_typ_field = true;
   has_await = true;
   has_async_typ = true;
   has_show = true;
   has_poly_eq = true;
-  serialized = false;
 }
-
 
 
 (* Program *)
@@ -233,3 +224,55 @@ let map_obj_pat f pfs =
 
 let replace_obj_pat pfs pats =
   List.map2 (fun ({Source.it={name; pat=_}; _} as pf) pat -> {pf with Source.it={name; pat}}) pfs pats
+
+(* Helper for transforming prims, without missing embedded typs and ids *)
+
+let map_prim t_typ t_id p =
+  match p with
+  | CallPrim ts -> CallPrim (List.map t_typ ts)
+  | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
+  | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
+  | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
+  | TupPrim
+  | ProjPrim _
+  | OptPrim
+  | TagPrim _
+  | DotPrim _
+  | ActorDotPrim _ -> p
+  | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
+  | IdxPrim -> p
+  | BreakPrim id -> BreakPrim (t_id id)
+  | RetPrim
+  | AwaitPrim
+  | AssertPrim
+  | ThrowPrim -> p
+  | ShowPrim t -> ShowPrim (t_typ t)
+  | SerializePrim ts -> SerializePrim (List.map t_typ ts)
+  | DeserializePrim ts -> DeserializePrim (List.map t_typ ts)
+  | NumConvTrapPrim _
+  | NumConvWrapPrim _
+  | DecodeUtf8
+  | EncodeUtf8 -> p
+  | CastPrim (t1, t2) -> CastPrim (t_typ t1, t_typ t2)
+  | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
+  | BlobOfIcUrl
+  | IcUrlOfBlob -> p
+  | SelfRef t -> SelfRef (t_typ t)
+  | SystemTimePrim
+  | SystemCyclesAddPrim
+  | SystemCyclesAcceptPrim
+  | SystemCyclesAvailablePrim
+  | SystemCyclesBalancePrim
+  | SystemCyclesRefundedPrim
+  | SetCertifiedData
+  | GetCertificate
+  | OtherPrim _
+  | CPSAwait -> p
+  | CPSAsync t -> CPSAsync (t_typ t)
+  | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
+  | ICRejectPrim
+  | ICCallerPrim
+  | ICCallPrim -> p
+  | ICStableWrite t -> ICStableWrite (t_typ t)
+  | ICStableRead t -> ICStableRead (t_typ t)
+

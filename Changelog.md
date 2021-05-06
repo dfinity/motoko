@@ -1,4 +1,97 @@
-= Motoko compiler changelog
+# Motoko compiler changelog
+
+== 0.6.1 (2021-04-30)
+
+* Internal: Update to IC interface spec 0.17 (adapt to breaking change to signature of `create_canister`)
+
+== 0.6.0 (2021-04-16)
+
+* BREAKING CHANGE:
+  The old-style object and block syntax deprecated in 0.5.0 is finally removed.
+
+* Record punning: As already supported in patterns, short object syntax in
+  expressions now allows omitting the right-hand side if it is an identifier
+  of the same name as the label. That is,
+
+  ```motoko
+  {a; b = 1; var c}
+  ```
+
+  is short for
+
+  ```motoko
+  {a = a; b = 1; var c = c}
+  ```
+
+  assuming respective variables are in scope.
+
+* BREAKING CHANGE:
+  The types `Word8`, `Word16`, `Word32` and `Word64` have been removed.
+  This also removed the `blob.bytes()` iterator.
+
+  Motoko base also dropped the `Word8`, `Word16`, `Word32` and `Word64`
+  modules.
+
+  This concludes the transition to the other fixed-width types that began with
+  version 0.5.8
+
+* BREAKING CHANGE (Minor):
+ `await` on a completed future now also commits state and suspends
+  computation, to ensure every await, regardless of its future's state,
+  is a commit point for state changes and tentative message sends.
+
+  (Previously, only awaits on pending futures would force a commit
+   and suspend, while awaits on completed futures would continue
+   execution without an incremental commit, trading safety for speed.)
+
+* motoko-base: fixed bug in `Text.compareWith`.
+
+== 0.5.15 (2021-04-13)
+
+* Bugfix: `Blob.toArray` was broken.
+
+== 0.5.14 (2021-04-09)
+
+* BREAKING CHANGE (Minor): Type parameter inference will no longer default
+  under-constrained type parameters that are invariant in the result, but
+  require an explicit type argument.
+  This is to avoid confusing the user by inferring non-principal types.
+
+  For example, given (invariant) class `Box<A>`:
+
+  ```motoko
+    class Box<A>(a : A) { public var value = a; };
+  ```
+
+  the code
+
+  ```motoko
+    let box = Box(0); // rejected
+  ```
+
+  is rejected as ambiguous and requires an instantiation, type annotation or
+  expected type. For example:
+
+  ```motoko
+    let box1 = Box<Int>(0); // accepted
+    let box2 : Box<Nat> = Box(0); // accepted
+  ```
+
+  Note that types `Box<Int>` and `Box<Nat>` are unrelated by subtyping,
+  so neither is best (or principal) in the ambiguous, rejected case.
+
+* Bugfix: Type components in objects/actors/modules correctly ignored
+  when involved in serialization, equality and `debug_show`, preventing
+  the compiler from crashing.
+
+* motoko-base: The `Text.hash` function was changed to a better one.
+  If you stored hashes as stable values (which you really shouldn't!)
+  you must rehash after upgrading.
+
+* motoko-base: Conversion functions between `Blob` and `[Nat8]` are provided.
+
+* When the compiler itself crashes, it will now ask the user to report the
+  backtrace at the DFINITY forum
 
 == 0.5.13 (2021-03-25)
 
@@ -187,8 +280,8 @@
 
 * BREAKING CHANGE: Free-standing blocks are disallowed
 
-  Blocks are only allowed as sub-expressions of control flow expressions like `
-  if`, `loop`, `case`, etc. In all other places, braces are always considered
+  Blocks are only allowed as sub-expressions of control flow expressions like
+  `if`, `loop`, `case`, etc. In all other places, braces are always considered
   to start an object literal.
 
   To use blocks in other positions, the new `do <block>` expression can be
@@ -231,10 +324,10 @@
 * Improved error messages
 * Initial DWARF support
 * Candid compliance improvements:
-  - Strict checking of utf8 strings
-  - More liberal parsing of leb128-encoded numbers
+  * Strict checking of utf8 strings
+  * More liberal parsing of leb128-encoded numbers
 * New motoko-base:
-  - The Random library is added
+  * The Random library is added
 
 == 0.4.5 (2020-10-06)
 
