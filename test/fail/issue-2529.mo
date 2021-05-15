@@ -4,13 +4,13 @@ import QR "canister:qr";
 
 actor {
 
-  type ErrorCorrection_ = QR.ErrorCorrection;
+  type ErrorCorrection = QR.ErrorCorrection;
   type Mode = QR.Mode;
   type Version = QR.Version;
 
   public func encode(
     version : Version,
-    level : ErrorCorrection_,
+    level : ErrorCorrection,
     mode : Mode,
     text : Text,
   ) : async Text {
