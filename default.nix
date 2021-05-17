@@ -71,6 +71,7 @@ let
     buildPhase = ''
       mkdir home
       export HOME=$PWD/home
+      patchShebangs .
       ./x.py build
     '';
 
