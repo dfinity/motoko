@@ -16,10 +16,10 @@
 , haskell-lsp
 , hspec
 , lens
+, lib
 , mtl
 , parser-combinators
 , process
-, stdenv
 , text
 , transformers
 , unix
@@ -72,5 +72,5 @@ mkDerivation {
   ];
   homepage = "https://github.com/bubba/lsp-test#readme";
   description = "Functional test framework for LSP servers";
-  license = stdenv.lib.licenses.bsd3;
+  license = lib.licenses.bsd3;
 }
