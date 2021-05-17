@@ -1,8 +1,9 @@
-{ stdenv, fetchFromGitHub, ocaml, findlib, dune }:
+{ stdenv, lib, fetchFromGitHub, buildDunePackage }:
 
 let version = "v0.2.0"; in
 stdenv.mkDerivation {
-  name = "ocaml${ocaml.version}-vlq-${version}";
+  pname = "vlq";
+  version = "0.2.0";
 
   src = fetchFromGitHub {
     owner = "flowtype";
@@ -11,17 +12,10 @@ stdenv.mkDerivation {
     sha256 = "09jdgih2n2qwpxnlbcca4xa193rwbd1nw7prxaqlg134l4mbya83";
   };
 
-  buildInputs = [ ocaml findlib dune ];
-
-  buildPhase = "dune build";
-
-  inherit (dune) installPhase;
-
   meta = {
     homepage = https://github.com/flowtype/ocaml-vlq;
-    platforms = ocaml.meta.platforms or [];
     description = "A simple library for encoding variable-length quantities";
-    license = stdenv.lib.licenses.mit;
-    maintainers = with stdenv.lib.maintainers; [ vbgl ];
+    license = lib.licenses.mit;
+    maintainers = [];
   };
 }

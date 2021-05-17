@@ -27,11 +27,10 @@ let
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               vlq = import ./ocaml-vlq.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml dune;
-                inherit (self.ocamlPackages) findlib;
+                inherit (self) stdenv lib fetchFromGitHub buildDunePackage;
               };
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml dune_2;
+                inherit (self) stdenv lib fetchFromGitHub ocaml dune_2;
                 inherit (self) ocamlPackages;
               };
             };
