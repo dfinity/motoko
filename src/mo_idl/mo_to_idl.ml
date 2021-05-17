@@ -91,7 +91,7 @@ let rec typ t =
              if not (Env.mem id !env) then
                begin
                  env := Env.add id (I.PreT @@ no_region) !env;
-                 let t = typ ((*normalize*) t) in
+                 let t = typ (normalize t) in
                  env := Env.add id t !env
                end;
              I.VarT (id @@ no_region))
