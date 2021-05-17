@@ -1,9 +1,27 @@
-type Version_2 = Version_2;
-type Version = Version_2;
-type Mode_2 = Mode_2;
-type Mode = Mode_2;
-type ErrorCorrection_2 = ErrorCorrection_2;
-type ErrorCorrection = ErrorCorrection_2;
+type Version__2 = Version_2;
+type Version_3 = variant {Version: nat;};
+type Version_2 = Version_3;
+type Version = Version__2;
+type Mode__2 = Mode_2;
+type Mode_3 = 
+ variant {
+   Alphanumeric;
+   EightBit;
+   Kanji;
+   Numeric;
+ };
+type Mode_2 = Mode_3;
+type Mode = Mode__2;
+type ErrorCorrection__2 = ErrorCorrection_2;
+type ErrorCorrection_3 = 
+ variant {
+   H;
+   L;
+   M;
+   Q;
+ };
+type ErrorCorrection_2 = ErrorCorrection_3;
+type ErrorCorrection = ErrorCorrection__2;
 service : {
   encode: (Version, ErrorCorrection, Mode, text) -> (text);
 }
