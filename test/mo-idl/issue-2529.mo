@@ -1,4 +1,5 @@
-// moc --actor-idl issue-2529 --actor-alias qr rkp4c-7iaaa-aaaaa-aaaca-cai issue-2529.mo
+//MOC-FLAG --actor-idl issue-2529
+//MOC-FLAG --actor-alias qr lg264-qjkae
 
 import QR "canister:qr";
 

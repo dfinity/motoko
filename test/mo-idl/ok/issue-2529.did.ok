@@ -1,0 +1,9 @@
+type Version_2 = Version_2;
+type Version = Version_2;
+type Mode_2 = Mode_2;
+type Mode = Mode_2;
+type ErrorCorrection_2 = ErrorCorrection_2;
+type ErrorCorrection = ErrorCorrection_2;
+service : {
+  encode: (Version, ErrorCorrection, Mode, text) -> (text);
+}
