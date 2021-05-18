@@ -2630,11 +2630,10 @@ module Object = struct
 
   (* This is for static objects *)
   let vanilla_lit env (fs : (string * int32) list) : int32 =
-    let open List in
     let (hashes, ptrs) = fs
-      |> map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
-      |> sort compare
-      |> split
+      |> List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
+      |> List.sort compare
+      |> List.split
     in
 
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in

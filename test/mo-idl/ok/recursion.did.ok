@@ -1,7 +1,7 @@
-type List_2 = 
+type List_1 = 
  record {
    head: nat;
-   tail: opt List_2;
+   tail: opt List_1;
  };
 type List = 
  record {
@@ -9,6 +9,6 @@ type List =
    tail: opt List;
  };
 service : {
-  f: (nat) -> (List_2);
+  f: (nat) -> (List_1);
   g: (int) -> (List);
 }
