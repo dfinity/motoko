@@ -104,6 +104,10 @@ let argspec = Arg.align [
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.compacting_gc := true),
   " link with compacting GC instead of copying GC";
+
+  "--no-gc",
+  Arg.Unit (fun () -> Flags.no_gc := true),
+  " disable garbage collection";
     ]
 
   @  Args.inclusion_args

@@ -500,8 +500,11 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
-    call_import env "rts" gc_fn
+    if !Flags.no_gc then
+      G.nop
+    else
+      let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
+      call_import env "rts" gc_fn
 end
 
 
