@@ -15,7 +15,7 @@ let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
 let ic-ref = ic-ref-pkgs.ic-ref; in
 
-let haskellPackages = nixpkgs.haskell.packages.ghc884.override {
+let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
