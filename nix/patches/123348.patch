@@ -1,0 +1,19 @@
+commit 6f6d5c79a5239731f26cf7edb7b4fcb651137d2b
+Author: Joachim Breitner <mail@joachim-breitner.de>
+Date:   Mon May 17 12:19:04 2021 +0200
+
+    cargo-c: Fix cargoSha256
+
+diff --git a/pkgs/development/tools/rust/cargo-c/default.nix b/pkgs/development/tools/rust/cargo-c/default.nix
+index 7db1ea7f374..9458cb030a7 100644
+--- a/pkgs/development/tools/rust/cargo-c/default.nix
++++ b/pkgs/development/tools/rust/cargo-c/default.nix
+@@ -28,7 +28,7 @@ rustPlatform.buildRustPackage rec {
+     '';
+   };
+ 
+-  cargoSha256 = "1rmhg9xhljgd5yq3xs0fzw1b0bgz7jfpf5mr2gviwqahl5vxvfiq";
++  cargoSha256 = "0pxakfiidxfczh3harnjhb1zv340r812jxzwam8z2kyw3mkyhh8z";
+ 
+   nativeBuildInputs = [ pkg-config ];
+   buildInputs = [ openssl ]
