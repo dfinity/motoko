@@ -161,8 +161,7 @@ TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
 
 $(TOMMATH_BINDINGS_RS): | _build
-	# use bash explicitly (work around nixpkgs bug https://github.com/NixOS/nixpkgs/issues/110126)
-	bash $$(command -v bindgen) $(TOMMATHSRC)/tommath.h \
+	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
 	    --whitelist-function mp_init \
@@ -238,7 +237,7 @@ EXPORTED_SYMBOLS=\
   fmod \
   log \
 
-mo-rts.wasm: $(RTS_RUST_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
+mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
                 $(EXPORTED_SYMBOLS:%=--export=%) \
