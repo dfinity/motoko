@@ -726,6 +726,17 @@ let name_section_subsection (ns : name_section) s =
   | 2 -> (* local names *)
     let loc_names = sized (fun _ -> indirect_name_map) s in
     { ns with locals_names = ns.locals_names @ loc_names }
+
+  (* We ignore additional name subsections for now, despite newer
+     LLVM producing seemingly producing them.
+
+     We should check if these sections are indeed as speced in
+     https://github.com/WebAssembly/extended-name-section/blob/master/proposals/extended-name-section/Overview.md
+     and implement them, for better debugging.
+  *)
+  | 7 ->
+    let _global_names = sized (fun _ -> name_map) s in
+    ns
   | i -> error s (pos s) (Printf.sprintf "unknown name section subsection id %d" i)
 
 let name_section_content p_end s =
