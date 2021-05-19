@@ -497,6 +497,12 @@ module E = struct
 
   let mem_size env =
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
+
+  let collect (env : t) =
+    if !Flags.no_gc then
+      G.nop
+    else
+      call_import env "rts" "collect"
 end
 
 
@@ -3457,7 +3463,7 @@ module Dfinity = struct
 
       G.i (Call (nr (E.built_in env "init"))) ^^
       (* Collect garbage *)
-      E.call_import env "rts" "collect" ^^
+      E.collect env ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3494,7 +3500,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      E.call_import env "rts" "collect"
+      E.collect env
     )) in
 
     E.add_export env (nr {
@@ -5598,7 +5604,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        E.call_import env "rts" "collect" ^^
+        E.collect env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
