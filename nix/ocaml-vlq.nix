@@ -15,7 +15,7 @@ stdenv.mkDerivation {
 
   buildPhase = "dune build";
 
-  # inherit (dune) installPhase;
+  installPhase = "dune install --prefix $out --libdir $OCAMLFIND_DESTDIR vlq";
 
   meta = {
     homepage = https://github.com/flowtype/ocaml-vlq;
