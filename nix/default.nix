@@ -6,8 +6,20 @@ let
   };
   nixpkgs_src = (import sourcesnix { sourcesFile = ./sources.json; inherit pkgs; }).nixpkgs;
 
+  bootstrap-pkgs = import nixpkgs_src {
+    system = builtins.currentSystem;
+  };
+
+  nixpkgs-patched = bootstrap-pkgs.applyPatches {
+    name = "nixpkgs-patched";
+    src = nixpkgs_src;
+    patches = [
+      ./patches/123522.patch
+    ];
+  };
+
   pkgs =
-    import nixpkgs_src {
+    import nixpkgs-patched {
       inherit system;
       overlays = [
         # add nix/sources.json
