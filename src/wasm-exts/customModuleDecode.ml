@@ -726,7 +726,7 @@ let name_section_subsection (ns : name_section) s =
   | 2 -> (* local names *)
     let loc_names = sized (fun _ -> indirect_name_map) s in
     { ns with locals_names = ns.locals_names @ loc_names }
-  | i -> error s (pos s) "unknown name section subsection id"
+  | i -> error s (pos s) (Printf.sprintf "unknown name section subsection id %d" i)
 
 let name_section_content p_end s =
   repeat_until p_end s empty_name_section name_section_subsection
@@ -743,7 +743,7 @@ let motoko_section_subsection (ms : motoko_section) s =
   | 0 -> (* module name *)
     let labels = sized (fun _ -> vec string) s in
     { labels = ms.labels @ labels }
-  | i -> error s (pos s) "unknown motoko section subsection id"
+  | i -> error s (pos s) (Printf.sprintf "unknown motoko section subsection id %d" i)
 
 let motoko_section_content p_end s =
   repeat_until p_end s empty_motoko_section motoko_section_subsection
