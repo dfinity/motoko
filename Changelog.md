@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+== 0.6.2 (2021-05-24)
+
 * motoko-base:
 
   * reformat to style guidelines
