@@ -15,6 +15,29 @@ Nevertheless, it shoud be _safe_ to import prim, i.e. the definitions here
 should not break type safety or other guarantees of the language.
 */
 
+module Types = {
+  public type Any = prim "Any";
+  public type None = prim "None";
+  public type Null = prim "Null";
+  public type Bool = prim "Bool";
+  public type Nat = prim "Nat";
+  public type Nat8 = prim "Nat8";
+  public type Nat16 = prim "Nat16";
+  public type Nat32 = prim "Nat32";
+  public type Nat64 = prim "Nat64";
+  public type Int = prim "Int";
+  public type Int8 = prim "Int8";
+  public type Int16 = prim "Int16";
+  public type Int32 = prim "Int32";
+  public type Int64 = prim "Int64";
+  public type Float = prim "Float";
+  public type Char = prim "Char";
+  public type Text = prim "Text";
+  public type Blob = prim "Blob";
+  public type Error = prim "Error";
+  public type Principal = prim "Principal";
+};
+
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
