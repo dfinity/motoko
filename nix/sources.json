@@ -26,11 +26,18 @@
         "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
         "version": "3.2.25"
     },
-    "ic-ref": {
-        "branch": "release-0.17",
-        "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "82b0214a4ca019c0c7262ad9eaffb7a7fa672230",
-        "type": "git"
+    "ic-hs": {
+        "branch": "master",
+        "builtin": false,
+        "description": "A haskell toolbox for the Internet Computer",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "ic-hs",
+        "rev": "3cfeccb8910d2bbf11d0c7a40ff18fd089355ceb",
+        "sha256": "1wzgzr3q3zq256x4zy6mqi6scsz201r96ic71sciqx3h5v05px1l",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/ic-hs/archive/3cfeccb8910d2bbf11d0c7a40ff18fd089355ceb.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
         "builtin": false,
