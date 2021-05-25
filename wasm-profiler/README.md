@@ -1,16 +1,16 @@
-A (hacky) wasm instruction profiler
+A (hacky) Wasm instruction profiler
 ===================================
 
-This respository contains a rather a-hoc instruction counting profiler for Wasm.
+This repository contains a rather ad-hoc instruction counting profiler for Wasm.
 
 The rust tool `wasm-profiler-instrument` (which you can run with `cargo run`)
-will inject code into a wasm module to counti instructions, and print the
-current counter value upon each function entry and exit, in a idiosyncratic format.
+will inject code into a Wasm module to count instructions, and print the
+current counter value upon each function entry and exit, in an idiosyncratic format.
 
 The printing can happen either via WASI’s `fd_write` on `stdout`
 (`--wasi-system-api`) or via `ic0.debug_print` (`--ic-system-api`).
 
-The valures are printed in a way so they can be recognized by
+The values are printed in a way so they can be recognized by
 `./wasm-profiler-postproc.pl` (even if mixed with other output), and turned
 into [callgrind format] or [FlameGraph format].
 
@@ -52,4 +52,4 @@ which produces
 
 ## Contributions
 
-are welcome, e.g. making this more robust, more efficient, or replacing the perl script by Rust code.
+are welcome, e.g. making this more robust, more efficient, or replacing the Perl script by Rust code.
