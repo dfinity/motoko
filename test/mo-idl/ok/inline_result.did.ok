@@ -1,4 +1,4 @@
-type Result_2 = 
+type Result_1 = 
  variant {
    err;
    ok: int;
@@ -10,5 +10,5 @@ type Result =
  };
 service : {
   f: (opt nat) -> (Result);
-  g: (Result) -> (Result_2);
+  g: (Result) -> (Result_1);
 }

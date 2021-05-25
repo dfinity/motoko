@@ -18,9 +18,8 @@ let drun =
   let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
   only_internal (dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun); in
 
-let ic-ref =
-  let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
-  only_internal ic-ref-pkgs.ic-ref; in
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-hs = ic-hs-pkgs.ic-hs; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -212,6 +211,8 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
+  inherit ic-hs;
+
   tests = let
     testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
@@ -351,6 +352,7 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
@@ -360,7 +362,6 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       inherit qc lsp unit candid;
     } // nixpkgs.lib.optionalAttrs internal {
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
       drun       = test_subdir "run-drun"   [ moc drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
       perf       = perf_subdir "perf"       [ moc drun ];
@@ -593,7 +594,7 @@ rec {
       base-tests
       base-doc
       docs
-      ic-ref
+      ic-hs
       shell
       check-formatting
       check-rts-formatting

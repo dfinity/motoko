@@ -1,5 +1,18 @@
 # Motoko compiler changelog
 
+== 0.6.2 (2021-05-24)
+
+* motoko-base:
+
+  * reformat to style guidelines
+  * add type bindings `Nat.Nat`, `Nat8.Nat8` etc. to libraries for primitive types.
+
+* Bugfix: generation of candid from Motoko:
+
+  * no longer confused by distinct, but eponymous, type definitions (Bug: #2529);
+  * numbers eponymous types and specializations from 1 (not 2);
+  * avoids long chains of type equalities by normalizing before translation.
+
 == 0.6.1 (2021-04-30)
 
 * Internal: Update to IC interface spec 0.17 (adapt to breaking change to signature of `create_canister`)

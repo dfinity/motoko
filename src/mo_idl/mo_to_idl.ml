@@ -9,7 +9,7 @@ module I = Idllib.Syntax
 let env = ref Env.empty
 
 (* For monomorphization *)
-module Stamp = Map.Make(String)
+module Stamp = Type.ConEnv
 let stamp = ref Stamp.empty
 
 module TypeMap = Map.Make (struct type t = con * typ list let compare = compare end)
@@ -25,23 +25,31 @@ let monomorphize_con vs c =
   let name = normalize_name (Con.name c) in
   match Con.kind c with
   | Def _ ->
-     let id = (c, vs) in
-     let n =
-       match TypeMap.find_opt id !type_map with
-       | None ->
-          (match Stamp.find_opt name !stamp with
-           | None ->
-              stamp := Stamp.add name 1 !stamp;
-              type_map := TypeMap.add id 1 !type_map;
-              1
-           | Some n ->
-              stamp := Stamp.add name (n+1) !stamp;
-              type_map := TypeMap.add id (n+1) !type_map;
-              n+1)
-       | Some n -> n
-     in
-     if n == 1 then name
-     else Printf.sprintf "%s_%d" name n
+    let id = (c, vs) in
+    let (k, n) =
+      match TypeMap.find_opt id !type_map with
+      | None ->
+        (match Stamp.find_opt c !stamp with
+         | None ->
+           let keys = Stamp.keys !stamp in
+           let k = List.length (List.filter (fun d -> Con.name c = Con.name d) keys) in
+           stamp := Stamp.add c (k, 0) !stamp;
+           type_map := TypeMap.add id (k, 0) !type_map;
+           (k, 0)
+         | Some (k, n) ->
+           stamp := Stamp.add c (k, n + 1) !stamp;
+           type_map := TypeMap.add id (k, n + 1) !type_map;
+           (k, n + 1))
+      | Some (k, n) -> (k, n)
+    in
+    begin
+      match (k, n) with
+      | (0, 0) -> name
+      | (0, n) when n > 0 -> Printf.sprintf "%s_%d" name n
+      | (k, 0) when k > 0 -> Printf.sprintf "%s__%d" name k
+      | (k, n) when k > 0 && n > 0 -> Printf.sprintf "%s__%d_%d" name k n
+      | _ -> assert false
+    end
   | _ -> assert false
 
 let prim p =
@@ -83,7 +91,7 @@ let rec typ t =
              if not (Env.mem id !env) then
                begin
                  env := Env.add id (I.PreT @@ no_region) !env;
-                 let t = typ t in
+                 let t = typ (normalize t) in
                  env := Env.add id t !env
                end;
              I.VarT (id @@ no_region))
