@@ -656,5 +656,4 @@ rec {
   };
 } // nixpkgs.lib.optionalAttrs internal {
   inherit drun;
-  inherit ic-ref;
 }
