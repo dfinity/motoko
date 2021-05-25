@@ -12,8 +12,8 @@ let subpath = import ./nix/gitSource.nix; in
 let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
-let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
-let ic-ref = ic-ref-pkgs.ic-ref; in
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-hs = ic-hs-pkgs.ic-hs; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -205,7 +205,7 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-ref;
+  inherit ic-hs;
 
   tests = let
     testDerivationArgs = {
@@ -349,7 +349,7 @@ rec {
       run-dbg    = snty_subdir "run"        [ moc ] ;
       drun       = test_subdir "run-drun"   [ moc drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
       perf       = perf_subdir "perf"       [ moc drun ];
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
@@ -587,7 +587,7 @@ rec {
       base-tests
       base-doc
       docs
-      ic-ref
+      ic-hs
       shell
       check-formatting
       check-rts-formatting
