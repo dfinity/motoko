@@ -13,7 +13,7 @@ let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; };
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
 let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
-let ic-hs = ic-ref-pkgs.ic-hs; in
+let ic-hs = ic-hs-pkgs.ic-hs; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
