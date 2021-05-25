@@ -1,8 +1,8 @@
-#[cfg(not(feature = "compacting_gc"))]
-mod copying;
-
-#[cfg(feature = "compacting_gc")]
-mod mark_compact;
+// #[cfg(not(feature = "compacting_gc"))]
+// mod copying;
+// 
+// #[cfg(feature = "compacting_gc")]
+// mod mark_compact;
 
 use crate::types::*;
 
@@ -63,9 +63,9 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 /// The entry point. Called by the generated code.
 #[no_mangle]
 unsafe extern "C" fn collect() {
-    #[cfg(feature = "compacting_gc")]
-    mark_compact::collect();
+    // #[cfg(feature = "compacting_gc")]
+    // mark_compact::collect();
 
-    #[cfg(not(feature = "compacting_gc"))]
-    copying::collect();
+    // #[cfg(not(feature = "compacting_gc"))]
+    // copying::collect();
 }
