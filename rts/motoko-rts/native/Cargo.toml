@@ -10,6 +10,7 @@ path = "../src/lib.rs"
 
 [dependencies]
 libc = { version = "0.2.73", default_features = false }
+wee_alloc = "0.4.5"
 
 [dependencies.compiler_builtins]
 version = "0.1.39"
