@@ -51,7 +51,9 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
-let is_static = !nixpkgs.stdenv.isDarwin; in
+#let is_static = !nixpkgs.stdenv.isDarwin; in
+# while upgrading
+let is_static = false; in
 
 let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 
