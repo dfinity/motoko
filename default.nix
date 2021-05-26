@@ -122,6 +122,12 @@ let ocaml_exe = name: bin: rts:
           -t ${nixpkgs.darwin.CF} \
           -t ${nixpkgs.libiconv} \
           $out/bin/*
+      '' + ''
+        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # Lets remove that, too
+        remove-references-to \
+          -t ${staticpkgs.ocamlPackages.menhir} \
+          $out/bin/*
         # sanity check
         $out/bin/* --help >/dev/null
       '';
