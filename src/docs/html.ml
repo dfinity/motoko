@@ -105,7 +105,7 @@ let rec html_of_type : env -> Syntax.typ -> t =
       | xs ->
           string "<"
           ++ join_with (string ", ") (List.map (html_of_type env) xs)
-          ++ string ">" )
+          ++ string ">")
   | Syntax.PrimT typ -> html_type typ
   | Syntax.ParT typ -> string "(" ++ html_of_type env typ ++ string ")"
   | Syntax.NamedT (id, t) ->
@@ -183,18 +183,18 @@ let html_of_type_doc : env -> Extract.type_doc -> Xref.t -> t =
   match type_doc.typ with
   | DTPlain ty ->
       h4 ~cls:"type-declaration" ~id
-        ( keyword "type "
+        (keyword "type "
         ++ html_type type_doc.name
         ++ ty_args
         ++ string " = "
-        ++ html_of_type env ty )
+        ++ html_of_type env ty)
   | DTObj (ty, fields) ->
       h4 ~cls:"type-declaration" ~id
-        ( keyword "type "
+        (keyword "type "
         ++ html_type type_doc.name
         ++ ty_args
         ++ string " = "
-        ++ html_of_type env ty )
+        ++ html_of_type env ty)
 
 let html_of_arg : env -> Extract.function_arg_doc -> t =
  fun env arg ->
@@ -226,7 +226,7 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
       in
       h4 ~cls:"function" ~id
         (code
-           ( keyword "public func "
+           (keyword "public func "
            ++ fn_name function_doc.name
            ++ ty_args
            ++ string "("
@@ -234,7 +234,7 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
            ++ args
            ++ br'
            ++ string ")"
-           ++ return_typ ))
+           ++ return_typ))
   | Class class_doc ->
       let is_multiline = List.length class_doc.constructor > 2 in
       let br' = if is_multiline then br else empty in
@@ -246,7 +246,7 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
           (List.map (html_of_arg env) class_doc.constructor)
       in
       h4 ~cls:"class-declaration" ~id
-        ( html_of_obj_sort class_doc.sort
+        (html_of_obj_sort class_doc.sort
         ++ keyword "class "
         ++ class_name class_doc.name
         ++ ty_args
@@ -254,23 +254,23 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
         ++ br_indent
         ++ args
         ++ br'
-        ++ string ")" )
+        ++ string ")")
       ++ list (List.map (html_of_doc env) class_doc.fields)
   | Type type_doc -> html_of_type_doc env type_doc xref
   | Value value_doc ->
       h4 ~cls:"value-declaration" ~id
         (code
-           ( keyword "public let "
+           (keyword "public let "
            ++ fn_name value_doc.name
            ++ string " : "
-           ++ Option.fold ~none:empty ~some:(html_of_type env) value_doc.typ ))
+           ++ Option.fold ~none:empty ~some:(html_of_type env) value_doc.typ))
   | Unknown s -> code (string "Unknown: " ++ string s)
 
 and html_of_doc : env -> Extract.doc -> t =
  fun env { doc_comment; declaration; xref } ->
   div ~cls:"declaration"
-    ( html_of_declaration env xref declaration
-    ++ p (html_of_comment (doc_comment |> Option.value ~default:"")) )
+    (html_of_declaration env xref declaration
+    ++ p (html_of_comment (doc_comment |> Option.value ~default:"")))
 
 let html_of_docs : render_input -> Cow.Html.t =
  fun { all_modules; module_comment; declarations; lookup_type; current_path } ->
@@ -283,8 +283,8 @@ let html_of_docs : render_input -> Cow.Html.t =
   in
   let header =
     head ~attrs:[ ("title", "Doc") ]
-      ( meta ~charset:"UTF-8" []
-      ++ link ~rel:"stylesheet" (Uri.of_string (path_to_root ^ "styles.css")) )
+      (meta ~charset:"UTF-8" []
+      ++ link ~rel:"stylesheet" (Uri.of_string (path_to_root ^ "styles.css")))
   in
   let nav_of_doc doc =
     match doc.Extract.declaration with
@@ -300,7 +300,7 @@ let html_of_docs : render_input -> Cow.Html.t =
   in
   let navigation =
     nav ~cls:"sidebar"
-      ( h3 (string "Modules")
+      (h3 (string "Modules")
       ++ ul
            (List.map
               (fun path ->
@@ -310,15 +310,15 @@ let html_of_docs : render_input -> Cow.Html.t =
                      (string path)))
               all_modules)
       ++ h3 (string "Declarations")
-      ++ ul (List.map nav_of_doc declarations) )
+      ++ ul (List.map nav_of_doc declarations))
   in
   let bdy =
     body
-      ( navigation
+      (navigation
       ++ div ~cls:"documentation"
-           ( h1 (string current_path)
+           (h1 (string current_path)
            ++ html_of_comment (Option.value ~default:"" module_comment)
-           ++ list (List.map (html_of_doc env) declarations) ) )
+           ++ list (List.map (html_of_doc env) declarations)))
   in
   html (header ++ bdy)
 
@@ -330,8 +330,8 @@ let make_index : render_input list -> string =
   let header =
     head
       ~attrs:[ ("title", "Motoko docs") ]
-      ( meta ~charset:"UTF-8" []
-      ++ link ~rel:"stylesheet" (Uri.of_string "styles.css") )
+      (meta ~charset:"UTF-8" []
+      ++ link ~rel:"stylesheet" (Uri.of_string "styles.css"))
   in
   let make_link input =
     a ~cls:"index-item-link"
@@ -342,7 +342,7 @@ let make_index : render_input list -> string =
   in
   let bdy =
     div ~cls:"index-container"
-      ( h1 ~cls:"index-header" (string "Index of modules")
+      (h1 ~cls:"index-header" (string "Index of modules")
       ++ ul ~cls:"index-listing" ~licls:"index-item" (List.map make_link inputs)
       )
   in

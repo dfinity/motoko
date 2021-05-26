@@ -310,12 +310,11 @@ let start : string -> bool -> int option -> 'a =
   in
   let rec loop () =
     let raw, message = IO.read_message () in
-    ( match message with
+    (match message with
     | None -> Debug.log "decoding error" raw
     | Some message ->
         let message_id = message.Lsp_t.incoming_message_id in
-        handle_message raw (message_id, message.Lsp_t.incoming_message_params)
-    );
+        handle_message raw (message_id, message.Lsp_t.incoming_message_params));
     loop ()
   in
   loop ()

@@ -154,7 +154,7 @@ let lookup_type : t -> Syntax.path -> Xref.t option =
                 snd sub_ns)
               sub_ns xs
           in
-          StringMap.find_opt id sub_ns.types )
+          StringMap.find_opt id sub_ns.types)
 
 let rec format : Format.formatter -> t -> unit =
  fun f { values; types } ->
@@ -168,12 +168,12 @@ let rec format : Format.formatter -> t -> unit =
       (fun k (xref, ns) ->
         pp_open_vbox f 2;
         fprintf f "%s[%s]" k (Xref.to_string xref);
-        ( match ns with
+        (match ns with
         | None -> ()
         | Some ns ->
             pp_print_string f ":";
             pp_print_cut f ();
-            format f ns );
+            format f ns);
         pp_close_box f ();
         pp_print_cut f ())
       values;
