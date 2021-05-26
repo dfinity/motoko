@@ -14,6 +14,7 @@ let
     name = "nixpkgs-patched";
     src = nixpkgs_src;
     patches = [
+      ./patches/0001-pkgsMusl.ocamlPackages.ocaml-Disable-pie-hardening-o.patch
     ];
   };
 
@@ -26,7 +27,7 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-	# add a newer version of niv
+        # add a newer version of niv
         (self: super: {
            niv = (import self.sources.niv { pkgs = super; }).niv;
         })
@@ -57,11 +58,11 @@ let
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-	       "wasm32-unknown-unknown"
-	       "wasm32-unknown-emscripten"
-	       "wasm32-wasi"
-	       "i686-unknown-linux-gnu"
-	    ];
+               "wasm32-unknown-unknown"
+               "wasm32-unknown-emscripten"
+               "wasm32-wasi"
+               "i686-unknown-linux-gnu"
+            ];
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
@@ -72,8 +73,8 @@ let
           xargo = self.callPackage ./xargo.nix {};
         })
 
-	# wasm-profiler
-	(self: super: import ./wasm-profiler.nix self)
+        # wasm-profiler
+        (self: super: import ./wasm-profiler.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {
