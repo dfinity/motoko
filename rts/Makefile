@@ -98,6 +98,7 @@ CLANG_FLAGS = \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
+   -resource-dir=$(WASM_CLANG_LIB)/lib/clang/10.0.1
 
 #
 # Build targets
