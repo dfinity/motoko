@@ -94,8 +94,7 @@ let ocaml_exe = name: bin: rts:
     staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      # TODO
-      #allowedRequisites = [];
+      allowedRequisites = [];
 
       src = subpath ./src;
 
