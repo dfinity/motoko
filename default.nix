@@ -20,7 +20,9 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    llvmPackages_10.clang # for native/wasm building
+    # pulls in clang (wrapped) and clang-10 (unwrapped)
+    llvmPackages_10.clang
+    # pulls in wasm-ld
     llvmPackages_10.lld
     llvmPackages_10.bintools
     rustc-nightly
