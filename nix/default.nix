@@ -14,8 +14,7 @@ let
     name = "nixpkgs-patched";
     src = nixpkgs_src;
     patches = [
-      ./patches/0001-pkgsMusl.ocamlPackages.ocaml-Disable-pie-hardening-o.patch
-      ./patches/0001-Disable-pie-for-a-few-more-ocaml-implemented-binarie.patch
+      ./patches/124498.patch
     ];
   };
 

@@ -1,66 +1,52 @@
-From 6dce189bdb8370e36392053eab7bc7527515eabd Mon Sep 17 00:00:00 2001
-From: Joachim Breitner <mail@joachim-breitner.de>
-Date: Wed, 26 May 2021 17:17:52 +0200
-Subject: [PATCH] Disable -pie for a few more ocaml-implemented binaries
-
----
- pkgs/development/compilers/ocaml/generic.nix        | 1 -
- pkgs/development/ocaml-modules/menhir/generic.nix   | 2 ++
- pkgs/development/ocaml-modules/wasm/default.nix     | 2 ++
- pkgs/development/tools/ocaml/ocamlbuild/default.nix | 2 ++
- 4 files changed, 6 insertions(+), 1 deletion(-)
-
 diff --git a/pkgs/development/compilers/ocaml/generic.nix b/pkgs/development/compilers/ocaml/generic.nix
-index ccf56140cf3..0777e1ee1df 100644
+index d9853dd642a..4ff1b0ead72 100644
 --- a/pkgs/development/compilers/ocaml/generic.nix
 +++ b/pkgs/development/compilers/ocaml/generic.nix
-@@ -60,7 +60,6 @@ stdenv.mkDerivation (args // {
+@@ -58,6 +58,8 @@ stdenv.mkDerivation (args // {
+   ++ optional spaceTimeSupport (flags "--enable-spacetime" "-spacetime")
+   ;
  
-   hardeningDisable = stdenv.lib.optional stdenv.targetPlatform.isMusl "pie";
- 
--
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
++
    buildFlags = [ "world" ] ++ optionals useNativeCompilers [ "bootstrap" "world.opt" ];
    buildInputs = optional (!lib.versionAtLeast version "4.07") ncurses
      ++ optionals useX11 [ libX11 xorgproto ];
 diff --git a/pkgs/development/ocaml-modules/menhir/generic.nix b/pkgs/development/ocaml-modules/menhir/generic.nix
-index a917d634a19..b4bce3898f1 100644
+index a917d634a19..a15452ec490 100644
 --- a/pkgs/development/ocaml-modules/menhir/generic.nix
 +++ b/pkgs/development/ocaml-modules/menhir/generic.nix
 @@ -10,6 +10,8 @@ stdenv.mkDerivation {
  
    createFindlibDestdir = true;
  
-+  hardeningDisable = stdenv.lib.optional stdenv.targetPlatform.isMusl "pie";
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
 +
    preBuild = ''
      # fix makefiles.
      RM=$(type -p rm)
 diff --git a/pkgs/development/ocaml-modules/wasm/default.nix b/pkgs/development/ocaml-modules/wasm/default.nix
-index c8944926488..33d327d6b4b 100644
+index c8944926488..27e6bbe73fa 100644
 --- a/pkgs/development/ocaml-modules/wasm/default.nix
 +++ b/pkgs/development/ocaml-modules/wasm/default.nix
 @@ -17,6 +17,8 @@ stdenv.mkDerivation rec {
  
    buildInputs = [ ocaml findlib ocamlbuild ];
  
-+  hardeningDisable = stdenv.lib.optional stdenv.targetPlatform.isMusl "pie";
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
 +
    makeFlags = [ "-C" "interpreter" ];
  
    createFindlibDestdir = true;
 diff --git a/pkgs/development/tools/ocaml/ocamlbuild/default.nix b/pkgs/development/tools/ocaml/ocamlbuild/default.nix
-index c74794b35c9..709bb37f4a4 100644
+index c74794b35c9..b7d0a08c010 100644
 --- a/pkgs/development/tools/ocaml/ocamlbuild/default.nix
 +++ b/pkgs/development/tools/ocaml/ocamlbuild/default.nix
 @@ -17,6 +17,8 @@ stdenv.mkDerivation {
  
    buildInputs = [ ocaml findlib ];
  
-+  hardeningDisable = stdenv.lib.optional stdenv.targetPlatform.isMusl "pie";
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
 +
    configurePhase = ''
    make -f configure.make Makefile.config \
      "OCAMLBUILD_PREFIX=$out" \
--- 
-2.29.2
-
