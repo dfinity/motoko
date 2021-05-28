@@ -35,7 +35,7 @@ let
 
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
-    # so we do not use the nix-provided wraper in clang
+    # so we do not use the nix-provided wrapper in clang
     export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
@@ -124,7 +124,7 @@ let ocaml_exe = name: bin: rts:
           $out/bin/*
       '' + ''
         # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
-        # Lets remove that, too
+        # Let's remove that, too
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
