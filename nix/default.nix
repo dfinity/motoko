@@ -6,8 +6,20 @@ let
   };
   nixpkgs_src = (import sourcesnix { sourcesFile = ./sources.json; inherit pkgs; }).nixpkgs;
 
+  bootstrap-pkgs = import nixpkgs_src {
+    system = builtins.currentSystem;
+  };
+
+  nixpkgs-patched = bootstrap-pkgs.applyPatches {
+    name = "nixpkgs-patched";
+    src = nixpkgs_src;
+    patches = [
+      ./patches/124498.patch
+    ];
+  };
+
   pkgs =
-    import nixpkgs_src {
+    import nixpkgs-patched {
       inherit system;
       overlays = [
         # add nix/sources.json
@@ -15,23 +27,24 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-	# add a newer version of niv
+        # add a newer version of niv
         (self: super: {
            niv = (import self.sources.niv { pkgs = super; }).niv;
         })
 
         # Selecting the ocaml version
         # (self: super: { ocamlPackages = super.ocamlPackages; })
+
         (
           self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               vlq = import ./ocaml-vlq.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml dune;
+                inherit (self) stdenv fetchFromGitHub ocaml dune_1;
                 inherit (self.ocamlPackages) findlib;
               };
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml dune_2;
+                inherit (self) stdenv lib fetchFromGitHub ocaml dune_2;
                 inherit (self) ocamlPackages;
               };
             };
@@ -45,11 +58,11 @@ let
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-	       "wasm32-unknown-unknown"
-	       "wasm32-unknown-emscripten"
-	       "wasm32-wasi"
-	       "i686-unknown-linux-gnu"
-	    ];
+               "wasm32-unknown-unknown"
+               "wasm32-unknown-emscripten"
+               "wasm32-wasi"
+               "i686-unknown-linux-gnu"
+            ];
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
@@ -60,8 +73,8 @@ let
           xargo = self.callPackage ./xargo.nix {};
         })
 
-	# wasm-profiler
-	(self: super: import ./wasm-profiler.nix self)
+        # wasm-profiler
+        (self: super: import ./wasm-profiler.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {

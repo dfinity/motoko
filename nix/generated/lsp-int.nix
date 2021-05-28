@@ -11,8 +11,8 @@
 , hspec
 , HUnit
 , lens
+, lib
 , lsp-test
-, stdenv
 , text
 }:
 mkDerivation {
@@ -35,5 +35,5 @@ mkDerivation {
   ];
   description = "Integration tests for the language server";
   license = "unknown";
-  hydraPlatforms = stdenv.lib.platforms.none;
+  hydraPlatforms = lib.platforms.none;
 }

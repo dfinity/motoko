@@ -276,7 +276,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
         match List.find_map find_binder fields with
         | None -> ValueDecl { value with definition = None }
         | Some (definition, doc_comment) ->
-            ValueDecl { value with definition = Some definition; doc_comment } )
+            ValueDecl { value with definition = Some definition; doc_comment })
     | TypeDecl typ -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
         let find_type_binder field =
@@ -338,10 +338,10 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
         else Lib.FilePath.make_absolute project_root path
       in
       add_module path
-        ( ty
+        (ty
         |> read_single_module_lib
         |> Fun.flip Lib.Option.get []
-        |> populate_definitions project_root libs path )
+        |> populate_definitions project_root libs path)
         acc)
     scope.Scope.lib_env initial_index
 
