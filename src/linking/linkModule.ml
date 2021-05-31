@@ -599,7 +599,6 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
 (* Concatenation of modules *)
 
 let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
-  assert (m2.start = None);
   let m1 = em1.module_ in
   { em1 with
     module_ = {
@@ -790,8 +789,15 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   (* Link functions *)
   let fun_required1 = find_imports is_fun_import libname em1.module_ in
   let fun_required2 = find_imports is_fun_import "env" dm2 in
+
+  let apply_global_relocs_name = "__wasm_apply_global_relocs" in
+  let apply_global_relocs_idx = match List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names) with
+    | None -> raise (LinkError "Unable to find __wasm_apply_global_relocs in the RTS module")
+    | Some (idx, _) -> idx
+  in
+
   let fun_exports1 = find_exports is_fun_export em1.module_ in
-  let fun_exports2 = find_exports is_fun_export dm2 in
+  let fun_exports2 = NameMap.add (Wasm.Utf8.decode apply_global_relocs_name) apply_global_relocs_idx (find_exports is_fun_export dm2) in
   (* Resolve imports, to produce a renumbering function: *)
   let fun_resolved12 = resolve fun_required1 fun_exports2 in
   let fun_resolved21 = resolve fun_required2 fun_exports1 in
@@ -872,8 +878,6 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | None -> fun em -> em
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
-
-  assert (dm2.globals = []);
 
   let new_table_size =
     Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
