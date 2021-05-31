@@ -16,53 +16,44 @@ open Type
         is the RHS.
 *)
 
-type info =
-  | Nonproductive
-  | Productive
-  | Param of int
+type info = Nonproductive | Productive | Param of int
 
 let non_productive cs =
   let map = ref ConEnv.empty in
-  let rec rhs cs t : info = match t with
-    | Pre
-    | Mut _ | Typ _ ->
-      assert false (* body of a Def shouldn't be 2nd class *)
-    | Var (s, j) ->
-      Param j
-    | Con (d, ts) ->
-      begin
+  let rec rhs cs t : info =
+    match t with
+    | Pre | Mut _ | Typ _ ->
+        assert false (* body of a Def shouldn't be 2nd class *)
+    | Var (s, j) -> Param j
+    | Con (d, ts) -> (
         visit_con cs d;
-        match ConEnv.find d (!map) with
-        | Param n ->
-          begin
-          match Con.kind d with
-          | Def (tbs, t) ->
-            assert (n < List.length tbs); (* assume types are arity-correct *)
-            rhs cs (List.nth ts n)
-          | Abs (tbs, t) ->
-            (* we could assert here since Defs should be closed *)
-            Productive
-          end
-        | info -> info
-      end
-    | _ ->  (* anything else is productive *)
-      Productive
-
+        match ConEnv.find d !map with
+        | Param n -> (
+            match Con.kind d with
+            | Def (tbs, t) ->
+                assert (n < List.length tbs);
+                (* assume types are arity-correct *)
+                rhs cs (List.nth ts n)
+            | Abs (tbs, t) ->
+                (* we could assert here since Defs should be closed *)
+                Productive)
+        | info -> info)
+    | _ ->
+        (* anything else is productive *)
+        Productive
   and visit_con cs c =
-    match ConEnv.find_opt c (!map) with
+    match ConEnv.find_opt c !map with
     | Some info -> ()
     | None ->
-      let info =
-        if ConSet.mem c cs then
-          Nonproductive
-        else
-          let t = match Con.kind c with
-            | Def (_, t) -> t
-            | _ -> assert false
-          in
-          rhs (ConSet.add c cs) t
-      in
-      map := ConEnv.add c info !map
+        let info =
+          if ConSet.mem c cs then Nonproductive
+          else
+            let t =
+              match Con.kind c with Def (_, t) -> t | _ -> assert false
+            in
+            rhs (ConSet.add c cs) t
+        in
+        map := ConEnv.add c info !map
   in
   ConSet.iter (visit_con ConSet.empty) cs;
   ConSet.filter (fun c -> ConEnv.find c !map = Nonproductive) cs

@@ -8,20 +8,25 @@ let dw_TAG_class_type = 0x02
 let dw_TAG_entry_point = 0x03
 let dw_TAG_enumeration_type = 0x04
 let dw_TAG_formal_parameter = 0x05
+
 (* let Reserved = 0x06 *)
 (* let Reserved = 0x07 *)
 let dw_TAG_imported_declaration = 0x08
+
 (* let Reserved = 0x09 *)
 let dw_TAG_label = 0x0a
 let dw_TAG_lexical_block = 0x0b
+
 (* let Reserved = 0x0c *)
 let dw_TAG_member = 0x0d
+
 (* let Reserved = 0x0e *)
 let dw_TAG_pointer_type = 0x0f
 let dw_TAG_reference_type = 0x10
 let dw_TAG_compile_unit = 0x11
 let dw_TAG_string_type = 0x12
 let dw_TAG_structure_type = 0x13
+
 (* let Reserved = 0x14 *)
 let dw_TAG_subroutine_type = 0x15
 let dw_TAG_typedef = 0x16
@@ -64,6 +69,7 @@ let dw_TAG_imported_module = 0x3a
 let dw_TAG_unspecified_type = 0x3b
 let dw_TAG_partial_unit = 0x3c
 let dw_TAG_imported_unit = 0x3d
+
 (* let Reserved = 0x3e *)
 let dw_TAG_condition = 0x3f
 let dw_TAG_shared_type = 0x40
@@ -81,26 +87,30 @@ let dw_TAG_immutable_type = 0x4b
 let dw_TAG_lo_user = 0x4080
 let dw_TAG_hi_user = 0xffff
 
-
 let dw_AT_sibling = 0x01
 let dw_AT_location = 0x02
 let dw_AT_name = 0x03
+
 (* let Reserved = 0x04 *)
 (* let Reserved = 0x05 *)
 (* let Reserved = 0x06 *)
 (* let Reserved = 0x07 *)
 (* let Reserved = 0x08 *)
 let dw_AT_ordering = 0x09
+
 (* let Reserved = 0x0a *)
 let dw_AT_byte_size = 0x0b
+
 (* let Reserved = 0x0c *)
 let dw_AT_bit_size = 0x0d
+
 (* let Reserved = 0x0e *)
 (* let Reserved = 0x0f *)
 let dw_AT_stmt_list = 0x10
 let dw_AT_low_pc = 0x11
 let dw_AT_high_pc = 0x12
 let dw_AT_language = 0x13
+
 (* let Reserved = 0x14 *)
 let dw_AT_discr = 0x15
 let dw_AT_discr_value = 0x16
@@ -112,23 +122,30 @@ let dw_AT_comp_dir = 0x1b
 let dw_AT_const_value = 0x1c
 let dw_AT_containing_type = 0x1d
 let dw_AT_default_value = 0x1e
+
 (* let Reserved = 0x1f *)
 let dw_AT_inline = 0x20
 let dw_AT_is_optional = 0x21
 let dw_AT_lower_bound = 0x22
+
 (* let Reserved = 0x23 *)
 (* let Reserved = 0x24 *)
 let dw_AT_producer = 0x25
+
 (* let Reserved = 0x26 *)
 let dw_AT_prototyped = 0x27
+
 (* let Reserved = 0x28 *)
 (* let Reserved = 0x29 *)
 let dw_AT_return_addr = 0x2a
+
 (* let Reserved = 0x2b *)
 let dw_AT_start_scope = 0x2c
+
 (* let Reserved = 0x2d *)
 let dw_AT_bit_stride = 0x2e
 let dw_AT_upper_bound = 0x2f
+
 (* let Reserved = 0x30 *)
 let dw_AT_abstract_origin = 0x31
 let dw_AT_accessibility = 0x32
@@ -148,6 +165,7 @@ let dw_AT_external = 0x3f
 let dw_AT_frame_base = 0x40
 let dw_AT_friend = 0x41
 let dw_AT_identifier_case = 0x42
+
 (* let Reserved = 0x43 *)
 let dw_AT_namelist_item = 0x44
 let dw_AT_priority = 0x45
@@ -198,6 +216,7 @@ let dw_AT_rank = 0x71
 let dw_AT_str_offsets_base = 0x72
 let dw_AT_addr_base = 0x73
 let dw_AT_rnglists_base = 0x74
+
 (* let Reserved = 0x75 *)
 let dw_AT_dwo_name = 0x76
 let dw_AT_reference = 0x77
@@ -257,8 +276,9 @@ let dw_END_big = 0x01
 let dw_END_little = 0x02
 let dw_END_lo_user = 0x40
 let dw_END_hi_user = 0xff
-  
+
 let dw_FORM_addr = 0x01
+
 (* Reserved = 0x02 *)
 let dw_FORM_block2 = 0x03
 let dw_FORM_block4 = 0x04
@@ -308,7 +328,6 @@ let dw_LANG_C99 = 0x000c
 let dw_LANG_Swift = 0x001e
 let dw_LANG_Motoko = 0x0027
 
-
 let dw_UT_compile = 0x01
 let dw_UT_type = 0x02
 let dw_UT_partial = 0x03
@@ -356,6 +375,7 @@ let dw_LNS_set_isa = 0x0c
  *)
 let dw_LNE_end_sequence = -0x01
 let dw_LNE_set_address = -0x02
+
 (* let Reserved 0x03 *)
 let dw_LNE_set_discriminator = -0x04
 let dw_LNE_lo_user = 0x80
@@ -532,31 +552,31 @@ let dw_OP_hi_user = 0xff
 
 let dw_OP_WASM_location = 0xed (* see module Location, below *)
 
-module Machine =
-struct
+module Machine = struct
+  (* Assumptions:
+     - op_index = 0 (const)
+     - maximum_operations_per_instruction = 1 (non-VLIW)
+     - minimum_instruction_length = 1 (bytecode)
+  *)
 
-(* Assumptions:
-- op_index = 0 (const)
-- maximum_operations_per_instruction = 1 (non-VLIW)
-- minimum_instruction_length = 1 (bytecode)
- *)
+  let default_is_stmt = true
+  let line_base = 0
+  let line_range = 7
+  let opcode_base = dw_LNS_set_isa
 
-let default_is_stmt = true
-let line_base = 0
-let line_range = 7
-let opcode_base = dw_LNS_set_isa
+  type instr_mode = Regular | Prologue | Epilogue
+  type loc = { file : int; line : int; col : int }
 
-type instr_mode = Regular | Prologue | Epilogue
-type loc = { file : int; line : int; col : int }
+  type state = {
+    ip : int;
+    loc : loc;
+    disc : int;
+    stmt : bool;
+    bb : bool;
+    mode : instr_mode;
+  }
 
-type state = { ip : int
-             ; loc : loc
-             ; disc : int
-             ; stmt : bool
-             ; bb : bool
-             ; mode : instr_mode }
-
-(*
+  (*
 Legend:
 -------
 ip: instruction pointer (Wasm bytecode offset in CODE section)
@@ -569,119 +589,158 @@ mode: how the instruction should be treated
 
 See "6.2 Line Number Information" for details.
 *)
-let default_loc = { file = 1; line = 1; col = 0 }
-let default_flags = default_is_stmt, false, Prologue
-(* Table 6.4: Line number program initial state *)
-let start_state = { ip = 0; loc = default_loc; disc = 0; stmt = default_is_stmt; bb = false; mode = Prologue }
+  let default_loc = { file = 1; line = 1; col = 0 }
+  let default_flags = (default_is_stmt, false, Prologue)
 
+  (* Table 6.4: Line number program initial state *)
+  let start_state =
+    {
+      ip = 0;
+      loc = default_loc;
+      disc = 0;
+      stmt = default_is_stmt;
+      bb = false;
+      mode = Prologue;
+    }
 
-(* Infers a list of opcodes for the line number program
-   ("6.2.5 The Line Number Program") that, when run, would
-   transition the machine from a certain intermediate state
-   to a following state. This is intended to be used in a loop
-   (fold) to obtain all the opcodes for a list of states.
-*)
-let rec infer from toward = match from, toward with
-  | f, {ip; _} when ip < f.ip -> failwith "can't go backwards"
-  | {ip=0; _}, t when t.ip > 0 ->
-    dw_LNE_set_address :: t.ip :: infer {from with ip = t.ip} t
-  | {ip; _}, t when t.ip > ip ->
-    dw_LNS_advance_pc :: t.ip - ip :: infer {from with ip = t.ip} t
-  | {loc; _}, {loc = {file; _}; _} when file <> loc.file ->
-    dw_LNS_set_file :: file :: infer {from with loc = {loc with file}} toward
-  | {loc; _}, {loc = {line; _}; _} when line <> loc.line ->
-    dw_LNS_advance_line :: line - loc.line :: infer {from with loc = {loc with line}} toward
-  | {loc; _}, {loc = {col; _}; _} when col <> loc.col ->
-    dw_LNS_set_column :: col :: infer {from with loc = {loc with col}} toward
-  | {disc; _}, _ when disc <> toward.disc -> failwith "cannot do disc yet"
-  | {stmt; _}, _ when stmt <> toward.stmt ->
-    dw_LNS_negate_stmt :: infer {from with stmt = toward.stmt} toward
-  | {bb; _}, _ when bb <> toward.bb -> failwith "cannot do bb yet"
-  | {mode = Prologue; _}, {mode = Regular; _} ->
-    dw_LNS_set_prologue_end :: infer toward toward
-  | {mode = Regular; _}, {mode = Epilogue; _} ->
-    dw_LNS_set_epilogue_begin :: infer toward toward
-  | {mode = Prologue; _}, {mode = Epilogue; _} ->
-    dw_LNS_set_prologue_end :: dw_LNS_set_epilogue_begin :: infer toward toward
-  | state, state' when state = state' -> [dw_LNS_copy]
-  | _ -> failwith "not covered"
+  (* Infers a list of opcodes for the line number program
+     ("6.2.5 The Line Number Program") that, when run, would
+     transition the machine from a certain intermediate state
+     to a following state. This is intended to be used in a loop
+     (fold) to obtain all the opcodes for a list of states.
+  *)
+  let rec infer from toward =
+    match (from, toward) with
+    | f, { ip; _ } when ip < f.ip -> failwith "can't go backwards"
+    | { ip = 0; _ }, t when t.ip > 0 ->
+        dw_LNE_set_address :: t.ip :: infer { from with ip = t.ip } t
+    | { ip; _ }, t when t.ip > ip ->
+        dw_LNS_advance_pc :: (t.ip - ip) :: infer { from with ip = t.ip } t
+    | { loc; _ }, { loc = { file; _ }; _ } when file <> loc.file ->
+        dw_LNS_set_file
+        :: file :: infer { from with loc = { loc with file } } toward
+    | { loc; _ }, { loc = { line; _ }; _ } when line <> loc.line ->
+        dw_LNS_advance_line
+        ::
+        (line - loc.line) :: infer { from with loc = { loc with line } } toward
+    | { loc; _ }, { loc = { col; _ }; _ } when col <> loc.col ->
+        dw_LNS_set_column
+        :: col :: infer { from with loc = { loc with col } } toward
+    | { disc; _ }, _ when disc <> toward.disc -> failwith "cannot do disc yet"
+    | { stmt; _ }, _ when stmt <> toward.stmt ->
+        dw_LNS_negate_stmt :: infer { from with stmt = toward.stmt } toward
+    | { bb; _ }, _ when bb <> toward.bb -> failwith "cannot do bb yet"
+    | { mode = Prologue; _ }, { mode = Regular; _ } ->
+        dw_LNS_set_prologue_end :: infer toward toward
+    | { mode = Regular; _ }, { mode = Epilogue; _ } ->
+        dw_LNS_set_epilogue_begin :: infer toward toward
+    | { mode = Prologue; _ }, { mode = Epilogue; _ } ->
+        dw_LNS_set_prologue_end
+        :: dw_LNS_set_epilogue_begin :: infer toward toward
+    | state, state' when state = state' -> [ dw_LNS_copy ]
+    | _ -> failwith "not covered"
 
-(* Given a few formatted outputter functions, dump the contents
-   of a line program (essentially a list of `DW_LNS/E_*` opcodes with
-   arguments). The bottleneck functions are expected to close over
-   the output buffer/stream.
-*)
-let write_opcodes u8 uleb sleb u32 : int list -> unit =
-  let standard lns = u8 lns in
-  let extended1 lne = u8 0; u8 1; u8 (- lne) in
-  let extended5 lne = u8 0; u8 5; u8 (- lne) in
-  let rec chase = function
-  | [] -> ()
-  | op :: tail when dw_LNS_copy = op -> standard op; chase tail
-  | op :: offs :: tail when dw_LNS_advance_pc = op -> standard op; uleb offs; chase tail
-  | op :: delta :: tail when dw_LNS_advance_line = op -> standard op; sleb delta; chase tail
-  | op :: file :: tail when dw_LNS_set_file = op -> standard op; uleb file; chase tail
-  | op :: col :: tail when dw_LNS_set_column = op -> standard op; uleb col; chase tail
-  | op :: tail when dw_LNS_negate_stmt = op -> standard op; chase tail
-  | op :: tail when dw_LNS_set_prologue_end = op -> standard op; chase tail
-  | op :: tail when dw_LNS_set_epilogue_begin = op -> standard op; chase tail
-  | op :: tail when dw_LNE_end_sequence = op -> extended1 op; chase tail
-  | op :: addr :: tail when dw_LNE_set_address = op -> extended5 op; u32 addr; chase tail
-  | op :: _ -> failwith (Printf.sprintf "opcode not covered: %d" op)
-  in chase
-
+  (* Given a few formatted outputter functions, dump the contents
+     of a line program (essentially a list of `DW_LNS/E_*` opcodes with
+     arguments). The bottleneck functions are expected to close over
+     the output buffer/stream.
+  *)
+  let write_opcodes u8 uleb sleb u32 : int list -> unit =
+    let standard lns = u8 lns in
+    let extended1 lne =
+      u8 0;
+      u8 1;
+      u8 (-lne)
+    in
+    let extended5 lne =
+      u8 0;
+      u8 5;
+      u8 (-lne)
+    in
+    let rec chase = function
+      | [] -> ()
+      | op :: tail when dw_LNS_copy = op ->
+          standard op;
+          chase tail
+      | op :: offs :: tail when dw_LNS_advance_pc = op ->
+          standard op;
+          uleb offs;
+          chase tail
+      | op :: delta :: tail when dw_LNS_advance_line = op ->
+          standard op;
+          sleb delta;
+          chase tail
+      | op :: file :: tail when dw_LNS_set_file = op ->
+          standard op;
+          uleb file;
+          chase tail
+      | op :: col :: tail when dw_LNS_set_column = op ->
+          standard op;
+          uleb col;
+          chase tail
+      | op :: tail when dw_LNS_negate_stmt = op ->
+          standard op;
+          chase tail
+      | op :: tail when dw_LNS_set_prologue_end = op ->
+          standard op;
+          chase tail
+      | op :: tail when dw_LNS_set_epilogue_begin = op ->
+          standard op;
+          chase tail
+      | op :: tail when dw_LNE_end_sequence = op ->
+          extended1 op;
+          chase tail
+      | op :: addr :: tail when dw_LNE_set_address = op ->
+          extended5 op;
+          u32 addr;
+          chase tail
+      | op :: _ -> failwith (Printf.sprintf "opcode not covered: %d" op)
+    in
+    chase
 end
 
-module Location =
-struct
-(* Wasm extensions for DWARF expressions are currently defined
+module Location = struct
+  (* Wasm extensions for DWARF expressions are currently defined
 
-in https://yurydelendik.github.io/webassembly-dwarf/#DWARF-expressions-and-location-descriptions
+     in https://yurydelendik.github.io/webassembly-dwarf/#DWARF-expressions-and-location-descriptions
 
-DW_OP_WASM_location := 0xED ;; available DWARF extension code
+     DW_OP_WASM_location := 0xED ;; available DWARF extension code
 
-wasm-op := wasm-local | wasm-global | wasm-operand-stack
+     wasm-op := wasm-local | wasm-global | wasm-operand-stack
 
-wasm-local := 0x00 i:uleb128
-wasm-global := 0x01 i:uleb128
-wasm-operand-stack := 0x02
-*)
+     wasm-local := 0x00 i:uleb128
+     wasm-global := 0x01 i:uleb128
+     wasm-operand-stack := 0x02
+  *)
 
-(* Difference-lists-based builder for location programs
-   ("2.5 DWARF Expressions") consisting from `DW_OP_*` opcodes
-   and their arguments. Since the final output is bytecode
-   (i.e. list of 0..255), we use the convention that negative
-   integers (`-i`) in the list externalise as ULEB128-encoded
-   bytes  of `i`.
-*)
+  (* Difference-lists-based builder for location programs
+     ("2.5 DWARF Expressions") consisting from `DW_OP_*` opcodes
+     and their arguments. Since the final output is bytecode
+     (i.e. list of 0..255), we use the convention that negative
+     integers (`-i`) in the list externalise as ULEB128-encoded
+     bytes  of `i`.
+  *)
 
-let local slot (rest : int list) : int list =
-  dw_OP_WASM_location :: 0x00 :: -slot :: rest
+  let local slot (rest : int list) : int list =
+    dw_OP_WASM_location :: 0x00 :: -slot :: rest
 
-(* below two expressions are not supported yet *)
+  (* below two expressions are not supported yet *)
 
-let global slot rest =
-  dw_OP_WASM_location :: 0x01 :: -slot :: rest
+  let global slot rest = dw_OP_WASM_location :: 0x01 :: -slot :: rest
 
-let operand_stack slot rest =
-  dw_OP_WASM_location :: 0x02 :: -slot :: rest
-
+  let operand_stack slot rest = dw_OP_WASM_location :: 0x02 :: -slot :: rest
 end
 
-
-module Meta =
-struct
-
-type die
-  = StatementDelimiter of Wasm.Source.pos
-  | Tag of int option * int * die list
-  | TagClose
-  | OffsetAttribute of int
-  | IntAttribute of int * int
-  | StringAttribute of int * string
-  (* below is after peephole optimisation only, snoc-like *)
-  | Grouped of die list
-  (* below is encoding-time only *)
-  | FutureAttribute of (unit -> die)
-
+module Meta = struct
+  type die =
+    | StatementDelimiter of Wasm.Source.pos
+    | Tag of int option * int * die list
+    | TagClose
+    | OffsetAttribute of int
+    | IntAttribute of int * int
+    | StringAttribute of int * string
+    (* below is after peephole optimisation only, snoc-like *)
+    | Grouped of die list
+    (* below is encoding-time only *)
+    | FutureAttribute of (unit -> die)
 end

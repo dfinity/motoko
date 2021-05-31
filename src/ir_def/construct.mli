@@ -11,7 +11,6 @@ open Type
    at the loss of some precision in OCaml typing.
 *)
 
-
 (* Field names *)
 
 val nameN : string -> Type.lab
@@ -38,7 +37,7 @@ val typ_arg : con -> bind_sort -> typ -> typ_bind
 (* Patterns *)
 
 val varP : var -> pat
-val tupP :  pat list -> pat
+val tupP : pat list -> pat
 val wildP : pat
 
 val seqP : pat list -> pat
@@ -69,8 +68,14 @@ val unitE : unit -> exp
 val boolE : bool -> exp
 val nullE : unit -> exp
 
-val funcE : string -> func_sort -> control ->
-  typ_bind list -> arg list -> typ list -> exp ->
+val funcE :
+  string ->
+  func_sort ->
+  control ->
+  typ_bind list ->
+  arg list ->
+  typ list ->
+  exp ->
   exp
 val callE : exp -> typ list -> exp -> exp
 
@@ -79,9 +84,9 @@ val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
 val tupE : exp list -> exp
-val breakE: id -> exp -> exp
-val retE: exp -> exp
-val immuteE: exp -> exp
+val breakE : id -> exp -> exp
+val retE : exp -> exp
+val immuteE : exp -> exp
 val assignE : var -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp
@@ -126,7 +131,9 @@ val seqE : exp list -> exp
 
 (* Lambdas *)
 
-val (-->) : var -> exp -> exp
-val (-->*) : var list -> exp -> exp (* n-ary local *)
+val ( --> ) : var -> exp -> exp
+val ( -->* ) : var list -> exp -> exp (* n-ary local *)
+
 val forall : typ_bind list -> exp -> exp (* generalization *)
-val (-*-) : exp -> exp -> exp       (* application *)
+
+val ( -*- ) : exp -> exp -> exp (* application *)

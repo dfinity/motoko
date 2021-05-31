@@ -1,6 +1,6 @@
 (* common flags for the moc compiler *)
 
-module M = Map.Make(String)
+module M = Map.Make (String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 

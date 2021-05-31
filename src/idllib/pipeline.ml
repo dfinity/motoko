@@ -5,18 +5,14 @@ open Printf
 let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
-let error at cat text =
-  Error [Diag.error_message at "" cat text]
+let error at cat text = Error [ Diag.error_message at "" cat text ]
 
 let print_stat_te =
   Typing.Env.iter (fun x t ->
-    printf "%s %s = %s\n"
-      "type" x (Arrange_idl.string_of_typ t)
-  )
+      printf "%s %s = %s\n" "type" x (Arrange_idl.string_of_typ t))
 
 let dump_prog flag prog =
-    if flag then
-      Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
+  if flag then Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
 
 (* Parsing *)
 
@@ -28,14 +24,12 @@ let parse_with lexer parser name =
   try
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
-      {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
+      { lexer.Lexing.lex_curr_p with Lexing.pos_fname = name };
     let prog = parser Lexer.token lexer name in
     Ok prog
   with
-    | Source.ParseError (at, msg) ->
-      error at "syntax" msg
-    | Parser.Error ->
-      error (Lexer.region lexer) "syntax" "unexpected token"
+  | Source.ParseError (at, msg) -> error at "syntax" msg
+  | Parser.Error -> error (Lexer.region lexer) "syntax" "unexpected token"
 
 let parse_file filename : parse_result =
   let ic = open_in filename in
@@ -46,8 +40,8 @@ let parse_file filename : parse_result =
   close_in ic;
   match result with
   | Ok prog ->
-     dump_prog !Flags.dump_parse prog;
-     Diag.return (prog, filename)
+      dump_prog !Flags.dump_parse prog;
+      Diag.return (prog, filename)
   | Error e -> Error e
 
 let parse_string s : parse_result =
@@ -65,30 +59,33 @@ let parse_file filename : parse_result =
 
 (* Type checking *)
 
-let check_prog senv prog
-  : (Typing.scope * Syntax.typ option) Diag.result =
+let check_prog senv prog : (Typing.scope * Syntax.typ option) Diag.result =
   phase "Checking" prog.Source.note;
   let r = Typing.check_prog senv prog in
   (match r with
-   | Ok ((scope, _), _) ->
-      if !Flags.verbose then print_stat_te scope;
-   | Error _ -> ());
+  | Ok ((scope, _), _) -> if !Flags.verbose then print_stat_te scope
+  | Error _ -> ());
   r
 
 (* Imported file loading *)
 
 type load_result = (Syntax.prog * Typing.scope * Syntax.typ option) Diag.result
 
-module LibEnv = Env.Make(String)
+module LibEnv = Env.Make (String)
 
 let merge_env imports init_env lib_env =
   let disjoint_union env1 env2 : Typing.typ_env Diag.result =
-    try Diag.return (Typing.Env.union (fun k v1 v2 ->
-        (* TODO Add proper type equivalence check for env *)
-        if v1 = v2 then Some v1 else raise (Typing.Env.Clash k)
-      ) env1 env2)
+    try
+      Diag.return
+        (Typing.Env.union
+           (fun k v1 v2 ->
+             (* TODO Add proper type equivalence check for env *)
+             if v1 = v2 then Some v1 else raise (Typing.Env.Clash k))
+           env1 env2)
     with Typing.Env.Clash k ->
-      error Source.no_region "import" (sprintf "conflict type definition for %s" k) in
+      error Source.no_region "import"
+        (sprintf "conflict type definition for %s" k)
+  in
   let env_list = List.map (fun import -> LibEnv.find import lib_env) imports in
   Diag.fold disjoint_union init_env env_list
 
@@ -98,23 +95,22 @@ let chase_imports senv imports =
   let lib_env = ref LibEnv.empty in
   let rec go file =
     if S.mem file !pending then
-      error Source.no_region "import" (sprintf "file %s must not depend on itself" file)
-    else if LibEnv.mem file !lib_env then
-      Diag.return ()
-    else begin
-        pending := S.add file !pending;
-        let open Diag.Syntax in
-        let* prog, base = parse_file file in
-        let* imports = Resolve_import.resolve prog base in
-        let* () = go_set imports in
-        let* base_env = merge_env imports senv !lib_env in
-        let* scope, _ = check_prog base_env prog in
-        lib_env := LibEnv.add file scope !lib_env;
-        pending := S.remove file !pending;
-        Diag.return ()
-      end
-  and go_set todo = Diag.traverse_ go todo
-  in Diag.map (fun () -> !lib_env) (go_set imports)
+      error Source.no_region "import"
+        (sprintf "file %s must not depend on itself" file)
+    else if LibEnv.mem file !lib_env then Diag.return ()
+    else (
+      pending := S.add file !pending;
+      let open Diag.Syntax in
+      let* prog, base = parse_file file in
+      let* imports = Resolve_import.resolve prog base in
+      let* () = go_set imports in
+      let* base_env = merge_env imports senv !lib_env in
+      let* scope, _ = check_prog base_env prog in
+      lib_env := LibEnv.add file scope !lib_env;
+      pending := S.remove file !pending;
+      Diag.return ())
+  and go_set todo = Diag.traverse_ go todo in
+  Diag.map (fun () -> !lib_env) (go_set imports)
 
 let load_prog parse senv =
   let open Diag.Syntax in
@@ -129,7 +125,8 @@ let load_prog parse senv =
 
 let initial_stat_env = Typing.empty_scope
 
-let check_string source : load_result = load_prog (parse_string source) initial_stat_env
+let check_string source : load_result =
+  load_prog (parse_string source) initial_stat_env
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
 let check_prog prog : Typing.scope Diag.result =
   let open Diag.Syntax in
@@ -163,20 +160,14 @@ let parse_test_file filename : parse_test_file_result =
   let name = Filename.basename filename in
   let result = parse_with lexer parser name in
   close_in ic;
-  match result with
-  | Ok prog -> Diag.return prog
-  | Error e -> Error e
+  match result with Ok prog -> Diag.return prog | Error e -> Error e
 
 (* Values *)
 
 let parse_values s =
   let lexer = Lexing.from_string s in
   lexer.Lexing.lex_curr_p <-
-      {lexer.Lexing.lex_curr_p with Lexing.pos_fname = "(string)"};
-  try
-    Diag.return (Parser.parse_args Lexer.token lexer)
-  with
-    | Source.ParseError (at, msg) ->
-      error at "syntax" msg
-    | Parser.Error ->
-      error (Lexer.region lexer) "syntax" "unexpected token"
+    { lexer.Lexing.lex_curr_p with Lexing.pos_fname = "(string)" };
+  try Diag.return (Parser.parse_args Lexer.token lexer) with
+  | Source.ParseError (at, msg) -> error at "syntax" msg
+  | Parser.Error -> error (Lexer.region lexer) "syntax" "unexpected token"

@@ -23,14 +23,17 @@ let usage_err s =
   eprintf "%s\n" usage;
   exit 1
 
-let argspec = Arg.align
-[
-  "-b", Arg.Set_string base_file, " base file (e.g. output of moc --no-link)";
-  "-l", Arg.Set_string lib_file, " library file";
-  "-o", Arg.Set_string out_file, " output file";
-  "-n", Arg.Set_string lib_name, " library name (defaults to \"rts\")";
-  "--version", Arg.Unit print_banner, " show version";
-]
+let argspec =
+  Arg.align
+    [
+      ( "-b",
+        Arg.Set_string base_file,
+        " base file (e.g. output of moc --no-link)" );
+      ("-l", Arg.Set_string lib_file, " library file");
+      ("-o", Arg.Set_string out_file, " output file");
+      ("-n", Arg.Set_string lib_name, " library name (defaults to \"rts\")");
+      ("--version", Arg.Unit print_banner, " show version");
+    ]
 
 (* IO *)
 
@@ -59,8 +62,9 @@ let () =
   if !lib_file = "" then usage_err "no library file specified";
   if !out_file = "" then usage_err "no output file specified";
 
-  Mo_config.Flags.debug_info := true; (* linking mode: preserve debug info *)
+  Mo_config.Flags.debug_info := true;
 
+  (* linking mode: preserve debug info *)
   let base = decode_file !base_file in
   let lib = decode_file !lib_file in
   let linked =
@@ -69,6 +73,5 @@ let () =
       Printf.eprintf "%s\n" e;
       exit 1
   in
-  let (_map, wasm) = CustomModuleEncode.encode linked in
+  let _map, wasm = CustomModuleEncode.encode linked in
   write_file !out_file wasm
-

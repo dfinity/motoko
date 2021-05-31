@@ -8,7 +8,7 @@ type message = {
   code : error_code;
   at : Source.region;
   cat : string;
-  text : string
+  text : string;
 }
 
 type messages = message list
@@ -42,7 +42,7 @@ val finally : (unit -> unit) -> 'a result -> 'a result
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
 module Syntax : sig
-  val (let*) : 'a result -> ('a -> 'b result) -> 'b result
+  val ( let* ) : 'a result -> ('a -> 'b result) -> 'b result
 end
 
 (*
@@ -60,4 +60,3 @@ type msg_store
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
 val with_message_store : (msg_store -> 'a option) -> 'a result
-

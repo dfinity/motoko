@@ -1,5 +1,5 @@
-module IM = Map.Make(Int)
-module IS = Set.Make(Int)
+module IM = Map.Make (Int)
+module IS = Set.Make (Int)
 
 (*
 Note [A running example]
@@ -68,18 +68,22 @@ that gets a name. This way we end up with something like
 
 *)
 
-
 (* A graph of nodes, nodes labeled by ints, root at node 0 *)
 type 'a t = ('a * int list) IM.t
 
 (* Simple counter data structure *)
-let start_counting start : (unit -> int) =
+let start_counting start : unit -> int =
   let r = ref start in
-  fun () -> let i = !r in r := !r + 1; i
+  fun () ->
+    let i = !r in
+    r := !r + 1;
+    i
 
 let unfold (type e) node (root : e) : 'a t =
-  let module M = Map.Make (struct type t = e let compare = compare end) in
-
+  let module M = Map.Make (struct
+    type t = e
+    let compare = compare
+  end) in
   let seen = ref M.empty in
   let next = start_counting 0 in
   let graph = ref IM.empty in
@@ -87,23 +91,23 @@ let unfold (type e) node (root : e) : 'a t =
     match M.find_opt e !seen with
     | Some i -> i
     | None ->
-      let i = next () in
-      seen := M.add e i !seen;
-      let (k, args) = node e in
-      let args' = List.map go args in
-      graph := IM.add i (k, args') !graph;
-      i
+        let i = next () in
+        seen := M.add e i !seen;
+        let k, args = node e in
+        let args' = List.map go args in
+        graph := IM.add i (k, args') !graph;
+        i
   in
   let i = go root in
   assert (i == 0);
   !graph
 
-
 (* Maps an index mapping over the graph. If not injective, will combine nodes *)
-let rename (lookup : int -> int) graph = graph
-    |> IM.to_seq
-    |> Seq.map (fun (i, (k, args)) -> (lookup i, (k, List.map lookup args)))
-    |> IM.of_seq
+let rename (lookup : int -> int) graph =
+  graph
+  |> IM.to_seq
+  |> Seq.map (fun (i, (k, args)) -> (lookup i, (k, List.map lookup args)))
+  |> IM.of_seq
 
 (* Given a function on int (given as sequences of points),
    calculates the equivalence classes it represents,
@@ -115,23 +119,28 @@ let rename (lookup : int -> int) graph = graph
      3 ↦ "Ho"         3 ↦ 0
 
 *)
-let equiv_classes (type b) (graph : (int * b) Seq.t) : (int IM.t * int) =
-  let module BM = Map.Make (struct type t = b let compare = compare end) in
+let equiv_classes (type b) (graph : (int * b) Seq.t) : int IM.t * int =
+  let module BM = Map.Make (struct
+    type t = b
+    let compare = compare
+  end) in
   let m = ref BM.empty in
   let next = start_counting 0 in
 
   let m =
-    IM.of_seq (Seq.map (fun (i,y) ->
-      match BM.find_opt y !m with
-      | Some j -> (i, j)
-      | None ->
-        let j = next () in
-        m := BM.add y j !m;
-        (i, j)
-    ) graph) in
+    IM.of_seq
+      (Seq.map
+         (fun (i, y) ->
+           match BM.find_opt y !m with
+           | Some j -> (i, j)
+           | None ->
+               let j = next () in
+               m := BM.add y j !m;
+               (i, j))
+         graph)
+  in
   let size = next () in
-  m, size
-
+  (m, size)
 
 (* Finds a minimal graph by finding the smallest index mapping that is consistent *)
 (* Equivalently: The coarsest equivalence classes on the nodes *)
@@ -147,14 +156,18 @@ let combine graph =
   while not !finished do
     (* Update the equivalence classes. By including the previous class,
        this is a refinement *)
-    let m', size' = graph
+    let m', size' =
+      graph
       |> IM.to_seq
-      |> Seq.map (fun (i, (k, args)) -> (i, (lookup i, k, List.map lookup args)))
-      |> equiv_classes in
-    assert (size' >= !size); (* New equivalence class better be finer *)
+      |> Seq.map (fun (i, (k, args)) ->
+             (i, (lookup i, k, List.map lookup args)))
+      |> equiv_classes
+    in
+    assert (size' >= !size);
+    (* New equivalence class better be finer *)
     finished := size' = !size;
     size := size';
-    m := m';
+    m := m'
   done;
 
   assert (lookup 0 = 0);
@@ -166,11 +179,13 @@ let renumber graph =
   let lookup i = IM.find i !m in
   let next = start_counting 0 in
 
-  let rec go i = match IM.find_opt i !m with
-    | None -> (* not seen before *)
-      m := IM.add i (next ()) !m;
-      let (k, args) = IM.find i graph in
-      List.iter go args
+  let rec go i =
+    match IM.find_opt i !m with
+    | None ->
+        (* not seen before *)
+        m := IM.add i (next ()) !m;
+        let k, args = IM.find i graph in
+        List.iter go args
     | Some _ -> ()
   in
   go 0;
@@ -182,16 +197,12 @@ let renumber graph =
 let canonicalize graph = renumber (combine graph)
 
 (* Folds over the graph *)
-let fold
-  (of_con : 'a -> 'b list -> 'b)
-  (of_def : int -> 'b -> 'b)
-  (of_ref : int -> 'b)
-  (graph : 'a t) : 'b =
-
+let fold (of_con : 'a -> 'b list -> 'b) (of_def : int -> 'b -> 'b)
+    (of_ref : int -> 'b) (graph : 'a t) : 'b =
   (* Find which entries are referenced more than once *)
   let tally : int IM.t =
     let tally = ref IM.empty in
-    let succ = function | None -> Some 1 | Some i -> Some (i + 1) in
+    let succ = function None -> Some 1 | Some i -> Some (i + 1) in
     let bump i = tally := IM.update i succ !tally in
     bump 0;
     IM.iter (fun _ (_, args) -> List.iter bump args) graph;
@@ -200,26 +211,29 @@ let fold
 
   (* Nodes need an explicit definition if not nullary and referenced
      more than once
-   *)
+  *)
   let needs_def : IS.t =
-    IS.of_seq (Seq.filter_map (fun (i, (k, args)) ->
-        if args != [] && IM.find i tally > 1 then Some i else None
-    ) (IM.to_seq graph))
+    IS.of_seq
+      (Seq.filter_map
+         (fun (i, (k, args)) ->
+           if args != [] && IM.find i tally > 1 then Some i else None)
+         (IM.to_seq graph))
   in
 
   (* Now fold the graph using the user-provided combinators *)
   let seen = ref IS.empty in
   let rec go_con i : 'b =
     (* This node is only visited once *)
-    let (k, args) = IM.find i graph in
+    let k, args = IM.find i graph in
     of_con k (List.map go args)
   and go i : 'b =
     (* This node is only visited once: *)
     if IS.mem i needs_def then
       (* We have seen this before: *)
-      if IS.mem i !seen then of_ref i
-      (* This is a shared node, first visit: *)
-      else (seen := IS.add i !seen; of_def i (go_con i))
+      if IS.mem i !seen then of_ref i (* This is a shared node, first visit: *)
+      else (
+        seen := IS.add i !seen;
+        of_def i (go_con i))
     else go_con i
   in
   go 0

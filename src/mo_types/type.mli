@@ -33,33 +33,34 @@ type prim =
 type t = typ
 
 and typ =
-  | Var of var * int                          (* variable *)
-  | Con of con * typ list                     (* constructor *)
-  | Prim of prim                              (* primitive *)
-  | Obj of obj_sort * field list              (* object *)
-  | Variant of field list                     (* variant *)
-  | Array of typ                              (* array *)
-  | Opt of typ                                (* option *)
-  | Tup of typ list                           (* tuple *)
-  | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of scope * typ                        (* future *)
-  | Mut of typ                                (* mutable type *)
-  | Any                                       (* top *)
-  | Non                                       (* bottom *)
-  | Typ of con                                (* type (field of module) *)
-  | Pre                                       (* pre-type *)
+  | Var of var * int (* variable *)
+  | Con of con * typ list (* constructor *)
+  | Prim of prim (* primitive *)
+  | Obj of obj_sort * field list (* object *)
+  | Variant of field list (* variant *)
+  | Array of typ (* array *)
+  | Opt of typ (* option *)
+  | Tup of typ list (* tuple *)
+  | Func of func_sort * control * bind list * typ list * typ list (* function *)
+  | Async of scope * typ (* future *)
+  | Mut of typ (* mutable type *)
+  | Any (* top *)
+  | Non (* bottom *)
+  | Typ of con (* type (field of module) *)
+  | Pre
+(* pre-type *)
 
 and scope = typ
 
 and bind_sort = Scope | Type
-and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ; depr : string option}
+and bind = { var : var; sort : bind_sort; bound : typ }
+
+and field = { lab : lab; typ : typ; depr : string option }
 
 and con = kind Con.t
-and kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
+
+and kind = Def of bind list * typ | Abs of bind list * typ
 
 (* Function sorts *)
 
@@ -84,12 +85,11 @@ val throw : typ
 val catch : typ
 
 val caller : typ
-val ctxt: typ
+val ctxt : typ
 
 val iter_obj : typ -> typ
 
 val prim : string -> prim
-
 
 (* Projection *)
 
@@ -137,12 +137,12 @@ val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ -> typ * typ
 
-
 (* Argument/result sequences *)
 
 val seq : typ list -> typ
 val codom : control -> (unit -> typ) -> typ list -> typ
 val as_seq : typ -> typ list (* This needs to go away *)
+
 val seq_of_tup : typ -> typ list
 val arity : typ -> int
 
@@ -155,7 +155,6 @@ val lookup_val_deprecation : string -> field list -> string option
 val lookup_typ_deprecation : string -> field list -> string option
 
 val compare_field : field -> field -> int
-
 
 (* Constructors *)
 
@@ -185,10 +184,9 @@ val inhabited : typ -> bool
 val singleton : typ -> bool
 val span : typ -> int option
 
-
 (* Constructor occurrences *)
 
-val cons: typ -> ConSet.t
+val cons : typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
 (* Equivalence and Subtyping *)
@@ -202,7 +200,6 @@ val compatible : typ -> typ -> bool
 val lub : typ -> typ -> typ
 val glb : typ -> typ -> typ
 
-
 (* First-order substitution *)
 
 val close : con list -> typ -> typ
@@ -211,11 +208,9 @@ val close_binds : con list -> bind list -> bind list
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list
 
-
 (* Environments *)
 
 module Env : Env.S with type key = string
-
 
 (* Scope bindings *)
 
@@ -223,7 +218,6 @@ val scope_var : var -> var
 val default_scope_var : var
 val scope_bound : typ
 val scope_bind : bind
-
 
 (* Pretty printing *)
 
@@ -234,10 +228,11 @@ val string_of_func_sort : func_sort -> string
 module type Pretty = sig
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
-  val pps_of_kind : kind ->
-    string *
-    (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+  val pps_of_kind :
+    kind ->
+    string
+    * (Format.formatter -> unit -> unit)
+    * (Format.formatter -> unit -> unit)
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string
@@ -245,7 +240,8 @@ module type Pretty = sig
   val string_of_typ_expand : typ -> string
 end
 
-module MakePretty(_ : sig val show_stamps : bool end) : Pretty
+module MakePretty (_ : sig
+  val show_stamps : bool
+end) : Pretty
 
 include Pretty
-

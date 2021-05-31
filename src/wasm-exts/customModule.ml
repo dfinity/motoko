@@ -10,11 +10,8 @@ type name_section = {
   locals_names : (int32 * (int32 * string) list) list;
 }
 
-let empty_name_section : name_section = {
-  module_ = None;
-  function_names = [];
-  locals_names = [];
-}
+let empty_name_section : name_section =
+  { module_ = None; function_names = []; locals_names = [] }
 
 type dylink_section = {
   memory_size : int32;
@@ -24,13 +21,9 @@ type dylink_section = {
   needed_dynlibs : string list;
 }
 
-type motoko_section = {
-  labels : string list;
-}
+type motoko_section = { labels : string list }
 
-let empty_motoko_section = {
-    labels = []
-  };
+let empty_motoko_section = { labels = [] }
 
 type extended_module = {
   (* The non-custom sections *)

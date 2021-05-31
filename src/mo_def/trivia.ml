@@ -70,7 +70,7 @@ let deprecated_of_trivia_info : trivia_info -> string option =
                 (* We expect a documentation line comment to start with a space
                  *  (which we remove here) *)
                 Lib.String.chop_prefix " " line_comment
-            | None -> None )
+            | None -> None)
         | _ -> None)
       info.leading_trivia
   in
@@ -92,7 +92,7 @@ let doc_comment_of_trivia_info : trivia_info -> string option =
                 Option.bind
                   (Lib.String.chop_prefix "/**" s)
                   (Lib.String.chop_suffix "*/")
-                |> Option.map String.trim )
+                |> Option.map String.trim)
         | _ -> None)
       info.leading_trivia
   in

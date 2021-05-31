@@ -1,7 +1,6 @@
 (* Numeric Representations *)
 
-module type NumType =
-sig
+module type NumType = sig
   type t
   val signed : bool
   val zero : t
@@ -30,8 +29,7 @@ sig
 end
 
 (* Extension of NumType with wrapping and bit-wise operations *)
-module type BitNumType =
-sig
+module type BitNumType = sig
   include NumType
 
   val not : t -> t
@@ -55,8 +53,7 @@ sig
   val wpow : t -> t -> t
 end
 
-module type FloatType =
-sig
+module type FloatType = sig
   include Wasm.Float.S
   val rem : t -> t -> t
   val pow : t -> t -> t

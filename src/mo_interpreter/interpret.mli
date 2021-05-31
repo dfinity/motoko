@@ -5,15 +5,9 @@ open Mo_types
 module V = Value
 module T = Type
 
-type flags =
-  { trace : bool;
-    print_depth : int
-  }
+type flags = { trace : bool; print_depth : int }
 
-type scope =
-  { val_env: V.def V.Env.t;
-    lib_env: V.value V.Env.t;
-  }
+type scope = { val_env : V.def V.Env.t; lib_env : V.value V.Env.t }
 
 val empty_scope : scope
 val adjoin_scope : scope -> scope -> scope

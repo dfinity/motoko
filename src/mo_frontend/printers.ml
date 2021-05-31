@@ -13,7 +13,6 @@ let binassign = abstract "<binassign>"
 let unop = abstract "<unop>"
 let unassign = abstract "<unassign>"
 
-
 let string_of_symbol symbol : string =
   match symbol with
   | X (T T_error) -> "error"
@@ -115,7 +114,7 @@ let string_of_symbol symbol : string =
   | X (T T_COMMA) -> ","
   | X (T T_COLON) -> ":"
   | X (T T_CLASS) -> "class"
-  | X (T T_CHAR) ->  "<char>"
+  | X (T T_CHAR) -> "<char>"
   | X (T T_CATCH) -> "catch"
   | X (T T_CATASSIGN) -> binassign "@="
   | X (T T_CASE) -> "case"
@@ -180,7 +179,7 @@ let string_of_symbol symbol : string =
   | X (N N_pat_un) -> "<pat_un>"
   | X (N N_path) -> "<path>"
   | X (N N_annot_opt) -> "<annot_opt>"
-  | X (N N_seplist_case_semicolon_) ->  "seplist(<case>,<semicolon>)"
+  | X (N N_seplist_case_semicolon_) -> "seplist(<case>,<semicolon>)"
   | X (N N_seplist_dec_SEMICOLON_) -> "seplist(<dec>,;)"
   | X (N N_seplist_dec_semicolon_) -> "seplist(<dec>,<semicolon>)"
   | X (N N_seplist_dec_field_semicolon_) -> "seplist(<dec_field>,<semicolon>)"
@@ -211,7 +210,8 @@ let string_of_symbol symbol : string =
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
   | X (N N_stab) -> "<stab>"
-  | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
+  | X (N N_start) -> "<start>"
+(* dummy non-terminal, don't display *)
 
 (* In order to print a view of the stack that includes semantic values,
    we need an element printer. (If we don't need this feature, then
@@ -219,10 +219,11 @@ let string_of_symbol symbol : string =
 
 (* The public functions. *)
 
-let buff :string list ref = ref []
-let print s = buff := s::!buff
+let buff : string list ref = ref []
+let print s = buff := s :: !buff
 let print_symbol s = print (string_of_symbol s)
 let print_element = None
-let to_string() = let s = String.concat "" (List.rev (!buff)) in
-                  buff := [];
-                  s
+let to_string () =
+  let s = String.concat "" (List.rev !buff) in
+  buff := [];
+  s

@@ -1,4 +1,3 @@
-
 (* Identifiers *)
 
 type id = string Source.phrase
@@ -25,44 +24,56 @@ type prim =
   | Empty
 
 type func_mode = func_mode' Source.phrase
+
 and func_mode' = Oneway | Query
 
 type field_label = field_label' Source.phrase
-and field_label' = Id of Lib.Uint32.t | Named of string | Unnamed of Lib.Uint32.t
+
+and field_label' =
+  | Id of Lib.Uint32.t
+  | Named of string
+  | Unnamed of Lib.Uint32.t
 
 type typ = typ' Source.phrase
+
 and typ' =
-  | PrimT of prim                                (* primitive *)
-  | VarT of id                                    (* type name *)
-  | FuncT of func_mode list * typ list * typ list   (* function *)
-  | OptT of typ   (* option *)
-  | VecT of typ   (* vector *)
+  | PrimT of prim (* primitive *)
+  | VarT of id (* type name *)
+  | FuncT of func_mode list * typ list * typ list (* function *)
+  | OptT of typ (* option *)
+  | VecT of typ (* vector *)
   | BlobT (* vec nat8 *)
-  | RecordT of typ_field list  (* record *)
+  | RecordT of typ_field list (* record *)
   | VariantT of typ_field list (* variant *)
   | ServT of typ_meth list (* service reference *)
   (* ClassT can only appear in the main actor. *)
   (* This is guarded by the parser and type checker *)
   | ClassT of typ list * typ (* service constructor *)
   | PrincipalT
-  | PreT   (* pre-type *)
+  | PreT
+(* pre-type *)
 
 and typ_field = typ_field' Source.phrase
-and typ_field' = { label: field_label; typ : typ }
+
+and typ_field' = { label : field_label; typ : typ }
 
 and typ_meth = typ_meth' Source.phrase
-and typ_meth' = {var : id; meth : typ}
+
+and typ_meth' = { var : id; meth : typ }
 
 (* Declarations *)
-
 and dec = dec' Source.phrase
+
 and dec' =
-  | TypD of id * typ             (* type *)
-  | ImportD of string * string ref  (* import *)
+  | TypD of id * typ
+  (* type *)
+  | ImportD of string * string ref
+(* import *)
 
 (* Program *)
 
 type prog = (prog', string) Source.annotated_phrase
+
 and prog' = { decs : dec list; actor : typ option }
 
 (* Values *)
@@ -71,6 +82,7 @@ and prog' = { decs : dec list; actor : typ option }
 to translate Candid textual values into morally equivalent Motoko
 source code. See mo_idl/idl_to_mo_value.ml *)
 type value = value' Source.phrase
+
 and value' =
   | NumV of string (* Candid and Motoko syntax matches, so re-use. Includes floats. *)
   | TextV of string
@@ -84,15 +96,14 @@ and value' =
   | ServiceV of string
   | FuncV of (string * string)
   | PrincipalV of string
+
 and field_value = (field_label * value) Source.phrase
 
 type args = value list Source.phrase
 
 (* Tests *)
 
-type input =
-  | BinaryInput of string
-  | TextualInput of string
+type input = BinaryInput of string | TextualInput of string
 
 type test_assertion =
   | ParsesAs of (bool * input)
@@ -106,4 +117,5 @@ type test' = {
 type test = test' Source.phrase
 
 type tests = (tests', string) Source.annotated_phrase
+
 and tests' = { tdecs : dec list; tests : test list }

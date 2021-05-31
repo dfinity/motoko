@@ -9,7 +9,6 @@ end
 
 module Env : Env.S with type key = string
 
-
 (* Types *)
 
 type unicode = int
@@ -17,8 +16,7 @@ type actor_id = string
 
 type context = value
 
-and func =
-   context -> value -> value cont -> unit
+and func = context -> value -> value cont -> unit
 
 and value =
   | Null
@@ -44,14 +42,19 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Iter of value Seq.t ref (* internal to {b.vals(), t.chars()} iterator *)
+  | Iter of value Seq.t ref
+(* internal to {b.vals(), t.chars()} iterator *)
 
 and res = Ok of value | Error of value
-and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
+
+and async = {
+  result : res Lib.Promise.t;
+  mutable waiters : (value cont * value cont) list;
+}
 
 and def = value Lib.Promise.t
-and 'a cont = 'a -> unit
 
+and 'a cont = 'a -> unit
 
 (* Shorthands *)
 
@@ -62,12 +65,10 @@ val message_func : Type.shared_sort -> int -> func -> value
 val async_func : Type.shared_sort -> int -> int -> func -> value
 val replies_func : Type.shared_sort -> int -> int -> func -> value
 
-
 (* Pseudo actor ids *)
 
 val fresh_id : unit -> actor_id
 val top_id : actor_id
-
 
 (* Projections *)
 
@@ -98,12 +99,10 @@ val as_func : value -> Call_conv.t * func
 val as_async : value -> async
 val as_mut : value -> value ref
 
-
 (* Ordering *)
 
 val equal : value -> value -> bool
 val compare : value -> value -> int
-
 
 (* Pretty Printing *)
 

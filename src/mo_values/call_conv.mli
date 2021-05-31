@@ -2,7 +2,7 @@
 open Mo_types
 
 type call_conv = {
-  sort: Type.func_sort;
+  sort : Type.func_sort;
   control : Type.control;
   n_args : int;
   n_res : int;

@@ -3,19 +3,14 @@
    stack. *)
 
 module Make
-  (I : MenhirLib.IncrementalEngine.EVERYTHING)
-  (_ : sig
+    (I : MenhirLib.IncrementalEngine.EVERYTHING) (_ : sig
+      (* In order to submit artificial tokens to the parser, we need a function
+         that converts a terminal symbol to a token. Unfortunately, we cannot
+         (in general) auto-generate this code, because it requires making up
+         semantic values of arbitrary OCaml types. *)
 
-    (* In order to submit artificial tokens to the parser, we need a function
-       that converts a terminal symbol to a token. Unfortunately, we cannot
-       (in general) auto-generate this code, because it requires making up
-       semantic values of arbitrary OCaml types. *)
-
-    val terminal2token: _ I.terminal -> I.token
-
-  end)
-: sig
-
+      val terminal2token : _ I.terminal -> I.token
+    end) : sig
   open I
 
   (* An explanation is a description of what the parser has recognized in the
@@ -29,7 +24,7 @@ module Make
 
   (* The LR(0) item. *)
 
-  val item: explanation -> item
+  val item : explanation -> item
 
   (* The past. This is a non-empty sequence of (terminal and non-terminal)
      symbols, each of which corresponds to a range of the input file. These
@@ -44,7 +39,7 @@ module Make
      of the lookahead token may cause different reductions, hence different
      interpretations of what has been read in the past. *)
 
-  val past: explanation -> (xsymbol * Lexing.position * Lexing.position) list
+  val past : explanation -> (xsymbol * Lexing.position * Lexing.position) list
 
   (* The future. This is a non-empty sequence of (terminal and non-terminal)
      symbols. These symbols correspond to the second half (after the bullet)
@@ -54,7 +49,7 @@ module Make
   (* This information can be computed from [item]. This function is provided
      only for convenience. *)
 
-  val future: explanation -> xsymbol list
+  val future : explanation -> xsymbol list
 
   (* A goal. This is a non-terminal symbol. It is the item's left-hand side.
      In short, it represents the reduction that we will be able to perform if
@@ -63,17 +58,16 @@ module Make
   (* This information can be computed from [item]. This function is provided
      only for convenience. *)
 
-  val goal: explanation -> xsymbol
+  val goal : explanation -> xsymbol
 
   (* TEMPORARY *)
 
   (* We build lists of explanations. These explanations may originate in
-     distinct LR(1) states. They may have different pasts, because  *)
+     distinct LR(1) states. They may have different pasts, because *)
 
   exception Error of (Lexing.position * Lexing.position) * explanation list
 
   (* TEMPORARY *)
 
-  val entry: 'a I.checkpoint -> I.supplier -> 'a
-
+  val entry : 'a I.checkpoint -> I.supplier -> 'a
 end

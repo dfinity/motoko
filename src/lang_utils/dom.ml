@@ -1,16 +1,15 @@
-module type S =
-sig
+module type S = sig
   include Set.S
 
   exception Clash of elt
 
   val disjoint_add : elt -> t -> t (* raises Clash *)
+
   val disjoint_union : t -> t -> t (* raises Clash *)
 end
 
-module Make(X : Set.OrderedType) : S with type elt = X.t =
-struct
-  include Set.Make(X)
+module Make (X : Set.OrderedType) : S with type elt = X.t = struct
+  include Set.Make (X)
 
   exception Clash of elt
 

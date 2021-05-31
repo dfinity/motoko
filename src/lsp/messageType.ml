@@ -1,9 +1,4 @@
-type t
-  = Error
-  | Warning
-  | Info
-  | Log
-  | Unknown of int
+type t = Error | Warning | Info | Log | Unknown of int
 
 let wrap : int -> t = function
   | 1 -> Error

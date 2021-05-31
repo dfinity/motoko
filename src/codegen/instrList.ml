@@ -5,7 +5,7 @@ features are
  * O(1) concatenation (using difference list internally)
  * Managing of label depths.
  * Some simple peephole optimizations.
-*)
+ *)
 
 open Wasm_exts.Ast
 open Wasm.Source
@@ -13,93 +13,133 @@ open Wasm.Values
 open Wasm.Types
 
 let combine_shifts const op = function
-  | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
-    let l, r = Int32.(to_int l', to_int r') in
-    if (l >= 0 && l < 32 && r >= 0 && r < 32 && l + r < 32) then
-      Some [{const with it = Const {cl with it = I32 (Int32.add l' r')}}; {op with it = Binary (I32 opl)}]
-    else None
+  | I32 opl, ({ it = I32 l'; _ } as cl), I32 opr, I32 r' when opl = opr ->
+      let l, r = Int32.(to_int l', to_int r') in
+      if l >= 0 && l < 32 && r >= 0 && r < 32 && l + r < 32 then
+        Some
+          [
+            { const with it = Const { cl with it = I32 (Int32.add l' r') } };
+            { op with it = Binary (I32 opl) };
+          ]
+      else None
   | _ -> None
 
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
-let optimize : instr list -> instr list = fun is ->
-  let rec go l r = match l, r with
+let optimize : instr list -> instr list =
+ fun is ->
+  let rec go l r =
+    match (l, r) with
     (* Combine adjacent Metas *)
-    | {it = Meta m2; _} as n2 :: {it = Meta m1; _} :: l', r' ->
-      let combined =
-        let open Wasm_exts.Dwarf5.Meta in
-        match m1, m2 with
-        | StatementDelimiter _, StatementDelimiter _ -> m2
-        | StatementDelimiter _, Grouped (StatementDelimiter _ :: t) -> Grouped (m2 :: t)
-        | Grouped g1, Grouped g2 -> Grouped (g2 @ g1)
-        | Grouped g1, _ -> Grouped (m2 :: g1)
-        | _, Grouped g2 -> Grouped (g2 @ [m1])
-        | _, _ -> Grouped [m2; m1] in
-      go ({ n2 with it = Meta combined } :: l') r'
-
+    | ({ it = Meta m2; _ } as n2) :: { it = Meta m1; _ } :: l', r' ->
+        let combined =
+          let open Wasm_exts.Dwarf5.Meta in
+          match (m1, m2) with
+          | StatementDelimiter _, StatementDelimiter _ -> m2
+          | StatementDelimiter _, Grouped (StatementDelimiter _ :: t) ->
+              Grouped (m2 :: t)
+          | Grouped g1, Grouped g2 -> Grouped (g2 @ g1)
+          | Grouped g1, _ -> Grouped (m2 :: g1)
+          | _, Grouped g2 -> Grouped (g2 @ [ m1 ])
+          | _, _ -> Grouped [ m2; m1 ]
+        in
+        go ({ n2 with it = Meta combined } :: l') r'
     (* Loading and dropping is pointless *)
-    | { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
+    | { it = Const _ | LocalGet _; _ } :: l', { it = Drop; _ } :: r' -> go l' r'
     (* Loading and dropping is pointless, even with intervening Meta *)
-    | { it = Meta _; _} as m :: { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' (m :: r')
+    | ( ({ it = Meta _; _ } as m) :: { it = Const _ | LocalGet _; _ } :: l',
+        { it = Drop; _ } :: r' ) ->
+        go l' (m :: r')
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
-    | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
+    | { it = Load _; _ } :: l', { it = Drop; _ } :: _ -> go l' r
     (* Introduce LocalTee *)
-    | { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
-      go l' ({i with it = LocalTee n2 } :: r')
+    | { it = LocalSet n1; _ } :: l', ({ it = LocalGet n2; _ } as i) :: r'
+      when n1 = n2 ->
+        go l' ({ i with it = LocalTee n2 } :: r')
     (* Introduce LocalTee with previously intervening Meta *)
-    | { it = Meta _; _} as m :: { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
-      go l' (m :: {i with it = LocalTee n2 } :: r')
+    | ( ({ it = Meta _; _ } as m) :: { it = LocalSet n1; _ } :: l',
+        ({ it = LocalGet n2; _ } as i) :: r' )
+      when n1 = n2 ->
+        go l' (m :: { i with it = LocalTee n2 } :: r')
     (* Eliminate LocalTee followed by Drop (good for confluence) *)
-    | ({ it = LocalTee n; _} as i) :: l', { it = Drop; _ } :: r' ->
-      go l' ({i with it = LocalSet n } :: r')
+    | ({ it = LocalTee n; _ } as i) :: l', { it = Drop; _ } :: r' ->
+        go l' ({ i with it = LocalSet n } :: r')
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
-      (* see Note [funneling DIEs through Wasm.Ast] *)
-      List.(rev (i :: l) @ find_all (fun instr -> Wasm_exts.Ast.is_dwarf_like instr.it) t)
+        (* see Note [funneling DIEs through Wasm.Ast] *)
+        List.(
+          rev (i :: l)
+          @ find_all (fun instr -> Wasm_exts.Ast.is_dwarf_like instr.it) t)
     (* Equals zero has an dedicated operation (and works well with leg swapping) *)
-    | ({it = Compare (I32 I32Op.Eq); _} as i) :: {it = Const {it = I32 0l; _}; _} :: l', r' ->
-      go l' ({ i with it = Test (I32 I32Op.Eqz)}  :: r')
+    | ( ({ it = Compare (I32 I32Op.Eq); _ } as i)
+        :: { it = Const { it = I32 0l; _ }; _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Test (I32 I32Op.Eqz) } :: r')
     (* eqz after eq/ne becomes ne/eq *)
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (I32 I32Op.Ne)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (I32 I32Op.Eq)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I64 I64Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (I64 I64Op.Ne)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I64 I64Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (I64 I64Op.Eq)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F32 F32Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (F32 F32Op.Ne)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F32 F32Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (F32 F32Op.Eq)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (F64 F64Op.Ne)}  :: r')
-    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (F64 F64Op.Eq)}  :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (I32 I32Op.Eq); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (I32 I32Op.Ne) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (I32 I32Op.Ne); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (I32 I32Op.Eq) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (I64 I64Op.Eq); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (I64 I64Op.Ne) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (I64 I64Op.Ne); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (I64 I64Op.Eq) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (F32 F32Op.Eq); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (F32 F32Op.Ne) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (F32 F32Op.Ne); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (F32 F32Op.Eq) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (F64 F64Op.Eq); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (F64 F64Op.Ne) } :: r')
+    | ( ({ it = Test (I32 I32Op.Eqz); _ } as i)
+        :: { it = Compare (F64 F64Op.Ne); _ } :: l',
+        r' ) ->
+        go l' ({ i with it = Compare (F64 F64Op.Eq) } :: r')
     (* `If` blocks after pushed constants are simplifiable *)
-    | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
-      go l' ({i with it = Block (res, else_)} :: r')
-    | { it = Const {it = I32 _; _}; _} :: l', ({it = If (res,then_,_); _} as i) :: r' ->
-      go l' ({i with it = Block (res, then_)} :: r')
+    | ( { it = Const { it = I32 0l; _ }; _ } :: l',
+        ({ it = If (res, _, else_); _ } as i) :: r' ) ->
+        go l' ({ i with it = Block (res, else_) } :: r')
+    | ( { it = Const { it = I32 _; _ }; _ } :: l',
+        ({ it = If (res, then_, _); _ } as i) :: r' ) ->
+        go l' ({ i with it = Block (res, then_) } :: r')
     (* `If` blocks after negation can swap legs *)
-    | { it = Test (I32 I32Op.Eqz); _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
-      go l' ({i with it = If (res,else_,then_)} :: r')
+    | ( { it = Test (I32 I32Op.Eqz); _ } :: l',
+        ({ it = If (res, then_, else_); _ } as i) :: r' ) ->
+        go l' ({ i with it = If (res, else_, then_) } :: r')
     (* Empty block is redundant *)
-    | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
+    | l', { it = Block (_, []); _ } :: r' -> go l' r'
     (* Constant shifts can be combined *)
-    | {it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _} :: {it = Const cl; _} :: l',
-      ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
-        when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
-      go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
+    | ( { it = Binary (I32 I32Op.(Shl | ShrS | ShrU) as opl); _ }
+        :: { it = Const cl; _ } :: l',
+        ({ it = Const cr; _ } as const) :: ({ it = Binary opr; _ } as op) :: r'
+      )
+      when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
+        go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
-    | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
-      go l' r'
+    | ( l',
+        { it = Const { it = I32 0l; _ }; _ }
+        :: { it = Binary (I32 I32Op.(Shl | ShrS | ShrU)); _ } :: r' ) ->
+        go l' r'
     (* Look further *)
-    | _, i::r' -> go (i::l) r'
+    | _, i :: r' -> go (i :: l) r'
     (* Done looking *)
     | l, [] -> List.rev l
-  in go [] is
+  in
+  go [] is
 
 (* The main type of this module:
    Arguments for the current depth and the current source region,
@@ -109,15 +149,14 @@ type t = int32 -> Wasm.Source.region -> instr list -> instr list
 let to_instr_list (is : t) : instr list =
   optimize (is 0l Wasm.Source.no_region [])
 
-let to_nested_list d pos is =
-  optimize (is Int32.(add d 1l) pos [])
-
+let to_nested_list d pos is = optimize (is Int32.(add d 1l) pos [])
 
 (* Do nothing *)
 let nop : t = fun _ _ rest -> rest
 
 (* The concatenation operator *)
-let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
+let ( ^^ ) (is1 : t) (is2 : t) : t =
+ fun d pos rest -> is1 d pos (is2 d pos rest)
 
 (* Forcing side effects to happen,
    only for depth- and location-oblivious instructions
@@ -131,66 +170,81 @@ let effects t =
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
 (* map and concat *)
-let concat xs = List.fold_right (^^) xs nop
-let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
-let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
-let table n f = List.fold_right (^^) (Lib.List.table n f) nop
+let concat xs = List.fold_right ( ^^ ) xs nop
+let concat_map f xs = List.fold_right ( ^^ ) (List.map f xs) nop
+let concat_mapi f xs = List.fold_right ( ^^ ) (List.mapi f xs) nop
+let table n f = List.fold_right ( ^^ ) (Lib.List.table n f) nop
 
 (* Region-managing combinator *)
 
 let cr at =
-  let left = Wasm.Source.{
-    file = at.Source.left.Source.file;
-    line = at.Source.left.Source.line;
-    column = at.Source.left.Source.column } in
-  let right = Wasm.Source.{
-    file = at.Source.right.Source.file;
-    line = at.Source.right.Source.line;
-    column = at.Source.right.Source.column } in
+  let left =
+    Wasm.Source.
+      {
+        file = at.Source.left.Source.file;
+        line = at.Source.left.Source.line;
+        column = at.Source.left.Source.column;
+      }
+  in
+  let right =
+    Wasm.Source.
+      {
+        file = at.Source.right.Source.file;
+        line = at.Source.right.Source.line;
+        column = at.Source.right.Source.column;
+      }
+  in
   Wasm.Source.{ left; right }
 
 let with_region (pos : Source.region) (body : t) : t =
-  fun d _pos rest -> body d (cr pos) rest
+ fun d _pos rest -> body d (cr pos) rest
 
 (* Depths-managing combinators *)
 
 let as_block_type : stack_type -> block_type = function
   | [] -> ValBlockType None
-  | [t] -> ValBlockType (Some t)
-  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
+  | [ t ] -> ValBlockType (Some t)
+  | _ ->
+      raise
+        (Invalid_argument
+           "instrList block combinators do not support multi-value yet")
 
 let if_ (ty : stack_type) (thn : t) (els : t) : t =
-  fun d pos rest ->
-    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+ fun d pos rest ->
+  (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els)
+  @@ pos)
+  :: rest
 
 let block_ (ty : stack_type) (body : t) : t =
-  fun d pos rest ->
-    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+ fun d pos rest ->
+  (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 let loop_ (ty : stack_type) (body : t) : t =
-  fun d pos rest ->
-    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+ fun d pos rest ->
+  (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
 
-let new_depth_label () : depth =  Lib.Promise.make ()
+let new_depth_label () : depth = Lib.Promise.make ()
 
 let remember_depth depth (is : t) : t =
-  fun d rest -> Lib.Promise.fulfill depth d; is d rest
+ fun d rest ->
+  Lib.Promise.fulfill depth d;
+  is d rest
 
 let with_current_depth (k : depth -> t) : t =
   let depth = new_depth_label () in
   remember_depth depth (k depth)
 
-let with_current_depth' (k : depth -> ('a * t)) : ('a * t) =
+let with_current_depth' (k : depth -> 'a * t) : 'a * t =
   let depth = new_depth_label () in
   let x, is = k depth in
   (x, remember_depth depth is)
 
 let branch_to_ (p : depth) : t =
-  fun d pos rest ->
-    (Br (Int32.(sub d (Lib.Promise.value p)) @@ pos) @@ pos) :: rest
+ fun d pos rest ->
+  (Br (Int32.(sub d (Lib.Promise.value p)) @@ pos) @@ pos) :: rest
 
 (* Convenience combinators *)
 
@@ -199,8 +253,7 @@ let labeled_block_ (ty : stack_type) depth (body : t) : t =
 
 (* Intended to be used within assert *)
 
-let is_nop (is : t) =
-  is 0l Wasm.Source.no_region [] = []
+let is_nop (is : t) = is 0l Wasm.Source.no_region [] = []
 
 (* DWARF tags and attributes: see Note [funneling DIEs through Wasm.Ast] *)
 
@@ -275,5 +328,11 @@ let dw_tag_no_children = dw_tag_open (* self-closing *)
 (* Marker for statement boundaries *)
 let dw_statement { Source.left; Source.right } =
   let open Wasm.Source in
-  let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
+  let left =
+    {
+      file = left.Source.file;
+      line = left.Source.line;
+      column = left.Source.column;
+    }
+  in
   i (Meta (StatementDelimiter left))

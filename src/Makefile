@@ -92,10 +92,8 @@ unit-tests: $(SOURCE_ID)
 
 format:
 	ocamlformat --inplace \
-	  docs/*.mli \
-          docs/*.ml \
-          languageServer/*.ml \
-          languageServer/*.mli
+	  **/*.mli \
+	  **/*.ml
 
 clean:
 	rm -f moc mo-ide mo-ld moc.js didc deser $(SOURCE_ID)

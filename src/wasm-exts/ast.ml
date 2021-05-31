@@ -9,7 +9,7 @@ The changes are:
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
-*)
+ *)
 
 (*
  * Throughout the implementation we use consistent naming conventions for
@@ -34,31 +34,56 @@ module Values = Wasm.Values
 module Memory = Wasm.Memory
 open Wasm.Source
 
-
 (* Operators *)
 
-module IntOp =
-struct
+module IntOp = struct
   type unop = Clz | Ctz | Popcnt | ExtendS of pack_size
-  type binop = Add | Sub | Mul | DivS | DivU | RemS | RemU
-             | And | Or | Xor | Shl | ShrS | ShrU | Rotl | Rotr
+  type binop =
+    | Add
+    | Sub
+    | Mul
+    | DivS
+    | DivU
+    | RemS
+    | RemU
+    | And
+    | Or
+    | Xor
+    | Shl
+    | ShrS
+    | ShrU
+    | Rotl
+    | Rotr
   type testop = Eqz
   type relop = Eq | Ne | LtS | LtU | GtS | GtU | LeS | LeU | GeS | GeU
-  type cvtop = ExtendSI32 | ExtendUI32 | WrapI64
-             | TruncSF32 | TruncUF32 | TruncSF64 | TruncUF64
-             | TruncSatSF32 | TruncSatUF32 | TruncSatSF64 | TruncSatUF64
-             | ReinterpretFloat
+  type cvtop =
+    | ExtendSI32
+    | ExtendUI32
+    | WrapI64
+    | TruncSF32
+    | TruncUF32
+    | TruncSF64
+    | TruncUF64
+    | TruncSatSF32
+    | TruncSatUF32
+    | TruncSatSF64
+    | TruncSatUF64
+    | ReinterpretFloat
 end
 
-module FloatOp =
-struct
+module FloatOp = struct
   type unop = Neg | Abs | Ceil | Floor | Trunc | Nearest | Sqrt
   type binop = Add | Sub | Mul | Div | Min | Max | CopySign
   type testop
   type relop = Eq | Ne | Lt | Gt | Le | Ge
-  type cvtop = ConvertSI32 | ConvertUI32 | ConvertSI64 | ConvertUI64
-             | PromoteF32 | DemoteF64
-             | ReinterpretInt
+  type cvtop =
+    | ConvertSI32
+    | ConvertUI32
+    | ConvertSI64
+    | ConvertUI64
+    | PromoteF32
+    | DemoteF64
+    | ReinterpretInt
 end
 
 module I32Op = IntOp
@@ -72,11 +97,14 @@ type testop = (I32Op.testop, I64Op.testop, F32Op.testop, F64Op.testop) Values.op
 type relop = (I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop) Values.op
 type cvtop = (I32Op.cvtop, I64Op.cvtop, F32Op.cvtop, F64Op.cvtop) Values.op
 
-type 'a memop =
-  {ty : value_type; align : int; offset : Memory.offset; sz : 'a option}
+type 'a memop = {
+  ty : value_type;
+  align : int;
+  offset : Memory.offset;
+  sz : 'a option;
+}
 type loadop = (pack_size * extension) memop
 type storeop = pack_size memop
-
 
 (* Expressions *)
 
@@ -87,88 +115,74 @@ type name = int list
 type block_type = VarBlockType of var | ValBlockType of value_type option
 
 type instr = instr' phrase
+
 and instr' =
-  | Unreachable                       (* trap unconditionally *)
-  | Nop                               (* do nothing *)
-  | Drop                              (* forget a value *)
-  | Select                            (* branchless conditional *)
-  | Block of block_type * instr list  (* execute in sequence *)
-  | Loop of block_type * instr list   (* loop header *)
-  | If of block_type * instr list * instr list  (* conditional *)
-  | Br of var                         (* break to n-th surrounding label *)
-  | BrIf of var                       (* conditional break *)
-  | BrTable of var list * var         (* indexed break *)
-  | Return                            (* break from function body *)
-  | Call of var                       (* call function *)
-  | CallIndirect of var               (* call function through table *)
-  | LocalGet of var                   (* read local variable *)
-  | LocalSet of var                   (* write local variable *)
-  | LocalTee of var                   (* write local variable and keep value *)
-  | GlobalGet of var                  (* read global variable *)
-  | GlobalSet of var                  (* write global variable *)
-  | Load of loadop                    (* read memory at address *)
-  | Store of storeop                  (* write memory at address *)
-  | MemorySize                        (* size of linear memory *)
-  | MemoryGrow                        (* grow linear memory *)
-  | Const of literal                  (* constant *)
-  | Test of testop                    (* numeric test *)
-  | Compare of relop                  (* numeric comparison *)
-  | Unary of unop                     (* unary numeric operator *)
-  | Binary of binop                   (* binary numeric operator *)
-  | Convert of cvtop                  (* conversion *)
-  | Meta of Dwarf5.Meta.die           (* debugging metadata *)
+  | Unreachable (* trap unconditionally *)
+  | Nop (* do nothing *)
+  | Drop (* forget a value *)
+  | Select (* branchless conditional *)
+  | Block of block_type * instr list (* execute in sequence *)
+  | Loop of block_type * instr list (* loop header *)
+  | If of block_type * instr list * instr list (* conditional *)
+  | Br of var (* break to n-th surrounding label *)
+  | BrIf of var (* conditional break *)
+  | BrTable of var list * var (* indexed break *)
+  | Return (* break from function body *)
+  | Call of var (* call function *)
+  | CallIndirect of var (* call function through table *)
+  | LocalGet of var (* read local variable *)
+  | LocalSet of var (* write local variable *)
+  | LocalTee of var (* write local variable and keep value *)
+  | GlobalGet of var (* read global variable *)
+  | GlobalSet of var (* write global variable *)
+  | Load of loadop (* read memory at address *)
+  | Store of storeop (* write memory at address *)
+  | MemorySize (* size of linear memory *)
+  | MemoryGrow (* grow linear memory *)
+  | Const of literal (* constant *)
+  | Test of testop (* numeric test *)
+  | Compare of relop (* numeric comparison *)
+  | Unary of unop (* unary numeric operator *)
+  | Binary of binop (* binary numeric operator *)
+  | Convert of cvtop (* conversion *)
+  | Meta of Dwarf5.Meta.die
+(* debugging metadata *)
 
 (* Globals & Functions *)
 
 type const = instr list phrase
 
 type global = global' phrase
-and global' =
-{
-  gtype : global_type;
-  value : const;
-}
+
+and global' = { gtype : global_type; value : const }
 
 type func = func' phrase
-and func' =
-{
-  ftype : var;
-  locals : value_type list;
-  body : instr list;
-}
 
+and func' = { ftype : var; locals : value_type list; body : instr list }
 
 (* Tables & Memories *)
 
 type table = table' phrase
-and table' =
-{
-  ttype : table_type;
-}
+
+and table' = { ttype : table_type }
 
 type memory = memory' phrase
-and memory' =
-{
-  mtype : memory_type;
-}
+
+and memory' = { mtype : memory_type }
 
 type 'data segment = 'data segment' phrase
-and 'data segment' =
-{
-  index : var;
-  offset : const;
-  init : 'data;
-}
+
+and 'data segment' = { index : var; offset : const; init : 'data }
 
 type table_segment = var list segment
 type memory_segment = string segment
-
 
 (* Modules *)
 
 type type_ = func_type phrase
 
 type export_desc = export_desc' phrase
+
 and export_desc' =
   | FuncExport of var
   | TableExport of var
@@ -176,13 +190,11 @@ and export_desc' =
   | GlobalExport of var
 
 type export = export' phrase
-and export' =
-{
-  name : name;
-  edesc : export_desc;
-}
+
+and export' = { name : name; edesc : export_desc }
 
 type import_desc = import_desc' phrase
+
 and import_desc' =
   | FuncImport of var
   | TableImport of table_type
@@ -190,16 +202,12 @@ and import_desc' =
   | GlobalImport of global_type
 
 type import = import' phrase
-and import' =
-{
-  module_name : name;
-  item_name : name;
-  idesc : import_desc;
-}
+
+and import' = { module_name : name; item_name : name; idesc : import_desc }
 
 type module_ = module_' phrase
-and module_' =
-{
+
+and module_' = {
   types : type_ list;
   globals : global list;
   tables : table list;
@@ -212,29 +220,27 @@ and module_' =
   exports : export list;
 }
 
-
 (* Auxiliary functions *)
 
 let empty_module =
-{
-  types = [];
-  globals = [];
-  tables = [];
-  memories = [];
-  funcs = [];
-  start = None;
-  elems  = [];
-  data = [];
-  imports = [];
-  exports = [];
-}
-
+  {
+    types = [];
+    globals = [];
+    tables = [];
+    memories = [];
+    funcs = [];
+    start = None;
+    elems = [];
+    data = [];
+    imports = [];
+    exports = [];
+  }
 
 let func_type_for (m : module_) (x : var) : func_type =
   (Lib.List32.nth m.it.types x.it).it
 
 let import_type (m : module_) (im : import) : extern_type =
-  let {idesc; _} = im.it in
+  let { idesc; _ } = im.it in
   match idesc.it with
   | FuncImport x -> ExternFuncType (func_type_for m x)
   | TableImport t -> ExternTableType t
@@ -242,34 +248,34 @@ let import_type (m : module_) (im : import) : extern_type =
   | GlobalImport t -> ExternGlobalType t
 
 let export_type (m : module_) (ex : export) : extern_type =
-  let {edesc; _} = ex.it in
+  let { edesc; _ } = ex.it in
   let its = List.map (import_type m) m.it.imports in
   let open Lib.List32 in
   match edesc.it with
   | FuncExport x ->
-    let fts =
-      funcs its @ List.map (fun f -> func_type_for m f.it.ftype) m.it.funcs
-    in ExternFuncType (nth fts x.it)
+      let fts =
+        funcs its @ List.map (fun f -> func_type_for m f.it.ftype) m.it.funcs
+      in
+      ExternFuncType (nth fts x.it)
   | TableExport x ->
-    let tts = tables its @ List.map (fun t -> t.it.ttype) m.it.tables in
-    ExternTableType (nth tts x.it)
+      let tts = tables its @ List.map (fun t -> t.it.ttype) m.it.tables in
+      ExternTableType (nth tts x.it)
   | MemoryExport x ->
-    let mts = memories its @ List.map (fun m -> m.it.mtype) m.it.memories in
-    ExternMemoryType (nth mts x.it)
+      let mts = memories its @ List.map (fun m -> m.it.mtype) m.it.memories in
+      ExternMemoryType (nth mts x.it)
   | GlobalExport x ->
-    let gts = globals its @ List.map (fun g -> g.it.gtype) m.it.globals in
-    ExternGlobalType (nth gts x.it)
+      let gts = globals its @ List.map (fun g -> g.it.gtype) m.it.globals in
+      ExternGlobalType (nth gts x.it)
 
 let string_of_name n =
   let b = Buffer.create 16 in
   let escape uc =
     if uc < 0x20 || uc >= 0x7f then
       Buffer.add_string b (Printf.sprintf "\\u{%02x}" uc)
-    else begin
+    else
       let c = Char.chr uc in
       if c = '\"' || c = '\\' then Buffer.add_char b '\\';
       Buffer.add_char b c
-    end
   in
   List.iter escape n;
   Buffer.contents b
@@ -282,10 +288,8 @@ let string_of_name n =
 let rec is_dwarf_like' =
   let open Dwarf5.Meta in
   function
-  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ -> true
+  | Tag _ | TagClose | IntAttribute _ | StringAttribute _ | OffsetAttribute _ ->
+      true
   | Grouped parts -> List.exists is_dwarf_like' parts
   | StatementDelimiter _ | FutureAttribute _ -> false
-let is_dwarf_like = function
-  | Meta m -> is_dwarf_like' m
-  | _ -> false
-
+let is_dwarf_like = function Meta m -> is_dwarf_like' m | _ -> false

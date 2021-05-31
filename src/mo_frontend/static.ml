@@ -18,101 +18,70 @@ open Syntax
 let err m at =
   let open Diag in
   add_msg m
-    (error_message
-       at
-       "M0014"
-       "type"
+    (error_message at "M0014" "type"
        "non-static expression in library or module")
 
 let pat_err m at =
   let open Diag in
   add_msg m
-    (error_message
-       at
-       "M0015"
-       "type"
+    (error_message at "M0015" "type"
        "only trivial patterns allowed in static expressions")
 
-let rec exp m e = match e.it with
+let rec exp m e =
+  match e.it with
   (* Plain values *)
-  | (PrimE _ | LitE _ | ActorUrlE _ | FuncE _) -> ()
-  | (TagE (_, exp1) | OptE exp1) -> exp m exp1
+  | PrimE _ | LitE _ | ActorUrlE _ | FuncE _ -> ()
+  | TagE (_, exp1) | OptE exp1 -> exp m exp1
   | TupE es -> List.iter (exp m) es
-  | ArrayE (mut, es) ->
-    begin
-      match mut.it with
-      | Const ->  List.iter (exp m) es
-      | Var -> err m e.at
-    end
+  | ArrayE (mut, es) -> (
+      match mut.it with Const -> List.iter (exp m) es | Var -> err m e.at)
   | ObjBlockE (_, dfs) -> dec_fields m dfs
   | ObjE efs -> exp_fields m efs
-
   (* Variable access. Dangerous, due to loops. *)
-  | (VarE _ | ImportE _) -> ()
-
+  | VarE _ | ImportE _ -> ()
   (* Projections. These are a form of evaluation. *)
-  | ProjE (exp1, _)
-  | DotE (exp1, _) -> exp m exp1
+  | ProjE (exp1, _) | DotE (exp1, _) -> exp m exp1
   | IdxE (exp1, exp2) -> err m e.at
-
   (* Transparent *)
-  | AnnotE (exp1, _) | IgnoreE exp1   | DoOptE exp1 -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1 | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
-
   (* Clearly non-static *)
-  | UnE _
-  | ShowE _
-  | NotE _
-  | AssertE _
-  | LabelE _
-  | BreakE _
-  | RetE _
-  | AsyncE _
-  | AwaitE _
-  | LoopE _
-  | BinE _
-  | RelE _
-  | AssignE _
-  | CallE _
-  | AndE _
-  | OrE _
-  | WhileE _
-  | ForE _
-  | DebugE _
-  | IfE _
-  | SwitchE _
-  | ThrowE _
-  | TryE _
-  | BangE _
-  -> err m e.at
+  | UnE _ | ShowE _ | NotE _ | AssertE _ | LabelE _ | BreakE _ | RetE _
+  | AsyncE _ | AwaitE _ | LoopE _ | BinE _ | RelE _ | AssignE _ | CallE _
+  | AndE _ | OrE _ | WhileE _ | ForE _ | DebugE _ | IfE _ | SwitchE _ | ThrowE _
+  | TryE _ | BangE _ ->
+      err m e.at
 
 and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs
 
 and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
 
-and dec m d = match d.it with
+and dec m d =
+  match d.it with
   | TypD _ | ClassD _ -> ()
   | ExpD e -> exp m e
-  | LetD (p, e) -> triv m p; exp m e
+  | LetD (p, e) ->
+      triv m p;
+      exp m e
   | VarD _ -> err m d.at
 
-and triv m p = match p.it with
-  | (WildP | VarP _) -> ()
-
+and triv m p =
+  match p.it with
+  | WildP | VarP _ -> ()
   (*
   If we allow projections above, then we should allow irrefutable
   patterns here.
   *)
   | TupP ps -> List.iter (triv m) ps
-
   (* TODO:
-    claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
-    Andreas suggests simply allowing all patterns: "The worst that can happen is that the program
-    is immediately terminated, but that doesn't break anything semantically."
+     claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
+     Andreas suggests simply allowing all patterns: "The worst that can happen is that the program
+     is immediately terminated, but that doesn't break anything semantically."
   *)
-
   (* Everything else is forbidden *)
   | _ -> pat_err m p.at
 
 let prog p =
-  Diag.with_message_store (fun m -> List.iter (dec m) p.it; Some ())
+  Diag.with_message_store (fun m ->
+      List.iter (dec m) p.it;
+      Some ())

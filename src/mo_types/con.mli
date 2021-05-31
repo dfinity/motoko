@@ -3,7 +3,7 @@
 type 'a t
 
 val fresh : string -> 'a -> 'a t
-val clone: 'a t -> 'a -> 'a t
+val clone : 'a t -> 'a -> 'a t
 
 val name : 'a t -> string
 val to_string : 'a t -> string

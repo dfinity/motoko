@@ -10,10 +10,10 @@ This module interface guarantees that constructors with the same stamp have the
 same ref.
 *)
 
-type 'a con = {name : string; stamp : int; kind : 'a ref}
+type 'a con = { name : string; stamp : int; kind : 'a ref }
 type 'a t = 'a con
 
-module Stamps = Env.Make(String)
+module Stamps = Env.Make (String)
 
 let stamps : int Stamps.t ref = ref Stamps.empty
 
@@ -22,15 +22,16 @@ let fresh_stamp name =
   stamps := Stamps.add name (n + 1) !stamps;
   n
 
-let fresh name k = {name; stamp = fresh_stamp name; kind = ref k}
-let clone c k = {c with stamp = fresh_stamp c.name; kind = ref k}
+let fresh name k = { name; stamp = fresh_stamp name; kind = ref k }
+let clone c k = { c with stamp = fresh_stamp c.name; kind = ref k }
 
 let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
 let to_string' show_stamps c =
-  if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
+  if (not show_stamps) || c.stamp = 0 then c.name
+  else Printf.sprintf "%s/%i" c.name c.stamp
 
 let to_string c = to_string' true c
 

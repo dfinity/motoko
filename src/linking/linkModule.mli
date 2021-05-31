@@ -5,4 +5,8 @@
 *)
 exception LinkError of string
 
-val link : Wasm_exts.CustomModule.extended_module -> string -> Wasm_exts.CustomModule.extended_module -> Wasm_exts.CustomModule.extended_module
+val link :
+  Wasm_exts.CustomModule.extended_module ->
+  string ->
+  Wasm_exts.CustomModule.extended_module ->
+  Wasm_exts.CustomModule.extended_module

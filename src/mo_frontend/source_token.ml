@@ -118,8 +118,8 @@ type token =
   | TAB of int (* shudders *)
   | COMMENT of string
 
-let to_parser_token :
-    token -> (Parser.token, line_feed trivia) result = function
+let to_parser_token : token -> (Parser.token, line_feed trivia) result =
+  function
   | EOF -> Ok Parser.EOF
   | DISALLOWED -> Ok Parser.DISALLOWED
   | LET -> Ok Parser.LET
@@ -368,9 +368,7 @@ let is_whitespace : 'a trivia -> bool = function
   | Space _ | Tab _ | Line _ -> true
   | Comment _ -> false
 
-let is_line_feed : token -> bool = function
-  | LINEFEED _ -> true
-  | _ -> false
+let is_line_feed : token -> bool = function LINEFEED _ -> true | _ -> false
 
 type annotation = {
   range : Lexing.position * Lexing.position;
@@ -378,8 +376,9 @@ type annotation = {
   trailing_trivia : void trivia list;
 }
 
-let dummy_annotation = {
-   range = Lexing.dummy_pos, Lexing.dummy_pos;
-   leading_trivia = [];
-   trailing_trivia = [];
-}
+let dummy_annotation =
+  {
+    range = (Lexing.dummy_pos, Lexing.dummy_pos);
+    leading_trivia = [];
+    trailing_trivia = [];
+  }

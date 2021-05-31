@@ -12,13 +12,14 @@ type actor_aliases = string Flags.M.t
 
 type resolved_imports = Syntax.resolved_import Source.phrase list
 
-val collect_imports : Syntax.prog -> string -> ((string * string option) list) Diag.result
+val collect_imports :
+  Syntax.prog -> string -> (string * string option) list Diag.result
 
 type flags = {
   package_urls : package_urls;
   actor_aliases : actor_aliases;
   actor_idl_path : actor_idl_path;
-  }
+}
 
 type package_map = filepath Flags.M.t
 type blob = string
@@ -27,7 +28,7 @@ type resolved_flags = {
   packages : package_map;
   aliases : aliases;
   actor_idl_path : actor_idl_path;
-  }
+}
 val resolve_flags : flags -> resolved_flags Diag.result
 
 val resolve : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result

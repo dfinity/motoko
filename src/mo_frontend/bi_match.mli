@@ -49,18 +49,25 @@ exception Bimatch of string
 (* General parameter inference for a conjunction of subtype problems *)
 val bi_match_subs :
   scope option ->
-  bind list ->               (* type parameters to instantiate *)
-  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
-                                left or right, but never both sides *)
-  typ option ->              (* optional return type mentioning tbs
-                                determining polarities *)
-  typ list (* raises Bimatch *)
-
+  bind list ->
+  (* type parameters to instantiate *)
+  (typ * typ) list ->
+  (* sub-type problems mentioning tbs either on
+     left or right, but never both sides *)
+  typ option ->
+  (* optional return type mentioning tbs
+     determining polarities *)
+  typ list
+(* raises Bimatch *)
 
 (* Parameter inference for function calls *)
 val bi_match_call :
   scope option ->
-  (bind list * typ * typ) -> (* function type *)
-  typ ->                     (* argument type *)
-  typ option ->              (* optional expected result type *)
-  typ list (* raises Bimatch *)
+  bind list * typ * typ ->
+  (* function type *)
+  typ ->
+  (* argument type *)
+  typ option ->
+  (* optional expected result type *)
+  typ list
+(* raises Bimatch *)

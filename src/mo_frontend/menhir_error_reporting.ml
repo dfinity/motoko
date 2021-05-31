@@ -1,17 +1,13 @@
 module Make
-  (I : MenhirLib.IncrementalEngine.EVERYTHING)
-  (User : sig
+    (I : MenhirLib.IncrementalEngine.EVERYTHING) (User : sig
+      (* In order to submit artificial tokens to the parser, we need a function
+         that converts a terminal symbol to a token. Unfortunately, we cannot
+         (in general) auto-generate this code, because it requires making up
+         semantic values of arbitrary OCaml types. *)
 
-    (* In order to submit artificial tokens to the parser, we need a function
-       that converts a terminal symbol to a token. Unfortunately, we cannot
-       (in general) auto-generate this code, because it requires making up
-       semantic values of arbitrary OCaml types. *)
-
-    val terminal2token: _ I.terminal -> I.token
-
-  end)
-= struct
-
+      val terminal2token : _ I.terminal -> I.token
+    end) =
+struct
   open MenhirLib.General
   open I
   open User
@@ -21,15 +17,13 @@ module Make
   (* Explanations. *)
 
   type explanation = {
-    item: item;
-    past: (xsymbol * Lexing.position * Lexing.position) list
+    item : item;
+    past : (xsymbol * Lexing.position * Lexing.position) list;
   }
 
-  let item explanation =
-    explanation.item
+  let item explanation = explanation.item
 
-  let past explanation =
-    explanation.past
+  let past explanation = explanation.past
 
   let future explanation =
     let prod, index = explanation.item in
@@ -54,7 +48,8 @@ module Make
     | Nil ->
         (* If we get here, then the stack is empty, which means the parser
            is in an initial state. This should not happen. *)
-        invalid_arg "items_current" (* TEMPORARY it DOES happen! *)
+        invalid_arg "items_current"
+        (* TEMPORARY it DOES happen! *)
     | Cons (Element (current, _, _, _), _) ->
         (* Extract the current state out of the top stack element, and
            convert it to a set of LR(0) items. Returning a set of items
@@ -80,24 +75,23 @@ module Make
     let c = compare_items x1.item x2.item in
     (* TEMPORARY checking that if [c] is 0 then the positions are the same *)
     assert (
-      c <> 0 || List.for_all2 (fun (_, start1, end1) (_, start2, end2) ->
-        start1.Lexing.pos_cnum = start2.Lexing.pos_cnum &&
-        end1.Lexing.pos_cnum = end2.Lexing.pos_cnum
-      ) x1.past x2.past
-    );
+      c <> 0
+      || List.for_all2
+           (fun (_, start1, end1) (_, start2, end2) ->
+             start1.Lexing.pos_cnum = start2.Lexing.pos_cnum
+             && end1.Lexing.pos_cnum = end2.Lexing.pos_cnum)
+           x1.past x2.past);
     c
 
   (* [marry past stack] TEMPORARY comment *)
 
   let rec marry past stack =
-    match past, stack with
-    | [], _ ->
-        []
-    | symbol :: past, lazy (Cons (Element (s, _, startp, endp), stack)) ->
+    match (past, stack) with
+    | [], _ -> []
+    | symbol :: past, (lazy (Cons (Element (s, _, startp, endp), stack))) ->
         assert (compare_symbols symbol (X (incoming_symbol s)) = 0);
         (symbol, startp, endp) :: marry past stack
-    | _ :: _, lazy Nil ->
-        assert false
+    | _ :: _, (lazy Nil) -> assert false
 
   (* [accumulate t env explanations] is called if the parser decides to shift
      the test token [t]. The parameter [env] describes the parser configuration
@@ -111,19 +105,17 @@ module Make
        We view these items as explanations: they explain what
        we have read and what we expect to read. *)
     let stack = stack env in
-    List.fold_left (fun explanations item ->
-      if is_shift_item t item then
-        let prod, index = item in
-        let rhs = rhs prod in
-        {
-          item = item;
-          past = List.rev (marry (List.rev (take index rhs)) stack)
-        } :: explanations
-      else
-        explanations
-    ) explanations (items_current env)
-      (* TEMPORARY [env] may be an initial state!
-         violating [item_current]'s precondition *)
+    List.fold_left
+      (fun explanations item ->
+        if is_shift_item t item then
+          let prod, index = item in
+          let rhs = rhs prod in
+          { item; past = List.rev (marry (List.rev (take index rhs)) stack) }
+          :: explanations
+        else explanations)
+      explanations (items_current env)
+  (* TEMPORARY [env] may be an initial state!
+     violating [item_current]'s precondition *)
 
   (* [investigate pos checkpoint] assumes that [checkpoint] is of the form
      [InputNeeded _].  For every terminal symbol [t], it investigates
@@ -134,21 +126,19 @@ module Make
      the explanations that we produce. *)
 
   let investigate pos (checkpoint : _ checkpoint) : explanation list =
-    weed compare_explanations (
-      foreach_terminal_but_error (fun symbol explanations ->
-        match symbol with
-        | X (N _) -> assert false
-        | X (T t) ->
-            (* Build a dummy token for the terminal symbol [t]. *)
-            let token = (terminal2token t, pos, pos) in
-            (* Submit it to the parser. Accumulate explanations. *)
-            match shifts (offer checkpoint token) with
-            | None ->
-                explanations
-            | Some env ->
-                accumulate t env explanations
-      ) []
-    )
+    weed compare_explanations
+      (foreach_terminal_but_error
+         (fun symbol explanations ->
+           match symbol with
+           | X (N _) -> assert false
+           | X (T t) -> (
+               (* Build a dummy token for the terminal symbol [t]. *)
+               let token = (terminal2token t, pos, pos) in
+               (* Submit it to the parser. Accumulate explanations. *)
+               match shifts (offer checkpoint token) with
+               | None -> explanations
+               | Some env -> accumulate t env explanations))
+         [])
 
   (* We drive the parser in the usual way, but records the last [InputNeeded]
      checkpoint. If a syntax error is detected, we go back to this checkpoint
@@ -163,14 +153,12 @@ module Make
          last [InputNeeded] checkpoint and investigate. *)
       match checkpoint with
       | HandlingError env ->
-          let (startp, _) as positions = positions env in
+          let ((startp, _) as positions) = positions env in
           raise (Error (positions, investigate startp inputneeded))
-      | _ ->
-          assert false
+      | _ -> assert false
     in
     I.loop_handle_undo Fun.id fail lexer start
 
   (* TEMPORARY could also publish a list of the terminal symbols that
      do not cause an error *)
-
 end
