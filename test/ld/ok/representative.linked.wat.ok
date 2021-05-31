@@ -12,8 +12,8 @@
     call $not_yet_imported2)
   (func $resolved_export (type 0))
   (func $__wasm_call_ctors (type 0)
-    call $__wasm_apply_relocs)
-  (func $__wasm_apply_relocs (type 0))
+    call $__wasm_apply_data_relocs)
+  (func $__wasm_apply_data_relocs (type 0))
   (func $square (type 1) (param i32) (result i32)
     call $resolved_export
     call $unresolved_import

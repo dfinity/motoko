@@ -9,8 +9,8 @@
     i32.const 5
     call_indirect (type 1))
   (func $__wasm_call_ctors (type 2)
-    call $__wasm_apply_relocs)
-  (func $__wasm_apply_relocs (type 2))
+    call $__wasm_apply_data_relocs)
+  (func $__wasm_apply_data_relocs (type 2))
   (func $f0 (type 1) (param i32 i32) (result i32)
     local.get 1
     local.get 0

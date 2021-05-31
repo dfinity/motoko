@@ -791,13 +791,18 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let fun_required2 = find_imports is_fun_import "env" dm2 in
 
   let apply_global_relocs_name = "__wasm_apply_global_relocs" in
-  let apply_global_relocs_idx = match List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names) with
-    | None -> raise (LinkError "Unable to find __wasm_apply_global_relocs in the RTS module")
-    | Some (idx, _) -> idx
+  let apply_global_relocs_idx =
+    Option.map
+      (fun (idx, _) -> idx)
+      (List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names))
   in
 
   let fun_exports1 = find_exports is_fun_export em1.module_ in
-  let fun_exports2 = NameMap.add (Wasm.Utf8.decode apply_global_relocs_name) apply_global_relocs_idx (find_exports is_fun_export dm2) in
+  let fun_exports2 = find_exports is_fun_export dm2 in
+  let fun_exports2 = match apply_global_relocs_idx with
+    | None -> fun_exports2
+    | Some idx -> NameMap.add (Wasm.Utf8.decode apply_global_relocs_name) idx (find_exports is_fun_export dm2)
+  in
   (* Resolve imports, to produce a renumbering function: *)
   let fun_resolved12 = resolve fun_required1 fun_exports2 in
   let fun_resolved21 = resolve fun_required2 fun_exports1 in
