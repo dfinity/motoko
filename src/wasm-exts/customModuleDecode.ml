@@ -726,6 +726,9 @@ let name_section_subsection (ns : name_section) (s : stream) : name_section =
   | 2 -> (* local names *)
     let loc_names = sized (fun _ -> indirect_name_map) s in
     { ns with locals_names = ns.locals_names @ loc_names }
+  (* The following subsections are not in the standard yet, but from the extended-name-section proposal
+     https://github.com/WebAssembly/extended-name-section/blob/master/proposals/extended-name-section/Overview.md
+  *)
   | 3 -> (* label names *)
     let label_names = sized (fun _ -> indirect_name_map) s in
     { ns with label_names = ns.label_names @ label_names }
