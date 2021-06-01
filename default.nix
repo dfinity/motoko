@@ -12,8 +12,8 @@ let subpath = import ./nix/gitSource.nix; in
 let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
-let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
-let ic-ref = ic-ref-pkgs.ic-ref; in
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-hs = ic-hs-pkgs.ic-hs; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -35,7 +35,7 @@ let
 
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
-    # so we do not use the nix-provided wraper in clang
+    # so we do not use the nix-provided wrapper in clang
     export WASM_CLANG="clang-12"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
@@ -124,7 +124,7 @@ let ocaml_exe = name: bin: rts:
           $out/bin/*
       '' + ''
         # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
-        # Lets remove that, too
+        # Let's remove that, too
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
@@ -219,7 +219,7 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-ref;
+  inherit ic-hs;
 
   tests = let
     testDerivationArgs = {
@@ -363,7 +363,7 @@ rec {
       run-dbg    = snty_subdir "run"        [ moc ] ;
       drun       = test_subdir "run-drun"   [ moc drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
       perf       = perf_subdir "perf"       [ moc drun ];
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
@@ -601,7 +601,7 @@ rec {
       base-tests
       base-doc
       docs
-      ic-ref
+      ic-hs
       shell
       check-formatting
       check-rts-formatting

@@ -728,9 +728,9 @@ let name_section_subsection (ns : name_section) s =
     { ns with locals_names = ns.locals_names @ loc_names }
 
   (* We ignore additional name subsections for now, despite newer
-     LLVM producing seemingly producing them.
+     LLVM seemingly producing them.
 
-     We should check if these sections are indeed as speced in
+     We should check if these sections are indeed as spec'ed in
      https://github.com/WebAssembly/extended-name-section/blob/master/proposals/extended-name-section/Overview.md
      and implement them, for better debugging.
   *)
