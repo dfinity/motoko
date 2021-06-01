@@ -830,7 +830,6 @@ module RTS = struct
     E.add_func_import env "rts" "init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
-    E.add_func_import env "rts" "__wasm_apply_global_relocs" [] [];
     ()
 
 end (* RTS *)
@@ -8092,7 +8091,6 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    E.call_import env "rts" "__wasm_apply_global_relocs" ^^
     E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->

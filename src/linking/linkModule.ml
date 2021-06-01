@@ -789,20 +789,8 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   (* Link functions *)
   let fun_required1 = find_imports is_fun_import libname em1.module_ in
   let fun_required2 = find_imports is_fun_import "env" dm2 in
-
-  let apply_global_relocs_name = "__wasm_apply_global_relocs" in
-  let apply_global_relocs_idx =
-    Option.map
-      (fun (idx, _) -> idx)
-      (List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names))
-  in
-
   let fun_exports1 = find_exports is_fun_export em1.module_ in
   let fun_exports2 = find_exports is_fun_export dm2 in
-  let fun_exports2 = match apply_global_relocs_idx with
-    | None -> fun_exports2
-    | Some idx -> NameMap.add (Wasm.Utf8.decode apply_global_relocs_name) idx (find_exports is_fun_export dm2)
-  in
   (* Resolve imports, to produce a renumbering function: *)
   let fun_resolved12 = resolve fun_required1 fun_exports2 in
   let fun_resolved21 = resolve fun_required2 fun_exports1 in
@@ -884,6 +872,14 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
 
+  (* Inject call to "__wasm_apply_global_relocs" *)
+  let apply_global_relocs_name = "__wasm_apply_global_relocs" in
+  let add_apply_global_relocs =
+    match List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names) with
+    | None -> fun em -> em
+    | Some (fi, _) -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
+  in
+
   let new_table_size =
     Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
   in
@@ -914,6 +910,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
+  |> add_apply_global_relocs
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   in
 
