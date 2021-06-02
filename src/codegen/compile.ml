@@ -233,6 +233,7 @@ module E = struct
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
 
+    (* Per module fields (only valid/used inside a module) *)
     (* Immutable *)
 
     (* Mutable *)
@@ -254,6 +255,8 @@ module E = struct
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
+    labs : LabSet.t ref; (* Used labels (fields and variants),
+                            collected for Motoko custom section 0 *)
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -263,8 +266,6 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
-    labs : LabSet.t ref; (* Used labels (fields and variants),
-                            collected for Motoko custom section 0 *)
   }
 
 
@@ -289,12 +290,12 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    labs = ref LabSet.empty;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
-    labs = ref LabSet.empty;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -734,7 +735,7 @@ module Func = struct
 end (* Func *)
 
 module RTS = struct
-  (* The connection to the C parts of the RTS *)
+  (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
@@ -985,7 +986,7 @@ module Stack = struct
 end (* Stack *)
 
 module ClosureTable = struct
-  (* See rts/closure-table.c *)
+  (* See rts/motoko-rts/src/closure_table.rs *)
   let remember env : G.t = E.call_import env "rts" "remember_closure"
   let recall env : G.t = E.call_import env "rts" "recall_closure"
   let count env : G.t = E.call_import env "rts" "closure_count"
@@ -1043,13 +1044,6 @@ module BitTagged = struct
        0b…x0: A shifted scalar
        0b000: `false`
        0b010: `true`
-
-     Summary:
-
-       0b…11: A pointer
-       0b…x0: A shifted scalar
-       0b00: `false`
-       0b01: `true`
 
      Note that {Nat,Int}{8,16} do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
@@ -2630,11 +2624,10 @@ module Object = struct
 
   (* This is for static objects *)
   let vanilla_lit env (fs : (string * int32) list) : int32 =
-    let open List in
     let (hashes, ptrs) = fs
-      |> map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
-      |> sort compare
-      |> split
+      |> List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
+      |> List.sort compare
+      |> List.split
     in
 
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
@@ -2931,7 +2924,7 @@ end (* Blob *)
 
 module Text = struct
   (*
-  Most of the heavy lifting around text values is in rts/text.c
+  Most of the heavy lifting around text values is in rts/motoko-rts/src/text.rs
   *)
 
   (* The layout of a concatenation node is
@@ -8160,7 +8153,7 @@ and conclude_module env start_fi_o =
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
+let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts Dfinity.trap_with Lifecycle.end_ in
 
   Heap.register_globals env;

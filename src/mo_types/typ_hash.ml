@@ -169,6 +169,7 @@ let typ_seq_hash : typ list -> string = fun ts ->
 
 (* Some small unit tests *)
 
+[@@@warning "-32"]
 let test t expected =
   let actual = typ_hash t in
   if actual = expected then

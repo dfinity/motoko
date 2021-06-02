@@ -12,16 +12,18 @@ let subpath = import ./nix/gitSource.nix; in
 let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
-let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
-let ic-ref = ic-ref-pkgs.ic-ref; in
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-hs = ic-hs-pkgs.ic-hs; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    clang_10 # for native/wasm building
-    lld_10 # for wasm building
+    # pulls in clang (wrapped) and clang-10 (unwrapped)
+    llvmPackages_10.clang
+    # pulls in wasm-ld
+    llvmPackages_10.lld
     llvmPackages_10.bintools
     rustc-nightly
     cargo-nightly
@@ -32,13 +34,19 @@ let
   ];
 
   llvmEnv = ''
+    # When compiling to wasm, we want to have more control over the flags,
+    # so we do not use the nix-provided wrapper in clang
+    export WASM_CLANG="clang-10"
+    export WASM_LD=wasm-ld
+    # because we use the unwrapped clang, we have to pass in some flags/paths
+    # that otherwise the wrapped clang would take care for us
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_10.clang-unwrapped.lib}"
+
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-10. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_10}/bin/clang"
-    export WASM_CLANG="clang-10"
-    export WASM_LD=wasm-ld
   '';
 in
 
@@ -113,6 +121,12 @@ let ocaml_exe = name: bin: rts:
           -t ${nixpkgs.darwin.Libsystem} \
           -t ${nixpkgs.darwin.CF} \
           -t ${nixpkgs.libiconv} \
+          $out/bin/*
+      '' + ''
+        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # Let's remove that, too
+        remove-references-to \
+          -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
         # sanity check
         $out/bin/* --help >/dev/null
@@ -205,7 +219,7 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-ref;
+  inherit ic-hs;
 
   tests = let
     testDerivationArgs = {
@@ -284,7 +298,7 @@ rec {
       });
 
     qc = testDerivation {
-      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
+      buildInputs = [ moc wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
 	export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
@@ -349,7 +363,7 @@ rec {
       run-dbg    = snty_subdir "run"        [ moc ] ;
       drun       = test_subdir "run-drun"   [ moc drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
       perf       = perf_subdir "perf"       [ moc drun ];
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
@@ -587,7 +601,7 @@ rec {
       base-tests
       base-doc
       docs
-      ic-ref
+      ic-hs
       shell
       check-formatting
       check-rts-formatting
@@ -631,7 +645,7 @@ rec {
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
-    LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 

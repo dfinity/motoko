@@ -1,4 +1,4 @@
-type Text = Nat;
+type Text = null;
 type Nat = null;
 type Id = int;
 service : {

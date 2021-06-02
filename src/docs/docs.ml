@@ -36,7 +36,7 @@ let extract : string -> extracted option =
       | Error err ->
           Printf.eprintf "Skipping %s:\n%s\n" in_file err;
           None
-      | Ok x -> Some x )
+      | Ok x -> Some x)
 
 let list_files_recursively : string -> string list =
  fun dir ->

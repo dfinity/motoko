@@ -582,7 +582,7 @@ struct
 end
 
 
-[@@@warning "-60"]
+[@@@warning "-60-32"]
 module Test =
 struct
 (* need to put tests in this file because
