@@ -521,15 +521,24 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
       typ exp1 <: T.blob;
       T.seq ots <: t
-    | CPSAwait, [a; kr] ->
+    | CPSAwait cont_typ, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
       let (_, t1) =
         try T.as_async_sub T.Non (T.normalize (typ a))
-         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
+        with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
-      typ kr <: T.Tup [T.Func(T.Local, T.Returns, [], T.as_seq t1, []); T.Func(T.Local, T.Returns, [], [T.catch], [])];
-      T.seq [] <: t;
+      (match cont_typ with
+       | T.Func(T.Local, T.Returns, [], ts1, ts2) ->
+         begin
+           (match ts2 with
+            | [] -> ()
+            | _ -> error env exp.at "CPSAwait answer type error");
+           typ kr <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2)];
+           t1 <: T.seq ts1;
+           T.seq ts2 <: t;
+         end;
+       | _ -> error env exp.at "CPSAwait bad cont")
     | CPSAsync t0, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
