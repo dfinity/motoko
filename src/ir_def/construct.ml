@@ -137,11 +137,14 @@ let cps_asyncE typ1 typ2 e =
     note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
   }
 
-let cps_awaitE typ e1 e2 =
-  { it = PrimE (CPSAwait, [e1; e2]);
-    at = no_region;
-    note = Note.{ def with typ = T.unit; eff = max_eff (eff e1) (eff e2) }
-  }
+let cps_awaitE cont_typ e1 e2 =
+  match cont_typ with
+  | T.Func(T.Local, T.Returns, [], _, ts2) ->
+    { it = PrimE (CPSAwait cont_typ, [e1; e2]);
+      at = no_region;
+      note = Note.{ def with typ = T.seq ts2; eff = max_eff (eff e1) (eff e2) }
+    }
+  | _ -> assert false
 
 let ic_replyE ts e =
   (match ts with

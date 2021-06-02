@@ -235,7 +235,7 @@ let transform mode prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait, [a; kr]) ->
+    | PrimE (CPSAwait _, [a; kr]) ->
       (ensureNamed (t_exp kr) (fun vkr ->
          let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
          (switch_optE ((t_exp a) -*- varE vkr)
