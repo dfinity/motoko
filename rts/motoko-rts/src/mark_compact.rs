@@ -40,7 +40,7 @@ unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
-        mark_fields(obj, heap_base);
+        mark_fields(obj, obj.tag(), heap_base);
     }
 }
 
@@ -50,6 +50,7 @@ unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
         return;
     }
 
+    let obj_tag = obj.tag();
     let obj = obj.unskew() as u32;
 
     if obj < heap_base {
@@ -65,17 +66,17 @@ unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
     }
 
     set_bit(obj_idx);
-    mark_stack::push_mark_stack(obj as usize);
+    mark_stack::push_mark_stack(obj as usize, obj_tag);
 }
 
 unsafe fn mark_stack(heap_base: u32) {
-    while let Some(obj) = pop_mark_stack() {
-        mark_fields(obj as *mut Obj, heap_base);
+    while let Some((obj, tag)) = pop_mark_stack() {
+        mark_fields(obj as *mut Obj, tag, heap_base);
     }
 }
 
-unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
-    match obj.tag() {
+unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
+    match tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             for i in 0..obj.size() {
