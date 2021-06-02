@@ -79,49 +79,67 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
     match tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
+            let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
-                push_mark_stack(obj.get(i), heap_base);
+                push_mark_stack(*obj_payload.add(i as usize), heap_base);
+                // TODO: thread
             }
         }
 
         TAG_ARRAY => {
             let array = obj as *mut Array;
+            let array_payload = array.payload_addr();
             for i in 0..array.len() {
-                push_mark_stack(array.get(i), heap_base);
+                push_mark_stack(*array_payload.add(i as usize), heap_base);
+                // TODO: thread
             }
         }
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
-            push_mark_stack((*mutbox).field, heap_base);
+            let field_addr = &mut (*mutbox).field;
+            push_mark_stack(*field_addr, heap_base);
+            // TODO: thread
         }
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
+            let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
-                push_mark_stack(closure.get(i), heap_base);
+                push_mark_stack(*closure_payload.add(i as usize), heap_base);
+                // TODO: thread
             }
         }
 
         TAG_SOME => {
             let some = obj as *mut Some;
-            push_mark_stack((*some).field, heap_base);
+            let field_addr = &mut (*some).field;
+            push_mark_stack(*field_addr, heap_base);
+            // TODO: thread
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
-            push_mark_stack((*variant).field, heap_base);
+            let field_addr = &mut (*variant).field;
+            push_mark_stack(*field_addr, heap_base);
+            // TODO: thread
         }
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
-            push_mark_stack(concat.text1(), heap_base);
-            push_mark_stack(concat.text2(), heap_base);
+            let field1_addr = &mut (*concat).text1;
+            push_mark_stack(*field1_addr, heap_base);
+            // TODO: thread
+            let field2_addr = &mut (*concat).text2;
+            push_mark_stack(*field2_addr, heap_base);
+            // TODO: thread
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
-            push_mark_stack((*obj_ind).field, heap_base);
+            let field_addr = &mut (*obj_ind).field;
+            push_mark_stack(*field_addr, heap_base);
+            // TODO: thread
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
