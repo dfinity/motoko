@@ -545,9 +545,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_typ env t0;
       (match typ exp with
         T.Func(T.Local,T.Returns, [tb],
-               [ T.Func(T.Local, T.Returns, [], ts1, []);
-                 T.Func(T.Local, T.Returns, [], [t_error], [])],
-               []) ->
+          [ T.Func(T.Local, T.Returns, [], ts1, []);
+            T.Func(T.Local, T.Returns, [], [t_error], []) ],
+          []) ->
          T.catch <: t_error;
          T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
        | _ -> error env exp.at "CPSAsync unexpected typ")
