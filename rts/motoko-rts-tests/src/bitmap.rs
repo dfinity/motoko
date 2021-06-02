@@ -1,4 +1,4 @@
-use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit};
+use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, iter_unset_bits, set_bit};
 use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 
 use quickcheck::{quickcheck, TestResult};
@@ -77,7 +77,7 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
             set_bit(u32::from(*bit));
         }
 
-        let mut bits_sorted = bits.into_iter().collect::<Vec<_>>();
+        let mut bits_sorted = bits.iter().copied().collect::<Vec<_>>();
         bits_sorted.sort();
 
         let mut bit_vec_iter = bits_sorted.into_iter();
@@ -107,6 +107,21 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
                 map_bit
             ));
         }
+
+        // Try unset bits
+        let set_bits: HashSet<u16> = iter_bits().map(|i| i as u16).collect();
+        let unset_bits: HashSet<u16> = iter_unset_bits().map(|i| i as u16).collect();
+        let intersection: Vec<u16> = unset_bits.intersection(&set_bits).copied().collect();
+        assert_eq!(intersection, vec![]);
+
+        // We can't test the union below because bitmap doesn't know the highest bit. That's fine
+        // when the highest bits are always 0 and we iterate 1s, but not when we iterate 0s.
+
+        // let mut union_: Vec<u16> = unset_bits.union(&set_bits).copied().collect();
+        // union_.sort();
+
+        // let max_bit = bits.iter().max().copied().unwrap_or(0);
+        // assert_eq!(union_, (0..max_bit).collect::<Vec<u16>>(), "input={:?}", bits);
     }
 
     TestResult::passed()
