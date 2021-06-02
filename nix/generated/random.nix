@@ -5,12 +5,12 @@
 , pkgs
 , base
 , exceptions
+, lib
 , managed
 , process
 , QuickCheck
 , quickcheck-text
 , quickcheck-unicode
-, stdenv
 , tasty
 , tasty-quickcheck
 , text
@@ -37,5 +37,5 @@ mkDerivation {
   ];
   description = "generate randomised tests for Motoko";
   license = "unknown";
-  hydraPlatforms = stdenv.lib.platforms.none;
+  hydraPlatforms = lib.platforms.none;
 }

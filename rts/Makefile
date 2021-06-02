@@ -98,6 +98,7 @@ CLANG_FLAGS = \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
+   -resource-dir=$(WASM_CLANG_LIB)/lib/clang/10.0.1
 
 #
 # Build targets
@@ -165,8 +166,7 @@ RTS_COMPACTING_GC_DEBUG_WASM_A=_build/wasm/libmotoko_rts_compacting_gc_debug.a
 TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
 $(TOMMATH_BINDINGS_RS): | _build
-	# use bash explicitly (work around nixpkgs bug https://github.com/NixOS/nixpkgs/issues/110126)
-	bash $$(command -v bindgen) $(TOMMATHSRC)/tommath.h \
+	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
 	    --whitelist-function mp_init \

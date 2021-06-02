@@ -90,8 +90,8 @@ let find_completion_prefix file line column : (string * string) option =
                       Some (ident, "")
                     else if pos_eq_cursor end_ then Some (ident, prefix)
                     else loop next_token
-                | _ -> loop next_token )
-          | tkn -> loop tkn )
+                | _ -> loop next_token)
+          | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ())
   in
@@ -160,7 +160,7 @@ let completions index project_root file_path file_contents line column =
               |> List.map item_of_ide_decl
           | None ->
               (* The matching import references a module we haven't loaded *)
-              [] )
+              [])
       (* We only try to add imports for capital aliases. Once we've got
        *  proper scoping information this can be improved *)
       | None when is_capital alias ->
@@ -196,7 +196,7 @@ let completions index project_root file_path file_contents line column =
               possible_imports
           in
           completions
-      | None -> [] )
+      | None -> [])
 
 let completion_handler index project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
