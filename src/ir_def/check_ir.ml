@@ -524,11 +524,24 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-      (* TODO: We can check more here, can we *)
-    | CPSAsync t, [exp] ->
+      let (_, t1) =
+        try T.as_async_sub T.Non (T.normalize (typ a))
+         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
+      in
+      typ kr <: T.Tup [T.Func(T.Local, T.Returns, [], T.as_seq t1, []); T.Func(T.Local, T.Returns, [], [T.catch], [])];
+      T.seq [] <: t;
+    | CPSAsync t0, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
-      check_typ env t;
+      check_typ env t0;
+      (match typ exp with
+        T.Func(T.Local,T.Returns, [tb],
+               [ T.Func(T.Local, T.Returns, [], ts1, []);
+                 T.Func(T.Local, T.Returns, [], [t_error], [])],
+               []) ->
+         T.catch <: t_error;
+         T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
+       | _ -> error env exp.at "CPSAsync unexpected typ")
       (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
