@@ -15,6 +15,7 @@ let
     src = nixpkgs_src;
     patches = [
       ./patches/124498.patch
+      ./patches/125472.patch
     ];
   };
 
