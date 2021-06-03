@@ -2,7 +2,7 @@
 //! otherwise things will break as we push.
 
 use crate::alloc::{alloc_blob, alloc_words};
-use crate::types::{size_of, Blob, Words};
+use crate::types::{Blob, Words};
 
 /// Initial stack size
 const INIT_STACK_SIZE: Words<u32> = Words(64);
@@ -32,7 +32,10 @@ unsafe fn grow_stack() {
     let p = alloc_words(stack_cap).unskew() as *mut usize;
 
     // Make sure nothing was allocated after the stack
-    debug_assert_eq!((size_of::<Blob>() + STACK_PTR.len().to_words()).0, p as u32);
+    debug_assert_eq!(
+        (STACK_PTR.payload_addr() as *mut usize).add(STACK_LEN.0 as usize),
+        p
+    );
 
     let new_cap: Words<u32> = Words(stack_cap.0 * 2);
     (*STACK_PTR).len = new_cap.to_bytes();
