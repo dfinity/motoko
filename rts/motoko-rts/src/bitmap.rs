@@ -1,6 +1,8 @@
 use crate::alloc::alloc_blob;
+// use crate::gc::get_heap_base;
 use crate::mem::memzero;
-use crate::types::{size_of, Blob, Bytes, Obj};
+use crate::print::*;
+use crate::types::{size_of, Blob, Bytes, Obj, WORD_SIZE};
 
 /// Current bitmap
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
@@ -190,3 +192,13 @@ impl Iterator for BitmapUnsetIter {
         }
     }
 }
+
+// pub unsafe fn print_bitmap() {
+//     let heap_base = get_heap_base();
+// 
+//     println!(50, "Bitmap:");
+//     for bit_idx in iter_bits() {
+//         println!(150, "{} ({:#x})", bit_idx, bit_idx * WORD_SIZE + heap_base);
+//     }
+//     println!(50, "End of bitmap");
+// }

@@ -312,6 +312,10 @@ unsafe extern "C" fn collect() {
 
 #[no_mangle]
 unsafe extern "C" fn collect() {
+    // println!(100, "---------------");
+    // println!(100, "Heap before GC:");
+    // crate::debug::dump_heap();
+
     let old_hp = HP;
     let heap_base = get_heap_base();
 
@@ -322,4 +326,8 @@ unsafe extern "C" fn collect() {
 
     let new_live_size = HP - heap_base;
     note_live_size(Bytes(new_live_size));
+
+    // println!(100, "Heap after GC:");
+    // crate::debug::dump_heap();
+    // println!(100, "---------------");
 }

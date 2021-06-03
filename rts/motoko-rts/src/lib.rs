@@ -19,7 +19,6 @@ mod gc;
 #[cfg(feature = "gc")]
 mod mark_compact;
 
-#[cfg(debug_assertions)]
 pub mod debug;
 
 mod alloc;

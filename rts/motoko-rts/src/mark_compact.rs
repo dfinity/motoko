@@ -1,6 +1,6 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
-use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
+use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, iter_unset_bits, set_bit};
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::rts_trap_with;
@@ -25,9 +25,25 @@ pub(crate) unsafe extern "C" fn mark_compact(
 
     mark_stack(heap_base);
 
-    thread_roots(static_roots, heap_base);
-    thread(closure_table_loc, heap_base);
-    update_fwd_refs(heap_base);
+    // crate::bitmap::print_bitmap();
+
+    // Anything below `first_free_address` will stay still in this GC, so we don't need to thread
+    // fields that point to them.
+    let mut first_free_address = heap_base;
+    while first_free_address < heap_end {
+        let obj_idx = (first_free_address - heap_base) / WORD_SIZE;
+        if !get_bit(obj_idx) {
+            break;
+        }
+
+        first_free_address += object_size(first_free_address as usize).to_bytes().0;
+    }
+
+    // println!(1000, "heap_base={:#x}, first_free_address={:#x}, save={} words", heap_base, first_free_address, Bytes(first_free_address - heap_base).to_words().0);
+
+    thread_roots(static_roots, heap_base, 0/* first_free_address */);
+    thread(closure_table_loc, heap_base, 0/* first_free_address */);
+    update_fwd_refs(heap_base, 0 /*first_free_address */);
     update_bwd_refs(heap_base);
 
     free_bitmap();
@@ -144,18 +160,18 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
     }
 }
 
-unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
+unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32, first_free_address: u32) {
     // Static roots
     let root_array = static_roots.as_array();
     for i in 0..root_array.len() {
-        thread_obj_fields(root_array.get(i).unskew() as *mut Obj, heap_base);
+        thread_obj_fields(root_array.get(i).unskew() as *mut Obj, heap_base, first_free_address);
     }
     // No need to thread closure table here as it's on heap and we already marked it
 }
 
 /// Scan the heap, update forward references. At the end of this pass all fields will be threaded
 /// and forward references will be updated, pointing to the object's new location.
-unsafe fn update_fwd_refs(heap_base: u32) {
+unsafe fn update_fwd_refs(heap_base: u32, first_free_address: u32) {
     let mut free = heap_base;
 
     for bit in iter_bits() {
@@ -166,7 +182,7 @@ unsafe fn update_fwd_refs(heap_base: u32) {
         unthread(p, free);
 
         // Thread fields
-        thread_obj_fields(p, heap_base);
+        thread_obj_fields(p, heap_base, first_free_address);
 
         free += object_size(p as usize).to_bytes().0;
     }
@@ -195,13 +211,13 @@ unsafe fn update_bwd_refs(heap_base: u32) {
     crate::gc::HP = free;
 }
 
-unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
+unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32, first_free_address: u32) {
     match obj.tag() {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
-                thread(obj_payload.add(i as usize), heap_base);
+                thread(obj_payload.add(i as usize), heap_base, first_free_address);
             }
         }
 
@@ -209,48 +225,52 @@ unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
-                thread(array_payload.add(i as usize), heap_base);
+                thread(array_payload.add(i as usize), heap_base, first_free_address);
             }
         }
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            thread(field_addr, heap_base);
+            thread(field_addr, heap_base, first_free_address);
         }
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
-                thread(closure_payload.add(i as usize), heap_base);
+                thread(
+                    closure_payload.add(i as usize),
+                    heap_base,
+                    first_free_address,
+                );
             }
         }
 
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            thread(field_addr, heap_base);
+            thread(field_addr, heap_base, first_free_address);
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            thread(field_addr, heap_base);
+            thread(field_addr, heap_base, first_free_address);
         }
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            thread(field1_addr, heap_base);
+            thread(field1_addr, heap_base, first_free_address);
             let field2_addr = &mut (*concat).text2;
-            thread(field2_addr, heap_base);
+            thread(field2_addr, heap_base, first_free_address);
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            thread(field_addr, heap_base);
+            thread(field_addr, heap_base, first_free_address);
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
@@ -267,7 +287,7 @@ unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
     }
 }
 
-unsafe fn thread(field: *mut SkewedPtr, heap_base: u32) {
+unsafe fn thread(field: *mut SkewedPtr, heap_base: u32, first_free_address: u32) {
     if (*field).is_tagged_scalar() {
         // Field has a scalar value, skip
         return;
@@ -275,6 +295,11 @@ unsafe fn thread(field: *mut SkewedPtr, heap_base: u32) {
 
     if (*field).unskew() < heap_base as usize {
         // Field doesn't point to heap. The pointee won't be moved so no need to thread the field
+        return;
+    }
+
+    if (*field).unskew() < first_free_address as usize {
+        // Object pointed by the field won't be moved, no need to thread
         return;
     }
 
