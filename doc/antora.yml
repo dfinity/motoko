@@ -1,5 +1,5 @@
 name: docs
-version: 'master'
+version: 'latest'
 asciidoc:
   attributes:
     page-repl: true@
