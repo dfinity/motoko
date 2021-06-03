@@ -315,7 +315,13 @@ unsafe extern "C" fn collect() {
     let old_hp = HP;
     let heap_base = get_heap_base();
 
+    println!(100, "Heap before GC:");
+    crate::debug::dump_heap();
+
     crate::mark_compact::mark_compact(heap_base, old_hp, get_static_roots(), closure_table_loc());
+
+    println!(100, "Heap after GC:");
+    crate::debug::dump_heap();
 
     let reclaimed = old_hp - HP;
     note_reclaimed(Bytes(reclaimed));

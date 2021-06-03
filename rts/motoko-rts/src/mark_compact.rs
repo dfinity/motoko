@@ -25,9 +25,9 @@ pub(crate) unsafe extern "C" fn mark_compact(
 
     mark_stack(heap_base);
 
-    thread_roots(static_roots, heap_base);
+    // thread_roots(static_roots, heap_base);
     thread(closure_table_loc, heap_base);
-    update_fwd_refs(heap_base);
+    // update_fwd_refs(heap_base);
     update_bwd_refs(heap_base);
 
     free_bitmap();
@@ -41,6 +41,7 @@ unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
         mark_fields(obj, obj.tag(), heap_base);
+        thread_obj_fields(obj, heap_base);
     }
 }
 
@@ -81,8 +82,9 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
-                push_mark_stack(*obj_payload.add(i as usize), heap_base);
-                // TODO: thread
+                let field_addr = obj_payload.add(i as usize);
+                push_mark_stack(*field_addr, heap_base);
+                thread(field_addr, heap_base);
             }
         }
 
@@ -90,8 +92,9 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
-                push_mark_stack(*array_payload.add(i as usize), heap_base);
-                // TODO: thread
+                let field_addr = array_payload.add(i as usize);
+                push_mark_stack(*field_addr, heap_base);
+                thread(field_addr, heap_base);
             }
         }
 
@@ -99,15 +102,16 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
             push_mark_stack(*field_addr, heap_base);
-            // TODO: thread
+            thread(field_addr, heap_base);
         }
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
-                push_mark_stack(*closure_payload.add(i as usize), heap_base);
-                // TODO: thread
+                let field_addr = closure_payload.add(i as usize);
+                push_mark_stack(*field_addr, heap_base);
+                thread(field_addr, heap_base);
             }
         }
 
@@ -115,31 +119,33 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
             push_mark_stack(*field_addr, heap_base);
-            // TODO: thread
+            thread(field_addr, heap_base);
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
             push_mark_stack(*field_addr, heap_base);
-            // TODO: thread
+            thread(field_addr, heap_base);
         }
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
+
             let field1_addr = &mut (*concat).text1;
             push_mark_stack(*field1_addr, heap_base);
-            // TODO: thread
+            thread(field1_addr, heap_base);
+
             let field2_addr = &mut (*concat).text2;
             push_mark_stack(*field2_addr, heap_base);
-            // TODO: thread
+            thread(field2_addr, heap_base);
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
             push_mark_stack(*field_addr, heap_base);
-            // TODO: thread
+            thread(field_addr, heap_base);
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
@@ -200,6 +206,7 @@ unsafe fn update_bwd_refs(heap_base: u32) {
         let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
         // Update backward references to the object's new location and restore object header
+        println!(100, "Moving {:#x} to {:#x}", p as usize, free);
         unthread(p, free);
 
         // All references to the object now point to the new location, move the object
