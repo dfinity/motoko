@@ -486,6 +486,18 @@ rec {
     '';
   };
 
+  check-rts-tests-formatting = stdenv.mkDerivation {
+    name = "check-rts-tests-formatting";
+    buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
+    src = subpath ./rts/motoko-rts-tests;
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      cargo fmt -- --check
+    '';
+  };
+
   base-src = stdenv.mkDerivation {
     name = "base-src";
     phases = "unpackPhase installPhase";
@@ -605,6 +617,7 @@ rec {
       shell
       check-formatting
       check-rts-formatting
+      check-rts-tests-formatting
       check-generated
       check-grammar
       check-error-codes
