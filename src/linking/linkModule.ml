@@ -599,7 +599,6 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
 (* Concatenation of modules *)
 
 let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
-  assert (m2.start = None);
   let m1 = em1.module_ in
   { em1 with
     module_ = {
@@ -873,7 +872,13 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
 
-  assert (dm2.globals = []);
+  (* Inject call to "__wasm_apply_global_relocs" *)
+  let apply_global_relocs_name = "__wasm_apply_global_relocs" in
+  let add_apply_global_relocs =
+    match List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names) with
+    | None -> fun em -> em
+    | Some (fi, _) -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
+  in
 
   let new_table_size =
     Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
@@ -905,6 +910,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
+  |> add_apply_global_relocs
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   in
 
