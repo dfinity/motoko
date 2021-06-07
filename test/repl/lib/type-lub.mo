@@ -56,7 +56,7 @@ let c1s = [async ?4, async ?-42];
 
 // recursive objects
 
-// do { need global types due to https://dfinity.atlassian.net/browse/AST-34
+// do {
 type A = {x : A};
 type B = {x : B};
 
@@ -79,7 +79,7 @@ type S = ?Q;
 
 func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] };
 
-// example from https://dfinity.atlassian.net/browse/AST-83
+
 
 type Foo<A> = ?(Foo<A>);
 ignore (if true (null : Foo<Int>) else (null : Foo<Bool>));
