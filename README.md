@@ -1,6 +1,6 @@
 # Motoko
 
-A simple language for writing Dfinity actors.
+A simple language for writing Internet Computer (IC) actors.
 
 ## User Documentation & Samples
 
@@ -14,13 +14,13 @@ A simple language for writing Dfinity actors.
 
 ### Motivation and Goals
 
-* High-level language for programming Dfinity applications
+* High-level language for programming IC applications
 
 * Simple ("K.I.S.S.") design and familiar syntax for average programmers
 
 * Good and convenient support for actor model
 
-* Good fit for underlying Wasm and Dfinity execution model
+* Good fit for underlying Wasm and IC execution model
 
 * Anticipate future extensions to Wasm where possible
 
