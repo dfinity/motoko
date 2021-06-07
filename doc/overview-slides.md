@@ -49,12 +49,12 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 ## Expressions
 
-* Identifiers:
+* Identifiers:  
   `x`, `foo_bar`, `test'`, `List`, `Map`
 
 * Parentheses for grouping
 
-* Type annotations (to help type inference):
+* Type annotations (to help type inference):  
   `(42 : Int)`
 
 ## Blocks and declarations
@@ -141,9 +141,9 @@ Literals: 0, -10, `2.71`, `-0.3e+15`, `3.141_592_653_589_793_12`
 
 No surprises here
 
-`- x`
-`a + b`
-`a & b`
+`- x`  
+`a + b`  
+`a & b`  
 …
 
 ## Characters and text
@@ -162,9 +162,9 @@ Unicode! No random access.
 
 Literals: `true`, `false`
 
-`a or b`
-`a and b`
-`not b`
+`a or b`  
+`a and b`  
+`not b`  
 `if (b) e1 else e2`
 
 # Functions
@@ -176,17 +176,17 @@ Literals: `true`, `false`
   Int.toText : Int -> Text
   ```
 
-* multiple arguments and return values
+* multiple arguments and return values  
   ```
   divRem : (Int, Int) -> (Int, Int)
   ```
 
-* can be generic/polymorphic
+* can be generic/polymorphic  
   ```
   Option.unwrapOr : <T>(?T, default : T) -> T
   ```
 
-* first-class (can be passed around, stored)
+* first-class (can be passed around, stored)  
   ```
   map : <A, B>(f : A -> B, xs : [A]) -> [B]
   let funcs : [<T>(T) -> T] = …
@@ -359,7 +359,7 @@ _sharable_ arguments and _no_ or _async_ result type.
 ## sharable ≈ serializable
 
   - all primitive types
-  - records, tuples, arrays, variants, options
+  - records, tuples, arrays, variants, options  
     with immutable sharable components
   - `actor` types
   - `shared` function type<br/><br/>**Not sharable:**
@@ -395,10 +395,10 @@ a typical canister main file
 
 asychronous future or promise
 
-introduced by `async { … }`
+introduced by `async { … }`  
 (implicit in async function declaration)
 
-`await e`
+`await e`  
 suspends computation pending `e`'s result
 
 ## Actor import
@@ -445,8 +445,8 @@ let h : Health2 = #invincible;
 let h' = takeDamage(h, 100); // works
 ```
 
-Type definitions
-do not create types,
+Type definitions  
+do not create types,  
 but name existing types
 
 ## Subtyping
