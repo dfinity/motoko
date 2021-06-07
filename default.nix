@@ -477,13 +477,14 @@ rec {
   check-rts-formatting = stdenv.mkDerivation {
     name = "check-rts-formatting";
     buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
-    src = subpath ./rts/motoko-rts;
+    src = subpath ./rts;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
-    installPhase = "touch $out";
     checkPhase = ''
-      cargo fmt -- --check
+      cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
+      cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
     '';
+    installPhase = "touch $out";
   };
 
   base-src = stdenv.mkDerivation {
