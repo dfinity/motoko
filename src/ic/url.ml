@@ -17,7 +17,7 @@ let rec group s =
 let encode_principal bytes : string =
   group (String.map Char.lowercase_ascii (Lib.Base32.encode (checkbytes bytes ^ bytes)))
 
-(* Decode a principal according to https://docs.dfinity.systems/public/#textual-ids *)
+(* Decode a principal according to https://sdk.dfinity.org/docs/interface-spec/index.html#textual-ids *)
 let decode_principal principal : (string, string) result =
   let open Stdlib.String in
 
