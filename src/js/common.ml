@@ -61,7 +61,7 @@ let js_compile_wasm mode source =
   let mode =
     match Js.to_string mode with
     | "wasi" -> Flags.WASIMode
-    | "dfinity" -> Flags.ICMode
+    | "ic" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
   js_result (Pipeline.compile_files mode true [Js.to_string source])

@@ -55,7 +55,7 @@ actor a {
 
     // recursive objects
 
-    // { need global types due to https://dfinity.atlassian.net/browse/AST-34
+    // {
     type A = {x : A};
     type B = {x : B};
 
@@ -78,7 +78,7 @@ actor a {
 
     func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] };
 
-    // example from https://dfinity.atlassian.net/browse/AST-83
+
 
     type Foo<A> = ?(Foo<A>);
     ignore (if true (null : Foo<Int>) else (null : Foo<Bool>));
