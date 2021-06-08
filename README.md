@@ -40,22 +40,3 @@ A simple language for writing Internet Computer (IC) actors.
 * JavaScript/TypeScript-style syntax but without the JavaScript madness
 
 * Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
-
-
-### Left for Future Version
-
-* Features for utility tokens?
-
-* Exception handling
-
-* Tail calls
-
-* Mixin composition for inheritance
-
-* Fancier types (co/contra-variance annotations?)
-
-* Linear types?
-
-* Atoms?
-
-* String interpolation?
