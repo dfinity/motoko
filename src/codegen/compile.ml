@@ -6072,8 +6072,7 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  let how_of_ae ae : allocHow = M.map (fun l ->
-    match l with
+  let how_of_ae ae : allocHow = M.map (function
     | VarEnv.Const _ -> (Const : how)
     | VarEnv.HeapStatic _ -> StoreStatic
     | VarEnv.HeapInd _ -> StoreHeap
