@@ -1,10 +1,9 @@
-#![feature(
-    ptr_offset_from
-)]
+#![feature(ptr_offset_from, map_first_last)]
 
 mod bigint;
 mod closure_table;
 mod crc32;
+mod gc;
 mod leb128;
 mod principal_id;
 mod text;
@@ -12,21 +11,45 @@ mod utf8;
 
 use motoko_rts::types::*;
 
+#[macro_use]
+extern crate maplit;
+
 fn main() {
     if std::mem::size_of::<usize>() != 4 {
         println!("Motoko RTS only works on 32-bit architectures");
         std::process::exit(1);
     }
 
-    unsafe {
-        closure_table::test();
-        bigint::test();
-        utf8::test();
-        crc32::test();
-        principal_id::test();
-        text::test();
-        leb128::test();
-    }
+    let refs = &btreemap! {
+        0 => vec![0, 2],
+        2 => vec![0],
+        3 => vec![3],
+    };
+    let heap_1 = gc::allocate_heap(&refs);
+
+    println!("{:?}", heap_1);
+
+    // Original heap: [3, 0, 4294967295, 3, 3, 4, 4294967295, 3, 6, 6]
+
+    // New heap: [3, 2, 0]
+    #[rustfmt::skip]
+    let heap_2: Vec<u32> = vec![
+        3, 6, u32::MAX,
+        3, 4, 5,
+        3, 0, 5, 2,
+    ];
+
+    gc::check_heap(&refs, &heap_2, 10);
+
+    // unsafe {
+    //     closure_table::test();
+    //     bigint::test();
+    //     utf8::test();
+    //     crc32::test();
+    //     principal_id::test();
+    //     text::test();
+    //     leb128::test();
+    // }
 }
 
 // Called by the RTS to panic

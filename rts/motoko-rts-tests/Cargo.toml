@@ -5,5 +5,6 @@ authors = ["dfinity <sdk@dfinity.org"]
 edition = "2018"
 
 [dependencies]
+maplit = "1.0.2"
 motoko-rts = { path = "../motoko-rts/native" }
 quickcheck = "0.9"

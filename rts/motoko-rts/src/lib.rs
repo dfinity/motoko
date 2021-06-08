@@ -14,7 +14,7 @@
 mod print;
 
 #[cfg(feature = "gc")]
-mod gc;
+pub mod gc;
 
 #[cfg(debug_assertions)]
 pub mod debug;
@@ -26,6 +26,7 @@ pub mod buf;
 mod char;
 pub mod closure_table;
 mod float;
+pub mod gc_common;
 mod idl;
 pub mod leb128;
 mod mem;
