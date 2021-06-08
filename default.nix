@@ -640,7 +640,11 @@ rec {
       ));
 
     shellHook = llvmEnv + ''
+      # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
+      # some cleanup of environment variables otherwise set by nix-shell
+      # that would be confusing in interactive use
+      unset XDG_DATA_DIRS
     '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
