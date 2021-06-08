@@ -26,8 +26,10 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    clang_10 # for native/wasm building
-    lld_10 # for wasm building
+    # pulls in clang (wrapped) and clang-10 (unwrapped)
+    llvmPackages_10.clang
+    # pulls in wasm-ld
+    llvmPackages_10.lld
     llvmPackages_10.bintools
     rustc-nightly
     cargo-nightly
@@ -38,13 +40,19 @@ let
   ];
 
   llvmEnv = ''
+    # When compiling to wasm, we want to have more control over the flags,
+    # so we do not use the nix-provided wrapper in clang
+    export WASM_CLANG="clang-10"
+    export WASM_LD=wasm-ld
+    # because we use the unwrapped clang, we have to pass in some flags/paths
+    # that otherwise the wrapped clang would take care for us
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_10.clang-unwrapped.lib}"
+
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-10. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_10}/bin/clang"
-    export WASM_CLANG="clang-10"
-    export WASM_LD=wasm-ld
   '';
 in
 
@@ -119,6 +127,12 @@ let ocaml_exe = name: bin: rts:
           -t ${nixpkgs.darwin.Libsystem} \
           -t ${nixpkgs.darwin.CF} \
           -t ${nixpkgs.libiconv} \
+          $out/bin/*
+      '' + ''
+        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # Let's remove that, too
+        remove-references-to \
+          -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
         # sanity check
         $out/bin/* --help >/dev/null
@@ -470,13 +484,14 @@ rec {
   check-rts-formatting = stdenv.mkDerivation {
     name = "check-rts-formatting";
     buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
-    src = subpath ./rts/motoko-rts;
+    src = subpath ./rts;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
-    installPhase = "touch $out";
     checkPhase = ''
-      cargo fmt -- --check
+      cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
+      cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
     '';
+    installPhase = "touch $out";
   };
 
   base-src = stdenv.mkDerivation {
@@ -638,7 +653,7 @@ rec {
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
-    LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 

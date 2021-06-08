@@ -52,9 +52,9 @@ let definition_handler index position file_contents project_root file_path =
       Lsp.
         {
           location_uri =
-            ( if Source_file.is_non_file_path path then
-              Option.get (Source_file.uri_for_package path)
-            else Vfs.uri_from_file path );
+            (if Source_file.is_non_file_path path then
+             Option.get (Source_file.uri_for_package path)
+            else Vfs.uri_from_file path);
           location_range = range_of_region region;
         }
   in

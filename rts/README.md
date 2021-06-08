@@ -82,3 +82,9 @@ If you change dependencies (e.g. bump versions, add more crates),
 
 Warning: nix will happily use a stale version of the dependencies if you do not
 do step 3.
+
+Running RTS tests
+-----------------
+
+- Build tests using rustc WASI target: `cargo build --target=wasm32-wasi`
+- Run with wasmtime: `wasmtime target/wasm32-wasi/debug/motoko-rts-tests.wasm`

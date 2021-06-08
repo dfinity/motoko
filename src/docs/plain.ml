@@ -147,7 +147,7 @@ and plain_of_typ_bind : Buffer.t -> render_functions -> Syntax.typ_bind -> unit
   Buffer.add_string buf typ_bind.it.Syntax.var.it;
   if not (Syntax.is_any bound) then (
     bprintf buf " <: ";
-    plain_of_typ buf rf typ_bind.it.Syntax.bound )
+    plain_of_typ buf rf typ_bind.it.Syntax.bound)
 
 and plain_of_typ_binders :
     Buffer.t -> render_functions -> Syntax.typ_bind list -> unit =

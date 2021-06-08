@@ -14,13 +14,13 @@
 , hspec
 , hspec-discover
 , lens
+, lib
 , mtl
 , network-uri
 , QuickCheck
 , quickcheck-instances
 , rope-utf16-splay
 , sorted-list
-, stdenv
 , stm
 , temporary
 , text
@@ -80,5 +80,5 @@ mkDerivation {
   testToolDepends = [ hspec-discover ];
   homepage = "https://github.com/alanz/haskell-lsp";
   description = "Haskell library for the Microsoft Language Server Protocol";
-  license = stdenv.lib.licenses.mit;
+  license = lib.licenses.mit;
 }

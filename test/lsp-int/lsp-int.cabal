@@ -14,7 +14,7 @@ executable lsp-int
   main-is:             Main.hs
   -- other-modules:
   other-extensions:    OverloadedStrings, DuplicateRecordFields
-  build-depends:       base ^>=4.13
+  build-depends:       base ^>=4.14
                      , text ^>=1.2
                      , hspec
                      , HUnit

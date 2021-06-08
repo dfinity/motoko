@@ -101,7 +101,6 @@ let rec exp msgs e : f = match e.it with
   | ProjE (e, i)        -> exp msgs e
   | ObjBlockE (s, dfs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
     group msgs (dec_fields msgs dfs)
   | ObjE efs            -> exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e

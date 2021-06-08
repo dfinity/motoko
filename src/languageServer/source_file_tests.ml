@@ -27,8 +27,8 @@ let hovered_identifier_test_case file expected =
   in
   Option.equal ( = ) actual expected
   ||
-  ( Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
-    false )
+  (Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
+   false)
 
 let parse_module_header_test_case project_root current_file file expected =
   let actual = Source_file.parse_module_header project_root current_file file in

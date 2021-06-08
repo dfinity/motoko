@@ -8,9 +8,9 @@
 , filepath
 , hashable
 , lens
+, lib
 , network-uri
 , scientific
-, stdenv
 , text
 , unordered-containers
 }:
@@ -35,5 +35,5 @@ mkDerivation {
   ];
   homepage = "https://github.com/alanz/haskell-lsp";
   description = "Haskell library for the Microsoft Language Server Protocol, data types";
-  license = stdenv.lib.licenses.mit;
+  license = lib.licenses.mit;
 }
