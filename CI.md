@@ -11,6 +11,9 @@ implementations, to allow evaluating alternative implementations.
 The implementation is currently a careful choreography between Github, Github
 Actions, Hydra, the nix cache and mergify.
 
+This file describes the pre-open-source setup, and will gradually be updated or
+removed as we move away from the internal CI setup.
+
 Knowing if it is broken
 -----------------------
 

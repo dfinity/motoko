@@ -1,7 +1,11 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
-  internal ? true, # whether to run tests that depend on internal tools
+
+  # The `drun` tool is currently not publicly available.
+  # If you have access to it, create an empty file enable-internals
+  # in this directory, and it will be used.
+  internal ? builtins.pathExists ./enable-internals,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
