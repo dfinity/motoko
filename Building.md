@@ -1,6 +1,6 @@
 ## Nix setup
 
-The Motoko build system realies on [Nix](https://nixos.org/) to manage
+The Motoko build system relies on [Nix](https://nixos.org/) to manage
 dependencies, drive the build and run the test suite. You should install nix by
 running, as a normal user with `sudo` permissions,
 ```
@@ -44,7 +44,7 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 ## Access to `drun`
 
 The Motoko test suite uses a tool called `drun`, which is an in-process
-emulator of the Internet Computer. This tools is not yet open source, so
+emulator of the Internet Computer. This tool is not yet open source, so
 external contributors cannot run it.
 
 The build system is setup by default to _not_ load the `drun` tool. If you have
