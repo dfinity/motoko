@@ -24,7 +24,6 @@ fn main() {
 
     let refs = &btreemap! {
         0 => vec![0, 2],
-        1 => vec![],
         2 => vec![0],
         3 => vec![3],
     };
@@ -43,6 +42,27 @@ fn main() {
             || skew(heap_1.heap.as_ptr() as usize + heap_1.static_root_array_offset),
             // get_closure_table_loc
             || (heap_1.heap.as_ptr() as usize + heap_1.closure_table_offset) as *mut SkewedPtr,
+        );
+    }
+
+    unsafe {
+        collect_internal(
+            // get_heap_base
+            || (heap_1.heap.as_ptr() as usize + heap_1.heap_base) as u32,
+            // get_hp
+            || (heap_1.heap.as_ptr() as usize + heap_1.heap_ptr) as u32,
+            // set_hp
+            |_hp| {},
+            // note_live_size
+            |_live_size| {},
+            // note_reclaimed
+            |_reclaimed| {},
+            // get_static_roots
+            || skew(heap_1.heap.as_ptr() as usize + heap_1.static_root_array_offset),
+            // get_closure_table_loc
+            || (heap_1.heap.as_ptr() as usize + heap_1.closure_table_offset) as *mut SkewedPtr,
+            // grow_memory
+            |_ptr| panic!("grow_memory called"),
         );
     }
 
