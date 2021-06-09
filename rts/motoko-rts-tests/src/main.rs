@@ -24,6 +24,7 @@ fn main() {
 
     let refs = &btreemap! {
         0 => vec![0, 2],
+        1 => vec![],
         2 => vec![0],
         3 => vec![3],
     };

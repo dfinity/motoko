@@ -1,3 +1,5 @@
+use motoko_rts::types::*;
+
 use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
 
@@ -28,11 +30,11 @@ pub struct MotokoHeap {
 
 impl MotokoHeap {
     pub fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeap {
-        // Each object will be 2 words per object + one word for each reference. Static heap will
+        // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one word for each root.
         let static_heap_size = (2 + roots.len()) * WORD_SIZE;
         let dynamic_heap_size = {
-            let object_headers_words = map.len() * 2;
+            let object_headers_words = map.len() * 3;
             let references_words = map.values().map(|refs| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
         };
@@ -61,7 +63,7 @@ impl MotokoHeap {
         let mut root_addr_offset = 2 * WORD_SIZE;
         for root_address in root_addresses {
             (&mut heap[root_addr_offset..])
-                .write_u32::<LE>(u32::try_from(root_address).unwrap())
+                .write_u32::<LE>(u32::try_from(root_address).unwrap().wrapping_sub(1))
                 .unwrap();
             root_addr_offset += WORD_SIZE;
         }
@@ -110,6 +112,12 @@ fn allocate_heap(
                 .unwrap();
             heap_offset += WORD_SIZE;
 
+            // Store length
+            (&mut heap[heap_offset..])
+                .write_u32::<LE>(u32::try_from(refs.len() + 1).unwrap() << 1)
+                .unwrap();
+            heap_offset += WORD_SIZE;
+
             // Store object value (tag)
             (&mut heap[heap_offset..])
                 .write_u32::<LE>(obj << 1)
@@ -129,7 +137,7 @@ fn allocate_heap(
         for (ref_idx, ref_) in refs.iter().enumerate() {
             // -1 for skewing
             let ref_addr = object_addrs[*ref_ as usize].wrapping_sub(1);
-            let field_offset = obj_offset + (2 + ref_idx) * WORD_SIZE;
+            let field_offset = obj_offset + (3 + ref_idx) * WORD_SIZE;
             (&mut heap[field_offset..])
                 .write_u32::<LE>(u32::try_from(ref_addr).unwrap())
                 .unwrap();
@@ -137,67 +145,4 @@ fn allocate_heap(
     }
 
     object_addrs
-}
-
-pub fn check_heap(refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, heap: &[u32], heap_end: usize) {
-    // Scan the heap, check that objects in the heap point to the right objects, by comparing tags.
-    // E.g. if in `refs` object 0 points to 3 and 5, then the object with tag 0 must point to
-    // objects with tags 3 and 5 in its second and second third, respectively. (first fields always
-    // have tags)
-
-    // Set of visited objects (in the post-GC heap) to make sure (1) we don't duplicate objects
-    // (2) we don't miss any objects in the original heap
-    let mut visited: HashSet<ObjectIdx> = Default::default();
-
-    // Current heap address
-    let mut heap_addr = 0;
-
-    while heap_addr < heap_end {
-        // Object tag must tag TAG_ARRAY
-        assert_eq!(heap[heap_addr], TAG_ARRAY);
-
-        let object_tag = heap[heap_addr + 1] >> 1;
-
-        let object_expected_refs = refs.get(&object_tag).unwrap_or_else(|| {
-            panic!(
-                "Object with tag {} not found in the heap description",
-                object_tag
-            )
-        });
-
-        let not_exists = visited.insert(object_tag);
-        // Check (1)
-        if !not_exists {
-            panic!("Object {} visited twice", object_tag);
-        }
-
-        // Skip header and tag
-        heap_addr += 2;
-
-        for (ref_idx, ref_) in object_expected_refs.iter().copied().enumerate() {
-            let addr = heap[heap_addr].wrapping_add(1) as usize;
-            let tag = heap[addr + 1] >> 1;
-
-            // Check tag of pointee
-            if tag != ref_ {
-                panic!(
-                    "Post-GC object {} does not have expected reference in field {}: \
-                     expected {}, found {}",
-                    object_tag, ref_idx, ref_, tag,
-                );
-            }
-
-            heap_addr += 1;
-        }
-    }
-
-    // Check (2)
-    for ref_ in refs.keys() {
-        if !visited.contains(ref_) {
-            panic!(
-                "Object {} in the original heap not seen in post-GC heap",
-                ref_
-            );
-        }
-    }
 }
