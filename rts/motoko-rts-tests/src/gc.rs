@@ -36,11 +36,10 @@ impl MotokoHeap {
         let dynamic_heap_size = {
             let object_headers_words = map.len() * 3;
             let references_words = map.values().map(|refs| refs.len()).sum::<usize>();
-            (object_headers_words + references_words) * WORD_SIZE
+            let closure_table_words = 1;
+            (object_headers_words + references_words + closure_table_words) * WORD_SIZE
         };
-        // Add an extra word for the closure table. Currently closure table is just a scalar. This
-        // effectively skips closure table evacuation.
-        let total_heap_size_bytes = static_heap_size + dynamic_heap_size + WORD_SIZE;
+        let total_heap_size_bytes = static_heap_size + dynamic_heap_size;
 
         // TODO: Maybe make this `Box<[u8]>`?
         let mut heap: Vec<u8> = vec![0; total_heap_size_bytes];
@@ -69,7 +68,7 @@ impl MotokoHeap {
         }
 
         // Add closure table at the end of the heap. Currently closure table is just a scalar.
-        let closure_table_offset = dynamic_heap_size - WORD_SIZE;
+        let closure_table_offset = static_heap_size + dynamic_heap_size - WORD_SIZE;
         (&mut heap[closure_table_offset..])
             .write_u32::<LE>(0)
             .unwrap();
@@ -112,9 +111,9 @@ fn allocate_heap(
                 .unwrap();
             heap_offset += WORD_SIZE;
 
-            // Store length
+            // Store length: tag + refs
             (&mut heap[heap_offset..])
-                .write_u32::<LE>(u32::try_from(refs.len() + 1).unwrap() << 1)
+                .write_u32::<LE>(u32::try_from(refs.len() + 1).unwrap())
                 .unwrap();
             heap_offset += WORD_SIZE;
 
