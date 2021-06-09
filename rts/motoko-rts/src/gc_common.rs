@@ -3,14 +3,14 @@ use crate::rts_trap_with;
 use crate::types::*;
 
 pub unsafe fn collect_internal<
-    GetHeapBase,
-    GetHp,
-    SetHp,
-    NoteLiveSize,
-    NoteReclaimed,
-    GetStaticRoots,
-    GetClosureTableLoc,
-    GrowMemory,
+    GetHeapBase: Fn() -> u32,
+    GetHp: Fn() -> u32,
+    SetHp: Fn(u32),
+    NoteLiveSize: Fn(Bytes<u32>),
+    NoteReclaimed: Fn(Bytes<u32>),
+    GetStaticRoots: Fn() -> SkewedPtr,
+    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
+    GrowMemory: Fn(usize) + Copy,
 >(
     get_heap_base: GetHeapBase,
     get_hp: GetHp,
@@ -20,16 +20,7 @@ pub unsafe fn collect_internal<
     get_static_roots: GetStaticRoots,
     get_closure_table_loc: GetClosureTableLoc,
     grow_memory: GrowMemory,
-) where
-    GetHeapBase: Fn() -> u32,
-    GetHp: Fn() -> u32,
-    SetHp: Fn(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
-    GetStaticRoots: Fn() -> SkewedPtr,
-    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
-    GrowMemory: Fn(usize) + Copy,
-{
+) {
     let begin_from_space = get_heap_base() as usize;
     let end_from_space = get_hp() as usize;
     let begin_to_space = end_from_space;
@@ -89,15 +80,13 @@ pub unsafe fn collect_internal<
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots<GrowMemory>(
+unsafe fn evac_static_roots<GrowMemory: Fn(usize) + Copy>(
     grow_memory: GrowMemory,
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
     roots: *mut Array,
-) where
-    GrowMemory: Fn(usize) + Copy,
-{
+) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..(*roots).len {
@@ -133,15 +122,13 @@ unsafe fn evac_static_roots<GrowMemory>(
 ///
 /// - ptr_loc: Location of the object to evacuate, e.g. an object field address.
 ///
-unsafe fn evac<GrowMemory>(
+unsafe fn evac<GrowMemory: Fn(usize)>(
     grow_memory: GrowMemory,
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
     ptr_loc: usize,
-) where
-    GrowMemory: Fn(usize),
-{
+) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
@@ -187,15 +174,13 @@ unsafe fn evac<GrowMemory>(
     *end_to_space += obj_size_bytes.0 as usize
 }
 
-unsafe fn scav<GrowMemory>(
+unsafe fn scav<GrowMemory: Fn(usize) + Copy>(
     grow_memory: GrowMemory,
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
     obj: usize,
-) where
-    GrowMemory: Fn(usize) + Copy,
-{
+) {
     let obj = obj as *mut Obj;
 
     match obj.tag() {
