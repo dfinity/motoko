@@ -12,18 +12,18 @@ const TAG_ARRAY: u32 = 3;
 pub struct MotokoHeap {
     pub heap: Vec<u8>,
 
-    // Where the dynamic heap starts
-    heap_base: usize,
+    /// Where the dynamic heap starts
+    pub heap_base: usize,
 
-    // Where the dynamic heap ends
-    heap_ptr: usize,
+    /// Where the dynamic heap ends
+    pub heap_ptr: usize,
 
-    // Offset of the static root array: an array of pointers below `heap_base`
-    static_root_array_offset: usize,
+    /// Offset of the static root array: an array of pointers below `heap_base`
+    pub static_root_array_offset: usize,
 
-    // Offset of the closure table. Currently we put a tagged scalar to this location and
-    // effectively skip closure table evacuation.
-    closure_table_offset: usize,
+    /// Offset of the closure table. Currently we put a tagged scalar to this location and
+    /// effectively skip closure table evacuation.
+    pub closure_table_offset: usize,
 }
 
 impl MotokoHeap {
@@ -93,6 +93,8 @@ fn allocate_heap(
 
     let last_obj = *refs.last_key_value().as_ref().unwrap().0;
 
+    let heap_start = heap.as_ptr() as usize;
+
     // Maps objects to their addresses in the heap
     let mut object_addrs: Vec<usize> = vec![usize::MAX; last_obj as usize + 1];
 
@@ -100,7 +102,7 @@ fn allocate_heap(
     {
         let mut heap_offset = heap_base;
         for (obj, refs) in refs {
-            object_addrs[*obj as usize] = heap_offset;
+            object_addrs[*obj as usize] = heap_start + heap_offset;
 
             // Store object header
             (&mut heap[heap_offset..])
@@ -123,12 +125,12 @@ fn allocate_heap(
 
     // Second pass adds fields
     for (obj, refs) in refs {
-        let obj_addr = object_addrs[*obj as usize];
+        let obj_offset = object_addrs[*obj as usize] - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
             // -1 for skewing
             let ref_addr = object_addrs[*ref_ as usize].wrapping_sub(1);
-            let field_addr = obj_addr + (2 + ref_idx) * WORD_SIZE;
-            (&mut heap[field_addr..])
+            let field_offset = obj_offset + (2 + ref_idx) * WORD_SIZE;
+            (&mut heap[field_offset..])
                 .write_u32::<LE>(u32::try_from(ref_addr).unwrap())
                 .unwrap();
         }

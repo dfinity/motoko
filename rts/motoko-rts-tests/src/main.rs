@@ -9,6 +9,7 @@ mod principal_id;
 mod text;
 mod utf8;
 
+use motoko_rts::debug;
 use motoko_rts::gc_common::collect_internal;
 use motoko_rts::types::*;
 
@@ -28,6 +29,21 @@ fn main() {
     };
 
     let heap_1 = gc::MotokoHeap::new(&refs, &[0, 2, 3]);
+
+    println!("{:?}", heap_1.heap);
+
+    unsafe {
+        debug::dump_heap(
+            // get_heap_base
+            || (heap_1.heap.as_ptr() as usize + heap_1.heap_base) as u32,
+            // get_hp
+            || (heap_1.heap.as_ptr() as usize + heap_1.heap_ptr) as u32,
+            // get_static_roots
+            || skew(heap_1.heap.as_ptr() as usize + heap_1.static_root_array_offset),
+            // get_closure_table_loc
+            || (heap_1.heap.as_ptr() as usize + heap_1.closure_table_offset) as *mut SkewedPtr,
+        );
+    }
 
     /*
     let heap_1 = gc::allocate_heap(&refs);

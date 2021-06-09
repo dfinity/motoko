@@ -20,7 +20,7 @@ unsafe extern "C" fn print_closure(p: usize) {
     print(&write_buf);
 }
 
-pub(crate) unsafe fn dump_heap<
+pub unsafe fn dump_heap<
     GetHeapBase: Fn() -> u32,
     GetHp: Fn() -> u32,
     GetStaticRoots: Fn() -> SkewedPtr,
@@ -75,6 +75,8 @@ pub(crate) unsafe fn print_static_roots<GetStaticRoots: Fn() -> SkewedPtr>(
     get_static_roots: GetStaticRoots,
 ) {
     let static_roots = get_static_roots().unskew() as *mut Array;
+    println!(100, "static roots at {:#x}", static_roots as usize);
+
     let len = (*static_roots).len;
 
     if len == 0 {
@@ -118,7 +120,6 @@ unsafe fn print_heap<GetHeapBase: Fn() -> u32, GetHp: Fn() -> u32>(
 
     let mut p = heap_begin;
     while p < heap_end {
-        let _ = write!(&mut write_buf, "{:#x}: ", p);
         print_boxed_object(&mut write_buf, p as usize);
         print(&write_buf);
         write_buf.reset();
