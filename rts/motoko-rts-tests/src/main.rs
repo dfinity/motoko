@@ -9,6 +9,7 @@ mod principal_id;
 mod text;
 mod utf8;
 
+use motoko_rts::gc_common::collect_internal;
 use motoko_rts::types::*;
 
 #[macro_use]
@@ -20,6 +21,7 @@ fn main() {
         std::process::exit(1);
     }
 
+    /*
     let refs = &btreemap! {
         0 => vec![0, 2],
         2 => vec![0],
@@ -41,6 +43,40 @@ fn main() {
 
     gc::check_heap(&refs, &heap_2, 10);
 
+    unsafe {
+        // Convert the word array into a byte array with little-endian encoding
+        let mut heap = heap_1.clone();
+
+        // Make sure heap has enough space for copying GC
+        heap.reserve(heap.len());
+
+        let heap_slice = unsafe { as_u8_slice(&heap) };
+        let heap_ptr = heap_slice.as_ptr();
+        let heap_end_ptr = heap_ptr.add(heap.len());
+
+        let mut end_of_gc_hp = 0;
+
+        collect_internal(
+            // get_heap_base
+            || heap_ptr as u32,
+            // get_hp
+            || heap_end_ptr as u32,
+            // set_hp
+            |_hp| {},
+            // note_live_size
+            |_live_size| {},
+            // note_reclaimed
+            |_reclaimed| {},
+            // get_static_roots
+            || todo!(),
+            // get_closure_table_loc
+            || todo!(),
+            // grow_memory
+            |_ptr| panic!("grow_memory called"),
+        );
+    }
+    */
+
     // unsafe {
     //     closure_table::test();
     //     bigint::test();
@@ -50,6 +86,13 @@ fn main() {
     //     text::test();
     //     leb128::test();
     // }
+}
+
+unsafe fn as_u8_slice(v: &[u32]) -> &[u8] {
+    std::slice::from_raw_parts(
+        v.as_ptr() as *const u8,
+        v.len() * std::mem::size_of::<u32>(),
+    )
 }
 
 // Called by the RTS to panic
