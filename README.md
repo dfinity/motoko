@@ -5,9 +5,9 @@ A simple language for writing Internet Computer (IC) actors.
 ## User Documentation & Samples
 
 * [Building, installing, developing on Motoko](Building.md).
-* [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html) ([sources](doc/overview-slides.md)).
+* [Overview slides](doc/overview-slides.md).
 * [Small samples](samples).
-* [Language manual and general documentation](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/docs/language-guide/motoko.html) ([sources](doc/modules/language-guide/pages/language-manual.adoc))
+* [Language manual and general documentation](doc/modules/language-guide/pages/language-manual.adoc)
 * [Concrete syntax](doc/modules/language-guide/pages/grammar.txt)
 
 ## Introduction
@@ -40,22 +40,3 @@ A simple language for writing Internet Computer (IC) actors.
 * JavaScript/TypeScript-style syntax but without the JavaScript madness
 
 * Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
-
-
-### Left for Future Version
-
-* Features for utility tokens?
-
-* Exception handling
-
-* Tail calls
-
-* Mixin composition for inheritance
-
-* Fancier types (co/contra-variance annotations?)
-
-* Linear types?
-
-* Atoms?
-
-* String interpolation?
