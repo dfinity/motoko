@@ -21,12 +21,15 @@ fn main() {
         std::process::exit(1);
     }
 
-    /*
     let refs = &btreemap! {
         0 => vec![0, 2],
         2 => vec![0],
         3 => vec![3],
     };
+
+    let heap_1 = gc::MotokoHeap::new(&refs, &[0, 2, 3]);
+
+    /*
     let heap_1 = gc::allocate_heap(&refs);
 
     println!("{:?}", heap_1);

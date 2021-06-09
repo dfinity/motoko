@@ -10,7 +10,7 @@ const WORD_SIZE: usize = 4;
 const TAG_ARRAY: u32 = 3;
 
 pub struct MotokoHeap {
-    heap: Vec<u8>,
+    pub heap: Vec<u8>,
 
     // Where the dynamic heap starts
     heap_base: usize,

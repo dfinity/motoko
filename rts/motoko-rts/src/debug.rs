@@ -1,11 +1,7 @@
 #![allow(dead_code)]
 
-use crate::closure_table;
 use crate::print::*;
 use crate::types::*;
-
-#[cfg(feature = "gc")]
-use crate::gc;
 
 use core::fmt::Write;
 
@@ -24,15 +20,26 @@ unsafe extern "C" fn print_closure(p: usize) {
     print(&write_buf);
 }
 
-#[cfg(feature = "gc")]
-pub(crate) unsafe fn dump_heap() {
-    print_closure_table();
-    print_static_roots();
-    print_heap();
+pub(crate) unsafe fn dump_heap<
+    GetHeapBase: Fn() -> u32,
+    GetHp: Fn() -> u32,
+    GetStaticRoots: Fn() -> SkewedPtr,
+    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
+>(
+    get_heap_base: GetHeapBase,
+    get_hp: GetHp,
+    get_static_roots: GetStaticRoots,
+    get_closure_table_loc: GetClosureTableLoc,
+) {
+    print_closure_table(get_closure_table_loc);
+    print_static_roots(get_static_roots);
+    print_heap(get_heap_base, get_hp);
 }
 
-pub(crate) unsafe fn print_closure_table() {
-    let closure_tbl = closure_table::closure_table_loc();
+pub(crate) unsafe fn print_closure_table<GetClosureTableLoc: Fn() -> *mut SkewedPtr>(
+    get_closure_table_loc: GetClosureTableLoc,
+) {
+    let closure_tbl = get_closure_table_loc();
 
     if (*closure_tbl).0 == 0 {
         println!(100, "Closure table not initialized");
@@ -64,9 +71,10 @@ pub(crate) unsafe fn print_closure_table() {
     println!(50, "End of closure table");
 }
 
-#[cfg(feature = "gc")]
-pub(crate) unsafe fn print_static_roots() {
-    let static_roots = gc::get_static_roots().unskew() as *mut Array;
+pub(crate) unsafe fn print_static_roots<GetStaticRoots: Fn() -> SkewedPtr>(
+    get_static_roots: GetStaticRoots,
+) {
+    let static_roots = get_static_roots().unskew() as *mut Array;
     let len = (*static_roots).len;
 
     if len == 0 {
@@ -90,10 +98,12 @@ pub(crate) unsafe fn print_static_roots() {
     println!(50, "End of static roots");
 }
 
-#[cfg(feature = "gc")]
-unsafe fn print_heap() {
-    let heap_begin = gc::get_heap_base();
-    let heap_end = gc::HP;
+unsafe fn print_heap<GetHeapBase: Fn() -> u32, GetHp: Fn() -> u32>(
+    get_heap_base: GetHeapBase,
+    get_hp: GetHp,
+) {
+    let heap_begin = get_heap_base();
+    let heap_end = get_hp();
 
     println!(
         200,
