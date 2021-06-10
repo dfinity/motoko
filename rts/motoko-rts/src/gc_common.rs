@@ -5,7 +5,7 @@ use crate::types::*;
 pub unsafe fn collect_internal<
     GetHeapBase: Fn() -> u32,
     GetHp: Fn() -> u32,
-    SetHp: Fn(u32),
+    SetHp: FnMut(u32),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
     GetStaticRoots: Fn() -> SkewedPtr,
@@ -14,7 +14,7 @@ pub unsafe fn collect_internal<
 >(
     get_heap_base: GetHeapBase,
     get_hp: GetHp,
-    set_hp: SetHp,
+    mut set_hp: SetHp,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
     get_static_roots: GetStaticRoots,

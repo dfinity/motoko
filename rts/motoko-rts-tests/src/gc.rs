@@ -10,7 +10,7 @@ use motoko_rts::types::*;
 use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
 
-use byteorder::{WriteBytesExt, LE};
+use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
 type ObjectIdx = u32;
 
@@ -136,7 +136,7 @@ impl MotokoHeap {
 fn allocate_heap(
     refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
     heap: &mut [u8],
-    heap_base: usize,
+    heap_base_offset: usize,
 ) -> Vec<usize> {
     if refs.is_empty() {
         return vec![];
@@ -151,7 +151,7 @@ fn allocate_heap(
 
     // First pass allocates objects without fields
     {
-        let mut heap_offset = heap_base;
+        let mut heap_offset = heap_base_offset;
         for (obj, refs) in refs {
             object_addrs[*obj as usize] = heap_start + heap_offset;
 
@@ -194,4 +194,66 @@ fn allocate_heap(
     }
 
     object_addrs
+}
+
+/// Check the dynamic heap:
+///
+/// - Objects should point to objects with the expected tags (as specified by the `objects` argument)
+/// - Each tag should be seen at most once
+/// - All of `roots` should be seen
+///
+/// If any of these conditions do not hold this function panics.
+pub fn check_dynamic_heap(
+    objects: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    roots: &[ObjectIdx],
+    heap: &[u8],
+    heap_base_offset: usize,
+    heap_ptr_offset: usize,
+) {
+    // Current offset in the heap
+    let mut offset = heap_base_offset;
+
+    // Objects we've seen so far
+    let mut seen: HashSet<ObjectIdx> = Default::default();
+
+    while offset < heap_ptr_offset {
+        let tag = (&heap[offset..]).read_u32::<LE>().unwrap();
+        offset += 4;
+
+        if tag == 0 {
+            // Found closure table
+            continue;
+        }
+
+        assert_eq!(tag, TAG_ARRAY);
+
+        let n_fields = (&heap[offset..]).read_u32::<LE>().unwrap();
+        offset += 4;
+
+        // There should be at least one field for the tag
+        assert!(n_fields >= 1);
+
+        let tag = (&heap[offset..]).read_u32::<LE>().unwrap() >> 1;
+        offset += 4;
+        let seen_first_time = seen.insert(tag);
+        assert!(seen_first_time);
+
+        let object_expected_pointees = objects
+            .get(&tag)
+            .unwrap_or_else(|| panic!("Object with tag {} is not in the objects map", tag));
+
+        for field_idx in 1..n_fields {
+            let field = (&heap[offset..]).read_u32::<LE>().unwrap();
+            offset += 4;
+            // Get tag of the object pointed by the field
+            let pointee_address = field.wrapping_add(1); // unskew
+            let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
+            let pointee_tag_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
+            let pointee_tag = (&heap[pointee_tag_offset..]).read_u32::<LE>().unwrap() >> 1;
+            assert_eq!(
+                pointee_tag,
+                object_expected_pointees[(field_idx - 1) as usize]
+            );
+        }
+    }
 }

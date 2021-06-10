@@ -28,7 +28,9 @@ fn main() {
         3 => vec![3],
     };
 
-    let heap_1 = gc::MotokoHeap::new(&refs, &[0, 2, 3]);
+    let roots = vec![0, 2, 3];
+
+    let heap_1 = gc::MotokoHeap::new(&refs, &roots);
 
     println!("{:?}", heap_1.heap);
 
@@ -45,6 +47,17 @@ fn main() {
         );
     }
 
+    // Check `check_dynamic_heap` sanity
+    gc::check_dynamic_heap(
+        &refs,
+        &roots,
+        &*heap_1.heap,
+        heap_1.heap_base_offset,
+        heap_1.heap_ptr_offset,
+    );
+
+    let mut new_hp: u32 = 0;
+
     for _ in 0..3 {
         unsafe {
             collect_internal(
@@ -53,7 +66,7 @@ fn main() {
                 // get_hp
                 || heap_1.heap_ptr_address() as u32,
                 // set_hp
-                |_hp| {},
+                |hp| new_hp = hp,
                 // note_live_size
                 |_live_size| {},
                 // note_reclaimed
