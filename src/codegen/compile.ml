@@ -1,7 +1,7 @@
 (*
 This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
-with DFINITY extensions (customModule.ml). An important helper module is
+with Internet Computer extensions (customModule.ml). An important helper module is
 instrList.ml, which provides a more convenient way of assembling WebAssembly
 instruction lists, as it takes care of (1) source locations and (2) labels.
 
@@ -233,6 +233,7 @@ module E = struct
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
 
+    (* Per module fields (only valid/used inside a module) *)
     (* Immutable *)
 
     (* Mutable *)
@@ -254,6 +255,8 @@ module E = struct
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
+    labs : LabSet.t ref; (* Used labels (fields and variants),
+                            collected for Motoko custom section 0 *)
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -263,8 +266,6 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
-    labs : LabSet.t ref; (* Used labels (fields and variants),
-                            collected for Motoko custom section 0 *)
   }
 
 
@@ -289,12 +290,12 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    labs = ref LabSet.empty;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
-    labs = ref LabSet.empty;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -734,7 +735,7 @@ module Func = struct
 end (* Func *)
 
 module RTS = struct
-  (* The connection to the C parts of the RTS *)
+  (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
@@ -985,7 +986,7 @@ module Stack = struct
 end (* Stack *)
 
 module ClosureTable = struct
-  (* See rts/closure-table.c *)
+  (* See rts/motoko-rts/src/closure_table.rs *)
   let remember env : G.t = E.call_import env "rts" "remember_closure"
   let recall env : G.t = E.call_import env "rts" "recall_closure"
   let count env : G.t = E.call_import env "rts" "closure_count"
@@ -1043,13 +1044,6 @@ module BitTagged = struct
        0b…x0: A shifted scalar
        0b000: `false`
        0b010: `true`
-
-     Summary:
-
-       0b…11: A pointer
-       0b…x0: A shifted scalar
-       0b00: `false`
-       0b01: `true`
 
      Note that {Nat,Int}{8,16} do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
@@ -2930,7 +2924,7 @@ end (* Blob *)
 
 module Text = struct
   (*
-  Most of the heavy lifting around text values is in rts/text.c
+  Most of the heavy lifting around text values is in rts/motoko-rts/src/text.rs
   *)
 
   (* The layout of a concatenation node is
@@ -3296,8 +3290,8 @@ module Lifecycle = struct
 end (* Lifecycle *)
 
 
-module Dfinity = struct
-  (* Dfinity-specific stuff: System imports, databufs etc. *)
+module IC = struct
+  (* IC-specific stuff: System imports, databufs etc. *)
 
   let i32s n = Lib.List.make n I32Type
 
@@ -3686,7 +3680,7 @@ module Dfinity = struct
     | _ ->
       E.trap_with env "cannot get certificate when running locally"
 
-end (* Dfinity *)
+end (* IC *)
 
 module RTS_Exports = struct
   let system_exports env =
@@ -3703,7 +3697,7 @@ module RTS_Exports = struct
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
-        get_str ^^ get_len ^^ Dfinity.trap_ptr_len env
+        get_str ^^ get_len ^^ IC.trap_ptr_len env
       )
     ) in
     E.add_export env (nr {
@@ -5008,8 +5002,8 @@ module Serialization = struct
 
   let deserialize env ts =
     Blob.of_size_copy env
-      (fun env -> Dfinity.system_call env "ic0" "msg_arg_data_size")
-      (fun env -> Dfinity.system_call env "ic0" "msg_arg_data_copy") 0l ^^
+      (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
+      (fun env -> IC.system_call env "ic0" "msg_arg_data_copy") 0l ^^
     deserialize_from_blob false env ts
 
 (*
@@ -5129,7 +5123,7 @@ module Stabilization = struct
 
       compile_unboxed_const 0l ^^
       get_size_ptr ^^ compile_unboxed_const 4l ^^
-      Dfinity.system_call env "ic0" "stable_write") ^^
+      IC.system_call env "ic0" "stable_write") ^^
 
     (* copy data to following stable memory *)
     compile_unboxed_const 4l ^^
@@ -5145,14 +5139,14 @@ module Stabilization = struct
       (* read size from initial word of (assumed non-empty) stable memory*)
       Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
         get_size_ptr ^^ compile_unboxed_const 0l ^^  compile_unboxed_const 4l ^^
-        Dfinity.system_call env "ic0" "stable_read" ^^
+        IC.system_call env "ic0" "stable_read" ^^
         get_size_ptr ^^ load_unskewed_ptr)
     | _ -> assert false
 
   let destabilize env t =
     Blob.of_size_copy env stable_data_size
       (* copy the stable data from stable memory from offset 4 *)
-      (fun env -> Dfinity.system_call env "ic0" "stable_read") 4l ^^
+      (fun env -> IC.system_call env "ic0" "stable_read") 4l ^^
     Serialization.deserialize_from_blob true env [t]
 
 end
@@ -5501,8 +5495,8 @@ module Var = struct
       SR.Const c, G.nop
     | Some (PublicMethod (_, name)) ->
       SR.Vanilla,
-      Dfinity.get_self_reference env ^^
-      Dfinity.actor_public_field env name
+      IC.get_self_reference env ^^
+      IC.actor_public_field env name
     | None -> assert false
 
   (* Returns the payload (vanilla representation) *)
@@ -5616,7 +5610,7 @@ module FuncDec = struct
        then
          Tuple.compile_unit ^^
          Serialization.serialize env [] ^^
-         Dfinity.reply_with_data env
+         IC.reply_with_data env
        else G.nop) ^^
       (* Deserialize argument and add params to the environment *)
       let arg_names = List.map (fun a -> a.it) args in
@@ -5778,7 +5772,7 @@ module FuncDec = struct
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
-        Dfinity.error_value env ^^
+        IC.error_value env ^^
 
         get_closure ^^
         Closure.call_closure env 1 0 ^^
@@ -5817,13 +5811,13 @@ module FuncDec = struct
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
-      Dfinity.system_call env "ic0" "call_new" ^^
+      IC.system_call env "ic0" "call_new" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
-      Dfinity.system_call env "ic0" "call_data_append" ^^
+      IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
       (* done! *)
-      Dfinity.system_call env "ic0" "call_perform" ^^
+      IC.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
@@ -5844,13 +5838,13 @@ module FuncDec = struct
       (* The reject callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
-      Dfinity.system_call env "ic0" "call_new" ^^
+      IC.system_call env "ic0" "call_new" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
-      Dfinity.system_call env "ic0" "call_data_append" ^^
+      IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
-      Dfinity.system_call env "ic0" "call_perform" ^^
+      IC.system_call env "ic0" "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
@@ -5873,7 +5867,7 @@ module FuncDec = struct
     end
 
   let export_async_method env =
-    let name = Dfinity.async_method_name in
+    let name = IC.async_method_name in
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
@@ -5882,7 +5876,7 @@ module FuncDec = struct
         message_start env (Type.Shared Type.Write) ^^
 
         (* Check that we are calling this *)
-        Dfinity.assert_caller_self env ^^
+        IC.assert_caller_self env ^^
 
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
@@ -6078,8 +6072,7 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  let how_of_ae ae : allocHow = M.map (fun l ->
-    match l with
+  let how_of_ae ae : allocHow = M.map (function
     | VarEnv.Const _ -> (Const : how)
     | VarEnv.HeapStatic _ -> StoreStatic
     | VarEnv.HeapInd _ -> StoreHeap
@@ -6897,7 +6890,7 @@ and compile_exp (env : E.t) ae exp =
     | ActorDotPrim name, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      Dfinity.actor_public_field env name
+      IC.actor_public_field env name
 
     | ArrayPrim (m, t), es ->
       SR.Vanilla,
@@ -6917,7 +6910,7 @@ and compile_exp (env : E.t) ae exp =
     | AssertPrim, [e1] ->
       SR.unit,
       compile_exp_as env ae SR.bool e1 ^^
-      G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
+      G.if_ [] G.nop (IC.fail_assert env exp.at)
     | RetPrim, [e] ->
       SR.Unreachable,
       compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
@@ -7204,7 +7197,7 @@ and compile_exp (env : E.t) ae exp =
 
     | SystemTimePrim, [] ->
       SR.UnboxedWord64,
-      Dfinity.get_system_time env
+      IC.get_system_time env
 
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
@@ -7301,7 +7294,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "print", [e] ->
       SR.unit,
       compile_exp_vanilla env ae e ^^
-      Dfinity.print_text env
+      IC.print_text env
 
     | OtherPrim ("blobToArray"|"blobToArrayMut"), e ->
       const_sr SR.Vanilla (Arr.ofBlob env)
@@ -7349,7 +7342,7 @@ and compile_exp (env : E.t) ae exp =
 
     | SelfRef _, [] ->
       SR.Vanilla,
-      Dfinity.get_self_reference env
+      IC.get_self_reference env
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
@@ -7358,16 +7351,16 @@ and compile_exp (env : E.t) ae exp =
         (* TODO: We can try to avoid the boxing and pass the arguments to
           serialize individually *)
         Serialization.serialize env ts ^^
-        Dfinity.reply_with_data env
+        IC.reply_with_data env
       | _ ->
         E.trap_with env (Printf.sprintf "cannot reply when running locally")
       end
 
     | ICRejectPrim, [e] ->
-      SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
+      SR.unit, IC.reject env (compile_exp_vanilla env ae e)
 
     | ICCallerPrim, [] ->
-      Dfinity.caller env
+      IC.caller env
 
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin
@@ -7413,29 +7406,29 @@ and compile_exp (env : E.t) ae exp =
     (* Cycles *)
     | SystemCyclesBalancePrim, [] ->
       SR.UnboxedWord64,
-      Dfinity.cycle_balance env
+      IC.cycle_balance env
     | SystemCyclesAddPrim, [e1] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-      Dfinity.cycles_add env
+      IC.cycles_add env
     | SystemCyclesAcceptPrim, [e1] ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-      Dfinity.cycles_accept env
+      IC.cycles_accept env
     | SystemCyclesAvailablePrim, [] ->
       SR.UnboxedWord64,
-      Dfinity.cycles_available env
+      IC.cycles_available env
     | SystemCyclesRefundedPrim, [] ->
       SR.UnboxedWord64,
-      Dfinity.cycles_refunded env
+      IC.cycles_refunded env
 
     | SetCertifiedData, [e1] ->
       SR.unit,
       compile_exp_as env ae SR.Vanilla e1 ^^
-      Dfinity.set_certified_data env
+      IC.set_certified_data env
     | GetCertificate, [] ->
       SR.Vanilla,
-      Dfinity.get_certificate env
+      IC.get_certificate env
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
@@ -7536,8 +7529,8 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_as env ae SR.Vanilla exp_r ^^ set_r ^^
 
     FuncDec.ic_call env Type.[Prim Nat32] ts
-      ( Dfinity.get_self_reference env ^^
-        Dfinity.actor_public_field env (Dfinity.async_method_name))
+      ( IC.get_self_reference env ^^
+        IC.actor_public_field env (IC.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
       get_r add_cycles
@@ -8053,7 +8046,7 @@ and main_actor as_opt mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.pre);
     Func.define_built_in env "post_exp" [] [] (fun env ->
       compile_exp_as env ae2 SR.unit up.post);
-    Dfinity.export_upgrade_methods env;
+    IC.export_upgrade_methods env;
 
     (* Deserialize any arguments *)
     begin match as_opt with
@@ -8061,7 +8054,7 @@ and main_actor as_opt mod_env ds fs up =
      | Some [] ->
        (* Liberally accept empty as well as unit argument *)
        assert (arg_tys = []);
-       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
+       IC.system_call env "ic0" "msg_arg_data_size" ^^
        G.if_ [] (Serialization.deserialize env arg_tys) G.nop
      | Some (_ :: _) ->
        Serialization.deserialize env arg_tys ^^
@@ -8085,7 +8078,7 @@ and conclude_module env start_fi_o =
 
   Heap.register env;
   GC.register env static_roots;
-  Dfinity.register env;
+  IC.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
 
@@ -8099,7 +8092,7 @@ and conclude_module env start_fi_o =
       Lifecycle.set env Lifecycle.PreInit
   )) in
 
-  Dfinity.default_exports env;
+  IC.default_exports env;
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in
@@ -8157,22 +8150,22 @@ and conclude_module env start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts Dfinity.trap_with Lifecycle.end_ in
+  let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
   Heap.register_globals env;
   Stack.register_globals env;
 
-  Dfinity.system_imports env;
+  IC.system_imports env;
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Dfinity.export_init env;
+      IC.export_init env;
       None
     | Flags.WASIMode ->
-      Dfinity.export_wasi_start env;
+      IC.export_wasi_start env;
       None
     | Flags.WasmMode ->
       Some (nr (E.built_in env "init"))

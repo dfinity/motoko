@@ -25,12 +25,7 @@ rustPlatform-nightly.buildRustPackage rec {
     description = "The sysroot manager that lets you build and customize std";
     homepage = "https://github.com/japaric/xargo";
     license = licenses.mit;
-    maintainers = [ {
-      email = "omer.agacan@dfinity.org";
-      github = "osa1";
-      githubId = 123123;
-      name = "Ömer Sinan Ağacan";
-    } ];
+    maintainers = [];
     platforms = platforms.unix;
   };
 }
