@@ -15,9 +15,6 @@ default = ["panic_handler", "gc"]
 # disabled (not compiled) and allocation routines use `malloc`.
 gc = []
 
-# Disables copying GC, enables mark-compact
-compacting_gc = []
-
 # Defines a panic handler. Required for generating `staticlib` as static
 # libraries need to be self-contained.
 panic_handler = []

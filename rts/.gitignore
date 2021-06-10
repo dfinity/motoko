@@ -1,5 +1,3 @@
-mo-rts-copying-gc.wasm
-mo-rts-copying-gc-debug.wasm
-mo-rts-compacting-gc.wasm
-mo-rts-compacting-gc-debug.wasm
+mo-rts.wasm
+mo-rts-debug.wasm
 _build

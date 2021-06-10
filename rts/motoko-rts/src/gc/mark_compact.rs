@@ -9,7 +9,8 @@ use crate::types::*;
 
 use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP};
 
-pub(crate) unsafe fn collect() {
+#[no_mangle]
+unsafe extern "C" fn compacting_gc() {
     let old_hp = HP;
     let heap_base = get_heap_base();
 

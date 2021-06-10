@@ -106,11 +106,7 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: \
-    mo-rts-copying-gc.wasm \
-    mo-rts-copying-gc-debug.wasm \
-    mo-rts-compacting-gc.wasm \
-    mo-rts-compacting-gc-debug.wasm
+all: mo-rts.wasm mo-rts-debug.wasm
 
 _build:
 	mkdir -p $@
@@ -158,12 +154,12 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 # The rust code code of the RTS
 #
 
-RTS_COPYING_GC_WASM_A=_build/wasm/libmotoko_rts_copying_gc.a
-RTS_COPYING_GC_DEBUG_WASM_A=_build/wasm/libmotoko_rts_copying_gc_debug.a
-RTS_COMPACTING_GC_WASM_A=_build/wasm/libmotoko_rts_compacting_gc.a
-RTS_COMPACTING_GC_DEBUG_WASM_A=_build/wasm/libmotoko_rts_compacting_gc_debug.a
+RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
 TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
+
+
 
 $(TOMMATH_BINDINGS_RS): | _build
 	bindgen $(TOMMATHSRC)/tommath.h \
@@ -204,20 +200,12 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 
-$(RTS_COPYING_GC_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-$(RTS_COPYING_GC_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
-	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
-
-$(RTS_COMPACTING_GC_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
-	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten --features=compacting_gc
-	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
-
-$(RTS_COMPACTING_GC_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(wildcard motoko-rts/src/*.rs) | _build/wasm
-	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten --features=compacting_gc
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
@@ -250,28 +238,14 @@ EXPORTED_SYMBOLS=\
   fmod \
   log \
 
-mo-rts-copying-gc.wasm: $(RTS_COPYING_GC_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
+mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
                 $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
 
-mo-rts-copying-gc-debug.wasm: $(RTS_COPYING_GC_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
-	$(WASM_LD) -o $@ \
-		--import-memory --shared --no-entry --gc-sections \
-                $(EXPORTED_SYMBOLS:%=--export=%) \
-		--whole-archive \
-		$+
-
-mo-rts-compacting-gc.wasm: $(RTS_COMPACTING_GC_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
-	$(WASM_LD) -o $@ \
-		--import-memory --shared --no-entry --gc-sections \
-                $(EXPORTED_SYMBOLS:%=--export=%) \
-		--whole-archive \
-		$+
-
-mo-rts-compacting-gc-debug.wasm: $(RTS_COMPACTING_GC_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
                 $(EXPORTED_SYMBOLS:%=--export=%) \
@@ -281,10 +255,8 @@ mo-rts-compacting-gc-debug.wasm: $(RTS_COMPACTING_GC_DEBUG_WASM_A) $(TOMMATH_WAS
 clean:
 	rm -rf \
 	  _build \
-	  mo-rts-copying-gc.wasm \
-	  mo-rts-copying-gc-debug.wasm \
-	  mo-rts-compacting-gc.wasm \
-	  mo-rts-compacting-gc-debug.wasm \
+	  mo-rts.wasm \
+	  mo-rts-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts/xargo-home \

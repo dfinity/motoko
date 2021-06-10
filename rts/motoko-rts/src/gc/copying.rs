@@ -196,7 +196,8 @@ unsafe fn evac_static_roots(
     }
 }
 
-pub(crate) unsafe fn collect() {
+#[no_mangle]
+unsafe extern "C" fn copying_gc() {
     let begin_from_space = get_heap_base() as usize;
     let end_from_space = HP as usize;
     let begin_to_space = end_from_space;

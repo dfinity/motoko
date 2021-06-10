@@ -206,20 +206,14 @@ rec {
 
       installPhase = ''
         mkdir -p $out/rts
-        cp mo-rts-copying-gc.wasm $out/rts
-        cp mo-rts-copying-gc-debug.wasm $out/rts
-        cp mo-rts-compacting-gc.wasm $out/rts
-        cp mo-rts-compacting-gc-debug.wasm $out/rts
+        cp mo-rts.wasm $out/rts
+        cp mo-rts-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of
       # nix path in debug message.
       preFixup = ''
-        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} \
-          $out/rts/mo-rts-copying-gc.wasm \
-          $out/rts/mo-rts-copying-gc-debug.wasm\
-          $out/rts/mo-rts-compacting-gc.wasm \
-          $out/rts/mo-rts-compacting-gc-debug.wasm
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
       allowedRequisites = [];
     };
