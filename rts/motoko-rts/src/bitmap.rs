@@ -77,16 +77,25 @@ pub unsafe fn iter_bits() -> BitmapIter {
     }
 }
 
-impl Iterator for BitmapIter {
-    type Item = u32;
+/// This value marks the end-of-stream in `BitmapIter`. Using this value instead of `None` for
+/// end-of-stream reduces Wasm instructions executed by ~2.7% in some cases.
+//
+// Heap is 4GiB and each 32-bit word gets a bit, so this is one larger than the bit for the last
+// word in heap.
+//
+// (We actually need less bits than that as when the heap is full we can't allocate bitmap and mark
+// stack and can't do GC)
+pub const BITMAP_ITER_END: u32 = 1024 * 1024 * 1024;
 
-    fn next(&mut self) -> Option<u32> {
+impl BitmapIter {
+    /// Returns the next bit, or `MAX_BIT` if there are no more bits set.
+    pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_word_idx <= self.size);
 
         // Outer loop iterates 64-bit words
         loop {
             if self.current_word == 0 && self.current_word_idx == self.size {
-                return None;
+                return BITMAP_ITER_END;
             }
 
             // Inner loop iterates bits in the current word
@@ -95,7 +104,7 @@ impl Iterator for BitmapIter {
                     let bit_idx = (self.current_word_idx * 64) + (64 - self.bits_left);
                     self.current_word >>= 1;
                     self.bits_left -= 1;
-                    return Some(bit_idx);
+                    return bit_idx;
                 } else {
                     let shift_amt = self.current_word.trailing_zeros();
                     self.current_word >>= shift_amt;
@@ -106,7 +115,7 @@ impl Iterator for BitmapIter {
             // Move on to next word
             self.current_word_idx += 1;
             if self.current_word_idx == self.size {
-                return None;
+                return BITMAP_ITER_END;
             }
             self.current_word =
                 unsafe { *(BITMAP_PTR as *const u64).add(self.current_word_idx as usize) };

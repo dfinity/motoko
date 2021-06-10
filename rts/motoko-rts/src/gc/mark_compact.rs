@@ -1,6 +1,6 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
-use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit};
+use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use crate::closure_table::closure_table_loc;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
@@ -168,7 +168,9 @@ unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
 unsafe fn update_fwd_refs(heap_base: u32) {
     let mut free = heap_base;
 
-    for bit in iter_bits() {
+    let mut bitmap_iter = iter_bits();
+    let mut bit = bitmap_iter.next();
+    while bit != BITMAP_ITER_END {
         let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
         // Update forward references to the object to the object's new location and restore
@@ -179,6 +181,8 @@ unsafe fn update_fwd_refs(heap_base: u32) {
         thread_obj_fields(p, heap_base);
 
         free += object_size(p as usize).to_bytes().0;
+
+        bit = bitmap_iter.next();
     }
 }
 
@@ -187,7 +191,9 @@ unsafe fn update_fwd_refs(heap_base: u32) {
 unsafe fn update_bwd_refs(heap_base: u32) {
     let mut free = heap_base;
 
-    for bit in iter_bits() {
+    let mut bitmap_iter = iter_bits();
+    let mut bit = bitmap_iter.next();
+    while bit != BITMAP_ITER_END {
         let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
         // Update backward references to the object's new location and restore object header
@@ -200,6 +206,8 @@ unsafe fn update_bwd_refs(heap_base: u32) {
         }
 
         free += p_size_words.to_bytes().0;
+
+        bit = bitmap_iter.next();
     }
 
     crate::gc::HP = free;
