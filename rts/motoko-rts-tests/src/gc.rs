@@ -7,7 +7,7 @@
 
 use motoko_rts::types::*;
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
@@ -211,10 +211,13 @@ pub fn check_dynamic_heap(
     // Current offset in the heap
     let mut offset = heap_base_offset;
 
-    // Objects we've seen so far
-    let mut seen: HashSet<ObjectIdx> = Default::default();
+    // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
+    let mut seen: HashMap<ObjectIdx, usize> = Default::default();
 
     while offset < heap_ptr_offset {
+        // Address of the current object. Used for debugging.
+        let address = offset as usize + heap.as_ptr() as usize;
+
         let tag = read_word(heap, offset);
         offset += 4;
 
@@ -233,8 +236,13 @@ pub fn check_dynamic_heap(
 
         let tag = read_word(heap, offset) >> 1;
         offset += 4;
-        let seen_first_time = seen.insert(tag);
-        assert!(seen_first_time);
+        let old = seen.insert(tag, address);
+        if let Some(old) = old {
+            panic!(
+                "Object with tag {} seen multiple times: {:#x}, {:#x}",
+                tag, old, address
+            );
+        }
 
         let object_expected_pointees = objects
             .get(&tag)

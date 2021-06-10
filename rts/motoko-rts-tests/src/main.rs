@@ -56,9 +56,9 @@ fn main() {
         heap_1.heap_ptr_offset,
     );
 
-    let mut new_hp: u32 = 0;
-
     for _ in 0..3 {
+        let mut new_hp: u32 = 0;
+
         unsafe {
             collect_internal(
                 // get_heap_base
@@ -87,6 +87,14 @@ fn main() {
                 },
             );
         }
+
+        gc::check_dynamic_heap(
+            &refs,
+            &roots,
+            &*heap_1.heap,
+            heap_1.heap_base_offset,
+            new_hp as usize - heap_1.heap.as_ptr() as usize,
+        );
     }
 
     // unsafe {
