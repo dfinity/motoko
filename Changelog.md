@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+== 0.6.3 (2021-06-10)
+
+* Motoko is now open source!
+
+* Better internal consistency checking of the intermediate representation
+
 == 0.6.2 (2021-05-24)
 
 * motoko-base:
