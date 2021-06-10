@@ -21,10 +21,10 @@ jobs:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
 
-   # from https://github.community/t/how-to-get-just-the-tag-name/16241/7
-   - name: Get the version
-     id: get_version
-     run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    # from https://github.community/t/how-to-get-just-the-tag-name/16241/7
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
     - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ steps.get_version.outputs.VERSION }}'
 
