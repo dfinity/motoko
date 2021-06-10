@@ -10,6 +10,7 @@ on:
 jobs:
   # this assumes that the nix cache is warm
   # In particular, we assume we can fetch the darwin build products
+  # May require restarting the job otherwise
   release:
     runs-on: 'ubuntu-latest'
     steps:
@@ -20,7 +21,13 @@ jobs:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
 
-    - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion ${{ github.ref }}
+   # from https://github.community/t/how-to-get-just-the-tag-name/16241/7
+   - name: Get the version
+     id: get_version
+     run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+    - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ steps.get_version.outputs.VERSION }}'
+
     # TODO: Check if github.ref is the latest in changelog, and extract changelog
     - name: Upload Release Asset
       uses: svenstaro/upload-release-action@v2
