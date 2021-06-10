@@ -1,6 +1,4 @@
-#![feature(
-    ptr_offset_from
-)]
+#![feature(ptr_offset_from)]
 
 mod bigint;
 mod bitmap;

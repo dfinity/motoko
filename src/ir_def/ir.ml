@@ -139,7 +139,7 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait
+  | CPSAwait of Type.typ
   | CPSAsync of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
@@ -266,8 +266,8 @@ let map_prim t_typ t_id p =
   | SystemCyclesRefundedPrim
   | SetCertifiedData
   | GetCertificate
-  | OtherPrim _
-  | CPSAwait -> p
+  | OtherPrim _ -> p
+  | CPSAwait t -> CPSAwait (t_typ t)
   | CPSAsync t -> CPSAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICRejectPrim

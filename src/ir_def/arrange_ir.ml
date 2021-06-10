@@ -88,7 +88,7 @@ and prim = function
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait          -> Atom "CPSAwait"
+  | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"

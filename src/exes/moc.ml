@@ -77,7 +77,7 @@ let argspec = Arg.align [
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
-      " use the reference implementation of the DFINITY system API (ic-ref-run)";
+      " use the reference implementation of the Internet Computer system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";

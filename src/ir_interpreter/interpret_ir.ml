@@ -386,7 +386,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             k
         | _ -> assert false
         end
-      | CPSAwait, [v1; v2] ->
+      | CPSAwait _, [v1; v2] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         begin match V.as_tup v2 with
          | [vf; vr] ->
