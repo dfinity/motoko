@@ -62,7 +62,7 @@ pub(crate) unsafe fn print_closure_table<GetClosureTableLoc: Fn() -> *mut Skewed
     for i in 0..len {
         let elem = arr.get(i);
         if !elem.is_tagged_scalar() {
-            let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, elem.unskew());
+            let _ = write!(&mut write_buf, "{}: ", i);
             print_boxed_object(&mut write_buf, elem.unskew());
             print(&write_buf);
             write_buf.reset();
@@ -89,10 +89,11 @@ pub(crate) unsafe fn print_static_roots<GetStaticRoots: Fn() -> SkewedPtr>(
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
+    let payload_addr = static_roots.payload_addr();
     for i in 0..len {
-        let obj = static_roots.get(i);
-        let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, obj.unskew());
-        print_boxed_object(&mut write_buf, obj.unskew());
+        let field_addr = payload_addr.add(i as usize);
+        let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, field_addr as usize);
+        print_boxed_object(&mut write_buf, (*field_addr).unskew());
         print(&write_buf);
         write_buf.reset();
     }

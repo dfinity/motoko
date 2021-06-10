@@ -9,10 +9,16 @@ type ObjectIdx = u32;
 
 const WORD_SIZE: usize = 4;
 
+// We only allocate arrays in the dynamic heap for now
 const TAG_ARRAY: u32 = 3;
+// MutBox is used for static root array elements (TODO: We could store pointers to dynamic roots
+// directly in the array, instead of via MutBox0
+const TAG_MUTBOX: u32 = 6;
 
 pub struct MotokoHeap {
-    pub heap: Vec<u8>,
+    // This is a boxed slice as growing this array wouldn't make sense (all pointers would have to
+    // be updated).
+    pub heap: Box<[u8]>,
 
     /// Where the dynamic heap starts
     pub heap_base: usize,
@@ -31,8 +37,8 @@ pub struct MotokoHeap {
 impl MotokoHeap {
     pub fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeap {
         // Each object will be 3 words per object + one word for each reference. Static heap will
-        // have an array (header + length) with one word for each root.
-        let static_heap_size = (2 + roots.len()) * WORD_SIZE;
+        // have an array (header + length) with one element, one MutBox for each root.
+        let static_heap_size = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
         let dynamic_heap_size = {
             let object_headers_words = map.len() * 3;
             let references_words = map.values().map(|refs| refs.len()).sum::<usize>();
@@ -41,8 +47,8 @@ impl MotokoHeap {
         };
         let total_heap_size_bytes = static_heap_size + dynamic_heap_size;
 
-        // TODO: Maybe make this `Box<[u8]>`?
-        let mut heap: Vec<u8> = vec![0; total_heap_size_bytes];
+        // Double the dynamic heap size to allow GC
+        let mut heap: Vec<u8> = vec![0; total_heap_size_bytes + dynamic_heap_size];
 
         // Maps `ObjectIdx`s into their offsets in the heap
         let object_addrs: Vec<usize> = allocate_heap(map, &mut heap, static_heap_size);
@@ -53,18 +59,35 @@ impl MotokoHeap {
             .map(|obj| object_addrs[*obj as usize])
             .collect();
 
-        // Create static root array
+        // Create static root array. Each element of the array is a MutBox pointing to the actual
+        // root.
         (&mut heap[0..]).write_u32::<LE>(TAG_ARRAY).unwrap();
         (&mut heap[WORD_SIZE..])
             .write_u32::<LE>(u32::try_from(roots.len()).unwrap())
             .unwrap();
 
+        // Current offset in the heap for the next static roots array element
         let mut root_addr_offset = 2 * WORD_SIZE;
+
+        // Current offset in the heap for the MutBox of the next root
+        let mut mutbox_offset = (2 + roots.len()) * WORD_SIZE;
+
         for root_address in root_addresses {
-            (&mut heap[root_addr_offset..])
+            // Add a MutBox for the object
+            (&mut heap[mutbox_offset..])
+                .write_u32::<LE>(TAG_MUTBOX)
+                .unwrap();
+            (&mut heap[mutbox_offset + WORD_SIZE..])
                 .write_u32::<LE>(u32::try_from(root_address).unwrap().wrapping_sub(1))
                 .unwrap();
+
+            let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
+            (&mut heap[root_addr_offset..])
+                .write_u32::<LE>(u32::try_from(mutbox_addr).unwrap().wrapping_sub(1))
+                .unwrap();
+
             root_addr_offset += WORD_SIZE;
+            mutbox_offset += 2 * WORD_SIZE;
         }
 
         // Add closure table at the end of the heap. Currently closure table is just a scalar.
@@ -74,7 +97,7 @@ impl MotokoHeap {
             .unwrap();
 
         MotokoHeap {
-            heap,
+            heap: heap.into_boxed_slice(),
             heap_base: static_heap_size,
             heap_ptr: total_heap_size_bytes,
             static_root_array_offset: 0,
