@@ -1,4 +1,4 @@
-use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit};
+use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 
 use quickcheck::{quickcheck, TestResult};
@@ -85,12 +85,12 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
 
         while let Some(vec_bit) = bit_vec_iter.next() {
             match bit_map_iter.next() {
-                None => {
+                BITMAP_ITER_END => {
                     return TestResult::error(
                         "bitmap iterator didn't yield but there are more bits",
                     );
                 }
-                Some(map_bit) => {
+                map_bit => {
                     if map_bit != u32::from(vec_bit) {
                         return TestResult::error(&format!(
                             "bitmap iterator yields {}, but actual bit is {}",
@@ -101,7 +101,8 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
             }
         }
 
-        if let Some(map_bit) = bit_map_iter.next() {
+        let map_bit = bit_map_iter.next();
+        if map_bit != BITMAP_ITER_END {
             return TestResult::error(&format!(
                 "bitmap iterator yields {}, but there are no more bits left",
                 map_bit
