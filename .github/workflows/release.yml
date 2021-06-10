@@ -27,5 +27,6 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file_glob: result/*
+        file: result/*
+        file_glob: true
         body: TODO
