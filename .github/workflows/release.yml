@@ -20,7 +20,7 @@ jobs:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
 
-    - run: nix-build --max-jobs 1 release-files.nix
+    - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion ${{ github.ref }}
     # TODO: Check if github.ref is the latest in changelog, and extract changelog
     - name: Upload Release Asset
       uses: svenstaro/upload-release-action@v2
