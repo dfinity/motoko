@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+== test-tag (2021-05-24)
+
+* Just a test
+
+* Of the github action
+
 == 0.6.2 (2021-05-24)
 
 * motoko-base:
