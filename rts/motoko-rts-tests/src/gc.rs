@@ -1,3 +1,10 @@
+// Naming conventions:
+//
+// - offset = index in the "heap" array/slice/vector
+// - address = address in the process's address space
+//
+// To convert an offset into an address, add heap array's address to the offset.
+
 use motoko_rts::types::*;
 
 use std::collections::{BTreeMap, HashSet};
@@ -16,15 +23,15 @@ const TAG_ARRAY: u32 = 3;
 const TAG_MUTBOX: u32 = 6;
 
 pub struct MotokoHeap {
-    // This is a boxed slice as growing this array wouldn't make sense (all pointers would have to
-    // be updated).
+    /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
+    /// (all pointers would have to be updated).
     pub heap: Box<[u8]>,
 
     /// Where the dynamic heap starts
-    pub heap_base: usize,
+    pub heap_base_offset: usize,
 
-    /// Where the dynamic heap ends
-    pub heap_ptr: usize,
+    /// Where the dynamic heap ends, i.e. the heap pointer
+    pub heap_ptr_offset: usize,
 
     /// Offset of the static root array: an array of pointers below `heap_base`
     pub static_root_array_offset: usize,
@@ -35,6 +42,26 @@ pub struct MotokoHeap {
 }
 
 impl MotokoHeap {
+    /// Get heap base in the process's address space
+    pub fn heap_base_address(&self) -> usize {
+        self.heap.as_ptr() as usize + self.heap_base_offset
+    }
+
+    /// Get heap pointer (i.e. where the dynamic heap ends) in the process's address space
+    pub fn heap_ptr_address(&self) -> usize {
+        self.heap.as_ptr() as usize + self.heap_ptr_offset
+    }
+
+    /// Get static root array address in the process's address space
+    pub fn static_root_array_address(&self) -> usize {
+        self.heap.as_ptr() as usize + self.static_root_array_offset
+    }
+
+    /// Get closure table address in the process's address space
+    pub fn closure_table_address(&self) -> usize {
+        self.heap.as_ptr() as usize + self.closure_table_offset
+    }
+
     pub fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeap {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root.
@@ -98,8 +125,8 @@ impl MotokoHeap {
 
         MotokoHeap {
             heap: heap.into_boxed_slice(),
-            heap_base: static_heap_size,
-            heap_ptr: total_heap_size_bytes,
+            heap_base_offset: static_heap_size,
+            heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
             closure_table_offset,
         }

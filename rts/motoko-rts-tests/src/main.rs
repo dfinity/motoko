@@ -35,13 +35,13 @@ fn main() {
     unsafe {
         debug::dump_heap(
             // get_heap_base
-            || (heap_1.heap.as_ptr() as usize + heap_1.heap_base) as u32,
+            || heap_1.heap_base_address() as u32,
             // get_hp
-            || (heap_1.heap.as_ptr() as usize + heap_1.heap_ptr) as u32,
+            || heap_1.heap_ptr_address() as u32,
             // get_static_roots
-            || skew(heap_1.heap.as_ptr() as usize + heap_1.static_root_array_offset),
+            || skew(heap_1.static_root_array_address()),
             // get_closure_table_loc
-            || (heap_1.heap.as_ptr() as usize + heap_1.closure_table_offset) as *mut SkewedPtr,
+            || heap_1.closure_table_address() as *mut SkewedPtr,
         );
     }
 
@@ -49,9 +49,9 @@ fn main() {
         unsafe {
             collect_internal(
                 // get_heap_base
-                || (heap_1.heap.as_ptr() as usize + heap_1.heap_base) as u32,
+                || heap_1.heap_base_address() as u32,
                 // get_hp
-                || (heap_1.heap.as_ptr() as usize + heap_1.heap_ptr) as u32,
+                || heap_1.heap_ptr_address() as u32,
                 // set_hp
                 |_hp| {},
                 // note_live_size
@@ -59,9 +59,9 @@ fn main() {
                 // note_reclaimed
                 |_reclaimed| {},
                 // get_static_roots
-                || skew(heap_1.heap.as_ptr() as usize + heap_1.static_root_array_offset),
+                || skew(heap_1.static_root_array_address()),
                 // get_closure_table_loc
-                || (heap_1.heap.as_ptr() as usize + heap_1.closure_table_offset) as *mut SkewedPtr,
+                || heap_1.closure_table_address() as *mut SkewedPtr,
                 // grow_memory
                 |ptr| {
                     if ptr - (heap_1.heap.as_ptr() as usize) > heap_1.heap.len() {
