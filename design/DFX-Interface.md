@@ -86,7 +86,7 @@ The first argument to `--actor-alias` is the alias without the URL scheme. The s
 
 The given aliases must be unique (i.e. no `--actor-alias a aaaaa-aa --actor-alias a em77e-bvlzu-aq`).
 
-[textual representation]: https://docs.dfinity.systems/public/#textual-ids
+[textual representation]: https://sdk.dfinity.org/docs/interface-spec/index.html#textual-ids
 
 Resolving Canister types
 ------------------------

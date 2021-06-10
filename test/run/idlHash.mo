@@ -6,9 +6,6 @@ func testHash(s : Text, h : Nat32) {
   Prim.debugPrint("Actual:   " # debug_show (Prim.idlHash s));
 };
 
-// The lines below can be copied verbatim out of the corresponding JS unit test
-// in dev/experimental/js-dfinity-client/tests/unit-tests/idl.js
-
 testHash("", 0);
 testHash("id", 23515);
 testHash("description", 1595738364);
