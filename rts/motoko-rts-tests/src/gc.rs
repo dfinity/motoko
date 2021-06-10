@@ -41,6 +41,14 @@ pub struct MotokoHeap {
     pub closure_table_offset: usize,
 }
 
+fn read_word(heap: &[u8], offset: usize) -> u32 {
+    (&heap[offset..]).read_u32::<LE>().unwrap()
+}
+
+fn write_word(heap: &mut [u8], offset: usize, word: u32) {
+    (&mut heap[offset..]).write_u32::<LE>(word).unwrap()
+}
+
 impl MotokoHeap {
     /// Get heap base in the process's address space
     pub fn heap_base_address(&self) -> usize {
@@ -88,10 +96,8 @@ impl MotokoHeap {
 
         // Create static root array. Each element of the array is a MutBox pointing to the actual
         // root.
-        (&mut heap[0..]).write_u32::<LE>(TAG_ARRAY).unwrap();
-        (&mut heap[WORD_SIZE..])
-            .write_u32::<LE>(u32::try_from(roots.len()).unwrap())
-            .unwrap();
+        write_word(&mut heap, 0, TAG_ARRAY);
+        write_word(&mut heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
         // Current offset in the heap for the next static roots array element
         let mut root_addr_offset = 2 * WORD_SIZE;
@@ -101,17 +107,19 @@ impl MotokoHeap {
 
         for root_address in root_addresses {
             // Add a MutBox for the object
-            (&mut heap[mutbox_offset..])
-                .write_u32::<LE>(TAG_MUTBOX)
-                .unwrap();
-            (&mut heap[mutbox_offset + WORD_SIZE..])
-                .write_u32::<LE>(u32::try_from(root_address).unwrap().wrapping_sub(1))
-                .unwrap();
+            write_word(&mut heap, mutbox_offset, TAG_MUTBOX);
+            write_word(
+                &mut heap,
+                mutbox_offset + WORD_SIZE,
+                u32::try_from(root_address).unwrap().wrapping_sub(1),
+            );
 
             let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-            (&mut heap[root_addr_offset..])
-                .write_u32::<LE>(u32::try_from(mutbox_addr).unwrap().wrapping_sub(1))
-                .unwrap();
+            write_word(
+                &mut heap,
+                root_addr_offset,
+                u32::try_from(mutbox_addr).unwrap().wrapping_sub(1),
+            );
 
             root_addr_offset += WORD_SIZE;
             mutbox_offset += 2 * WORD_SIZE;
@@ -119,9 +127,7 @@ impl MotokoHeap {
 
         // Add closure table at the end of the heap. Currently closure table is just a scalar.
         let closure_table_offset = static_heap_size + dynamic_heap_size - WORD_SIZE;
-        (&mut heap[closure_table_offset..])
-            .write_u32::<LE>(0)
-            .unwrap();
+        write_word(&mut heap, closure_table_offset, 0);
 
         MotokoHeap {
             heap: heap.into_boxed_slice(),
@@ -156,21 +162,15 @@ fn allocate_heap(
             object_addrs[*obj as usize] = heap_start + heap_offset;
 
             // Store object header
-            (&mut heap[heap_offset..])
-                .write_u32::<LE>(TAG_ARRAY)
-                .unwrap();
+            write_word(heap, heap_offset, TAG_ARRAY);
             heap_offset += WORD_SIZE;
 
             // Store length: tag + refs
-            (&mut heap[heap_offset..])
-                .write_u32::<LE>(u32::try_from(refs.len() + 1).unwrap())
-                .unwrap();
+            write_word(heap, heap_offset, u32::try_from(refs.len() + 1).unwrap());
             heap_offset += WORD_SIZE;
 
             // Store object value (tag)
-            (&mut heap[heap_offset..])
-                .write_u32::<LE>(obj << 1)
-                .unwrap();
+            write_word(heap, heap_offset, obj << 1);
             heap_offset += WORD_SIZE;
 
             // Leave space for the fields
@@ -187,9 +187,7 @@ fn allocate_heap(
             // -1 for skewing
             let ref_addr = object_addrs[*ref_ as usize].wrapping_sub(1);
             let field_offset = obj_offset + (3 + ref_idx) * WORD_SIZE;
-            (&mut heap[field_offset..])
-                .write_u32::<LE>(u32::try_from(ref_addr).unwrap())
-                .unwrap();
+            write_word(heap, field_offset, u32::try_from(ref_addr).unwrap());
         }
     }
 
@@ -217,7 +215,7 @@ pub fn check_dynamic_heap(
     let mut seen: HashSet<ObjectIdx> = Default::default();
 
     while offset < heap_ptr_offset {
-        let tag = (&heap[offset..]).read_u32::<LE>().unwrap();
+        let tag = read_word(heap, offset);
         offset += 4;
 
         if tag == 0 {
@@ -227,13 +225,13 @@ pub fn check_dynamic_heap(
 
         assert_eq!(tag, TAG_ARRAY);
 
-        let n_fields = (&heap[offset..]).read_u32::<LE>().unwrap();
+        let n_fields = read_word(heap, offset);
         offset += 4;
 
         // There should be at least one field for the tag
         assert!(n_fields >= 1);
 
-        let tag = (&heap[offset..]).read_u32::<LE>().unwrap() >> 1;
+        let tag = read_word(heap, offset) >> 1;
         offset += 4;
         let seen_first_time = seen.insert(tag);
         assert!(seen_first_time);
@@ -243,13 +241,13 @@ pub fn check_dynamic_heap(
             .unwrap_or_else(|| panic!("Object with tag {} is not in the objects map", tag));
 
         for field_idx in 1..n_fields {
-            let field = (&heap[offset..]).read_u32::<LE>().unwrap();
+            let field = read_word(heap, offset);
             offset += 4;
             // Get tag of the object pointed by the field
             let pointee_address = field.wrapping_add(1); // unskew
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
             let pointee_tag_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_tag = (&heap[pointee_tag_offset..]).read_u32::<LE>().unwrap() >> 1;
+            let pointee_tag = read_word(heap, pointee_tag_offset) >> 1;
             assert_eq!(
                 pointee_tag,
                 object_expected_pointees[(field_idx - 1) as usize]
