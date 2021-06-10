@@ -1,0 +1,31 @@
+name: release
+
+# We trigger this on all tags. The job will fail for tags that don’t have a
+# changelog entry, so that seems good enough
+on:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  # this assumes that the nix cache is warm
+  # In particular, we assume we can fetch the darwin build products
+  release:
+    runs-on: 'ubuntu-latest'
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v12
+    - uses: cachix/cachix-action@v10
+      with:
+        name: ic-hs-test
+        # NB: No auth token, we don’t expect to push new stuff here
+
+    - run: nix-build --max-jobs 1 release-files.nix
+    # TODO: Check if github.ref is the latest in changelog, and extract changelog
+    - name: Upload Release Asset
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file_glob: result/*
+        body: TODO
