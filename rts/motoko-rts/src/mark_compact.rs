@@ -22,11 +22,11 @@ pub(crate) unsafe extern "C" fn mark_compact(
 
     // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
     push_mark_stack(*closure_table_loc, heap_base);
+    thread(closure_table_loc, heap_base);
 
     mark_stack(heap_base);
 
-    // thread_roots(static_roots, heap_base);
-    thread(closure_table_loc, heap_base);
+    thread_roots(static_roots, heap_base);
     // update_fwd_refs(heap_base);
     update_bwd_refs(heap_base);
 
@@ -41,14 +41,20 @@ unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
         mark_fields(obj, obj.tag(), heap_base);
-        thread_obj_fields(obj, heap_base);
     }
 }
 
-unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
+/// Returns whether the object was pushed to the mark stack. We don't push the object to the mark
+/// stack if:
+///
+/// - The object is not boxed
+/// - The object is static (in this case we push fields of the object in `mark_static_roots`)
+/// - The object is already marked (i.e. "grey" or "black" in tri-color)
+///
+unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) -> bool {
     if obj.is_tagged_scalar() {
         // Not a boxed object, skip
-        return;
+        return false;
     }
 
     let obj_tag = obj.tag();
@@ -56,18 +62,19 @@ unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
 
     if obj < heap_base {
         // Static objects are not collected and not marked
-        return;
+        return false;
     }
 
     let obj_idx = (obj - heap_base) / WORD_SIZE;
 
     if get_bit(obj_idx) {
         // Already marked
-        return;
+        return false;
     }
 
     set_bit(obj_idx);
     mark_stack::push_mark_stack(obj as usize, obj_tag);
+    true
 }
 
 unsafe fn mark_stack(heap_base: u32) {
@@ -83,8 +90,9 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                push_mark_stack(*field_addr, heap_base);
-                thread(field_addr, heap_base);
+                if push_mark_stack(*field_addr, heap_base) {
+                    thread(field_addr, heap_base);
+                }
             }
         }
 
@@ -93,16 +101,18 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
                 let field_addr = array_payload.add(i as usize);
-                push_mark_stack(*field_addr, heap_base);
-                thread(field_addr, heap_base);
+                if push_mark_stack(*field_addr, heap_base) {
+                    thread(field_addr, heap_base);
+                }
             }
         }
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            push_mark_stack(*field_addr, heap_base);
-            thread(field_addr, heap_base);
+            if push_mark_stack(*field_addr, heap_base) {
+                thread(field_addr, heap_base)
+            }
         }
 
         TAG_CLOSURE => {
@@ -110,42 +120,48 @@ unsafe fn mark_fields(obj: *mut Obj, tag: Tag, heap_base: u32) {
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                push_mark_stack(*field_addr, heap_base);
-                thread(field_addr, heap_base);
+                if push_mark_stack(*field_addr, heap_base) {
+                    thread(field_addr, heap_base);
+                }
             }
         }
 
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            push_mark_stack(*field_addr, heap_base);
-            thread(field_addr, heap_base);
+            if push_mark_stack(*field_addr, heap_base) {
+                thread(field_addr, heap_base);
+            }
         }
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            push_mark_stack(*field_addr, heap_base);
-            thread(field_addr, heap_base);
+            if push_mark_stack(*field_addr, heap_base) {
+                thread(field_addr, heap_base);
+            }
         }
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
 
             let field1_addr = &mut (*concat).text1;
-            push_mark_stack(*field1_addr, heap_base);
-            thread(field1_addr, heap_base);
+            if push_mark_stack(*field1_addr, heap_base) {
+                thread(field1_addr, heap_base);
+            }
 
             let field2_addr = &mut (*concat).text2;
-            push_mark_stack(*field2_addr, heap_base);
-            thread(field2_addr, heap_base);
+            if push_mark_stack(*field2_addr, heap_base) {
+                thread(field2_addr, heap_base);
+            }
         }
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            push_mark_stack(*field_addr, heap_base);
-            thread(field_addr, heap_base);
+            if push_mark_stack(*field_addr, heap_base) {
+                thread(field_addr, heap_base);
+            }
         }
 
         TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
