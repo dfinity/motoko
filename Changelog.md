@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-== test-tag (2021-05-24)
+== test-tag2 (2021-05-24)
 
 * Just a test
 
