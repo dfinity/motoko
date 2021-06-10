@@ -28,8 +28,8 @@ jobs:
 
     - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ steps.get_version.outputs.VERSION }}'
 
-    # TODO: Check if github.ref is the latest in changelog, and extract changelog
     - name: Extract changelog
+      id: read_release
       run: |
         export VERSION='${{ steps.get_version.outputs.VERSION }}'
         perl -0777 -ne '/^# Motoko compiler changelog\n\n== (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^==/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
