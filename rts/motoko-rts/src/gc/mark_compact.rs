@@ -149,12 +149,6 @@ unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
 
         TAG_FWD_PTR | _ => {
             // Any other tag is a bug
-            // println!(
-            //     500,
-            //     "invalid object tag {} at {:#x}",
-            //     obj.tag(),
-            //     obj as usize
-            // );
             rts_trap_with("invalid object tag in mark_fields");
         }
     }

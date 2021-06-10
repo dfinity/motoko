@@ -47,13 +47,6 @@ unsafe fn evac(
 
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
-    // println!(
-    //     200,
-    //     "evacuating {:#x} (idx={})",
-    //     obj as usize,
-    //     (((obj as u32) - get_heap_base()) / WORD_SIZE)
-    // );
-
     // Update the field if the object is already evacauted
     if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
@@ -225,12 +218,6 @@ unsafe extern "C" fn copying_gc() {
     while p < end_to_space {
         // NB: end_to_space keeps changing within this loop
         let size = object_size(p);
-        // println!(
-        //     200,
-        //     "scavenging {:#x} (idx={})",
-        //     p,
-        //     ((p as u32 - get_heap_base()) / WORD_SIZE)
-        // );
         scav(begin_from_space, begin_to_space, &mut end_to_space, p);
         p += size.to_bytes().0 as usize;
     }
