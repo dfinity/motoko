@@ -286,6 +286,11 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks";
       });
 
+    compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      });
+
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
@@ -370,6 +375,7 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
+      run-compacting-gc = compacting_gc_subdir "run" [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
