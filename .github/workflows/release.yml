@@ -29,6 +29,18 @@ jobs:
     - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ steps.get_version.outputs.VERSION }}'
 
     # TODO: Check if github.ref is the latest in changelog, and extract changelog
+    - name: Extract changelog
+      run: |
+        export VERSION='${{ steps.get_version.outputs.VERSION }}'
+        perl -0777 -ne '/^# Motoko compiler changelog\n\n== (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^==/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
+        cat changelog-extract.md
+        # need to mangle to use with set-output, see https://github.com/svenstaro/upload-release-action/pull/49/files
+        r="$(cat changelog-extract.md)"
+        r="${r//'%'/'%25'}"
+        r="${r//$'\n'/'%0A'}"
+        r="${r//$'\r'/'%0D'}"
+        echo "::set-output name=RELEASE_BODY::$r"
+
     - name: Upload Release Asset
       uses: svenstaro/upload-release-action@v2
       with:
@@ -36,4 +48,4 @@ jobs:
         tag: ${{ github.ref }}
         file: result/*
         file_glob: true
-        body: TODO
+        body: ${{ steps.read_release.outputs.RELEASE_BODY }}
