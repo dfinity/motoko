@@ -88,6 +88,12 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
 The `release` branch should thus always reference the latest release commit.
 
+Pushing the tag should cause Github Actions to create a “Release” on the github
+project. This will fail if the changelog is not in order (in this case, fix and
+force-push the tag).  It will also fail if the nix cache did not yet contain
+the build artifacts for this revision. In this case, restart the Github Action
+on Github’s UI.
+
 After releasing the compiler you can update `motoko-base`'s `master`
 branch to the `next-moc` branch.
 
