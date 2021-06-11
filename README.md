@@ -8,7 +8,7 @@ A simple language for writing Internet Computer (IC) actors.
 * [Overview slides](doc/overview-slides.md).
 * [Small samples](samples).
 * [Language manual and general documentation](doc/modules/language-guide/pages/language-manual.adoc)
-* [Concrete syntax](doc/modules/language-guide/pages/grammar.txt)
+* [Concrete syntax](doc/modules/language-guide/examples/grammar.txt)
 
 ## Introduction
 
