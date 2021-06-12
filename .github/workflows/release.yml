@@ -83,4 +83,4 @@ jobs:
         tag: ${{ github.ref }}
         file: result/*
         file_glob: true
-        body: ${{ needs.changelog.outputs.version }}
+        body: ${{ needs.changelog.outputs.release_body }}
