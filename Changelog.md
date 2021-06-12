@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+== 0.6.999 (2021-06-10)
+
+Testrelease!
+
 == 0.6.3 (2021-06-10)
 
 * Motoko is now open source!
