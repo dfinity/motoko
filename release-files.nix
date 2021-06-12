@@ -7,8 +7,8 @@
 { releaseVersion ? "latest" }:
 let
   nixpkgs = import ./nix { };
-  linux = import ./default.nix { system = "x86_64-linux"; internal = true; };
-  darwin = import ./default.nix { system = "x86_64-darwin"; internal = true; };
+  linux = import ./default.nix { system = "x86_64-linux"; internal = true; inherit releaseVersion; };
+  darwin = import ./default.nix { system = "x86_64-darwin"; internal = true; inherit releaseVersion; };
 
   as_tarball = dir: derivations:
     nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz" {
@@ -31,7 +31,7 @@ let
     nixpkgs.runCommandNoCC "motoko-release-${releaseVersion}" {} ''
       mkdir $out
       cp ${as_tarball "x86_64-linux" (with linux; [ mo-ide mo-doc moc ])} $out/motoko-linux64-${releaseVersion}.tar.gz
-      cp ${as_tarball "x86_64-darwin" (with linux; [ mo-ide mo-doc moc ])} $out/motoko-macos-${releaseVersion}.tar.gz
+      cp ${as_tarball "x86_64-darwin" (with darwin; [ mo-ide mo-doc moc ])} $out/motoko-macos-${releaseVersion}.tar.gz
       cp ${as_js "moc" linux.js.moc} $out/moc-${releaseVersion}.js
       cp ${as_js "moc-interpreter" linux.js.moc_interpreter} $out/moc-interpreter-${releaseVersion}.js
     '';
