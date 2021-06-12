@@ -55,7 +55,7 @@ jobs:
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
-        nix-build --max-jobs 1 --argstr motoko_release ${{needs.changelog.outputs.version}} \
+        nix-build --max-jobs 1 --argstr releaseVersion ${{needs.changelog.outputs.version}} \
           -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
 
   # Finally do the upload. Hopefully the previous job has uploaded the
@@ -73,6 +73,8 @@ jobs:
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
+
+    - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ needs.changelog.outputs.version }}'
 
     - name: Upload Release Asset
       uses: svenstaro/upload-release-action@v2
