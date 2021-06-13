@@ -224,6 +224,8 @@ For example, consider the following (contrived) stateful `Atomicity` actor:
 include::../examples/atomicity.mo[]
 ....
 
+^^
+
 Calling (shared) function `atomic()` will fail with an error, since the last statement causes a trap.
 However, the trap leaves the mutable variable `s` with value `0`, not `1`, and variable `pinged` with value `false`, not `true`.
 This is because the trap happens _before_ method `atomic` has executed an `await`, or exited with a result.
