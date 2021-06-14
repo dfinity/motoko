@@ -86,7 +86,7 @@ body of an actor or actor class.  Despite this restriction, shared
 functions are still first-class values in {proglang} and can be passed
 as arguments or results, and stored in data structures.
 
-The type of a shared functions is specified using a shared function type. For example, the
+The type of a shared function is specified using a shared function type. For example, the
 value `inc` has type `shared () -> async Nat` and could be supplied
 as a standalone callback to some other service (see link:sharing{outfilesuffix}[publish-subscribe] for an example).
 
