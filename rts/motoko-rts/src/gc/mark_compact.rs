@@ -36,7 +36,6 @@ unsafe fn mark_compact(
 
     mark_static_roots(static_roots, heap_base);
 
-    // TODO: We could skip the is_tagged_scalar, heap_base etc. checks
     push_mark_stack(*closure_table_loc, heap_base);
 
     mark_stack(heap_base);
