@@ -45,8 +45,8 @@ unsafe fn mark_compact(
     update_fwd_refs(heap_base);
     update_bwd_refs(heap_base);
 
-    free_bitmap();
     free_mark_stack();
+    free_bitmap();
 }
 
 unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
