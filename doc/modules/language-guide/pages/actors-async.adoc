@@ -238,7 +238,7 @@ interleaved processing of other messages to this actor.
 == Query functions
 
 In {IC} terminology, all three `Counter` functions are _update_ messages
-than can alter the state of the canister when called. Effecting a state change requires
+that can alter the state of the canister when called. Effecting a state change requires
 agreement amongst the distributed replicas before the {IC} can
 commit the change and return a result. Reaching consensus is an
 expensive process with relatively high latency.
