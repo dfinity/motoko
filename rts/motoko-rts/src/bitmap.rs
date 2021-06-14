@@ -88,7 +88,7 @@ pub unsafe fn iter_bits() -> BitmapIter {
 pub const BITMAP_ITER_END: u32 = 1024 * 1024 * 1024;
 
 impl BitmapIter {
-    /// Returns the next bit, or `MAX_BIT` if there are no more bits set.
+    /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_word_idx <= self.size);
 
