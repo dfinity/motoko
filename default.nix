@@ -1,6 +1,14 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+
+  # The `drun` tool is currently not publicly available.
+  # If you have access to it, create an empty file enable-internals
+  # in this directory, and it will be used.
+  internal ? builtins.pathExists ./enable-internals,
+
+  # version to embed in the release. Used by `.github/workflows/release.yml`
+  releaseVersion ? null,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
@@ -9,8 +17,13 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
-let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
-let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
+let only_internal = x:
+  if internal then x
+  else throw "Internal error in Motoko nix setup: Cannot use this when internal == false"; in
+
+let drun =
+  let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
+  only_internal (dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun); in
 
 let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
 let ic-hs = ic-hs-pkgs.ic-hs; in
@@ -99,6 +112,8 @@ let ocaml_exe = name: bin: rts:
       src = subpath ./src;
 
       buildInputs = commonBuildInputs staticpkgs;
+
+      MOTOKO_RELEASE = releaseVersion;
 
       # we only need to include the wasm statically when building moc, not
       # other binaries
@@ -266,8 +281,6 @@ rec {
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
-            # run this once to work around self-unpacking-race-condition
-            type -p drun && drun --version
             make -C ${dir}
           '';
       };
@@ -298,7 +311,8 @@ rec {
       });
 
     qc = testDerivation {
-      buildInputs = [ moc wasmtime drun haskellPackages.qc-motoko ];
+      buildInputs =
+        [ moc wasmtime haskellPackages.qc-motoko ] ++ nixpkgs.lib.optional internal drun;
       checkPhase = ''
 	export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
@@ -358,13 +372,10 @@ rec {
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
     );
 
-  in fix_names {
+  in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      drun       = test_subdir "run-drun"   [ moc drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
       ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
-      perf       = perf_subdir "perf"       [ moc drun ];
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
@@ -372,8 +383,13 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit candid profiling-graphs;
-    } // { recurseForDerivations = true; };
+      inherit qc lsp unit candid;
+    } // nixpkgs.lib.optionalAttrs internal {
+      drun       = test_subdir "run-drun"   [ moc drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
+      perf       = perf_subdir "perf"       [ moc drun ];
+      inherit profiling-graphs;
+    }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
@@ -424,8 +440,8 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit drun;
   inherit (nixpkgs) wabt wasmtime wasm;
+
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   inherit (nixpkgs) xargo;
@@ -477,13 +493,14 @@ rec {
   check-rts-formatting = stdenv.mkDerivation {
     name = "check-rts-formatting";
     buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
-    src = subpath ./rts/motoko-rts;
+    src = subpath ./rts;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
-    installPhase = "touch $out";
     checkPhase = ''
-      cargo fmt -- --check
+      cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
+      cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
     '';
+    installPhase = "touch $out";
   };
 
   base-src = stdenv.mkDerivation {
@@ -639,7 +656,11 @@ rec {
       ));
 
     shellHook = llvmEnv + ''
+      # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
+      # some cleanup of environment variables otherwise set by nix-shell
+      # that would be confusing in interactive use
+      unset XDG_DATA_DIRS
     '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
@@ -661,4 +682,6 @@ rec {
     preferLocalBuild = true;
     allowSubstitutes = true;
   };
+} // nixpkgs.lib.optionalAttrs internal {
+  inherit drun;
 }

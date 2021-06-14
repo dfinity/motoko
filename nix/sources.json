@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "5f0934f6f71f116d875b0de4e2b9cd81ab762933",
+        "rev": "32b1c512ca2058369cedcccd0a3b110c5c1e8580",
         "type": "git"
     },
     "esm": {
@@ -33,10 +33,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "c2f9b8ed83033cbb1239661f9d4b7314964faa7c",
-        "sha256": "1m3nkxb0dn4vjwasnd8xkjw7mgiligzffv2jwja7w8zaxdjq0mdk",
+        "rev": "947d376a2936bebec447f9fc558d2b25dd1cbcf8",
+        "sha256": "0745fpn0kr0qila51gzs05lj2rp2hk9mnk4cq67vg8vzq4gn537y",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/c2f9b8ed83033cbb1239661f9d4b7314964faa7c.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/947d376a2936bebec447f9fc558d2b25dd1cbcf8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -57,10 +57,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "1b0b25399fe5747bf63321950f386ed6263456fe",
-        "sha256": "1r1y61gaqpazm1h35mz0ds4yd8imqm39pdxmpiaj5mg3sgykxdlw",
+        "rev": "40f5ecdb2b5feeb7ed5c081efd8847b218dde0aa",
+        "sha256": "0y9q2k3bc16bbn15j264hw536kvwgj1n4i2s8qsrcnz3ysvnl2fj",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/1b0b25399fe5747bf63321950f386ed6263456fe.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/40f5ecdb2b5feeb7ed5c081efd8847b218dde0aa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -96,10 +96,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "94080ae8286024820c570a2a24ed7c36d7ad04a9",
-        "sha256": "0wlk52zwlrq727x3z1vg9d9qq4zw62ab5jzg4068iqb6hyb0cr0w",
+        "rev": "527494090f7075ed5e3aa15ef7093846e5e25d52",
+        "sha256": "1hahf0i0iix1iyzaaq5a7rbgyfm3xjcfl69lm1b5mas1p8vdimih",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/94080ae8286024820c570a2a24ed7c36d7ad04a9.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/527494090f7075ed5e3aa15ef7093846e5e25d52.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -122,10 +122,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
-        "sha256": "1zybp62zz0h077zm2zmqs2wcg3whg6jqaah9hcl1gv4x8af4zhs6",
+        "rev": "3f3fba4e2066f28a1ad7ac60e86a688a92eb5b5f",
+        "sha256": "1mrj89gzrzhci4lssvzmmk31l715cddp7l39favnfs1qaijly814",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/8c007b60731c07dd7a052cce508de3bb1ae849b4.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/3f3fba4e2066f28a1ad7ac60e86a688a92eb5b5f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

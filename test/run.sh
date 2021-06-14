@@ -71,18 +71,15 @@ function normalize () {
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
     sed 's,/private/tmp/,/tmp/,g' |
-    sed 's,/tmp/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
-    sed 's,/build/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
-    sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
     sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
     sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
-    sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
-    # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
+    sed 's/compiler (source .*)/compiler (source XXX)/ig' |
+    # Normalize canister id prefixes in debug prints
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |

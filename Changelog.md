@@ -1,5 +1,18 @@
 # Motoko compiler changelog
 
+== 0.6.4 (2021-06-12)
+
+* For release builds, the banner (`moc --version`) now includes the release
+  version.
+
+* Fix MacOS release builds (the 0.6.3 tarball for MacOS contained the linux binaries)
+
+== 0.6.3 (2021-06-10)
+
+* Motoko is now open source!
+
+* Better internal consistency checking of the intermediate representation
+
 == 0.6.2 (2021-05-24)
 
 * motoko-base:

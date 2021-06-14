@@ -39,8 +39,8 @@ let
       '';
     };
 
-  baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; };
-  prJobs = import ./default.nix { system = "x86_64-linux"; };
+  baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; internal = true; };
+  prJobs = import ./default.nix { system = "x86_64-linux"; internal = true; };
 
   # NB: We run both compilers on the new PR’s set of tests
   wasm-hash-base = wasm-hash-for baseJobs.moc;

@@ -10,3 +10,5 @@ target
 result*
 
 /samples/**/*.txt
+
+enable-internals
