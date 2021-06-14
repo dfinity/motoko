@@ -2,7 +2,7 @@ open Idllib
 open Printf
 
 let name = "didc"
-let banner = "Candid compiler (revision " ^ Source_id.id ^ ")"
+let banner = "Candid compiler " ^ Source_id.banner
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
