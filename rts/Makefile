@@ -157,6 +157,7 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
+# this relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
 RTS_RUST_FILES=$(shell ls **/*.rs)
 
 TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
