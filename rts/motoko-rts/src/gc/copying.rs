@@ -1,7 +1,6 @@
 use crate::alloc;
 use crate::closure_table::closure_table_loc;
 use crate::mem::{memcpy_bytes, memcpy_words};
-use crate::rts_trap_with;
 use crate::types::*;
 
 use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP};
@@ -35,15 +34,6 @@ unsafe fn evac(
 ) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
-
-    if (*ptr_loc).is_tagged_scalar() {
-        return;
-    }
-
-    // Ignore static objects, they can't point to dynamic heap
-    if (*ptr_loc).unskew() < begin_from_space {
-        return;
-    }
 
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
@@ -86,91 +76,14 @@ unsafe fn scav(
 ) {
     let obj = obj as *mut Obj;
 
-    match obj.tag() {
-        TAG_OBJECT => {
-            let obj = obj as *mut Object;
-            let obj_payload = obj.payload_addr();
-            for i in 0..obj.size() {
-                evac(
-                    begin_from_space,
-                    begin_to_space,
-                    end_to_space,
-                    obj_payload.add(i as usize) as usize,
-                );
-            }
-        }
-
-        TAG_ARRAY => {
-            let array = obj as *mut Array;
-            let array_payload = array.payload_addr();
-            for i in 0..array.len() {
-                evac(
-                    begin_from_space,
-                    begin_to_space,
-                    end_to_space,
-                    array_payload.add(i as usize) as usize,
-                );
-            }
-        }
-
-        TAG_MUTBOX => {
-            let mutbox = obj as *mut MutBox;
-            let field_addr = ((&mut (*mutbox).field) as *mut _) as usize;
-            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
-        }
-
-        TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
-            let closure_payload = closure.payload_addr();
-            for i in 0..closure.size() {
-                evac(
-                    begin_from_space,
-                    begin_to_space,
-                    end_to_space,
-                    closure_payload.add(i as usize) as usize,
-                );
-            }
-        }
-
-        TAG_SOME => {
-            let some = obj as *mut Some;
-            let field_addr = ((&mut (*some).field) as *mut _) as usize;
-            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
-        }
-
-        TAG_VARIANT => {
-            let variant = obj as *mut Variant;
-            let field_addr = ((&mut (*variant).field) as *mut _) as usize;
-            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
-        }
-
-        TAG_CONCAT => {
-            let concat = obj as *mut Concat;
-            let field1_addr = ((&mut (*concat).text1) as *mut _) as usize;
-            evac(begin_from_space, begin_to_space, end_to_space, field1_addr);
-            let field2_addr = ((&mut (*concat).text2) as *mut _) as usize;
-            evac(begin_from_space, begin_to_space, end_to_space, field2_addr);
-        }
-
-        TAG_OBJ_IND => {
-            let obj_ind = obj as *mut ObjInd;
-            let field_addr = ((&mut (*obj_ind).field) as *mut _) as usize;
-            evac(begin_from_space, begin_to_space, end_to_space, field_addr);
-        }
-
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
-            // These don't include pointers, skip
-        }
-
-        TAG_NULL => {
-            rts_trap_with("encountered NULL object tag in dynamic object in scav");
-        }
-
-        TAG_FWD_PTR | _ => {
-            // Any other tag is a bug
-            rts_trap_with("invalid object tag in scav");
-        }
-    }
+    crate::visitor::visit_pointer_fields(obj, begin_from_space, |field_addr| {
+        evac(
+            begin_from_space,
+            begin_to_space,
+            end_to_space,
+            field_addr as usize,
+        );
+    });
 }
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
@@ -206,12 +119,15 @@ unsafe extern "C" fn copying_gc() {
         static_roots,
     );
 
-    evac(
-        begin_from_space,
-        begin_to_space,
-        &mut end_to_space,
-        closure_table_loc() as usize,
-    );
+    let closure_table_loc = closure_table_loc();
+    if (*closure_table_loc).unskew() >= begin_from_space {
+        evac(
+            begin_from_space,
+            begin_to_space,
+            &mut end_to_space,
+            closure_table_loc as usize,
+        );
+    }
 
     // Scavenge to-space
     let mut p = begin_to_space;

@@ -38,6 +38,7 @@ pub mod text_iter;
 mod tommath_bindings;
 pub mod types;
 pub mod utf8;
+mod visitor;
 
 use types::{Bytes, SkewedPtr};
 

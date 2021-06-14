@@ -4,8 +4,8 @@ use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITM
 use crate::closure_table::closure_table_loc;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
-use crate::rts_trap_with;
 use crate::types::*;
+use crate::visitor::visit_pointer_fields;
 
 use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP};
 
@@ -36,12 +36,18 @@ unsafe fn mark_compact(
 
     mark_static_roots(static_roots, heap_base);
 
-    push_mark_stack(*closure_table_loc, heap_base);
+    if (*closure_table_loc).unskew() >= heap_base as usize {
+        push_mark_stack(*closure_table_loc, heap_base);
+    }
 
     mark_stack(heap_base);
 
     thread_roots(static_roots, heap_base);
-    thread(closure_table_loc, heap_base);
+
+    if (*closure_table_loc).unskew() >= heap_base as usize {
+        thread(closure_table_loc);
+    }
+
     update_fwd_refs(heap_base);
     update_bwd_refs(heap_base);
 
@@ -60,17 +66,7 @@ unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
 }
 
 unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
-    if obj.is_tagged_scalar() {
-        // Not a boxed object, skip
-        return;
-    }
-
     let obj = obj.unskew() as u32;
-
-    if obj < heap_base {
-        // Static objects are not collected and not marked
-        return;
-    }
 
     let obj_idx = (obj - heap_base) / WORD_SIZE;
 
@@ -90,67 +86,9 @@ unsafe fn mark_stack(heap_base: u32) {
 }
 
 unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
-    match obj.tag() {
-        TAG_OBJECT => {
-            let obj = obj as *mut Object;
-            for i in 0..obj.size() {
-                push_mark_stack(obj.get(i), heap_base);
-            }
-        }
-
-        TAG_ARRAY => {
-            let array = obj as *mut Array;
-            for i in 0..array.len() {
-                push_mark_stack(array.get(i), heap_base);
-            }
-        }
-
-        TAG_MUTBOX => {
-            let mutbox = obj as *mut MutBox;
-            push_mark_stack((*mutbox).field, heap_base);
-        }
-
-        TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
-            for i in 0..closure.size() {
-                push_mark_stack(closure.get(i), heap_base);
-            }
-        }
-
-        TAG_SOME => {
-            let some = obj as *mut Some;
-            push_mark_stack((*some).field, heap_base);
-        }
-
-        TAG_VARIANT => {
-            let variant = obj as *mut Variant;
-            push_mark_stack((*variant).field, heap_base);
-        }
-
-        TAG_CONCAT => {
-            let concat = obj as *mut Concat;
-            push_mark_stack(concat.text1(), heap_base);
-            push_mark_stack(concat.text2(), heap_base);
-        }
-
-        TAG_OBJ_IND => {
-            let obj_ind = obj as *mut ObjInd;
-            push_mark_stack((*obj_ind).field, heap_base);
-        }
-
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
-            // These don't include pointers, skip
-        }
-
-        TAG_NULL => {
-            rts_trap_with("encountered NULL object tag in dynamic object in mark_fields");
-        }
-
-        TAG_FWD_PTR | _ => {
-            // Any other tag is a bug
-            rts_trap_with("invalid object tag in mark_fields");
-        }
-    }
+    visit_pointer_fields(obj, heap_base as usize, |field_addr| {
+        push_mark_stack(*field_addr, heap_base);
+    });
 }
 
 unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
@@ -213,88 +151,10 @@ unsafe fn update_bwd_refs(heap_base: u32) {
 }
 
 unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
-    match obj.tag() {
-        TAG_OBJECT => {
-            let obj = obj as *mut Object;
-            let obj_payload = obj.payload_addr();
-            for i in 0..obj.size() {
-                thread(obj_payload.add(i as usize), heap_base);
-            }
-        }
-
-        TAG_ARRAY => {
-            let array = obj as *mut Array;
-            let array_payload = array.payload_addr();
-            for i in 0..array.len() {
-                thread(array_payload.add(i as usize), heap_base);
-            }
-        }
-
-        TAG_MUTBOX => {
-            let mutbox = obj as *mut MutBox;
-            let field_addr = &mut (*mutbox).field;
-            thread(field_addr, heap_base);
-        }
-
-        TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
-            let closure_payload = closure.payload_addr();
-            for i in 0..closure.size() {
-                thread(closure_payload.add(i as usize), heap_base);
-            }
-        }
-
-        TAG_SOME => {
-            let some = obj as *mut Some;
-            let field_addr = &mut (*some).field;
-            thread(field_addr, heap_base);
-        }
-
-        TAG_VARIANT => {
-            let variant = obj as *mut Variant;
-            let field_addr = &mut (*variant).field;
-            thread(field_addr, heap_base);
-        }
-
-        TAG_CONCAT => {
-            let concat = obj as *mut Concat;
-            let field1_addr = &mut (*concat).text1;
-            thread(field1_addr, heap_base);
-            let field2_addr = &mut (*concat).text2;
-            thread(field2_addr, heap_base);
-        }
-
-        TAG_OBJ_IND => {
-            let obj_ind = obj as *mut ObjInd;
-            let field_addr = &mut (*obj_ind).field;
-            thread(field_addr, heap_base);
-        }
-
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
-            // These don't have pointers, skip
-        }
-
-        TAG_NULL => {
-            rts_trap_with("encountered NULL object tag in thread_obj_fields");
-        }
-
-        TAG_FWD_PTR | _ => {
-            rts_trap_with("invalid object tag in thread_obj_fields");
-        }
-    }
+    visit_pointer_fields(obj, heap_base as usize, |field_addr| thread(field_addr));
 }
 
-unsafe fn thread(field: *mut SkewedPtr, heap_base: u32) {
-    if (*field).is_tagged_scalar() {
-        // Field has a scalar value, skip
-        return;
-    }
-
-    if (*field).unskew() < heap_base as usize {
-        // Field doesn't point to heap. The pointee won't be moved so no need to thread the field
-        return;
-    }
-
+unsafe fn thread(field: *mut SkewedPtr) {
     // Store pointed object's header in the field, field address in the pointed object's header
     let pointed = (*field).unskew() as *mut Obj;
     let pointed_header = pointed.tag();
