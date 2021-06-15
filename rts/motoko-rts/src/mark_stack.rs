@@ -4,58 +4,66 @@
 use crate::alloc::{alloc_blob, alloc_words};
 use crate::types::{Blob, Words};
 
+use core::ptr::null_mut;
+
 /// Initial stack size
 const INIT_STACK_SIZE: Words<u32> = Words(64);
 
-/// Current stack
-static mut STACK_PTR: *mut Blob = core::ptr::null_mut();
+/// Pointer to the `blob` object for the mark stack. Used to get the capacity of the stack.
+static mut STACK_BLOB_PTR: *mut Blob = null_mut();
 
-/// Current length
-static mut STACK_LEN: Words<u32> = Words(0);
+/// Bottom of the mark stack
+static mut STACK_BASE: *mut usize = null_mut();
+
+/// Top of the mark stack
+static mut STACK_TOP: *mut usize = null_mut();
+
+/// Next free slot in the mark stack
+static mut STACK_PTR: *mut usize = null_mut();
 
 pub unsafe fn alloc_mark_stack() {
-    debug_assert!(STACK_PTR.is_null());
+    debug_assert!(STACK_BLOB_PTR.is_null());
 
     // Allocating an actual object here to not break dump_heap
-    STACK_PTR = alloc_blob(INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
-    STACK_LEN = Words(0);
+    STACK_BLOB_PTR = alloc_blob(INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
+    STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
+    STACK_PTR = STACK_BASE;
+    STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.0 as usize);
 }
 
 pub unsafe fn free_mark_stack() {
-    STACK_PTR = core::ptr::null_mut();
-    STACK_LEN = Words(0);
+    STACK_BLOB_PTR = null_mut();
+    STACK_BASE = null_mut();
+    STACK_PTR = null_mut();
+    STACK_TOP = null_mut();
 }
 
 /// Doubles the stack size
 unsafe fn grow_stack() {
-    let stack_cap: Words<u32> = STACK_PTR.len().to_words();
+    let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
     let p = alloc_words(stack_cap).unskew() as *mut usize;
 
     // Make sure nothing was allocated after the stack
-    debug_assert_eq!(
-        (STACK_PTR.payload_addr() as *mut usize).add(STACK_LEN.0 as usize),
-        p
-    );
+    debug_assert_eq!(STACK_TOP, p);
 
     let new_cap: Words<u32> = Words(stack_cap.0 * 2);
-    (*STACK_PTR).len = new_cap.to_bytes();
+    (*STACK_BLOB_PTR).len = new_cap.to_bytes();
 }
 
 pub unsafe fn push_mark_stack(obj: usize) {
-    if STACK_LEN == (*STACK_PTR).len.to_words() {
+    if STACK_PTR == STACK_TOP {
         grow_stack();
     }
 
-    *(STACK_PTR.payload_addr() as *mut usize).add(STACK_LEN.0 as usize) = obj;
-    STACK_LEN += Words(1);
+    *STACK_PTR = obj;
+    STACK_PTR = STACK_PTR.add(1);
 }
 
 pub unsafe fn pop_mark_stack() -> Option<usize> {
-    if STACK_LEN.0 == 0 {
+    if STACK_PTR == STACK_BASE {
         None
     } else {
-        STACK_LEN -= Words(1);
-        let p = *(STACK_PTR.payload_addr() as *mut usize).add(STACK_LEN.0 as usize);
-        Some(p)
+        STACK_PTR = STACK_PTR.sub(1);
+        Some(*STACK_PTR)
     }
 }
