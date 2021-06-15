@@ -27,7 +27,6 @@ pub mod buf;
 mod char;
 pub mod closure_table;
 mod float;
-pub mod gc_common;
 mod idl;
 pub mod leb128;
 pub mod mark_stack;

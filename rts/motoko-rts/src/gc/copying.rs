@@ -1,9 +1,99 @@
-use crate::alloc;
-use crate::closure_table::closure_table_loc;
 use crate::mem::{memcpy_bytes, memcpy_words};
 use crate::types::*;
 
-use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP};
+#[no_mangle]
+unsafe extern "C" fn copying_gc() {
+    copying_gc_internal(
+        || super::get_heap_base(),
+        || super::HP,
+        |hp| super::HP = hp,
+        |live_size| super::note_live_size(live_size),
+        |reclaimed| super::note_reclaimed(reclaimed),
+        || super::get_static_roots(),
+        || super::closure_table_loc(),
+        |ptr| crate::alloc::grow_memory(ptr),
+    );
+}
+
+pub unsafe fn copying_gc_internal<
+    GetHeapBase: Fn() -> u32,
+    GetHp: Fn() -> u32,
+    SetHp: FnMut(u32),
+    NoteLiveSize: Fn(Bytes<u32>),
+    NoteReclaimed: Fn(Bytes<u32>),
+    GetStaticRoots: Fn() -> SkewedPtr,
+    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
+    GrowMemory: Fn(usize) + Copy,
+>(
+    get_heap_base: GetHeapBase,
+    get_hp: GetHp,
+    mut set_hp: SetHp,
+    note_live_size: NoteLiveSize,
+    note_reclaimed: NoteReclaimed,
+    get_static_roots: GetStaticRoots,
+    get_closure_table_loc: GetClosureTableLoc,
+    grow_memory: GrowMemory,
+) {
+    let begin_from_space = get_heap_base() as usize;
+    let end_from_space = get_hp() as usize;
+    let begin_to_space = end_from_space;
+    let mut end_to_space = begin_to_space;
+
+    let static_roots = get_static_roots().as_array();
+
+    // Evacuate roots
+    evac_static_roots(
+        grow_memory,
+        begin_from_space,
+        begin_to_space,
+        &mut end_to_space,
+        static_roots,
+    );
+
+    let closure_table_loc = get_closure_table_loc();
+    if (*closure_table_loc).unskew() >= begin_from_space {
+        evac(
+            grow_memory,
+            begin_from_space,
+            begin_to_space,
+            &mut end_to_space,
+            closure_table_loc as usize,
+        );
+    }
+
+    // Scavenge to-space
+    let mut p = begin_to_space;
+    while p < end_to_space {
+        // NB: end_to_space keeps changing within this loop
+        let size = object_size(p);
+        scav(
+            grow_memory,
+            begin_from_space,
+            begin_to_space,
+            &mut end_to_space,
+            p,
+        );
+        p += size.to_bytes().0 as usize;
+    }
+
+    // Note the stats
+    let new_live_size = end_to_space - begin_to_space;
+    note_live_size(Bytes(new_live_size as u32));
+
+    let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
+    note_reclaimed(Bytes(reclaimed as u32));
+
+    // Copy to-space to the beginning of from-space
+    memcpy_bytes(
+        begin_from_space,
+        begin_to_space,
+        Bytes((end_to_space - begin_to_space) as u32),
+    );
+
+    // Reset the heap pointer
+    let new_hp = begin_from_space + (end_to_space - begin_to_space);
+    set_hp(new_hp as u32);
+}
 
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
 /// already evacuated end_to_space is not changed.
@@ -26,7 +116,8 @@ use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP}
 ///
 /// - ptr_loc: Location of the object to evacuate, e.g. an object field address.
 ///
-unsafe fn evac(
+unsafe fn evac<GrowMemory: Fn(usize)>(
+    grow_memory: GrowMemory,
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
@@ -48,7 +139,7 @@ unsafe fn evac(
     let obj_size_bytes = obj_size.to_bytes();
 
     // Grow memory if needed
-    alloc::grow_memory(*end_to_space + obj_size_bytes.0 as usize);
+    grow_memory(*end_to_space + obj_size_bytes.0 as usize);
 
     // Copy object to to-space
     memcpy_words(*end_to_space, obj as usize, obj_size);
@@ -68,7 +159,8 @@ unsafe fn evac(
     *end_to_space += obj_size_bytes.0 as usize
 }
 
-unsafe fn scav(
+unsafe fn scav<GrowMemory: Fn(usize) + Copy>(
+    grow_memory: GrowMemory,
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
@@ -78,6 +170,7 @@ unsafe fn scav(
 
     crate::visitor::visit_pointer_fields(obj, begin_from_space, |field_addr| {
         evac(
+            grow_memory,
             begin_from_space,
             begin_to_space,
             end_to_space,
@@ -88,7 +181,8 @@ unsafe fn scav(
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots(
+unsafe fn evac_static_roots<GrowMemory: Fn(usize) + Copy>(
+    grow_memory: GrowMemory,
     begin_from_space: usize,
     begin_to_space: usize,
     end_to_space: &mut usize,
@@ -98,61 +192,12 @@ unsafe fn evac_static_roots(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(begin_from_space, begin_to_space, end_to_space, obj.unskew());
-    }
-}
-
-#[no_mangle]
-unsafe extern "C" fn copying_gc() {
-    let begin_from_space = get_heap_base() as usize;
-    let end_from_space = HP as usize;
-    let begin_to_space = end_from_space;
-    let mut end_to_space = begin_to_space;
-
-    let static_roots = get_static_roots().as_array();
-
-    // Evacuate roots
-    evac_static_roots(
-        begin_from_space,
-        begin_to_space,
-        &mut end_to_space,
-        static_roots,
-    );
-
-    let closure_table_loc = closure_table_loc();
-    if (*closure_table_loc).unskew() >= begin_from_space {
-        evac(
+        scav(
+            grow_memory,
             begin_from_space,
             begin_to_space,
-            &mut end_to_space,
-            closure_table_loc as usize,
+            end_to_space,
+            obj.unskew(),
         );
     }
-
-    // Scavenge to-space
-    let mut p = begin_to_space;
-    while p < end_to_space {
-        // NB: end_to_space keeps changing within this loop
-        let size = object_size(p);
-        scav(begin_from_space, begin_to_space, &mut end_to_space, p);
-        p += size.to_bytes().0 as usize;
-    }
-
-    // Note the stats
-    let new_live_size = end_to_space - begin_to_space;
-    note_live_size(Bytes(new_live_size as u32));
-
-    let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
-    note_reclaimed(Bytes(reclaimed as u32));
-
-    // Copy to-space to the beginning of from-space
-    memcpy_bytes(
-        begin_from_space,
-        begin_to_space,
-        Bytes((end_to_space - begin_to_space) as u32),
-    );
-
-    // Reset the heap pointer
-    let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    HP = new_hp as u32;
 }

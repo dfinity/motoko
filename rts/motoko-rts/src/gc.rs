@@ -1,7 +1,6 @@
 mod copying;
 mod mark_compact;
 
-use crate::alloc;
 use crate::closure_table::closure_table_loc;
 use crate::types::*;
 
@@ -57,19 +56,4 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
-}
-
-/// The entry point. Called by the generated code.
-#[no_mangle]
-unsafe extern "C" fn collect() {
-    crate::gc_common::collect_internal(
-        || get_heap_base(),
-        || HP,
-        |hp| HP = hp,
-        |live_size| note_live_size(live_size),
-        |reclaimed| note_reclaimed(reclaimed),
-        || get_static_roots(),
-        || closure_table_loc(),
-        |ptr| alloc::grow_memory(ptr),
-    )
 }
