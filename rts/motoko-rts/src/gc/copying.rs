@@ -13,7 +13,7 @@ use super::{get_heap_base, get_static_roots, note_live_size, note_reclaimed, HP}
 /// - begin_from_space: Where the dynamic heap starts. Used for two things:
 ///
 ///   - An object is static if its address is below this value. These objects either don't point to
-///     dynamic heap, or listed in static_roots array. Objects in static_roots are scavenged
+///     dynamic heap, or are listed in static_roots array. Objects in static_roots are scavenged
 ///     separately in `evac_static_roots` below. So we skip these objects here.
 ///
 ///   - After all objects are evacuated we move to-space to from-space, to be able to do that the
