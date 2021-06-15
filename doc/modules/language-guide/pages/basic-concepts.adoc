@@ -122,6 +122,7 @@ x * y + x;
 === Declarations and variable substitution
 
 Declarations can be mutually recursive, but in cases where they are not, they permit substitution semantics.
+(that is, replacing equals for equals, as familiar from high-school algebraic simplification).
 
 Recall our original example:
 
