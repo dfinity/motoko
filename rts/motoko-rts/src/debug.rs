@@ -9,21 +9,6 @@ use crate::gc;
 
 use core::fmt::Write;
 
-/// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
-#[no_mangle]
-unsafe extern "C" fn print_closure(p: usize) {
-    let mut buf = [0u8; 1000];
-    let mut write_buf = WriteBuf::new(&mut buf);
-
-    if SkewedPtr(p).is_tagged_scalar() {
-        print_tagged_scalar(&mut write_buf, p);
-    } else {
-        print_boxed_object(&mut write_buf, SkewedPtr(p).unskew());
-    }
-
-    print(&write_buf);
-}
-
 #[cfg(feature = "gc")]
 pub(crate) unsafe fn dump_heap() {
     print_closure_table();
@@ -107,13 +92,21 @@ unsafe fn print_heap() {
     let mut write_buf = WriteBuf::new(&mut buf);
 
     let mut p = heap_begin;
+    let mut i: Words<u32> = Words(0);
     while p < heap_end {
-        let _ = write!(&mut write_buf, "{:#x}: ", p);
+        if *(p as *const u8) == 0 {
+            p += 1;
+            continue;
+        }
+
+        let _ = write!(&mut write_buf, "{}: ", i.0);
         print_boxed_object(&mut write_buf, p as usize);
         print(&write_buf);
         write_buf.reset();
 
-        p += object_size(p as usize).to_bytes().0;
+        let obj_size = object_size(p as usize);
+        p += obj_size.to_bytes().0;
+        i += obj_size;
     }
 }
 
@@ -122,24 +115,27 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: usize) {
 }
 
 /// Print boxed object at address `p`.
-unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
+pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
     let obj = p as *mut Obj;
     let tag = obj.tag();
 
+    if tag == 0 {
+        return;
+    }
+
     match tag {
         TAG_OBJECT => {
-            let object = obj as *const Object;
+            let object = obj as *mut Object;
             let _ = write!(
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
                 (*object).size,
                 (*object).hash_ptr
             );
-            let payload_addr = object.payload_addr();
-            for i in 0..(*object).size {
-                let val = (*payload_addr.offset(i as isize)).0;
+            for i in 0..object.size() {
+                let val = object.get(i).0;
                 let _ = write!(buf, "{:#x}", val);
 
                 if !SkewedPtr(val).is_tagged_scalar() {
@@ -211,14 +207,8 @@ unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
         }
         TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
-            let _ = write!(
-                buf,
-                "<BigInt used={:#x} alloc={:#x} sign={}>",
-                (*bigint).mp_int.used,
-                (*bigint).mp_int.alloc,
-                (*bigint).mp_int.sign,
-            );
+            // Add more details here as needed
+            let _ = write!(buf, "<BigInt>");
         }
         TAG_CONCAT => {
             let concat = obj as *const Concat;

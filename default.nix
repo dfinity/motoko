@@ -291,6 +291,11 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks";
       });
 
+    compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      });
+
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
@@ -376,6 +381,7 @@ rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-hs ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
@@ -387,6 +393,7 @@ rec {
     } // nixpkgs.lib.optionalAttrs internal {
       drun       = test_subdir "run-drun"   [ moc drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
+      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc drun ] ;
       perf       = perf_subdir "perf"       [ moc drun ];
       inherit profiling-graphs;
     }) // { recurseForDerivations = true; };

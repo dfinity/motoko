@@ -30,3 +30,4 @@ let profile_field_names : string list ref = ref []
 let compiled = ref false
 let error_detail = ref 2
 let sanity = ref false
+let compacting_gc = ref false
