@@ -1,10 +1,12 @@
 #![feature(ptr_offset_from, map_first_last)]
 
 mod bigint;
+mod bitmap;
 mod closure_table;
 mod crc32;
 mod gc;
 mod leb128;
+mod mark_stack;
 mod principal_id;
 mod text;
 mod utf8;

@@ -50,7 +50,7 @@ As a starting point, the following code snippet consists of two declarations—f
 ....
 let x = 1;
 let y = x + 1;
-x * y + x
+x * y + x;
 ....
 
 We will use variations of this small program in our discussion below.
@@ -121,7 +121,8 @@ x * y + x;
 
 === Declarations and variable substitution
 
-Declarations can be mutually recursive, but in cases where they are not, they permit a substitution semantics.
+Declarations can be mutually recursive, but in cases where they are not, they permit substitution semantics.
+(that is, replacing equals for equals, as familiar from high-school algebraic simplification).
 
 Recall our original example:
 
@@ -199,13 +200,12 @@ Other languages that lack lexical scoping may give a different meaning to this p
 However, modern languages universally favor lexical scoping, the meaning given here.
 
 Aside from mathematical clarity, the chief practical benefit of lexical scoping is _security_, and its use in building compositionally-secure systems.
-Specifically, {proglang} gives very strong composition properties: Nesting your program within one you do not trust cannot, for example, arbitrarily re-associate your variable
-occurrences with different meanings.
+Specifically, {proglang} gives very strong composition properties. For example, nesting your program within a program you do not trust cannot arbitrarily redefine your variables with different meanings.
 
 [[intro-values]]
 == Values and evaluation
 
-Once a {proglang} expression receives the program's (single) thread of control, it evaluates eagerly until it reduces to a _(result) value_.
+Once a {proglang} expression receives the program's (single) thread of control, it evaluates eagerly until it reduces to a _result value_.
 
 In so doing, it will generally pass control to sub-expressions, and to sub-routines before it gives up control from the _ambient control stack_.
 
@@ -225,7 +225,7 @@ As a broader language overview, however, we briefly summarize the other value fo
  - Natural numbers (`0`, `1`, `2`, ...); Bounded and _unbounded_ variants.
  - Text values --- strings of unicode characters.
 
-*Numbers.* By default, integers and natural numbers are _unbounded_ and do not overflow.
+By default, **integers** and **natural numbers** are _unbounded_ and do not overflow.
 Instead, they use representations that grow to accommodate any finite number.
 
 For practical reasons, {proglang} also includes _bounded_ types for integers and natural numbers, distinct from the default versions.
@@ -289,7 +289,7 @@ That is, the phrase **"`well-typed programs don't go wrong`"** applies here.
 For those unfamiliar with the deeper implications of that phrase, it means that there is a precise space of meaningful (unambiguous) programs, and the type system enforces that we stay within it, and that all well-typed programs have a precise (unambiguous) meaning.
 
 Furthermore, the types make a precise prediction over the program's result.
-If it yields control, the program will generate a _(result) value_ that agrees with that of the original program.
+If it yields control, the program will generate a _result value_ that agrees with that of the original program.
 
 In either case, the static and dynamic views of the program are linked by and agree with the static type system.
 This agreement is the central principle of a static type system, and is delivered by {proglang} as a core aspect of its design.

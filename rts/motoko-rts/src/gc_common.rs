@@ -185,7 +185,7 @@ unsafe fn scav<GrowMemory: Fn(usize) + Copy>(
 
     match obj.tag() {
         TAG_OBJECT => {
-            let obj = obj as *const Object;
+            let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
             for i in 0..(*obj).size as isize {
                 evac(
@@ -225,7 +225,7 @@ unsafe fn scav<GrowMemory: Fn(usize) + Copy>(
         }
 
         TAG_CLOSURE => {
-            let closure = obj as *const Closure;
+            let closure = obj as *mut Closure;
             let closure_payload = closure.payload_addr();
             for i in 0..(*closure).size as isize {
                 evac(

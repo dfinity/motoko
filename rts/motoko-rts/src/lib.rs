@@ -21,6 +21,7 @@ pub mod debug;
 
 mod alloc;
 pub mod bigint;
+pub mod bitmap;
 mod blob_iter;
 pub mod buf;
 mod char;
@@ -29,6 +30,7 @@ mod float;
 pub mod gc_common;
 mod idl;
 pub mod leb128;
+pub mod mark_stack;
 mod mem;
 pub mod principal_id;
 pub mod text;
@@ -37,6 +39,7 @@ pub mod text_iter;
 mod tommath_bindings;
 pub mod types;
 pub mod utf8;
+mod visitor;
 
 use types::{Bytes, SkewedPtr};
 
@@ -98,6 +101,16 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
         } else {
             println!(1000, "RTS panic: weird payload");
         }
+
+        if let Some(location) = info.location() {
+            println!(
+                1000,
+                "panic occurred in file '{}' at line {}",
+                location.file(),
+                location.line(),
+            );
+        }
+
         rts_trap_with("RTS panicked");
     }
 }

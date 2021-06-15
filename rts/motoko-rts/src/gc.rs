@@ -1,3 +1,6 @@
+mod copying;
+mod mark_compact;
+
 use crate::alloc;
 use crate::closure_table::closure_table_loc;
 use crate::types::*;
