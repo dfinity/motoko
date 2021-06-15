@@ -122,6 +122,7 @@ x * y + x;
 === Declarations and variable substitution
 
 Declarations can be mutually recursive, but in cases where they are not, they permit substitution semantics.
+(that is, replacing equals for equals, as familiar from high-school algebraic simplification).
 
 Recall our original example:
 
@@ -199,8 +200,7 @@ Other languages that lack lexical scoping may give a different meaning to this p
 However, modern languages universally favor lexical scoping, the meaning given here.
 
 Aside from mathematical clarity, the chief practical benefit of lexical scoping is _security_, and its use in building compositionally-secure systems.
-Specifically, {proglang} gives very strong composition properties. For example, nesting your program within a program you do not trust does not arbitrarily re-associate your variable
-occurrences with different meanings.
+Specifically, {proglang} gives very strong composition properties. For example, nesting your program within a program you do not trust cannot arbitrarily redefine your variables with different meanings.
 
 [[intro-values]]
 == Values and evaluation
