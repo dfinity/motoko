@@ -6,6 +6,9 @@
   # If you have access to it, create an empty file enable-internals
   # in this directory, and it will be used.
   internal ? builtins.pathExists ./enable-internals,
+
+  # version to embed in the release. Used by `.github/workflows/release.yml`
+  releaseVersion ? null,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
@@ -109,6 +112,8 @@ let ocaml_exe = name: bin: rts:
       src = subpath ./src;
 
       buildInputs = commonBuildInputs staticpkgs;
+
+      MOTOKO_RELEASE = releaseVersion;
 
       # we only need to include the wasm statically when building moc, not
       # other binaries
