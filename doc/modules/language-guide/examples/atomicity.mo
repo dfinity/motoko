@@ -17,7 +17,7 @@ actor Atomicity {
   // a non-atomic method
   public func nonAtomic() : async () {
     s := 1;
-    let f = ping();
+    let f = ping(); // this will not be rolled back!
     s := 2;
     await f;
     s := 3; // this will not be rolled back!
