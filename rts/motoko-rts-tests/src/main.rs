@@ -1,9 +1,11 @@
 #![feature(ptr_offset_from)]
 
 mod bigint;
+mod bitmap;
 mod closure_table;
 mod crc32;
 mod leb128;
+mod mark_stack;
 mod principal_id;
 mod text;
 mod utf8;
@@ -24,6 +26,11 @@ fn main() {
         principal_id::test();
         text::test();
         leb128::test();
+        bitmap::test();
+        // Mark stack requires that nothing will be allocated since the mark stack allocation until
+        // we're done with it, which is difficult to guarantee in a test environment as the test
+        // code can allocate stuff.
+        // mark_stack::test();
     }
 }
 

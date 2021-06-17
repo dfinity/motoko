@@ -498,6 +498,10 @@ module E = struct
 
   let mem_size env =
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
+
+  let collect_garbage env =
+    let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
+    call_import env "rts" gc_fn
 end
 
 
@@ -824,7 +828,8 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
-    E.add_func_import env "rts" "collect" [] [];
+    E.add_func_import env "rts" "copying_gc" [] [];
+    E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
@@ -3450,8 +3455,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InInit ^^
 
       G.i (Call (nr (E.built_in env "init"))) ^^
-      (* Collect garbage *)
-      E.call_import env "rts" "collect" ^^
+      E.collect_garbage env ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3488,7 +3492,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      E.call_import env "rts" "collect"
+      E.collect_garbage env
     )) in
 
     E.add_export env (nr {
@@ -5592,7 +5596,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        E.call_import env "rts" "collect" ^^
+        E.collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery

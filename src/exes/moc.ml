@@ -4,7 +4,7 @@ open Mo_config
 open Printf
 
 let name = "moc"
-let banner = "Motoko compiler (revision " ^ Source_id.id ^ ")"
+let banner = "Motoko compiler " ^ Source_id.banner
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -100,7 +100,12 @@ let argspec = Arg.align [
   Arg.Unit
     (fun () -> Flags.sanity := true),
   " enable sanity checking in the RTS and generated code";
+
+  "--compacting-gc",
+  Arg.Unit (fun () -> Flags.compacting_gc := true),
+  " link with compacting GC instead of copying GC";
     ]
+
   @  Args.inclusion_args
 
 
