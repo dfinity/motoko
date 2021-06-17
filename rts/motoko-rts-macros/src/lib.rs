@@ -22,6 +22,8 @@ pub fn ic_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
     );
 
     let fn_ident = &fun_sig.ident;
+    let fn_wrapper_ident = syn::Ident::new(&format!("ic_{}", fn_ident), fn_ident.span());
+    let fn_name = fn_ident.to_string();
     let wrapper_ret = fun_sig.output.clone();
     let wrapper_args: Vec<(syn::Ident, syn::Type)> = fun_sig
         .inputs
@@ -47,21 +49,14 @@ pub fn ic_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
     // Arguments passed to the original function
     let wrapper_args_syn: Vec<&syn::Ident> = wrapper_args.iter().map(|(ident, _)| ident).collect();
 
-    let module_ident = syn::Ident::new(&format!("export_{}", fn_ident), fn_ident.span());
-
     quote!(
         #fun
 
-        mod #module_ident {
-            use super::*;
-
-            #[cfg(feature = "ic")]
-            #[no_mangle]
-            unsafe extern "C" fn #fn_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
-                super::#fn_ident(#(#wrapper_args_syn,)*)
-            }
+        #[cfg(feature = "ic")]
+        #[export_name = #fn_name]
+        unsafe extern "C" fn #fn_wrapper_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
+            #fn_ident(#(#wrapper_args_syn,)*)
         }
-
     )
     .into()
 }
@@ -88,6 +83,8 @@ pub fn ic_heap_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
     );
 
     let fn_ident = &fun_sig.ident;
+    let fn_wrapper_ident = syn::Ident::new(&format!("ic_{}", fn_ident), fn_ident.span());
+    let fn_name = fn_ident.to_string();
     let wrapper_ret = fun_sig.output.clone();
     let wrapper_args: Vec<(syn::Ident, syn::Type)> = fun_sig
         .inputs
@@ -120,19 +117,13 @@ pub fn ic_heap_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
     // Arguments passed to the original function
     let wrapper_args_syn: Vec<&syn::Ident> = wrapper_args.iter().map(|(ident, _)| ident).collect();
 
-    let module_ident = syn::Ident::new(&format!("export_{}", fn_ident), fn_ident.span());
-
     quote!(
         #fun
 
-        mod #module_ident {
-            use super::*;
-
-            #[cfg(feature = "ic")]
-            #[no_mangle]
-            unsafe extern "C" fn #fn_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
-                super::#fn_ident(&mut crate::heap::ic::IcHeap, #(#wrapper_args_syn,)*)
-            }
+        #[cfg(feature = "ic")]
+        #[export_name = #fn_name]
+        unsafe extern "C" fn #fn_wrapper_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
+            #fn_ident(&mut crate::heap::ic::IcHeap, #(#wrapper_args_syn,)*)
         }
     )
     .into()
