@@ -32,15 +32,16 @@ This scheme makes the following assumptions:
 */
 
 use crate::buf::{read_byte, Buf};
-use crate::heap::ic::IcHeap;
 use crate::heap::Heap;
 use crate::mem::memcpy_bytes;
+use crate::rts_trap;
+use crate::tommath_bindings::*;
 use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};
 
-use crate::{rts_trap, tommath_bindings::*};
+use motoko_rts_macros::{ic_fn, ic_heap_fn};
 
-unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
-    let ptr = IcHeap.alloc_words(size_of::<BigInt>() + size.to_words());
+unsafe fn mp_alloc<H: Heap>(heap: &mut H, size: Bytes<u32>) -> *mut u8 {
+    let ptr = heap.alloc_words(size_of::<BigInt>() + size.to_words());
     let blob = ptr.unskew() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
     // libtommath stores the size of the object in alloc
@@ -50,15 +51,19 @@ unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
     blob.payload_addr() as *mut u8
 }
 
-#[no_mangle]
-unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
+#[ic_heap_fn]
+unsafe fn mp_calloc<H: Heap>(
+    heap: &mut H,
+    n_elems: usize,
+    elem_size: Bytes<usize>,
+) -> *mut libc::c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
     if n_elems > 1 << 30 {
         bigint_trap();
     }
     let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(size) as *mut u32;
+    let payload = mp_alloc(heap, size) as *mut u32;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().0 {
@@ -68,8 +73,9 @@ unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut 
     payload as *mut _
 }
 
-#[no_mangle]
-unsafe extern "C" fn mp_realloc(
+#[ic_heap_fn]
+unsafe fn mp_realloc<H: Heap>(
+    heap: &mut H,
     ptr: *mut libc::c_void,
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
@@ -80,7 +86,7 @@ unsafe extern "C" fn mp_realloc(
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {
-        let new_ptr = mp_alloc(new_size);
+        let new_ptr = mp_alloc(heap, new_size);
         memcpy_bytes(new_ptr as usize, ptr as usize, old_size);
         new_ptr as *mut _
     } else if new_size == bigint.len() {
@@ -92,8 +98,8 @@ unsafe extern "C" fn mp_realloc(
     }
 }
 
-#[no_mangle]
-unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
+#[ic_fn]
+unsafe fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
 
 /*
 Note on libtommath error handling

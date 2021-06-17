@@ -19,9 +19,11 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::alloc::alloc_array;
+use crate::heap::Heap;
 use crate::rts_trap_with;
 use crate::types::SkewedPtr;
+
+use motoko_rts_macros::{ic_fn, ic_heap_fn};
 
 const INITIAL_SIZE: u32 = 256;
 
@@ -35,8 +37,8 @@ static mut N_CLOSURES: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn crate_closure_table() {
-    TABLE = alloc_array(INITIAL_SIZE);
+unsafe fn crate_closure_table<H: Heap>(heap: &mut H) {
+    TABLE = heap.alloc_array(INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CLOSURES = 0;
 
@@ -46,7 +48,7 @@ unsafe fn crate_closure_table() {
     }
 }
 
-unsafe fn double_closure_table() {
+unsafe fn double_closure_table<H: Heap>(heap: &mut H) {
     let old_array = TABLE.as_array();
     let old_size = old_array.len();
 
@@ -54,7 +56,7 @@ unsafe fn double_closure_table() {
 
     let new_size = old_size * 2;
 
-    TABLE = alloc_array(new_size);
+    TABLE = heap.alloc_array(new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
@@ -66,14 +68,14 @@ unsafe fn double_closure_table() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
+#[ic_heap_fn]
+pub unsafe fn remember_closure<H: Heap>(heap: &mut H, ptr: SkewedPtr) -> u32 {
     if TABLE.0 == 0 {
-        crate_closure_table();
+        crate_closure_table(heap);
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
-        double_closure_table();
+        double_closure_table(heap);
     }
 
     // Just as a sanity check make sure the ptr is really skewed
@@ -90,8 +92,8 @@ pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
     idx
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
+#[ic_fn]
+pub unsafe fn recall_closure(idx: u32) -> SkewedPtr {
     if TABLE.0 == 0 {
         rts_trap_with("recall_closure: Closure table not allocated");
     }
@@ -116,8 +118,8 @@ pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
     ptr
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn closure_count() -> u32 {
+#[ic_fn]
+pub unsafe fn closure_count() -> u32 {
     N_CLOSURES
 }
 
@@ -125,8 +127,8 @@ pub(crate) unsafe fn closure_table_loc() -> *mut SkewedPtr {
     &mut TABLE
 }
 
-#[no_mangle]
-unsafe extern "C" fn closure_table_size() -> u32 {
+#[ic_fn]
+unsafe fn closure_table_size() -> u32 {
     if TABLE.0 == 0 {
         0
     } else {

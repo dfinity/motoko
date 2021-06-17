@@ -36,7 +36,7 @@ unsafe fn mark_compact<H: Heap>(
 ) {
     let heap_size = Bytes(heap_end - heap_base);
 
-    alloc_bitmap(heap_size);
+    alloc_bitmap(heap, heap_size);
     alloc_mark_stack(heap);
 
     mark_static_roots(heap, static_roots, heap_base);
