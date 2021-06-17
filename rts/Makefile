@@ -157,8 +157,9 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
-# this relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
+# This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
 RTS_RUST_FILES=$(shell ls **/*.rs)
+RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
 
 TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
@@ -201,11 +202,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 
-$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) | _build/wasm
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) | _build/wasm
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
