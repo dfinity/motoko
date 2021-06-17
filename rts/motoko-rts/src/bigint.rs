@@ -31,15 +31,16 @@ This scheme makes the following assumptions:
  - libtommath uses mp_calloc() and mp_realloc() _only_ to allocate the `mp_digit *` array.
 */
 
-use crate::alloc::alloc_words;
 use crate::buf::{read_byte, Buf};
+use crate::heap::ic::IcHeap;
+use crate::heap::Heap;
 use crate::mem::memcpy_bytes;
 use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};
 
 use crate::{rts_trap, tommath_bindings::*};
 
 unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
-    let ptr = alloc_words(size_of::<BigInt>() + size.to_words());
+    let ptr = IcHeap.alloc_words(size_of::<BigInt>() + size.to_words());
     let blob = ptr.unskew() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
     // libtommath stores the size of the object in alloc

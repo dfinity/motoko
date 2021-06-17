@@ -1,6 +1,7 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
+use crate::heap::Heap;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::types::*;
@@ -8,57 +9,26 @@ use crate::visitor::visit_pointer_fields;
 
 #[no_mangle]
 unsafe extern "C" fn compacting_gc() {
-    compacting_gc_internal(
-        || super::get_heap_base(),
-        || super::HP,
-        |hp| super::HP = hp,
-        |live_size| super::note_live_size(live_size),
-        |reclaimed| super::note_reclaimed(reclaimed),
-        || super::get_static_roots(),
-        || super::closure_table_loc(),
-        |ptr| crate::alloc::grow_memory(ptr),
-    );
+    compacting_gc_internal(&mut crate::heap::ic::IcHeap);
 }
 
-pub unsafe fn compacting_gc_internal<
-    GetHeapBase: Fn() -> u32,
-    GetHp: Fn() -> u32,
-    SetHp: FnMut(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
-    GetStaticRoots: Fn() -> SkewedPtr,
-    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
-    GrowMemory: Fn(usize) + Copy,
->(
-    get_heap_base: GetHeapBase,
-    get_hp: GetHp,
-    set_hp: SetHp,
-    note_live_size: NoteLiveSize,
-    note_reclaimed: NoteReclaimed,
-    get_static_roots: GetStaticRoots,
-    get_closure_table_loc: GetClosureTableLoc,
-    grow_memory: GrowMemory,
-) {
-    let old_hp = get_hp();
-    let heap_base = get_heap_base();
+pub unsafe fn compacting_gc_internal<H: Heap>(heap: &mut H) {
+    let old_hp = heap.get_hp();
+    let heap_base = heap.get_heap_base();
 
-    mark_compact(
-        set_hp,
-        heap_base,
-        old_hp,
-        get_static_roots(),
-        get_closure_table_loc(),
-    );
+    let static_roots = heap.get_static_roots();
+    let closure_table_loc = heap.get_closure_table_loc();
+    mark_compact(heap, heap_base, old_hp, static_roots, closure_table_loc);
 
-    let reclaimed = old_hp - old_hp;
-    note_reclaimed(Bytes(reclaimed));
+    let reclaimed = old_hp - heap.get_hp();
+    heap.note_reclaimed(Bytes(reclaimed));
 
     let new_live_size = old_hp - heap_base;
-    note_live_size(Bytes(new_live_size));
+    heap.note_live_size(Bytes(new_live_size));
 }
 
-unsafe fn mark_compact<SetHp: FnMut(u32)>(
-    set_hp: SetHp,
+unsafe fn mark_compact<H: Heap>(
+    heap: &mut H,
     heap_base: u32,
     heap_end: u32,
     static_roots: SkewedPtr,
@@ -67,15 +37,15 @@ unsafe fn mark_compact<SetHp: FnMut(u32)>(
     let heap_size = Bytes(heap_end - heap_base);
 
     alloc_bitmap(heap_size);
-    alloc_mark_stack();
+    alloc_mark_stack(heap);
 
-    mark_static_roots(static_roots, heap_base);
+    mark_static_roots(heap, static_roots, heap_base);
 
     if (*closure_table_loc).unskew() >= heap_base as usize {
-        push_mark_stack(*closure_table_loc, heap_base);
+        push_mark_stack(heap, *closure_table_loc, heap_base);
     }
 
-    mark_stack(heap_base);
+    mark_stack(heap, heap_base);
 
     thread_roots(static_roots, heap_base);
 
@@ -84,23 +54,23 @@ unsafe fn mark_compact<SetHp: FnMut(u32)>(
     }
 
     update_fwd_refs(heap_base);
-    update_bwd_refs(set_hp, heap_base);
+    update_bwd_refs(heap, heap_base);
 
     free_mark_stack();
     free_bitmap();
 }
 
-unsafe fn mark_static_roots(static_roots: SkewedPtr, heap_base: u32) {
+unsafe fn mark_static_roots<H: Heap>(heap: &mut H, static_roots: SkewedPtr, heap_base: u32) {
     let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
-        mark_fields(obj, heap_base);
+        mark_fields(heap, obj, heap_base);
     }
 }
 
-unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
+unsafe fn push_mark_stack<H: Heap>(heap: &mut H, obj: SkewedPtr, heap_base: u32) {
     let obj = obj.unskew() as u32;
 
     let obj_idx = (obj - heap_base) / WORD_SIZE;
@@ -111,18 +81,18 @@ unsafe fn push_mark_stack(obj: SkewedPtr, heap_base: u32) {
     }
 
     set_bit(obj_idx);
-    mark_stack::push_mark_stack(obj as usize);
+    mark_stack::push_mark_stack(heap, obj as usize);
 }
 
-unsafe fn mark_stack(heap_base: u32) {
+unsafe fn mark_stack<H: Heap>(heap: &mut H, heap_base: u32) {
     while let Some(obj) = pop_mark_stack() {
-        mark_fields(obj as *mut Obj, heap_base);
+        mark_fields(heap, obj as *mut Obj, heap_base);
     }
 }
 
-unsafe fn mark_fields(obj: *mut Obj, heap_base: u32) {
+unsafe fn mark_fields<H: Heap>(heap: &mut H, obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(obj, heap_base as usize, |field_addr| {
-        push_mark_stack(*field_addr, heap_base);
+        push_mark_stack(heap, *field_addr, heap_base);
     });
 }
 
@@ -160,7 +130,7 @@ unsafe fn update_fwd_refs(heap_base: u32) {
 
 /// Expects all fields to be threaded. Updates backward references and moves objects to their new
 /// locations.
-unsafe fn update_bwd_refs<SetHp: FnMut(u32)>(mut set_hp: SetHp, heap_base: u32) {
+unsafe fn update_bwd_refs<H: Heap>(heap: &mut H, heap_base: u32) {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
@@ -182,7 +152,7 @@ unsafe fn update_bwd_refs<SetHp: FnMut(u32)>(mut set_hp: SetHp, heap_base: u32) 
         bit = bitmap_iter.next();
     }
 
-    set_hp(free);
+    heap.set_hp(free);
 }
 
 unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {

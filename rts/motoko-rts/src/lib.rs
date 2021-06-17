@@ -27,6 +27,7 @@ pub mod buf;
 mod char;
 pub mod closure_table;
 mod float;
+mod heap;
 mod idl;
 pub mod leb128;
 pub mod mark_stack;
@@ -45,6 +46,12 @@ use types::{Bytes, SkewedPtr};
 #[no_mangle]
 unsafe extern "C" fn version() -> SkewedPtr {
     text::text_of_str("0.1")
+}
+
+#[no_mangle]
+unsafe extern "C" fn alloc_words(n: types::Words<u32>) -> SkewedPtr {
+    use crate::heap::Heap;
+    heap::ic::IcHeap.alloc_words(n)
 }
 
 extern "C" {

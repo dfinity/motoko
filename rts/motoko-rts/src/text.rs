@@ -25,7 +25,8 @@
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
-use crate::alloc::{alloc_blob, alloc_words};
+use crate::heap::ic::IcHeap;
+use crate::heap::Heap;
 use crate::mem::memcpy_bytes;
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT};
@@ -43,7 +44,7 @@ unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_bloc: Text too large");
     }
-    alloc_blob(size)
+    IcHeap.alloc_blob(size)
 }
 
 #[no_mangle]
@@ -98,7 +99,7 @@ pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr 
     }
 
     // Create concat node
-    let r = alloc_words(size_of::<Concat>());
+    let r = IcHeap.alloc_words(size_of::<Concat>());
     let r_concat = r.unskew() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).n_bytes = new_len;
