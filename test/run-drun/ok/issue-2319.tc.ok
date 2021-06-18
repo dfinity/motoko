@@ -1,0 +1,6 @@
+OOPS! You've triggered a compiler bug.
+Please report this Motoko issue at forum.dfinity.org with the following details:
+
+Motoko (revision 0.6.2-22-gdae7f3a1)
+
+Fatal error: exception "Assert_failure mo_idl/idl_to_mo.ml:106:9"
