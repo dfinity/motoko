@@ -108,7 +108,7 @@ The last kind of pattern is the `or`-pattern. As their name suggests, these are 
 Since pattern matching has a rich history and interesting mechanics, a few additional comments are justified.
 
 - nomenclature
-The (usually structured) expression that is being matched is frequently called the _scrutinee_ and the patterns appearing behind the keyword `case` are the _alternatives_. When every possible scutinee is matched by (at least one) alternative, then we say that the scrutinee is _covered_. The patterns are tried in top-down fashion and thus in case of _overlapping_ patterns the one higher-up is selected. A scrutinee is considered _dead_ (or _inactive_), if for every value that it matches there is higher-up alternative that is also matched.
+The (usually structured) expression that is being matched is frequently called the _scrutinee_ and the patterns appearing behind the keyword `case` are the _alternatives_. When every possible scutinee is matched by (at least one) alternative, then we say that the scrutinee is _covered_. The patterns are tried in top-down fashion and thus in case of _overlapping_ patterns the one higher-up is selected. An alternative is considered _dead_ (or _inactive_), if for every value that it matches there is higher-up alternative that is also matched.
 
 - booleans
 The data type `Bool` can be regarded as two disjointed altenatives (`true` and `false`) and {proglang}'s built-in `if` construct will _eliminate_ the data and turn it into _control_ flow. `if` expressions are a form of pattern matching that abbreviates the general `switch` expression for the special case of boolean scrutinees.
