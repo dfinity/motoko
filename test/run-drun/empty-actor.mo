@@ -6,7 +6,7 @@ actor {};
 // CHECK:  (func $canister_init (type 7)
 // CHECK-NEXT:    call $trans_state
 // CHECK-NEXT:    call $init
-// CHECK-NEXT:    call $collect
+// CHECK-NEXT:    call ${{copying_gc|compacting_gc}}
 // CHECK-NEXT:    call $trans_state
 
 // CHECK:  (export "canister_init" (func $canister_init))
