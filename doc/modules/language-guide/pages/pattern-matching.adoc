@@ -12,7 +12,7 @@ Consider the following function call:
 let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
 ....
 
-We see that an object with three fields is being built, then passed to the function `fullName`, and the returned result is being captured and brought into scope by binding it to the `name` identifier. The latter step is referred to as pattern matching, and `name : Text` is a pattern. When we consider the callee, we'll encounter something like the following:
+We see that an object with three fields is being built, then passed to the function `fullName`, and the returned result is being captured and brought into scope by binding it to the `name` identifier. The last step is referred to as pattern matching, and `name : Text` is a pattern. When we consider the callee, we'll encounter something like the following:
 
 [source#fullname, motoko]
 ....
