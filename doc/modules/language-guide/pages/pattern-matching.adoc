@@ -34,7 +34,7 @@ switch ("Adrienne", #female) {
 }
 ....
 
-will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"It's a girl! Adrienne"`. The second clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
+will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"Adrienne is a girl!"`. The last clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
 
 The last kind of pattern is the `or`-pattern. As their name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or`-pattern fails when its rightmost sub-pattern fails.
 
