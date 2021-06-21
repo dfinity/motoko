@@ -2,16 +2,49 @@ use crate::heap::Heap;
 use crate::mem::{memcpy_bytes, memcpy_words};
 use crate::types::*;
 
-use motoko_rts_macros::{ic_fn, ic_heap_fn};
+use motoko_rts_macros::ic_heap_fn;
 
-#[ic_heap_fn]
-pub unsafe fn copying_gc<H: Heap>(heap: &mut H) {
-    let begin_from_space = heap.get_heap_base() as usize;
-    let end_from_space = heap.get_hp() as usize;
+#[ic_heap_fn(ic_only)]
+unsafe fn copying_gc<H: Heap>(heap: &mut H) {
+    copying_gc_internal(
+        heap,
+        || crate::heap::ic::get_heap_base(),
+        || crate::heap::ic::HP,
+        |hp| crate::heap::ic::HP = hp,
+        || crate::heap::ic::get_static_roots(),
+        || crate::closure_table::closure_table_loc(),
+        |live_size| {
+            crate::heap::ic::MAX_LIVE = ::core::cmp::max(crate::heap::ic::MAX_LIVE, live_size)
+        },
+        |reclaimed| crate::heap::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+    );
+}
+
+pub unsafe fn copying_gc_internal<
+    H: Heap,
+    GetHeapBase: Fn() -> u32,
+    GetHp: Fn() -> u32,
+    SetHp: Fn(u32),
+    GetStaticRoots: Fn() -> SkewedPtr,
+    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
+    NoteLiveSize: Fn(Bytes<u32>),
+    NoteReclaimed: Fn(Bytes<u32>),
+>(
+    heap: &mut H,
+    get_heap_base: GetHeapBase,
+    get_hp: GetHp,
+    set_hp: SetHp,
+    get_static_roots: GetStaticRoots,
+    get_closure_table_loc: GetClosureTableLoc,
+    note_live_size: NoteLiveSize,
+    note_reclaimed: NoteReclaimed,
+) {
+    let begin_from_space = get_heap_base() as usize;
+    let end_from_space = get_hp() as usize;
     let begin_to_space = end_from_space;
     let mut end_to_space = begin_to_space;
 
-    let static_roots = heap.get_static_roots().as_array();
+    let static_roots = get_static_roots().as_array();
 
     // Evacuate roots
     evac_static_roots(
@@ -22,7 +55,7 @@ pub unsafe fn copying_gc<H: Heap>(heap: &mut H) {
         static_roots,
     );
 
-    let closure_table_loc = heap.get_closure_table_loc();
+    let closure_table_loc = get_closure_table_loc();
     if (*closure_table_loc).unskew() >= begin_from_space {
         evac(
             heap,
@@ -44,10 +77,10 @@ pub unsafe fn copying_gc<H: Heap>(heap: &mut H) {
 
     // Note the stats
     let new_live_size = end_to_space - begin_to_space;
-    heap.note_live_size(Bytes(new_live_size as u32));
+    note_live_size(Bytes(new_live_size as u32));
 
     let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
-    heap.note_reclaimed(Bytes(reclaimed as u32));
+    note_reclaimed(Bytes(reclaimed as u32));
 
     // Copy to-space to the beginning of from-space
     memcpy_bytes(
@@ -58,7 +91,7 @@ pub unsafe fn copying_gc<H: Heap>(heap: &mut H) {
 
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    heap.set_hp(new_hp as u32);
+    set_hp(new_hp as u32);
 }
 
 /// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was

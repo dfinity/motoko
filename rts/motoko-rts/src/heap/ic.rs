@@ -7,10 +7,10 @@ use motoko_rts_macros::ic_fn;
 use core::arch::wasm32;
 
 /// Maximum live data retained in a GC.
-static mut MAX_LIVE: Bytes<u32> = Bytes(0);
+pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 
 /// Amount of garbage collected so far.
-static mut RECLAIMED: Bytes<u64> = Bytes(0);
+pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 /// Counter for total allocations
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
@@ -20,8 +20,8 @@ pub(crate) static mut HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    fn get_heap_base() -> u32;
-    fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_heap_base() -> u32;
+    pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
 #[ic_fn]
@@ -52,6 +52,7 @@ unsafe fn get_heap_size() -> Bytes<u32> {
 pub struct IcHeap;
 
 impl Heap for IcHeap {
+    /*
     unsafe fn get_heap_base(&mut self) -> u32 {
         get_heap_base()
     }
@@ -71,6 +72,7 @@ impl Heap for IcHeap {
     unsafe fn get_closure_table_loc(&mut self) -> *mut SkewedPtr {
         crate::closure_table::closure_table_loc()
     }
+    */
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes();
@@ -99,6 +101,7 @@ impl Heap for IcHeap {
         }
     }
 
+    /*
     unsafe fn note_live_size(&mut self, live_size: Bytes<u32>) {
         MAX_LIVE = ::core::cmp::max(MAX_LIVE, live_size);
     }
@@ -106,4 +109,5 @@ impl Heap for IcHeap {
     unsafe fn note_reclaimed(&mut self, reclaimed: Bytes<u32>) {
         RECLAIMED += Bytes(reclaimed.0 as u64);
     }
+    */
 }

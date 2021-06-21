@@ -62,7 +62,15 @@ pub fn ic_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn ic_heap_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn ic_heap_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let ic_only = if attr.is_empty() {
+        false
+    } else if attr.to_string() == "ic_only" {
+        true
+    } else {
+        panic!("Unknown attribute: {:?}", attr.to_string());
+    };
+
     let fun = syn::parse_macro_input!(input as syn::ItemFn);
     let fun_sig = &fun.sig;
 
@@ -117,7 +125,14 @@ pub fn ic_heap_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
     // Arguments passed to the original function
     let wrapper_args_syn: Vec<&syn::Ident> = wrapper_args.iter().map(|(ident, _)| ident).collect();
 
+    let fun_attr = if ic_only {
+        quote!(#[cfg(feature = "ic")])
+    } else {
+        quote!()
+    };
+
     quote!(
+        #fun_attr
         #fun
 
         #[cfg(feature = "ic")]

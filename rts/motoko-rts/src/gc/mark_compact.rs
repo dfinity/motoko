@@ -9,24 +9,65 @@ use crate::visitor::visit_pointer_fields;
 
 use motoko_rts_macros::ic_heap_fn;
 
-#[ic_heap_fn]
-pub unsafe fn compacting_gc_internal<H: Heap>(heap: &mut H) {
-    let old_hp = heap.get_hp();
-    let heap_base = heap.get_heap_base();
-
-    let static_roots = heap.get_static_roots();
-    let closure_table_loc = heap.get_closure_table_loc();
-    mark_compact(heap, heap_base, old_hp, static_roots, closure_table_loc);
-
-    let reclaimed = old_hp - heap.get_hp();
-    heap.note_reclaimed(Bytes(reclaimed));
-
-    let new_live_size = old_hp - heap_base;
-    heap.note_live_size(Bytes(new_live_size));
+#[ic_heap_fn(ic_only)]
+unsafe fn compacting_gc<H: Heap>(heap: &mut H) {
+    compacting_gc_internal(
+        heap,
+        || crate::heap::ic::get_heap_base(),
+        || crate::heap::ic::HP,
+        |hp| crate::heap::ic::HP = hp,
+        || crate::heap::ic::get_static_roots(),
+        || crate::closure_table::closure_table_loc(),
+        |live_size| {
+            crate::heap::ic::MAX_LIVE = ::core::cmp::max(crate::heap::ic::MAX_LIVE, live_size)
+        },
+        |reclaimed| crate::heap::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+    );
 }
 
-unsafe fn mark_compact<H: Heap>(
+pub unsafe fn compacting_gc_internal<
+    H: Heap,
+    GetHeapBase: Fn() -> u32,
+    GetHp: Fn() -> u32,
+    SetHp: Fn(u32),
+    GetStaticRoots: Fn() -> SkewedPtr,
+    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
+    NoteLiveSize: Fn(Bytes<u32>),
+    NoteReclaimed: Fn(Bytes<u32>),
+>(
     heap: &mut H,
+    get_heap_base: GetHeapBase,
+    get_hp: GetHp,
+    set_hp: SetHp,
+    get_static_roots: GetStaticRoots,
+    get_closure_table_loc: GetClosureTableLoc,
+    note_live_size: NoteLiveSize,
+    note_reclaimed: NoteReclaimed,
+) {
+    let old_hp = get_hp();
+    let heap_base = get_heap_base();
+
+    let static_roots = get_static_roots();
+    let closure_table_loc = get_closure_table_loc();
+    mark_compact(
+        heap,
+        set_hp,
+        heap_base,
+        old_hp,
+        static_roots,
+        closure_table_loc,
+    );
+
+    let reclaimed = old_hp - get_hp();
+    note_reclaimed(Bytes(reclaimed));
+
+    let new_live_size = old_hp - heap_base;
+    note_live_size(Bytes(new_live_size));
+}
+
+unsafe fn mark_compact<H: Heap, SetHp: Fn(u32)>(
+    heap: &mut H,
+    set_hp: SetHp,
     heap_base: u32,
     heap_end: u32,
     static_roots: SkewedPtr,
@@ -52,7 +93,7 @@ unsafe fn mark_compact<H: Heap>(
     }
 
     update_fwd_refs(heap_base);
-    update_bwd_refs(heap, heap_base);
+    update_bwd_refs(set_hp, heap_base);
 
     free_mark_stack();
     free_bitmap();
@@ -128,7 +169,7 @@ unsafe fn update_fwd_refs(heap_base: u32) {
 
 /// Expects all fields to be threaded. Updates backward references and moves objects to their new
 /// locations.
-unsafe fn update_bwd_refs<H: Heap>(heap: &mut H, heap_base: u32) {
+unsafe fn update_bwd_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
@@ -150,7 +191,7 @@ unsafe fn update_bwd_refs<H: Heap>(heap: &mut H, heap_base: u32) {
         bit = bitmap_iter.next();
     }
 
-    heap.set_hp(free);
+    set_hp(free);
 }
 
 unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
