@@ -102,6 +102,10 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     rts_trap(c_str.as_ptr(), Bytes(b_idx as u32));
 }
 
+pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
+    trap_with_prefix("IDL error: ", msg);
+}
+
 pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }

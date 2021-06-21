@@ -1,16 +1,15 @@
-use crate::heap::ic::IcHeap;
 use crate::heap::Heap;
 use crate::types::{size_of, Array, Bytes, SkewedPtr, Words, TAG_ARRAY};
 
-use motoko_rts_macros::ic_fn;
+use motoko_rts_macros::{ic_fn, ic_heap_fn};
 
 const ITER_BLOB_IDX: u32 = 0;
 const ITER_POS_IDX: u32 = 1;
 
 /// Returns iterator for the given blob
-#[ic_fn]
-unsafe fn blob_iter(blob: SkewedPtr) -> SkewedPtr {
-    let iter_ptr = IcHeap.alloc_words(size_of::<Array>() + Words(2));
+#[ic_heap_fn]
+unsafe fn blob_iter<H: Heap>(heap: &mut H, blob: SkewedPtr) -> SkewedPtr {
+    let iter_ptr = heap.alloc_words(size_of::<Array>() + Words(2));
 
     let iter_array = iter_ptr.unskew() as *mut Array;
     (*iter_array).header.tag = TAG_ARRAY;

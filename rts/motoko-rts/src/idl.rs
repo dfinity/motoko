@@ -2,6 +2,7 @@
 
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::heap::Heap;
+use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::trap_with_prefix;
 use crate::types::Words;
@@ -45,10 +46,6 @@ const IDL_REF_principal: i32 = -24;
 const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
-
-pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
-    trap_with_prefix("IDL error: ", msg);
-}
 
 unsafe fn is_primitive_type(ty: i32) -> bool {
     ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
