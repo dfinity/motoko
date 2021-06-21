@@ -344,11 +344,13 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       else
         match Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt with
         | exception Idllib.Exception.UnsupportedCandidFeature error_message ->
-          Diag.error
-            ri.Source.at
-            "M0153"
-            "import"
-            (Printf.sprintf "file %s uses Candid types without corresponding Motoko type:\n  %s" f (Diag.string_of_message error_message))
+          Stdlib.Error [
+            Diag.error_message
+              ri.Source.at
+              "M0153"
+              "import"
+              (Printf.sprintf "file %s uses Candid types without corresponding Motoko type" f);
+            error_message ]
         | actor ->
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
