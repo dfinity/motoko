@@ -163,4 +163,10 @@ let error_codes : (string * string option) list =
     "M0157", Some([%blob "error_codes/M0157.adoc"]); (* block contains non-productive type definitions *)
     "M0158", Some([%blob "error_codes/M0158.adoc"]); (* a public class cannot be anonymous, please provide a name *)
     (* "M0159" DEFUNCT Word deprecation *)
+    "M0160", None;
+    "M0161", None; (* Candid float32 type cannot be imported as a Motoko type *)
+    "M0162", None; (* Candid service constructor type not supported as Motoko type *)
+    "M0163", None; (* cannot import a Candid service constructor *)
+    "M0164", None; (* unknown record or variant label in textual representation *)
+    "M0165", None; (* odd expected type *)
   ]
