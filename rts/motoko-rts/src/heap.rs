@@ -1,3 +1,4 @@
+#[cfg(feature = "ic")]
 pub mod ic;
 
 use crate::rts_trap_with;

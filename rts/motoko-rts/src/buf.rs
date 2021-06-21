@@ -2,6 +2,8 @@
 
 use crate::idl::idl_trap_with;
 
+use motoko_rts_macros::ic_fn;
+
 #[repr(packed)]
 pub struct Buf {
     /// Pointer into the buffer
@@ -51,8 +53,8 @@ unsafe fn advance(buf: *mut Buf, n: u32) {
 }
 
 /// Can also be used for sleb
-#[no_mangle]
-pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
+#[ic_fn]
+pub(crate) unsafe fn skip_leb128(buf: *mut Buf) {
     loop {
         let byte = read_byte(buf);
         if byte & 0b1000_0000 == 0 {

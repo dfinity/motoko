@@ -2,8 +2,10 @@
 
 use crate::buf::{read_byte, Buf};
 
-#[no_mangle]
-pub unsafe extern "C" fn leb128_encode(mut val: u32, mut buf: *mut u8) {
+use motoko_rts_macros::ic_fn;
+
+#[ic_fn]
+pub unsafe fn leb128_encode(mut val: u32, mut buf: *mut u8) {
     loop {
         let byte = (val & 0b0111_1111) as u8;
         val >>= 7;
@@ -17,8 +19,8 @@ pub unsafe extern "C" fn leb128_encode(mut val: u32, mut buf: *mut u8) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
+#[ic_fn]
+pub unsafe fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
     loop {
         let byte = (val & 0b0111_1111) as u8;
         val >>= 7;
@@ -33,8 +35,8 @@ pub unsafe extern "C" fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leb128_decode(buf: *mut Buf) -> u32 {
+#[ic_fn]
+pub unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let mut result = 0;
     let mut shift = 0;
 
@@ -59,8 +61,8 @@ pub unsafe extern "C" fn leb128_decode(buf: *mut Buf) -> u32 {
     result
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn sleb128_decode(buf: *mut Buf) -> i32 {
+#[ic_fn]
+pub unsafe fn sleb128_decode(buf: *mut Buf) -> i32 {
     let mut result = 0;
     let mut shift = 0;
 

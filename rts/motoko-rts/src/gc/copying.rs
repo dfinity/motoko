@@ -2,8 +2,10 @@ use crate::heap::Heap;
 use crate::mem::{memcpy_bytes, memcpy_words};
 use crate::types::*;
 
-#[no_mangle]
-unsafe extern "C" fn copying_gc() {
+use motoko_rts_macros::ic_fn;
+
+#[ic_fn]
+unsafe fn copying_gc() {
     copying_gc_internal(&mut crate::heap::ic::IcHeap);
 }
 

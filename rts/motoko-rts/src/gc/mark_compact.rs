@@ -7,8 +7,10 @@ use crate::mem::memcpy_words;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
-#[no_mangle]
-unsafe extern "C" fn compacting_gc() {
+use motoko_rts_macros::ic_fn;
+
+#[ic_fn]
+unsafe fn compacting_gc() {
     compacting_gc_internal(&mut crate::heap::ic::IcHeap);
 }
 
