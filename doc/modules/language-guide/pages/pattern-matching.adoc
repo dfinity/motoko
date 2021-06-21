@@ -39,7 +39,7 @@ The last kind of pattern is the `or` pattern. As their name suggests, these are 
 
 .The following table summarises the different ways of pattern matching.
 |===
-|pattern type |example(s) |context |can fail |remarks
+|pattern kind|example(s) |context |can fail |remarks
 
 |literal
 |`null`, `42`, `()`, `"Hi"`
