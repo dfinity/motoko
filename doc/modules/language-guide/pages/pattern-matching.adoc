@@ -34,13 +34,13 @@ switch ("Adrienne", #female) {
 }
 ....
 
-will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"Adrienne is a girl!"`. The last clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
+... will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"Adrienne is a girl!"`. The last clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
 
-The last type of pattern is the `or` pattern. As their name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or` pattern fails when its rightmost sub-pattern fails.
+The last kind of pattern is the `or` pattern. As its name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or` pattern fails when its rightmost sub-pattern fails.
 
 .The following table summarises the different ways of pattern matching.
 |===
-|pattern type |example(s) |context |can fail |remarks
+|pattern kind|example(s) |context |can fail |remarks
 
 |literal
 |`null`, `42`, `()`, `"Hi"`
@@ -63,7 +63,7 @@ The last type of pattern is the `or` pattern. As their name suggests, these are 
 |typed
 |`age : Nat`
 |everywhere
-|depends
+|conditional
 |
 
 |option
@@ -75,19 +75,19 @@ The last type of pattern is the `or` pattern. As their name suggests, these are 
 | tuple
 |`( component~0~, component~1~, ... )`
 |everywhere
-|depends
+|conditional
 |must have at least two components
 
 | object
 |`{ field~A~; field~B~; ... }`
 |everywhere
-|depends
+|conditional
 |allowed to mention a subset of fields
 
 | field
 |`age`, `count = 0`
 |object
-|depends
+|conditional
 |`age` is short for `age = age`
 
 |variant
@@ -124,9 +124,9 @@ Other programming languages—for example C, but not {proglang}—often use a ke
 Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (for example, an option value or a variant), pattern matching can be used to distinguish between the two as discussed in xref:errors{outfilesuffix}[Error handling].
 
 - non-failable matching
-Some types admit only a single value and we call these _singleton types_. Examples of these are the unit type (also known as an empty tuple) or tuples that only contain singleton types. Variants with only one alternative and no payload (or singleton-typed payload) are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible alternative, which can never fail.
+Some types admit only a single value and we call these _singleton types_. Examples of these are the unit type (also known as an empty tuple) or tuples that only contain singleton types. Variants with a single tag and no payload (or singleton-typed payload) are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible outcome: a successful match.
 
 - exhaustiveness (coverage) checking
-When a pattern check alternative has the potential to fail, then it becomes important to find out whether the whole `switch` expression can fail. If this can happen the execution of the program can trap for certain inputs, posing an operational threat. To this end, the compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees ({proglang} even tries to come up with an example of a scrutinee that is not patched). As by-product of the exhaustiveness check, warnings are also issued for dead alternatives.
+When a pattern check alternative has the potential to fail, then it becomes important to find out whether the whole `switch` expression can fail. If this can happen the execution of the program can trap for certain inputs, posing an operational threat. To this end, the compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees ({proglang} even constructs a helpful example of a scrutinee that is not matched). As by-product of the exhaustiveness check, warnings are also issued for dead alternatives.
 
-In summary, pattern checking is a great tool for several use-cases and enables active assistance from the compiler to the programmer by pointing out which inputs are not exhaustively taken care of. The static compile-time nature of coverage checking reliably rules out runtime failures.
+In summary, pattern checking is a great tool with several use-cases. By statically analyzing patterns, the compiler assists the programmer by pointing out unhandled cases and unreachable code, both of which often indicate programmer error. The static, compile-time nature of coverage checking reliably rules out runtime failures.
