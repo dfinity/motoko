@@ -81,7 +81,7 @@ let rec check_typ env t =
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)
-  | ClassT _ -> raise (Invalid_argument "service constructor not supported")
+  | ClassT _ -> raise (UnsupportedCandidFeature "service constructor not supported")
   | PreT -> assert false
 and check_typs env ts = List.map (check_typ env) ts
 and check_field env f =
@@ -102,6 +102,8 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
        | M.Con (c, _) -> M.{lab = id; typ = M.Typ c; depr = None}::fs
        | _ -> assert false) !m_env fs in
      M.Obj (M.Actor, List.sort M.compare_field fs)
+  | Some {it=ClassT _; _} ->
+     raise (UnsupportedCandidFeature "cannot import a service constructor")
   | None -> assert false
   | _ -> assert false
 

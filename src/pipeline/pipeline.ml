@@ -348,7 +348,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
             ri.Source.at
             "M0153"
             "import"
-            (Printf.sprintf "file %s uses Candid types without corresponding Motoko type" f)
+            (Printf.sprintf "file %s uses Candid types without corresponding Motoko type:\n  %s" f s)
         | actor ->
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;

@@ -1,6 +1,2 @@
-OOPS! You've triggered a compiler bug.
-Please report this Motoko issue at forum.dfinity.org with the following details:
-
-Motoko (revision 0.6.2-22-gdae7f3a1)
-
-Fatal error: exception "Assert_failure mo_idl/idl_to_mo.ml:106:9"
+issue-2319.mo:5.1-5.34: import error [M0153], file issue-2319/lg264-qjkae.did uses Candid types without corresponding Motoko type:
+  cannot import a service constructor
