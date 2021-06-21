@@ -7,13 +7,9 @@ use crate::mem::memcpy_words;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
-use motoko_rts_macros::ic_fn;
+use motoko_rts_macros::ic_heap_fn;
 
-#[ic_fn]
-unsafe fn compacting_gc() {
-    compacting_gc_internal(&mut crate::heap::ic::IcHeap);
-}
-
+#[ic_heap_fn]
 pub unsafe fn compacting_gc_internal<H: Heap>(heap: &mut H) {
     let old_hp = heap.get_hp();
     let heap_base = heap.get_heap_base();

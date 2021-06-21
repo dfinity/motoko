@@ -13,9 +13,6 @@
 #[macro_use]
 mod print;
 
-#[cfg(feature = "gc")]
-pub mod gc;
-
 #[cfg(debug_assertions)]
 pub mod debug;
 
@@ -26,7 +23,8 @@ pub mod buf;
 mod char;
 pub mod closure_table;
 mod float;
-mod heap;
+pub mod gc;
+pub mod heap;
 pub mod leb128;
 pub mod mark_stack;
 mod mem;

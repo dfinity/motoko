@@ -5,6 +5,7 @@ mod bitmap;
 mod closure_table;
 mod crc32;
 mod gc;
+mod heap;
 mod leb128;
 mod mark_stack;
 mod principal_id;
@@ -12,7 +13,7 @@ mod text;
 mod utf8;
 
 use motoko_rts::debug;
-use motoko_rts::gc_common::collect_internal;
+// use motoko_rts::gc_common::collect_internal;
 use motoko_rts::types::*;
 
 #[macro_use]
@@ -24,6 +25,9 @@ fn main() {
         std::process::exit(1);
     }
 
+    let mut test_heap = heap::TestHeap::new(Bytes(1024 * 1024 * 1024).to_words());
+
+    /*
     let refs = &btreemap! {
         0 => vec![0, 2],
         2 => vec![0],
@@ -98,6 +102,7 @@ fn main() {
             new_hp as usize - heap_1.heap.as_ptr() as usize,
         );
     }
+    */
 
     // unsafe {
     //     closure_table::test();

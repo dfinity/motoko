@@ -1,7 +1,8 @@
 use motoko_rts::closure_table::{closure_count, recall_closure, remember_closure};
+use motoko_rts::heap::Heap;
 use motoko_rts::types::SkewedPtr;
 
-pub unsafe fn test() {
+pub unsafe fn test<H: Heap>(heap: &mut H) {
     println!("Testing closure table ...");
 
     assert_eq!(closure_count(), 0);
@@ -10,7 +11,7 @@ pub unsafe fn test() {
 
     let mut references: [u32; N] = [0; N];
     for i in 0..N {
-        references[i] = remember_closure(SkewedPtr((i << 2).wrapping_sub(1)));
+        references[i] = remember_closure(heap, SkewedPtr((i << 2).wrapping_sub(1)));
         assert_eq!(closure_count(), (i + 1) as u32);
     }
 
@@ -21,7 +22,7 @@ pub unsafe fn test() {
     }
 
     for i in 0..N / 2 {
-        references[i] = remember_closure(SkewedPtr((i << 2).wrapping_sub(1)));
+        references[i] = remember_closure(heap, SkewedPtr((i << 2).wrapping_sub(1)));
         assert_eq!(closure_count(), (N / 2 + i + 1) as u32);
     }
 

@@ -2,14 +2,10 @@ use crate::heap::Heap;
 use crate::mem::{memcpy_bytes, memcpy_words};
 use crate::types::*;
 
-use motoko_rts_macros::ic_fn;
+use motoko_rts_macros::{ic_fn, ic_heap_fn};
 
-#[ic_fn]
-unsafe fn copying_gc() {
-    copying_gc_internal(&mut crate::heap::ic::IcHeap);
-}
-
-pub unsafe fn copying_gc_internal<H: Heap>(heap: &mut H) {
+#[ic_heap_fn]
+pub unsafe fn copying_gc<H: Heap>(heap: &mut H) {
     let begin_from_space = heap.get_heap_base() as usize;
     let end_from_space = heap.get_hp() as usize;
     let begin_to_space = end_from_space;

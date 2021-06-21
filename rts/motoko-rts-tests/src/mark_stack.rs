@@ -6,9 +6,10 @@ use std::cmp::min;
 
 pub unsafe fn test() {
     println!("Testing mark stack ...");
-    quickcheck(test_ as fn(Vec<usize>) -> TestResult);
+    // quickcheck(test_ as fn(Vec<usize>) -> TestResult);
 }
 
+/*
 fn test_(objs: Vec<usize>) -> TestResult {
     // We can't test grow_stack as it requires the new allocation to be next to the old allocation,
     // so cap the limit to 1024
@@ -38,3 +39,4 @@ fn test_(objs: Vec<usize>) -> TestResult {
 
     TestResult::passed()
 }
+*/

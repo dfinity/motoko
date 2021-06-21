@@ -4,7 +4,6 @@ use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::heap::Heap;
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
-use crate::trap_with_prefix;
 use crate::types::Words;
 use crate::utf8::utf8_validate;
 

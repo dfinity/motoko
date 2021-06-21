@@ -9,13 +9,9 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [features]
-default = ["panic_handler", "gc", "ic"]
+default = ["panic_handler", "ic"]
 
 ic = []
-
-# Enables garbage collector and bump allocator. Without this the GC module is
-# disabled (not compiled) and allocation routines use `malloc`.
-gc = []
 
 # Defines a panic handler. Required for generating `staticlib` as static
 # libraries need to be self-contained.
