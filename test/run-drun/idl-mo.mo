@@ -1,6 +1,7 @@
 //MOC-FLAG  --actor-idl idl-mo
 
 import imported "ic:aaaaa-aa";
+import imported_class "ic:bycvx-6qaaa-aaaaa-qacbq-cai";
 /*
 type node = {head : Nat; tail : list};
 type list = ?node;
