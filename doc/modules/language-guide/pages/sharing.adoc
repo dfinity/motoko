@@ -95,7 +95,7 @@ In the `init` function, the `Subscriber` actor passes a reference to itself, of 
 
 If called more than once, the actor will subscribe itself multiple times, and will receive multiple (duplicate) notifications from the publisher.
 This fragility is the consequence of the basic
-publiisher-subscriber design we show above.  With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
+publisher-subscriber design we show above.  With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
 
 == Sharing functions among actors
 

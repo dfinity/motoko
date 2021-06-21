@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "32b1c512ca2058369cedcccd0a3b110c5c1e8580",
+        "rev": "37e2f7668ecdf4a91eae37f235eea0e3a3bdf911",
         "type": "git"
     },
     "esm": {
@@ -96,10 +96,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "527494090f7075ed5e3aa15ef7093846e5e25d52",
-        "sha256": "1hahf0i0iix1iyzaaq5a7rbgyfm3xjcfl69lm1b5mas1p8vdimih",
+        "rev": "e0ca65c81a2d7a4d82a189f1e23a48d59ad42070",
+        "sha256": "1pq9nh1d8nn3xvbdny8fafzw87mj7gsmp6pxkdl65w2g18rmcmzx",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/527494090f7075ed5e3aa15ef7093846e5e25d52.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/e0ca65c81a2d7a4d82a189f1e23a48d59ad42070.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
