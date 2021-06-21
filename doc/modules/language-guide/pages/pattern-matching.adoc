@@ -23,23 +23,24 @@ func fullName({ first : Text; mid : Text; last : Text }) : Text {
 
 The input is an (anonymous) object, which is deconstructed into its three `Text` fields, whose values are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function. Above we have resorted to _name punning_ (a form of aliasing) for object field patterns, using the name of a field to also name its contents. A more general form of field pattern allows the content to be named separately from the field, as in `...; mid = m : Text; ...`. Here `mid` determines which field to match, and `m` names the content of that field within the scope of the pattern.
 
-You can also use pattern matching to search for _literal patterns_, which look just like literal constants. Literal patterns are especially useful in `switch` expressions because they can cause the current pattern match to _fail_, and thus start to match the next pattern. For example:
+You can also use pattern matching to declare _literal patterns_, which look just like literal constants. Literal patterns are especially useful in `switch` expressions because they can cause the current pattern match to _fail_, and thus start to match the next pattern. For example:
 
 [source, motoko]
 ....
 switch ("Adrienne", #female) {
-  case (name, #female) { "It's a girl! " # name };
-  case (name, _) { name # ", a boy!" };
+  case (name, #female) { name # " is a girl!" };
+  case (name, #male) { name # " is a boy!" };
+  case (name, _) { name # ", is a human!" };
 }
 ....
 
-will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"It's a girl! Adrienne"`. The second clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
+will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"Adrienne is a girl!"`. The last clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
 
-The last kind of pattern is the `or`-pattern. As their name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or`-pattern fails when its rightmost sub-pattern fails.
+The last type of pattern is the `or` pattern. As their name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or` pattern fails when its rightmost sub-pattern fails.
 
 .The following table summarises the different ways of pattern matching.
 |===
-|pattern kind |examples |appears in |can fail |remarks
+|pattern type |example(s) |context |can fail |remarks
 
 |literal
 |`null`, `42`, `()`, `"Hi"`
