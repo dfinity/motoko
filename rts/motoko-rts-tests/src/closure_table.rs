@@ -36,6 +36,4 @@ pub unsafe fn test() {
         assert_eq!(recall_closure(references[i]).0, (i << 2).wrapping_sub(1));
         assert_eq!(closure_count(), i as u32);
     }
-
-    println!("OK");
 }

@@ -52,7 +52,7 @@ unsafe fn mp_alloc<H: Heap>(heap: &mut H, size: Bytes<u32>) -> *mut u8 {
 }
 
 #[ic_heap_fn]
-unsafe fn mp_calloc<H: Heap>(
+pub unsafe fn mp_calloc<H: Heap>(
     heap: &mut H,
     n_elems: usize,
     elem_size: Bytes<usize>,
@@ -74,7 +74,7 @@ unsafe fn mp_calloc<H: Heap>(
 }
 
 #[ic_heap_fn]
-unsafe fn mp_realloc<H: Heap>(
+pub unsafe fn mp_realloc<H: Heap>(
     heap: &mut H,
     ptr: *mut libc::c_void,
     old_size: Bytes<u32>,
@@ -99,7 +99,7 @@ unsafe fn mp_realloc<H: Heap>(
 }
 
 #[ic_fn]
-unsafe fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
+pub unsafe fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
 
 /*
 Note on libtommath error handling

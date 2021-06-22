@@ -133,6 +133,7 @@ name = "motoko-rts-tests"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "libc",
  "maplit",
  "motoko-rts",
  "motoko-rts-macros",
