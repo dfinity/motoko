@@ -106,7 +106,7 @@ fn main() {
 
     unsafe {
         bitmap::test();
-        // closure_table::test();
+        closure_table::test();
         // bigint::test();
         // utf8::test();
         // crc32::test();

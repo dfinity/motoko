@@ -38,7 +38,6 @@ pub unsafe fn test() {
         let mut heap = TestHeap::new(Words(2051));
         test_bit_iter(&mut heap, bits)
     });
-    // quickcheck(test_bit_iter as fn(HashSet<u16>) -> TestResult);
 }
 
 /// Generates vectors of bit indices
