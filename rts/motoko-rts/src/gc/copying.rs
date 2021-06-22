@@ -8,11 +8,11 @@ use motoko_rts_macros::ic_heap_fn;
 unsafe fn copying_gc<H: Heap>(heap: &mut H) {
     copying_gc_internal(
         heap,
-        || crate::heap::ic::get_heap_base(),
+        crate::heap::ic::get_heap_base(),
         || crate::heap::ic::HP,
         |hp| crate::heap::ic::HP = hp,
-        || crate::heap::ic::get_static_roots(),
-        || crate::closure_table::closure_table_loc(),
+        crate::heap::ic::get_static_roots(),
+        crate::closure_table::closure_table_loc(),
         |live_size| {
             crate::heap::ic::MAX_LIVE = ::core::cmp::max(crate::heap::ic::MAX_LIVE, live_size)
         },
@@ -22,29 +22,26 @@ unsafe fn copying_gc<H: Heap>(heap: &mut H) {
 
 pub unsafe fn copying_gc_internal<
     H: Heap,
-    GetHeapBase: Fn() -> u32,
     GetHp: Fn() -> u32,
     SetHp: FnMut(u32),
-    GetStaticRoots: Fn() -> SkewedPtr,
-    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     heap: &mut H,
-    get_heap_base: GetHeapBase,
+    heap_base: u32,
     get_hp: GetHp,
     mut set_hp: SetHp,
-    get_static_roots: GetStaticRoots,
-    get_closure_table_loc: GetClosureTableLoc,
+    static_roots: SkewedPtr,
+    closure_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    let begin_from_space = get_heap_base() as usize;
+    let begin_from_space = heap_base as usize;
     let end_from_space = get_hp() as usize;
     let begin_to_space = end_from_space;
     let mut end_to_space = begin_to_space;
 
-    let static_roots = get_static_roots().as_array();
+    let static_roots = static_roots.as_array();
 
     // Evacuate roots
     evac_static_roots(
@@ -55,7 +52,6 @@ pub unsafe fn copying_gc_internal<
         static_roots,
     );
 
-    let closure_table_loc = get_closure_table_loc();
     if (*closure_table_loc).unskew() >= begin_from_space {
         evac(
             heap,

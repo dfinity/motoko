@@ -13,11 +13,11 @@ use motoko_rts_macros::ic_heap_fn;
 unsafe fn compacting_gc<H: Heap>(heap: &mut H) {
     compacting_gc_internal(
         heap,
-        || crate::heap::ic::get_heap_base(),
+        crate::heap::ic::get_heap_base(),
         || crate::heap::ic::HP,
         |hp| crate::heap::ic::HP = hp,
-        || crate::heap::ic::get_static_roots(),
-        || crate::closure_table::closure_table_loc(),
+        crate::heap::ic::get_static_roots(),
+        crate::closure_table::closure_table_loc(),
         |live_size| {
             crate::heap::ic::MAX_LIVE = ::core::cmp::max(crate::heap::ic::MAX_LIVE, live_size)
         },
@@ -27,28 +27,22 @@ unsafe fn compacting_gc<H: Heap>(heap: &mut H) {
 
 pub unsafe fn compacting_gc_internal<
     H: Heap,
-    GetHeapBase: Fn() -> u32,
     GetHp: Fn() -> u32,
     SetHp: Fn(u32),
-    GetStaticRoots: Fn() -> SkewedPtr,
-    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     heap: &mut H,
-    get_heap_base: GetHeapBase,
+    heap_base: u32,
     get_hp: GetHp,
     set_hp: SetHp,
-    get_static_roots: GetStaticRoots,
-    get_closure_table_loc: GetClosureTableLoc,
+    static_roots: SkewedPtr,
+    closure_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
     let old_hp = get_hp();
-    let heap_base = get_heap_base();
 
-    let static_roots = get_static_roots();
-    let closure_table_loc = get_closure_table_loc();
     mark_compact(
         heap,
         set_hp,
