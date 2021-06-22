@@ -10,7 +10,6 @@ libc = { version = "0.2.81", default_features = false }
 maplit = "1.0.2"
 motoko-rts = { path = "../motoko-rts/native" }
 proptest = { version = "1.0.0", default-features = false, features = ["std"] }
-quickcheck = "0.9"
 
 # TODO (osa): This dependency added to make sure Cargo.lock includes deps for
 # all RTS crates, as rustDeps in default.nix uses motoko-rts-tests Cargo.lock

@@ -4,10 +4,10 @@ use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_
 use motoko_rts::heap::Heap;
 use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 
+use std::collections::HashSet;
+
 use proptest::strategy::{Strategy, ValueTree};
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
-
-use std::collections::HashSet;
 
 pub unsafe fn test() {
     println!("Testing bitmap ...");

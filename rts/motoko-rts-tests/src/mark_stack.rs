@@ -1,6 +1,6 @@
-use motoko_rts::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
+use crate::heap::TestHeap;
 
-use quickcheck::{quickcheck, TestResult};
+use motoko_rts::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use std::cmp::min;
 

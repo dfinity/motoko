@@ -105,14 +105,15 @@ fn main() {
     */
 
     unsafe {
+        bigint::test();
         bitmap::test();
         closure_table::test();
-        bigint::test();
-        utf8::test();
         crc32::test();
+        leb128::test();
+        mark_stack::test();
         principal_id::test();
         text::test();
-        leb128::test();
+        utf8::test();
     }
 }
 

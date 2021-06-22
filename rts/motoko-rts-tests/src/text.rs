@@ -12,7 +12,8 @@ use motoko_rts::types::{Bytes, SkewedPtr, Words, TAG_BLOB};
 
 use std::convert::TryFrom;
 
-use quickcheck::{quickcheck, TestResult};
+use proptest::strategy::{Strategy, ValueTree};
+use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 static STR: &str = "abcdefgh";
 
@@ -78,6 +79,24 @@ pub unsafe fn test() {
 
     println!("  Testing concatenation");
     concat1(&mut heap);
+
+    drop(heap);
+
+    let mut proptest_runner = TestRunner::new(Config {
+        cases: 1_000,
+        failure_persistence: None, // TODO: I don't know what this is about, but it generates a
+        // warning in runtime
+        ..Default::default()
+    });
+
+    proptest_runner.run(
+        &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
+        |strs| {
+            let mut heap = TestHeap::new(Words(1024 * 1024));
+            concat_prop(&mut heap, strs)
+        },
+    );
+
     // quickcheck(concat_prop as fn(Vec<String>) -> TestResult);
 }
 
@@ -122,8 +141,7 @@ unsafe fn concat1<H: Heap>(heap: &mut H) {
     assert_eq!(TextIter::from_text(heap, obj).collect::<String>(), expected);
 }
 
-/*
-fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestResult {
+fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestCaseResult {
     unsafe {
         let mut obj = text_of_str(heap, "");
         for str in &strs {
@@ -135,12 +153,12 @@ fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestResult {
 
         // Check number of characters
         if text_len(obj) != expected.chars().count() as u32 {
-            return TestResult::error("text_len");
+            return Err(TestCaseError::Fail("text_len".into()));
         }
 
         // Check text size in bytes
         if text_size(obj) != Bytes(expected.len() as u32) {
-            return TestResult::error("text_size");
+            return Err(TestCaseError::Fail("text_size".into()));
         }
 
         // Generate blob
@@ -148,30 +166,30 @@ fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestResult {
 
         // Check number of characters in blob
         if text_len(text_blob) != expected.chars().count() as u32 {
-            return TestResult::error("blob text_len");
+            return Err(TestCaseError::Fail("blob text_len".into()));
         }
 
         // Check blob size in bytes
         if text_size(text_blob) != Bytes(expected.len() as u32) {
-            return TestResult::error("blob text_size");
+            return Err(TestCaseError::Fail("blob text_size".into()));
         }
 
         // Check blob iteration
-        if TextIter::from_text(heap, blob_of_text(heap, obj)).collect::<String>() != expected {
-            return TestResult::error("blob_of_text iteration");
+        let blob = blob_of_text(heap, obj);
+        if TextIter::from_text(heap, blob).collect::<String>() != expected {
+            return Err(TestCaseError::Fail("blob_of_text iteration".into()));
         }
 
         // Check blob-concat comparison
         if text_compare(text_blob, obj) != 0 {
-            return TestResult::error("text_compare of blob and text");
+            return Err(TestCaseError::Fail("text_compare of blob and text".into()));
         }
 
         // Check concat iteration
         if TextIter::from_text(heap, obj).collect::<String>() != expected {
-            return TestResult::error("iteration");
+            return Err(TestCaseError::Fail("iteration".into()));
         }
 
-        TestResult::passed()
+        Ok(())
     }
 }
-*/
