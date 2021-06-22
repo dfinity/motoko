@@ -1,12 +1,14 @@
 //! Text and text iterator tests
 
+use crate::heap::TestHeap;
+
 use motoko_rts::heap::Heap;
 use motoko_rts::text::{
     blob_of_text, decode_code_point, text_compare, text_concat, text_len, text_of_str,
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, SkewedPtr, TAG_BLOB};
+use motoko_rts::types::{Bytes, SkewedPtr, Words, TAG_BLOB};
 
 use std::convert::TryFrom;
 
@@ -43,8 +45,10 @@ impl<'a, H: Heap> Iterator for TextIter<'a, H> {
     }
 }
 
-pub unsafe fn test<H: Heap>(heap: &mut H) {
+pub unsafe fn test() {
     println!("Testing text and text iterators ...");
+
+    let mut heap = TestHeap::new(Words(1024 * 1024));
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
     for i in 0..=255u32 {
@@ -56,21 +60,24 @@ pub unsafe fn test<H: Heap>(heap: &mut H) {
         assert_eq!(out, str.len() as u32);
         assert_eq!(char::try_from(char_decoded).unwrap(), char);
 
-        let text = text_singleton(heap, char as u32);
-        assert_eq!(TextIter::from_text(heap, text).collect::<String>(), str);
+        let text = text_singleton(&mut heap, char as u32);
+        assert_eq!(
+            TextIter::from_text(&mut heap, text).collect::<String>(),
+            str
+        );
     }
 
     println!("  Testing text blob iteration");
     for i in 0..8 {
         let str = &STR[0..i + 1];
-        let text = text_of_str(heap, str);
+        let text = text_of_str(&mut heap, str);
         assert_eq!(text.tag(), TAG_BLOB);
-        let iter = TextIter::from_text(heap, text);
+        let iter = TextIter::from_text(&mut heap, text);
         assert_eq!(iter.collect::<String>(), str);
     }
 
     println!("  Testing concatenation");
-    concat1(heap);
+    concat1(&mut heap);
     // quickcheck(concat_prop as fn(Vec<String>) -> TestResult);
 }
 
