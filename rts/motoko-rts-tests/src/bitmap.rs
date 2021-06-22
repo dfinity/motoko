@@ -6,7 +6,7 @@ use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 
 use std::collections::HashSet;
 
-use proptest::strategy::{Strategy, ValueTree};
+use proptest::strategy::Strategy;
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
@@ -25,19 +25,23 @@ pub unsafe fn test() {
         ..Default::default()
     });
 
-    proptest_runner.run(&bit_index_vec_strategy(), |bits| {
-        // Max bit idx = 65,534, requires 2048 words. Add 2 words for Blob header (header +
-        // length).
-        let mut heap = TestHeap::new(Words(2051));
-        test_set_get_proptest(&mut heap, bits)
-    });
+    proptest_runner
+        .run(&bit_index_vec_strategy(), |bits| {
+            // Max bit idx = 65,534, requires 2048 words. Add 2 words for Blob header (header +
+            // length).
+            let mut heap = TestHeap::new(Words(2051));
+            test_set_get_proptest(&mut heap, bits)
+        })
+        .unwrap();
 
     println!("  Testing bit iteration");
-    proptest_runner.run(&bit_index_set_strategy(), |bits| {
-        // Same as above
-        let mut heap = TestHeap::new(Words(2051));
-        test_bit_iter(&mut heap, bits)
-    });
+    proptest_runner
+        .run(&bit_index_set_strategy(), |bits| {
+            // Same as above
+            let mut heap = TestHeap::new(Words(2051));
+            test_bit_iter(&mut heap, bits)
+        })
+        .unwrap();
 }
 
 /// Generates vectors of bit indices

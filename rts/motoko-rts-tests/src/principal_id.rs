@@ -1,6 +1,5 @@
 use crate::heap::TestHeap;
 
-use motoko_rts::heap::Heap;
 use motoko_rts::principal_id::{blob_of_principal, principal_of_blob};
 use motoko_rts::text::{text_compare, text_of_ptr_size, text_of_str};
 use motoko_rts::types::{Bytes, Words};

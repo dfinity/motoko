@@ -4,7 +4,6 @@ use motoko_rts::heap::Heap;
 use motoko_rts::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 use motoko_rts::types::Words;
 
-use proptest::strategy::{Strategy, ValueTree};
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
@@ -17,10 +16,12 @@ pub unsafe fn test() {
         ..Default::default()
     });
 
-    proptest_runner.run(&(0u32..1000u32), |n_objs| {
-        let mut heap = TestHeap::new(Words(1024 * 1024));
-        test_(&mut heap, n_objs)
-    });
+    proptest_runner
+        .run(&(0u32..1000u32), |n_objs| {
+            let mut heap = TestHeap::new(Words(1024 * 1024));
+            test_(&mut heap, n_objs)
+        })
+        .unwrap();
 }
 
 fn test_<H: Heap>(heap: &mut H, n_objs: u32) -> TestCaseResult {

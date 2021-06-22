@@ -1,7 +1,6 @@
 use crate::heap::TestHeap;
 
 use motoko_rts::closure_table::{closure_count, recall_closure, remember_closure};
-use motoko_rts::heap::Heap;
 use motoko_rts::types::{SkewedPtr, Words};
 
 pub unsafe fn test() {

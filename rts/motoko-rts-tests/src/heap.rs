@@ -1,5 +1,5 @@
 use motoko_rts::heap::Heap;
-use motoko_rts::types::{skew, Bytes, SkewedPtr, Words, WORD_SIZE};
+use motoko_rts::types::{skew, SkewedPtr, Words};
 
 pub struct TestHeap {
     heap: Box<[u8]>,

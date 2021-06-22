@@ -1,6 +1,5 @@
 use crate::heap::TestHeap;
 
-use motoko_rts::heap::Heap;
 use motoko_rts::principal_id::{base32_of_checksummed_blob, base32_to_blob};
 use motoko_rts::text::{text_compare, text_of_ptr_size};
 use motoko_rts::types::{Bytes, Words};

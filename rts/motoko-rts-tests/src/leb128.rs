@@ -1,7 +1,6 @@
 use motoko_rts::buf::Buf;
 use motoko_rts::leb128::{leb128_decode, leb128_encode, sleb128_decode, sleb128_encode};
 
-use proptest::strategy::{Strategy, ValueTree};
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
@@ -14,8 +13,12 @@ pub unsafe fn test() {
         ..Default::default()
     });
 
-    proptest_runner.run(&proptest::num::i32::ANY, roundtrip_signed);
-    proptest_runner.run(&proptest::num::u32::ANY, roundtrip_unsigned);
+    proptest_runner
+        .run(&proptest::num::i32::ANY, roundtrip_signed)
+        .unwrap();
+    proptest_runner
+        .run(&proptest::num::u32::ANY, roundtrip_unsigned)
+        .unwrap();
 }
 
 fn roundtrip_signed(val: i32) -> TestCaseResult {

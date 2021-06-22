@@ -12,7 +12,6 @@ use motoko_rts::types::{Bytes, SkewedPtr, Words, TAG_BLOB};
 
 use std::convert::TryFrom;
 
-use proptest::strategy::{Strategy, ValueTree};
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 static STR: &str = "abcdefgh";
@@ -89,15 +88,15 @@ pub unsafe fn test() {
         ..Default::default()
     });
 
-    proptest_runner.run(
-        &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
-        |strs| {
-            let mut heap = TestHeap::new(Words(1024 * 1024));
-            concat_prop(&mut heap, strs)
-        },
-    );
-
-    // quickcheck(concat_prop as fn(Vec<String>) -> TestResult);
+    proptest_runner
+        .run(
+            &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
+            |strs| {
+                let mut heap = TestHeap::new(Words(1024 * 1024));
+                concat_prop(&mut heap, strs)
+            },
+        )
+        .unwrap();
 }
 
 unsafe fn concat1<H: Heap>(heap: &mut H) {
