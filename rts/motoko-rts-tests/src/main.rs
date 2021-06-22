@@ -112,7 +112,7 @@ fn main() {
         crc32::test();
         principal_id::test();
         text::test();
-        // leb128::test();
+        leb128::test();
     }
 }
 

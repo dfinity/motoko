@@ -1,15 +1,24 @@
 use motoko_rts::buf::Buf;
 use motoko_rts::leb128::{leb128_decode, leb128_encode, sleb128_decode, sleb128_encode};
 
-use quickcheck::{quickcheck, TestResult};
+use proptest::strategy::{Strategy, ValueTree};
+use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
     println!("Testing (s)leb128 encode-decode roundtrip ...");
-    quickcheck(roundtrip_signed as fn(i32) -> TestResult);
-    quickcheck(roundtrip_unsigned as fn(u32) -> TestResult);
+
+    let mut proptest_runner = TestRunner::new(Config {
+        cases: 1_000,
+        failure_persistence: None, // TODO: I don't know what this is about, but it generates a
+        // warning in runtime
+        ..Default::default()
+    });
+
+    proptest_runner.run(&proptest::num::i32::ANY, roundtrip_signed);
+    proptest_runner.run(&proptest::num::u32::ANY, roundtrip_unsigned);
 }
 
-fn roundtrip_signed(val: i32) -> TestResult {
+fn roundtrip_signed(val: i32) -> TestCaseResult {
     unsafe {
         let mut buf = [0u8; 100];
         sleb128_encode(val, buf.as_mut_ptr());
@@ -19,11 +28,17 @@ fn roundtrip_signed(val: i32) -> TestResult {
             end: buf.as_mut_ptr().add(100),
         };
 
-        TestResult::from_bool(sleb128_decode(&mut buf_) == val)
+        if sleb128_decode(&mut buf_) == val {
+            Ok(())
+        } else {
+            Err(TestCaseError::Fail(
+                "Encode-decode roundtrip gives different value".into(),
+            ))
+        }
     }
 }
 
-fn roundtrip_unsigned(val: u32) -> TestResult {
+fn roundtrip_unsigned(val: u32) -> TestCaseResult {
     unsafe {
         let mut buf = [0u8; 100];
         leb128_encode(val, buf.as_mut_ptr());
@@ -33,6 +48,12 @@ fn roundtrip_unsigned(val: u32) -> TestResult {
             end: buf.as_mut_ptr().add(100),
         };
 
-        TestResult::from_bool(leb128_decode(&mut buf_) == val)
+        if leb128_decode(&mut buf_) == val {
+            Ok(())
+        } else {
+            Err(TestCaseError::Fail(
+                "Encode-decode roundtrip gives different value".into(),
+            ))
+        }
     }
 }
