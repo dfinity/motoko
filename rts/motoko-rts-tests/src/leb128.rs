@@ -13,9 +13,9 @@ pub unsafe fn test() {
         ..Default::default()
     });
 
-    proptest_runner
-        .run(&proptest::num::i32::ANY, roundtrip_signed)
-        .unwrap();
+    // proptest_runner
+    //     .run(&proptest::num::i32::ANY, roundtrip_signed)
+    //     .unwrap();
     proptest_runner
         .run(&proptest::num::u32::ANY, roundtrip_unsigned)
         .unwrap();
