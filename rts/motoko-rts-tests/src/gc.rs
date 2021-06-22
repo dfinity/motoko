@@ -25,23 +25,23 @@ const TAG_ARRAY: u32 = 3;
 // directly in the array, instead of via MutBox0
 const TAG_MUTBOX: u32 = 6;
 
-pub struct MotokoHeap {
+struct MotokoHeap {
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
     /// (all pointers would have to be updated).
-    pub heap: Box<[u8]>,
+    heap: Box<[u8]>,
 
     /// Where the dynamic heap starts
-    pub heap_base_offset: usize,
+    heap_base_offset: usize,
 
     /// Where the dynamic heap ends, i.e. the heap pointer
-    pub heap_ptr_offset: usize,
+    heap_ptr_offset: usize,
 
     /// Offset of the static root array: an array of pointers below `heap_base`
-    pub static_root_array_offset: usize,
+    static_root_array_offset: usize,
 
     /// Offset of the closure table. Currently we put a tagged scalar to this location and
     /// effectively skip closure table evacuation.
-    pub closure_table_offset: usize,
+    closure_table_offset: usize,
 }
 
 impl Heap for MotokoHeap {
@@ -80,27 +80,39 @@ fn write_word(heap: &mut [u8], offset: usize, word: u32) {
 }
 
 impl MotokoHeap {
+    fn address_to_offset(&self, address: usize) -> usize {
+        address - self.heap.as_ptr() as usize
+    }
+
+    fn offset_to_address(&self, offset: usize) -> usize {
+        offset + self.heap.as_ptr() as usize
+    }
+
     /// Get heap base in the process's address space
-    pub fn heap_base_address(&self) -> usize {
-        self.heap.as_ptr() as usize + self.heap_base_offset
+    fn heap_base_address(&self) -> usize {
+        self.offset_to_address(self.heap_base_offset)
     }
 
     /// Get heap pointer (i.e. where the dynamic heap ends) in the process's address space
-    pub fn heap_ptr_address(&self) -> usize {
-        self.heap.as_ptr() as usize + self.heap_ptr_offset
+    fn heap_ptr_address(&self) -> usize {
+        self.offset_to_address(self.heap_ptr_offset)
+    }
+
+    fn set_heap_ptr_address(&mut self, address: usize) {
+        self.heap_ptr_offset = self.address_to_offset(address);
     }
 
     /// Get static root array address in the process's address space
-    pub fn static_root_array_address(&self) -> usize {
-        self.heap.as_ptr() as usize + self.static_root_array_offset
+    fn static_root_array_address(&self) -> usize {
+        self.offset_to_address(self.static_root_array_offset)
     }
 
     /// Get closure table address in the process's address space
-    pub fn closure_table_address(&self) -> usize {
-        self.heap.as_ptr() as usize + self.closure_table_offset
+    fn closure_table_address(&self) -> usize {
+        self.offset_to_address(self.closure_table_offset)
     }
 
-    pub fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeap {
+    fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeap {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root.
         let static_heap_size = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
@@ -231,7 +243,7 @@ fn allocate_heap(
 /// - All of `roots` should be seen
 ///
 /// If any of these conditions do not hold this function panics.
-pub fn check_dynamic_heap(
+fn check_dynamic_heap(
     objects: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
     heap: &[u8],
@@ -332,25 +344,26 @@ pub fn test() {
     for _ in 0..1 {
         let mut new_hp: u32 = 0;
 
-        unsafe {
-            copying_gc_internal(
-                &mut heap,
-                // get_heap_base
-                || heap.heap_base_address() as u32,
-                // get_hp
-                || heap.heap_ptr_address() as u32,
-                // set_hp
-                |hp| new_hp = hp,
-                // get_static_roots
-                || skew(heap.static_root_array_address()),
-                // get_closure_table_loc
-                || heap.closure_table_address() as *mut SkewedPtr,
-                // note_live_size
-                |_live_size| {},
-                // note_reclaimed
-                |_reclaimed| {},
-            );
-        }
+        let heap_base = heap.heap_base_address() as u32;
+        let static_roots = skew(heap.static_root_array_address());
+        let closure_table_address = heap.closure_table_address() as *mut SkewedPtr;
+
+        // unsafe {
+        //     copying_gc_internal(
+        //         &mut heap,
+        //         heap_base,
+        //         // get_hp
+        //         || heap.heap_ptr_address() as u32,
+        //         // set_hp
+        //         |hp| new_hp = hp,
+        //         static_roots,
+        //         closure_table_address,
+        //         // note_live_size
+        //         |_live_size| {},
+        //         // note_reclaimed
+        //         |_reclaimed| {},
+        //     );
+        // }
 
         check_dynamic_heap(
             &refs,
