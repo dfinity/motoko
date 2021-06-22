@@ -1,2 +1,2 @@
-mod copying;
-mod mark_compact;
+pub mod copying;
+pub mod mark_compact;

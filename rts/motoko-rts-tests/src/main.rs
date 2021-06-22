@@ -12,9 +12,7 @@ mod principal_id;
 mod text;
 mod utf8;
 
-use motoko_rts::debug;
-// use motoko_rts::gc_common::collect_internal;
-use motoko_rts::types::*;
+use motoko_rts::types::Bytes;
 
 #[macro_use]
 extern crate maplit;
@@ -25,90 +23,12 @@ fn main() {
         std::process::exit(1);
     }
 
-    let mut test_heap = heap::TestHeap::new(Bytes(1024 * 1024 * 1024).to_words());
-
-    /*
-    let refs = &btreemap! {
-        0 => vec![0, 2],
-        2 => vec![0],
-        3 => vec![3],
-    };
-
-    let roots = vec![0, 2, 3];
-
-    let heap_1 = gc::MotokoHeap::new(&refs, &roots);
-
-    println!("{:?}", heap_1.heap);
-
-    unsafe {
-        debug::dump_heap(
-            // get_heap_base
-            || heap_1.heap_base_address() as u32,
-            // get_hp
-            || heap_1.heap_ptr_address() as u32,
-            // get_static_roots
-            || skew(heap_1.static_root_array_address()),
-            // get_closure_table_loc
-            || heap_1.closure_table_address() as *mut SkewedPtr,
-        );
-    }
-
-    // Check `check_dynamic_heap` sanity
-    gc::check_dynamic_heap(
-        &refs,
-        &roots,
-        &*heap_1.heap,
-        heap_1.heap_base_offset,
-        heap_1.heap_ptr_offset,
-    );
-
-    for _ in 0..3 {
-        let mut new_hp: u32 = 0;
-
-        unsafe {
-            collect_internal(
-                // get_heap_base
-                || heap_1.heap_base_address() as u32,
-                // get_hp
-                || heap_1.heap_ptr_address() as u32,
-                // set_hp
-                |hp| new_hp = hp,
-                // note_live_size
-                |_live_size| {},
-                // note_reclaimed
-                |_reclaimed| {},
-                // get_static_roots
-                || skew(heap_1.static_root_array_address()),
-                // get_closure_table_loc
-                || heap_1.closure_table_address() as *mut SkewedPtr,
-                // grow_memory
-                |ptr| {
-                    if ptr - (heap_1.heap.as_ptr() as usize) > heap_1.heap.len() {
-                        panic!(
-                            "grow_memory ptr={:#x}, heap size={:#x}",
-                            ptr,
-                            heap_1.heap.len()
-                        )
-                    }
-                },
-            );
-        }
-
-        gc::check_dynamic_heap(
-            &refs,
-            &roots,
-            &*heap_1.heap,
-            heap_1.heap_base_offset,
-            new_hp as usize - heap_1.heap.as_ptr() as usize,
-        );
-    }
-    */
-
     unsafe {
         bigint::test();
         bitmap::test();
         closure_table::test();
         crc32::test();
+        gc::test();
         leb128::test();
         mark_stack::test();
         principal_id::test();

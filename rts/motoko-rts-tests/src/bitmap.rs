@@ -19,7 +19,7 @@ pub unsafe fn test() {
     }
 
     let mut proptest_runner = TestRunner::new(Config {
-        cases: 1_000,
+        cases: 100,
         failure_persistence: None, // TODO: I don't know what this is about, but it generates a
         // warning in runtime
         ..Default::default()

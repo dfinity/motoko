@@ -5,6 +5,9 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
+use motoko_rts::debug;
+use motoko_rts::gc::copying::copying_gc_internal;
+use motoko_rts::heap::Heap;
 use motoko_rts::types::*;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -39,6 +42,33 @@ pub struct MotokoHeap {
     /// Offset of the closure table. Currently we put a tagged scalar to this location and
     /// effectively skip closure table evacuation.
     pub closure_table_offset: usize,
+}
+
+impl Heap for MotokoHeap {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+        let bytes = n.to_bytes();
+
+        // Update heap pointer
+        let old_hp = self.heap_ptr_address();
+        let new_hp = old_hp + bytes.0 as usize;
+        self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
+
+        // Grow memory if needed
+        self.grow_memory(new_hp as usize);
+
+        skew(old_hp)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
+        if ptr > heap_end {
+            // We don't allow growing memory in tests, allocate large enough for the test
+            panic!(
+                "TestHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
+                heap_end, ptr
+            );
+        }
+    }
 }
 
 fn read_word(heap: &[u8], offset: usize) -> u32 {
@@ -261,5 +291,73 @@ pub fn check_dynamic_heap(
                 object_expected_pointees[(field_idx - 1) as usize]
             );
         }
+    }
+}
+
+pub fn test() {
+    let refs = &btreemap! {
+        0 => vec![0, 2],
+        2 => vec![0],
+        3 => vec![3],
+    };
+
+    let roots = vec![0, 2, 3];
+
+    let heap = MotokoHeap::new(&refs, &roots);
+
+    println!("{:?}", heap.heap);
+
+    unsafe {
+        debug::dump_heap(
+            // get_heap_base
+            || heap.heap_base_address() as u32,
+            // get_hp
+            || heap.heap_ptr_address() as u32,
+            // get_static_roots
+            || skew(heap.static_root_array_address()),
+            // get_closure_table_loc
+            || heap.closure_table_address() as *mut SkewedPtr,
+        );
+    }
+
+    // Check `check_dynamic_heap` sanity
+    check_dynamic_heap(
+        &refs,
+        &roots,
+        &*heap.heap,
+        heap.heap_base_offset,
+        heap.heap_ptr_offset,
+    );
+
+    for _ in 0..1 {
+        let mut new_hp: u32 = 0;
+
+        unsafe {
+            copying_gc_internal(
+                &mut heap,
+                // get_heap_base
+                || heap.heap_base_address() as u32,
+                // get_hp
+                || heap.heap_ptr_address() as u32,
+                // set_hp
+                |hp| new_hp = hp,
+                // get_static_roots
+                || skew(heap.static_root_array_address()),
+                // get_closure_table_loc
+                || heap.closure_table_address() as *mut SkewedPtr,
+                // note_live_size
+                |_live_size| {},
+                // note_reclaimed
+                |_reclaimed| {},
+            );
+        }
+
+        check_dynamic_heap(
+            &refs,
+            &roots,
+            &*heap.heap,
+            heap.heap_base_offset,
+            new_hp as usize - heap.heap.as_ptr() as usize,
+        );
     }
 }
