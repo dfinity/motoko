@@ -110,7 +110,7 @@ fn main() {
         bigint::test();
         utf8::test();
         crc32::test();
-        // principal_id::test();
+        principal_id::test();
         // text::test();
         // leb128::test();
     }
