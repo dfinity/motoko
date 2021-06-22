@@ -104,15 +104,16 @@ fn main() {
     }
     */
 
-    // unsafe {
-    //     closure_table::test();
-    //     bigint::test();
-    //     utf8::test();
-    //     crc32::test();
-    //     principal_id::test();
-    //     text::test();
-    //     leb128::test();
-    // }
+    unsafe {
+        bitmap::test();
+        // closure_table::test();
+        // bigint::test();
+        // utf8::test();
+        // crc32::test();
+        // principal_id::test();
+        // text::test();
+        // leb128::test();
+    }
 }
 
 unsafe fn as_u8_slice(v: &[u32]) -> &[u8] {
