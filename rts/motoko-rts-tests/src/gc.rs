@@ -10,8 +10,10 @@ use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::heap::Heap;
 use motoko_rts::types::*;
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
@@ -25,7 +27,40 @@ const TAG_ARRAY: u32 = 3;
 // directly in the array, instead of via MutBox0
 const TAG_MUTBOX: u32 = 6;
 
+#[derive(Clone)]
 struct MotokoHeap {
+    inner: Rc<RefCell<MotokoHeapInner>>,
+}
+
+impl Heap for MotokoHeap {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+        self.inner.borrow_mut().alloc_words(n)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        self.inner.borrow_mut().grow_memory(ptr)
+    }
+}
+
+impl MotokoHeap {
+    fn heap_base_offset(&self) -> usize {
+        self.inner.borrow().heap_base_offset
+    }
+
+    fn heap_ptr_offset(&self) -> usize {
+        self.inner.borrow().heap_ptr_offset
+    }
+
+    fn heap_ptr_address(&self) -> usize {
+        self.inner.borrow().heap_ptr_address()
+    }
+
+    fn set_heap_ptr_address(&self, address: usize) {
+        self.inner.borrow_mut().set_heap_ptr_address(address)
+    }
+}
+
+struct MotokoHeapInner {
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
     /// (all pointers would have to be updated).
     heap: Box<[u8]>,
@@ -44,7 +79,7 @@ struct MotokoHeap {
     closure_table_offset: usize,
 }
 
-impl Heap for MotokoHeap {
+impl Heap for MotokoHeapInner {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes();
 
@@ -79,7 +114,7 @@ fn write_word(heap: &mut [u8], offset: usize, word: u32) {
     (&mut heap[offset..]).write_u32::<LE>(word).unwrap()
 }
 
-impl MotokoHeap {
+impl MotokoHeapInner {
     fn address_to_offset(&self, address: usize) -> usize {
         address - self.heap.as_ptr() as usize
     }
@@ -98,6 +133,7 @@ impl MotokoHeap {
         self.offset_to_address(self.heap_ptr_offset)
     }
 
+    /// Set heap pointer
     fn set_heap_ptr_address(&mut self, address: usize) {
         self.heap_ptr_offset = self.address_to_offset(address);
     }
@@ -112,7 +148,7 @@ impl MotokoHeap {
         self.offset_to_address(self.closure_table_offset)
     }
 
-    fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeap {
+    fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root.
         let static_heap_size = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
@@ -171,7 +207,7 @@ impl MotokoHeap {
         let closure_table_offset = static_heap_size + dynamic_heap_size - WORD_SIZE;
         write_word(&mut heap, closure_table_offset, 0);
 
-        MotokoHeap {
+        MotokoHeapInner {
             heap: heap.into_boxed_slice(),
             heap_base_offset: static_heap_size,
             heap_ptr_offset: total_heap_size_bytes,
@@ -315,7 +351,7 @@ pub fn test() {
 
     let roots = vec![0, 2, 3];
 
-    let heap = MotokoHeap::new(&refs, &roots);
+    let heap = MotokoHeapInner::new(&refs, &roots);
 
     println!("{:?}", heap.heap);
 
@@ -341,36 +377,43 @@ pub fn test() {
         heap.heap_ptr_offset,
     );
 
+    let heap = MotokoHeap {
+        inner: Rc::new(RefCell::new(heap)),
+    };
+
     for _ in 0..1 {
         let mut new_hp: u32 = 0;
 
-        let heap_base = heap.heap_base_address() as u32;
-        let static_roots = skew(heap.static_root_array_address());
-        let closure_table_address = heap.closure_table_address() as *mut SkewedPtr;
+        let heap_base = heap.inner.borrow().heap_base_address() as u32;
+        let static_roots = skew(heap.inner.borrow().static_root_array_address());
+        let closure_table_address = heap.inner.borrow().closure_table_address() as *mut SkewedPtr;
 
-        // unsafe {
-        //     copying_gc_internal(
-        //         &mut heap,
-        //         heap_base,
-        //         // get_hp
-        //         || heap.heap_ptr_address() as u32,
-        //         // set_hp
-        //         |hp| new_hp = hp,
-        //         static_roots,
-        //         closure_table_address,
-        //         // note_live_size
-        //         |_live_size| {},
-        //         // note_reclaimed
-        //         |_reclaimed| {},
-        //     );
-        // }
+        let heap_1 = heap.clone();
+        let heap_2 = heap.clone();
+
+        unsafe {
+            copying_gc_internal(
+                &mut heap.clone(),
+                heap_base,
+                // get_hp
+                move || heap_1.heap_ptr_address() as u32,
+                // set_hp
+                move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                static_roots,
+                closure_table_address,
+                // note_live_size
+                |_live_size| {},
+                // note_reclaimed
+                |_reclaimed| {},
+            );
+        }
 
         check_dynamic_heap(
             &refs,
             &roots,
-            &*heap.heap,
-            heap.heap_base_offset,
-            new_hp as usize - heap.heap.as_ptr() as usize,
+            &*heap.inner.borrow().heap,
+            heap.heap_base_offset(),
+            heap.heap_ptr_offset(),
         );
     }
 }
