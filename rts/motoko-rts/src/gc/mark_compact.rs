@@ -55,8 +55,8 @@ pub unsafe fn compacting_gc_internal<
     let reclaimed = old_hp - get_hp();
     note_reclaimed(Bytes(reclaimed));
 
-    let new_live_size = old_hp - heap_base;
-    note_live_size(Bytes(new_live_size));
+    let live = get_hp() - heap_base;
+    note_live_size(Bytes(live));
 }
 
 unsafe fn mark_compact<H: Heap, SetHp: Fn(u32)>(
