@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+* Fix issue #2319 (crash on import of Candid class)
+
 == 0.6.4 (2021-06-12)
 
 * For release builds, the banner (`moc --version`) now includes the release

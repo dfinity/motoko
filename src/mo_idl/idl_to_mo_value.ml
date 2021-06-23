@@ -34,7 +34,8 @@ let text_lit s = "\"" ^ Mo_values.Value.Blob.escape s ^ "\""
 let find_typ tfs f =
   try T.lookup_val_field (Idl_to_mo.check_label (fst (f.it))) tfs
   with Invalid_argument _ ->
-    raise (UnsupportedCandidFeature "unknown record or variant label in textual representation")
+    raise (UnsupportedCandidFeature
+      (Diag.error_message f.at "M0164" "import" "unknown record or variant label in textual representation"))
 
 (* Also compare with Mo_values.Show.show_val, which we cannot use here, because
    we don’t have the full type (although we could have that), and we have
@@ -69,11 +70,12 @@ let rec value v t =
   | FuncV (s, m), _ ->
     Printf.sprintf "(actor %s : actor { %s : %s }).%s"
       (text_lit s)
-      (Idllib.Escape.escape_method m)
+      (Idllib.Escape.escape_method Source.no_region m)
       (T.string_of_typ t)
-      (Idllib.Escape.escape_method m)
+      (Idllib.Escape.escape_method Source.no_region m)
   | PrincipalV s, _ ->
     "Prim.principalOfActor" ^ parens ("actor " ^ text_lit s ^ " : actor {}")
-  | _ -> raise (UnsupportedCandidFeature "Odd expected type")
+  | _ -> raise (UnsupportedCandidFeature
+    (Diag.error_message v.at "M0165" "import" "odd expected type"))
 
 let args vs ts = parens_comma (List.map2 value vs.it ts)
