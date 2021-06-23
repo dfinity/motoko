@@ -5,13 +5,14 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
-use motoko_rts::debug;
+// use motoko_rts::debug;
 use motoko_rts::gc::copying::copying_gc_internal;
+use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::heap::Heap;
 use motoko_rts::types::*;
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::rc::Rc;
 
@@ -256,7 +257,7 @@ fn allocate_heap(
         }
     }
 
-    println!("object addresses={:#?}", object_addrs);
+    // println!("object addresses={:#?}", object_addrs);
 
     // Second pass adds fields
     for (obj, refs) in refs {
@@ -342,31 +343,79 @@ fn check_dynamic_heap(
     }
 }
 
-pub fn test() {
-    let refs = &btreemap! {
-        0 => vec![0, 2],
-        2 => vec![0],
-        3 => vec![3],
-    };
+enum GC {
+    Copying,
+    MarkCompact,
+}
 
-    let roots = vec![0, 2, 3];
+impl GC {
+    fn run(&self, heap: MotokoHeap) {
+        let heap_base = heap.inner.borrow().heap_base_address() as u32;
+        let static_roots = skew(heap.inner.borrow().static_root_array_address());
+        let closure_table_address = heap.inner.borrow().closure_table_address() as *mut SkewedPtr;
 
-    let heap = MotokoHeapInner::new(&refs, &roots);
+        let heap_1 = heap.clone();
+        let heap_2 = heap.clone();
 
-    println!("{:?}", heap.heap);
+        match self {
+            GC::Copying => {
+                unsafe {
+                    copying_gc_internal(
+                        &mut heap.clone(),
+                        heap_base,
+                        // get_hp
+                        move || heap_1.heap_ptr_address() as u32,
+                        // set_hp
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        static_roots,
+                        closure_table_address,
+                        // note_live_size
+                        |_live_size| {},
+                        // note_reclaimed
+                        |_reclaimed| {},
+                    );
+                }
+            }
 
-    unsafe {
-        debug::dump_heap(
-            heap.heap_base_address() as u32,
-            heap.heap_ptr_address() as u32,
-            skew(heap.static_root_array_address()),
-            heap.closure_table_address() as *mut SkewedPtr,
-        );
+            GC::MarkCompact => {
+                unsafe {
+                    compacting_gc_internal(
+                        &mut heap.clone(),
+                        heap_base,
+                        // get_hp
+                        move || heap_1.heap_ptr_address() as u32,
+                        // set_hp
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        static_roots,
+                        closure_table_address,
+                        // note_live_size
+                        |_live_size| {},
+                        // note_reclaimed
+                        |_reclaimed| {},
+                    );
+                }
+            }
+        }
     }
+}
+
+fn test_heap(refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32], gc: GC) {
+    let heap = MotokoHeapInner::new(refs, roots);
+
+    // println!("{:?}", heap.heap);
+
+    // unsafe {
+    //     debug::dump_heap(
+    //         heap.heap_base_address() as u32,
+    //         heap.heap_ptr_address() as u32,
+    //         skew(heap.static_root_array_address()),
+    //         heap.closure_table_address() as *mut SkewedPtr,
+    //     );
+    // }
 
     // Check `check_dynamic_heap` sanity
     check_dynamic_heap(
-        &refs,
+        refs,
         &roots,
         &*heap.heap,
         heap.heap_base_offset,
@@ -378,38 +427,27 @@ pub fn test() {
     };
 
     for _ in 0..3 {
-        let mut new_hp: u32 = 0;
-
-        let heap_base = heap.inner.borrow().heap_base_address() as u32;
-        let static_roots = skew(heap.inner.borrow().static_root_array_address());
-        let closure_table_address = heap.inner.borrow().closure_table_address() as *mut SkewedPtr;
-
-        let heap_1 = heap.clone();
-        let heap_2 = heap.clone();
-
-        unsafe {
-            copying_gc_internal(
-                &mut heap.clone(),
-                heap_base,
-                // get_hp
-                move || heap_1.heap_ptr_address() as u32,
-                // set_hp
-                move |hp| heap_2.set_heap_ptr_address(hp as usize),
-                static_roots,
-                closure_table_address,
-                // note_live_size
-                |_live_size| {},
-                // note_reclaimed
-                |_reclaimed| {},
-            );
-        }
+        gc.run(heap.clone());
 
         check_dynamic_heap(
-            &refs,
+            refs,
             &roots,
             &*heap.inner.borrow().heap,
             heap.heap_base_offset(),
             heap.heap_ptr_offset(),
         );
     }
+}
+
+pub fn test() {
+    let heap = btreemap! {
+        0 => vec![0, 2],
+        2 => vec![0],
+        3 => vec![3],
+    };
+
+    let roots = vec![0, 2, 3];
+
+    test_heap(&heap, &roots, GC::Copying);
+    // test_heap(&heap, &roots, GC::MarkCompact);
 }

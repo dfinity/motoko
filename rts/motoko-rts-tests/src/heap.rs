@@ -1,9 +1,6 @@
 use motoko_rts::heap::Heap;
 use motoko_rts::types::{skew, SkewedPtr, Words};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 pub struct TestHeap {
     heap: Box<[u8]>,
     hp: usize,
