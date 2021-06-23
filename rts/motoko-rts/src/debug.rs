@@ -22,33 +22,24 @@ unsafe fn print_closure(p: usize) {
     print(&write_buf);
 }
 
-pub unsafe fn dump_heap<
-    GetHeapBase: Fn() -> u32,
-    GetHp: Fn() -> u32,
-    GetStaticRoots: Fn() -> SkewedPtr,
-    GetClosureTableLoc: Fn() -> *mut SkewedPtr,
->(
-    get_heap_base: GetHeapBase,
-    get_hp: GetHp,
-    get_static_roots: GetStaticRoots,
-    get_closure_table_loc: GetClosureTableLoc,
+pub unsafe fn dump_heap(
+    heap_base: u32,
+    hp: u32,
+    static_roots: SkewedPtr,
+    closure_table_loc: *mut SkewedPtr,
 ) {
-    print_closure_table(get_closure_table_loc);
-    print_static_roots(get_static_roots);
-    print_heap(get_heap_base, get_hp);
+    print_closure_table(closure_table_loc);
+    print_static_roots(static_roots);
+    print_heap(heap_base, hp);
 }
 
-pub(crate) unsafe fn print_closure_table<GetClosureTableLoc: Fn() -> *mut SkewedPtr>(
-    get_closure_table_loc: GetClosureTableLoc,
-) {
-    let closure_tbl = get_closure_table_loc();
-
-    if (*closure_tbl).0 == 0 {
+pub(crate) unsafe fn print_closure_table(closure_tbl_loc: *mut SkewedPtr) {
+    if (*closure_tbl_loc).0 == 0 {
         println!(100, "Closure table not initialized");
         return;
     }
 
-    let arr = (*closure_tbl).unskew() as *mut Array;
+    let arr = (*closure_tbl_loc).unskew() as *mut Array;
     let len = (*arr).len;
 
     if len == 0 {
@@ -73,10 +64,8 @@ pub(crate) unsafe fn print_closure_table<GetClosureTableLoc: Fn() -> *mut Skewed
     println!(50, "End of closure table");
 }
 
-pub(crate) unsafe fn print_static_roots<GetStaticRoots: Fn() -> SkewedPtr>(
-    get_static_roots: GetStaticRoots,
-) {
-    let static_roots = get_static_roots().unskew() as *mut Array;
+pub(crate) unsafe fn print_static_roots(static_roots: SkewedPtr) {
+    let static_roots = static_roots.unskew() as *mut Array;
     println!(100, "static roots at {:#x}", static_roots as usize);
 
     let len = (*static_roots).len;
@@ -103,25 +92,19 @@ pub(crate) unsafe fn print_static_roots<GetStaticRoots: Fn() -> SkewedPtr>(
     println!(50, "End of static roots");
 }
 
-unsafe fn print_heap<GetHeapBase: Fn() -> u32, GetHp: Fn() -> u32>(
-    get_heap_base: GetHeapBase,
-    get_hp: GetHp,
-) {
-    let heap_begin = get_heap_base();
-    let heap_end = get_hp();
-
+unsafe fn print_heap(heap_start: u32, heap_end: u32) {
     println!(
         200,
-        "Heap begin={:#x}, heap end={:#x}, size={} bytes",
-        heap_begin,
+        "Heap start={:#x}, heap end={:#x}, size={} bytes",
+        heap_start,
         heap_end,
-        heap_end - heap_begin
+        heap_end - heap_start
     );
 
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
-    let mut p = heap_begin;
+    let mut p = heap_start;
     let mut i: Words<u32> = Words(0);
     while p < heap_end {
         print_boxed_object(&mut write_buf, p as usize);

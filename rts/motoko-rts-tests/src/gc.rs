@@ -357,14 +357,10 @@ pub fn test() {
 
     unsafe {
         debug::dump_heap(
-            // get_heap_base
-            || heap.heap_base_address() as u32,
-            // get_hp
-            || heap.heap_ptr_address() as u32,
-            // get_static_roots
-            || skew(heap.static_root_array_address()),
-            // get_closure_table_loc
-            || heap.closure_table_address() as *mut SkewedPtr,
+            heap.heap_base_address() as u32,
+            heap.heap_ptr_address() as u32,
+            skew(heap.static_root_array_address()),
+            heap.closure_table_address() as *mut SkewedPtr,
         );
     }
 
@@ -381,7 +377,7 @@ pub fn test() {
         inner: Rc::new(RefCell::new(heap)),
     };
 
-    for _ in 0..1 {
+    for _ in 0..3 {
         let mut new_hp: u32 = 0;
 
         let heap_base = heap.inner.borrow().heap_base_address() as u32;
