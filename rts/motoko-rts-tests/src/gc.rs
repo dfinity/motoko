@@ -21,13 +21,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
 type ObjectIdx = u32;
 
-const WORD_SIZE: usize = 4;
-
-// We only allocate arrays in the dynamic heap for now
-const TAG_ARRAY: u32 = 3;
-// MutBox is used for static root array elements (TODO: We could store pointers to dynamic roots
-// directly in the array, instead of via MutBox0
-const TAG_MUTBOX: u32 = 6;
+const WORD_SIZE: usize = motoko_rts::types::WORD_SIZE as usize;
 
 // Max allowed size for the mark stack in mark-compact GC tests
 const MAX_MARK_STACK_SIZE: usize = 100;
