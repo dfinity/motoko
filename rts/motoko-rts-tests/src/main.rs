@@ -1,4 +1,4 @@
-#![feature(ptr_offset_from, map_first_last)]
+#![feature(ptr_offset_from, map_first_last, clamp)]
 
 mod bigint;
 mod bitmap;

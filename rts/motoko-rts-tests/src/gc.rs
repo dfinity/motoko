@@ -9,6 +9,7 @@
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::heap::Heap;
+use motoko_rts::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::types::*;
 
 use std::cell::RefCell;
@@ -27,6 +28,9 @@ const TAG_ARRAY: u32 = 3;
 // MutBox is used for static root array elements (TODO: We could store pointers to dynamic roots
 // directly in the array, instead of via MutBox0
 const TAG_MUTBOX: u32 = 6;
+
+// Max allowed size for the mark stack in mark-compact GC tests
+const MAX_MARK_STACK_SIZE: usize = 100;
 
 #[derive(Clone)]
 struct MotokoHeap {
@@ -149,23 +153,55 @@ impl MotokoHeapInner {
         self.offset_to_address(self.closure_table_offset)
     }
 
-    fn new(map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, roots: &[ObjectIdx]) -> MotokoHeapInner {
+    fn new(
+        map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+        roots: &[ObjectIdx],
+        gc: GC,
+    ) -> MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root.
-        let static_heap_size = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
-        let dynamic_heap_size = {
+        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
+        let dynamic_heap_size_bytes = {
             let object_headers_words = map.len() * 3;
             let references_words = map.values().map(|refs| refs.len()).sum::<usize>();
             let closure_table_words = 1;
             (object_headers_words + references_words + closure_table_words) * WORD_SIZE
         };
-        let total_heap_size_bytes = static_heap_size + dynamic_heap_size;
+        let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
+
+        let heap_size = match gc {
+            GC::Copying => {
+                let to_space_bytes = dynamic_heap_size_bytes;
+                total_heap_size_bytes + to_space_bytes
+            }
+            GC::MarkCompact => {
+                let bitmap_size_bytes = {
+                    let dynamic_heap_words =
+                        Bytes(dynamic_heap_size_bytes as u32).to_words().0 as usize;
+
+                    let mark_bit_bytes = (dynamic_heap_words + 7) / 8;
+
+                    // The bitmap implementation rounds up to 64-bits to be able to read as many
+                    // bits as possible in one instruction and potentially skip 64 words in the
+                    // heap with single 64-bit comparison
+                    (((mark_bit_bytes + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0 as usize
+                };
+                // In the worst case the entire heap will be pushed to the mark stack, but in tests
+                // we limit the size
+                let mark_stack_words = map
+                    .len()
+                    .clamp(INIT_STACK_SIZE.0 as usize, MAX_MARK_STACK_SIZE)
+                    + size_of::<Blob>().0 as usize;
+
+                total_heap_size_bytes + bitmap_size_bytes + (mark_stack_words * WORD_SIZE)
+            }
+        };
 
         // Double the dynamic heap size to allow GC
-        let mut heap: Vec<u8> = vec![0; total_heap_size_bytes + dynamic_heap_size];
+        let mut heap: Vec<u8> = vec![0; heap_size];
 
         // Maps `ObjectIdx`s into their offsets in the heap
-        let object_addrs: Vec<usize> = allocate_heap(map, &mut heap, static_heap_size);
+        let object_addrs: Vec<usize> = allocate_heap(map, &mut heap, static_heap_size_bytes);
 
         // List of root object addresses
         let root_addresses: Vec<usize> = roots
@@ -205,12 +241,12 @@ impl MotokoHeapInner {
         }
 
         // Add closure table at the end of the heap. Currently closure table is just a scalar.
-        let closure_table_offset = static_heap_size + dynamic_heap_size - WORD_SIZE;
+        let closure_table_offset = static_heap_size_bytes + dynamic_heap_size_bytes - WORD_SIZE;
         write_word(&mut heap, closure_table_offset, 0);
 
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
-            heap_base_offset: static_heap_size,
+            heap_base_offset: static_heap_size_bytes,
             heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
             closure_table_offset,
@@ -343,6 +379,7 @@ fn check_dynamic_heap(
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 enum GC {
     Copying,
     MarkCompact,
@@ -400,7 +437,7 @@ impl GC {
 }
 
 fn test_heap(refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32], gc: GC) {
-    let heap = MotokoHeapInner::new(refs, roots);
+    let heap = MotokoHeapInner::new(refs, roots, gc);
 
     // println!("{:?}", heap.heap);
 

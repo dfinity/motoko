@@ -7,7 +7,7 @@ use crate::types::{Blob, Words};
 use core::ptr::null_mut;
 
 /// Initial stack size
-const INIT_STACK_SIZE: Words<u32> = Words(64);
+pub const INIT_STACK_SIZE: Words<u32> = Words(64);
 
 /// Pointer to the `blob` object for the mark stack. Used to get the capacity of the stack.
 static mut STACK_BLOB_PTR: *mut Blob = null_mut();
