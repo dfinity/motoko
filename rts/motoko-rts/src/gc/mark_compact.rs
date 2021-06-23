@@ -114,10 +114,13 @@ unsafe fn update_fwd_refs(heap_base: u32) {
         // object header
         unthread(p, free);
 
+        // Get the size before threading the fields, to handle self references.
+        let size = object_size(p as usize).to_bytes().0;
+
         // Thread fields
         thread_obj_fields(p, heap_base);
 
-        free += object_size(p as usize).to_bytes().0;
+        free += size;
 
         bit = bitmap_iter.next();
     }
