@@ -486,5 +486,5 @@ pub fn test() {
     let roots = vec![0, 2, 3];
 
     test_heap(&heap, &roots, GC::Copying);
-    // test_heap(&heap, &roots, GC::MarkCompact);
+    test_heap(&heap, &roots, GC::MarkCompact);
 }
