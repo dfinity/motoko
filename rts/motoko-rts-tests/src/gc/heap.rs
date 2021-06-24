@@ -1,5 +1,4 @@
-use super::utils::{read_word, write_word, GC};
-use super::{ObjectIdx, MAX_MARK_STACK_SIZE, WORD_SIZE};
+use super::utils::{read_word, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
 
 use motoko_rts::heap::Heap;
 use motoko_rts::mark_stack::INIT_STACK_SIZE;

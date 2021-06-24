@@ -9,7 +9,7 @@ mod heap;
 mod utils;
 
 use heap::MotokoHeap;
-use utils::{read_word, GC};
+use utils::{read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 // use motoko_rts::debug;
 use motoko_rts::gc::copying::copying_gc_internal;
@@ -21,15 +21,10 @@ use std::collections::{BTreeMap, HashMap};
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
-type ObjectIdx = u32;
-
-const WORD_SIZE: usize = motoko_rts::types::WORD_SIZE as usize;
-
-// Max allowed size for the mark stack in mark-compact GC tests
-const MAX_MARK_STACK_SIZE: usize = 100;
-
 pub fn test() {
     println!("Testing garbage collection ...");
+
+    // TODO: Add more tests
 
     let heap = btreemap! {
         0 => vec![0, 2],
@@ -39,11 +34,23 @@ pub fn test() {
 
     let roots = vec![0, 2, 3];
 
-    test_gc(&heap, &roots, GC::Copying);
-    test_gc(&heap, &roots, GC::MarkCompact);
+    test_gcs(&TestHeap { heap, roots });
 }
 
-fn test_gc(refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32], gc: GC) {
+#[derive(Debug)]
+struct TestHeap {
+    heap: BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    roots: Vec<ObjectIdx>,
+}
+
+/// Test all GC implementations with the given heap
+fn test_gcs(heap_descr: &TestHeap) {
+    for gc in &GC_IMPLS {
+        test_gc(*gc, &heap_descr.heap, &heap_descr.roots);
+    }
+}
+
+fn test_gc(gc: GC, refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32]) {
     let heap = MotokoHeap::new(refs, roots, gc);
 
     // println!("{:?}", heap.heap);
