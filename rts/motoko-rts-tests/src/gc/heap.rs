@@ -218,42 +218,7 @@ impl MotokoHeapInner {
         let object_addrs: Vec<usize> =
             create_dynamic_heap(map, &mut heap[static_heap_size_bytes..]);
 
-        // List of root object addresses
-        let root_addresses: Vec<usize> = roots
-            .iter()
-            .map(|obj| object_addrs[*obj as usize])
-            .collect();
-
-        // Create static root array. Each element of the array is a MutBox pointing to the actual
-        // root.
-        write_word(&mut heap, 0, TAG_ARRAY);
-        write_word(&mut heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
-
-        // Current offset in the heap for the next static roots array element
-        let mut root_addr_offset = 2 * WORD_SIZE;
-
-        // Current offset in the heap for the MutBox of the next root
-        let mut mutbox_offset = (2 + roots.len()) * WORD_SIZE;
-
-        for root_address in root_addresses {
-            // Add a MutBox for the object
-            write_word(&mut heap, mutbox_offset, TAG_MUTBOX);
-            write_word(
-                &mut heap,
-                mutbox_offset + WORD_SIZE,
-                u32::try_from(root_address).unwrap().wrapping_sub(1),
-            );
-
-            let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-            write_word(
-                &mut heap,
-                root_addr_offset,
-                u32::try_from(mutbox_addr).unwrap().wrapping_sub(1),
-            );
-
-            root_addr_offset += WORD_SIZE;
-            mutbox_offset += 2 * WORD_SIZE;
-        }
+        create_static_heap(roots, &object_addrs, &mut heap[..static_heap_size_bytes]);
 
         // Add closure table at the end of the heap. Currently closure table is just a scalar.
         let closure_table_offset = static_heap_size_bytes + dynamic_heap_size_bytes - WORD_SIZE;
@@ -271,16 +236,22 @@ impl MotokoHeapInner {
 
 /// Given a heap description (as a map from objects to objects), and the dynamic part of the heap
 /// (as an array), initialize the dynamic heap with objects.
-fn create_dynamic_heap(refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, heap: &mut [u8]) -> Vec<usize> {
+///
+/// Returns a mapping from object indices (`ObjectIdx`) to their addresses (see module
+/// documentation for "offset" and "address" definitions).
+fn create_dynamic_heap(
+    refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    dynamic_heap: &mut [u8],
+) -> Vec<usize> {
     if refs.is_empty() {
         return vec![];
     }
 
     let last_obj = *refs.last_key_value().as_ref().unwrap().0;
 
-    let heap_start = heap.as_ptr() as usize;
+    let heap_start = dynamic_heap.as_ptr() as usize;
 
-    // Maps objects to their addresses in the heap
+    // Maps objects to their addresses
     let mut object_addrs: Vec<usize> = vec![usize::MAX; last_obj as usize + 1];
 
     // First pass allocates objects without fields
@@ -290,15 +261,19 @@ fn create_dynamic_heap(refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, heap: &mut [u
             object_addrs[*obj as usize] = heap_start + heap_offset;
 
             // Store object header
-            write_word(heap, heap_offset, TAG_ARRAY);
+            write_word(dynamic_heap, heap_offset, TAG_ARRAY);
             heap_offset += WORD_SIZE;
 
             // Store length: tag + refs
-            write_word(heap, heap_offset, u32::try_from(refs.len() + 1).unwrap());
+            write_word(
+                dynamic_heap,
+                heap_offset,
+                u32::try_from(refs.len() + 1).unwrap(),
+            );
             heap_offset += WORD_SIZE;
 
             // Store object value (tag)
-            write_word(heap, heap_offset, obj << 1);
+            write_word(dynamic_heap, heap_offset, obj << 1);
             heap_offset += WORD_SIZE;
 
             // Leave space for the fields
@@ -315,9 +290,50 @@ fn create_dynamic_heap(refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, heap: &mut [u
             // -1 for skewing
             let ref_addr = object_addrs[*ref_ as usize].wrapping_sub(1);
             let field_offset = obj_offset + (3 + ref_idx) * WORD_SIZE;
-            write_word(heap, field_offset, u32::try_from(ref_addr).unwrap());
+            write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
         }
     }
 
     object_addrs
+}
+
+/// Given a root set (`roots`, may contain duplicates), a mapping from object indices to addresses
+/// (`object_addrs`), and the static part of the heap, initialize the static heap with the static
+/// root array.
+fn create_static_heap(roots: &[ObjectIdx], object_addrs: &[usize], heap: &mut [u8]) {
+    let root_addresses: Vec<usize> = roots
+        .iter()
+        .map(|obj| object_addrs[*obj as usize])
+        .collect();
+
+    // Create static root array. Each element of the array is a MutBox pointing to the actual
+    // root.
+    write_word(heap, 0, TAG_ARRAY);
+    write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
+
+    // Current offset in the heap for the next static roots array element
+    let mut root_addr_offset = 2 * WORD_SIZE;
+
+    // Current offset in the heap for the MutBox of the next root
+    let mut mutbox_offset = (2 + roots.len()) * WORD_SIZE;
+
+    for root_address in root_addresses {
+        // Add a MutBox for the object
+        write_word(heap, mutbox_offset, TAG_MUTBOX);
+        write_word(
+            heap,
+            mutbox_offset + WORD_SIZE,
+            u32::try_from(root_address).unwrap().wrapping_sub(1),
+        );
+
+        let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
+        write_word(
+            heap,
+            root_addr_offset,
+            u32::try_from(mutbox_addr).unwrap().wrapping_sub(1),
+        );
+
+        root_addr_offset += WORD_SIZE;
+        mutbox_offset += 2 * WORD_SIZE;
+    }
 }
