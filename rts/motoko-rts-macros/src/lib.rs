@@ -31,7 +31,7 @@ pub fn ic_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
         .enumerate()
         .map(|(i, arg)| match arg {
             syn::FnArg::Receiver(_) => {
-                panic!("IC functions can't have recievers (`&self`, `&mut self`, etc.)")
+                panic!("IC functions can't have receivers (`&self`, `&mut self`, etc.)")
             }
             syn::FnArg::Typed(pat) => (
                 syn::Ident::new(&format!("arg{}", i), proc_macro2::Span::call_site()),
@@ -100,7 +100,7 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
         .enumerate()
         .filter_map(|(i, arg)| match arg {
             syn::FnArg::Receiver(_) => {
-                panic!("IC functions can't have recievers (`&self`, `&mut self`, etc.)")
+                panic!("IC functions can't have receivers (`&self`, `&mut self`, etc.)")
             }
             syn::FnArg::Typed(pat) => {
                 if i == 0 {
