@@ -1,4 +1,4 @@
-use crate::heap::TestHeap;
+use crate::memory::TestMemory;
 
 use motoko_rts::principal_id::{blob_of_principal, principal_of_blob};
 use motoko_rts::text::{text_compare, text_of_ptr_size, text_of_str};
@@ -7,7 +7,7 @@ use motoko_rts::types::{Bytes, Words};
 pub unsafe fn test() {
     println!("Testing principal id encoding ...");
 
-    let mut heap = TestHeap::new(Words(1024 * 1024));
+    let mut heap = TestMemory::new(Words(1024 * 1024));
 
     //
     // Encoding

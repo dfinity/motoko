@@ -1,4 +1,4 @@
-use super::Heap;
+use super::Memory;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -20,13 +20,13 @@ pub(crate) static mut HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    pub(crate) fn get_heap_base() -> u32;
+    pub(crate) fn get_mem_base() -> u32;
     pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
 #[ic_fn]
 unsafe fn init() {
-    HP = get_heap_base() as u32;
+    HP = get_mem_base() as u32;
 }
 
 #[ic_fn]
@@ -45,19 +45,19 @@ unsafe fn get_total_allocations() -> Bytes<u64> {
 }
 
 #[ic_fn]
-unsafe fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_heap_base())
+unsafe fn get_mem_size() -> Bytes<u32> {
+    Bytes(HP - get_mem_base())
 }
 
-pub struct IcHeap;
+pub struct IcMemory;
 
-impl Heap for IcHeap {
+impl Memory for IcMemory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes();
         // Update ALLOCATED
         ALLOCATED += Bytes(bytes.0 as u64);
 
-        // Update heap pointer
+        // Update mem pointer
         let old_hp = HP;
         let new_hp = old_hp + bytes.0;
         HP = new_hp;

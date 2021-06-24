@@ -1,4 +1,4 @@
-use crate::heap::TestHeap;
+use crate::memory::TestMemory;
 
 use motoko_rts::principal_id::{base32_of_checksummed_blob, base32_to_blob};
 use motoko_rts::text::{text_compare, text_of_ptr_size};
@@ -7,7 +7,7 @@ use motoko_rts::types::{Bytes, Words};
 pub unsafe fn test() {
     println!("Testing crc32 ...");
 
-    let mut heap = TestHeap::new(Words(1024 * 1024));
+    let mut heap = TestMemory::new(Words(1024 * 1024));
 
     //
     // Encoding

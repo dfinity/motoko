@@ -1,7 +1,7 @@
-//! A stack for marking heap objects (for GC). There should be no allocation after the stack
+//! A stack for marking mem objects (for GC). There should be no allocation after the stack
 //! otherwise things will break as we push. This invariant is checked in debug builds.
 
-use crate::heap::Heap;
+use crate::memory::Memory;
 use crate::types::{Blob, Words};
 
 use core::ptr::null_mut;
@@ -21,11 +21,11 @@ static mut STACK_TOP: *mut usize = null_mut();
 /// Next free slot in the mark stack
 static mut STACK_PTR: *mut usize = null_mut();
 
-pub unsafe fn alloc_mark_stack<H: Heap>(heap: &mut H) {
+pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
     debug_assert!(STACK_BLOB_PTR.is_null());
 
-    // Allocating an actual object here to not break dump_heap
-    STACK_BLOB_PTR = heap.alloc_blob(INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
+    // Allocating an actual object here to not break dump_mem
+    STACK_BLOB_PTR = mem.alloc_blob(INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
     STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
     STACK_PTR = STACK_BASE;
     STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.0 as usize);
@@ -39,9 +39,9 @@ pub unsafe fn free_mark_stack() {
 }
 
 /// Doubles the stack size
-unsafe fn grow_stack<H: Heap>(heap: &mut H) {
+unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
-    let p = heap.alloc_words(stack_cap).unskew() as *mut usize;
+    let p = mem.alloc_words(stack_cap).unskew() as *mut usize;
 
     // Make sure nothing was allocated after the stack
     debug_assert_eq!(STACK_TOP, p);
@@ -50,9 +50,9 @@ unsafe fn grow_stack<H: Heap>(heap: &mut H) {
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
 }
 
-pub unsafe fn push_mark_stack<H: Heap>(heap: &mut H, obj: usize) {
+pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize) {
     if STACK_PTR == STACK_TOP {
-        grow_stack(heap);
+        grow_stack(mem);
     }
 
     *STACK_PTR = obj;

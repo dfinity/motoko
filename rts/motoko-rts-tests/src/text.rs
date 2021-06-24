@@ -1,8 +1,8 @@
 //! Text and text iterator tests
 
-use crate::heap::TestHeap;
+use crate::memory::TestMemory;
 
-use motoko_rts::heap::Heap;
+use motoko_rts::memory::Memory;
 use motoko_rts::text::{
     blob_of_text, decode_code_point, text_compare, text_concat, text_len, text_of_str,
     text_singleton, text_size,
@@ -16,21 +16,21 @@ use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 static STR: &str = "abcdefgh";
 
-struct TextIter<'a, H: Heap> {
+struct TextIter<'a, M: Memory> {
     obj: SkewedPtr,
-    heap: &'a mut H,
+    mem: &'a mut M,
 }
 
-impl<'a, H: Heap> TextIter<'a, H> {
-    fn from_text(heap: &'a mut H, text: SkewedPtr) -> Self {
+impl<'a, M: Memory> TextIter<'a, M> {
+    fn from_text(mem: &'a mut M, text: SkewedPtr) -> Self {
         TextIter {
-            obj: unsafe { text_iter(heap, text) },
-            heap,
+            obj: unsafe { text_iter(mem, text) },
+            mem,
         }
     }
 }
 
-impl<'a, H: Heap> Iterator for TextIter<'a, H> {
+impl<'a, M: Memory> Iterator for TextIter<'a, M> {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
@@ -38,7 +38,7 @@ impl<'a, H: Heap> Iterator for TextIter<'a, H> {
             if text_iter_done(self.obj) == 1 {
                 None
             } else {
-                let next = text_iter_next(self.heap, self.obj);
+                let next = text_iter_next(self.mem, self.obj);
                 Some(char::try_from(next).unwrap())
             }
         }
@@ -48,7 +48,7 @@ impl<'a, H: Heap> Iterator for TextIter<'a, H> {
 pub unsafe fn test() {
     println!("Testing text and text iterators ...");
 
-    let mut heap = TestHeap::new(Words(1024 * 1024));
+    let mut mem = TestMemory::new(Words(1024 * 1024));
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
     for i in 0..=255u32 {
@@ -60,26 +60,23 @@ pub unsafe fn test() {
         assert_eq!(out, str.len() as u32);
         assert_eq!(char::try_from(char_decoded).unwrap(), char);
 
-        let text = text_singleton(&mut heap, char as u32);
-        assert_eq!(
-            TextIter::from_text(&mut heap, text).collect::<String>(),
-            str
-        );
+        let text = text_singleton(&mut mem, char as u32);
+        assert_eq!(TextIter::from_text(&mut mem, text).collect::<String>(), str);
     }
 
     println!("  Testing text blob iteration");
     for i in 0..8 {
         let str = &STR[0..i + 1];
-        let text = text_of_str(&mut heap, str);
+        let text = text_of_str(&mut mem, str);
         assert_eq!(text.tag(), TAG_BLOB);
-        let iter = TextIter::from_text(&mut heap, text);
+        let iter = TextIter::from_text(&mut mem, text);
         assert_eq!(iter.collect::<String>(), str);
     }
 
     println!("  Testing concatenation");
-    concat1(&mut heap);
+    concat1(&mut mem);
 
-    drop(heap);
+    drop(mem);
 
     let mut proptest_runner = TestRunner::new(Config {
         cases: 1_000,
@@ -92,21 +89,21 @@ pub unsafe fn test() {
         .run(
             &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
             |strs| {
-                let mut heap = TestHeap::new(Words(1024 * 1024));
-                concat_prop(&mut heap, strs)
+                let mut mem = TestMemory::new(Words(1024 * 1024));
+                concat_prop(&mut mem, strs)
             },
         )
         .unwrap();
 }
 
-unsafe fn concat1<H: Heap>(heap: &mut H) {
+unsafe fn concat1<M: Memory>(mem: &mut M) {
     // A simple test extracted from a QuickCheck generated test case
     let strs = ["a", "öabcdef", "y"];
 
-    let mut obj = text_of_str(heap, "");
+    let mut obj = text_of_str(mem, "");
     for str in &strs {
-        let str_obj = text_of_str(heap, str);
-        obj = text_concat(heap, obj, str_obj);
+        let str_obj = text_of_str(mem, str);
+        obj = text_concat(mem, obj, str_obj);
     }
 
     let expected = strs.concat();
@@ -118,7 +115,7 @@ unsafe fn concat1<H: Heap>(heap: &mut H) {
     assert_eq!(text_size(obj), Bytes(expected.len() as u32));
 
     // Generate blob
-    let text_blob = blob_of_text(heap, obj);
+    let text_blob = blob_of_text(mem, obj);
 
     // Check number of characters in blob
     assert_eq!(text_len(text_blob), expected.chars().count() as u32);
@@ -127,25 +124,22 @@ unsafe fn concat1<H: Heap>(heap: &mut H) {
     assert_eq!(text_size(text_blob), Bytes(expected.len() as u32));
 
     // Check blob iteration
-    let blob = blob_of_text(heap, obj);
-    assert_eq!(
-        TextIter::from_text(heap, blob).collect::<String>(),
-        expected
-    );
+    let blob = blob_of_text(mem, obj);
+    assert_eq!(TextIter::from_text(mem, blob).collect::<String>(), expected);
 
     // Check blob-concat comparison
     assert_eq!(text_compare(text_blob, obj), 0);
 
     // Check concat iteration
-    assert_eq!(TextIter::from_text(heap, obj).collect::<String>(), expected);
+    assert_eq!(TextIter::from_text(mem, obj).collect::<String>(), expected);
 }
 
-fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestCaseResult {
+fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
     unsafe {
-        let mut obj = text_of_str(heap, "");
+        let mut obj = text_of_str(mem, "");
         for str in &strs {
-            let str_obj = text_of_str(heap, str);
-            obj = text_concat(heap, obj, str_obj);
+            let str_obj = text_of_str(mem, str);
+            obj = text_concat(mem, obj, str_obj);
         }
 
         let expected = strs.concat();
@@ -161,7 +155,7 @@ fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestCaseResult {
         }
 
         // Generate blob
-        let text_blob = blob_of_text(heap, obj);
+        let text_blob = blob_of_text(mem, obj);
 
         // Check number of characters in blob
         if text_len(text_blob) != expected.chars().count() as u32 {
@@ -174,8 +168,8 @@ fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestCaseResult {
         }
 
         // Check blob iteration
-        let blob = blob_of_text(heap, obj);
-        if TextIter::from_text(heap, blob).collect::<String>() != expected {
+        let blob = blob_of_text(mem, obj);
+        if TextIter::from_text(mem, blob).collect::<String>() != expected {
             return Err(TestCaseError::Fail("blob_of_text iteration".into()));
         }
 
@@ -185,7 +179,7 @@ fn concat_prop<H: Heap>(heap: &mut H, strs: Vec<String>) -> TestCaseResult {
         }
 
         // Check concat iteration
-        if TextIter::from_text(heap, obj).collect::<String>() != expected {
+        if TextIter::from_text(mem, obj).collect::<String>() != expected {
             return Err(TestCaseError::Fail("iteration".into()));
         }
 

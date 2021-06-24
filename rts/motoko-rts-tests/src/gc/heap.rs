@@ -1,7 +1,7 @@
 use super::utils::{write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
-use motoko_rts::heap::Heap;
+use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
@@ -16,7 +16,7 @@ pub struct MotokoHeap {
     inner: Rc<RefCell<MotokoHeapInner>>,
 }
 
-impl Heap for MotokoHeap {
+impl Memory for MotokoHeap {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         self.inner.borrow_mut().alloc_words(n)
     }

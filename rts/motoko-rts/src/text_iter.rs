@@ -10,24 +10,28 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::heap::Heap;
+use crate::memory::Memory;
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
 use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
-use motoko_rts_macros::{ic_fn, ic_heap_fn};
+use motoko_rts_macros::{ic_fn, ic_mem_fn};
 
 const TODO_TEXT_IDX: u32 = 0;
 const TODO_LINK_IDX: u32 = 1;
 
 /// Find the left-most leaf of a text, putting all the others onto a list. Used to enforce the
 /// invariant about TEXT_ITER_BLOB to be a blob.
-unsafe fn find_leaf<H: Heap>(heap: &mut H, mut text: SkewedPtr, todo: *mut SkewedPtr) -> SkewedPtr {
+unsafe fn find_leaf<M: Memory>(
+    mem: &mut M,
+    mut text: SkewedPtr,
+    todo: *mut SkewedPtr,
+) -> SkewedPtr {
     while text.tag() == TAG_CONCAT {
         let concat = text.as_concat();
 
         // Add right node to TODOs
-        let new_todo = heap.alloc_array(2);
+        let new_todo = mem.alloc_array(2);
         let new_todo_array = new_todo.as_array();
         new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
         new_todo_array.set(TODO_LINK_IDX, *todo);
@@ -46,9 +50,9 @@ const ITER_POS_IDX: u32 = 1;
 const ITER_TODO_IDX: u32 = 2;
 
 /// Returns a new iterator for the text
-#[ic_heap_fn]
-pub unsafe fn text_iter<H: Heap>(heap: &mut H, text: SkewedPtr) -> SkewedPtr {
-    let iter = heap.alloc_array(3);
+#[ic_mem_fn]
+pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
+    let iter = mem.alloc_array(3);
     let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
@@ -59,7 +63,7 @@ pub unsafe fn text_iter<H: Heap>(heap: &mut H, text: SkewedPtr) -> SkewedPtr {
     array.set(ITER_POS_IDX, SkewedPtr(0));
 
     // Initialize blob field
-    array.set(ITER_BLOB_IDX, find_leaf(heap, text, todo_addr as *mut _));
+    array.set(ITER_BLOB_IDX, find_leaf(mem, text, todo_addr as *mut _));
 
     iter
 }
@@ -80,8 +84,8 @@ pub unsafe fn text_iter_done(iter: SkewedPtr) -> u32 {
 }
 
 /// Returns next character in the iterator, advances the iterator
-#[ic_heap_fn]
-pub unsafe fn text_iter_next<H: Heap>(heap: &mut H, iter: SkewedPtr) -> u32 {
+#[ic_mem_fn]
+pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX).as_blob();
@@ -107,15 +111,15 @@ pub unsafe fn text_iter_next<H: Heap>(heap: &mut H, iter: SkewedPtr) -> u32 {
             todo_array.set(TODO_TEXT_IDX, (*concat).text2);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
-            iter_array.set(ITER_BLOB_IDX, find_leaf(heap, (*concat).text1, todo_addr));
-            text_iter_next(heap, iter)
+            iter_array.set(ITER_BLOB_IDX, find_leaf(mem, (*concat).text1, todo_addr));
+            text_iter_next(mem, iter)
         } else {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
             iter_array.set(ITER_BLOB_IDX, text);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
             iter_array.set(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX));
-            text_iter_next(heap, iter)
+            text_iter_next(mem, iter)
         }
     } else {
         // We are not at the end, read the next character from the blob

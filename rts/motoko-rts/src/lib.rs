@@ -23,9 +23,9 @@ mod char;
 pub mod closure_table;
 mod float;
 pub mod gc;
-pub mod heap;
 pub mod leb128;
 mod mem_utils;
+pub mod memory;
 pub mod principal_id;
 pub mod text;
 pub mod text_iter;
@@ -38,29 +38,29 @@ mod visitor;
 #[cfg(feature = "ic")]
 mod idl;
 
-use heap::Heap;
+use memory::Memory;
 use types::{Bytes, SkewedPtr, Words};
 
-use motoko_rts_macros::ic_heap_fn;
+use motoko_rts_macros::ic_mem_fn;
 
-#[ic_heap_fn]
-unsafe fn version<H: Heap>(heap: &mut H) -> SkewedPtr {
-    text::text_of_str(heap, "0.1")
+#[ic_mem_fn]
+unsafe fn version<M: Memory>(mem: &mut M) -> SkewedPtr {
+    text::text_of_str(mem, "0.1")
 }
 
-#[ic_heap_fn]
-unsafe fn alloc_words<H: Heap>(heap: &mut H, n: Words<u32>) -> SkewedPtr {
-    heap.alloc_words(n)
+#[ic_mem_fn]
+unsafe fn alloc_words<M: Memory>(mem: &mut M, n: Words<u32>) -> SkewedPtr {
+    mem.alloc_words(n)
 }
 
-#[ic_heap_fn]
-unsafe fn alloc_blob<H: Heap>(heap: &mut H, size: Bytes<u32>) -> SkewedPtr {
-    heap.alloc_blob(size)
+#[ic_mem_fn]
+unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> SkewedPtr {
+    mem.alloc_blob(size)
 }
 
-#[ic_heap_fn]
-unsafe fn alloc_array<H: Heap>(heap: &mut H, len: u32) -> SkewedPtr {
-    heap.alloc_array(len)
+#[ic_mem_fn]
+unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> SkewedPtr {
+    mem.alloc_array(len)
 }
 
 extern "C" {

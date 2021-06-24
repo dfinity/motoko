@@ -1,11 +1,11 @@
 //! This file implements the data structure the Motoko runtime uses to keep track of outstanding
 //! closures. It needs to support the following operations
 //!
-//!  1. Adding a closure (any heap pointer) and getting an index (i32)
+//!  1. Adding a closure (any mem pointer) and getting an index (i32)
 //!  2. Looking up a closure by index, which also frees it
 //!  3. GC must be able to traverse and move closures in the table
 //!
-//! Current implementation stores the closures in heap-allocated Motoko array.
+//! Current implementation stores the closures in mem-allocated Motoko array.
 //!
 //! To efficiently look up the next free index, we use an implicit free list: `FREE_SLOT` is the
 //! index into the array payload of the next free item. Each free item contains the index of the
@@ -19,11 +19,11 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::heap::Heap;
+use crate::memory::Memory;
 use crate::rts_trap_with;
 use crate::types::SkewedPtr;
 
-use motoko_rts_macros::{ic_fn, ic_heap_fn};
+use motoko_rts_macros::{ic_fn, ic_mem_fn};
 
 const INITIAL_SIZE: u32 = 256;
 
@@ -37,8 +37,8 @@ static mut N_CLOSURES: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn crate_closure_table<H: Heap>(heap: &mut H) {
-    TABLE = heap.alloc_array(INITIAL_SIZE);
+unsafe fn crate_closure_table<M: Memory>(mem: &mut M) {
+    TABLE = mem.alloc_array(INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CLOSURES = 0;
 
@@ -48,7 +48,7 @@ unsafe fn crate_closure_table<H: Heap>(heap: &mut H) {
     }
 }
 
-unsafe fn double_closure_table<H: Heap>(heap: &mut H) {
+unsafe fn double_closure_table<M: Memory>(mem: &mut M) {
     let old_array = TABLE.as_array();
     let old_size = old_array.len();
 
@@ -56,7 +56,7 @@ unsafe fn double_closure_table<H: Heap>(heap: &mut H) {
 
     let new_size = old_size * 2;
 
-    TABLE = heap.alloc_array(new_size);
+    TABLE = mem.alloc_array(new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
@@ -68,14 +68,14 @@ unsafe fn double_closure_table<H: Heap>(heap: &mut H) {
     }
 }
 
-#[ic_heap_fn]
-pub unsafe fn remember_closure<H: Heap>(heap: &mut H, ptr: SkewedPtr) -> u32 {
+#[ic_mem_fn]
+pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     if TABLE.0 == 0 {
-        crate_closure_table(heap);
+        crate_closure_table(mem);
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
-        double_closure_table(heap);
+        double_closure_table(mem);
     }
 
     // Just as a sanity check make sure the ptr is really skewed

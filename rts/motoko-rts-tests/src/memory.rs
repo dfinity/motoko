@@ -1,17 +1,17 @@
-use motoko_rts::heap::Heap;
+use motoko_rts::memory::Memory;
 use motoko_rts::types::{skew, SkewedPtr, Words};
 
-pub struct TestHeap {
+pub struct TestMemory {
     heap: Box<[u8]>,
     hp: usize,
 }
 
-impl TestHeap {
-    pub fn new(size: Words<u32>) -> TestHeap {
+impl TestMemory {
+    pub fn new(size: Words<u32>) -> TestMemory {
         let bytes = size.to_bytes().0;
         let heap = vec![0u8; bytes as usize].into_boxed_slice();
         let hp = heap.as_ptr() as usize;
-        TestHeap { heap, hp }
+        TestMemory { heap, hp }
     }
 
     unsafe fn grow_memory(&mut self, ptr: usize) {
@@ -19,14 +19,14 @@ impl TestHeap {
         if ptr > heap_end {
             // We don't allow growing memory in tests, allocate large enough for the test
             panic!(
-                "TestHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
+                "TestMemory::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
                 heap_end, ptr
             );
         }
     }
 }
 
-impl Heap for TestHeap {
+impl Memory for TestMemory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes();
 

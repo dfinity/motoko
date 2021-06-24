@@ -1,7 +1,7 @@
 //! The implementation of the Text type in Motoko
 //!
 //! One main goal of this datastructure (inspired by ropes and similar) is to support constant time
-//! concatenation, by having a dedicated heap object for the concatenation of two strings.
+//! concatenation, by having a dedicated mem object for the concatenation of two strings.
 //!
 //! The first goal was to wire up this Rust code with the RTS that encapsulates the internals of
 //! strings.
@@ -25,15 +25,15 @@
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
-use crate::heap::Heap;
 use crate::mem_utils::memcpy_bytes;
+use crate::memory::Memory;
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
 
-use motoko_rts_macros::{ic_fn, ic_heap_fn};
+use motoko_rts_macros::{ic_fn, ic_mem_fn};
 
 const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 
@@ -41,27 +41,27 @@ const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 // Make this MAX_STR_SIZE to disable the use of ropes completely, e.g. for debugging
 const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 
-unsafe fn alloc_text_blob<H: Heap>(heap: &mut H, size: Bytes<u32>) -> SkewedPtr {
+unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> SkewedPtr {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_bloc: Text too large");
     }
-    heap.alloc_blob(size)
+    mem.alloc_blob(size)
 }
 
-#[ic_heap_fn]
-pub unsafe fn text_of_ptr_size<H: Heap>(heap: &mut H, buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
-    let blob = alloc_text_blob(heap, n);
+#[ic_mem_fn]
+pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
+    let blob = alloc_text_blob(mem, n);
     let payload_addr = blob.as_blob().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
     blob
 }
 
-pub unsafe fn text_of_str<H: Heap>(heap: &mut H, s: &str) -> SkewedPtr {
-    text_of_ptr_size(heap, s.as_ptr(), Bytes(s.len() as u32))
+pub unsafe fn text_of_str<M: Memory>(mem: &mut M, s: &str) -> SkewedPtr {
+    text_of_ptr_size(mem, s.as_ptr(), Bytes(s.len() as u32))
 }
 
-#[ic_heap_fn]
-pub unsafe fn text_concat<H: Heap>(heap: &mut H, s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
+#[ic_mem_fn]
+pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
     let blob1_len = text_size(s1);
     let blob2_len = text_size(s2);
 
@@ -82,7 +82,7 @@ pub unsafe fn text_concat<H: Heap>(heap: &mut H, s1: SkewedPtr, s2: SkewedPtr) -
         let blob1 = s1.as_blob();
         let blob2 = s2.as_blob();
 
-        let r = alloc_text_blob(heap, new_len);
+        let r = alloc_text_blob(mem, new_len);
         let r_payload: *const u8 = r.as_blob().payload_addr();
         memcpy_bytes(r_payload as usize, blob1.payload_addr() as usize, blob1_len);
         memcpy_bytes(
@@ -100,7 +100,7 @@ pub unsafe fn text_concat<H: Heap>(heap: &mut H, s1: SkewedPtr, s2: SkewedPtr) -
     }
 
     // Create concat node
-    let r = heap.alloc_words(size_of::<Concat>());
+    let r = mem.alloc_words(size_of::<Concat>());
     let r_concat = r.unskew() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).n_bytes = new_len;
@@ -162,14 +162,14 @@ unsafe fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 }
 
 // Straighten into contiguous memory, if needed (e.g. for system calls)
-#[ic_heap_fn]
-pub unsafe fn blob_of_text<H: Heap>(heap: &mut H, s: SkewedPtr) -> SkewedPtr {
+#[ic_mem_fn]
+pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: SkewedPtr) -> SkewedPtr {
     let obj = s.as_obj();
     if obj.tag() == TAG_BLOB {
         s
     } else {
         let concat = obj.as_concat();
-        let r = alloc_text_blob(heap, (*concat).n_bytes);
+        let r = alloc_text_blob(mem, (*concat).n_bytes);
         text_to_buf(s, r.as_blob().payload_addr());
         r
     }
@@ -380,12 +380,12 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut u32) -> u32 {
 }
 
 /// Allocate a text from a character
-#[ic_heap_fn]
-pub unsafe fn text_singleton<H: Heap>(heap: &mut H, char: u32) -> SkewedPtr {
+#[ic_mem_fn]
+pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> SkewedPtr {
     let mut buf = [0u8; 4];
     let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
 
-    let blob_ptr = alloc_text_blob(heap, Bytes(str_len));
+    let blob_ptr = alloc_text_blob(mem, Bytes(str_len));
 
     let blob = blob_ptr.as_blob();
 

@@ -1,9 +1,9 @@
 use crate::rts_trap_with;
 use crate::types::*;
 
-/// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
+/// A visitor that passes field addresses of fields with pointers to dynamic mem to the given
 /// callback
-pub unsafe fn visit_pointer_fields<F>(obj: *mut Obj, heap_base: usize, mut visit_ptr_field: F)
+pub unsafe fn visit_pointer_fields<F>(obj: *mut Obj, mem_base: usize, mut visit_ptr_field: F)
 where
     F: FnMut(*mut SkewedPtr),
 {
@@ -13,7 +13,7 @@ where
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                if pointer_to_dynamic_mem(field_addr, mem_base) {
                     visit_ptr_field(obj_payload.add(i as usize));
                 }
             }
@@ -24,7 +24,7 @@ where
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
                 let field_addr = array_payload.add(i as usize);
-                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                if pointer_to_dynamic_mem(field_addr, mem_base) {
                     visit_ptr_field(field_addr);
                 }
             }
@@ -33,7 +33,7 @@ where
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if pointer_to_dynamic_mem(field_addr, mem_base) {
                 visit_ptr_field(field_addr);
             }
         }
@@ -43,7 +43,7 @@ where
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                if pointer_to_dynamic_mem(field_addr, mem_base) {
                     visit_ptr_field(field_addr);
                 }
             }
@@ -52,7 +52,7 @@ where
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if pointer_to_dynamic_mem(field_addr, mem_base) {
                 visit_ptr_field(field_addr);
             }
         }
@@ -60,7 +60,7 @@ where
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if pointer_to_dynamic_mem(field_addr, mem_base) {
                 visit_ptr_field(field_addr);
             }
         }
@@ -68,11 +68,11 @@ where
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            if pointer_to_dynamic_heap(field1_addr, heap_base) {
+            if pointer_to_dynamic_mem(field1_addr, mem_base) {
                 visit_ptr_field(field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
-            if pointer_to_dynamic_heap(field2_addr, heap_base) {
+            if pointer_to_dynamic_mem(field2_addr, mem_base) {
                 visit_ptr_field(field2_addr);
             }
         }
@@ -80,7 +80,7 @@ where
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if pointer_to_dynamic_mem(field_addr, mem_base) {
                 visit_ptr_field(field_addr);
             }
         }
@@ -99,6 +99,6 @@ where
     }
 }
 
-unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
-    (!(*field_addr).is_tagged_scalar()) && ((*field_addr).unskew() >= heap_base)
+unsafe fn pointer_to_dynamic_mem(field_addr: *mut SkewedPtr, mem_base: usize) -> bool {
+    (!(*field_addr).is_tagged_scalar()) && ((*field_addr).unskew() >= mem_base)
 }

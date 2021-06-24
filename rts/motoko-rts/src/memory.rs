@@ -4,7 +4,7 @@ pub mod ic;
 use crate::rts_trap_with;
 use crate::types::*;
 
-pub trait Heap {
+pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr;
 
     unsafe fn get_hp(&self) -> usize;

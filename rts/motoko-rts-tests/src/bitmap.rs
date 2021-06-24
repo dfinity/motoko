@@ -1,9 +1,9 @@
-use crate::heap::TestHeap;
+use crate::memory::TestMemory;
 
 use motoko_rts::gc::mark_compact::bitmap::{
     alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
 };
-use motoko_rts::heap::Heap;
+use motoko_rts::memory::Memory;
 use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 
 use std::collections::HashSet;
@@ -16,8 +16,8 @@ pub unsafe fn test() {
     println!("  Testing set_bit/get_bit");
 
     {
-        let mut heap = TestHeap::new(Words(1024));
-        test_set_get(&mut heap, vec![0, 33]).unwrap();
+        let mut mem = TestMemory::new(Words(1024));
+        test_set_get(&mut mem, vec![0, 33]).unwrap();
     }
 
     let mut proptest_runner = TestRunner::new(Config {
@@ -31,8 +31,8 @@ pub unsafe fn test() {
         .run(&bit_index_vec_strategy(), |bits| {
             // Max bit idx = 65,534, requires 2048 words. Add 2 words for Blob header (header +
             // length).
-            let mut heap = TestHeap::new(Words(2051));
-            test_set_get_proptest(&mut heap, bits)
+            let mut mem = TestMemory::new(Words(2051));
+            test_set_get_proptest(&mut mem, bits)
         })
         .unwrap();
 
@@ -40,8 +40,8 @@ pub unsafe fn test() {
     proptest_runner
         .run(&bit_index_set_strategy(), |bits| {
             // Same as above
-            let mut heap = TestHeap::new(Words(2051));
-            test_bit_iter(&mut heap, bits)
+            let mut mem = TestMemory::new(Words(2051));
+            test_bit_iter(&mut mem, bits)
         })
         .unwrap();
 }
@@ -56,18 +56,18 @@ fn bit_index_set_strategy() -> impl Strategy<Value = HashSet<u16>> {
     proptest::collection::hash_set(0u16..u16::MAX, 0..1_000)
 }
 
-fn test_set_get_proptest<H: Heap>(heap: &mut H, bits: Vec<u16>) -> TestCaseResult {
-    test_set_get(heap, bits).map_err(|err| TestCaseError::Fail(err.into()))
+fn test_set_get_proptest<M: Memory>(mem: &mut M, bits: Vec<u16>) -> TestCaseResult {
+    test_set_get(mem, bits).map_err(|err| TestCaseError::Fail(err.into()))
 }
 
-fn test_set_get<H: Heap>(heap: &mut H, mut bits: Vec<u16>) -> Result<(), String> {
+fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String> {
     if bits.is_empty() {
         return Ok(());
     }
 
     unsafe {
         alloc_bitmap(
-            heap,
+            mem,
             Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE),
         );
 
@@ -103,7 +103,7 @@ fn test_set_get<H: Heap>(heap: &mut H, mut bits: Vec<u16>) -> Result<(), String>
     Ok(())
 }
 
-fn test_bit_iter<H: Heap>(heap: &mut H, bits: HashSet<u16>) -> TestCaseResult {
+fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
     // If the max bit is N, the heap size is at least N+1 words
     let heap_size = Words(u32::from(
         bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0),
@@ -111,7 +111,7 @@ fn test_bit_iter<H: Heap>(heap: &mut H, bits: HashSet<u16>) -> TestCaseResult {
     .to_bytes();
 
     unsafe {
-        alloc_bitmap(heap, heap_size);
+        alloc_bitmap(mem, heap_size);
 
         for bit in bits.iter() {
             set_bit(u32::from(*bit));

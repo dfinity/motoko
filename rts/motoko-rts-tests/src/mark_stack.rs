@@ -1,9 +1,9 @@
-use crate::heap::TestHeap;
+use crate::memory::TestMemory;
 
 use motoko_rts::gc::mark_compact::mark_stack::{
     alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
 };
-use motoko_rts::heap::Heap;
+use motoko_rts::memory::Memory;
 use motoko_rts::types::Words;
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
@@ -20,20 +20,20 @@ pub unsafe fn test() {
 
     proptest_runner
         .run(&(0u32..1000u32), |n_objs| {
-            let mut heap = TestHeap::new(Words(1024 * 1024));
-            test_(&mut heap, n_objs)
+            let mut mem = TestMemory::new(Words(1024 * 1024));
+            test_(&mut mem, n_objs)
         })
         .unwrap();
 }
 
-fn test_<H: Heap>(heap: &mut H, n_objs: u32) -> TestCaseResult {
+fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
     let objs: Vec<u32> = (0..n_objs).collect();
 
     unsafe {
-        alloc_mark_stack(heap);
+        alloc_mark_stack(mem);
 
         for obj in &objs {
-            push_mark_stack(heap, *obj as usize);
+            push_mark_stack(mem, *obj as usize);
         }
 
         for obj in objs.iter().rev() {

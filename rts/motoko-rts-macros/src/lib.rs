@@ -62,7 +62,7 @@ pub fn ic_fn(_attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn ic_heap_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
     let ic_only = if attr.is_empty() {
         false
     } else if attr.to_string() == "ic_only" {
@@ -79,7 +79,7 @@ pub fn ic_heap_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
     assert_eq!(
         fun_sig.generics.params.len(),
         1,
-        "IC heap functions should have one generic argument for the heap implementation"
+        "IC memory functions should have one generic argument for the memory implementation"
     );
     assert!(
         fun_sig.abi.is_none(),
@@ -104,7 +104,7 @@ pub fn ic_heap_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
             }
             syn::FnArg::Typed(pat) => {
                 if i == 0 {
-                    // First argument should be `heap`, skip
+                    // First argument should be `memory`, skip
                     None
                 } else {
                     Some((
@@ -138,7 +138,7 @@ pub fn ic_heap_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
         #[cfg(feature = "ic")]
         #[export_name = #fn_name]
         unsafe extern "C" fn #fn_wrapper_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
-            #fn_ident(&mut crate::heap::ic::IcHeap, #(#wrapper_args_syn,)*)
+            #fn_ident(&mut crate::memory::ic::IcMemory, #(#wrapper_args_syn,)*)
         }
     )
     .into()

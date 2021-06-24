@@ -1,4 +1,4 @@
-use crate::heap::TestHeap;
+use crate::memory::TestMemory;
 
 use motoko_rts::closure_table::{closure_count, recall_closure, remember_closure};
 use motoko_rts::types::{SkewedPtr, Words};
@@ -12,7 +12,7 @@ pub unsafe fn test() {
 
     // Array will be doubled 3 times, so 256 + 512 + 1024 + 2048 = 3840 words, plus each array will
     // have 2 word header.
-    let mut heap = TestHeap::new(Words(3848));
+    let mut heap = TestMemory::new(Words(3848));
 
     let mut references: [u32; N] = [0; N];
     for i in 0..N {
