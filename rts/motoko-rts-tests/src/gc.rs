@@ -31,17 +31,17 @@ pub fn test() {
 
     let roots = vec![0, 2, 3];
 
-    test_gcs(&TestMemory { heap, roots });
+    test_gcs(&TestHeap { heap, roots });
 }
 
 #[derive(Debug)]
-struct TestMemory {
+struct TestHeap {
     heap: BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: Vec<ObjectIdx>,
 }
 
 /// Test all GC implementations with the given heap
-fn test_gcs(heap_descr: &TestMemory) {
+fn test_gcs(heap_descr: &TestHeap) {
     for gc in &GC_IMPLS {
         test_gc(*gc, &heap_descr.heap, &heap_descr.roots);
     }
