@@ -184,33 +184,12 @@ impl MotokoHeapInner {
         };
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
 
-        let heap_size = match gc {
-            GC::Copying => {
-                let to_space_bytes = dynamic_heap_size_bytes;
-                total_heap_size_bytes + to_space_bytes
-            }
-            GC::MarkCompact => {
-                let bitmap_size_bytes = {
-                    let dynamic_heap_words =
-                        Bytes(dynamic_heap_size_bytes as u32).to_words().0 as usize;
-
-                    let mark_bit_bytes = (dynamic_heap_words + 7) / 8;
-
-                    // The bitmap implementation rounds up to 64-bits to be able to read as many
-                    // bits as possible in one instruction and potentially skip 64 words in the
-                    // heap with single 64-bit comparison
-                    (((mark_bit_bytes + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0 as usize
-                };
-                // In the worst case the entire heap will be pushed to the mark stack, but in tests
-                // we limit the size
-                let mark_stack_words = map
-                    .len()
-                    .clamp(INIT_STACK_SIZE.0 as usize, MAX_MARK_STACK_SIZE)
-                    + size_of::<Blob>().0 as usize;
-
-                total_heap_size_bytes + bitmap_size_bytes + (mark_stack_words * WORD_SIZE)
-            }
-        };
+        let heap_size = heap_size_for_gc(
+            gc,
+            static_heap_size_bytes,
+            dynamic_heap_size_bytes,
+            map.len(),
+        );
 
         let mut heap: Vec<u8> = vec![0; heap_size];
 
@@ -230,6 +209,41 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
             closure_table_offset,
+        }
+    }
+}
+
+/// Compute the size of the heap to be allocated for the GC test.
+fn heap_size_for_gc(
+    gc: GC,
+    static_heap_size_bytes: usize,
+    dynamic_heap_size_bytes: usize,
+    n_objects: usize,
+) -> usize {
+    let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
+    match gc {
+        GC::Copying => {
+            let to_space_bytes = dynamic_heap_size_bytes;
+            total_heap_size_bytes + to_space_bytes
+        }
+        GC::MarkCompact => {
+            let bitmap_size_bytes = {
+                let dynamic_heap_words =
+                    Bytes(dynamic_heap_size_bytes as u32).to_words().0 as usize;
+
+                let mark_bit_bytes = (dynamic_heap_words + 7) / 8;
+
+                // The bitmap implementation rounds up to 64-bits to be able to read as many
+                // bits as possible in one instruction and potentially skip 64 words in the
+                // heap with single 64-bit comparison
+                (((mark_bit_bytes + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0 as usize
+            };
+            // In the worst case the entire heap will be pushed to the mark stack, but in tests
+            // we limit the size
+            let mark_stack_words = n_objects.clamp(INIT_STACK_SIZE.0 as usize, MAX_MARK_STACK_SIZE)
+                + size_of::<Blob>().0 as usize;
+
+            total_heap_size_bytes + bitmap_size_bytes + (mark_stack_words * WORD_SIZE)
         }
     }
 }
