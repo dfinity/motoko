@@ -215,7 +215,8 @@ impl MotokoHeapInner {
         let mut heap: Vec<u8> = vec![0; heap_size];
 
         // Maps `ObjectIdx`s into their offsets in the heap
-        let object_addrs: Vec<usize> = create_dynamic_heap(map, &mut heap, static_heap_size_bytes);
+        let object_addrs: Vec<usize> =
+            create_dynamic_heap(map, &mut heap[static_heap_size_bytes..]);
 
         // List of root object addresses
         let root_addresses: Vec<usize> = roots
@@ -268,14 +269,9 @@ impl MotokoHeapInner {
     }
 }
 
-/// Given a heap description (as a map from objects to objects), the heap (as an array), and the
-/// beginning of dynamic heap, create the Motoko heap for the dynamic part of the heap (stuff above
-/// `heap_base`).
-fn create_dynamic_heap(
-    refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
-    heap: &mut [u8],
-    heap_base_offset: usize,
-) -> Vec<usize> {
+/// Given a heap description (as a map from objects to objects), and the dynamic part of the heap
+/// (as an array), initialize the dynamic heap with objects.
+fn create_dynamic_heap(refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>, heap: &mut [u8]) -> Vec<usize> {
     if refs.is_empty() {
         return vec![];
     }
@@ -289,7 +285,7 @@ fn create_dynamic_heap(
 
     // First pass allocates objects without fields
     {
-        let mut heap_offset = heap_base_offset;
+        let mut heap_offset = 0;
         for (obj, refs) in refs {
             object_addrs[*obj as usize] = heap_start + heap_offset;
 
