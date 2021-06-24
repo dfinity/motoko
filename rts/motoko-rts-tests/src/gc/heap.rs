@@ -178,7 +178,7 @@ impl MotokoHeapInner {
         let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
         let dynamic_heap_size_bytes = {
             let object_headers_words = map.len() * 3;
-            let references_words = map.values().map(|refs| refs.len()).sum::<usize>();
+            let references_words = map.values().map(Vec::len).sum::<usize>();
             let closure_table_words = 1;
             (object_headers_words + references_words + closure_table_words) * WORD_SIZE
         };

@@ -28,6 +28,59 @@ const WORD_SIZE: usize = motoko_rts::types::WORD_SIZE as usize;
 // Max allowed size for the mark stack in mark-compact GC tests
 const MAX_MARK_STACK_SIZE: usize = 100;
 
+pub fn test() {
+    println!("Testing garbage collection ...");
+
+    let heap = btreemap! {
+        0 => vec![0, 2],
+        2 => vec![0],
+        3 => vec![3],
+    };
+
+    let roots = vec![0, 2, 3];
+
+    test_gc(&heap, &roots, GC::Copying);
+    test_gc(&heap, &roots, GC::MarkCompact);
+}
+
+fn test_gc(refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32], gc: GC) {
+    let heap = MotokoHeap::new(refs, roots, gc);
+
+    // println!("{:?}", heap.heap);
+
+    // unsafe {
+    //     debug::dump_heap(
+    //         heap.heap_base_address() as u32,
+    //         heap.heap_ptr_address() as u32,
+    //         skew(heap.static_root_array_address()),
+    //         heap.closure_table_address() as *mut SkewedPtr,
+    //     );
+    // }
+
+    // Check `check_dynamic_heap` sanity
+    check_dynamic_heap(
+        refs,
+        &roots,
+        &**heap.heap(),
+        heap.heap_base_offset(),
+        heap.heap_ptr_offset(),
+    );
+
+    for _ in 0..3 {
+        gc.run(heap.clone());
+
+        let heap_base_offset = heap.heap_base_offset();
+        let heap_ptr_offset = heap.heap_ptr_offset();
+        check_dynamic_heap(
+            refs,
+            &roots,
+            &**heap.heap(),
+            heap_base_offset,
+            heap_ptr_offset,
+        );
+    }
+}
+
 /// Check the dynamic heap:
 ///
 /// - Objects should point to objects with the expected tags (as specified by the `objects` argument)
@@ -147,55 +200,4 @@ impl GC {
             }
         }
     }
-}
-
-fn test_heap(refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32], gc: GC) {
-    let heap = MotokoHeap::new(refs, roots, gc);
-
-    // println!("{:?}", heap.heap);
-
-    // unsafe {
-    //     debug::dump_heap(
-    //         heap.heap_base_address() as u32,
-    //         heap.heap_ptr_address() as u32,
-    //         skew(heap.static_root_array_address()),
-    //         heap.closure_table_address() as *mut SkewedPtr,
-    //     );
-    // }
-
-    // Check `check_dynamic_heap` sanity
-    check_dynamic_heap(
-        refs,
-        &roots,
-        &**heap.heap(),
-        heap.heap_base_offset(),
-        heap.heap_ptr_offset(),
-    );
-
-    for _ in 0..3 {
-        gc.run(heap.clone());
-
-        let heap_base_offset = heap.heap_base_offset();
-        let heap_ptr_offset = heap.heap_ptr_offset();
-        check_dynamic_heap(
-            refs,
-            &roots,
-            &**heap.heap(),
-            heap_base_offset,
-            heap_ptr_offset,
-        );
-    }
-}
-
-pub fn test() {
-    let heap = btreemap! {
-        0 => vec![0, 2],
-        2 => vec![0],
-        3 => vec![3],
-    };
-
-    let roots = vec![0, 2, 3];
-
-    test_heap(&heap, &roots, GC::Copying);
-    test_heap(&heap, &roots, GC::MarkCompact);
 }
