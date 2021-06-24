@@ -52,28 +52,6 @@ unsafe fn get_heap_size() -> Bytes<u32> {
 pub struct IcHeap;
 
 impl Heap for IcHeap {
-    /*
-    unsafe fn get_heap_base(&mut self) -> u32 {
-        get_heap_base()
-    }
-
-    unsafe fn get_hp(&mut self) -> u32 {
-        HP
-    }
-
-    unsafe fn set_hp(&mut self, hp: u32) {
-        HP = hp;
-    }
-
-    unsafe fn get_static_roots(&mut self) -> SkewedPtr {
-        get_static_roots()
-    }
-
-    unsafe fn get_closure_table_loc(&mut self) -> *mut SkewedPtr {
-        crate::closure_table::closure_table_loc()
-    }
-    */
-
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes();
         // Update ALLOCATED
@@ -100,14 +78,4 @@ impl Heap for IcHeap {
             }
         }
     }
-
-    /*
-    unsafe fn note_live_size(&mut self, live_size: Bytes<u32>) {
-        MAX_LIVE = ::core::cmp::max(MAX_LIVE, live_size);
-    }
-
-    unsafe fn note_reclaimed(&mut self, reclaimed: Bytes<u32>) {
-        RECLAIMED += Bytes(reclaimed.0 as u64);
-    }
-    */
 }
