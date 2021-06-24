@@ -26,14 +26,14 @@ pub unsafe fn copying_gc_internal<
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
-    mem_base: u32,
+    heap_base: u32,
     mut set_hp: SetHp,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    let begin_from_space = mem_base as usize;
+    let begin_from_space = heap_base as usize;
     let end_from_space = mem.get_hp();
     let begin_to_space = end_from_space;
 

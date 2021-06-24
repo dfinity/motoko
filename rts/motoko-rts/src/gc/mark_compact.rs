@@ -35,7 +35,7 @@ pub unsafe fn compacting_gc_internal<
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
-    mem_base: u32,
+    heap_base: u32,
     set_hp: SetHp,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
@@ -47,7 +47,7 @@ pub unsafe fn compacting_gc_internal<
     mark_compact(
         mem,
         set_hp,
-        mem_base,
+        heap_base,
         old_hp,
         static_roots,
         closure_table_loc,
@@ -56,58 +56,58 @@ pub unsafe fn compacting_gc_internal<
     let reclaimed = old_hp - (mem.get_hp() as u32);
     note_reclaimed(Bytes(reclaimed));
 
-    let live = mem.get_hp() as u32 - mem_base;
+    let live = mem.get_hp() as u32 - heap_base;
     note_live_size(Bytes(live));
 }
 
 unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     mem: &mut M,
     set_hp: SetHp,
-    mem_base: u32,
+    heap_base: u32,
     mem_end: u32,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
 ) {
-    let mem_size = Bytes(mem_end - mem_base);
+    let mem_size = Bytes(mem_end - heap_base);
 
     alloc_bitmap(mem, mem_size);
     alloc_mark_stack(mem);
 
-    mark_static_roots(mem, static_roots, mem_base);
+    mark_static_roots(mem, static_roots, heap_base);
 
-    if (*closure_table_loc).unskew() >= mem_base as usize {
-        push_mark_stack(mem, *closure_table_loc, mem_base);
+    if (*closure_table_loc).unskew() >= heap_base as usize {
+        push_mark_stack(mem, *closure_table_loc, heap_base);
     }
 
-    mark_stack(mem, mem_base);
+    mark_stack(mem, heap_base);
 
-    thread_roots(static_roots, mem_base);
+    thread_roots(static_roots, heap_base);
 
-    if (*closure_table_loc).unskew() >= mem_base as usize {
+    if (*closure_table_loc).unskew() >= heap_base as usize {
         thread(closure_table_loc);
     }
 
-    update_fwd_refs(mem_base);
-    update_bwd_refs(set_hp, mem_base);
+    update_fwd_refs(heap_base);
+    update_bwd_refs(set_hp, heap_base);
 
     free_mark_stack();
     free_bitmap();
 }
 
-unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, mem_base: u32) {
+unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, heap_base: u32) {
     let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
-        mark_fields(mem, obj, mem_base);
+        mark_fields(mem, obj, heap_base);
     }
 }
 
-unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, mem_base: u32) {
+unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
     let obj = obj.unskew() as u32;
 
-    let obj_idx = (obj - mem_base) / WORD_SIZE;
+    let obj_idx = (obj - heap_base) / WORD_SIZE;
 
     if get_bit(obj_idx) {
         // Already marked
@@ -118,36 +118,36 @@ unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, mem_base: u32)
     mark_stack::push_mark_stack(mem, obj as usize);
 }
 
-unsafe fn mark_stack<M: Memory>(mem: &mut M, mem_base: u32) {
+unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some(obj) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, mem_base);
+        mark_fields(mem, obj as *mut Obj, heap_base);
     }
 }
 
-unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, mem_base: u32) {
-    visit_pointer_fields(obj, mem_base as usize, |field_addr| {
-        push_mark_stack(mem, *field_addr, mem_base);
+unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, heap_base: u32) {
+    visit_pointer_fields(obj, heap_base as usize, |field_addr| {
+        push_mark_stack(mem, *field_addr, heap_base);
     });
 }
 
-unsafe fn thread_roots(static_roots: SkewedPtr, mem_base: u32) {
+unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
     // Static roots
     let root_array = static_roots.as_array();
     for i in 0..root_array.len() {
-        thread_obj_fields(root_array.get(i).unskew() as *mut Obj, mem_base);
+        thread_obj_fields(root_array.get(i).unskew() as *mut Obj, heap_base);
     }
     // No need to thread closure table here as it's on heap and we already marked it
 }
 
 /// Scan the heap, update forward references. At the end of this pass all fields will be threaded
 /// and forward references will be updated, pointing to the object's new location.
-unsafe fn update_fwd_refs(mem_base: u32) {
-    let mut free = mem_base;
+unsafe fn update_fwd_refs(heap_base: u32) {
+    let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
-        let p = (mem_base + (bit * WORD_SIZE)) as *mut Obj;
+        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
         // Update forward references to the object to the object's new location and restore
         // object header
@@ -157,7 +157,7 @@ unsafe fn update_fwd_refs(mem_base: u32) {
         let size = object_size(p as usize).to_bytes().0;
 
         // Thread fields
-        thread_obj_fields(p, mem_base);
+        thread_obj_fields(p, heap_base);
 
         free += size;
 
@@ -167,13 +167,13 @@ unsafe fn update_fwd_refs(mem_base: u32) {
 
 /// Expects all fields to be threaded. Updates backward references and moves objects to their new
 /// locations.
-unsafe fn update_bwd_refs<SetHp: Fn(u32)>(set_hp: SetHp, mem_base: u32) {
-    let mut free = mem_base;
+unsafe fn update_bwd_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
+    let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
-        let p = (mem_base + (bit * WORD_SIZE)) as *mut Obj;
+        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
         // Update backward references to the object's new location and restore object header
         unthread(p, free);
@@ -192,8 +192,8 @@ unsafe fn update_bwd_refs<SetHp: Fn(u32)>(set_hp: SetHp, mem_base: u32) {
     set_hp(free);
 }
 
-unsafe fn thread_obj_fields(obj: *mut Obj, mem_base: u32) {
-    visit_pointer_fields(obj, mem_base as usize, |field_addr| thread(field_addr));
+unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
+    visit_pointer_fields(obj, heap_base as usize, |field_addr| thread(field_addr));
 }
 
 unsafe fn thread(field: *mut SkewedPtr) {
