@@ -15,7 +15,7 @@ crate-type = ["staticlib"]
 default = ["ic"]
 
 # This feature is used to enable stuff needed for the RTS linked with
-# moc-generated code, but when testing the RTS
+# moc-generated code, but not when testing the RTS
 ic = []
 
 [dependencies]
