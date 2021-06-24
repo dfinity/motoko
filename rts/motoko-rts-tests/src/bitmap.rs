@@ -1,6 +1,8 @@
 use crate::heap::TestHeap;
 
-use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
+use motoko_rts::gc::mark_compact::bitmap::{
+    alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
+};
 use motoko_rts::heap::Heap;
 use motoko_rts::types::{Bytes, Words, WORD_SIZE};
 

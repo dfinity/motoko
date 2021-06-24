@@ -1,8 +1,12 @@
 //! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
 
-use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
+pub mod bitmap;
+pub mod mark_stack;
+
+use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
+use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack};
+
 use crate::heap::Heap;
-use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;

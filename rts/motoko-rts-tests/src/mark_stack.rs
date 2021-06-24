@@ -1,7 +1,9 @@
 use crate::heap::TestHeap;
 
+use motoko_rts::gc::mark_compact::mark_stack::{
+    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
+};
 use motoko_rts::heap::Heap;
-use motoko_rts::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 use motoko_rts::types::Words;
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};

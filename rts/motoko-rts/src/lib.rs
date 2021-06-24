@@ -17,7 +17,6 @@ mod print;
 pub mod debug;
 
 pub mod bigint;
-pub mod bitmap;
 mod blob_iter;
 pub mod buf;
 mod char;
@@ -26,7 +25,6 @@ mod float;
 pub mod gc;
 pub mod heap;
 pub mod leb128;
-pub mod mark_stack;
 mod mem;
 pub mod principal_id;
 pub mod text;
