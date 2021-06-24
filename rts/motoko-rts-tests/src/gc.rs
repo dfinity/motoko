@@ -110,7 +110,7 @@ fn check_dynamic_heap(
         let address = offset as usize + heap.as_ptr() as usize;
 
         let tag = read_word(heap, offset);
-        offset += 4;
+        offset += WORD_SIZE;
 
         if tag == 0 {
             // Found closure table
@@ -120,13 +120,13 @@ fn check_dynamic_heap(
         assert_eq!(tag, TAG_ARRAY);
 
         let n_fields = read_word(heap, offset);
-        offset += 4;
+        offset += WORD_SIZE;
 
         // There should be at least one field for the tag
         assert!(n_fields >= 1);
 
         let tag = read_word(heap, offset) >> 1;
-        offset += 4;
+        offset += WORD_SIZE;
         let old = seen.insert(tag, address);
         if let Some(old) = old {
             panic!(
@@ -141,7 +141,7 @@ fn check_dynamic_heap(
 
         for field_idx in 1..n_fields {
             let field = read_word(heap, offset);
-            offset += 4;
+            offset += WORD_SIZE;
             // Get tag of the object pointed by the field
             let pointee_address = field.wrapping_add(1); // unskew
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
