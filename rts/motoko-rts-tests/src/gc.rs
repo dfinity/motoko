@@ -160,22 +160,21 @@ fn check_dynamic_heap(
 }
 
 impl GC {
-    fn run(&self, heap: MotokoHeap) {
+    fn run(&self, mut heap: MotokoHeap) {
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = skew(heap.static_root_array_address());
         let closure_table_address = heap.closure_table_address() as *mut SkewedPtr;
 
-        let heap_1 = heap.clone();
-        let heap_2 = heap.clone();
+        let heap_ = heap.clone();
 
         match self {
             GC::Copying => {
                 unsafe {
                     copying_gc_internal(
-                        &mut heap.clone(),
+                        &mut heap,
                         heap_base,
                         // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        move |hp| heap_.set_heap_ptr_address(hp as usize),
                         static_roots,
                         closure_table_address,
                         // note_live_size
@@ -189,10 +188,10 @@ impl GC {
             GC::MarkCompact => {
                 unsafe {
                     compacting_gc_internal(
-                        &mut heap.clone(),
+                        &mut heap,
                         heap_base,
                         // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        move |hp| heap_.set_heap_ptr_address(hp as usize),
                         static_roots,
                         closure_table_address,
                         // note_live_size
