@@ -20,13 +20,13 @@ pub(crate) static mut HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    pub(crate) fn get_mem_base() -> u32;
+    pub(crate) fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
 #[ic_fn]
 unsafe fn init() {
-    HP = get_mem_base() as u32;
+    HP = get_heap_base() as u32;
 }
 
 #[ic_fn]
@@ -45,8 +45,8 @@ unsafe fn get_total_allocations() -> Bytes<u64> {
 }
 
 #[ic_fn]
-unsafe fn get_mem_size() -> Bytes<u32> {
-    Bytes(HP - get_mem_base())
+unsafe fn get_heap_size() -> Bytes<u32> {
+    Bytes(HP - get_heap_base())
 }
 
 pub struct IcMemory;

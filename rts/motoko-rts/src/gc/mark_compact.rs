@@ -17,7 +17,7 @@ use motoko_rts_macros::ic_mem_fn;
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     compacting_gc_internal(
         mem,
-        crate::memory::ic::get_mem_base(),
+        crate::memory::ic::get_heap_base(),
         || crate::memory::ic::HP,
         |hp| crate::memory::ic::HP = hp,
         crate::memory::ic::get_static_roots(),

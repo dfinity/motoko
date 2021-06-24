@@ -8,7 +8,7 @@ use motoko_rts_macros::ic_mem_fn;
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     copying_gc_internal(
         mem,
-        crate::memory::ic::get_mem_base(),
+        crate::memory::ic::get_heap_base(),
         || crate::memory::ic::HP,
         |hp| crate::memory::ic::HP = hp,
         crate::memory::ic::get_static_roots(),
