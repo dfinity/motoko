@@ -9,24 +9,31 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     copying_gc_internal(
         mem,
         crate::memory::ic::get_heap_base(),
+        // get_hp
+        || crate::memory::ic::HP as usize,
+        // set_hp
         |hp| crate::memory::ic::HP = hp,
         crate::memory::ic::get_static_roots(),
         crate::closure_table::closure_table_loc(),
+        // note_live_size
         |live_size| {
             crate::memory::ic::MAX_LIVE = ::core::cmp::max(crate::memory::ic::MAX_LIVE, live_size)
         },
+        // note_reclaimed
         |reclaimed| crate::memory::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
     );
 }
 
 pub unsafe fn copying_gc_internal<
     M: Memory,
+    GetHp: Fn() -> usize,
     SetHp: FnMut(u32),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
     heap_base: u32,
+    get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
@@ -34,7 +41,7 @@ pub unsafe fn copying_gc_internal<
     note_reclaimed: NoteReclaimed,
 ) {
     let begin_from_space = heap_base as usize;
-    let end_from_space = mem.get_hp();
+    let end_from_space = get_hp();
     let begin_to_space = end_from_space;
 
     let static_roots = static_roots.as_array();
@@ -53,13 +60,13 @@ pub unsafe fn copying_gc_internal<
 
     // Scavenge to-space
     let mut p = begin_to_space;
-    while p < mem.get_hp() {
+    while p < get_hp() {
         let size = object_size(p);
         scav(mem, begin_from_space, begin_to_space, p);
         p += size.to_bytes().0 as usize;
     }
 
-    let end_to_space = mem.get_hp();
+    let end_to_space = get_hp();
 
     // Note the stats
     let new_live_size = end_to_space - begin_to_space;

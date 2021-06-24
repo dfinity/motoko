@@ -165,7 +165,8 @@ impl GC {
         let static_roots = skew(heap.static_root_array_address());
         let closure_table_address = heap.closure_table_address() as *mut SkewedPtr;
 
-        let heap_ = heap.clone();
+        let heap_1 = heap.clone();
+        let heap_2 = heap.clone();
 
         match self {
             GC::Copying => {
@@ -173,8 +174,10 @@ impl GC {
                     copying_gc_internal(
                         &mut heap,
                         heap_base,
+                        // get_hp
+                        || heap_1.heap_ptr_address(),
                         // set_hp
-                        move |hp| heap_.set_heap_ptr_address(hp as usize),
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         closure_table_address,
                         // note_live_size
@@ -190,8 +193,10 @@ impl GC {
                     compacting_gc_internal(
                         &mut heap,
                         heap_base,
+                        // get_hp
+                        || heap_1.heap_ptr_address(),
                         // set_hp
-                        move |hp| heap_.set_heap_ptr_address(hp as usize),
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         closure_table_address,
                         // note_live_size

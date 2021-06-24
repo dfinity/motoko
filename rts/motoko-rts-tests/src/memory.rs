@@ -40,8 +40,4 @@ impl Memory for TestMemory {
 
         skew(old_hp)
     }
-
-    unsafe fn get_hp(&self) -> usize {
-        self.hp
-    }
 }

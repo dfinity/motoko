@@ -18,31 +18,38 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     compacting_gc_internal(
         mem,
         crate::memory::ic::get_heap_base(),
+        // get_hp
+        || crate::memory::ic::HP as usize,
+        // set_hp
         |hp| crate::memory::ic::HP = hp,
         crate::memory::ic::get_static_roots(),
         crate::closure_table::closure_table_loc(),
+        // note_live_size
         |live_size| {
             crate::memory::ic::MAX_LIVE = ::core::cmp::max(crate::memory::ic::MAX_LIVE, live_size)
         },
+        // note_reclaimed
         |reclaimed| crate::memory::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
     );
 }
 
 pub unsafe fn compacting_gc_internal<
     M: Memory,
+    GetHp: Fn() -> usize,
     SetHp: Fn(u32),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
     heap_base: u32,
+    get_hp: GetHp,
     set_hp: SetHp,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    let old_hp = mem.get_hp() as u32;
+    let old_hp = get_hp() as u32;
 
     mark_compact(
         mem,
@@ -53,10 +60,10 @@ pub unsafe fn compacting_gc_internal<
         closure_table_loc,
     );
 
-    let reclaimed = old_hp - (mem.get_hp() as u32);
+    let reclaimed = old_hp - (get_hp() as u32);
     note_reclaimed(Bytes(reclaimed));
 
-    let live = mem.get_hp() as u32 - heap_base;
+    let live = get_hp() as u32 - heap_base;
     note_live_size(Bytes(live));
 }
 

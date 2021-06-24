@@ -20,10 +20,6 @@ impl Memory for MotokoHeap {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         self.inner.borrow_mut().alloc_words(n)
     }
-
-    unsafe fn get_hp(&self) -> usize {
-        self.inner.borrow().heap_ptr_address()
-    }
 }
 
 impl MotokoHeap {

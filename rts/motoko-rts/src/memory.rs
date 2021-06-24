@@ -7,8 +7,6 @@ use crate::types::*;
 pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr;
 
-    unsafe fn get_hp(&self) -> usize;
-
     unsafe fn alloc_blob(&mut self, size: Bytes<u32>) -> SkewedPtr {
         let ptr = self.alloc_words(size_of::<Blob>() + size.to_words());
         let blob = ptr.unskew() as *mut Blob;

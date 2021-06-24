@@ -67,10 +67,6 @@ impl Memory for IcMemory {
 
         skew(old_hp as usize)
     }
-
-    unsafe fn get_hp(&self) -> usize {
-        HP as usize
-    }
 }
 
 unsafe fn grow_memory(ptr: usize) {
