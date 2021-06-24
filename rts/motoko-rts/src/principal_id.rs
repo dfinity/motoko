@@ -1,7 +1,7 @@
 //! Principal ID encoding and decoding, with integrity checking
 
 use crate::heap::Heap;
-use crate::mem::memcpy_bytes;
+use crate::mem_utils::memcpy_bytes;
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
 use crate::types::{Bytes, SkewedPtr, TAG_BLOB};

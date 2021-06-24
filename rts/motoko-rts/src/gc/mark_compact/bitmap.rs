@@ -1,5 +1,5 @@
 use crate::heap::Heap;
-use crate::mem::memzero;
+use crate::mem_utils::memzero;
 use crate::types::{size_of, Blob, Bytes, Obj};
 
 /// Current bitmap

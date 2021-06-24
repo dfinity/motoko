@@ -33,7 +33,7 @@ This scheme makes the following assumptions:
 
 use crate::buf::{read_byte, Buf};
 use crate::heap::Heap;
-use crate::mem::memcpy_bytes;
+use crate::mem_utils::memcpy_bytes;
 use crate::rts_trap;
 use crate::tommath_bindings::*;
 use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};

@@ -1,5 +1,5 @@
 use crate::heap::Heap;
-use crate::mem::{memcpy_bytes, memcpy_words};
+use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::types::*;
 
 use motoko_rts_macros::ic_heap_fn;

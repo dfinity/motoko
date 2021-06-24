@@ -26,7 +26,7 @@
 // size of the text.
 
 use crate::heap::Heap;
-use crate::mem::memcpy_bytes;
+use crate::mem_utils::memcpy_bytes;
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT};
 

@@ -25,7 +25,7 @@ mod float;
 pub mod gc;
 pub mod heap;
 pub mod leb128;
-mod mem;
+mod mem_utils;
 pub mod principal_id;
 pub mod text;
 pub mod text_iter;
