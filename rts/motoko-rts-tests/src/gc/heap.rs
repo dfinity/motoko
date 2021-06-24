@@ -1,15 +1,13 @@
-use super::utils::{read_word, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
+use super::utils::{write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
 
 use motoko_rts::heap::Heap;
 use motoko_rts::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
-
-use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.

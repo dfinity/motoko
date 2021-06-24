@@ -37,13 +37,6 @@ fn main() {
     }
 }
 
-unsafe fn as_u8_slice(v: &[u32]) -> &[u8] {
-    std::slice::from_raw_parts(
-        v.as_ptr() as *const u8,
-        v.len() * std::mem::size_of::<u32>(),
-    )
-}
-
 // Called by the RTS to panic
 #[no_mangle]
 extern "C" fn rts_trap(ptr: *const u8, len: Bytes<u32>) -> ! {

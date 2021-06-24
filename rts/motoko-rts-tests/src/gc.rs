@@ -14,12 +14,9 @@ use utils::{read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 // use motoko_rts::debug;
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
-use motoko_rts::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::types::*;
 
-use std::collections::{BTreeMap, HashMap};
-
-use byteorder::{ReadBytesExt, WriteBytesExt, LE};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -156,6 +153,10 @@ fn check_dynamic_heap(
             );
         }
     }
+
+    // Check that all roots are seen
+    let root_set: HashSet<ObjectIdx> = roots.iter().copied().collect();
+    assert_eq!(seen.keys().copied().collect::<HashSet<_>>(), root_set);
 }
 
 impl GC {
