@@ -9,13 +9,14 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [features]
-default = ["panic_handler", "ic"]
+# This file is used to build the RTS to be linked with moc-generated code, so
+# we enable the "ic" feature. `native/Cargo.toml` doesn't have this feature and
+# is used in RTS tests.
+default = ["ic"]
 
+# This feature is used to enable stuff needed for the RTS linked with
+# moc-generated code, but when testing the RTS
 ic = []
-
-# Defines a panic handler. Required for generating `staticlib` as static
-# libraries need to be self-contained.
-panic_handler = []
 
 [dependencies]
 libc = { version = "0.2.81", default_features = false }
