@@ -13,6 +13,17 @@ impl TestHeap {
         let hp = heap.as_ptr() as usize;
         TestHeap { heap, hp }
     }
+
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
+        if ptr > heap_end {
+            // We don't allow growing memory in tests, allocate large enough for the test
+            panic!(
+                "TestHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
+                heap_end, ptr
+            );
+        }
+    }
 }
 
 impl Heap for TestHeap {
@@ -30,14 +41,7 @@ impl Heap for TestHeap {
         skew(old_hp)
     }
 
-    unsafe fn grow_memory(&mut self, ptr: usize) {
-        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
-        if ptr > heap_end {
-            // We don't allow growing memory in tests, allocate large enough for the test
-            panic!(
-                "TestHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
-                heap_end, ptr
-            );
-        }
+    unsafe fn get_hp(&self) -> usize {
+        self.hp
     }
 }

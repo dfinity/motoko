@@ -4,13 +4,10 @@ pub mod ic;
 use crate::rts_trap_with;
 use crate::types::*;
 
-// TODO: `grow_memory` is Wasm/IC specific, could we remove it from this trait and only keep
-// `alloc_words`?
 pub trait Heap {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr;
 
-    /// Ensure that the memory up to the given pointer is allocated
-    unsafe fn grow_memory(&mut self, ptr: usize);
+    unsafe fn get_hp(&self) -> usize;
 
     unsafe fn alloc_blob(&mut self, size: Bytes<u32>) -> SkewedPtr {
         let ptr = self.alloc_words(size_of::<Blob>() + size.to_words());

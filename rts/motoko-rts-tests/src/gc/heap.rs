@@ -23,8 +23,8 @@ impl Heap for MotokoHeap {
         self.inner.borrow_mut().alloc_words(n)
     }
 
-    unsafe fn grow_memory(&mut self, ptr: usize) {
-        self.inner.borrow_mut().grow_memory(ptr)
+    unsafe fn get_hp(&self) -> usize {
+        self.inner.borrow().heap_ptr_address()
     }
 }
 
@@ -106,33 +106,6 @@ struct MotokoHeapInner {
     closure_table_offset: usize,
 }
 
-impl Heap for MotokoHeapInner {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
-        let bytes = n.to_bytes();
-
-        // Update heap pointer
-        let old_hp = self.heap_ptr_address();
-        let new_hp = old_hp + bytes.0 as usize;
-        self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
-
-        // Grow memory if needed
-        self.grow_memory(new_hp as usize);
-
-        skew(old_hp)
-    }
-
-    unsafe fn grow_memory(&mut self, ptr: usize) {
-        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
-        if ptr > heap_end {
-            // We don't allow growing memory in tests, allocate large enough for the test
-            panic!(
-                "TestHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
-                heap_end, ptr
-            );
-        }
-    }
-}
-
 impl MotokoHeapInner {
     fn address_to_offset(&self, address: usize) -> usize {
         address - self.heap.as_ptr() as usize
@@ -208,6 +181,31 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
             closure_table_offset,
+        }
+    }
+
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+        let bytes = n.to_bytes();
+
+        // Update heap pointer
+        let old_hp = self.heap_ptr_address();
+        let new_hp = old_hp + bytes.0 as usize;
+        self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
+
+        // Grow memory if needed
+        self.grow_memory(new_hp as usize);
+
+        skew(old_hp)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
+        if ptr > heap_end {
+            // We don't allow growing memory in tests, allocate large enough for the test
+            panic!(
+                "MotokoHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
+                heap_end, ptr
+            );
         }
     }
 }

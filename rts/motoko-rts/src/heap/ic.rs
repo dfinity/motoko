@@ -63,19 +63,23 @@ impl Heap for IcHeap {
         HP = new_hp;
 
         // Grow memory if needed
-        self.grow_memory(new_hp as usize);
+        grow_memory(new_hp as usize);
 
         skew(old_hp as usize)
     }
 
-    unsafe fn grow_memory(&mut self, ptr: usize) {
-        let total_pages_needed = ((ptr / 65536) + 1) as i32;
-        let current_pages = wasm32::memory_size(0) as i32;
-        let new_pages_needed = total_pages_needed - current_pages;
-        if new_pages_needed > 0 {
-            if wasm32::memory_grow(0, new_pages_needed as usize) == core::usize::MAX {
-                rts_trap_with("Cannot grow memory");
-            }
+    unsafe fn get_hp(&self) -> usize {
+        HP as usize
+    }
+}
+
+unsafe fn grow_memory(ptr: usize) {
+    let total_pages_needed = ((ptr / 65536) + 1) as i32;
+    let current_pages = wasm32::memory_size(0) as i32;
+    let new_pages_needed = total_pages_needed - current_pages;
+    if new_pages_needed > 0 {
+        if wasm32::memory_grow(0, new_pages_needed as usize) == core::usize::MAX {
+            rts_trap_with("Cannot grow memory");
         }
     }
 }

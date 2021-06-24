@@ -39,37 +39,30 @@ pub unsafe fn copying_gc_internal<
     let begin_from_space = heap_base as usize;
     let end_from_space = get_hp() as usize;
     let begin_to_space = end_from_space;
-    let mut end_to_space = begin_to_space;
 
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(
-        heap,
-        begin_from_space,
-        begin_to_space,
-        &mut end_to_space,
-        static_roots,
-    );
+    evac_static_roots(heap, begin_from_space, begin_to_space, static_roots);
 
     if (*closure_table_loc).unskew() >= begin_from_space {
         evac(
             heap,
             begin_from_space,
             begin_to_space,
-            &mut end_to_space,
             closure_table_loc as usize,
         );
     }
 
     // Scavenge to-space
     let mut p = begin_to_space;
-    while p < end_to_space {
-        // NB: end_to_space keeps changing within this loop
+    while p < heap.get_hp() {
         let size = object_size(p);
-        scav(heap, begin_from_space, begin_to_space, &mut end_to_space, p);
+        scav(heap, begin_from_space, begin_to_space, p);
         p += size.to_bytes().0 as usize;
     }
+
+    let end_to_space = heap.get_hp();
 
     // Note the stats
     let new_live_size = end_to_space - begin_to_space;
@@ -90,8 +83,7 @@ pub unsafe fn copying_gc_internal<
     set_hp(new_hp as u32);
 }
 
-/// Evacuate (copy) an object in from-space to to-space, update end_to_space. If the object was
-/// already evacuated end_to_space is not changed.
+/// Evacuate (copy) an object in from-space to to-space.
 ///
 /// Arguments:
 ///
@@ -103,11 +95,9 @@ pub unsafe fn copying_gc_internal<
 ///
 ///   - After all objects are evacuated we move to-space to from-space, to be able to do that the
 ///     pointers need to point to their (eventual) locations in from-space, which is calculated with
-///     `end_to_space - begin_to_space + begin_from_space`.
+///     `address_in_to_space - begin_to_space + begin_from_space`.
 ///
 /// - begin_to_space: Where to-space starts. See above for how this is used.
-///
-/// - end_to_space: Where the object in `ptr_loc` will be copied.
 ///
 /// - ptr_loc: Location of the object to evacuate, e.g. an object field address.
 ///
@@ -115,7 +105,6 @@ unsafe fn evac<H: Heap>(
     heap: &mut H,
     begin_from_space: usize,
     begin_to_space: usize,
-    end_to_space: &mut usize,
     ptr_loc: usize,
 ) {
     // Field holds a skewed pointer to the object to evacuate
@@ -131,16 +120,15 @@ unsafe fn evac<H: Heap>(
     }
 
     let obj_size = object_size(obj as usize);
-    let obj_size_bytes = obj_size.to_bytes();
 
-    // Grow memory if needed
-    heap.grow_memory(*end_to_space + obj_size_bytes.0 as usize);
+    // Allocate space in to-space for the object
+    let obj_addr = heap.alloc_words(obj_size).unskew() as usize;
 
     // Copy object to to-space
-    memcpy_words(*end_to_space, obj as usize, obj_size);
+    memcpy_words(obj_addr, obj as usize, obj_size);
 
     // Final location of the object after copying to-space back to from-space
-    let obj_loc = (*end_to_space - begin_to_space) + begin_from_space;
+    let obj_loc = (obj_addr - begin_to_space) + begin_from_space;
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
@@ -149,28 +137,13 @@ unsafe fn evac<H: Heap>(
 
     // Update evacuated field
     *ptr_loc = skew(obj_loc);
-
-    // Update end of to-space
-    *end_to_space += obj_size_bytes.0 as usize
 }
 
-unsafe fn scav<H: Heap>(
-    heap: &mut H,
-    begin_from_space: usize,
-    begin_to_space: usize,
-    end_to_space: &mut usize,
-    obj: usize,
-) {
+unsafe fn scav<H: Heap>(heap: &mut H, begin_from_space: usize, begin_to_space: usize, obj: usize) {
     let obj = obj as *mut Obj;
 
     crate::visitor::visit_pointer_fields(obj, begin_from_space, |field_addr| {
-        evac(
-            heap,
-            begin_from_space,
-            begin_to_space,
-            end_to_space,
-            field_addr as usize,
-        );
+        evac(heap, begin_from_space, begin_to_space, field_addr as usize);
     });
 }
 
@@ -180,19 +153,12 @@ unsafe fn evac_static_roots<H: Heap>(
     heap: &mut H,
     begin_from_space: usize,
     begin_to_space: usize,
-    end_to_space: &mut usize,
     roots: *mut Array,
 ) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(
-            heap,
-            begin_from_space,
-            begin_to_space,
-            end_to_space,
-            obj.unskew(),
-        );
+        scav(heap, begin_from_space, begin_to_space, obj.unskew());
     }
 }
