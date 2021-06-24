@@ -180,7 +180,7 @@ let process_files files : unit =
 (* Copy relevant flags into the profiler library's (global) settings.
    This indirection affords the profiler library an independence from the (hacky) Flags library.
    See also, this discussion:
-   https://github.com/dfinity-lab/motoko/pull/405#issuecomment-503326551
+   https://github.com/dfinity/motoko/pull/405#issuecomment-503326551
 *)
 let process_profiler_flags () =
   ProfilerFlags.profile             := !Flags.profile;
