@@ -1,5 +1,5 @@
 //! A stack for marking heap objects (for GC). There should be no allocation after the stack
-//! otherwise things will break as we push.
+//! otherwise things will break as we push. This invariant is checked in debug builds.
 
 use crate::heap::Heap;
 use crate::types::{Blob, Words};
