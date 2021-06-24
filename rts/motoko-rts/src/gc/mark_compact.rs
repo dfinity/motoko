@@ -18,7 +18,6 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     compacting_gc_internal(
         mem,
         crate::memory::ic::get_heap_base(),
-        || crate::memory::ic::HP,
         |hp| crate::memory::ic::HP = hp,
         crate::memory::ic::get_static_roots(),
         crate::closure_table::closure_table_loc(),
@@ -31,21 +30,19 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
 
 pub unsafe fn compacting_gc_internal<
     M: Memory,
-    GetHp: Fn() -> u32,
     SetHp: Fn(u32),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
     mem_base: u32,
-    get_hp: GetHp,
     set_hp: SetHp,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    let old_hp = get_hp();
+    let old_hp = mem.get_hp() as u32;
 
     mark_compact(
         mem,
@@ -56,10 +53,10 @@ pub unsafe fn compacting_gc_internal<
         closure_table_loc,
     );
 
-    let reclaimed = old_hp - get_hp();
+    let reclaimed = old_hp - (mem.get_hp() as u32);
     note_reclaimed(Bytes(reclaimed));
 
-    let live = get_hp() - mem_base;
+    let live = mem.get_hp() as u32 - mem_base;
     note_live_size(Bytes(live));
 }
 

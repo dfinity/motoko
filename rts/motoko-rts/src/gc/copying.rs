@@ -9,7 +9,6 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     copying_gc_internal(
         mem,
         crate::memory::ic::get_heap_base(),
-        || crate::memory::ic::HP,
         |hp| crate::memory::ic::HP = hp,
         crate::memory::ic::get_static_roots(),
         crate::closure_table::closure_table_loc(),
@@ -22,14 +21,12 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
 pub unsafe fn copying_gc_internal<
     M: Memory,
-    GetHp: Fn() -> u32,
     SetHp: FnMut(u32),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
     mem_base: u32,
-    get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
@@ -37,7 +34,7 @@ pub unsafe fn copying_gc_internal<
     note_reclaimed: NoteReclaimed,
 ) {
     let begin_from_space = mem_base as usize;
-    let end_from_space = get_hp() as usize;
+    let end_from_space = mem.get_hp();
     let begin_to_space = end_from_space;
 
     let static_roots = static_roots.as_array();

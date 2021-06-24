@@ -174,8 +174,6 @@ impl GC {
                     copying_gc_internal(
                         &mut heap.clone(),
                         heap_base,
-                        // get_hp
-                        move || heap_1.heap_ptr_address() as u32,
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
@@ -193,8 +191,6 @@ impl GC {
                     compacting_gc_internal(
                         &mut heap.clone(),
                         heap_base,
-                        // get_hp
-                        move || heap_1.heap_ptr_address() as u32,
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
