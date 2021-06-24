@@ -75,7 +75,7 @@ pub unsafe fn copying_gc_internal<
         Bytes((end_to_space - begin_to_space) as u32),
     );
 
-    // Reset the mem pointer
+    // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp as u32);
 }
@@ -84,10 +84,10 @@ pub unsafe fn copying_gc_internal<
 ///
 /// Arguments:
 ///
-/// - begin_from_space: Where the dynamic mem starts. Used for two things:
+/// - begin_from_space: Where the dynamic heap starts. Used for two things:
 ///
 ///   - An object is static if its address is below this value. These objects either don't point to
-///     dynamic mem, or are listed in static_roots array. Objects in static_roots are scavenged
+///     dynamic heap, or are listed in static_roots array. Objects in static_roots are scavenged
 ///     separately in `evac_static_roots` below. So we skip these objects here.
 ///
 ///   - After all objects are evacuated we move to-space to from-space, to be able to do that the

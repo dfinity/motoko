@@ -1,11 +1,11 @@
 //! This file implements the data structure the Motoko runtime uses to keep track of outstanding
 //! closures. It needs to support the following operations
 //!
-//!  1. Adding a closure (any mem pointer) and getting an index (i32)
+//!  1. Adding a closure (any heap pointer) and getting an index (i32)
 //!  2. Looking up a closure by index, which also frees it
 //!  3. GC must be able to traverse and move closures in the table
 //!
-//! Current implementation stores the closures in mem-allocated Motoko array.
+//! Current implementation stores the closures in heap-allocated Motoko array.
 //!
 //! To efficiently look up the next free index, we use an implicit free list: `FREE_SLOT` is the
 //! index into the array payload of the next free item. Each free item contains the index of the

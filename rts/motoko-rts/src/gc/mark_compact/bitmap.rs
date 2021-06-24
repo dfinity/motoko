@@ -5,15 +5,15 @@ use crate::types::{size_of, Blob, Bytes, Obj};
 /// Current bitmap
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 
-pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, mem_size: Bytes<u32>) {
-    // We will have at most this many objects in the mem, each requiring a bit
-    let n_bits = mem_size.to_words().0;
+pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>) {
+    // We will have at most this many objects in the heap, each requiring a bit
+    let n_bits = heap_size.to_words().0;
     // Each byte will hold 8 bits.
     let bitmap_bytes = (n_bits + 7) / 8;
     // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
     let bitmap_bytes = Bytes(((bitmap_bytes + 7) / 8) * 8);
-    // Allocating an actual object here as otherwise dump_mem gets confused
+    // Allocating an actual object here as otherwise dump_heap gets confused
     let blob = mem.alloc_blob(bitmap_bytes).unskew() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
@@ -81,9 +81,9 @@ pub unsafe fn iter_bits() -> BitmapIter {
 /// end-of-stream reduces Wasm instructions executed by ~2.7% in some cases.
 //
 // Heap is 4GiB and each 32-bit word gets a bit, so this is one larger than the bit for the last
-// word in mem.
+// word in heap.
 //
-// (We actually need less bits than that as when the mem is full we can't allocate bitmap and mark
+// (We actually need less bits than that as when the heap is full we can't allocate bitmap and mark
 // stack and can't do GC)
 pub const BITMAP_ITER_END: u32 = 1024 * 1024 * 1024;
 

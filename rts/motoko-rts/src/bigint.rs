@@ -26,7 +26,7 @@ there, and use the overall `TAG_BIGINT` as the bignum object.
 
 This scheme makes the following assumptions:
 
- - libtommath never modifies the data on the mem.
+ - libtommath never modifies the data on the heap.
    (or put differently, we only pass those to libtommath when they are immutable)
  - libtommath uses mp_calloc() and mp_realloc() _only_ to allocate the `mp_digit *` array.
 */
@@ -154,7 +154,7 @@ unsafe fn tmp_bigint() -> mp_int {
     i
 }
 
-// Persists an mp_int from the stack on the mem
+// Persists an mp_int from the stack on the heap
 unsafe fn persist_bigint(i: mp_int) -> SkewedPtr {
     if i.dp == core::ptr::null_mut() {
         panic!("persist_bigint: dp == NULL?");

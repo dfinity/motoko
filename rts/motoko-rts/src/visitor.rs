@@ -1,7 +1,7 @@
 use crate::rts_trap_with;
 use crate::types::*;
 
-/// A visitor that passes field addresses of fields with pointers to dynamic mem to the given
+/// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
 pub unsafe fn visit_pointer_fields<F>(obj: *mut Obj, mem_base: usize, mut visit_ptr_field: F)
 where

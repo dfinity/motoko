@@ -1,7 +1,7 @@
 //! The implementation of the Text type in Motoko
 //!
 //! One main goal of this datastructure (inspired by ropes and similar) is to support constant time
-//! concatenation, by having a dedicated mem object for the concatenation of two strings.
+//! concatenation, by having a dedicated heap object for the concatenation of two strings.
 //!
 //! The first goal was to wire up this Rust code with the RTS that encapsulates the internals of
 //! strings.

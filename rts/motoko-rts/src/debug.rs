@@ -22,15 +22,15 @@ unsafe fn print_closure(p: usize) {
     print(&write_buf);
 }
 
-pub unsafe fn dump_mem(
-    mem_base: u32,
+pub unsafe fn dump_heap(
+    heap_base: u32,
     hp: u32,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
 ) {
     print_closure_table(closure_table_loc);
     print_static_roots(static_roots);
-    print_mem(mem_base, hp);
+    print_heap(heap_base, hp);
 }
 
 pub(crate) unsafe fn print_closure_table(closure_tbl_loc: *mut SkewedPtr) {
@@ -92,21 +92,21 @@ pub(crate) unsafe fn print_static_roots(static_roots: SkewedPtr) {
     println!(50, "End of static roots");
 }
 
-unsafe fn print_mem(mem_start: u32, mem_end: u32) {
+unsafe fn print_heap(heap_start: u32, heap_end: u32) {
     println!(
         200,
-        "Heap start={:#x}, mem end={:#x}, size={} bytes",
-        mem_start,
-        mem_end,
-        mem_end - mem_start
+        "Heap start={:#x}, heap end={:#x}, size={} bytes",
+        heap_start,
+        heap_end,
+        heap_end - heap_start
     );
 
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
-    let mut p = mem_start;
+    let mut p = heap_start;
     let mut i: Words<u32> = Words(0);
-    while p < mem_end {
+    while p < heap_end {
         print_boxed_object(&mut write_buf, p as usize);
         print(&write_buf);
         write_buf.reset();

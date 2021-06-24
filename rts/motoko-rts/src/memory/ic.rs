@@ -57,7 +57,7 @@ impl Memory for IcMemory {
         // Update ALLOCATED
         ALLOCATED += Bytes(bytes.0 as u64);
 
-        // Update mem pointer
+        // Update heap pointer
         let old_hp = HP;
         let new_hp = old_hp + bytes.0;
         HP = new_hp;

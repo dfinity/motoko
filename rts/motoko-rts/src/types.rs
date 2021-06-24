@@ -149,7 +149,7 @@ pub fn skew(ptr: usize) -> SkewedPtr {
 }
 
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
-// tags, because of mem corruptions and other bugs (in the code generator or RTS, or maybe because
+// tags, because of heap corruptions and other bugs (in the code generator or RTS, or maybe because
 // of an unsafe API usage).
 pub type Tag = u32;
 

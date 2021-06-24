@@ -97,7 +97,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, mem_base: u32) {
     let root_array = static_roots.as_array();
 
-    // Static objects are not in the dynamic mem so don't need marking.
+    // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
         mark_fields(mem, obj, mem_base);
@@ -136,10 +136,10 @@ unsafe fn thread_roots(static_roots: SkewedPtr, mem_base: u32) {
     for i in 0..root_array.len() {
         thread_obj_fields(root_array.get(i).unskew() as *mut Obj, mem_base);
     }
-    // No need to thread closure table here as it's on mem and we already marked it
+    // No need to thread closure table here as it's on heap and we already marked it
 }
 
-/// Scan the mem, update forward references. At the end of this pass all fields will be threaded
+/// Scan the heap, update forward references. At the end of this pass all fields will be threaded
 /// and forward references will be updated, pointing to the object's new location.
 unsafe fn update_fwd_refs(mem_base: u32) {
     let mut free = mem_base;
@@ -206,7 +206,7 @@ unsafe fn thread(field: *mut SkewedPtr) {
 
 /// Unthread all references, replacing with `new_loc`
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    // NOTE: For this to work mem addresses need to be greater than the largest value for object
+    // NOTE: For this to work heap addresses need to be greater than the largest value for object
     // headers. Currently this holds. TODO: Document this better.
     let mut header = (*obj).tag;
     while header > TAG_NULL {
