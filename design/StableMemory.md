@@ -65,7 +65,7 @@ Maybe a stable `ref T` type is a safer abstraction for stable memory?
 * type `ref T`:  represent a fixed address in stable memory. The address stores current offset in stable memory of contents of r (T must be stable).
 * `ref v` : allocates the next address, storing the serialized blob of `v` in stable memory, writing address of that blob into `r`, returns the address.
 * `! r`: deserializes `v` from some blob in stable memory at current offset stored in stable reference `r`.
-* `r := v' frees content blob `v` of r and serializes `v` to (re)allocated memory, updating
+* `r := v` frees content blob `v` of r and serializes `v` to (re)allocated memory, updating
   offset stored at fixed address r.
 
 Stable memory blobs are sized regions allocated from a free list. For security, we might want to zero discarded blob regions on free. Hopefully a simple best-fit, malloc-style allocator
