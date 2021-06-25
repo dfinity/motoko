@@ -18,13 +18,12 @@ A) extending Motoko with access to (monomorphic) Candid serialization primitives
 
 ```
    encode<T>(v : T) : Blob
-   decode<T>(b : Blob) : T
+   decode<T>(b : Blob) : T // or, if supportable, ?T
 
    (where T shared or, to allow isolated graphs, T stable).
 ```
 
 The current implementations of these prims embed the type table with the value. This means blobs are larger, but also self-describing, allowing per blob upgrade.
-
 
 
 B) Surfacing stable memory API
@@ -58,15 +57,36 @@ Q:
 
 # Stable Ref types?
 
-Maybe a stable ref type is a safer abstraction for stable memory.
-* ref r i a fixed address in stable memory, stores current word offset in stable memory of contents of r.
-* ref v : allocates the next address, stores the serialization of v in stable memory, writing address of that blob into r, returns the address.
-* ! r: deserializes v from stable memory at current offset stored in r
-* r := v' frees content blob v of r and serializes v' to (re)allocated memory, updating
+The raw API of the previous section might be workable but is totally unsafe, allowing writes to arbitrary offsets, possible corrupting data, and reads from random offset,
+producing unpredictable behaviour.
+
+Maybe a stable `ref T` type is a safer abstraction for stable memory?
+
+* type `ref T`:  represent a fixed address in stable memory. The address stores current offset in stable memory of contents of r (T must be stable).
+* `ref v` : allocates the next address, storing the serialized blob of `v` in stable memory, writing address of that blob into `r`, returns the address.
+* `! r`: deserializes `v` from some blob in stable memory at current offset stored in stable reference `r`.
+* `r := v' frees content blob `v` of r and serializes v' to (re)allocated memory, updating
   offset stored at fixed address r.
 
+Stable memory blobs are sized regions allocated from a free list. For security, we might want to zero discarded blob regions on free. Hopefully a simple best-fit, malloc-style allocator
+that coalesces regions on free could be used for this.
 
-# Stable variables
+We could also have write-once references, `stable T`, for immutable stable storage, e.g. for write-only logs.
+
+If we deign references to be `stable`, but not `shared`, then we can store the (smallish) metadata pointing into stable memory in stable variables and cross our fingers that
+pre- and post- upgrade hooks will have sufficient cycles to serialize/deserialize this smallish metadata.
+
+In future, the GC could mark dead references as free, returning them to the allocator -
+there is no need to collect StableMemory store for references as they are not shared and cannot, by typing, occur in stable memory (or be sent to other actors).
+
+Drawbacks:
+
+* No need for explicit serialization functions - hidden behind semantics of reading/writing from ref.
+* Moderately complicated, potential to leak/fragment stable memory.
+* Motoko specific, and no cross-language upgrade story, but that was true for our use of Candid(ish) stable variables too (since they extend Candid with mutable data).
+* Returns ref contents from stable memory as a message reply would require redundant de- and re-serialization unless we optimize this to a bulk read from stable storage to memory.
+
+# Maintaining existing Stable variables.
 
 Stable memory is currently hidden behind the abstraction of stable
 variables, which we will still need to maintain. The current
