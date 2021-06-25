@@ -19,6 +19,8 @@ The {proglang} programming language is a new, modern, type-sound language design
 Motoko is specifically designed to support the unique features of the Internet Computer and to provide a familiar yet robust programming environment.
 As a new language {proglang} is constantly evolving with support for new features and improvements.
 
+The Motoko compiler, documentation and other tooling is https://github.com/dfinity/motoko[open source] and released under the Apache 2.0 license. Contributions are welcome.
+
 [.cards.cards-4.personas.conceal-title]
 {empty}
 
@@ -122,4 +124,3 @@ Our goal is to enable any language (with a compiler that targets WebAssembly) to
 with other, perhaps foreign, canisters through language neutral Candid interfaces.
 
 Its tailored design means {proglang} should be the easiest and safest language for coding on the {IC}, at least for the forseeable future.
-
