@@ -65,7 +65,7 @@ Maybe a stable `ref T` type is a safer abstraction for stable memory?
 * type `ref T`:  represent a fixed address in stable memory. The address stores current offset in stable memory of contents of r (T must be stable).
 * `ref v` : allocates the next address, storing the serialized blob of `v` in stable memory, writing address of that blob into `r`, returns the address.
 * `! r`: deserializes `v` from some blob in stable memory at current offset stored in stable reference `r`.
-* `r := v' frees content blob `v` of r and serializes v' to (re)allocated memory, updating
+* `r := v' frees content blob `v` of r and serializes `v` to (re)allocated memory, updating
   offset stored at fixed address r.
 
 Stable memory blobs are sized regions allocated from a free list. For security, we might want to zero discarded blob regions on free. Hopefully a simple best-fit, malloc-style allocator
@@ -99,7 +99,6 @@ stable _variable_ data stored just beyond the currently used StableMemory
 content on canister_pre_upgrade and canister_post_upgrade. That way the StableMemory area need not move, with stable variables simply serialized and appended in `canister_pre_upgrade` and deserialized and discarded in `canister_post_upgrade`, leaving the manual StableMemory unchanged.
 
 Assuming stable variables always require non-zero bytes to encode, we should be able to devise a backwards compatible scheme for upgrading from pre-StableMemory canisters to post-StableMemory canisters. Details to be designed.
-
 
 
 
