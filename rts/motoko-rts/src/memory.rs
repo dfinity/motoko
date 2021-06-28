@@ -6,7 +6,24 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
-/// A trait for heap allocation. Functions that allocate in heap get a `Memory` argument.
+/// A trait for heap allocation. RTS functions allocate in heap via this trait.
+///
+/// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
+/// functions that pass `ic::IcMemory` for the `Memory` arguments, and export these functions with
+/// the expected names for the generated code. For example, for a function like
+///
+/// ```
+/// unsafe fn allocating_function<M: Memory>(mem: &mut M) { ... }
+/// ```
+///
+/// we implement (or generate with a macro)
+///
+/// ```
+/// #[no_mangle]
+/// unsafe extern "C" fn export_name() { allocating_function(crate::memory::ic::IcMemory) }
+/// ```
+///
+/// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr;
 }

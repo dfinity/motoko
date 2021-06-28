@@ -1,3 +1,5 @@
+// This module is only enabled when compiling the RTS for IC or WASI.
+
 use super::Memory;
 use crate::rts_trap_with;
 use crate::types::*;
@@ -49,6 +51,8 @@ unsafe fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
 }
 
+/// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
+/// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
 
 impl Memory for IcMemory {
