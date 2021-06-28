@@ -122,34 +122,40 @@ fn check_dynamic_heap(
         let n_fields = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        // There should be at least one field for the tag
+        // There should be at least one field for the index
         assert!(n_fields >= 1);
 
-        let tag = read_word(heap, offset) >> 1;
+        let object_idx = read_word(heap, offset) >> 1;
         offset += WORD_SIZE;
-        let old = seen.insert(tag, address);
+        let old = seen.insert(object_idx, address);
         if let Some(old) = old {
             panic!(
-                "Object with tag {} seen multiple times: {:#x}, {:#x}",
-                tag, old, address
+                "Object with index {} seen multiple times: {:#x}, {:#x}",
+                object_idx, old, address
             );
         }
 
-        let object_expected_pointees = objects
-            .get(&tag)
-            .unwrap_or_else(|| panic!("Object with tag {} is not in the objects map", tag));
+        let object_expected_pointees = objects.get(&object_idx).unwrap_or_else(|| {
+            panic!("Object with index {} is not in the objects map", object_idx)
+        });
 
         for field_idx in 1..n_fields {
             let field = read_word(heap, offset);
             offset += WORD_SIZE;
-            // Get tag of the object pointed by the field
+            // Get index of the object pointed by the field
             let pointee_address = field.wrapping_add(1); // unskew
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-            let pointee_tag_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_tag = read_word(heap, pointee_tag_offset) >> 1;
+            let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
+            let pointee_idx = read_word(heap, pointee_idx_offset) >> 1;
+            let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
             assert_eq!(
-                pointee_tag,
-                object_expected_pointees[(field_idx - 1) as usize]
+                pointee_idx,
+                expected_pointee_idx,
+                "Object with index {} points to {} in field {}, but expected to point to {}",
+                object_idx,
+                pointee_idx,
+                field_idx - 1,
+                expected_pointee_idx,
             );
         }
     }
