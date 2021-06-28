@@ -81,9 +81,9 @@ pub unsafe fn sleb128_decode_checked(buf: *mut Buf) -> Option<i32> {
 
         result |= ((byte & 0b0111_1111) as i32) << shift;
 
-        // The 5th byte needs to be the last, and it must contribute at most 4 bits, otherwise we
-        // have an overflow
-        if shift == 28 && (byte & 0b1111_0000 != 0 || byte & 0b1110_0000 != 0) {
+        // Overflow check ported from Wasm reference implementation:
+        // https://github.com/WebAssembly/spec/blob/f9770eb75117cac0c878feaa5eaf4a4d9dda61f5/interpreter/binary/decode.ml#L89-L98
+        if shift == 28 && (byte & 0b0111_1000 != 0 && byte & 0b0111_1000 != 0b0111_1000) {
             return None;
         }
 

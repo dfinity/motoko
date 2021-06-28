@@ -6,6 +6,7 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+/// A trait for heap allocation. Functions that allocate in heap get a `Memory` argument.
 pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr;
 }

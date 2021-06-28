@@ -15,17 +15,15 @@ pub unsafe fn test() {
         ..Default::default()
     });
 
-    // TODO: Some of the tests below are disabled as sleb128_decode is buggy: #2625
-
     roundtrip_signed(1).unwrap();
     roundtrip_signed(0).unwrap();
-    // roundtrip_signed(-1).unwrap();
-    // roundtrip_signed(i32::MIN).unwrap(); // -2147483648
-    // roundtrip_signed(i32::MAX).unwrap(); // 2147483647
+    roundtrip_signed(-1).unwrap();
+    roundtrip_signed(i32::MIN).unwrap(); // -2147483648
+    roundtrip_signed(i32::MAX).unwrap(); // 2147483647
 
-    // proptest_runner
-    //     .run(&proptest::num::i32::ANY, roundtrip_signed)
-    //     .unwrap();
+    proptest_runner
+        .run(&proptest::num::i32::ANY, roundtrip_signed)
+        .unwrap();
 
     roundtrip_unsigned(1).unwrap();
     roundtrip_unsigned(0).unwrap();
@@ -35,6 +33,31 @@ pub unsafe fn test() {
     proptest_runner
         .run(&proptest::num::u32::ANY, roundtrip_unsigned)
         .unwrap();
+
+    // Check overflows
+    check_signed_decode_overflow(&[
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b0111_0111,
+    ]); // i32::MIN - 1
+
+    check_signed_decode_overflow(&[
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b0000_1000,
+    ]); // i32::MAX + 1
+
+    check_unsigned_decode_overflow(&[
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b0001_0000,
+    ]); // u32::MAX + 1
 }
 
 fn roundtrip_signed(val: i32) -> TestCaseResult {
@@ -89,4 +112,22 @@ fn roundtrip_unsigned(val: u32) -> TestCaseResult {
             }
         }
     }
+}
+
+unsafe fn check_signed_decode_overflow(buf: &[u8]) {
+    let mut buf_ = Buf {
+        ptr: buf.as_ptr() as *mut _,
+        end: buf.as_ptr().add(buf.len()) as *mut _,
+    };
+
+    assert_eq!(sleb128_decode_checked(&mut buf_), None);
+}
+
+unsafe fn check_unsigned_decode_overflow(buf: &[u8]) {
+    let mut buf_ = Buf {
+        ptr: buf.as_ptr() as *mut _,
+        end: buf.as_ptr().add(buf.len()) as *mut _,
+    };
+
+    assert_eq!(leb128_decode_checked(&mut buf_), None);
 }
