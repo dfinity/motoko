@@ -16,7 +16,7 @@ use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 pub fn test() {
@@ -24,7 +24,7 @@ pub fn test() {
 
     // TODO: Add more tests
 
-    let heap = btreemap! {
+    let heap = hashmap! {
         0 => vec![0, 2],
         2 => vec![0],
         3 => vec![3],
@@ -37,7 +37,7 @@ pub fn test() {
 
 #[derive(Debug)]
 struct TestHeap {
-    heap: BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    heap: HashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: Vec<ObjectIdx>,
 }
 
@@ -48,7 +48,7 @@ fn test_gcs(heap_descr: &TestHeap) {
     }
 }
 
-fn test_gc(gc: GC, refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32]) {
+fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
     let heap = MotokoHeap::new(refs, roots, gc);
 
     // println!("{:?}", heap.heap);
@@ -96,7 +96,7 @@ fn test_gc(gc: GC, refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32]) {
 ///   heap.
 ///
 fn check_dynamic_heap(
-    objects: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    objects: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
     heap: &[u8],
     heap_base_offset: usize,
@@ -214,7 +214,7 @@ fn check_dynamic_heap(
 
 fn compute_reachable_objects(
     roots: &[ObjectIdx],
-    heap: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    heap: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
 ) -> HashSet<ObjectIdx> {
     let mut closure: HashSet<ObjectIdx> = roots.iter().copied().collect();
     let mut work_list: Vec<ObjectIdx> = roots.iter().copied().collect();

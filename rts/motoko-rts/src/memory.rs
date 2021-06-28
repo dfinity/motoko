@@ -10,6 +10,7 @@ pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr;
 }
 
+/// Helper for allocating blobs
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> SkewedPtr {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
@@ -19,6 +20,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> SkewedPtr 
     ptr
 }
 
+/// Helper for allocating arrays
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> SkewedPtr {
     // Array payload should not be larger than half of the memory

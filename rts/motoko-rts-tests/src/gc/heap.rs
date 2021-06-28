@@ -5,7 +5,7 @@ use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
 
@@ -30,7 +30,7 @@ impl MotokoHeap {
     /// `super::MAX_MARK_STACK_SIZE`. In the worst case the size would be the same as the heap
     /// size, but that's not a realistic scenario.
     pub fn new(
-        map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+        map: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
         roots: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
@@ -135,7 +135,7 @@ impl MotokoHeapInner {
     }
 
     fn new(
-        map: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+        map: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
         roots: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeapInner {
@@ -160,7 +160,7 @@ impl MotokoHeapInner {
         let mut heap: Vec<u8> = vec![0; heap_size];
 
         // Maps `ObjectIdx`s into their offsets in the heap
-        let object_addrs: Vec<usize> =
+        let object_addrs: HashMap<ObjectIdx, usize> =
             create_dynamic_heap(map, &mut heap[static_heap_size_bytes..]);
 
         create_static_heap(roots, &object_addrs, &mut heap[..static_heap_size_bytes]);
@@ -245,25 +245,19 @@ fn heap_size_for_gc(
 /// Returns a mapping from object indices (`ObjectIdx`) to their addresses (see module
 /// documentation for "offset" and "address" definitions).
 fn create_dynamic_heap(
-    refs: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+    refs: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
     dynamic_heap: &mut [u8],
-) -> Vec<usize> {
-    if refs.is_empty() {
-        return vec![];
-    }
-
-    let last_obj = *refs.last_key_value().as_ref().unwrap().0;
-
+) -> HashMap<ObjectIdx, usize> {
     let heap_start = dynamic_heap.as_ptr() as usize;
 
     // Maps objects to their addresses
-    let mut object_addrs: Vec<usize> = vec![usize::MAX; last_obj as usize + 1];
+    let mut object_addrs: HashMap<ObjectIdx, usize> = HashMap::new();
 
     // First pass allocates objects without fields
     {
         let mut heap_offset = 0;
         for (obj, refs) in refs {
-            object_addrs[*obj as usize] = heap_start + heap_offset;
+            object_addrs.insert(*obj, heap_start + heap_offset);
 
             // Store object header
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
@@ -290,10 +284,10 @@ fn create_dynamic_heap(
 
     // Second pass adds fields
     for (obj, refs) in refs {
-        let obj_offset = object_addrs[*obj as usize] - heap_start;
+        let obj_offset = object_addrs.get(obj).unwrap() - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
             // -1 for skewing
-            let ref_addr = object_addrs[*ref_ as usize].wrapping_sub(1);
+            let ref_addr = object_addrs.get(ref_).unwrap().wrapping_sub(1);
             let field_offset = obj_offset + (3 + ref_idx) * WORD_SIZE;
             write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
         }
@@ -305,10 +299,14 @@ fn create_dynamic_heap(
 /// Given a root set (`roots`, may contain duplicates), a mapping from object indices to addresses
 /// (`object_addrs`), and the static part of the heap, initialize the static heap with the static
 /// root array.
-fn create_static_heap(roots: &[ObjectIdx], object_addrs: &[usize], heap: &mut [u8]) {
+fn create_static_heap(
+    roots: &[ObjectIdx],
+    object_addrs: &HashMap<ObjectIdx, usize>,
+    heap: &mut [u8],
+) {
     let root_addresses: Vec<usize> = roots
         .iter()
-        .map(|obj| object_addrs[*obj as usize])
+        .map(|obj| *object_addrs.get(obj).unwrap())
         .collect();
 
     // Create static root array. Each element of the array is a MutBox pointing to the actual
