@@ -1,7 +1,7 @@
 //! A stack for marking heap objects (for GC). There should be no allocation after the stack
 //! otherwise things will break as we push. This invariant is checked in debug builds.
 
-use crate::memory::Memory;
+use crate::memory::{alloc_blob, Memory};
 use crate::types::{Blob, Words};
 
 use core::ptr::null_mut;
@@ -25,7 +25,7 @@ pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
     debug_assert!(STACK_BLOB_PTR.is_null());
 
     // Allocating an actual object here to not break dump_heap
-    STACK_BLOB_PTR = mem.alloc_blob(INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
+    STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
     STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
     STACK_PTR = STACK_BASE;
     STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.0 as usize);

@@ -26,7 +26,7 @@
 // size of the text.
 
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::Memory;
+use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
@@ -45,7 +45,7 @@ unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> SkewedPtr
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_bloc: Text too large");
     }
-    mem.alloc_blob(size)
+    alloc_blob(mem, size)
 }
 
 #[ic_mem_fn]

@@ -19,7 +19,7 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::memory::Memory;
+use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::SkewedPtr;
 
@@ -38,7 +38,7 @@ static mut N_CLOSURES: u32 = 0;
 static mut FREE_SLOT: u32 = 0;
 
 unsafe fn crate_closure_table<M: Memory>(mem: &mut M) {
-    TABLE = mem.alloc_array(INITIAL_SIZE);
+    TABLE = alloc_array(mem, INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CLOSURES = 0;
 
@@ -56,7 +56,7 @@ unsafe fn double_closure_table<M: Memory>(mem: &mut M) {
 
     let new_size = old_size * 2;
 
-    TABLE = mem.alloc_array(new_size);
+    TABLE = alloc_array(mem, new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {

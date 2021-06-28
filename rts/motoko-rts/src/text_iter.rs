@@ -10,7 +10,7 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::memory::Memory;
+use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
 use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
@@ -31,7 +31,7 @@ unsafe fn find_leaf<M: Memory>(
         let concat = text.as_concat();
 
         // Add right node to TODOs
-        let new_todo = mem.alloc_array(2);
+        let new_todo = alloc_array(mem, 2);
         let new_todo_array = new_todo.as_array();
         new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
         new_todo_array.set(TODO_LINK_IDX, *todo);
@@ -52,7 +52,7 @@ const ITER_TODO_IDX: u32 = 2;
 /// Returns a new iterator for the text
 #[ic_mem_fn]
 pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
-    let iter = mem.alloc_array(3);
+    let iter = alloc_array(mem, 3);
     let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`

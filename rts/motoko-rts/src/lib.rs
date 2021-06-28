@@ -53,16 +53,6 @@ unsafe fn alloc_words<M: Memory>(mem: &mut M, n: Words<u32>) -> SkewedPtr {
     mem.alloc_words(n)
 }
 
-#[ic_mem_fn]
-unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> SkewedPtr {
-    mem.alloc_blob(size)
-}
-
-#[ic_mem_fn]
-unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> SkewedPtr {
-    mem.alloc_array(len)
-}
-
 extern "C" {
     fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
 }
