@@ -36,7 +36,7 @@ pub unsafe fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
 }
 
 #[ic_fn]
-unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
+pub unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     leb128_decode_checked(buf).expect("leb128_decode: overflow")
 }
 
