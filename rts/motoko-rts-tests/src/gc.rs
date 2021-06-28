@@ -17,6 +17,7 @@ use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Write;
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -87,11 +88,13 @@ fn test_gc(gc: GC, refs: &BTreeMap<u32, Vec<u32>>, roots: &[u32]) {
 
 /// Check the dynamic heap:
 ///
-/// - Objects should point to objects with the expected tags (as specified by the `objects` argument)
-/// - Each tag should be seen at most once
-/// - All of `roots` should be seen
+/// - All and only reachable objects should be in the heap. Reachable objects are those in the
+///   transitive closure of roots.
 ///
-/// If any of these conditions do not hold this function panics.
+/// - Objects should point to right objects. E.g. if object with index X points to objects with
+///   indices Y and Z in the `objects` map, it should point to objects with indicex Y and Z on the
+///   heap.
+///
 fn check_dynamic_heap(
     objects: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
@@ -160,9 +163,75 @@ fn check_dynamic_heap(
         }
     }
 
-    // Check that all roots are seen
-    let root_set: HashSet<ObjectIdx> = roots.iter().copied().collect();
-    assert_eq!(seen.keys().copied().collect::<HashSet<_>>(), root_set);
+    // At this point we've checked that all seen objects point to the expected objects (as
+    // specified by `objects`). Check that we've seen the reachable objects and only the reachable
+    // objects.
+    let reachable_objects = compute_reachable_objects(roots, objects);
+
+    // Objects we've seen in the heap
+    let seen_objects: HashSet<ObjectIdx> = seen.keys().copied().collect();
+
+    // Reachable objects that we haven't seen in the heap
+    let missing_objects: Vec<ObjectIdx> = reachable_objects
+        .difference(&seen_objects)
+        .copied()
+        .collect();
+
+    // Unreachable objects that we've seen in the heap
+    let extra_objects: Vec<ObjectIdx> = seen_objects
+        .difference(&reachable_objects)
+        .copied()
+        .collect();
+
+    let mut error_message = String::new();
+
+    if !missing_objects.is_empty() {
+        write!(
+            &mut error_message,
+            "Reachable objects missing in the post-GC heap: {:?}",
+            missing_objects,
+        )
+        .unwrap();
+    }
+
+    if !extra_objects.is_empty() {
+        if !error_message.is_empty() {
+            error_message.push('\n');
+        }
+
+        write!(
+            &mut error_message,
+            "Unreachable objects seen in the post-GC heap: {:?}",
+            extra_objects,
+        )
+        .unwrap();
+    }
+
+    if !error_message.is_empty() {
+        panic!("{}", error_message);
+    }
+}
+
+fn compute_reachable_objects(
+    roots: &[ObjectIdx],
+    heap: &BTreeMap<ObjectIdx, Vec<ObjectIdx>>,
+) -> HashSet<ObjectIdx> {
+    let mut closure: HashSet<ObjectIdx> = roots.iter().copied().collect();
+    let mut work_list: Vec<ObjectIdx> = roots.iter().copied().collect();
+
+    while let Some(next) = work_list.pop() {
+        let pointees = heap
+            .get(&next)
+            .unwrap_or_else(|| panic!("Object {} is in the work list, but not in heap", next));
+
+        for pointee in pointees {
+            if closure.insert(*pointee) {
+                work_list.push(*pointee);
+            }
+        }
+    }
+
+    closure
 }
 
 impl GC {
