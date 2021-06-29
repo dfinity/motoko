@@ -11,7 +11,6 @@ mod utils;
 use heap::MotokoHeap;
 use utils::{read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
-// use motoko_rts::debug;
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
@@ -50,17 +49,6 @@ fn test_gcs(heap_descr: &TestHeap) {
 
 fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
     let heap = MotokoHeap::new(refs, roots, gc);
-
-    // println!("{:?}", heap.heap);
-
-    // unsafe {
-    //     debug::dump_heap(
-    //         heap.heap_base_address() as u32,
-    //         heap.heap_ptr_address() as u32,
-    //         skew(heap.static_root_array_address()),
-    //         heap.closure_table_address() as *mut SkewedPtr,
-    //     );
-    // }
 
     // Check `check_dynamic_heap` sanity
     check_dynamic_heap(
