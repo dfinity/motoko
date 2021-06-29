@@ -15,7 +15,7 @@ use crate::rts_trap_with;
 use crate::text::decode_code_point;
 use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
-use motoko_rts_macros::{ic_fn, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 const TODO_TEXT_IDX: u32 = 0;
 const TODO_LINK_IDX: u32 = 1;
@@ -69,8 +69,8 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
 }
 
 /// Returns whether the iterator is finished
-#[ic_fn]
-pub unsafe fn text_iter_done(iter: SkewedPtr) -> u32 {
+#[no_mangle]
+pub unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
     let array = iter.as_array();
     let pos = array.get(ITER_POS_IDX).0 >> 2;
     let blob = array.get(ITER_BLOB_IDX).as_blob();

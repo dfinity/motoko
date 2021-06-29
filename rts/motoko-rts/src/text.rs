@@ -33,7 +33,7 @@ use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT
 use core::cmp::{min, Ordering};
 use core::{slice, str};
 
-use motoko_rts_macros::{ic_fn, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 
@@ -119,8 +119,8 @@ struct Crumb {
     next: *const Crumb,
 }
 
-#[ic_fn]
-unsafe fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
+#[no_mangle]
+unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
     let mut next_crumb: *const Crumb = core::ptr::null();
 
     loop {
@@ -176,8 +176,8 @@ pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: SkewedPtr) -> SkewedPtr {
 }
 
 /// Size of the text, in bytes
-#[ic_fn]
-pub unsafe fn text_size(s: SkewedPtr) -> Bytes<u32> {
+#[no_mangle]
+pub unsafe extern "C" fn text_size(s: SkewedPtr) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
@@ -290,8 +290,8 @@ unsafe fn text_get_range(
     (s, offset)
 }
 
-#[ic_fn]
-pub unsafe fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+#[no_mangle]
+pub unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
@@ -334,8 +334,8 @@ pub(crate) unsafe fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
 }
 
 /// Length in characters
-#[ic_fn]
-pub unsafe fn text_len(text: SkewedPtr) -> u32 {
+#[no_mangle]
+pub unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
     if text.tag() == TAG_BLOB {
         let blob = text.as_blob();
         let payload_addr = blob.payload_addr();

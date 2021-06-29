@@ -1,7 +1,7 @@
 #[cfg(feature = "ic")]
 use crate::types::{size_of, Array, Bytes, SkewedPtr, Words, TAG_ARRAY};
 
-use motoko_rts_macros::{ic_fn, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 #[cfg(feature = "ic")]
 const ITER_BLOB_IDX: u32 = 0;
@@ -25,8 +25,9 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: SkewedPtr) -> S
 }
 
 /// Returns whether the iterator is finished
-#[ic_fn(ic_only)]
-unsafe fn blob_iter_done(iter: SkewedPtr) -> u32 {
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn blob_iter_done(iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
@@ -36,8 +37,9 @@ unsafe fn blob_iter_done(iter: SkewedPtr) -> u32 {
 }
 
 /// Reads next byte, advances the iterator
-#[ic_fn(ic_only)]
-unsafe fn blob_iter_next(iter: SkewedPtr) -> u32 {
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn blob_iter_next(iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);

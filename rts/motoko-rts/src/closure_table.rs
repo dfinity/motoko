@@ -23,7 +23,7 @@ use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::SkewedPtr;
 
-use motoko_rts_macros::{ic_fn, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 const INITIAL_SIZE: u32 = 256;
 
@@ -92,8 +92,8 @@ pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     idx
 }
 
-#[ic_fn]
-pub unsafe fn recall_closure(idx: u32) -> SkewedPtr {
+#[no_mangle]
+pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
     if TABLE.0 == 0 {
         rts_trap_with("recall_closure: Closure table not allocated");
     }
@@ -118,8 +118,8 @@ pub unsafe fn recall_closure(idx: u32) -> SkewedPtr {
     ptr
 }
 
-#[ic_fn]
-pub unsafe fn closure_count() -> u32 {
+#[no_mangle]
+pub unsafe extern "C" fn closure_count() -> u32 {
     N_CLOSURES
 }
 
@@ -128,8 +128,9 @@ pub(crate) unsafe fn closure_table_loc() -> *mut SkewedPtr {
     &mut TABLE
 }
 
-#[ic_fn(ic_only)]
-unsafe fn closure_table_size() -> u32 {
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn closure_table_size() -> u32 {
     if TABLE.0 == 0 {
         0
     } else {

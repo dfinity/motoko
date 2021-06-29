@@ -24,11 +24,6 @@ unsafe extern "C" fn mp_realloc(
     bigint::mp_realloc(&mut *HEAP, ptr, old_size, new_size)
 }
 
-#[no_mangle]
-unsafe extern "C" fn mp_free(ptr: *mut libc::c_void, size: u32) {
-    bigint::mp_free(ptr, size)
-}
-
 pub unsafe fn test() {
     println!("Testing BigInt ...");
 

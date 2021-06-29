@@ -4,8 +4,6 @@ use super::Memory;
 use crate::rts_trap_with;
 use crate::types::*;
 
-use motoko_rts_macros::ic_fn;
-
 use core::arch::wasm32;
 
 /// Maximum live data retained in a GC.
@@ -26,28 +24,28 @@ extern "C" {
     pub(crate) fn get_static_roots() -> SkewedPtr;
 }
 
-#[ic_fn]
-unsafe fn init() {
+#[no_mangle]
+unsafe extern "C" fn init() {
     HP = get_heap_base() as u32;
 }
 
-#[ic_fn]
-unsafe fn get_max_live_size() -> Bytes<u32> {
+#[no_mangle]
+unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
     MAX_LIVE
 }
 
-#[ic_fn]
-unsafe fn get_reclaimed() -> Bytes<u64> {
+#[no_mangle]
+unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
     RECLAIMED
 }
 
-#[ic_fn]
-unsafe fn get_total_allocations() -> Bytes<u64> {
+#[no_mangle]
+unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
     ALLOCATED
 }
 
-#[ic_fn]
-unsafe fn get_heap_size() -> Bytes<u32> {
+#[no_mangle]
+unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_heap_base())
 }
 

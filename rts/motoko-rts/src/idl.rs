@@ -9,7 +9,7 @@ use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
-use motoko_rts_macros::{ic_fn, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 //
 // IDL constants
@@ -271,8 +271,8 @@ unsafe fn skip_text(buf: *mut Buf) {
 //
 // This is currently implemented recursively, but we could
 // do this in a loop (by maintaing a stack of the t arguments)
-#[ic_fn]
-unsafe fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth: i32) {
+#[no_mangle]
+unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth: i32) {
     if depth > 100 {
         idl_trap_with("skip_any: too deeply nested record");
     }
@@ -429,8 +429,8 @@ If the tag does not exist:
          or at the value past the record
   n:     the number of fields left, including the field pointed to by tb
 */
-#[ic_fn]
-unsafe fn find_field(
+#[no_mangle]
+unsafe extern "C" fn find_field(
     tb: *mut Buf,
     buf: *mut Buf,
     typtbl: *mut *mut u8,
@@ -457,8 +457,8 @@ unsafe fn find_field(
     0
 }
 
-#[ic_fn]
-unsafe fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut u8, n: *mut u8) {
+#[no_mangle]
+unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut u8, n: *mut u8) {
     while *n > 0 {
         skip_leb128(tb);
         let it = sleb128_decode(tb);

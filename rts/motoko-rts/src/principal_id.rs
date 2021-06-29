@@ -6,12 +6,12 @@ use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
 use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
 
-use motoko_rts_macros::{ic_fn, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
-#[ic_fn]
-pub unsafe fn compute_crc32(blob: SkewedPtr) -> u32 {
+#[no_mangle]
+pub unsafe extern "C" fn compute_crc32(blob: SkewedPtr) -> u32 {
     if blob.tag() != TAG_BLOB {
         panic!("compute_crc32: Blob expected");
     }

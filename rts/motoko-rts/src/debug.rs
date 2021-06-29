@@ -3,13 +3,12 @@
 use crate::print::*;
 use crate::types::*;
 
-use motoko_rts_macros::ic_fn;
-
 use core::fmt::Write;
 
 /// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
-#[ic_fn]
-unsafe fn print_closure(p: usize) {
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn print_closure(p: usize) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
