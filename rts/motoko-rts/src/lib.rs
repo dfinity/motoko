@@ -21,7 +21,6 @@ mod blob_iter;
 pub mod buf;
 mod char;
 pub mod closure_table;
-mod float;
 pub mod gc;
 pub mod leb128;
 mod mem_utils;
@@ -38,18 +37,20 @@ mod visitor;
 #[cfg(feature = "ic")]
 mod idl;
 
-use memory::Memory;
-use types::{Bytes, SkewedPtr, Words};
+#[cfg(feature = "ic")]
+mod float;
+
+use types::Bytes;
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[ic_mem_fn]
-unsafe fn version<M: Memory>(mem: &mut M) -> SkewedPtr {
+#[ic_mem_fn(ic_only)]
+unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::SkewedPtr {
     text::text_of_str(mem, "0.1")
 }
 
-#[ic_mem_fn]
-unsafe fn alloc_words<M: Memory>(mem: &mut M, n: Words<u32>) -> SkewedPtr {
+#[ic_mem_fn(ic_only)]
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::SkewedPtr {
     mem.alloc_words(n)
 }
 

@@ -123,11 +123,12 @@ pub unsafe fn closure_count() -> u32 {
     N_CLOSURES
 }
 
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn closure_table_loc() -> *mut SkewedPtr {
     &mut TABLE
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn closure_table_size() -> u32 {
     if TABLE.0 == 0 {
         0

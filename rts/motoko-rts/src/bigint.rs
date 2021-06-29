@@ -34,7 +34,6 @@ This scheme makes the following assumptions:
 use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
-use crate::rts_trap;
 use crate::tommath_bindings::*;
 use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};
 
@@ -135,6 +134,7 @@ unsafe fn mp_get_u32(p: *const mp_int) -> u32 {
     mp_get_i32(p) as u32
 }
 
+#[cfg(feature = "ic")]
 unsafe fn mp_get_u64(p: *const mp_int) -> u64 {
     mp_get_i64(p) as u64
 }
@@ -174,14 +174,14 @@ pub unsafe fn bigint_of_word32(w: u32) -> SkewedPtr {
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_of_int32(j: i32) -> SkewedPtr {
     let mut i = tmp_bigint();
     mp_set_i32(&mut i, j);
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_to_word32_wrap(p: SkewedPtr) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
 }
@@ -198,23 +198,23 @@ unsafe fn bigint_to_word32_trap(p: SkewedPtr) -> u32 {
 }
 
 // a : BigInt, msg : Blob
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_to_word32_trap_with(p: SkewedPtr, msg: SkewedPtr) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        rts_trap(msg.as_blob().payload_addr(), msg.as_blob().len());
+        crate::rts_trap(msg.as_blob().payload_addr(), msg.as_blob().len());
     }
 
     mp_get_u32(mp_int)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_to_word64_wrap(p: SkewedPtr) -> u64 {
     mp_get_u64(p.as_bigint().mp_int_ptr())
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_to_word64_trap(p: SkewedPtr) -> u64 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
@@ -225,14 +225,14 @@ unsafe fn bigint_to_word64_trap(p: SkewedPtr) -> u64 {
     mp_get_u64(mp_int)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_of_word64(w: u64) -> SkewedPtr {
     let mut i = tmp_bigint();
     mp_set_u64(&mut i, w);
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_of_int64(j: i64) -> SkewedPtr {
     let mut i = tmp_bigint();
     mp_set_i64(&mut i, j);
@@ -244,22 +244,22 @@ pub unsafe fn bigint_eq(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) == 0
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_lt(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) < 0
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_gt(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) > 0
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_le(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) <= 0
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_ge(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) >= 0
 }
@@ -305,7 +305,7 @@ pub unsafe fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let mut i = tmp_bigint();
     check(mp_div(
@@ -317,7 +317,7 @@ unsafe fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let mut i = tmp_bigint();
     check(mp_div(
@@ -336,19 +336,19 @@ pub unsafe fn bigint_neg(a: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_abs(a: SkewedPtr) -> SkewedPtr {
     let mut i = tmp_bigint();
     check(mp_abs(a.as_bigint().mp_int_ptr(), &mut i));
     persist_bigint(i)
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_isneg(a: SkewedPtr) -> bool {
     mp_isneg(a.as_bigint().mp_int_ptr())
 }
 
-#[ic_fn]
+#[ic_fn(ic_only)]
 unsafe fn bigint_lsh(a: SkewedPtr, b: i32) -> SkewedPtr {
     let mut i = tmp_bigint();
     check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b, &mut i));

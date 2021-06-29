@@ -1,12 +1,10 @@
-use crate::rts_trap_with;
-
 use motoko_rts_macros::ic_fn;
 
 /// Panics if the string is not valid UTF-8
-#[ic_fn]
+#[ic_fn(ic_only)]
 pub(crate) unsafe fn utf8_validate(str: *const libc::c_char, len: u32) {
     if !utf8_valid(str, len) {
-        rts_trap_with("utf8_validate: string is not UTF-8");
+        crate::rts_trap_with("utf8_validate: string is not UTF-8");
     }
 }
 
