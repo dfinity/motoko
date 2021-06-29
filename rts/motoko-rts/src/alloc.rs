@@ -11,14 +11,14 @@ pub use alloc_impl::alloc_words;
 #[cfg(feature = "gc")]
 pub(crate) use alloc_impl::grow_memory;
 
+use crate::constants::WASM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::{size_of, Array, Blob, Bytes, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB};
 
 #[no_mangle]
 pub unsafe extern "C" fn alloc_array(len: u32) -> SkewedPtr {
     // Array payload should not be larger than half of the memory
-    if len > 1 << (32 - 2 - 1) {
-        // 2 for word size, 1 to divide by two
+    if Words(len) > WASM_HEAP_SIZE / 2 {
         rts_trap_with("Array allocation too large");
     }
 

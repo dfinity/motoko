@@ -2,6 +2,7 @@
 
 use core::arch::wasm32;
 
+use crate::constants::WASM_PAGE_SIZE;
 use crate::gc;
 use crate::rts_trap_with;
 use crate::types::{skew, Bytes, SkewedPtr, Words};
@@ -25,7 +26,7 @@ pub unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
 
 /// Page allocation. Ensures that the memory up to the given pointer is allocated.
 pub(crate) unsafe fn grow_memory(ptr: usize) {
-    let total_pages_needed = ((ptr / 65536) + 1) as i32;
+    let total_pages_needed = ((ptr / WASM_PAGE_SIZE.as_usize()) + 1) as i32;
     let current_pages = wasm32::memory_size(0) as i32;
     let new_pages_needed = total_pages_needed - current_pages;
     if new_pages_needed > 0 {

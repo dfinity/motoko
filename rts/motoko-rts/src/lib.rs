@@ -26,6 +26,7 @@ mod blob_iter;
 pub mod buf;
 mod char;
 pub mod closure_table;
+pub mod constants;
 mod float;
 mod idl;
 pub mod leb128;

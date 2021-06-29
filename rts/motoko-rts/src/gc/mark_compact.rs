@@ -2,6 +2,7 @@
 
 use crate::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use crate::closure_table::closure_table_loc;
+use crate::constants::WORD_SIZE;
 use crate::mark_stack::{self, alloc_mark_stack, free_mark_stack, pop_mark_stack};
 use crate::mem::memcpy_words;
 use crate::types::*;
