@@ -1,10 +1,11 @@
 use crate::memory::TestMemory;
 
+use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::gc::mark_compact::bitmap::{
     alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
 };
 use motoko_rts::memory::Memory;
-use motoko_rts::types::{Bytes, Words, WORD_SIZE};
+use motoko_rts::types::{Bytes, Words};
 
 use std::collections::HashSet;
 

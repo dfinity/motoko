@@ -4,7 +4,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 pub type ObjectIdx = u32;
 
 /// Same as RTS `WORD_SIZE`, but `usize`
-pub const WORD_SIZE: usize = motoko_rts::types::WORD_SIZE as usize;
+pub const WORD_SIZE: usize = motoko_rts::constants::WORD_SIZE as usize;
 
 // Max allowed size for the mark stack in mark-compact GC tests
 pub const MAX_MARK_STACK_SIZE: usize = 100;
