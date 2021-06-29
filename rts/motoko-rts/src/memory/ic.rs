@@ -56,6 +56,7 @@ unsafe fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
+    #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes();
         // Update ALLOCATED
@@ -73,6 +74,7 @@ impl Memory for IcMemory {
     }
 }
 
+#[inline(never)]
 unsafe fn grow_memory(ptr: usize) {
     let total_pages_needed = ((ptr / 65536) + 1) as i32;
     let current_pages = wasm32::memory_size(0) as i32;
