@@ -80,7 +80,7 @@ fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
 ///   transitive closure of roots.
 ///
 /// - Objects should point to right objects. E.g. if object with index X points to objects with
-///   indices Y and Z in the `objects` map, it should point to objects with indicex Y and Z on the
+///   indices Y and Z in the `objects` map, it should point to objects with indices Y and Z on the
 ///   heap.
 ///
 fn check_dynamic_heap(
