@@ -95,7 +95,7 @@ struct MotokoHeapInner {
     /// Offset of the static root array: an array of pointers below `heap_base`
     static_root_array_offset: usize,
 
-    /// Offset of the closure table. Currently we put a tagged scalar to this location and
+    /// Offset of the closure table. Currently we write a tagged scalar to this location and
     /// effectively skip closure table evacuation.
     closure_table_offset: usize,
 }
@@ -263,7 +263,7 @@ fn create_dynamic_heap(
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
             heap_offset += WORD_SIZE;
 
-            // Store length: tag + refs
+            // Store length: idx + refs
             write_word(
                 dynamic_heap,
                 heap_offset,
@@ -271,7 +271,7 @@ fn create_dynamic_heap(
             );
             heap_offset += WORD_SIZE;
 
-            // Store object value (tag)
+            // Store object value (idx)
             write_word(dynamic_heap, heap_offset, obj << 1);
             heap_offset += WORD_SIZE;
 
