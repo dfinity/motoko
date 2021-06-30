@@ -28,3 +28,15 @@ pub fn read_word(heap: &[u8], offset: usize) -> u32 {
 pub fn write_word(heap: &mut [u8], offset: usize, word: u32) {
     (&mut heap[offset..]).write_u32::<LE>(word).unwrap()
 }
+
+/// Make a scalar value to be used in heap object payload
+pub fn make_scalar(value: u32) -> u32 {
+    // Scalar values can be at most 31 bits
+    assert_eq!(value >> 31, 0);
+    value << 1
+}
+
+/// Make a pointer value to be used in heap object payload
+pub fn make_pointer(addr: u32) -> u32 {
+    addr.wrapping_sub(1)
+}

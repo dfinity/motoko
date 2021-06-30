@@ -1,4 +1,6 @@
-use super::utils::{write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
+use super::utils::{
+    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
+};
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
@@ -219,22 +221,23 @@ fn heap_size_for_gc(
         }
         GC::MarkCompact => {
             let bitmap_size_bytes = {
-                let dynamic_heap_words =
-                    Bytes(dynamic_heap_size_bytes as u32).to_words().0 as usize;
-
-                let mark_bit_bytes = (dynamic_heap_words + 7) / 8;
+                let dynamic_heap_bytes = Bytes(dynamic_heap_size_bytes as u32);
+                // `...to_words().to_bytes()` below effectively rounds up heap size to word size
+                // then gets the bytes
+                let dynamic_heap_words = dynamic_heap_bytes.to_words();
+                let mark_bit_bytes = dynamic_heap_words.to_bytes();
 
                 // The bitmap implementation rounds up to 64-bits to be able to read as many
                 // bits as possible in one instruction and potentially skip 64 words in the
                 // heap with single 64-bit comparison
-                (((mark_bit_bytes + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0 as usize
+                (((mark_bit_bytes.0 + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0
             };
             // In the worst case the entire heap will be pushed to the mark stack, but in tests
             // we limit the size
             let mark_stack_words = n_objects.clamp(INIT_STACK_SIZE.0 as usize, MAX_MARK_STACK_SIZE)
                 + size_of::<Blob>().0 as usize;
 
-            total_heap_size_bytes + bitmap_size_bytes + (mark_stack_words * WORD_SIZE)
+            total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
         }
     }
 }
@@ -272,7 +275,7 @@ fn create_dynamic_heap(
             heap_offset += WORD_SIZE;
 
             // Store object value (idx)
-            write_word(dynamic_heap, heap_offset, obj << 1);
+            write_word(dynamic_heap, heap_offset, make_scalar(*obj));
             heap_offset += WORD_SIZE;
 
             // Leave space for the fields
@@ -287,7 +290,7 @@ fn create_dynamic_heap(
         let obj_offset = object_addrs.get(obj).unwrap() - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
             // -1 for skewing
-            let ref_addr = object_addrs.get(ref_).unwrap().wrapping_sub(1);
+            let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap() as u32);
             let field_offset = obj_offset + (3 + ref_idx) * WORD_SIZE;
             write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
         }
@@ -326,14 +329,14 @@ fn create_static_heap(
         write_word(
             heap,
             mutbox_offset + WORD_SIZE,
-            u32::try_from(root_address).unwrap().wrapping_sub(1),
+            make_pointer(u32::try_from(root_address).unwrap()),
         );
 
         let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
         write_word(
             heap,
             root_addr_offset,
-            u32::try_from(mutbox_addr).unwrap().wrapping_sub(1),
+            make_pointer(u32::try_from(mutbox_addr).unwrap()),
         );
 
         root_addr_offset += WORD_SIZE;
