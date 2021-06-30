@@ -249,16 +249,16 @@ For example, type `Int` is both arithmetic (A) and ordered (O) and supports both
 
 |===
 | `<relop>` | Category |
-|  `==` |  | equals
-|  `!=` |  | not equals
+|  `+==+` |  | equals
+|  `+!=+` |  | not equals
 | `␣<␣` | O | less than *(must be enclosed in whitespace)*
 | `␣>␣` | O | greater than *(must be enclosed in whitespace)*
-|  `\<=` | O | less than or equal
-|  `>=` | O | greater than or equal
+|  `+<=+` | O | less than or equal
+|  `+>=+` | O | greater than or equal
 |===
 
 
-Note that equality (`==`) and inequality (`!=`) do not have categories.
+Note that equality (`+==+`) and inequality (`+!=+`) do not have categories.
 Instead, equality and inequality are applicable to arguments of all
 _shared_ types, including non-primitive, compound types such as
 immutable arrays, records, and variants.
@@ -312,30 +312,30 @@ Equality and inequality are structural and based on the observable content of th
 === Assignment operators
 
 |===
-|`:=`, `<unop>=`, `<binop>=`| Category|
+|`:=`, `+<unop>=+`, `+<binop>=+`| Category|
 
 | `:=`   | * | assignment (in place update)
 | `+=`   | A | in place add
 | `-=`   | A | in place subtract
 | `*=`   | A | in place multiply
 | `/=`   | A | in place divide
-| `%=`   | A | in place modulo
-| `**=`  | A | in place exponentiation
-| `&=`   | B | in place logical and
-| `\|=`   | B | in place logical or
-| `^=`   | B | in place exclusive or
-| `<\<=`  | B | in place shift left
-| `>>=`  | B | in place shift right
-| `<<>=` | B | in place rotate left
-| `<>>=` | B | in place rotate right
-| `+%=`   | B | in place add (wrap-on-overflow)
-| `-%=`   | B | in place subtract (wrap-on-overflow)
+| `+%=+`   | A | in place modulo
+| `+**=+`  | A | in place exponentiation
+| `+&=+`   | B | in place logical and
+| `+|=+`   | B | in place logical or
+| `+^=+`   | B | in place exclusive or
+| `+<<=+`  | B | in place shift left
+| `+>>=+`  | B | in place shift right
+| `+<<>=+` | B | in place rotate left
+| `+<>>=+` | B | in place rotate right
+| `++%=+`   | B | in place add (wrap-on-overflow)
+| `+-%=+`   | B | in place subtract (wrap-on-overflow)
 | `*%=`   | B | in place multiply (wrap-on-overflow)
 | `**%=`  | B | in place exponentiation (wrap-on-overflow)
-| `#=`   | T | in place concatenation
+| `+#=+`   | T | in place concatenation
 |===
 
-The category of a compound assignment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
+The category of a compound assignment `+<unop>=+`/`+<binop>=+` is given by the category of the operator `<unop>`/`<binop>`.
 
 [[syntax-precedence]]
 === Operator and keyword precedence
@@ -348,13 +348,13 @@ Tokens on the same line have equal precedence with the indicated associativity.
 
 | LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 |(higher)| none | `else`, `while`
-|(higher)| right | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<\<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=`,`
+|(higher)| right | `:=`, `+=`, `-=`, `*=`, `+/=+`, `+%=+`, `+**=+`, `+#=+`, `+&=+`, `+|=+`, `+^=+`, `+<<=+`, `+>>=+`, `+<<>=+`, `+<>>=+`, `+%=`, `-%=`, `*%=`, `**%=`
 |(higher)| left | `:`
 |(higher)| left | `or`
 |(higher)| left | `and`
-|(higher)| none | `==`, `!=`, `<`, `>`, `\<=`, `>`, `>=`
+|(higher)| none | `+==+`, `+!=+`, `<`, `>`, `+<=+`, `>`, `+>=+`
 |(higher)| left | `+`, `-`, `#`, `+%`, `-%`
-|(higher)| left | `*`, `/`, `%`, `*%`
+|(higher)| left | `+*+`, `/`, `%`, `+*%+`
 |(higher)| left | `\|`
 |(higher)| left | `+&+`
 |(higher)| left | `+^+`
@@ -701,13 +701,13 @@ All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
-The operations `+%`, `-%`, `*%` and `**%` provide access to wrap-around, modular arithmetic.
+The operations `+%`, `-%`, `+*%+` and `**%` provide access to wrap-around, modular arithmetic.
 
-As bitwise types, these types support bitwise operations *and* `(&)`,
-*or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
-left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
+As bitwise types, these types support bitwise operations *and* (`&`),
+*r* (`|`) and *exclusive-or* (`^`). Further, they can be rotated
+left (`<<>`), right (`<>>`), and shifted left (`<<`), right (`>>`).
 The right-shift preserves the two's-complement sign.
-All shift and rotate amounts are considered modulo the numbers's bit width *n*.
+All shift and rotate amounts are considered modulo the numbers's bit width _n_.
 
 Bounded integer types are not in subtype relationship with each other or with
 other arithmetic types, and their literals need type annotation if
@@ -727,13 +727,13 @@ All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
-The operations `+%`, `-%`, `*%` and `**%` provide access to the modular, wrap-on-overflow operations.
+The operations `+%`, `-%`, `+*%+` and `**%` provide access to the modular, wrap-on-overflow operations.
 
-As bitwise types, these types support bitwise operations *and* `(&)`,
-*or* `(|)` and *exclusive-or* `(^)`. Further, they can be rotated
-left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`.
+As bitwise types, these types support bitwise operations _and_ (`&`),
+_or_ (`|`) and _exclusive-or_ (`^`). Further, they can be rotated
+left (`<<>`), right (`<>>`), and shifted left (`<<`), right (`>>`).
 The right-shift is logical.
-All shift and rotate amounts are considered modulo the number's bit width *n*.
+All shift and rotate amounts are considered modulo the number's bit width _n_.
 
 The corresponding module in the base library provides conversion functions:
 Conversion to `Int`, checked and wrapping conversions from `Int` and wrapping
@@ -765,13 +765,13 @@ import E "mo:base/Error";
 
 Errors are opaque values constructed and examined with operations:
 
-* `E.reject : Text -> Error`
-* `E.code : Error -> E.ErrorCode`
-* `E.message : Error -> Text`
+* `+E.reject : Text -> Error+`
+* `+E.code : Error -> E.ErrorCode+`
+* `+E.message : Error -> Text+`
 
 Type `E.ErrorCode` is equivalent to variant type:
 
-```
+----
 type ErrorCode = {
   // Fatal error.
   #system_fatal;
@@ -786,7 +786,7 @@ type ErrorCode = {
   // Future error code (with unrecognized numeric code)
   #future : Nat32;
 };
-```
+----
 
 A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
@@ -850,7 +850,7 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 [[function-types]]
 === Function types
 
-Type `<shared>? <typ-params>? <typ1> -> <typ2>` specifies the type of functions that consume (optional) type parameters `<typ-params>`, consume a value parameter of type `<typ1>` and produce a result of type `<typ2>`.
+Type `+<shared>? <typ-params>? <typ1> -> <typ2>+` specifies the type of functions that consume (optional) type parameters `<typ-params>`, consume a value parameter of type `<typ1>` and produce a result of type `<typ2>`.
 
 Both `<typ1>` and `<typ2>` may reference type parameters declared in `<typ-params>`.
 
@@ -985,8 +985,8 @@ type parameter.
 A type `T` is well-formed only if (recursively) its constituent types are well-formed, and:
 
 * if `T` is `async U` then `U` is shared, and
-* if `T` is `shared query? U -> V`, `U` is shared and
-  `V == ()` or `V == async W'` with `W` shared, and
+* if `T` is `+shared query? U -> V+`, `U` is shared and
+  `V == ()` or `V == async W` with `W` shared, and
 * if `T` is `C<T0, ..., Tn>` where:
 ** a declaration `type C<X0 <: U0, Xn <: Un>  = ...` is in scope, and
 ** `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 \<= i \<= n`.
@@ -1037,8 +1037,8 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 +
 (That is, variant type `T` is a subtype of variant type `U` if every field of `T` subtypes the same field of `U`. In particular, `T` may specify fewer variants than `U`.)
 +
-* `T` is a function type `<shared>? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`,
-  `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
+* `T` is a function type `+<shared>? <X0 <: V0, ..., Xn <: Vn> T1 -> T2+`,
+  `U` is a function type `+<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2+` and
 ** `T` and `U` are either both equivalently `<shared>?`, and
 ** assuming constraints `X0 <: W0, ..., Xn <: Wn` then
 *** for all `i`, `Wi == Vi`, and
@@ -1238,8 +1238,8 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |===
 |  name | type | description
 
-| `preupgrade`  | `() -> ()` | pre upgrade action
-| `postupgrade` | `() -> ()` | post upgrade action
+| `preupgrade`  | `+() -> ()+` | pre upgrade action
+| `postupgrade` | `+() -> ()+` | post upgrade action
 |===
 
 * `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
@@ -1325,7 +1325,7 @@ The set of identifiers bound by each field of the object pattern must be distinc
 The names of the pattern fields in the object pattern must be distinct.
 
 Object patterns support _punning_ for concision.
-A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ> ` is short-hand for `<id> = <id> : <typ>`. Both
+A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both
 bind the matched value of the field named `<id>` to the identifier `<id>`.
 
 Pattern matching fails if one of the pattern fields fails to match the corresponding field value of the object value.
@@ -1338,7 +1338,7 @@ The `<sort>` of the matched object type must be determined by an enclosing type 
 === Variant pattern
 
 The variant pattern `# <id> <pat>?` matches a variant value (of the form `# <id'> v`) against a variant pattern. An absent `<pat>?` is shorthand for the unit pattern (`()`).
-Pattern matching fails if the tag `<id'>` of the value is distinct from the `<id>` of the pattern (i.e. `<id>` <> `<id'>`); or the tags are equal but the value `v` does not match the pattern `<pat>?`.
+Pattern matching fails if the tag `<id'>` of the value is distinct from the tag `<id>` of the pattern (i.e. `<id>` != `<id'>`); or the tags are equal but the value `v` does not match the pattern `<pat>?`.
 Pattern matching succeeds if the tag of the value is `<id>` (i.e. `<id'>` = `<id>`) and the value `v` matches the pattern `<pat>?`.
 The binding returned by a successful match is just the binding returned by the match of `v` against `<pat>?`.
 
@@ -1347,7 +1347,7 @@ The binding returned by a successful match is just the binding returned by the m
 
 The annotated pattern `<pat> : <typ>` matches value of `v` type `<typ>` against the pattern `<pat>`.
 
-`<pat> : <typ>` is *not* a dynamic type test, but is used to constrain the types of identifiers bound in `<pat>`, e.g. in the argument pattern to a function.
+`<pat> : <typ>` is _not_ a dynamic type test, but is used to constrain the types of identifiers bound in `<pat>`, e.g. in the argument pattern to a function.
 
 [[pat-option]]
 === Option pattern
@@ -1400,7 +1400,7 @@ The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* vari
 The declaration `var <id>` has type `()` provided:
 
 * `<exp>` has type `T`; and
-* If the annotation `(:<typ>)?` is present, then `T == <typ>`.
+* If the annotation `(:<typ>)?` is present, then `T` == `<typ>`.
 
 Within the scope of the declaration, `<id>` has type `var T` (see <<exp-assn>>).
 
@@ -1468,6 +1468,7 @@ expansions of its body.
 ==== Expansiveness
 
 A set of mutually recursive type or class declarations will be rejected if the set is _expansive_.
+
 Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions, say
 
 ```
@@ -1478,9 +1479,9 @@ Expansiveness is a syntactic criterion. To determine whether a set of singly or 
 
 is expansive, construct a directed graph whose vertices are the formal type parameters (identified by position), `C#i`, with the following `{0,1}`-labeled edges:
 
-* For each occurrence of parameter `C#i` as immediate, `j`-th argument to type `D<...,C#i,...>`, add a *non-expansive*, `0`-labeled edge `C#i -0-> D#j`.
+* For each occurrence of parameter `C#i` as immediate, `j`-th argument to type `D<...,C#i,...>`, add a _non-expansive_, `0`-labeled edge,`+C#i -0-> D#j+`.
 
-* For each occurrence of parameter `C#i` as a proper sub-expression of the `j`-th argument to type `D<...,T[C#i],..>` add an *expansive* `1`-labeled edge `C#i -1-> D#j`.
+* For each occurrence of parameter `C#i` as a proper sub-expression of the `j`-th argument to type `D<...,T[C#i],..>` add an _expansive_ `1`-labeled edge, `+C#i -1-> D#j+`.
 
 The graph is expansive if, and only if, it contains a cycle with at least one expansive edge.
 
@@ -1498,9 +1499,9 @@ that recursively instantiates `List` at the same parameter `T`, is non-expansive
 
 that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is *expansive* and rejected.
 
-* Type `List<T>` is non-expansive because its graph, `{ List#0 -0-> List#0 }`, though cyclic, has no expansive edge.
+* Type `List<T>` is non-expansive because its graph, `+{ List#0 -0-> List#0 }+`, though cyclic, has no expansive edge.
 
-* Type `Seq<T>`, on the other hand, is expansive, because its graph, `{ Seq#0 -1-> Seq#0 }`, has a cycle that includes an expansive edge.
+* Type `Seq<T>`, on the other hand, is expansive, because its graph, `+{ Seq#0 -1-> Seq#0 }+`, has a cycle that includes an expansive edge.
 
 
 [[decl-obj]]
@@ -1681,7 +1682,7 @@ The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
-* `<relop>` is equality `==` or inequality `!=`, `T` is _shared_, and `T` is the least type such that `<exp1>` and `<exp2>` have type `T`;
+* `<relop>` is equality `+==+` or inequality `+!=+`, `T` is _shared_, and `T` is the least type such that `<exp1>` and `<exp2>` have type `T`;
 * the category O (Ordered) is a category of `T` and <relop>; or
 
 The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
@@ -1742,7 +1743,7 @@ Such an object literal, sometimes called a *record*, is equivalent to the object
 However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
 
 Object expressions support _punning_ for concision.
-A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ> ` is short-hand for `<id> = <id> : <typ>`. Both
+A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both
 associate the field named `<id>` with the value of the identifier `<id>`.
 
 [[exp-proj]]
@@ -1770,16 +1771,16 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 |===
 | U | <id> | T  | Description
 | `Text` | `size` | `Nat` | size (or length) in characters
-| `Text` | `chars` | `{ next: () -> Char? }` | character iterator, first to last
+| `Text` | `chars` | `+{ next: () -> Char? }+` | character iterator, first to last
 | | | |
 | `Blob` | `size` | `Nat` | size in bytes
-| `Blob` | `vals` | `{ next: () -> Nat8? }` | byte iterator, first to last
+| `Blob` | `vals` | `+{ next: () -> Nat8? }+` | byte iterator, first to last
 | | | |
 | `[var? T]` | `size` | `Nat` | number of elements
-| `[var? T]` | `get` | `Nat -> T` | indexed read function
-| `[var? T]` | `keys` | `{ next: () -> Nat? }` | index iterator, by ascending index
-| `[var? T]` | `vals` | `{ next: () -> T? }` | value iterator, by ascending index
-| `[var T]` | `put` | `(Nat, T) -> ()` | indexed write function (mutable arrays only)
+| `[var? T]` | `get` | `+Nat -> T+` | indexed read function
+| `[var? T]` | `keys` | `+{ next: () -> Nat? }+` | index iterator, by ascending index
+| `[var? T]` | `vals` | `+{ next: () -> T? }+` | value iterator, by ascending index
+| `[var T]` | `put` | `+(Nat, T) -> ()+` | indexed write function (mutable arrays only)
 |===
 
 The projection `<exp> . <id>` evaluates `<exp>` to a result `r`.
@@ -1808,13 +1809,13 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 [[exp-uassn]]
 === Unary compound assignment
 
-The unary compound assignment `<unop>= <exp>` has type `()` provided:
+The unary compound assignment `+<unop>= <exp>+` has type `()` provided:
 
 * `<exp>` has type `var T`, and
-* `<unop>`'s category is a category of `T`.
+* ``<unop>``s category is a category of `T`.
 
 The unary compound assignment
-`<unop>= <exp>`  evaluates `<exp>` to a result `r`. If `r` is `trap` the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to
+`+<unop>= <exp>+`  evaluates `<exp>` to a result `r`. If `r` is `trap` the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to
 contain the value `<unop> v`.
 
 [[exp-bassn]]
@@ -1824,10 +1825,10 @@ The binary compound assignment `<exp1> <binop>= <exp2>` has type `()` provided:
 
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`, and
-* `<binop>`'s category is a category of `T`.
+* ``<binop>``'s category is a category of `T`.
 
-For binary operator `<binop>`, `<exp1> <binop>= <exp1>`,
-the compound assignment expression `<exp1> <binop>= <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
+For binary operator `<binop>`,
+the compound assignment expression `+<exp1> <binop>= <exp2>+` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value, `w` stored in `v1` with the new value `w <binop> v2` and returns the empty tuple `()`.
@@ -1862,14 +1863,14 @@ Otherwise,
 * if the indexing occurs as the target of an assignment expression
   then `v` is the `i`th mutable location in the array;
 * otherwise,
-  `v` is `vi`, the value currently stored in the `i`th location of the array.
+  `v` is `vi`, the value currently stored in the ``i``-th location of the array.
 
 [[exp-call]]
 === Function calls
 
 The function call expression `<exp1> <T0,...,Tn>? <exp2>` has type `T` provided:
 
-* the function `<exp1>` has function type `<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2`; and
+* the function `<exp1>` has function type `+<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2+`; and
 * if `<T0,...,Tn>?` is absent but n > 0 then there exists minimal `T0, ..., Tn` (inferred by the compiler) such that:
 * each type argument satisfies the corresponding type parameter's bounds:
   for each `1 \<= i \<= n`, `Ti <: [T0/X0, ..., Tn/Xn]Vi`; and
@@ -1892,12 +1893,12 @@ NOTE: The exhaustiveness side condition on `shared` function expressions ensures
 [[exp-func]]
 === Functions
 
-The function expression `<shared-pat>? func < X0 <: T0, ..., Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the
+The function expression `<shared-pat>? func < X0 <: T0, ..., Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `+<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2+` if, under the
 assumption that `X0 <: T0, ..., Xn <: Tn`:
 
 * `<shared-pat>?` is of the form `shared query? <pat>` if and only if `<shared>?` is `shared query?` (the `query` modifiers must agree);
 * all the types in `T0, ..., Tn` and `U2` are well-formed and well-constrained;
-* pattern `<pat>` has *context type* `{ caller : Principal }`;
+* pattern `<pat>` has _context type_ `{ caller : Principal }`;
 * pattern `<pat1>` has type `U1`;
 * if the function is `shared` then `<pat>` and `<pat1>` must be exhaustive;
 * expression `<block-or-exp>` has type return type `U2` under the assumption that `<pat1>` has type `U1`.
@@ -1922,7 +1923,7 @@ The block expression `{ <dec>;* }` has type `T` provided the last declaration in
 All identifiers declared in block must be distinct type identifiers or distinct value identifiers and are in scope in the definition of all other declarations in the block.
 
 The bindings of identifiers declared in `{ dec;* }` are local to the block.
-The type `T` must be well-formed in the enclosing environment of the block. In particular, any local, recursive types that cannot be expanded to types well-formed the enclosing environment must not appear in `T`.
+
 
 The type system ensures that a value identifier cannot be evaluated before its declaration has been evaluated, precluding run-time errors at the cost of rejection some well-behaved programs.
 
@@ -2237,7 +2238,7 @@ Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` ev
 The type annotation expression `<exp> : <typ>` has type `T` provided:
 
 * `<typ>` is `T`, and
-* `<exp>` has type `U` where `U` <: `T`.
+* `<exp>` has type `U` where `U <: T`.
 
 Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one wants to constrain the inferred type, `U` of `<exp>` to a less-informative super-type `T` provided `U <: T`.
 
