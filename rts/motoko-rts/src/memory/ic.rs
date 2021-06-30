@@ -1,6 +1,7 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
+use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -72,13 +73,14 @@ impl Memory for IcMemory {
     }
 }
 
+/// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
 #[inline(never)]
 unsafe fn grow_memory(ptr: usize) {
-    let total_pages_needed = ((ptr / 65536) + 1) as i32;
-    let current_pages = wasm32::memory_size(0) as i32;
-    let new_pages_needed = total_pages_needed - current_pages;
-    if new_pages_needed > 0 {
-        if wasm32::memory_grow(0, new_pages_needed as usize) == core::usize::MAX {
+    let page_size = u64::from(WASM_PAGE_SIZE.0);
+    let total_pages_needed = (((ptr as u64) + page_size - 1) / page_size) as usize;
+    let current_pages = wasm32::memory_size(0);
+    if total_pages_needed > current_pages {
+        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             rts_trap_with("Cannot grow memory");
         }
     }
