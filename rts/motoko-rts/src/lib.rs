@@ -29,7 +29,6 @@ pub mod memory;
 pub mod principal_id;
 pub mod text;
 pub mod text_iter;
-#[allow(non_camel_case_types)]
 mod tommath_bindings;
 pub mod types;
 pub mod utf8;
