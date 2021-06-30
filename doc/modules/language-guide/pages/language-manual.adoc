@@ -322,7 +322,7 @@ Equality and inequality are structural and based on the observable content of th
 | `+%=+`   | A | in place modulo
 | `+**=+`  | A | in place exponentiation
 | `+&=+`   | B | in place logical and
-| `+|=+`   | B | in place logical or
+| `+\|=+`   | B | in place logical or
 | `+^=+`   | B | in place exclusive or
 | `+<<=+`  | B | in place shift left
 | `+>>=+`  | B | in place shift right
@@ -348,7 +348,7 @@ Tokens on the same line have equal precedence with the indicated associativity.
 
 | LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 |(higher)| none | `else`, `while`
-|(higher)| right | `:=`, `+=`, `-=`, `*=`, `+/=+`, `+%=+`, `+**=+`, `+#=+`, `+&=+`, `+|=+`, `+^=+`, `+<<=+`, `+>>=+`, `+<<>=+`, `+<>>=+`, `+%=`, `-%=`, `*%=`, `**%=`
+|(higher)| right | `:=`, `+=`, `-=`, `*=`, `+/=+`, `+%=+`, `+**=+`, `+#=+`, `+&=+`, `+\|=+`, `+^=+`, `+<<=+`, `+>>=+`, `+<<>=+`, `+<>>=+`, `+%=`, `-%=`, `*%=`, `**%=`
 |(higher)| left | `:`
 |(higher)| left | `or`
 |(higher)| left | `and`
