@@ -31,15 +31,16 @@ This scheme makes the following assumptions:
  - libtommath uses mp_calloc() and mp_realloc() _only_ to allocate the `mp_digit *` array.
 */
 
-use crate::alloc::alloc_words;
 use crate::buf::{read_byte, Buf};
-use crate::mem::memcpy_bytes;
+use crate::mem_utils::memcpy_bytes;
+use crate::memory::Memory;
+use crate::tommath_bindings::*;
 use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};
 
-use crate::{rts_trap, tommath_bindings::*};
+use motoko_rts_macros::ic_mem_fn;
 
-unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
-    let ptr = alloc_words(size_of::<BigInt>() + size.to_words());
+unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
+    let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     let blob = ptr.unskew() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
     // libtommath stores the size of the object in alloc
@@ -49,15 +50,19 @@ unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
     blob.payload_addr() as *mut u8
 }
 
-#[no_mangle]
-unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
+#[ic_mem_fn]
+pub unsafe fn mp_calloc<M: Memory>(
+    mem: &mut M,
+    n_elems: usize,
+    elem_size: Bytes<usize>,
+) -> *mut libc::c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
     if n_elems > 1 << 30 {
         bigint_trap();
     }
     let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(size) as *mut u32;
+    let payload = mp_alloc(mem, size) as *mut u32;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().0 {
@@ -67,8 +72,9 @@ unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut 
     payload as *mut _
 }
 
-#[no_mangle]
-unsafe extern "C" fn mp_realloc(
+#[ic_mem_fn]
+pub unsafe fn mp_realloc<M: Memory>(
+    mem: &mut M,
     ptr: *mut libc::c_void,
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
@@ -79,7 +85,7 @@ unsafe extern "C" fn mp_realloc(
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {
-        let new_ptr = mp_alloc(new_size);
+        let new_ptr = mp_alloc(mem, new_size);
         memcpy_bytes(new_ptr as usize, ptr as usize, old_size);
         new_ptr as *mut _
     } else if new_size == bigint.len() {
@@ -92,7 +98,7 @@ unsafe extern "C" fn mp_realloc(
 }
 
 #[no_mangle]
-unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
+pub unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
 
 /*
 Note on libtommath error handling
@@ -128,6 +134,7 @@ unsafe fn mp_get_u32(p: *const mp_int) -> u32 {
     mp_get_i32(p) as u32
 }
 
+#[cfg(feature = "ic")]
 unsafe fn mp_get_u64(p: *const mp_int) -> u64 {
     mp_get_i64(p) as u64
 }
@@ -167,6 +174,7 @@ pub unsafe extern "C" fn bigint_of_word32(w: u32) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_int32(j: i32) -> SkewedPtr {
     let mut i = tmp_bigint();
@@ -174,6 +182,7 @@ unsafe extern "C" fn bigint_of_int32(j: i32) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word32_wrap(p: SkewedPtr) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
@@ -191,22 +200,25 @@ unsafe extern "C" fn bigint_to_word32_trap(p: SkewedPtr) -> u32 {
 }
 
 // a : BigInt, msg : Blob
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word32_trap_with(p: SkewedPtr, msg: SkewedPtr) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        rts_trap(msg.as_blob().payload_addr(), msg.as_blob().len());
+        crate::rts_trap(msg.as_blob().payload_addr(), msg.as_blob().len());
     }
 
     mp_get_u32(mp_int)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word64_wrap(p: SkewedPtr) -> u64 {
     mp_get_u64(p.as_bigint().mp_int_ptr())
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word64_trap(p: SkewedPtr) -> u64 {
     let mp_int = p.as_bigint().mp_int_ptr();
@@ -218,6 +230,7 @@ unsafe extern "C" fn bigint_to_word64_trap(p: SkewedPtr) -> u64 {
     mp_get_u64(mp_int)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_word64(w: u64) -> SkewedPtr {
     let mut i = tmp_bigint();
@@ -225,6 +238,7 @@ unsafe extern "C" fn bigint_of_word64(w: u64) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_int64(j: i64) -> SkewedPtr {
     let mut i = tmp_bigint();
@@ -237,21 +251,25 @@ pub unsafe extern "C" fn bigint_eq(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) == 0
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_lt(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) < 0
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_gt(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) > 0
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_le(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) <= 0
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_ge(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) >= 0
@@ -298,6 +316,7 @@ pub unsafe extern "C" fn bigint_pow(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let mut i = tmp_bigint();
@@ -310,6 +329,7 @@ unsafe extern "C" fn bigint_div(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_rem(a: SkewedPtr, b: SkewedPtr) -> SkewedPtr {
     let mut i = tmp_bigint();
@@ -329,6 +349,7 @@ pub unsafe extern "C" fn bigint_neg(a: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_abs(a: SkewedPtr) -> SkewedPtr {
     let mut i = tmp_bigint();
@@ -336,11 +357,13 @@ unsafe extern "C" fn bigint_abs(a: SkewedPtr) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_isneg(a: SkewedPtr) -> bool {
     mp_isneg(a.as_bigint().mp_int_ptr())
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_lsh(a: SkewedPtr, b: i32) -> SkewedPtr {
     let mut i = tmp_bigint();

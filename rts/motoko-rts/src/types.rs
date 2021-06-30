@@ -248,6 +248,7 @@ impl Object {
         (*self).size
     }
 
+    #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         *self.payload_addr().add(idx as usize)
     }
@@ -274,10 +275,6 @@ impl Closure {
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
         (*self).size
-    }
-
-    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
-        *self.payload_addr().add(idx as usize)
     }
 }
 
