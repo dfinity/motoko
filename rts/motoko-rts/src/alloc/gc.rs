@@ -26,7 +26,8 @@ pub unsafe extern "C" fn alloc_words(n: Words<u32>) -> SkewedPtr {
 
 /// Page allocation. Ensures that the memory up to the given pointer is allocated.
 pub(crate) unsafe fn grow_memory(ptr: usize) {
-    let total_pages_needed = ((ptr / WASM_PAGE_SIZE.as_usize()) + 1) as i32;
+    let page_size = u64::from(WASM_PAGE_SIZE.0);
+    let total_pages_needed = (((ptr as u64) + page_size - 1) / page_size) as i32;
     let current_pages = wasm32::memory_size(0) as i32;
     let new_pages_needed = total_pages_needed - current_pages;
     if new_pages_needed > 0 {
