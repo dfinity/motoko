@@ -851,10 +851,6 @@ module Heap = struct
   let get_heap_base env =
     G.i (GlobalGet (nr (E.get_global env "__heap_base")))
 
-  let register_globals env =
-    (* end-of-heap pointer, we set this to __heap_base upon start *)
-    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl
-
   let get_total_allocation env =
     E.call_import env "rts" "get_total_allocations"
 
@@ -8159,7 +8155,6 @@ and conclude_module env start_fi_o =
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
-  Heap.register_globals env;
   Stack.register_globals env;
 
   IC.system_imports env;
