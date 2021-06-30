@@ -39,7 +39,7 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
         for obj in objs.iter().rev() {
             let popped = pop_mark_stack();
             if popped != Some(*obj as usize) {
-                free_mark_stack(); // TODO: Does not really free
+                free_mark_stack();
                 return Err(TestCaseError::Fail(
                     format!(
                         "Unexpected object popped, expected={:?}, popped={:?}",
