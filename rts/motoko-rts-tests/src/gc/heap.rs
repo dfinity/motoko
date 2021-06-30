@@ -318,10 +318,10 @@ fn create_static_heap(
     write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
     // Current offset in the heap for the next static roots array element
-    let mut root_addr_offset = 2 * WORD_SIZE;
+    let mut root_addr_offset = size_of::<Array>().to_bytes().0 as usize;
 
     // Current offset in the heap for the MutBox of the next root
-    let mut mutbox_offset = (2 + roots.len()) * WORD_SIZE;
+    let mut mutbox_offset = (size_of::<Array>().0 as usize + roots.len()) * WORD_SIZE;
 
     for root_address in root_addresses {
         // Add a MutBox for the object
@@ -340,6 +340,6 @@ fn create_static_heap(
         );
 
         root_addr_offset += WORD_SIZE;
-        mutbox_offset += 2 * WORD_SIZE;
+        mutbox_offset += size_of::<MutBox>().to_bytes().0 as usize;
     }
 }
