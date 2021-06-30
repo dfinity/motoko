@@ -1,6 +1,9 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
-/// A unique object index, used in heap descriptions
+/// A unique object index, used in heap descriptions.
+///
+/// These are written as scalar values in object payloads, so they can be at most 31 bits. Larger
+/// values will cause test failure in `make_scalar` below.
 pub type ObjectIdx = u32;
 
 /// Same as RTS `WORD_SIZE`, but `usize`
