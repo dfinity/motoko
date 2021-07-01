@@ -21,17 +21,79 @@ use std::fmt::Write;
 pub fn test() {
     println!("Testing garbage collection ...");
 
-    // TODO: Add more tests
+    for test_heap in test_heaps() {
+        test_gcs(&test_heap);
+    }
+}
 
-    let heap = hashmap! {
-        0 => vec![0, 2],
-        2 => vec![0],
-        3 => vec![3],
-    };
-
-    let roots = vec![0, 2, 3];
-
-    test_gcs(&TestHeap { heap, roots });
+fn test_heaps() -> Vec<TestHeap> {
+    vec![
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![],
+            },
+            roots: vec![0],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![1],
+                1 => vec![],
+            },
+            roots: vec![0],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![1],
+                1 => vec![],
+            },
+            roots: vec![0, 1],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![1],
+                1 => vec![0],
+            },
+            roots: vec![0, 1],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![1, 0],
+                1 => vec![0, 1],
+            },
+            roots: vec![0, 1],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![0, 2],
+                2 => vec![0],
+                3 => vec![3],
+            },
+            roots: vec![0, 2, 3],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![1],
+                1 => vec![],
+                2 => vec![1],
+                3 => vec![1],
+            },
+            roots: vec![0, 2, 3],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![0],
+            },
+            roots: vec![0],
+        },
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![1],
+                1 => vec![2],
+                2 => vec![0],
+            },
+            roots: vec![0],
+        },
+    ]
 }
 
 #[derive(Debug)]
@@ -42,13 +104,24 @@ struct TestHeap {
 
 /// Test all GC implementations with the given heap
 fn test_gcs(heap_descr: &TestHeap) {
-    for gc in &GC_IMPLS {
-        test_gc(*gc, &heap_descr.heap, &heap_descr.roots);
-    }
+    // for gc in &GC_IMPLS {
+    //     test_gc(*gc, &heap_descr.heap, &heap_descr.roots);
+    // }
+    test_gc(GC::Copying, &heap_descr.heap, &heap_descr.roots);
+    test_gc(GC::MarkCompact, &heap_descr.heap, &heap_descr.roots);
 }
 
 fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
     let heap = MotokoHeap::new(refs, roots, gc);
+
+    // unsafe {
+    //     motoko_rts::debug::dump_heap(
+    //         heap.heap_base_address() as u32,
+    //         heap.heap_ptr_address() as u32,
+    //         skew(heap.static_root_array_address()),
+    //         heap.closure_table_address() as *mut SkewedPtr,
+    //     );
+    // }
 
     // Check `check_dynamic_heap` sanity
     check_dynamic_heap(
@@ -59,7 +132,7 @@ fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
         heap.heap_ptr_offset(),
     );
 
-    for _ in 0..3 {
+    for _ in 0..1 {
         gc.run(heap.clone());
 
         let heap_base_offset = heap.heap_base_offset();

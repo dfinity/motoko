@@ -6,7 +6,7 @@ mod closure_table;
 mod crc32;
 mod gc;
 mod leb128;
-mod mark_stack;
+//mod mark_stack;
 mod memory;
 mod principal_id;
 mod text;
@@ -24,16 +24,16 @@ fn main() {
     }
 
     unsafe {
-        bigint::test();
-        bitmap::test();
-        closure_table::test();
-        crc32::test();
+        // bigint::test();
+        // bitmap::test();
+        // closure_table::test();
+        // crc32::test();
         gc::test();
-        leb128::test();
-        mark_stack::test();
-        principal_id::test();
-        text::test();
-        utf8::test();
+        // leb128::test();
+        // mark_stack::test();
+        // principal_id::test();
+        // text::test();
+        // utf8::test();
     }
 }
 
