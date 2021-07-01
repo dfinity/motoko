@@ -2214,7 +2214,7 @@ If the future is complete with (thrown) error value `e`, then `await <exp>` susp
 
 Note: suspending computation on `await`, regardless of the dynamic status of the future, ensures that all tentative state changes and message sends prior to the `await` are committed and irrevocable.
 
-WARNING: between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
+WARNING: Between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 
 [[exp-throw]]
 === Throw
@@ -2316,7 +2316,7 @@ An invalid canister identifier or type may manifest itself, if at all, as a late
 when calling a function on the actor's proclaimed interface,
 which will either fail or be rejected.
 
-NOTE: The argument to `actor` should _not_ include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+NOTE: The argument to `actor` should _not_ include the `ic:` resource locator used to specify an `import`. For example, use `+actor "lg264-qjkae"+`, not `+actor "ic:lg264-qjkae"+`.
 
 WARNING: Although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
 Accordingly, actor references should be used sparingly and only when needed.
