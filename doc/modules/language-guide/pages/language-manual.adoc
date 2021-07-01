@@ -371,7 +371,7 @@ The syntax of a _program_ `<prog>` is as follows:
 
 ```bnf
 <prog> ::=             programs
-    <imp>;* <dec>;*
+  <imp>;* <dec>;*
 ```
 
 A program is a sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor or actor class declaration.
@@ -395,13 +395,13 @@ The syntax of an _import_ `<imp>`  is as follows:
 
 ```bnf
 <imp> ::= imports
-    import <id>? =? <url>
+  import <id>? =? <url>
 
 <url> ::=
-    "<filepath>"                      import module from relative <filepath>.mo
-    "mo:<package-name>/<filepath>"    import module from package
-    "canister:<canisterid>"           import external actor by <canisterid>
-    "canister:<name>"                 import external actor by <name>
+  "<filepath>"                      import module from relative <filepath>.mo
+  "mo:<package-name>/<filepath>"    import module from package
+  "canister:<canisterid>"           import external actor by <canisterid>
+  "canister:<name>"                 import external actor by <name>
 ```
 
 An import introduces a resource named '<id>?' referring to a local source module, module from a package of modules, or canister (imported as an actor).
@@ -412,9 +412,10 @@ An import introduces a resource named '<id>?' referring to a local source module
 The syntax of a _library_ (that can be referenced in an import) is as follows:
 
 ```bnf
-<lib> ::=                                                                                       library
-    <imp>;* module <id>? <obj-body>                                                               module
-    <imp>;* <shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>            actor class
+<lib> ::=                                               library
+  <imp>;* module <id>? <obj-body>                         module
+  <imp>;* <shared-pat>? actor class                       actor class
+    <id> <typ-params>? <pat> (: <typ>)? <class-body>
 ```
 
 A library `<lib>` is a sequence of imports `<imp>;*` followed by:
@@ -441,21 +442,22 @@ Because actor construction is asynchronous, an instance of an imported actor cla
 The syntax of a _declaration_ is as follows:
 
 ```bnf
-<dec> ::=                                                                              declaration
-  <exp>                                                                                  expression
-  let <pat> = <exp>                                                                      immutable
-  var <id> (: <typ>)? = <exp>                                                            mutable
-  <sort> <id>? =? <obj-body>                                                             object
-  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>                       function
-  type <id> <typ-params>? = <typ>                                                        type
-  <shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: <typ>)? <class-body>          class
+<dec> ::=                                                               declaration
+  <exp>                                                                  expression
+  let <pat> = <exp>                                                      immutable
+  var <id> (: <typ>)? = <exp>                                            mutable
+  <sort> <id>? =? <obj-body>                                             object
+  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
+  type <id> <typ-params>? = <typ>                                        type
+  <shared-pat>? <sort>? class                                            class
+    <id>? <typ-params>? <pat> (: <typ>)? <class-body>
 
 <obj-body> ::=           object body
-   { <dec-field>;* }       field declarations
+  { <dec-field>;* }       field declarations
 
 <class-body> ::=         class body
-    = <id>? <obj-body>     object body, optionally binding <id> to _this_ instance
-    <obj-body>             object body
+  = <id>? <obj-body>     object body, optionally binding <id> to 'this' instance
+  <obj-body>             object body
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -646,6 +648,12 @@ The category of a type determines the operators (unary, binary, relational and i
 | `Error` | | (opaque) error values
 |===
 
+
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous
+base library providing related functions and values (see link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library]).
+For example, the link:base-libraries/text{outfilesuffix}[`Text`] library provides common functions on `Text` values.
+
+
 [[type-bool]]
 === Type `Bool`
 
@@ -657,10 +665,10 @@ The type `Bool` of category L (Logical) has values `true` and `false` and is sup
 === Type `Char`
 
 A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
-set. Characters can be converted to `Nat32`, and `Nat32`s in the
+set. Characters can be converted to `Nat32`, and ``Nat32``s in the
 range _0 .. 0x1FFFFF_ can be converted to `Char` (the conversion traps
-if outside of this range). With `charToText` a character can be
-converted into a text of length 1.
+if outside of this range). Base library function `Char.toText` converts a character
+into the corresponding, single character `Text` value.
 
 [[type-text]]
 === Type `Text`
@@ -677,7 +685,6 @@ Operations on text values include concatenation (`_ # _`) and sequential iterati
 The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and O (Ordered).
 
 The semantics of `Float` and its operations is in accordance with standard https://ieeexplore.ieee.org/document/8766229[IEEE 754-2019]  (See <<IEEE754>>).
-
 
 Common functions and values are defined in base library "base/Float".
 
@@ -759,9 +766,10 @@ shared functions and used for simple authentication. Although opaque, principals
 
 Assuming base library import,
 
-```
+[source.no-repl,motoko]
+....
 import E "mo:base/Error";
-```
+....
 
 Errors are opaque values constructed and examined with operations:
 
@@ -771,7 +779,8 @@ Errors are opaque values constructed and examined with operations:
 
 Type `E.ErrorCode` is equivalent to variant type:
 
-----
+[source.no-repl,motoko]
+....
 type ErrorCode = {
   // Fatal error.
   #system_fatal;
@@ -786,7 +795,7 @@ type ErrorCode = {
   // Future error code (with unrecognized numeric code)
   #future : Nat32;
 };
-----
+....
 
 A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
@@ -1139,10 +1148,10 @@ A module library evaluates by (transitively) evaluating its imports, binding the
 The actor class library `<imp>;* <dec>` where `<dec>` is of the form  `<shared-pat>? actor class <id> <typ-params>? <pat> (: <typ>)? <class-body>` has type:
 
 ```bnf
-  module {
-    type <id> = T;
-    <id> : (U1,...,Un) -> async T
-  }
+module {
+  type <id> = T;
+  <id> : (U1,...,Un) -> async T
+}
 ```
 
 provided that:
@@ -1154,9 +1163,9 @@ Notice that the imported type of the function `<id>` must be asynchronous.
 An actor class library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*`, and evaluating the (derived) module:
 
 ```bnf
-  module {
-    <dec>
-  }
+module {
+  <dec>
+}
 ```
 
 On the Internet Computer, if this library is imported as identifier `Lib`,
@@ -1436,7 +1445,8 @@ Motoko requires all type declarations to be productive.
 
 For example, the type definitions:
 
-```
+[source.no-repl,motoko]
+....
   type Person = { first : Text; last : Text };
 
   type List<T> = ?(T, List<T>);
@@ -1444,13 +1454,14 @@ For example, the type definitions:
   type Fst<T, U> = T;
 
   type Ok<T> = Fst<Any, Ok<T>>;
-```
+....
 
 are all productive and legal.
 
 But the type definitions,
 
-```
+[source.no-repl,motoko]
+....
   type C = C;
 
   type D<T, U> = D<U, T>;
@@ -1459,7 +1470,7 @@ But the type definitions,
   type F<T> = E<T>;
 
   type G<T> = Fst<G<T>, Any>;
-```
+....
 
 are all non-productive, since each definition will enter a loop after one or more
 expansions of its body.
@@ -1487,15 +1498,17 @@ The graph is expansive if, and only if, it contains a cycle with at least one ex
 
 For example, the type definition:
 
-```
+[source.no-repl,motoko]
+....
   type List<T> = ?(T, List<T>),
-```
+....
 
 that recursively instantiates `List` at the same parameter `T`, is non-expansive and accepted, but the similar looking definition:
 
-```
+[source.no-repl,motoko]
+....
   type Seq<T> = ?(T, Seq<[T]>),
-```
+....
 
 that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is _expansive_ and rejected.
 
@@ -1585,16 +1598,23 @@ Static phrases are designed to be side-effect free, allowing the coalescing of d
 === Function declaration
 
 The function declaration  `<shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>` is syntactic sugar for
-a named `let` or anonymous declaration of a function expression. That is:
+a named `let` or anonymous declaration of a function expression.
+
+That is, when `<id>?` is present and the function is named:
 
 ```bnf
-<shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <block-or-exp> :=
-  let <id> = <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <block-or-exp>    (when <id>? present)
-
-  <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <block-or-exp>               (when <id>? absent)
+<shared-pat>? func <id> <typ-params>? <pat> (: <typ>)? =? <block-or-exp> :=
+  let <id> = <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <block-or-exp>
 ```
 
-Named function definitions are recursive.
+But when `<id>?` is absent and the function is anonymous:
+
+```bnf
+<shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <block-or-exp> :=
+  <shared-pat>? func <typ-params>? <pat> (: <typ>)? =? <block-or-exp>
+```
+
+Named function definitions support recursion (a named function can call itself).
 
 NOTE: In compiled code, `shared` functions can only appear as public actor fields.
 
@@ -1737,7 +1757,7 @@ Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list
 ```bnf
 <exp-field> ::=                                object expression fields
   var? <id> (: <typ>) = <exp>                    field
-  var? <id> (: <typ>)                             punned field
+  var? <id> (: <typ>)                            punned field
 ```
 Such an object literal, sometimes called a _record_, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
 However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
