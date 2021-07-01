@@ -251,8 +251,8 @@ For example, type `Int` is both arithmetic (A) and ordered (O) and supports both
 | `<relop>` | Category |
 |  `+==+` |  | equals
 |  `+!=+` |  | not equals
-| `␣<␣` | O | less than *(must be enclosed in whitespace)*
-| `␣>␣` | O | greater than *(must be enclosed in whitespace)*
+| `␣<␣` | O | less than _(must be enclosed in whitespace)_
+| `␣>␣` | O | greater than _(must be enclosed in whitespace)_
 |  `+<=+` | O | less than or equal
 |  `+>=+` | O | greater than or equal
 |===
@@ -289,7 +289,7 @@ Equality and inequality are structural and based on the observable content of th
 | `\|`   | B | bitwise or
 | `^`   | B | exclusive or
 | `<<`  | B | shift left
-| `␣>>` | B | shift right *(must be preceded by whitespace)*
+| `␣>>` | B | shift right _(must be preceded by whitespace)_
 | `<<>` | B | rotate left
 | `<>>` | B | rotate right
 
@@ -381,7 +381,7 @@ For now, compiled programs must obey the following additional restrictions (not 
 
 * a `shared` function can only appear as a public field of an actor or actor class;
 * a program may contain at most one actor or actor class declaration, i.e. the final main actor or actor class; and
-* any main actor class declaration should be *anonymous*; if named, the class name should not be used as a value within the class and will be reported as an unavailable identifier.
+* any main actor class declaration should be _anonymous_; if named, the class name should not be used as a value within the class and will be reported as an unavailable identifier.
 
 The last two restrictions are designed to forbid programmatic actor class recursion, pending compiler support.
 
@@ -658,7 +658,7 @@ The type `Bool` of category L (Logical) has values `true` and `false` and is sup
 
 A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
 set. Characters can be converted to `Nat32`, and `Nat32`s in the
-range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
+range _0 .. 0x1FFFFF_ can be converted to `Char` (the conversion traps
 if outside of this range). With `charToText` a character can be
 converted into a text of length 1.
 
@@ -689,7 +689,7 @@ The types `Int` and `Nat` are signed integral and natural numbers of categories 
 Both `Int` and `Nat` are arbitrary precision,
 with only subtraction `-` on `Nat` trapping on underflow.
 
-The subtype relation `Nat <: Int` holds, so every expression of type `Nat` is also an expression of type `Int` (but *not* vice versa).
+The subtype relation `Nat <: Int` holds, so every expression of type `Nat` is also an expression of type `Int` (but _not_ vice versa).
 In particular, every value of type `Nat` is also a value of type `Int`, without change of representation.
 
 [[bounded-integers]]
@@ -703,8 +703,8 @@ Operations that may under- or overflow the representation are checked and trap o
 
 The operations `+%`, `-%`, `+*%+` and `**%` provide access to wrap-around, modular arithmetic.
 
-As bitwise types, these types support bitwise operations *and* (`&`),
-*r* (`|`) and *exclusive-or* (`^`). Further, they can be rotated
+As bitwise types, these types support bitwise operations _and_ (`&`),
+_or_ (`|`) and _exclusive-or_ (`^`). Further, they can be rotated
 left (`<<>`), right (`<>>`), and shifted left (`<<`), right (`>>`).
 The right-shift preserves the two's-complement sign.
 All shift and rotate amounts are considered modulo the numbers's bit width _n_.
@@ -811,7 +811,7 @@ of a value (for example, `Acme.Collections.List`).
 [[object-types]]
 === Object types
 
-`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*.
+`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named _type fields_.
 
 Within an object type, the names of fields must be distinct (both by name and hash value).
 
@@ -874,17 +874,17 @@ Future types typically appear as the result type of a `shared` function that pro
 
 The optional identifier `<id>`, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of components are equivalent.
 
-The empty tuple type `()` is called the *unit type*.
+The empty tuple type `()` is called the _unit type_.
 
 [[any-type]]
 === Any type
 
-Type `Any` is the *top* type, i.e. the super-type of all types. All values have type `Any`.
+Type `Any` is the _top_ type, i.e. the super-type of all types. All values have type `Any`.
 
 [[none-type]]
 === None type
 
-Type `None` is the *bottom* type, a subtype of all other types.
+Type `None` is the _bottom_ type, a subtype of all other types.
 No value has type `None`.
 
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
@@ -892,7 +892,7 @@ As an empty type, `None` can be used to specify the impossible return value of a
 [[paren-type]]
 === Parenthesised type
 
-A function that takes an immediate, syntactic tuple of length *n >= 0* as its domain or range is a function that takes (respectively returns) *n* values.
+A function that takes an immediate, syntactic tuple of length _n >= 0_ as its domain or range is a function that takes (respectively returns) _n_ values.
 
 When enclosing the argument or result type of a function, which is itself a tuple type,  `( <tuple-typ> )` declares that the function takes or returns a single (boxed) value of type `<tuple-type>`.
 
@@ -911,9 +911,9 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
 A type field specifies the name and type of a field of an object.
 The field names within a single object type must be distinct and have non-colliding hashes.
 
-`<id> : <typ>` specifies an *immutable* field, named `<id>` of type `<typ>`.
+`<id> : <typ>` specifies an _immutable_ field, named `<id>` of type `<typ>`.
 
-`var <id> : <typ>` specifies a *mutable* field, named `<id>` of type `<typ>`.
+`var <id> : <typ>` specifies a _mutable_ field, named `<id>` of type `<typ>`.
 
 [[type-tags]]
 === Variant type fields
@@ -1161,7 +1161,7 @@ An actor class library evaluates by (transitively) evaluating its imports, bindi
 
 On the Internet Computer, if this library is imported as identifier `Lib`,
 then calling `await Lib.<id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ..., `<expn>`
-as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`.
+as installation arguments, and returns a reference to a (remote) actor of _type_ `Lib.<id>`, that is, `T`.
 Installation is (necessarily) asynchronous.
 
 [[imports]]
@@ -1176,7 +1176,7 @@ In detail, if `<url>` is of the form:
 
 * `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
-  Note the `.mo` extension is implicit and should *not* be included in `<url>`.
+  Note the `.mo` extension is implicit and should _not_ be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
@@ -1272,7 +1272,7 @@ Otherwise, the result of the declaration is the value of the last declaration in
 the union of the bindings introduced by each declaration in `<dec>;*`.
 
 It is a compile-time error if any declaration in `<dec>;*` might require the value of an identifier declared in `<dec>;*`
-before that identifier's declaration has been evaluated. Such *use-before-define* errors are detected by a simple,
+before that identifier's declaration has been evaluated. Such _use-before-define_ errors are detected by a simple,
 conservative static analysis not described here.
 
 [[patterns]]
@@ -1285,7 +1285,7 @@ successful binding, mapping identifiers of the pattern to values, or failure.
 
 The consequences of pattern match failure depends on the context of the pattern.
 
-* In a function application or `let`-binding, failure to match the formal argument pattern or `let`-pattern causes a *trap*.
+* In a function application or `let`-binding, failure to match the formal argument pattern or `let`-pattern causes a _trap_.
 * In a `case` branch of a `switch` expression, failure to match that case's pattern continues with an attempt to match the next case of the switch, trapping only when no such case remains.
 
 [[pat-wildcard]]
@@ -1311,7 +1311,7 @@ For integer literals only, the optional `<unop>` determines the sign of the valu
 The tuple pattern `( <pat>,* )` matches a n-tuple value against an n-tuple of patterns (both the tuple and pattern must have the same number of items).
 The set of identifiers bound by each component of the tuple pattern must be distinct.
 
-The empty tuple pattern `()` is called the *unit pattern*.
+The empty tuple pattern `()` is called the _unit pattern_.
 
 Pattern matching fails if one of the patterns fails to match the corresponding item of the tuple value.
 Pattern matching succeeds if every pattern matches the corresponding component of the tuple value.
@@ -1354,7 +1354,7 @@ The annotated pattern `<pat> : <typ>` matches value of `v` type `<typ>` against 
 
 The option `? <pat>` matches a value of option type `? <typ>`.
 
-The match *fails* if the value is `null`. If the value is `? v`, for some value `v`, then the result of matching `? <pat>` is the result of matching `v` against `<pat>`.
+The match _fails_ if the value is `null`. If the value is `? v`, for some value `v`, then the result of matching `? <pat>` is the result of matching `v` against `<pat>`.
 
 Conversely, the `null` literal pattern may be used to test whether a value of option type is the value `null` and not `? v` for some `v`.
 
@@ -1390,12 +1390,12 @@ The let declaration `let <pat> = <exp>` has type `T` and declares the bindings i
 The declaration `let <pat> = <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by
 matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
 
-All bindings declared by a `let` (if any) are *immutable*.
+All bindings declared by a `let` (if any) are _immutable_.
 
 [[decl-var]]
 === Var declaration
 
-The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
+The variable declaration `var <id> (: <typ>)? = <exp>` declares a _mutable_ variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
 
 The declaration `var <id>` has type `()` provided:
 
@@ -1497,7 +1497,7 @@ that recursively instantiates `List` at the same parameter `T`, is non-expansive
   type Seq<T> = ?(T, Seq<[T]>),
 ```
 
-that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is *expansive* and rejected.
+that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is _expansive_ and rejected.
 
 * Type `List<T>` is non-expansive because its graph, `+{ List#0 -0-> List#0 }+`, though cyclic, has no expansive edge.
 
@@ -1510,7 +1510,7 @@ that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, i
 Declaration `<sort> <id>? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
-The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
+The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the _sort_ of the object's type. The sort imposes restrictions on the types of the public object fields.
 
 Let `T = <sort> { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
 Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`.
@@ -1707,7 +1707,7 @@ The tuple projection `<exp> . <nat>` has type `Ti` provided `<exp>` has tuple ty
 
 The projection `<exp> . <nat>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
 
-The empty tuple expression `()` is called the *unit value*.
+The empty tuple expression `()` is called the _unit value_.
 
 [[exp-option]]
 === Option expressions
@@ -1739,7 +1739,7 @@ Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list
   var? <id> (: <typ>) = <exp>                    field
   var? <id> (: <typ>)                             punned field
 ```
-Such an object literal, sometimes called a *record*, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
+Such an object literal, sometimes called a _record_, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
 However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are _not_ in scope in the field expressions.
 
 Object expressions support _punning_ for concision.
@@ -1912,7 +1912,7 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 * A `shared <pat>` function may be invoked from a remote caller. Unless causing a trap, the effects on the callee persist beyond completion of the call.
 * A `shared query <pat>` function may be also be invoked from a remote caller, but the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
 
-In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
+In either case, `<pat>` provides access to a context value identifying the _caller_ of the shared (query) function.
 
 NOTE: The context type is a record to allow extension with further fields in future releases.
 
@@ -2296,7 +2296,7 @@ An invalid canister identifier or type may manifest itself, if at all, as a late
 when calling a function on the actor's proclaimed interface,
 which will either fail or be rejected.
 
-NOTE: The argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
+NOTE: The argument to `actor` should _not_ include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
 
 WARNING: Although they do not compromise type safety, actor references can easily introduce latent, dynamic errors.
 Accordingly, actor references should be used sparingly and only when needed.
