@@ -119,7 +119,7 @@ Digit  ::= 0..9
 [[syntax-integers]]
 === Integers
 
-Integers are written as decimal or hexadecimal, `Ox`-prefixed natural numbers.
+Integers are written as decimal or hexadecimal, ``Ox``-prefixed natural numbers.
 Subsequent digits may be prefixed a single, semantically irrelevant, underscore.
 
 ```bnf
@@ -135,7 +135,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 [[syntax-floats]]
 === Floats
 
-Floating point literals are written in decimal or `Ox`-prefixed hexadecimal scientific notation.
+Floating point literals are written in decimal or ``Ox``-prefixed hexadecimal scientific notation.
 
 ```bnf
 let frac = num
@@ -159,8 +159,8 @@ NOTE: the use of decimal notation, even for the base 2 exponent, is in keeping w
 A character is a single quote (`'`) delimited:
 
 * Unicode character in UTF-8,
-* `\`-escaped  newline, carriage return, tab, single or double quotation mark
-* `\`-prefixed ASCII character (TBR),
+* ``\``-escaped  newline, carriage return, tab, single or double quotation mark
+* ``\``-prefixed ASCII character (TBR),
 * or  `\u{` hexnum `}` enclosed valid, escaped Unicode character in hexadecimal (TBR).
 
 ```bnf
@@ -193,7 +193,7 @@ char := '\'' character '\''
 [[syntax-text]]
 === Text
 
-A text literal is `"`-delimited sequence of characters:
+A text literal is ``"``-delimited sequence of characters:
 
 ```bnf
 text ::= '"' character* '"'
@@ -374,7 +374,7 @@ The syntax of a _program_ `<prog>` is as follows:
     <imp>;* <dec>;*
 ```
 
-A program is sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor or actor class declaration.
+A program is a sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor or actor class declaration.
 The actor or actor class declaration determines the main actor, if any, of the program.
 
 For now, compiled programs must obey the following additional restrictions (not imposed on interpreted programs):
@@ -497,7 +497,7 @@ The _stability_ qualifier `<stab>` determines the _upgrade_ behaviour of actor f
 * The pattern in a `stable let <pat> = <exp>` declaration must be _simple_ where,  a pattern `pat` is  simple if it (recursively) consists of
 ** a variable pattern `<id>`, or
 ** an annotated simple pattern `<pat> : <typ>`, or
-** a parenthesised simple pattern `( <pat> )`.
+** a parenthesized simple pattern `( <pat> )`.
 
 [[syntax-expressions]]
 === Expression syntax
@@ -602,7 +602,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   Any                                           top
   None                                          bottom
   Error                                         errors/exceptions
-  ( type )                                      parenthesized type
+  ( <typ> )                                      parenthesized type
 
 <sort> ::= (actor | module | object)
 
@@ -890,7 +890,7 @@ No value has type `None`.
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
 
 [[paren-type]]
-=== Parenthesised type
+=== Parenthesized type
 
 A function that takes an immediate, syntactic tuple of length _n >= 0_ as its domain or range is a function that takes (respectively returns) _n_ values.
 
