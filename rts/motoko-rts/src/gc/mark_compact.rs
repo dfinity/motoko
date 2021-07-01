@@ -84,8 +84,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     mark_static_roots(mem, static_roots, heap_base);
 
     if (*closure_table_loc).unskew() >= heap_base as usize {
-        let pushed = push_mark_stack(mem, *closure_table_loc, heap_base);
-        debug_assert!(pushed);
+        push_mark_stack(mem, *closure_table_loc, heap_base);
         thread(closure_table_loc);
     }
 
@@ -93,8 +92,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     thread_roots(static_roots, heap_base);
 
-    // update_fwd_refs(heap_base);
-    update_bwd_refs(set_hp, heap_base);
+    update_refs(set_hp, heap_base);
 
     free_mark_stack();
     free_bitmap();
@@ -110,7 +108,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, hea
     }
 }
 
-unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) -> bool {
+unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
     let obj_tag = obj.tag();
     let obj = obj.unskew() as u32;
 
@@ -118,12 +116,11 @@ unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32
 
     if get_bit(obj_idx) {
         // Already marked
-        return false;
+        return;
     }
 
     set_bit(obj_idx);
     mark_stack::push_mark_stack(mem, obj as usize, obj_tag);
-    true
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -134,9 +131,8 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
-        if push_mark_stack(mem, *field_addr, heap_base) || (*field_addr).unskew() == obj as usize {
-            thread(field_addr);
-        }
+        push_mark_stack(mem, *field_addr, heap_base);
+        thread(field_addr);
     });
 }
 
@@ -149,10 +145,8 @@ unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
     // No need to thread closure table here as it's on heap and we already marked it
 }
 
-/*
-/// Scan the heap, update forward references. At the end of this pass all fields will be threaded
-/// and forward references will be updated, pointing to the object's new location.
-unsafe fn update_fwd_refs(heap_base: u32) {
+/// Expects all fields to be threaded. First pass updates fields, second pass moves objects.
+unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
@@ -160,37 +154,23 @@ unsafe fn update_fwd_refs(heap_base: u32) {
     while bit != BITMAP_ITER_END {
         let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
 
-        // Update forward references to the object to the object's new location and restore
-        // object header
-        unthread(p, free);
-
-        // Get the size before threading the fields, to handle self references.
-        let size = object_size(p as usize).to_bytes().0;
-
-        // Thread fields
-        thread_obj_fields(p, heap_base);
-
-        free += size;
-
-        bit = bitmap_iter.next();
-    }
-}
-*/
-
-/// Expects all fields to be threaded. Updates backward references and moves objects to their new
-/// locations.
-unsafe fn update_bwd_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
-    let mut free = heap_base;
-
-    let mut bitmap_iter = iter_bits();
-    let mut bit = bitmap_iter.next();
-    while bit != BITMAP_ITER_END {
-        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
-
-        // Update backward references to the object's new location and restore object header
+        // Update references to the object's new location and restore object header
         unthread(p, free);
 
         // All references to the object now point to the new location, move the object
+        let p_size_words = object_size(p as usize);
+
+        free += p_size_words.to_bytes().0;
+
+        bit = bitmap_iter.next();
+    }
+
+    let mut free = heap_base;
+    let mut bitmap_iter = iter_bits();
+    let mut bit = bitmap_iter.next();
+    while bit != BITMAP_ITER_END {
+        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
+
         let p_size_words = object_size(p as usize);
         if free as usize != p as usize {
             memcpy_words(free as usize, p as usize, p_size_words);
