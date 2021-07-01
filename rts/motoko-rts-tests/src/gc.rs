@@ -132,17 +132,6 @@ fn test_gc(
 ) {
     let heap = MotokoHeap::new(refs, roots, closure_table, gc);
 
-    // Check `check_dynamic_heap` sanity
-    check_dynamic_heap(
-        refs,
-        roots,
-        closure_table,
-        &**heap.heap(),
-        heap.heap_base_offset(),
-        heap.heap_ptr_offset(),
-        heap.closure_table_ptr_offset(),
-    );
-
     for _ in 0..1 {
         gc.run(heap.clone());
 
