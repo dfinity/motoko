@@ -629,23 +629,23 @@ The category of a type determines the operators (unary, binary, relational and i
 |===
 | Identifier | Category | Description
 
-| `Bool` | L | Boolean values `true` and `false` and logical operators
-| `Char` | O | Unicode characters
-| `Text` | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
-| `Float` | A, O | 64-bit floating point values
-| `Int`  | A, O | signed integer values with arithmetic (unbounded)
-| `Int8`  | A, O | signed 8-bit integer values with checked arithmetic
-| `Int16`  | A, O | signed 16-bit integer values with checked arithmetic
-| `Int32`  | A, O | signed 32-bit integer values with checked arithmetic
-| `Int64`  | A, O | signed 64-bit integer values with checked arithmetic
-| `Nat`  | A, O | non-negative integer values with arithmetic (unbounded)
-| `Nat8`  | A, O | non-negative 8-bit integer values with checked arithmetic
-| `Nat16`  | A, O | non-negative 16-bit integer values with checked arithmetic
-| `Nat32`  | A, O | non-negative 32-bit integer values with checked arithmetic
-| `Nat64`  | A, O | non-negative 64-bit integer values with checked arithmetic
-| `Blob` | O | binary blobs with iterators
-| `Principal` | O | principals
-| `Error` | | (opaque) error values
+| link:base-libraries/bool{outfilesuffix}[`Bool`] | L | Boolean values `true` and `false` and logical operators
+| link:base-libraries/char{outfilesuffix}[`Char`] | O | Unicode characters
+| link:base-libraries/text{outfilesuffix}[`Text`] | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
+| link:base-libraries/float{outfilesuffix}[`Float`] | A, O | 64-bit floating point values
+| link:base-libraries/int{outfilesuffix}[`Int`]  | A, O | signed integer values with arithmetic (unbounded)
+| link:base-libraries/int8{outfilesuffix}[`Int8`]  | A, O | signed 8-bit integer values with checked arithmetic
+| link:base-libraries/int16{outfilesuffix}[`Int16`]  | A, O | signed 16-bit integer values with checked arithmetic
+| link:base-libraries/int32{outfilesuffix}[`Int32`]  | A, O | signed 32-bit integer values with checked arithmetic
+| link:base-libraries/int64{outfilesuffix}[`Int64`] | A, O | signed 64-bit integer values with checked arithmetic
+| link:base-libraries/nat{outfilesuffix}[`Nat`]  | A, O | non-negative integer values with arithmetic (unbounded)
+| link:base-libraries/nat8{outfilesuffix}[`Nat8`]  | A, O | non-negative 8-bit integer values with checked arithmetic
+| link:base-libraries/nat16{outfilesuffix}[`Nat16`]  | A, O | non-negative 16-bit integer values with checked arithmetic
+| link:base-libraries/nat32{outfilesuffix}[`Nat32`]  | A, O | non-negative 32-bit integer values with checked arithmetic
+| link:base-libraries/nat64{outfilesuffix}[`Nat64`] | A, O | non-negative 64-bit integer values with checked arithmetic
+| link:base-libraries/blob{outfilesuffix}[`Blob`] | O | binary blobs with iterators
+| link:base-libraries/principal{outfilesuffix}[`Principal`] | O | principals
+| link:base-libraries/error{outfilesuffix}[`Error`] | | (opaque) error values
 |===
 
 
