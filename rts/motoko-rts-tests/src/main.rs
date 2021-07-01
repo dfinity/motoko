@@ -6,7 +6,7 @@ mod closure_table;
 mod crc32;
 mod gc;
 mod leb128;
-//mod mark_stack;
+mod mark_stack;
 mod memory;
 mod principal_id;
 mod text;
@@ -30,7 +30,7 @@ fn main() {
         crc32::test();
         gc::test();
         leb128::test();
-        // mark_stack::test();
+        mark_stack::test();
         principal_id::test();
         text::test();
         utf8::test();
