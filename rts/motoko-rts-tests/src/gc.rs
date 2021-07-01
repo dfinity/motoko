@@ -268,7 +268,6 @@ fn check_closure_table(mut offset: usize, closure_table: &[ObjectIdx], heap: &[u
         // Skip object header for idx
         let idx_address = ptr as usize + size_of::<Array>().to_bytes().0 as usize;
         let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
-        offset += WORD_SIZE;
 
         assert_eq!(idx, *obj);
     }
