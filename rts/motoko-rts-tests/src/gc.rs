@@ -9,7 +9,7 @@ mod heap;
 mod utils;
 
 use heap::MotokoHeap;
-use utils::{read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
+use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
@@ -33,6 +33,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 0 => vec![],
             },
             roots: vec![0],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -40,6 +41,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 1 => vec![],
             },
             roots: vec![0],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -47,6 +49,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 1 => vec![],
             },
             roots: vec![0, 1],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -54,6 +57,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 1 => vec![0],
             },
             roots: vec![0, 1],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -61,6 +65,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 1 => vec![0, 1],
             },
             roots: vec![0, 1],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -69,6 +74,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 3 => vec![3],
             },
             roots: vec![0, 2, 3],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -78,12 +84,14 @@ fn test_heaps() -> Vec<TestHeap> {
                 3 => vec![1],
             },
             roots: vec![0, 2, 3],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
                 0 => vec![0],
             },
             roots: vec![0],
+            closure_table: vec![],
         },
         TestHeap {
             heap: hashmap! {
@@ -92,6 +100,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 2 => vec![0],
             },
             roots: vec![0],
+            closure_table: vec![],
         },
     ]
 }
@@ -100,19 +109,28 @@ fn test_heaps() -> Vec<TestHeap> {
 struct TestHeap {
     heap: HashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: Vec<ObjectIdx>,
+    closure_table: Vec<ObjectIdx>,
 }
 
 /// Test all GC implementations with the given heap
 fn test_gcs(heap_descr: &TestHeap) {
-    // for gc in &GC_IMPLS {
-    //     test_gc(*gc, &heap_descr.heap, &heap_descr.roots);
-    // }
-    test_gc(GC::Copying, &heap_descr.heap, &heap_descr.roots);
-    test_gc(GC::MarkCompact, &heap_descr.heap, &heap_descr.roots);
+    for gc in &GC_IMPLS {
+        test_gc(
+            *gc,
+            &heap_descr.heap,
+            &heap_descr.roots,
+            &heap_descr.closure_table,
+        );
+    }
 }
 
-fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
-    let heap = MotokoHeap::new(refs, roots, gc);
+fn test_gc(
+    gc: GC,
+    refs: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    roots: &[ObjectIdx],
+    closure_table: &[ObjectIdx],
+) {
+    let heap = MotokoHeap::new(refs, roots, closure_table, gc);
 
     // unsafe {
     //     motoko_rts::debug::dump_heap(
@@ -126,10 +144,12 @@ fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
     // Check `check_dynamic_heap` sanity
     check_dynamic_heap(
         refs,
-        &roots,
+        roots,
+        closure_table,
         &**heap.heap(),
         heap.heap_base_offset(),
         heap.heap_ptr_offset(),
+        heap.closure_table_ptr_offset(),
     );
 
     for _ in 0..1 {
@@ -137,12 +157,15 @@ fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
+        let closure_table_ptr_offset = heap.closure_table_ptr_offset();
         check_dynamic_heap(
             refs,
-            &roots,
+            roots,
+            closure_table,
             &**heap.heap(),
             heap_base_offset,
             heap_ptr_offset,
+            closure_table_ptr_offset,
         );
     }
 }
@@ -159,9 +182,11 @@ fn test_gc(gc: GC, refs: &HashMap<u32, Vec<u32>>, roots: &[u32]) {
 fn check_dynamic_heap(
     objects: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
+    closure_table: &[ObjectIdx],
     heap: &[u8],
     heap_base_offset: usize,
     heap_ptr_offset: usize,
+    closure_table_ptr_offset: usize,
 ) {
     // Current offset in the heap
     let mut offset = heap_base_offset;
@@ -169,17 +194,25 @@ fn check_dynamic_heap(
     // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
     let mut seen: HashMap<ObjectIdx, usize> = Default::default();
 
+    let closure_table_addr = unskew_pointer(read_word(heap, closure_table_ptr_offset));
+    let closure_table_offset = closure_table_addr as usize - heap.as_ptr() as usize;
+
     while offset < heap_ptr_offset {
+        let object_offset = offset;
+
         // Address of the current object. Used for debugging.
         let address = offset as usize + heap.as_ptr() as usize;
 
-        let tag = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        if tag == 0 {
-            // Found closure table
+        if object_offset == closure_table_offset {
+            check_closure_table(object_offset, closure_table, heap);
+            offset += (size_of::<Array>() + Words(closure_table.len() as u32))
+                .to_bytes()
+                .0 as usize;
             continue;
         }
+
+        let tag = read_word(heap, offset);
+        offset += WORD_SIZE;
 
         assert_eq!(tag, TAG_ARRAY);
 
@@ -189,7 +222,7 @@ fn check_dynamic_heap(
         // There should be at least one field for the index
         assert!(n_fields >= 1);
 
-        let object_idx = read_word(heap, offset) >> 1;
+        let object_idx = get_scalar_value(read_word(heap, offset));
         offset += WORD_SIZE;
         let old = seen.insert(object_idx, address);
         if let Some(old) = old {
@@ -210,7 +243,7 @@ fn check_dynamic_heap(
             let pointee_address = field.wrapping_add(1); // unskew
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
             let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_idx = read_word(heap, pointee_idx_offset) >> 1;
+            let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
             let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
             assert_eq!(
                 pointee_idx,
@@ -293,6 +326,26 @@ fn compute_reachable_objects(
     }
 
     closure
+}
+
+fn check_closure_table(mut offset: usize, closure_table: &[ObjectIdx], heap: &[u8]) {
+    assert_eq!(read_word(heap, offset), TAG_ARRAY);
+    offset += WORD_SIZE;
+
+    assert_eq!(read_word(heap, offset), closure_table.len() as u32);
+    offset += WORD_SIZE;
+
+    for obj in closure_table.iter() {
+        let ptr = unskew_pointer(read_word(heap, offset));
+        offset += WORD_SIZE;
+
+        // Skip object header for idx
+        let idx_address = ptr as usize + size_of::<Array>().to_bytes().0 as usize;
+        let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
+        offset += WORD_SIZE;
+
+        assert_eq!(idx, *obj);
+    }
 }
 
 impl GC {

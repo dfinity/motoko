@@ -1,5 +1,5 @@
 use super::utils::{
-    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
+    make_pointer, make_scalar, read_word, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
@@ -34,10 +34,16 @@ impl MotokoHeap {
     pub fn new(
         map: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
         roots: &[ObjectIdx],
+        closure_table: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
         MotokoHeap {
-            inner: Rc::new(RefCell::new(MotokoHeapInner::new(map, roots, gc))),
+            inner: Rc::new(RefCell::new(MotokoHeapInner::new(
+                map,
+                roots,
+                closure_table,
+                gc,
+            ))),
         }
     }
 
@@ -72,7 +78,12 @@ impl MotokoHeap {
         self.inner.borrow().static_root_array_address()
     }
 
-    /// Get the address of the closure table
+    /// Get the offset of the closure table pointer
+    pub fn closure_table_ptr_offset(&self) -> usize {
+        self.inner.borrow().closure_table_ptr_offset
+    }
+
+    /// Get closure table address from the static memory
     pub fn closure_table_address(&self) -> usize {
         self.inner.borrow().closure_table_address()
     }
@@ -97,9 +108,11 @@ struct MotokoHeapInner {
     /// Offset of the static root array: an array of pointers below `heap_base`
     static_root_array_offset: usize,
 
-    /// Offset of the closure table. Currently we write a tagged scalar to this location and
-    /// effectively skip closure table evacuation.
-    closure_table_offset: usize,
+    /// Offset of the closure table pointer.
+    ///
+    /// Reminder: this location is in static heap and will have pointer to an array in dynamic
+    /// heap.
+    closure_table_ptr_offset: usize,
 }
 
 impl MotokoHeapInner {
@@ -131,25 +144,33 @@ impl MotokoHeapInner {
         self.offset_to_address(self.static_root_array_offset)
     }
 
-    /// Get closure table address in the process's address space
-    fn closure_table_address(&self) -> usize {
-        self.offset_to_address(self.closure_table_offset)
+    /// Get closure table address from the static memory
+    pub fn closure_table_address(&self) -> usize {
+        read_word(&*self.heap, self.closure_table_ptr_offset) as usize
     }
 
     fn new(
         map: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
         roots: &[ObjectIdx],
+        closure_table: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
-        // have an array (header + length) with one element, one MutBox for each root.
-        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2)) * WORD_SIZE;
-        let dynamic_heap_size_bytes = {
+        // have an array (header + length) with one element, one MutBox for each root. +1 for
+        // closure table pointer.
+        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
+
+        let dynamic_heap_size_without_closure_table_bytes = {
             let object_headers_words = map.len() * 3;
             let references_words = map.values().map(Vec::len).sum::<usize>();
-            let closure_table_words = 1;
-            (object_headers_words + references_words + closure_table_words) * WORD_SIZE
+            (object_headers_words + references_words) * WORD_SIZE
         };
+
+        let dynamic_heap_size_bytes = dynamic_heap_size_without_closure_table_bytes
+            + (size_of::<Array>() + Words(closure_table.len() as u32))
+                .to_bytes()
+                .0 as usize;
+
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
 
         let heap_size = heap_size_for_gc(
@@ -163,20 +184,24 @@ impl MotokoHeapInner {
 
         // Maps `ObjectIdx`s into their offsets in the heap
         let object_addrs: HashMap<ObjectIdx, usize> =
-            create_dynamic_heap(map, &mut heap[static_heap_size_bytes..]);
+            create_dynamic_heap(map, closure_table, &mut heap[static_heap_size_bytes..]);
 
-        create_static_heap(roots, &object_addrs, &mut heap[..static_heap_size_bytes]);
-
-        // Add closure table at the end of the heap. Currently closure table is just a scalar.
-        let closure_table_offset = static_heap_size_bytes + dynamic_heap_size_bytes - WORD_SIZE;
-        write_word(&mut heap, closure_table_offset, 0);
+        // Closure table pointer is the last word in static heap
+        let closure_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
+        create_static_heap(
+            roots,
+            &object_addrs,
+            closure_table_ptr_offset,
+            static_heap_size_bytes + dynamic_heap_size_without_closure_table_bytes,
+            &mut heap[..static_heap_size_bytes],
+        );
 
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
             heap_base_offset: static_heap_size_bytes,
             heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
-            closure_table_offset,
+            closure_table_ptr_offset: closure_table_ptr_offset,
         }
     }
 
@@ -249,6 +274,7 @@ fn heap_size_for_gc(
 /// documentation for "offset" and "address" definitions).
 fn create_dynamic_heap(
     refs: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    closure_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
 ) -> HashMap<ObjectIdx, usize> {
     let heap_start = dynamic_heap.as_ptr() as usize;
@@ -289,10 +315,35 @@ fn create_dynamic_heap(
     for (obj, refs) in refs {
         let obj_offset = object_addrs.get(obj).unwrap() - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
-            // -1 for skewing
             let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap() as u32);
-            let field_offset = obj_offset + (3 + ref_idx) * WORD_SIZE;
+            let field_offset = obj_offset
+                + (size_of::<Array>() + Words(1 + ref_idx as u32))
+                    .to_bytes()
+                    .0 as usize;
             write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
+        }
+    }
+
+    // Add the closure table
+    let n_objects = refs.len();
+    // fields+1 for the scalar field (idx)
+    let n_fields: usize = refs.values().map(|fields| fields.len() + 1).sum();
+    let closure_table_offset =
+        (size_of::<Array>() * n_objects as u32).to_bytes().0 as usize + n_fields * WORD_SIZE;
+
+    {
+        let mut heap_offset = closure_table_offset;
+
+        write_word(dynamic_heap, closure_table_offset, TAG_ARRAY);
+        heap_offset += WORD_SIZE;
+
+        write_word(dynamic_heap, heap_offset, closure_table.len() as u32);
+        heap_offset += WORD_SIZE;
+
+        for idx in closure_table {
+            let idx_ptr = *object_addrs.get(idx).unwrap();
+            write_word(dynamic_heap, heap_offset, make_pointer(idx_ptr as u32));
+            heap_offset += WORD_SIZE;
         }
     }
 
@@ -305,6 +356,8 @@ fn create_dynamic_heap(
 fn create_static_heap(
     roots: &[ObjectIdx],
     object_addrs: &HashMap<ObjectIdx, usize>,
+    closure_table_ptr_offset: usize,
+    closure_table_offset: usize,
     heap: &mut [u8],
 ) {
     let root_addresses: Vec<usize> = roots
@@ -342,4 +395,12 @@ fn create_static_heap(
         root_addr_offset += WORD_SIZE;
         mutbox_offset += size_of::<MutBox>().to_bytes().0 as usize;
     }
+
+    // Write closure table pointer as the last word in static heap
+    let closure_table_ptr = closure_table_offset as u32 + heap.as_ptr() as u32;
+    write_word(
+        heap,
+        closure_table_ptr_offset,
+        make_pointer(closure_table_ptr),
+    );
 }
