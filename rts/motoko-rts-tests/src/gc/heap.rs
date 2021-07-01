@@ -83,6 +83,12 @@ impl MotokoHeap {
         self.inner.borrow().closure_table_ptr_offset
     }
 
+    /// Get the address of the closure table pointer
+    pub fn closure_table_ptr_address(&self) -> usize {
+        self.inner.borrow().closure_table_ptr_address()
+    }
+
+
     /// Get closure table address from the static memory
     pub fn closure_table_address(&self) -> usize {
         self.inner.borrow().closure_table_address()
@@ -144,8 +150,14 @@ impl MotokoHeapInner {
         self.offset_to_address(self.static_root_array_offset)
     }
 
+    /// Get the address of the closure table pointer
+    fn closure_table_ptr_address(&self) -> usize {
+        self.offset_to_address(self.closure_table_ptr_offset)
+    }
+
+
     /// Get closure table address from the static memory
-    pub fn closure_table_address(&self) -> usize {
+    fn closure_table_address(&self) -> usize {
         read_word(&*self.heap, self.closure_table_ptr_offset) as usize
     }
 
