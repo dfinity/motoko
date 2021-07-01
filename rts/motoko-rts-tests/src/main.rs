@@ -24,16 +24,16 @@ fn main() {
     }
 
     unsafe {
-        // bigint::test();
-        // bitmap::test();
-        // closure_table::test();
-        // crc32::test();
+        bigint::test();
+        bitmap::test();
+        closure_table::test();
+        crc32::test();
         gc::test();
-        // leb128::test();
+        leb128::test();
         // mark_stack::test();
-        // principal_id::test();
-        // text::test();
-        // utf8::test();
+        principal_id::test();
+        text::test();
+        utf8::test();
     }
 }
 

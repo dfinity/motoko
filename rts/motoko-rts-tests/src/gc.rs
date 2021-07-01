@@ -100,7 +100,7 @@ fn test_heaps() -> Vec<TestHeap> {
                 2 => vec![0],
             },
             roots: vec![0],
-            closure_table: vec![],
+            closure_table: vec![0, 1, 2],
         },
     ]
 }
@@ -131,15 +131,6 @@ fn test_gc(
     closure_table: &[ObjectIdx],
 ) {
     let heap = MotokoHeap::new(refs, roots, closure_table, gc);
-
-    // unsafe {
-    //     motoko_rts::debug::dump_heap(
-    //         heap.heap_base_address() as u32,
-    //         heap.heap_ptr_address() as u32,
-    //         skew(heap.static_root_array_address()),
-    //         heap.closure_table_address() as *mut SkewedPtr,
-    //     );
-    // }
 
     // Check `check_dynamic_heap` sanity
     check_dynamic_heap(

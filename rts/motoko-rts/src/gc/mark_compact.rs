@@ -86,7 +86,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     if (*closure_table_loc).unskew() >= heap_base as usize {
         let pushed = push_mark_stack(mem, *closure_table_loc, heap_base);
         debug_assert!(pushed);
-        thread_obj_fields((*closure_table_loc).unskew() as *mut Obj, heap_base);
+        thread(closure_table_loc);
     }
 
     mark_stack(mem, heap_base);
