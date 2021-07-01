@@ -148,7 +148,7 @@ fn check_dynamic_heap(
         // There should be at least one field for the index
         assert!(n_fields >= 1);
 
-        let object_idx = read_word(heap, offset) >> 1;
+        let object_idx = get_scalar_value(read_word(heap, offset));
         offset += WORD_SIZE;
         let old = seen.insert(object_idx, address);
         if let Some(old) = old {
@@ -169,7 +169,7 @@ fn check_dynamic_heap(
             let pointee_address = field.wrapping_add(1); // unskew
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
             let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_idx = read_word(heap, pointee_idx_offset) >> 1;
+            let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
             let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
             assert_eq!(
                 pointee_idx,
