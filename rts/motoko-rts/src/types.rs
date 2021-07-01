@@ -1,5 +1,5 @@
 use crate::tommath_bindings::{mp_digit, mp_int};
-use core::ops::{Add, AddAssign, Div, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -32,6 +32,14 @@ impl<A: Sub<Output = A>> Sub for Words<A> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Words(self.0 - rhs.0)
+    }
+}
+
+impl<A: Mul<Output = A>> Mul<A> for Words<A> {
+    type Output = Self;
+
+    fn mul(self, rhs: A) -> Self::Output {
+        Words(self.0 * rhs)
     }
 }
 

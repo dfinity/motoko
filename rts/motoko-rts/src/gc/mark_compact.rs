@@ -72,11 +72,11 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     mem: &mut M,
     set_hp: SetHp,
     heap_base: u32,
-    mem_end: u32,
+    heap_end: u32,
     static_roots: SkewedPtr,
     closure_table_loc: *mut SkewedPtr,
 ) {
-    let mem_size = Bytes(mem_end - heap_base);
+    let mem_size = Bytes(heap_end - heap_base);
 
     alloc_bitmap(mem, mem_size);
     alloc_mark_stack(mem);

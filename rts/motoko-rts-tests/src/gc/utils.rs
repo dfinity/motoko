@@ -39,7 +39,18 @@ pub fn make_scalar(value: u32) -> u32 {
     value << 1
 }
 
+/// Inverse of `make_scalar`
+pub fn get_scalar_value(scalar: u32) -> u32 {
+    assert_eq!(scalar & 0b1, 0);
+    scalar >> 1
+}
+
 /// Make a pointer value to be used in heap object payload
 pub fn make_pointer(addr: u32) -> u32 {
     addr.wrapping_sub(1)
+}
+
+/// Inverse of `make_pointer`
+pub fn unskew_pointer(skewed_ptr: u32) -> u32 {
+    skewed_ptr.wrapping_add(1)
 }
