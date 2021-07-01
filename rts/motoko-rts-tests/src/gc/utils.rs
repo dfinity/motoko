@@ -43,3 +43,8 @@ pub fn make_scalar(value: u32) -> u32 {
 pub fn make_pointer(addr: u32) -> u32 {
     addr.wrapping_sub(1)
 }
+
+/// Inverse of `make_pointer`
+pub fn unskew_pointer(skewed_ptr: u32) -> u32 {
+    skewed_ptr.wrapping_add(1)
+}
