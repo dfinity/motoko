@@ -40,6 +40,8 @@ You can use the following options with the `+moc+` command.
 
 |`+--check+` |Performs type checking only.
 
+|`+--compacting-gc+` |Link with compacting GC instead of copying GC.
+
 |`+--debug+` |Respects debug expressions in the source (the default).
 
 |`+-dp+` |Dumps parse.
@@ -48,7 +50,7 @@ You can use the following options with the `+moc+` command.
 
 |`+-dl+` |Dumps intermediate representation
 
-|`+--error-detail+` |Displays detailed error message for syntax errors.
+|`+--error-detail <n>+` |Set level of error message detail for syntax errors, n in [0..3] (default 2).
 
 |`+-help+`,`+--help+` |Displays usage information.
 
@@ -93,6 +95,9 @@ You can use the following options with the `+moc+` command.
 |`+-r+` |Interprets programs.
 
 |`+--release+` |Ignores debug expressions in the source.
+
+|`+--sanity-checks+` |Enable sanity checking in the runtime system and generated code (for compiler development only).
+
 
 |`+-stub-system-api+` |Uses the the stub version of the system API.
 
