@@ -85,7 +85,7 @@ fn test_gc(
 ) {
     let heap = MotokoHeap::new(refs, roots, closure_table, gc);
 
-    for _ in 0..1 {
+    for _ in 0..3 {
         gc.run(heap.clone());
 
         let heap_base_offset = heap.heap_base_offset();
