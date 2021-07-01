@@ -28,6 +28,11 @@ pub fn test() {
 
 fn test_heaps() -> Vec<TestHeap> {
     vec![
+        // Just a random test that covers a bunch of cases:
+        // - Self references
+        // - Forward pointers
+        // - Backwards pointers
+        // - More than one fields in an object
         TestHeap {
             heap: hashmap! {
                 0 => vec![0, 2],
@@ -37,6 +42,8 @@ fn test_heaps() -> Vec<TestHeap> {
             roots: vec![0, 2, 3],
             closure_table: vec![0],
         },
+        // Tests pointing to the same object in multiple fields of an object. Also has unreachable
+        // objects.
         TestHeap {
             heap: hashmap! {
                 0 => vec![],
@@ -46,6 +53,7 @@ fn test_heaps() -> Vec<TestHeap> {
             roots: vec![1],
             closure_table: vec![0, 0],
         },
+        // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
             heap: hashmap! {
                 0 => vec![],
