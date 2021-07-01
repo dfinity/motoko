@@ -260,7 +260,7 @@ fn check_dynamic_heap(
     // At this point we've checked that all seen objects point to the expected objects (as
     // specified by `objects`). Check that we've seen the reachable objects and only the reachable
     // objects.
-    let reachable_objects = compute_reachable_objects(roots, objects);
+    let reachable_objects = compute_reachable_objects(roots, closure_table, objects);
 
     // Objects we've seen in the heap
     let seen_objects: HashSet<ObjectIdx> = seen.keys().copied().collect();
@@ -308,10 +308,13 @@ fn check_dynamic_heap(
 
 fn compute_reachable_objects(
     roots: &[ObjectIdx],
+    closure_table: &[ObjectIdx],
     heap: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
 ) -> HashSet<ObjectIdx> {
-    let mut closure: HashSet<ObjectIdx> = roots.iter().copied().collect();
-    let mut work_list: Vec<ObjectIdx> = roots.iter().copied().collect();
+    let root_iter = roots.iter().chain(closure_table.iter()).copied();
+
+    let mut closure: HashSet<ObjectIdx> = root_iter.clone().collect();
+    let mut work_list: Vec<ObjectIdx> = root_iter.collect();
 
     while let Some(next) = work_list.pop() {
         let pointees = heap
@@ -342,7 +345,6 @@ fn check_closure_table(mut offset: usize, closure_table: &[ObjectIdx], heap: &[u
         // Skip object header for idx
         let idx_address = ptr as usize + size_of::<Array>().to_bytes().0 as usize;
         let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
-        offset += WORD_SIZE;
 
         assert_eq!(idx, *obj);
     }
