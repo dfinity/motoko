@@ -33,14 +33,21 @@ pub unsafe fn dump_heap(
 }
 
 pub(crate) unsafe fn print_closure_table(closure_tbl_loc: *mut SkewedPtr) {
-    println!(200, "Closure table pointer location: {:#x}", closure_tbl_loc as usize);
+    println!(
+        200,
+        "Closure table pointer location: {:#x}", closure_tbl_loc as usize
+    );
 
     if (*closure_tbl_loc).0 == 0 {
         println!(100, "Closure table not initialized");
         return;
     }
 
-    println!(200, "Closure table pointer: {:#x}", (*closure_tbl_loc).unskew() as usize);
+    println!(
+        200,
+        "Closure table pointer: {:#x}",
+        (*closure_tbl_loc).unskew() as usize
+    );
 
     let arr = (*closure_tbl_loc).unskew() as *mut Array;
     let len = (*arr).len;
