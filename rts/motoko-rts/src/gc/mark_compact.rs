@@ -134,7 +134,7 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
-        if push_mark_stack(mem, *field_addr, heap_base) {
+        if push_mark_stack(mem, *field_addr, heap_base) || (*field_addr).unskew() == obj as usize {
             thread(field_addr);
         }
     });
