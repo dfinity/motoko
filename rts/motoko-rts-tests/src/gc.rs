@@ -280,7 +280,7 @@ impl GC {
     fn run(&self, mut heap: MotokoHeap) {
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = skew(heap.static_root_array_address());
-        let closure_table_address = heap.closure_table_address() as *mut SkewedPtr;
+        let closure_table_ptr_address = heap.closure_table_ptr_address() as *mut SkewedPtr;
 
         let heap_1 = heap.clone();
         let heap_2 = heap.clone();
@@ -296,7 +296,7 @@ impl GC {
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
-                        closure_table_address,
+                        closure_table_ptr_address,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -315,7 +315,7 @@ impl GC {
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
-                        closure_table_address,
+                        closure_table_ptr_address,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
