@@ -37,7 +37,7 @@ static mut N_CLOSURES: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn crate_closure_table<M: Memory>(mem: &mut M) {
+unsafe fn create_closure_table<M: Memory>(mem: &mut M) {
     TABLE = alloc_array(mem, INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CLOSURES = 0;
@@ -71,7 +71,7 @@ unsafe fn double_closure_table<M: Memory>(mem: &mut M) {
 #[ic_mem_fn]
 pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     if TABLE.0 == 0 {
-        crate_closure_table(mem);
+        create_closure_table(mem);
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
