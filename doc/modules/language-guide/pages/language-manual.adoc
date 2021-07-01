@@ -2334,7 +2334,7 @@ The result of evaluating `( <exp> )` is the result of evaluating `<exp>`.
 
 Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by virtue of _implicit subsumption_, `<exp>` also has type `U` (without extra syntax).
 
-In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping.
+In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping. This static change of type has no runtime cost.
 
 == References
 
