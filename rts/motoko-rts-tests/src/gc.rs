@@ -30,77 +30,30 @@ fn test_heaps() -> Vec<TestHeap> {
     vec![
         TestHeap {
             heap: hashmap! {
-                0 => vec![],
-            },
-            roots: vec![0],
-            closure_table: vec![],
-        },
-        TestHeap {
-            heap: hashmap! {
-                0 => vec![1],
-                1 => vec![],
-            },
-            roots: vec![0],
-            closure_table: vec![],
-        },
-        TestHeap {
-            heap: hashmap! {
-                0 => vec![1],
-                1 => vec![],
-            },
-            roots: vec![0, 1],
-            closure_table: vec![],
-        },
-        TestHeap {
-            heap: hashmap! {
-                0 => vec![1],
-                1 => vec![0],
-            },
-            roots: vec![0, 1],
-            closure_table: vec![],
-        },
-        TestHeap {
-            heap: hashmap! {
-                0 => vec![1, 0],
-                1 => vec![0, 1],
-            },
-            roots: vec![0, 1],
-            closure_table: vec![],
-        },
-        TestHeap {
-            heap: hashmap! {
                 0 => vec![0, 2],
                 2 => vec![0],
                 3 => vec![3],
             },
             roots: vec![0, 2, 3],
-            closure_table: vec![],
+            closure_table: vec![0],
         },
         TestHeap {
             heap: hashmap! {
-                0 => vec![1],
+                0 => vec![],
                 1 => vec![],
-                2 => vec![1],
-                3 => vec![1],
+                2 => vec![],
             },
-            roots: vec![0, 2, 3],
-            closure_table: vec![],
+            roots: vec![1],
+            closure_table: vec![0, 0],
         },
         TestHeap {
             heap: hashmap! {
-                0 => vec![0],
-            },
-            roots: vec![0],
-            closure_table: vec![],
-        },
-        TestHeap {
-            heap: hashmap! {
-                0 => vec![1],
+                0 => vec![],
                 1 => vec![2],
-                2 => vec![0],
+                2 => vec![1],
             },
-            roots: vec![0],
-            closure_table: vec![0, 1, 2],
+            roots: vec![2],
+            closure_table: vec![],
         },
     ]
 }
