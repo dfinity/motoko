@@ -19,9 +19,11 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::alloc::alloc_array;
+use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::SkewedPtr;
+
+use motoko_rts_macros::ic_mem_fn;
 
 const INITIAL_SIZE: u32 = 256;
 
@@ -35,8 +37,8 @@ static mut N_CLOSURES: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn crate_closure_table() {
-    TABLE = alloc_array(INITIAL_SIZE);
+unsafe fn create_closure_table<M: Memory>(mem: &mut M) {
+    TABLE = alloc_array(mem, INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CLOSURES = 0;
 
@@ -46,7 +48,7 @@ unsafe fn crate_closure_table() {
     }
 }
 
-unsafe fn double_closure_table() {
+unsafe fn double_closure_table<M: Memory>(mem: &mut M) {
     let old_array = TABLE.as_array();
     let old_size = old_array.len();
 
@@ -54,7 +56,7 @@ unsafe fn double_closure_table() {
 
     let new_size = old_size * 2;
 
-    TABLE = alloc_array(new_size);
+    TABLE = alloc_array(mem, new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
@@ -66,14 +68,14 @@ unsafe fn double_closure_table() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn remember_closure(ptr: SkewedPtr) -> u32 {
+#[ic_mem_fn]
+pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     if TABLE.0 == 0 {
-        crate_closure_table();
+        create_closure_table(mem);
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
-        double_closure_table();
+        double_closure_table(mem);
     }
 
     // Just as a sanity check make sure the ptr is really skewed
@@ -121,10 +123,12 @@ pub unsafe extern "C" fn closure_count() -> u32 {
     N_CLOSURES
 }
 
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn closure_table_loc() -> *mut SkewedPtr {
     &mut TABLE
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn closure_table_size() -> u32 {
     if TABLE.0 == 0 {

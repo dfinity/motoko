@@ -1,13 +1,12 @@
 use crate::tommath_bindings::{mp_digit, mp_int};
-use core::ops::{Add, AddAssign, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
+use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
 }
-
-pub const WORD_SIZE: u32 = 4;
 
 /// The unit "words": `Words(123u32)` means 123 words.
 #[repr(transparent)]
@@ -33,6 +32,22 @@ impl<A: Sub<Output = A>> Sub for Words<A> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Words(self.0 - rhs.0)
+    }
+}
+
+impl<A: Mul<Output = A>> Mul<A> for Words<A> {
+    type Output = Self;
+
+    fn mul(self, rhs: A) -> Self::Output {
+        Words(self.0 * rhs)
+    }
+}
+
+impl<A: Div<Output = A>> Div<A> for Words<A> {
+    type Output = Self;
+
+    fn div(self, rhs: A) -> Self::Output {
+        Words(self.0 / rhs)
     }
 }
 
@@ -64,6 +79,10 @@ impl Bytes<u32> {
     pub fn to_words(self) -> Words<u32> {
         // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -237,6 +256,7 @@ impl Object {
         (*self).size
     }
 
+    #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
         *self.payload_addr().add(idx as usize)
     }
@@ -263,10 +283,6 @@ impl Closure {
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
         (*self).size
-    }
-
-    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
-        *self.payload_addr().add(idx as usize)
     }
 }
 
