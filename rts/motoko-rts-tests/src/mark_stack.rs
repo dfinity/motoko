@@ -1,40 +1,56 @@
-use motoko_rts::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
+use crate::memory::TestMemory;
 
-use quickcheck::{quickcheck, TestResult};
+use motoko_rts::gc::mark_compact::mark_stack::{
+    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
+};
+use motoko_rts::memory::Memory;
+use motoko_rts::types::Words;
 
-use std::cmp::min;
+use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
     println!("Testing mark stack ...");
-    quickcheck(test_ as fn(Vec<usize>) -> TestResult);
+
+    let mut proptest_runner = TestRunner::new(Config {
+        cases: 100,
+        failure_persistence: None,
+        ..Default::default()
+    });
+
+    proptest_runner
+        .run(&(0u32..1000u32), |n_objs| {
+            let mut mem = TestMemory::new(Words(1024 * 1024));
+            test_(&mut mem, n_objs)
+        })
+        .unwrap();
 }
 
-fn test_(objs: Vec<usize>) -> TestResult {
-    // We can't test grow_stack as it requires the new allocation to be next to the old allocation,
-    // so cap the limit to 1024
-    let objs = &objs[0..min(objs.len(), 1024)];
+fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
+    let objs: Vec<u32> = (0..n_objs).collect();
 
     unsafe {
-        // Leaks, but OK
-        alloc_mark_stack();
+        alloc_mark_stack(mem);
 
-        for obj in objs {
-            push_mark_stack(*obj);
+        for obj in &objs {
+            push_mark_stack(mem, *obj as usize);
         }
 
         for obj in objs.iter().rev() {
             let popped = pop_mark_stack();
-            if popped != Some(*obj) {
-                free_mark_stack(); // TODO: Does not really free
-                return TestResult::error(format!(
-                    "Unexpected object popped, expected={:?}, popped={:?}",
-                    obj, popped
+            if popped != Some(*obj as usize) {
+                free_mark_stack();
+                return Err(TestCaseError::Fail(
+                    format!(
+                        "Unexpected object popped, expected={:?}, popped={:?}",
+                        obj, popped
+                    )
+                    .into(),
                 ));
             }
         }
 
-        free_mark_stack(); // TODO: Does not really free
+        free_mark_stack();
     }
 
-    TestResult::passed()
+    Ok(())
 }

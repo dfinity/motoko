@@ -1,10 +1,12 @@
 //! Principal ID encoding and decoding, with integrity checking
 
-use crate::alloc::alloc_blob;
-use crate::mem::memcpy_bytes;
+use crate::mem_utils::memcpy_bytes;
+use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
 use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
+
+use motoko_rts_macros::ic_mem_fn;
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
@@ -90,12 +92,12 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 }
 
 /// Encode a blob into an checksum-prepended base32 representation
-pub unsafe fn base32_of_checksummed_blob(b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
-    let r = alloc_blob(Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob(mem, Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob();
     let dest = blob.payload_addr();
 
@@ -182,12 +184,12 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
     }
 }
 
-pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
+    let r = alloc_blob(mem, Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob();
     let dest = blob.payload_addr();
 
@@ -216,21 +218,22 @@ pub unsafe fn base32_to_blob(b: SkewedPtr) -> SkewedPtr {
 }
 
 /// Encode a blob into its textual representation
-#[no_mangle]
-pub unsafe extern "C" fn principal_of_blob(b: SkewedPtr) -> SkewedPtr {
-    base32_to_principal(base32_of_checksummed_blob(b))
+#[ic_mem_fn]
+pub unsafe fn principal_of_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
+    let base32 = base32_of_checksummed_blob(mem, b);
+    base32_to_principal(mem, base32)
 }
 
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
-unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
+unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
     let blob = b.as_blob();
 
     let n = blob.len();
     let mut data = blob.payload_addr();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
+    let r = alloc_blob(mem, Bytes(((n.0 + 4) / 5) * 6));
     let blob = r.as_blob();
     let mut dest = blob.payload_addr();
 
@@ -268,10 +271,10 @@ unsafe fn base32_to_principal(b: SkewedPtr) -> SkewedPtr {
 }
 
 // Decode an textual principal representation into a blob
-#[no_mangle]
-pub unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
-    let b0 = blob_of_text(t);
-    let bytes = base32_to_blob(b0);
+#[ic_mem_fn]
+pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: SkewedPtr) -> SkewedPtr {
+    let b0 = blob_of_text(mem, t);
+    let bytes = base32_to_blob(mem, b0);
 
     // Strip first four bytes
     let bytes_len = bytes.as_blob().len();
@@ -279,7 +282,7 @@ pub unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
         rts_trap_with("blob_of_principal: principal too short");
     }
 
-    let stripped = alloc_blob(bytes_len - Bytes(4));
+    let stripped = alloc_blob(mem, bytes_len - Bytes(4));
     memcpy_bytes(
         stripped.as_blob().payload_addr() as usize,
         bytes.as_blob().payload_addr().add(4) as usize,
@@ -287,7 +290,7 @@ pub unsafe extern "C" fn blob_of_principal(t: SkewedPtr) -> SkewedPtr {
     );
 
     // Check encoding
-    let expected = principal_of_blob(stripped);
+    let expected = principal_of_blob(mem, stripped);
     if blob_compare(b0, expected) != 0 {
         rts_trap_with("blob_of_principal: invalid principal");
     }

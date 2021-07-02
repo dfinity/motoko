@@ -6,7 +6,7 @@ module I = Idllib.Typing
 
 let m_env = ref M.Env.empty
 
-let check_prim p =
+let check_prim at p =
   match p with
   | Null -> M.Prim M.Null
   | Bool -> M.Prim M.Bool
@@ -20,7 +20,9 @@ let check_prim p =
   | Nat16 -> M.Prim M.Nat16
   | Nat32 -> M.Prim M.Nat32
   | Nat64 -> M.Prim M.Nat64
-  | Float32 -> raise (UnsupportedCandidFeature "float32")
+  | Float32 -> raise (UnsupportedCandidFeature
+     (Diag.error_message at "M0161" "import"
+       "Candid 'float32' type cannot be imported as a Motoko type"))
   | Float64 -> M.Prim M.Float
   | Text -> M.Prim M.Text
   | Reserved -> M.Any
@@ -49,7 +51,7 @@ let is_tuple fs =
 
 let rec check_typ env t =
   match t.it with
-  | PrimT p -> check_prim p
+  | PrimT p -> check_prim t.at p
   | PrincipalT -> M.Prim M.Principal
   | VarT {it=id; _} ->
      (match M.Env.find_opt id !m_env with
@@ -81,7 +83,8 @@ let rec check_typ env t =
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)
-  | ClassT _ -> raise (Invalid_argument "service constructor not supported")
+  | ClassT _ -> raise (UnsupportedCandidFeature
+     (Diag.error_message t.at "M0162" "import" "Candid service constructor type not supported as Motoko type"))
   | PreT -> assert false
 and check_typs env ts = List.map (check_typ env) ts
 and check_field env f =
@@ -91,7 +94,7 @@ and check_variant_field env f =
   | PrimT Null -> M.{lab = check_label f.it.label; typ = M.Tup []; depr = None}
   | _ -> check_field env f
 and check_meth env (m: typ_meth) =
-  M.{lab = Idllib.Escape.escape_method m.it.var.it; typ = check_typ env m.it.meth; depr = None}
+  M.{lab = Idllib.Escape.escape_method m.it.var.at m.it.var.it; typ = check_typ env m.it.meth; depr = None}
 
 let check_prog (env: typ I.Env.t) actor : M.typ =
   match actor with
@@ -102,6 +105,9 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
        | M.Con (c, _) -> M.{lab = id; typ = M.Typ c; depr = None}::fs
        | _ -> assert false) !m_env fs in
      M.Obj (M.Actor, List.sort M.compare_field fs)
+  | Some {it=ClassT _; at; _} ->
+     raise (UnsupportedCandidFeature
+       (Diag.error_message at "M0163" "import" "cannot import a Candid service constructor"))
   | None -> assert false
   | _ -> assert false
 

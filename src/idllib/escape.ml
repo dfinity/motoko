@@ -111,11 +111,13 @@ let escape str =
   then if ends_with_underscore str then str ^ "_" else str
   else escape_num (IdlHash.idl_hash str)
 
-let escape_method str =
+let escape_method at str =
   if is_motoko_keyword str then str ^ "_" else
   if is_valid_as_id str
   then if ends_with_underscore str then str ^ "_" else str
-  else raise (Exception.UnsupportedCandidFeature "Candid method not a valid Motoko id")
+  else raise (Exception.UnsupportedCandidFeature
+    (Diag.error_message at "M0160" "import"
+      (Printf.sprintf "Candid method name '%s' is not a valid Motoko identifier" str)))
 
 (* Unescaping (used for Motoko → Candid) *)
 

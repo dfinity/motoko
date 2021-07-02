@@ -101,8 +101,8 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | ParsesEqual (false, i1, i2)
     -> Ok (defs ^ not_equal (deser ts i1) (deser ts i2), ShouldPass)
   with
-    | Exception.UnsupportedCandidFeature what ->
-      Error what
+    | Exception.UnsupportedCandidFeature message ->
+      Error (Diag.string_of_message message)
     | TextualParseError (x, msgs) ->
       Error (Printf.sprintf "Could not parse %S:\n%s" x
           (String.concat ", " (List.map Diag.string_of_message msgs))
