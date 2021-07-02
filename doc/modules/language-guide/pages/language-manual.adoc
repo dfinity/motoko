@@ -664,10 +664,12 @@ The type `Bool` of category L (Logical) has values `true` and `false` and is sup
 [[type-char]]
 === Type `Char`
 
-A `Char` of category O (Ordered) represents characters as a code point in the Unicode character
-set. Characters can be converted to `Nat32`, and ``Nat32``s in the
-range _0 .. 0x1FFFFF_ can be converted to `Char` (the conversion traps
-if outside of this range). Base library function `Char.toText` converts a character
+A `Char` of category O (Ordered) represents a character as a code point in the Unicode character set.
+
+Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its `Nat32` code point.
+Function `Char.fromNat32(n)` converts
+a `Nat32` value, `n`, in the range _x0..xD800_ or _0xE000..0x10FFFF_ of valid code points to its `Char` value; this conversion traps on invalid arguments.
+Function `Char.toText(c)` converts the `Char` `c`
 into the corresponding, single character `Text` value.
 
 [[type-text]]
