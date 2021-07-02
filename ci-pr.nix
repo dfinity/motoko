@@ -34,7 +34,7 @@ let
           fi
         done
 
-        if ! find . -name \*.wasm | cat | grep -q .
+        if ! ls */*.wasm
         then
           echo "No wasm files generated. wasm-hash-for broken?"
           exit 1
