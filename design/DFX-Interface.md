@@ -9,14 +9,14 @@ This document describes the interface that `moc` and related tools provide to
 `dfx`. The goal is that
  * the Motoko developers know which command line flags have to
    be kept stable in order to not break `dfx`, and that
- * the SDK developers have a single place to read about the moc interface, and
+ * the SDK developers have a single place to read about the `moc` interface, and
    a place to express additional requirements (by collaborating on a PR against
    this document.)
 
 This interface includes:
  * nix derivations imported by SDK
  * binaries executed
- * command line arguments and environment varialbes passed to these binaries
+ * command line arguments and environment variables passed to these binaries
  * where these binaries read files and
  * where these binaries write files, output or temporary
  * where they do _not_ write to, so that upgrading `moc` doesn’t suddenly leave
@@ -42,12 +42,12 @@ The `default.nix` file itself takes an optional `system` parameter which is
 either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
 `builtins.currentSystem`.
 
-All binaries are either built statically (Linux) or only use system libraries (OSX).
+All binaries are either built statically (Linux) or only use system libraries (macOS).
 
 Compiling Motoko Files to Wasm
 ------------------------------
 
-In order to compile a motoko file, `dfx` invokes `moc` with
+In order to compile a Motoko file, `dfx` invokes `moc` with
 
     moc some/path/input.mo            \
         -o another/path/output.wasm   \
@@ -58,7 +58,7 @@ In order to compile a motoko file, `dfx` invokes `moc` with
 This _reads_ the following files
  * `some/path/input.mo`
  * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
- * for every actor import `ic:canisterid` imported by any of the Motoko files, it reads `actorpath/canisterid.did`, see section “Resolving Canister aliases” below. Here `canisterid` is the textual representation (e.g. `em77e-bvlzu-aq`).
+ * for every actor import `ic:⟨canisterid⟩` imported by any of the Motoko files, it reads `actorpath/⟨canisterid⟩.did`, see section “Resolving Canister aliases” below. Here `⟨canisterid⟩` is the textual representation (e.g. `em77e-bvlzu-aq`).
 
 The package name `prim` is special and should not be set using `--package`.
 
@@ -80,7 +80,7 @@ The IDL generation does not issue any warnings.
 Resolving Canister aliases
 --------------------------
 
-For every actor imported using `import "canister:alias"`, the Motoko compiler treats that as `import "ic:canisterid"`, if the command line flag `--actor-alias alias canisterid` is given. Here, `canisterid` is the textual representation (e.g. `em77e-bvlzu-aq`).
+For every actor imported using `import "canister:alias"`, the Motoko compiler treats that as `import "ic:⟨canisterid⟩"`, if the command line flag `--actor-alias alias ⟨canisterid⟩` is given. Here, `⟨canisterid⟩` is the textual representation (e.g. `em77e-bvlzu-aq`).
 
 The first argument to `--actor-alias` is the alias without the URL scheme. The second argument must be a [textual representation] of the canister id.
 
@@ -91,9 +91,9 @@ The given aliases must be unique (i.e. no `--actor-alias a aaaaa-aa --actor-alia
 Resolving Canister types
 ------------------------
 
-For every actor imported using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This file informs Motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
+For every actor imported using `import "ic:⟨canisterid⟩"` (or `import "canister:alias"` if `alias` resolves to `ic:⟨canisterid⟩` as described above), the Motoko compiler assumes the presence of a file `⟨canisterid⟩.did` in the actor idl path specified by `--actor-idl`. This file informs Motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
 
-The `canisterid` here refers to the “textual representation“, e.g. `em77e-bvlzu-aq`.
+The `⟨canisterid⟩` here refers to the “textual representation“, e.g. `em77e-bvlzu-aq`.
 
 This file informs Motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
 
@@ -102,7 +102,7 @@ Open problem: how to resolve mutual canister imports.
 Compiling IDL Files to JS
 -------------------------
 
-In order to compile a IDL file, `dfx` invokes `didc` with
+In order to compile an IDL file, `dfx` invokes `didc` with
 
     didc --js some/path/input.did -o another/path/output.js
 
