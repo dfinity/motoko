@@ -17,22 +17,22 @@ let string_map flag r desc =
 
 (* Everything related to imports, packages, aliases *)
 let package_args = [
-  string_map "--package" Flags.package_urls "<args> Specify a package-name-package-URL pair, separated by a space";
-  "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), " path to actor IDL files";
-  string_map "--actor-alias" Flags.actor_aliases " actor import alias"
+  string_map "--package" Flags.package_urls "<package-name> <package-path> specify a <package-name> <package-path> pair, separated by a space";
+  "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), "<idl-path>   path to actor IDL (Candid) files";
+  string_map "--actor-alias" Flags.actor_aliases "<alias> <principal>  actor import alias"
   ]
 
 let error_args = [
-  "--error-detail", Arg.Set_int Flags.error_detail, " set error message detail for syntax errors"
+  "--error-detail", Arg.Set_int Flags.error_detail, "<n>  set error message detail for syntax errors, n in [0..3] (default 2)"
   (* TODO move --hide-warnings here? *)
   ]
 
 let inclusion_args = [
     (* generic arg inclusion from file *)
   "--args", Arg.Expand Arg.read_arg,
-    "<file> Read additional newline separated command line arguments \n\
+    "<file>  read additional newline separated command line arguments \n\
     \      from <file>";
   "--args0", Arg.Expand Arg.read_arg0,
-    "<file> Read additional NUL separated command line arguments from \n\
+    "<file>  read additional NUL separated command line arguments from \n\
     \      <file>"
   ]
