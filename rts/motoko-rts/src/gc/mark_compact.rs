@@ -157,7 +157,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         // Update references to the object's new location and restore object header
         unthread(p, free);
 
-        // All references to the object now point to the new location, move the object
+        // All references to the object now point to the new location (object only moved in next pass)
         let p_size_words = object_size(p as usize);
 
         free += p_size_words.to_bytes().0;
