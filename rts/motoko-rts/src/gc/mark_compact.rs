@@ -4,7 +4,7 @@ pub mod bitmap;
 pub mod mark_stack;
 
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack};
+use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
@@ -84,7 +84,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     mark_static_roots(mem, static_roots, heap_base);
 
     if (*closure_table_loc).unskew() >= heap_base as usize {
-        push_mark_stack(mem, *closure_table_loc, heap_base);
+        mark_object(mem, *closure_table_loc, heap_base);
     }
 
     mark_stack(mem, heap_base);
@@ -112,7 +112,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, hea
     }
 }
 
-unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
+unsafe fn mark_object<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
     let obj = obj.unskew() as u32;
 
     let obj_idx = (obj - heap_base) / WORD_SIZE;
@@ -123,7 +123,7 @@ unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32
     }
 
     set_bit(obj_idx);
-    mark_stack::push_mark_stack(mem, obj as usize);
+    push_mark_stack(mem, obj as usize);
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -134,7 +134,7 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(obj, heap_base as usize, |field_addr| {
-        push_mark_stack(mem, *field_addr, heap_base);
+        mark_object(mem, *field_addr, heap_base);
     });
 }
 
