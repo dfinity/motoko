@@ -103,6 +103,6 @@ pub unsafe fn visit_pointer_fields<F>(
     }
 }
 
-unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
+pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
     (!(*field_addr).is_tagged_scalar()) && ((*field_addr).unskew() >= heap_base)
 }

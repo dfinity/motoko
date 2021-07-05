@@ -10,7 +10,7 @@ use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
-use crate::visitor::visit_pointer_fields;
+use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -102,7 +102,10 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, hea
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
-        mark_fields(mem, obj, obj.tag(), heap_base);
+        // Root array should only has pointers to other static MutBoxes
+        debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
+        debug_assert!((obj as u32) < heap_base); // check that MutBox is static
+        mark_root_mutbox_fields(mem, obj as *mut MutBox, heap_base);
     }
 }
 
@@ -132,6 +135,18 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         push_mark_stack(mem, *field_addr, heap_base);
         thread(field_addr);
     });
+}
+
+/// Specialized version of `mark_fields` for root `MutBox`es.
+unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
+    let field_addr = &mut (*mutbox).field;
+    // TODO: Not sure if this check is necessary?
+    if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
+        // TODO: We should be able to omit the "already marked" check here as no two root MutBox
+        // can point to the same object (I think)
+        push_mark_stack(mem, *field_addr, heap_base);
+        thread(field_addr);
+    }
 }
 
 /// Expects all fields to be threaded. First pass updates fields, second pass moves objects.
