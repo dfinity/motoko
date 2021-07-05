@@ -34,7 +34,7 @@ let
           fi
         done
 
-        if ! compgen -G "*/*.wasm" > dev/null
+        if ! compgen -G "*/*.wasm" > /dev/null
         then
           echo "No wasm files generated. wasm-hash-for broken?"
           exit 1
