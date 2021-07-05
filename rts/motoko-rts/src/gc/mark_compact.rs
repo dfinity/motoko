@@ -152,7 +152,7 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
-        mark_stack::push_mark_stack(mem, (*field_addr).unskew(), heap_base);
+        push_mark_stack(mem, *field_addr, heap_base);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
