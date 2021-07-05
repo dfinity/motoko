@@ -6,7 +6,7 @@ pub mod bitmap;
 pub mod mark_stack;
 
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack};
+use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
@@ -87,7 +87,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     if (*closure_table_ptr_loc).unskew() >= heap_base as usize {
         // TODO: No need to check if closure table is already marked
-        push_mark_stack(mem, *closure_table_ptr_loc, heap_base);
+        mark_object(mem, *closure_table_ptr_loc, heap_base);
         // Similar to `mark_root_mutbox_fields`, `closure_table_ptr_loc` is in static heap so it
         // will be readable when we unthread closure table
         thread(closure_table_ptr_loc);
@@ -114,7 +114,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, hea
     }
 }
 
-unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
+unsafe fn mark_object<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
     let obj_tag = obj.tag();
     let obj = obj.unskew() as u32;
 
@@ -126,7 +126,7 @@ unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32
     }
 
     set_bit(obj_idx);
-    mark_stack::push_mark_stack(mem, obj as usize, obj_tag);
+    push_mark_stack(mem, obj as usize, obj_tag);
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -138,7 +138,7 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
-        push_mark_stack(mem, field_value, heap_base);
+        mark_object(mem, field_value, heap_base);
 
         // Thread if backwards pointer
         if field_value.unskew() < field_addr as usize {
@@ -154,7 +154,7 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
-        push_mark_stack(mem, *field_addr, heap_base);
+        mark_object(mem, *field_addr, heap_base);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
