@@ -32,6 +32,7 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
         alloc_mark_stack(mem);
 
         for obj in &objs {
+            // Pushing a dummy argument derived from `obj` for tag
             push_mark_stack(mem, *obj as usize, obj.wrapping_sub(1));
         }
 
