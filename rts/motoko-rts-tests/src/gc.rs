@@ -108,7 +108,7 @@ fn test_gc(
 ///   heap.
 ///
 fn check_dynamic_heap(
-    after_gc: bool,
+    post_gc: bool,
     objects: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
     closure_table: &[ObjectIdx],
@@ -205,13 +205,14 @@ fn check_dynamic_heap(
     if !missing_objects.is_empty() {
         write!(
             &mut error_message,
-            "Reachable objects missing in the post-GC heap: {:?}",
+            "Reachable objects missing in the {} heap: {:?}",
+            if post_gc { "post-gc" } else { "pre-gc" },
             missing_objects,
         )
         .unwrap();
     }
 
-    if after_gc {
+    if post_gc {
         // Unreachable objects that we've seen in the heap
         let extra_objects: Vec<ObjectIdx> = seen_objects
             .difference(&reachable_objects)
