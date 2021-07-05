@@ -141,7 +141,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         mark_object(mem, field_value, heap_base);
 
         // Thread if backwards pointer
-        if field_value.unskew() < field_addr as usize {
+        if field_value.unskew() < obj as usize {
             thread(field_addr);
         }
     });
