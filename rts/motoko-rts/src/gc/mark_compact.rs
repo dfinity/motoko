@@ -175,20 +175,21 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
         let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
+        let p_new = free;
 
         // Update backwards references to the object's new location and restore object header
-        unthread(p, free);
+        unthread(p, p_new);
 
         // Move the object
         let p_size_words = object_size(p as usize);
-        if free as usize != p as usize {
-            memcpy_words(free as usize, p as usize, p_size_words);
+        if p_new as usize != p as usize {
+            memcpy_words(p_new as usize, p as usize, p_size_words);
         }
 
         free += p_size_words.to_bytes().0;
 
         // Thread forward pointers of the object
-        thread_fwd_pointers(p, heap_base);
+        thread_fwd_pointers(p_new as *mut Obj, heap_base);
 
         bit = bitmap_iter.next();
     }
