@@ -108,11 +108,12 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, hea
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).unskew() as *mut Obj;
-        mark_fields(mem, obj, heap_base);
+        mark_fields(mem, obj, obj.tag(), heap_base);
     }
 }
 
 unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
+    let obj_tag = obj.tag();
     let obj = obj.unskew() as u32;
 
     let obj_idx = (obj - heap_base) / WORD_SIZE;
@@ -123,17 +124,17 @@ unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32
     }
 
     set_bit(obj_idx);
-    mark_stack::push_mark_stack(mem, obj as usize);
+    mark_stack::push_mark_stack(mem, obj as usize, obj_tag);
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
-    while let Some(obj) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, heap_base);
+    while let Some((obj, tag)) = pop_mark_stack() {
+        mark_fields(mem, obj as *mut Obj, tag, heap_base);
     }
 }
 
-unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(obj, heap_base as usize, |field_addr| {
+unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
+    visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         push_mark_stack(mem, *field_addr, heap_base);
     });
 }
@@ -201,7 +202,9 @@ unsafe fn update_bwd_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 }
 
 unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(obj, heap_base as usize, |field_addr| thread(field_addr));
+    visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
+        thread(field_addr)
+    });
 }
 
 unsafe fn thread(field: *mut SkewedPtr) {
