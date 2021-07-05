@@ -90,8 +90,6 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     mark_stack(mem, heap_base);
 
-    thread_roots(static_roots, heap_base);
-
     update_refs(set_hp, heap_base);
 
     free_mark_stack();
@@ -136,15 +134,6 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
     });
 }
 
-unsafe fn thread_roots(static_roots: SkewedPtr, heap_base: u32) {
-    // Static roots
-    let root_array = static_roots.as_array();
-    for i in 0..root_array.len() {
-        thread_obj_fields(root_array.get(i).unskew() as *mut Obj, heap_base);
-    }
-    // No need to thread closure table here as it's on heap and we already marked it
-}
-
 /// Expects all fields to be threaded. First pass updates fields, second pass moves objects.
 unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let mut free = heap_base;
@@ -182,12 +171,6 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     }
 
     set_hp(free);
-}
-
-unsafe fn thread_obj_fields(obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
-        thread(field_addr)
-    });
 }
 
 unsafe fn thread(field: *mut SkewedPtr) {
