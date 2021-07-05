@@ -668,7 +668,7 @@ A `Char` of category O (Ordered) represents a character as a code point in the U
 
 Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its `Nat32` code point.
 Function `Char.fromNat32(n)` converts
-a `Nat32` value, `n`, in the range _x0..xD800_ or _0xE000..0x10FFFF_ of valid code points to its `Char` value; this conversion traps on invalid arguments.
+a `Nat32` value, `n`, in the range _0x0..xD7FF_ or _0xE000..0x10FFFF_ of valid code points to its `Char` value; this conversion traps on invalid arguments.
 Function `Char.toText(c)` converts the `Char` `c`
 into the corresponding, single character `Text` value.
 
