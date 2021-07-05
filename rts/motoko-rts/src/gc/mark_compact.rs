@@ -1,4 +1,6 @@
-//! Implements "threaded compaction" as described in The Garbage Collection Handbook section 3.3.
+//! Implements threaded compaction as described in "High-Performance Garbage Collection for
+//! Memory-Constrained Environments" section 5.1.2, which is an improved version of the original
+//! threaded compaction algorithm described in The Garbage Collection Handbook section 3.3.
 
 pub mod bitmap;
 pub mod mark_stack;
