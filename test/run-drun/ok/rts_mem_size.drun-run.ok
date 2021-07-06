@@ -1,0 +1,20 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 524_288
+debug.print: local: 17_104_896
+debug.print: remote: 16_973_824
+debug.print: local: 33_882_112
+debug.print: remote: 33_751_040
+debug.print: local: 67_436_544
+debug.print: remote: 67_305_472
+debug.print: local: 100_990_976
+debug.print: remote: 100_859_904
+debug.print: local: 134_545_408
+debug.print: remote: 134_414_336
+debug.print: local: 168_099_840
+debug.print: remote: 167_968_768
+debug.print: local: 201_654_272
+debug.print: remote: 201_523_200
+debug.print: local: 235_208_704
+debug.print: remote: 235_077_632
+ingress Completed: Reply: 0x4449444c0000
