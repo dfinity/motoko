@@ -100,8 +100,53 @@ content on canister_pre_upgrade and canister_post_upgrade. That way the StableMe
 
 Assuming stable variables always require non-zero bytes to encode, we should be able to devise a backwards compatible scheme for upgrading from pre-StableMemory canisters to post-StableMemory canisters. Details to be designed.
 
+Stable Memory Format
+
+| empty                   pages == 0
+| size ; blob             pages > 0 && |size;blob| == pages * pagesize
+| size ; blob ; max       pages > 0 && |size;blob| + 4 < pages * pagesize
+| 0x0000; max
 
 
+on pre_upgrade
 
+match stable_var with
+   null ->
+    if pages == 0 return;
+    let max = heap
+    let word0 = ReadWord(0);
+    if necessary, grow mem to max+7
+    mem.swap([0..7], [max,max+7])
+    mem.writeWord(0, 0x0000)
+    mem.writeWord(4, max)
+ | ? v
+    let blob = serialize(v);
+    let size : Word32 = |blob|;
+    let max = heap;
+    if necessary, grow mem to max + 4 + size + 4
+    swap(mem, [0..4+size+4], [max, max+4+size+4])
+    mem.writeWord(0, size)
+    mem.writeWord(4, blob)
+    mem.writeWord(8 + size, max)
 
+on post_upgrade
+
+if pages == 0
+  heap := 0;
+  return None
+if pages > 0 && size != 0 then
+  if pages * numpages = size + 4
+    let max = 0
+    heap := max
+    Some deserialize(4)
+  else
+    let max = ReadWord(4+size);
+    heap := max;
+    swap(mem,[0..size+4],[max-size+4, max])
+    Some (deserialize(max+4))
+else
+  max = ReadWord(4);
+  heap = max;
+  swap(mem,[0..7],[max-7,max])
+  None
 
