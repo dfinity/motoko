@@ -117,21 +117,21 @@ Candid(ish) record of _stable_ fields, starting at stable memory address 0 with
 initial word encoding size (in bytes?) followed by contents.
 
 Starting from a clean slate, we would extend this so all user-defined StableMemory is
-stored at a low address, with `stable _variable_ data stored just
+stored at a low address, with _stable variable_ data stored just
 beyond the currently used StableMemory content on canister_pre_upgrade
 and canister_post_upgrade. That way the StableMemory area need not
 move, with stable variables simply serialized and appended in
 `canister_pre_upgrade` and deserialized and discarded in
 `canister_post_upgrade`, leaving the manual StableMemory unchanged.
 
-For backwards compatibility, we can't do that.
+For backwards compatibility reasons, we can't do that.
 
 Luckily, stable variables always require non-zero bytes to encode, we
 should be able to devise a backwards compatible scheme for upgrading
 from pre-StableMemory canisters to post-StableMemory
 canisters, as follows.
 
-During execution, Abstract stable memory (StableMemory) is aligned
+During execution, abstract stable memory (StableMemory) is aligned
 with IC stable memory, at address 0, for reasonable efficiency (apart
 from maintaining `max`).
 
@@ -140,7 +140,7 @@ that portion of StableMemory to the end of user memory (growing if
 necessary) and write the old format into the space just freed,
 followed by the size of StableMem.
 
-If there are no stable variables, we shift the first two word of
+If there are no stable variables, we shift the first two words of
 StableMemory to the end, and simply write the 32-bit word 0x0,
 followed by the 32-bit size of `max`, of StableMemory.
 
@@ -230,4 +230,4 @@ Note that we still need to do some work during updgrade and postupgrade, but if 
 avoided, then the work is minimal (swap two words) and highly unlikely to exhaust cycle budget.
 
 
-Question: With hindsight, it was probably a mistake not to include a versioning word in stable memory. Should we introduce that now while we still can?
+REMARK: With hindsight, it was probably a mistake not to include a versioning word in stable memory. Should we introduce that now while we still can?
