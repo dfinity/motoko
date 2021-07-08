@@ -29,15 +29,43 @@ pub fn test() {
 }
 
 fn test_heaps() -> Vec<TestHeap> {
-    vec![TestHeap {
-        heap: hashmap! {
-            0 => vec![0, 2],
-            2 => vec![0],
-            3 => vec![3],
+    vec![
+        // Just a random test that covers a bunch of cases:
+        // - Self references
+        // - Forward pointers
+        // - Backwards pointers
+        // - More than one fields in an object
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![0, 2],
+                2 => vec![0],
+                3 => vec![3],
+            },
+            roots: vec![0, 2, 3],
+            closure_table: vec![0],
         },
-        roots: vec![0, 2, 3],
-        closure_table: vec![0],
-    }]
+        // Tests pointing to the same object in multiple fields of an object. Also has unreachable
+        // objects.
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![],
+                1 => vec![],
+                2 => vec![],
+            },
+            roots: vec![1],
+            closure_table: vec![0, 0],
+        },
+        // Root points backwards in heap. Caught a bug in mark-compact collector.
+        TestHeap {
+            heap: hashmap! {
+                0 => vec![],
+                1 => vec![2],
+                2 => vec![1],
+            },
+            roots: vec![2],
+            closure_table: vec![],
+        },
+    ]
 }
 
 #[derive(Debug)]
@@ -67,8 +95,9 @@ fn test_gc(
 ) {
     let heap = MotokoHeap::new(refs, roots, closure_table, gc);
 
-    // Check `check_dynamic_heap` sanity
+    // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
+        false, // before gc
         refs,
         roots,
         closure_table,
@@ -85,6 +114,7 @@ fn test_gc(
         let heap_ptr_offset = heap.heap_ptr_offset();
         let closure_table_ptr_offset = heap.closure_table_ptr_offset();
         check_dynamic_heap(
+            true, // after gc
             refs,
             roots,
             closure_table,
@@ -98,14 +128,15 @@ fn test_gc(
 
 /// Check the dynamic heap:
 ///
-/// - All and only reachable objects should be in the heap. Reachable objects are those in the
-///   transitive closure of roots.
+/// - All (and in post-gc mode, only) reachable objects should be in the heap. Reachable objects
+///   are those in the transitive closure of roots.
 ///
 /// - Objects should point to right objects. E.g. if object with index X points to objects with
 ///   indices Y and Z in the `objects` map, it should point to objects with indices Y and Z on the
 ///   heap.
 ///
 fn check_dynamic_heap(
+    post_gc: bool,
     objects: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
     closure_table: &[ObjectIdx],
@@ -197,34 +228,37 @@ fn check_dynamic_heap(
         .copied()
         .collect();
 
-    // Unreachable objects that we've seen in the heap
-    let extra_objects: Vec<ObjectIdx> = seen_objects
-        .difference(&reachable_objects)
-        .copied()
-        .collect();
-
     let mut error_message = String::new();
 
     if !missing_objects.is_empty() {
         write!(
             &mut error_message,
-            "Reachable objects missing in the post-GC heap: {:?}",
+            "Reachable objects missing in the {} heap: {:?}",
+            if post_gc { "post-gc" } else { "pre-gc" },
             missing_objects,
         )
         .unwrap();
     }
 
-    if !extra_objects.is_empty() {
-        if !error_message.is_empty() {
-            error_message.push('\n');
-        }
+    if post_gc {
+        // Unreachable objects that we've seen in the heap
+        let extra_objects: Vec<ObjectIdx> = seen_objects
+            .difference(&reachable_objects)
+            .copied()
+            .collect();
 
-        write!(
-            &mut error_message,
-            "Unreachable objects seen in the post-GC heap: {:?}",
-            extra_objects,
-        )
-        .unwrap();
+        if !extra_objects.is_empty() {
+            if !error_message.is_empty() {
+                error_message.push('\n');
+            }
+
+            write!(
+                &mut error_message,
+                "Unreachable objects seen in the post-GC heap: {:?}",
+                extra_objects,
+            )
+            .unwrap();
+        }
     }
 
     if !error_message.is_empty() {
