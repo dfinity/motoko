@@ -15,13 +15,13 @@ extending the existing stable variable implementation with an orthogonal,
 library providing (almost) direct access to the IC Stable Memory API.
 
 Since the implementation of stable variables itself makes use of
-stable memory, some coordination between the old and new
-abstractions is required.
+stable memory, some coordination between these two alternative, co-existing
+interfaces to IC stable memory is required.
 
 
 # The IC's Stable Memory API
 
-The IC provides a very small set of operations.
+The IC provides a very small set of operations for operation on stable memory:
 
 ```
 ic0.stable_size : () -> (page_count : i32);                                 // *
@@ -29,6 +29,8 @@ ic0.stable_grow : (new_pages : i32) -> (old_page_count : i32);              // *
 ic0.stable_write : (offset : i32, src : i32, size : i32) -> ();             // *
 ic0.stable_read : (dst : i32, offset : i32, size : i32) -> ();              // *
 ```
+
+(see https://sdk.dfinity.org/docs/interface-spec/index.html#system-api-stable-memory)
 
 These grow memory and do bulk transfers between Wasm and stable
 memory.  The `// *` means that they can be called in all contexts
@@ -46,31 +48,33 @@ The minimal Motoko prims could be:
 
 ```
 module StableMemory {
-  writeNat8 : (offset : Nat8, n : Nat8) -> ();
-  readNat8 : (offset : Nat8) -> Nat8;
-  // etc for all scalar prim types.
+  size : () -> (logical_page_count : i32); // <= ic0.stable_size()
+  grow : () -> (new_pages : i32) -> (old_logical_page_count : i32);
+  loadNat8 : (offset : Nat32) -> Nat8;
+    // traps outside logical address space
+  storeNat8 : (offset : Nat32, n : Nat8) -> ();
+    // traps outside logical address space
   ...
-  writeBlob : (offset : Nat32, b : Blob) -> (); // write contents of blob to memory, growing stable memory region to at least offset+size
   readBlob : (offset : Nat32, size : i32) -> Blob
-     // read Blob contents from memory at [offset,..,offset+size-1] into fresh blob, growing stable memory region on demand (and padding with zeros).
+     // read Blob contents from memory at [offset,..,offset+size-1] into fresh blob, trapping if exceeding logical address space
+  writeBlob : (offset : Nat32, b : Blob) -> (); // write contents of blob to memory, trapping if exceeding logical address space
 }
 ```
 
-Each operation will maintain an internal global i32 `max` bounding the maximum address read or written (from above), initially 0, always <= 0xFFFFFFF0
-(since we need at least two words to store 0x00 and `max` in raw stable memory on upgrade.)
-`max` is really the size of the user-accessed address range.
+(NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use `Nat` which is unboxed for 30(?)-bit values)
+
 
 ```
 fun writeNat8(offset, b) =
-   max := Max(max, offset + 1);
-   // grow stable memory to include offset
+   assert (offset < StableMemory.size() * wasm_page_size)
    mem[offset] := b;
 
 fun readNat8(offset, b) =
-   max := Max(max, offset + 1);
-   // grow stable memory to include offset
+   assert (offset < StableMemory.size() * wasm_page_size)
    mem[offset]
 ```
+
+(To avoid overflow on the rhs could do the check as `assert ((offset >> 6) < StableMemory.size())`.)
 
 On top of this basic API, users should be able to build more interesting higher-level APIs for pickling user-defined data.
 
@@ -94,17 +98,22 @@ It might be preferable to arrange the API by type, with one nested module per ty
 ```
 module StableMemory {
   Nat8 : module {
-    write : (offset : Nat8, n : Nat8) -> ();
-    read : (offset : Nat8) -> Nat8;
-  }
-  // etc for all scalar prim types.
+    load : (offset : Nat32) -> Nat8;
+    store : (offset : Nat32, n : Nat8) -> ();
+  };
+  Nat16 : module {
+    load : (offset : Nat32) -> Nat16;
+    store : (offset : Nat32, n : Nat16) -> ();
+  };
+  // uniformly for all scalar prim types.
   ...
-  Blob : {
+  Blob : module {
+    read: (offset : Nat32, size : i32) -> Blob
     write : (offset : Nat32, b : Blob) -> ();
-    read : (offset : Nat32, size : i32) -> Blob
   }
 }
 ```
+
 (I think the compiler will still optimize these nested calls to known
 function calls, but it would be worth checking).
 
@@ -133,7 +142,7 @@ canisters, as follows.
 
 During execution, abstract stable memory (StableMemory) is aligned
 with IC stable memory, at address 0, for reasonable efficiency (apart
-from maintaining `max`).
+from bound checks against logical `size()`).
 
 During upgrade, we compute the size of the stable variable blob, shift
 that portion of StableMemory to the end of user memory (growing if
@@ -150,84 +159,109 @@ taking care to zero the memory vacated by shifting back the initial portion of S
 
 Stable memory layout (during execution):
 
-*  aligned with stable-memory, with global max holding max size of memory read or written in i32 (initially 0).
-*  each write adjusts max_size and grows memory if necessary
-*  each read adjusts max_size and grows memory if necessary, reading 0 for fresh locations.
+*  aligned with stable-memory, with global word `size` holding logical page count (initially 0 < !size < 2^16).
+*  user are responsible for allocating logical pages.
+*  each load/store does a `size`-related bounds check.
 
-Stable memory layout (between upgrades) :
+(stable variables aren't maintained in stable memory - they are on the Motoko heap.)
+
+Stable memory layout (between upgrades), assuming optional stable variable encoding `v_opt`.
 
 ```
-match stable_vars, mem[0..max-1] with
-  None, mem[0..max-1] ->
-    if ic.stable_size() == 0 then
-    assert max == 0;
-    []
-    else
-    // stable grow mem to page including address | 4 + 4 + max - 1 |
-    [word(0x0)@@max@@mem[4 + 4, ..., max - 1]@@mem[0, ..., 4 + 4 -1 ]
-  Some v, mem[0..max-1] ->
-    let blob = serialise(v) in
-    // stable grow page including address | 4 + |blob| + 4 + max |
-    [size(serialize(v))@@blob@@max@@mem[4 + |blob| + 4, ..., max -1 ]@@mem[0, ..., 4 + |blob| + 4  -1]
+(case !size == 0)
+  (case v == None)
+  <empty> (ie. ic0.stable_size() == 0)
+  (case v_opt = Some v)
+  [N..N+3] StableVariable data len
+  [N+4..(N+4)+len-1] StableVariable data (+ possible page padding)
+  [(N+4)+len-1,..M-1] 0...0 // rest zero
+(case !size > 0)
+[0..3]  0...0
+[4..N-1]  StableMemory bytes
+[N..N+3]  StableVariable data len
+[N+4..(N+4)+len-1] StableVariable data (+ possible page padding)
+[(N+4)+len..M-3] 0...0
+[M-3..M-6] value N/64Ki = !size
+[M-5..M-2] saved StableMemory bytes
+[M-1]  version byte
+
+where N = !size * pagesize // logical memory size
+      M = ic0.stable_size() * pagesize
+      pagesize = 64Kb (2^16 bytes)
+where (len, data) = match v_opt with
+  Some v -> serialize(v,data)
+  None -> (0, [])
 ```
 
 On pre_upgrade
-```
-func pre_upgrade(v_opt, max : word) =
-  match v_opt with
-    null ->
-      if ic.stable_size() == 0 then
-         assert (max == 0);
-         ()
-      else
-      // if necessary, grow mem to size max + 8
-      // save first 2 words to end
-      mem[max, .., max + 7] = mem[0..7];
-      // write marker 0x0 and max to first two words
-      mem.writeWord(0, 0x0)
-      mem.writeWord(4, max)
-  | Some v ->
-    let blob = serialize(v);
-    let size : Word32 = |blob|;
-    assert (size <> 00)
-    //if necessary, grow mem to max + 4 + size + 4
-    // shift first 4 + size + 4 words to end
-    mem[max, max + 4 + size + 4 - 1] = mem[0.. 4 + size + 4  -1];
-    mem.writeWord(0, size)       // save non-zero size of blob
-    mem.writeBlob(4, blob)       // save blob
-    mem.writeWord(4 + size, max) // save max
+
+```ocaml
+func save v_opt : value option =
+  let len, data = match v_opt with
+    | Some v -> serialize(v)
+    | None -> 0, []
+  in
+  if !size == 0 then
+    assert (ic0.stable_size() == 0);
+    match v with
+    | None -> ()
+    | Some v ->
+      let len, data = serialize(v) in
+      // if necessary, grow mem to at least 4 + len
+      mem[0, .., 3] := len
+      mem[4, ..., 4+len-1] := data
+  else
+    let N = !size * page_size in
+    // if necessary, grow mem to page including address N + 4 + len + 4 + 4 + 1
+    let M = pagesize * ic0.stable_size() in
+    mem[N,..,N+3] := len            // NB: even when len == 0;
+    mem[N+4,..,N+4+len-1] := data
+    mem[M-3..M-6] := !size
+    men[M-5..M-2] := mem[0,...,3] // save StableMemory bytes 0-3
+    mem[M-1] := version
+    mem[0,..,3] := 0..0 // write marker
 ```
 
 on post_upgrade
 
-```
-// deserializes any stable variables from beginning of store and
-// and restores stable memory to address [0..max)
-// returns first free address (max) of stable mem and stable value.
-fun post_upgrade () : (word * value option) =
+```ocaml
+// restores StableMemory (size and memory) and deserializes any stable variables, zeroing their storage
+fun restore() : value option =
   let pages = ic0.stable_size() in
   if pages == 0 then
-    0, None
+    size := 0;
+    None
   else
-    let size = mem.ReadWord(0) in // read zero or size of stable value
-    if size != 0 then
-      // grow memory to 4 + size + 4 + max
-      let v = deserialize(4) in
-      let max = ReadWord(4 + size) in
-      // swap stable var area & max with end of raw mem area, restoring stable mem
-      mem[0..4 + size + 4 - 1] := mem[max, max + 4 + size + 4 -  1]
-        mem[max, ..., max + 4 + size + 4 - 1] := [0, ..., 0]; // null memory
-        max, Some v
-    else // size == 0, no stable var
-      let max = ReadWord(4) in
-      // grow memory to 4 + size + 4 + max
-      mem[0..7] := [max, max + 7]
-      mem[max, max + 7 ] := [0, ..., 0];
-      max, None
+    let marker = mem[0,..,3] in // read zero or size of stable value
+    if marker == 0x0 then
+      let M = ic0.stable_size() * pagesize in
+      let ver = mem[M-1] in
+      if (ver > version) assert false
+      mem[0,..,3] = mem[M-5,..,M-2]; // restore StableMemory bytes 0-3
+      size := mem[M-3,..,M-5];
+      N = size * pagesize;
+      let len = mem[N,..,N+3];
+      if len > 0
+        assert (N+4+len-1 <= ic0.stable_size() * pagesize)
+        let v = deserialize(len, N+4);
+        mem[N+4, ..., N+4+len-1] := [0, ..., 0]; // clear memory
+        Some v
+      else None
+    else
+      size := 0;
+      let len = mem[0,..,3];
+      assert (0 < len <= ic0.stable_size() * pagesize)
+      let v = deserialise(len, 4) in
+      mem[0, len + 1] := 0 // clear memory
+      Some v
+
+(* Note we explicitly clear memory used by stable variables so StableMem doesn't need to clear memory
+   when grabbing logical pages from already existing physical ones *).
 ```
 
+
+
 Note that we still need to do some work during updgrade and postupgrade, but if stable variables and user-defined pre/post upgrade hooks are
-avoided, then the work is minimal (swap two words) and highly unlikely to exhaust cycle budget.
+avoided, then the work is minimal and highly unlikely to exhaust cycle budget.
 
 
-REMARK: With hindsight, it was probably a mistake not to include a versioning word in stable memory. Should we introduce that now while we still can?

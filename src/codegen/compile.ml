@@ -5089,7 +5089,7 @@ module Stabilization = struct
     set_len ^^
     set_dst ^^
 
-    let (set_pages, get_pages) = new_local env "len" in
+    let (set_pages, get_pages) = new_local env "pages" in
     get_len ^^
     compile_add_const 4l ^^  (* reserve one word for size *)
     compile_divU_const page_size ^^
