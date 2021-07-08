@@ -77,7 +77,7 @@ On top of this basic API, users should be able to build more interesting higher-
 REMARK:
 
 Actually implementing the sketched assignment in IRL involves writing
-the contents to memory and then coping stable memory - even for
+the contents to memory and then copying stable memory - even for
 individual words - this could be optimized by an improved system API
 offering direct load and stores from/to the stack:
 
