@@ -18,8 +18,8 @@
 
 * Documentation fixes.
 * Command line tools: `--help` option provides better documentation of command line
-  options that have arguments
-* Fix issue #2319 (crash on import of Candid class)
+  options that have arguments.
+* Fix issue #2319 (crash on import of Candid class).
 
 == 0.6.4 (2021-06-12)
 
