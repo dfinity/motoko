@@ -74,7 +74,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    with today’s date.
 
- * Look at `git log --first-parent 0.4.1..HEAD` and check
+ * Look at `git log --first-parent 0.6.5..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
