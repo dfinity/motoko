@@ -144,7 +144,7 @@ If there are no stable variables, we shift the first two words of
 StableMemory to the end, and simply write the 32-bit word 0x0,
 followed by the 32-bit size of `max`, of StableMemory.
 
-In post_upgrade, we reverse this process do discover any stable vars and size of StableMemory,
+In post_upgrade, we reverse this process to discover any stable vars and size of StableMemory,
 taking care to zero the memory vacated by shifting back the initial portion of StableMem
 (so that reads beyond `max` see what they would expect).
 
