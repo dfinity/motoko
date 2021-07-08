@@ -173,14 +173,14 @@ Stable memory layout (between upgrades), assuming optional stable variable encod
   <empty> (ie. ic0.stable_size() == 0)
   (case v_opt = Some v)
   [N..N+3] StableVariable data len
-  [N+4..(N+4)+len-1] StableVariable data (+ possible page padding)
-  [(N+4)+len-1,..M-1] 0...0 // rest zero
+  [N+4..(N+4)+len-1] StableVariable data
+  [(N+4)+len-1,..M-1] 0...0 // zero padding
 (case !size > 0)
 [0..3]  0...0
 [4..N-1]  StableMemory bytes
 [N..N+3]  StableVariable data len
-[N+4..(N+4)+len-1] StableVariable data (+ possible page padding)
-[(N+4)+len..M-3] 0...0
+[N+4..(N+4)+len-1] StableVariable data
+[(N+4)+len..M-3] 0...0 // zero padding
 [M-3..M-6] value N/64Ki = !size
 [M-5..M-2] saved StableMemory bytes
 [M-1]  version byte
@@ -240,16 +240,16 @@ fun restore() : value option =
       mem[0,..,3] = mem[M-5,..,M-2]; // restore StableMemory bytes 0-3
       size := mem[M-3,..,M-5];
       N = size * pagesize;
-      let len = mem[N,..,N+3];
+      let len = mem[N,..,N+3] in
       if len > 0
         assert (N+4+len-1 <= ic0.stable_size() * pagesize)
-        let v = deserialize(len, N+4);
+        let v = deserialize(len, N+4) in
         mem[N+4, ..., N+4+len-1] := [0, ..., 0]; // clear memory
         Some v
       else None
     else
       size := 0;
-      let len = mem[0,..,3];
+      let len = mem[0,..,3] in
       assert (0 < len <= ic0.stable_size() * pagesize)
       let v = deserialise(len, 4) in
       mem[0, len + 1] := 0 // clear memory
