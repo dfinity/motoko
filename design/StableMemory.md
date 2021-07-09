@@ -65,7 +65,7 @@ module StableMemory {
 
 
 ```
-fun loeadNat8(offset, b) =
+fun loadNat8(offset, b) =
    assert (offset < StableMemory.size() * wasm_page_size);
    mem[offset]
 
@@ -146,8 +146,8 @@ with IC stable memory, at address 0, for reasonable efficiency (apart
 from bound checks against logical `size()`).
 
 During upgrade, if StableMemory has zero pages, we use the existing format, writing
-(non_zero) length and content of any stable variables from address 0 or leaving ic.stable_mem()
-empty with zero pages allocated (if there are no stable variables).
+(non_zero) length and content of any stable variables from address 0 or leaving ic0.stable_mem()
+at zero with no pages allocated (if there are no stable variables).
 Otherwise, we compute the length and data of the stable variable encoding (if any);
 save the first word of StableMemory at a known offset from the end of physical memory;
 write a 0x00 marker to the first word; and append length (even if zero) and
@@ -159,6 +159,9 @@ In post_upgrade, we reverse this process to recover the size of StableMemory,
 restore the displaced first word of StableMemory and deserialize any stable vars,
 taking care to zero the (logically) free StableMemory occupied by any encoded stable variables
 (so that initial reads beyond page `size`  always return 0).
+
+This scheme avoids relocating most of StableMem and is constant time when
+there are no stable variables.
 
 # Details:
 
@@ -258,20 +261,25 @@ fun restore() : value option =
       let v = deserialise(len, 4) in
       mem[0, len + 1] := 0 // clear memory
       Some v
-
-(* Note we explicitly clear memory used by stable variables so StableMem doesn't need to clear memory
-   when grabbing logical pages from already existing physical ones *).
 ```
 
+We explicitly clear memory used by stable variables so StableMem
+doesn't need to clear memory when grabbing logical pages from already
+existing physical ones.
 
 
-NOTE: We still need to do some work during updgrade and postupgrade, but if stable variables and user-defined pre/post upgrade hooks are
-avoided, then the work is minimal and highly unlikely to exhaust cycle budget.
+NOTE: We still need to do some work during updgrade and postupgrade,
+but if stable variables and user-defined pre/post upgrade hooks are
+avoided, then the work is minimal and highly unlikely to exhaust cycle
+budget.
 
 REMARK:
 
-* An actor that no stable variables and allocates no StableMem should requize no physical stable memory
-* An actor that only has n > 0 pages of StableMem will (unfortunately) required n+1 pages of
-  physical memory since we need at least one extra bit to encode the presence or
-  absence of stable variables.
+* An actor that has no stable variables and allocates no StableMem
+  should requize no physical stable memory
+
+* An actor that has n > 0 pages of StableMem will (unfortunately)
+  require at least n+1 pages of physical memory since we need at least
+  one extra bit to encode the presence or absence of stable variables
+  (there is no other preserved state that could record this bit).
 
