@@ -1,5 +1,5 @@
 use super::utils::{
-    make_pointer, make_scalar, read_word, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
+    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
@@ -88,11 +88,6 @@ impl MotokoHeap {
         self.inner.borrow().closure_table_ptr_address()
     }
 
-    /// Get closure table address from the static memory
-    pub fn closure_table_address(&self) -> usize {
-        self.inner.borrow().closure_table_address()
-    }
-
     /// Get the heap as an array. Use `offset` values returned by the methods above to read.
     pub fn heap(&self) -> Ref<Box<[u8]>> {
         Ref::map(self.inner.borrow(), |heap| &heap.heap)
@@ -152,11 +147,6 @@ impl MotokoHeapInner {
     /// Get the address of the closure table pointer
     fn closure_table_ptr_address(&self) -> usize {
         self.offset_to_address(self.closure_table_ptr_offset)
-    }
-
-    /// Get closure table address from the static memory
-    fn closure_table_address(&self) -> usize {
-        read_word(&*self.heap, self.closure_table_ptr_offset) as usize
     }
 
     fn new(

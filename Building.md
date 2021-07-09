@@ -66,25 +66,25 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.4.2) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.6) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        == 0.4.2 (2020-04-01)
+        == 0.6.6 (2021-08-01)
 
    with today’s date.
 
- * Look at `git log --first-parent 0.4.1..HEAD` and check
+ * Look at `git log --first-parent 0.6.5..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
- * `git commit -a -m "Releasing 0.4.2"`
+ * `git commit -a -m "Releasing 0.6.6"`
  * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
  * `git switch master; git pull`. The release commit should be your `HEAD`
- * `git tag 0.4.2 -m "Motoko 0.4.2"`
- * `git branch -f release 0.4.2`
- * `git push origin release 0.4.2`
+ * `git tag 0.6.6 -m "Motoko 0.6.6"`
+ * `git branch -f release 0.6.6`
+ * `git push origin release 0.6.6`
 
 The `release` branch should thus always reference the latest release commit.
 
@@ -100,10 +100,10 @@ branch to the `next-moc` branch.
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
-* `git switch -c username/update-moc-0.4.2`
+* `git switch -c username/update-moc-0.6.6`
 * Update the `moc_version` env variable in `.github/workflows/ci.yml`
   and `.github/workflows/package-set.yml` to the new released version
-* `git add .github/ && git commit -m "Motoko 0.4.2"`
+* `git add .github/ && git commit -m "Motoko 0.6.6"`
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes

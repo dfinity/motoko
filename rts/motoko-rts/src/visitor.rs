@@ -3,11 +3,15 @@ use crate::types::*;
 
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
-pub unsafe fn visit_pointer_fields<F>(obj: *mut Obj, heap_base: usize, mut visit_ptr_field: F)
-where
+pub unsafe fn visit_pointer_fields<F>(
+    obj: *mut Obj,
+    tag: Tag,
+    heap_base: usize,
+    mut visit_ptr_field: F,
+) where
     F: FnMut(*mut SkewedPtr),
 {
-    match obj.tag() {
+    match tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
@@ -99,6 +103,6 @@ where
     }
 }
 
-unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
+pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
     (!(*field_addr).is_tagged_scalar()) && ((*field_addr).unskew() >= heap_base)
 }
