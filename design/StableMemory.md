@@ -191,7 +191,7 @@ Stable memory layout (between upgrades), assuming optional stable variable encod
 [4..N-1]  StableMemory bytes
 [N..N+3]  StableVariable data len
 [N+4..(N+4)+len-1] StableVariable data
-[(N+4)+len..M-3] 0...0 // zero padding
+[(N+4)+len..M-13] 0...0 // zero padding
 [M-12..M-9] value N/64Ki = !size
 [M-8..M-5] saved StableMemory bytes
 [M-4..M-1]  version word
