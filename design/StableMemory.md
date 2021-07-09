@@ -21,7 +21,7 @@ interfaces to IC stable memory is required.
 
 # The IC's Stable Memory API
 
-The IC provides a very small set of operations for operation on stable memory:
+The IC provides a very small set of functions for operating on stable memory:
 
 ```
 ic0.stable_size : () -> (page_count : i32);                                 // *
@@ -61,7 +61,7 @@ module StableMemory {
 }
 ```
 
-(NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use `Nat` which is unboxed for 30(?)-bit values)
+NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use `Nat` which is unboxed for 30(?)-bit values.
 
 
 ```
@@ -75,16 +75,17 @@ fun storeNat8(offset, b) =
 
 ```
 
-(To avoid overflow on the rhs could do the check as `assert ((offset >> 6) < StableMemory.size())`.)
+(To avoid overflow on the rhs, we could do implement the check as `assert ((offset >> 6) < StableMemory.size())`.)
 
-On top of this basic API, users should be able to build more interesting higher-level APIs for pickling user-defined data.
+On top of this basic API, users should be able to build more
+interesting higher-level APIs for pickling user-defined data.
 
 REMARK:
 
-Actually implementing the sketched assignment in IRL involves writing
-the contents to memory and then copying stable memory - even for
-individual words - this could be optimized by an improved system API
-offering direct load and stores from/to the stack:
+Actually implementing the sketched assignments using the existing IC
+API involves writing the contents to memory and then copying stable
+memory - even for individual words - this could be optimized by an
+improved system API offering direct load and stores from/to the stack:
 
 ```
 ic0.stable_write_i32 : (offset : i32, val: i32) -> ();   // *
@@ -94,7 +95,8 @@ ic0.stable_read_i32 : (offset : i32, size : i32) -> i32; // *
 
 ## Bikeshedding:
 
-It might be preferable to arrange the API by type, with one nested module per type:
+It might be preferable to arrange the API by type, with one nested
+module per type:
 
 ```
 module StableMemory {
@@ -123,8 +125,9 @@ function calls, but it would be worth checking).
 Stable memory is currently hidden behind the abstraction of stable
 variables, which we will still need to maintain. The current
 implementation of stable variables stores all variables as a
-Candid(ish) record of _stable_ fields, starting at stable memory address 0 with
+Candidish record of _stable_ fields, starting at stable memory address 0 with
 initial word encoding size (in bytes?) followed by contents.
+(Candidish is the Motoko extension of Candid to support mutable data.)
 
 Starting from a clean slate, we would extend this so all user-defined StableMemory is
 stored at a low address, with _stable variable_ data stored just
@@ -283,3 +286,13 @@ REMARK:
   one extra bit to encode the presence or absence of stable variables
   (there is no other preserved state that could record this bit).
 
+FURTHER CONSIDERATIONS: It would be nice if there was some way to
+allow a Motoko actor (perhaps intended to upgrade from a foreign
+canister with foreign stable memory format) to have unadulterated,
+full-speed access to stable memory, without the protocol required by
+the possibility of stable variables.  Perhaps we could special case
+programs that have *no* stable variables to support this raw
+semantics.  I.e. if the program declares no stable variables, we
+install and upgrade by simply setting `(StableMemory.)size :=
+ic0.stable_size()`, never consulting or altering physical memory and
+(ideally) omitting the additional bounds checking.
