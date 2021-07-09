@@ -55,9 +55,9 @@ module StableMemory {
   storeNat8 : (offset : Nat32, n : Nat8) -> ();
     // traps outside logical address space
   ...
-  readBlob : (offset : Nat32, size : i32) -> Blob
+  loadBlob : (offset : Nat32, size : i32) -> Blob
      // read Blob contents from memory at [offset,..,offset+size-1] into fresh blob, trapping if exceeding logical address space
-  writeBlob : (offset : Nat32, b : Blob) -> (); // write contents of blob to memory, trapping if exceeding logical address space
+  storeBlob : (offset : Nat32, b : Blob) -> (); // write contents of blob to memory, trapping if exceeding logical address space
 }
 ```
 
@@ -65,13 +65,14 @@ module StableMemory {
 
 
 ```
-fun writeNat8(offset, b) =
-   assert (offset < StableMemory.size() * wasm_page_size)
-   mem[offset] := b;
-
-fun readNat8(offset, b) =
-   assert (offset < StableMemory.size() * wasm_page_size)
+fun loeadNat8(offset, b) =
+   assert (offset < StableMemory.size() * wasm_page_size);
    mem[offset]
+
+fun storeNat8(offset, b) =
+   assert (offset < StableMemory.size() * wasm_page_size);
+   mem[offset] := b
+
 ```
 
 (To avoid overflow on the rhs could do the check as `assert ((offset >> 6) < StableMemory.size())`.)
@@ -144,18 +145,22 @@ During execution, abstract stable memory (StableMemory) is aligned
 with IC stable memory, at address 0, for reasonable efficiency (apart
 from bound checks against logical `size()`).
 
-During upgrade, we compute the size of the stable variable blob, shift
-that portion of StableMemory to the end of user memory (growing if
-necessary) and write the old format into the space just freed,
-followed by the size of StableMem.
+During upgrade, if StableMemory has zero pages, we use the existing format, writing
+(non_zero) length and content of any stable variables from address 0 or leaving ic.stable_mem()
+empty with zero pages allocated (if there are no stable variables).
+Otherwise, we compute the length and data of the stable variable encoding (if any);
+save the first word of StableMemory at a known offset from the end of physical memory;
+write a 0x00 marker to the first word; and append length (even if zero) and
+data (if any) to the end of StableMem.
+The logical size of StableMemory and a version number are also written a
+known offsets from the end of StableMemory.
 
-If there are no stable variables, we shift the first two words of
-StableMemory to the end, and simply write the 32-bit word 0x0,
-followed by the 32-bit size of `max`, of StableMemory.
+In post_upgrade, we reverse this process to recover the size of StableMemory,
+restore the displaced first word of StableMemory and deserialize any stable vars,
+taking care to zero the (logically) free StableMemory occupied by any encoded stable variables
+(so that initial reads beyond page `size`  always return 0).
 
-In post_upgrade, we reverse this process to discover any stable vars and size of StableMemory,
-taking care to zero the memory vacated by shifting back the initial portion of StableMem
-(so that reads beyond `max` see what they would expect).
+# Details:
 
 Stable memory layout (during execution):
 
@@ -168,22 +173,22 @@ Stable memory layout (during execution):
 Stable memory layout (between upgrades), assuming optional stable variable encoding `v_opt`.
 
 ```
-(case !size == 0)
+(case !size == 0) // hence N = 0
   (case v == None)
   <empty> (ie. ic0.stable_size() == 0)
   (case v_opt = Some v)
-  [N..N+3] StableVariable data len
-  [N+4..(N+4)+len-1] StableVariable data
-  [(N+4)+len-1,..M-1] 0...0 // zero padding
+  [0..3] StableVariable data len
+  [4..4+len-1] StableVariable data
+  [4+len-1,..M-1] 0...0 // zero padding
 (case !size > 0)
 [0..3]  0...0
 [4..N-1]  StableMemory bytes
 [N..N+3]  StableVariable data len
 [N+4..(N+4)+len-1] StableVariable data
 [(N+4)+len..M-3] 0...0 // zero padding
-[M-3..M-6] value N/64Ki = !size
-[M-5..M-2] saved StableMemory bytes
-[M-1]  version byte
+[M-12..M-9] value N/64Ki = !size
+[M-8..M-5] saved StableMemory bytes
+[M-4..M-1]  version word
 
 where N = !size * pagesize // logical memory size
       M = ic0.stable_size() * pagesize
@@ -202,7 +207,6 @@ func save v_opt : value option =
     | None -> 0, []
   in
   if !size == 0 then
-    assert (ic0.stable_size() == 0);
     match v with
     | None -> ()
     | Some v ->
@@ -216,9 +220,9 @@ func save v_opt : value option =
     let M = pagesize * ic0.stable_size() in
     mem[N,..,N+3] := len            // NB: even when len == 0;
     mem[N+4,..,N+4+len-1] := data
-    mem[M-3..M-6] := !size
-    men[M-5..M-2] := mem[0,...,3] // save StableMemory bytes 0-3
-    mem[M-1] := version
+    mem[M-12..M-9] := !size
+    men[M-8..M-5] := mem[0,...,3] // save StableMemory bytes 0-3
+    mem[M-4..M-1] := version
     mem[0,..,3] := 0..0 // write marker
 ```
 
@@ -235,10 +239,10 @@ fun restore() : value option =
     let marker = mem[0,..,3] in // read zero or size of stable value
     if marker == 0x0 then
       let M = ic0.stable_size() * pagesize in
-      let ver = mem[M-1] in
+      let ver = mem[M-4,..,M-1] in
       if (ver > version) assert false
-      mem[0,..,3] = mem[M-5,..,M-2]; // restore StableMemory bytes 0-3
-      size := mem[M-3,..,M-5];
+      mem[0,..,3] = mem[M-8,..,M-5]; // restore StableMemory bytes 0-3
+      size := mem[M-12,..,M-9];
       N = size * pagesize;
       let len = mem[N,..,N+3] in
       if len > 0
@@ -249,7 +253,7 @@ fun restore() : value option =
       else None
     else
       size := 0;
-      let len = mem[0,..,3] in
+      let len = marker in
       assert (0 < len <= ic0.stable_size() * pagesize)
       let v = deserialise(len, 4) in
       mem[0, len + 1] := 0 // clear memory
@@ -261,7 +265,13 @@ fun restore() : value option =
 
 
 
-Note that we still need to do some work during updgrade and postupgrade, but if stable variables and user-defined pre/post upgrade hooks are
+NOTE: We still need to do some work during updgrade and postupgrade, but if stable variables and user-defined pre/post upgrade hooks are
 avoided, then the work is minimal and highly unlikely to exhaust cycle budget.
 
+REMARK:
+
+* An actor that no stable variables and allocates no StableMem should requize no physical stable memory
+* An actor that only has n > 0 pages of StableMem will (unfortunately) required n+1 pages of
+  physical memory since we need at least one extra bit to encode the presence or
+  absence of stable variables.
 
