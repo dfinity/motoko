@@ -1,5 +1,26 @@
 # Motoko compiler changelog
 
+== 0.6.5 (2021-07-08)
+
+* Add alternative, _compacting_ gc, enabled with new moc flag `--compacting-gc`.
+  The compacting gc supports larger heap sizes than the default, 2-space copying collector.
+
+  NOTE: Dfx 0.7.6 adds optional field `"args"` to `dfx.json` files,
+  so Motoko canisters can specify `moc` command-line arguments. E.g.,
+
+  ```json
+  ...
+     "type" : "motoko"
+     ...
+     "args" : "--compacting-gc"
+  ...
+  ```
+
+* Documentation fixes.
+* Command line tools: `--help` option provides better documentation of command line
+  options that have arguments.
+* Fix issue #2319 (crash on import of Candid class).
+
 == 0.6.4 (2021-06-12)
 
 * For release builds, the banner (`moc --version`) now includes the release
