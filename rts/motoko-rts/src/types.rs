@@ -121,7 +121,7 @@ impl From<Words<u32>> for Bytes<u32> {
 }
 
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SkewedPtr(pub usize);
 
 impl SkewedPtr {

@@ -18,9 +18,13 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
+    let heap_base = crate::memory::ic::get_heap_base();
+
+    crate::write_barrier::check_heap_copy(heap_base, crate::memory::ic::HP);
+
     compacting_gc_internal(
         mem,
-        crate::memory::ic::get_heap_base(),
+        heap_base,
         // get_hp
         || crate::memory::ic::HP as usize,
         // set_hp
@@ -34,6 +38,8 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // note_reclaimed
         |reclaimed| crate::memory::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
     );
+
+    crate::write_barrier::copy_heap(mem, heap_base, crate::memory::ic::HP as u32);
 }
 
 pub unsafe fn compacting_gc_internal<
