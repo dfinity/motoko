@@ -1,5 +1,5 @@
-{ stdenv, lib, fetchFromGitHub, ocaml, dune_2, ocamlPackages }:
-stdenv.mkDerivation rec {
+{ mkDerivation, lib, fetchFromGitHub, ocaml, dune_2, ocamlPackages }:
+mkDerivation rec {
 	pname = "obelisk";
 	version = "0.5.2";
 	src = fetchFromGitHub {

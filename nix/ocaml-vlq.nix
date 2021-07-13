@@ -1,7 +1,7 @@
-{ stdenv, fetchFromGitHub, ocaml, findlib, dune_1 }:
+{ mkDerivation, fetchFromGitHub, ocaml, findlib, dune_1 }:
 
 let version = "v0.2.0"; in
-stdenv.mkDerivation {
+mkDerivation {
   name = "ocaml${ocaml.version}-vlq-${version}";
 
   src = fetchFromGitHub {
