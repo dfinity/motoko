@@ -836,6 +836,7 @@ module RTS = struct
     E.add_func_import env "rts" "init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
+    E.add_func_import env "rts" "write_barrier" [I32Type; I32Type] [];
     ()
 
 end (* RTS *)
