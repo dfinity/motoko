@@ -26,8 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        # Use our fork until https://github.com/knl/niv-updater-action/pull/46 is merged
-        uses: dfinity-lab/niv-updater-action@46d903454cded66eb06b1d17aeb2ddae403fc553
+        uses: knl/niv-updater-action@60f23607814cf4f2e80a1e32ee74f8323897d09e
         with:
           whitelist: 'nixpkgs,musl-wasi'
           labels: |

@@ -119,14 +119,6 @@ let nop : t = fun _ _ rest -> rest
 (* The concatenation operator *)
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 
-(* Forcing side effects to happen,
-   only for depth- and location-oblivious instructions
-   (TODO: to be refactored after merge, will go away)
- *)
-let effects t =
-  let instrs = t 0l Wasm.Source.no_region [] in
-  fun _ _ rest -> instrs @ rest
-
 (* Singletons *)
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
