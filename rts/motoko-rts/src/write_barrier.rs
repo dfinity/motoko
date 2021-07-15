@@ -15,7 +15,7 @@ static mut HEAP_COPY: *mut Blob = core::ptr::null_mut();
 //
 // Called before writing the value, so `*loc` gives the old (current) value.
 #[no_mangle]
-unsafe extern "C" fn write_barrier(loc: usize, _new: usize) {
+unsafe extern "C" fn write_barrier(loc: usize) {
     assert!(N_UPDATED_FIELDS < 1024);
     UPDATED_FIELDS[N_UPDATED_FIELDS] = loc;
     N_UPDATED_FIELDS += 1;
@@ -36,6 +36,7 @@ pub unsafe fn copy_heap<M: Memory>(mem: &mut M, heap_base: u32, hp: u32) {
     }
 
     HEAP_COPY = blob;
+    N_UPDATED_FIELDS = 0;
 }
 
 pub unsafe fn check_heap_copy(heap_base: u32, hp: u32) {
@@ -72,11 +73,14 @@ pub unsafe fn check_heap_copy(heap_base: u32, hp: u32) {
                         break;
                     }
                 }
+
                 if !found {
                     panic!(
-                        "Updated field {:#x} of object {:#x} not found in \
+                        "Updated field {:#x} of object {:#x} ({}) not found in \
                          updated fields recorded by write barrier",
-                        obj_heap as usize, obj_field_ptr as usize
+                        obj_heap as usize,
+                        obj_field_ptr as usize,
+                        tag_str(tag),
                     );
                 }
             }

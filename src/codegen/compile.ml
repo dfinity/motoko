@@ -836,7 +836,7 @@ module RTS = struct
     E.add_func_import env "rts" "init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
-    E.add_func_import env "rts" "write_barrier" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -6767,16 +6767,47 @@ let rec compile_lexp (env : E.t) ae lexp =
   | VarLE var ->
      G.nop,
      Var.set_val env ae var
+
   | IdxLE (e1, e2) ->
-     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-     compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env,
-     store_ptr
+      let (set_field, get_field) = new_local env "field" in
+      let (set_new_value, get_new_value) = new_local env "new_value" in
+
+     ( compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+       compile_exp_vanilla env ae e2 ^^ (* idx *)
+       Arr.idx_bigint env ^^
+       set_field
+
+     ,
+       set_new_value ^^
+
+       get_field ^^
+       E.call_import env "rts" "write_barrier" ^^
+
+       get_field ^^
+       get_new_value ^^
+
+       store_ptr
+     )
+
   | DotLE (e, n) ->
-     compile_exp_vanilla env ae e ^^
-     (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.Note.typ n,
-     store_ptr
+      let (set_field, get_field) = new_local env "field" in
+      let (set_new_value, get_new_value) = new_local env "new_value" in
+
+     ( compile_exp_vanilla env ae e ^^
+       (* Only real objects have mutable fields, no need to branch on the tag *)
+       Object.idx env e.note.Note.typ n ^^
+       set_field
+     ,
+       set_new_value ^^
+
+       get_field ^^
+       E.call_import env "rts" "write_barrier" ^^
+
+       get_field ^^
+       get_new_value ^^
+
+       store_ptr
+     )
 
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
