@@ -6830,7 +6830,7 @@ and compile_exp (env : E.t) ae exp =
           let add_cycles = Internals.add_cycles env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
-          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
+          compile_exp_vanilla env ae e2 ^^ set_arg ^^
 
           FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
       end
@@ -7047,13 +7047,13 @@ and compile_exp (env : E.t) ae exp =
     (* Other prims, unary *)
     | SerializePrim ts, [e] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.Vanilla e ^^
+      compile_exp_vanilla env ae e ^^
       Serialization.serialize env ts ^^
       Blob.of_ptr_size env
 
     | DeserializePrim ts, [e] ->
       StackRep.of_arity (List.length ts),
-      compile_exp_as env ae SR.Vanilla e ^^
+      compile_exp_vanilla env ae e ^^
       Serialization.deserialize_from_blob false env ts
 
     | OtherPrim "array_len", [e] ->
@@ -7347,7 +7347,7 @@ and compile_exp (env : E.t) ae exp =
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
-        compile_exp_as env ae SR.Vanilla e ^^
+        compile_exp_vanilla env ae e ^^
         (* TODO: We can try to avoid the boxing and pass the arguments to
           serialize individually *)
         Serialization.serialize env ts ^^
@@ -7372,10 +7372,10 @@ and compile_exp (env : E.t) ae exp =
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
       let add_cycles = Internals.add_cycles env ae in
-      compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
-      compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
-      compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
-      compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
+      compile_exp_vanilla env ae f ^^ set_meth_pair ^^
+      compile_exp_vanilla env ae e ^^ set_arg ^^
+      compile_exp_vanilla env ae k ^^ set_k ^^
+      compile_exp_vanilla env ae r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
       end
 
@@ -7400,7 +7400,7 @@ and compile_exp (env : E.t) ae exp =
 
     | ICStableWrite ty, [e] ->
       SR.unit,
-      compile_exp_as env ae SR.Vanilla e ^^
+      compile_exp_vanilla env ae e ^^
       Stabilization.stabilize env ty
 
     (* Cycles *)
@@ -7424,7 +7424,7 @@ and compile_exp (env : E.t) ae exp =
 
     | SetCertifiedData, [e1] ->
       SR.unit,
-      compile_exp_as env ae SR.Vanilla e1 ^^
+      compile_exp_vanilla env ae e1 ^^
       IC.set_certified_data env
     | GetCertificate, [] ->
       SR.Vanilla,
@@ -7525,8 +7525,8 @@ and compile_exp (env : E.t) ae exp =
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
-    compile_exp_as env ae SR.Vanilla exp_k ^^ set_k ^^
-    compile_exp_as env ae SR.Vanilla exp_r ^^ set_r ^^
+    compile_exp_vanilla env ae exp_k ^^ set_k ^^
+    compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
     FuncDec.ic_call env Type.[Prim Nat32] ts
       ( IC.get_self_reference env ^^
@@ -7596,7 +7596,7 @@ and compile_exp_as_test env ae e =
 (* Compile a prim of type Char -> Char to a RTS call. *)
 and compile_char_to_char_rts env ae exp rts_fn =
   SR.Vanilla,
-  compile_exp_as env ae SR.Vanilla exp ^^
+  compile_exp_vanilla env ae exp ^^
   TaggedSmallWord.untag_codepoint ^^
   E.call_import env "rts" rts_fn ^^
   TaggedSmallWord.tag_codepoint
@@ -7606,7 +7606,7 @@ and compile_char_to_char_rts env ae exp rts_fn =
    for 'true'. *)
 and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
   SR.bool,
-  compile_exp_as env ae SR.Vanilla exp ^^
+  compile_exp_vanilla env ae exp ^^
   TaggedSmallWord.untag_codepoint ^^
   (* The RTS function returns Motoko True/False values (which are represented as
      1 and 0, respectively) so we don't need any marshalling *)
