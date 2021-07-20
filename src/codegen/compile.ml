@@ -3301,6 +3301,7 @@ module IC = struct
       E.add_func_import env "ic0" "call_cycles_add" [I64Type] [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
+      E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
       E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
@@ -5800,6 +5801,11 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
+  let cleanup_callback env =
+    let name = "@cleanup_callback" in
+    Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "HEY" ^^ G.i Unreachable);
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
+
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
     match E.mode env with
     | Flags.ICMode
@@ -5812,6 +5818,8 @@ module FuncDec = struct
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
+      cleanup_callback env ^^ compile_unboxed_const 0l ^^
+      IC.system_call env "ic0" "call_on_cleanup" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
       IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
@@ -5839,6 +5847,8 @@ module FuncDec = struct
       ignoring_callback env ^^
       compile_unboxed_zero ^^
       IC.system_call env "ic0" "call_new" ^^
+      cleanup_callback env ^^ compile_unboxed_const 0l ^^
+      IC.system_call env "ic0" "call_on_cleanup" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
       IC.system_call env "ic0" "call_data_append" ^^
