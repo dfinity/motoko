@@ -5796,6 +5796,71 @@ IC._compile_static_print env "IN REJECT callback" ^^
       compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
       get_cb_index
 
+  let closures_to_self_reply_reject_callbacks env ts =
+    let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
+    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
+        (* Look up closure *)
+        let (set_closure, get_closure) = new_local env "closure" in
+        G.i (LocalGet (nr 0l)) ^^
+        ClosureTable.recall env ^^
+        Arr.load_field 0l ^^ (* get the reply closure *)
+        set_closure ^^
+        get_closure ^^
+
+        (* Deserialize arguments  *)
+        Serialization.deserialize env ts ^^
+
+        get_closure ^^
+        Closure.call_closure env (List.length ts) 0 ^^
+
+        message_cleanup env (Type.Shared Type.Write)
+      );
+
+    let reject_name = "@reject_callback" in
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
+        let (set_arr, get_arr) = new_local env "arr" in
+        message_start env (Type.Shared Type.Write) ^^
+        (* Look up closure *)
+        let (set_closure, get_closure) = new_local env "closure" in
+        G.i (LocalGet (nr 0l)) ^^
+        ClosureTable.recall env ^^
+        set_arr ^^ get_arr ^^
+        Arr.load_field 2l ^^ (* get the leaked ClosureTable index *)
+        BoxedSmallWord.unbox env ^^
+        ClosureTable.recall env ^^
+        G.i Drop ^^
+        get_arr ^^
+        Arr.load_field 1l ^^ (* get the reject closure *)
+        set_closure ^^
+        get_closure ^^
+IC._compile_static_print env "IN SELF REJECT callback" ^^ 
+        (* Synthesize value of type `Text`, the error message
+           (The error code is fetched via a prim)
+        *)
+        IC.error_value env ^^
+
+        get_closure ^^
+        Closure.call_closure env 1 0 ^^
+
+        message_cleanup env (Type.Shared Type.Write)
+      );
+
+    (* The (above) upper half of this function must not depend on the
+       get_arg, get_k and get_r parameters, so hide them from above (cute trick) *)
+    fun get_arg get_k get_r ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      (* store the tuple away *)
+      Arr.lit env [get_k; get_r; get_arg] ^^
+      ClosureTable.remember env ^^
+      set_cb_index ^^
+
+      (* return arguments for the ic.call *)
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
+      get_cb_index ^^
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
+      get_cb_index
+
   let ignoring_callback env =
     let name = "@ignore_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
@@ -5827,6 +5892,34 @@ IC._compile_static_print env "IN REJECT callback" ^^
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
+      set_cb_index  ^^ get_cb_index ^^
+      (* the data *)
+      IC.system_call env "ic0" "call_new" ^^
+      cleanup_callback env ^^ get_cb_index ^^
+      IC.system_call env "ic0" "call_on_cleanup" ^^
+      get_arg ^^ Serialization.serialize env ts1 ^^
+      IC.system_call env "ic0" "call_data_append" ^^
+      (* the cycles *)
+      add_cycles ^^
+      (* done! *)
+      IC.system_call env "ic0" "call_perform" ^^
+      (* Check error code *)
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      E.else_trap_with env "could not perform call"
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
+
+  let ic_self_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      (* The callee *)
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      (* The method name *)
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      (* The reply and reject callback *)
+      closures_to_self_reply_reject_callbacks env ts2 get_arg get_k get_r ^^
       set_cb_index  ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
@@ -7551,7 +7644,7 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
-    FuncDec.ic_call env Type.[Prim Nat32] ts
+    FuncDec.ic_self_call env Type.[Prim Nat32] ts
       ( IC.get_self_reference env ^^
         IC.actor_public_field env (IC.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
