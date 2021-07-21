@@ -5801,7 +5801,7 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let faulting_callback env =
+  let _faulting_callback env =
     let name = "@ignore_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "ABOUT TO FAULT" ^^ G.i Unreachable);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
