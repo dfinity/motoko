@@ -5801,24 +5801,36 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
+  let faulting_callback env =
+    let name = "@ignore_callback" in
+    Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "ABOUT TO FAULT" ^^ G.i Unreachable);
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
+
   let cleanup_callback env =
     let name = "@cleanup_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "HEY" ^^ G.i Unreachable);
+    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+        IC._compile_static_print env "ABOUT TO CLEAN UP" ^^
+        G.i (LocalGet (nr 0l)) ^^
+        ClosureTable.recall env ^^
+        G.i Drop ^^
+        IC._compile_static_print env "HEY");
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
+      set_cb_index  ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
-      cleanup_callback env ^^ compile_unboxed_const 0l ^^
+      cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
       get_arg ^^ Serialization.serialize env ts1 ^^
       IC.system_call env "ic0" "call_data_append" ^^
@@ -5844,11 +5856,11 @@ module FuncDec = struct
       ignoring_callback env ^^
       compile_unboxed_zero ^^
       (* The reject callback *)
-      ignoring_callback env ^^
+      ignoring_callback env ^^ (* TODO: figure out why this one gets called in oneshot-callbacks and not the reply one! *)
       compile_unboxed_zero ^^
       IC.system_call env "ic0" "call_new" ^^
-      cleanup_callback env ^^ compile_unboxed_const 0l ^^
-      IC.system_call env "ic0" "call_on_cleanup" ^^
+      (* NOT NEEDED! cleanup_callback env ^^ compile_unboxed_zero ^^
+      IC.system_call env "ic0" "call_on_cleanup" ^^*)
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
       IC.system_call env "ic0" "call_data_append" ^^
@@ -7543,7 +7555,8 @@ and compile_exp (env : E.t) ae exp =
         IC.actor_public_field env (IC.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
-      get_r add_cycles
+      get_r
+      add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
