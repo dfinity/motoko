@@ -11,7 +11,7 @@ actor a {
     oneshot_ping();
     await async {Prim.debugPrint("go 1: " # debug_show Prim.rts_callback_table_count())};
     oneshot_ping();
-    ignore await (async {assert false; 42});
+    ignore await (async {Prim.debugPrint("go 2: " # debug_show Prim.rts_callback_table_count()); assert false; 42});
   };
 };
 await a.go(); //OR-CALL ingress go "DIDL\x00\x00"

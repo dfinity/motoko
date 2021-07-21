@@ -5769,7 +5769,7 @@ module FuncDec = struct
         Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
-
+IC._compile_static_print env "IN REJECT callback" ^^ 
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
@@ -5781,8 +5781,8 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
 
-    (* The upper half of this function must not depend on the get_k and get_r
-       parameters, so hide them from above (cute trick) *)
+    (* The (above) upper half of this function must not depend on the
+       get_k and get_r parameters, so hide them from above (cute trick) *)
     fun get_k get_r ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* store the tuple away *)
@@ -5903,7 +5903,8 @@ module FuncDec = struct
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.recall env ^^
+        IC._compile_static_print env "RECALLING, but this may trap and gets undone" ^^
+        ClosureTable.recall env ^^ (*HERE*)
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
