@@ -5799,17 +5799,21 @@ IC._compile_static_print env "IN REJECT callback" ^^
   let closures_to_self_reply_reject_callbacks env ts =
     let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
+        let (set_arr, get_arr) = new_local env "arr" in
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ClosureTable.recall env ^^
+        set_arr ^^ get_arr ^^
         Arr.load_field 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
-        (* Deserialize arguments  *)
-        Serialization.deserialize env ts ^^
+        (* no need to Deserialize arguments  *)
+        (*Serialization.deserialize env ts ^^*)
+        get_arr ^^
+        Arr.load_field 2l ^^ (* get the argument to the closure *)
 
         get_closure ^^
         Closure.call_closure env (List.length ts) 0 ^^
@@ -5925,8 +5929,8 @@ IC._compile_static_print env "IN SELF REJECT callback" ^^
       IC.system_call env "ic0" "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
-      get_arg ^^ Serialization.serialize env ts1 ^^
-      IC.system_call env "ic0" "call_data_append" ^^
+      (*get_arg ^^ Serialization.serialize env ts1 ^^     no need to send anything, get_arg is persisted above
+      IC.system_call env "ic0" "call_data_append" ^^*)
       (* the cycles *)
       add_cycles ^^
       (* done! *)
