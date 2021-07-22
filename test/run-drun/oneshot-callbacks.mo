@@ -2,15 +2,19 @@ import Prim "mo:⛔";
 
 actor a {
 
-  public shared func oneshot_ping() : () {
+  public shared func oneway_ping() : () {
     Prim.debugPrint("ping! " # debug_show Prim.rts_callback_table_count());
+  };
+
+  public func ping() : async () {
+    Prim.debugPrint("ping-async! " # debug_show Prim.rts_callback_table_count());
   };
 
   public func go() : async () {
     Prim.debugPrint("go 0: " # debug_show Prim.rts_callback_table_count());
-    oneshot_ping();
+    oneway_ping();
     await async {Prim.debugPrint("go 1: " # debug_show Prim.rts_callback_table_count())};
-    oneshot_ping();
+    await ping();
     try {
         ignore await (async {Prim.debugPrint("go 2: " # debug_show Prim.rts_callback_table_count()); assert false; 42})
     } catch _ { ignore 42/0 }
