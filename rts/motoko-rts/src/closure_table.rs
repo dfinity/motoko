@@ -88,13 +88,12 @@ pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     FREE_SLOT = (TABLE.as_array().get(idx).0 >> 2) as u32;
     TABLE.as_array().set(idx, ptr);
     N_CLOSURES += 1;
-    
+
     idx
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn peek_future_closure(idx: u32) -> SkewedPtr {
-
     if TABLE.0 == 0 {
         rts_trap_with("peek_future_closure: Closure table not allocated");
     }
