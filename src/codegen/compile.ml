@@ -789,6 +789,7 @@ module RTS = struct
     E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
+    E.add_func_import env "rts" "peek_future_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "closure_count" [] [I32Type];
     E.add_func_import env "rts" "closure_table_size" [] [I32Type];
     E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
@@ -990,6 +991,7 @@ module ClosureTable = struct
   (* See rts/motoko-rts/src/closure_table.rs *)
   let remember env : G.t = E.call_import env "rts" "remember_closure"
   let recall env : G.t = E.call_import env "rts" "recall_closure"
+  let peek_future env : G.t = E.call_import env "rts" "peek_future_closure"
   let count env : G.t = E.call_import env "rts" "closure_count"
   let size env : G.t = E.call_import env "rts" "closure_table_size"
 end (* ClosureTable *)
@@ -4265,7 +4267,7 @@ module Serialization = struct
     )
 
   (* This value is returned by deserialize_go if deserialization fails in a way
-     that should be recovereable by opt parsing.
+     that should be recoverable by opt parsing.
      By virtue of being a deduped static value, it can be detected by pointer
      comparison.
   *)
@@ -5719,13 +5721,12 @@ module FuncDec = struct
       (SR.Const ct, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
 
-  (* Returns the index of a saved closure *)
+  (* Returns a closure corresponding to a future (async block) *)
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
     let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
     code ^^
-    StackRep.adjust env sr SR.Vanilla ^^
-    ClosureTable.remember env
+    StackRep.adjust env sr SR.Vanilla
 
   (* Takes the reply and reject callbacks, tuples them up,
      add them to the closure table, and returns the two callbacks expected by
@@ -5810,10 +5811,11 @@ IC._compile_static_print env "IN REJECT callback" ^^
         set_closure ^^
         get_closure ^^
 
-        (* no need to Deserialize arguments  *)
-        (*Serialization.deserialize env ts ^^*)
+        (* Deserialize reply arguments  *)
+        Serialization.deserialize env ts ^^
+        (*G.i Drop ^^
         get_arr ^^
-        Arr.load_field 2l ^^ (* get the argument to the closure *)
+        Arr.load_field 2l ^^*) (* get the reply arguments *)
 
         get_closure ^^
         Closure.call_closure env (List.length ts) 0 ^^
@@ -5852,10 +5854,10 @@ IC._compile_static_print env "IN SELF REJECT callback" ^^
 
     (* The (above) upper half of this function must not depend on the
        get_arg, get_k and get_r parameters, so hide them from above (cute trick) *)
-    fun get_arg get_k get_r ->
+    fun get_future get_k get_r ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* store the tuple away *)
-      Arr.lit env [get_k; get_r; get_arg] ^^
+      Arr.lit env [get_k; get_r; get_future] ^^
       ClosureTable.remember env ^^
       set_cb_index ^^
 
@@ -5913,7 +5915,7 @@ IC._compile_static_print env "IN SELF REJECT callback" ^^
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
-  let ic_self_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
+  let ic_self_call env ts1 ts2 get_meth_pair get_future get_k get_r add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5923,14 +5925,14 @@ IC._compile_static_print env "IN SELF REJECT callback" ^^
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
-      closures_to_self_reply_reject_callbacks env ts2 get_arg get_k get_r ^^
-      set_cb_index  ^^ get_cb_index ^^
+      closures_to_self_reply_reject_callbacks env ts2 get_future get_k get_r ^^
+      set_cb_index ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
-      (*get_arg ^^ Serialization.serialize env ts1 ^^     no need to send anything, get_arg is persisted above
-      IC.system_call env "ic0" "call_data_append" ^^*)
+      get_cb_index ^^ BoxedSmallWord.box env ^^ Serialization.serialize env ts1 ^^
+      IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
       (* done! *)
@@ -6000,8 +6002,7 @@ IC._compile_static_print env "IN SELF REJECT callback" ^^
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
-        IC._compile_static_print env "RECALLING, but this may trap and gets undone" ^^
-        ClosureTable.recall env ^^ (*HERE*)
+        ClosureTable.peek_future env ^^ (*HERE*)
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -7636,14 +7637,14 @@ and compile_exp (env : E.t) ae exp =
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     SR.unit,
-    let (set_closure_idx, get_closure_idx) = new_local env "closure_idx" in
+    let (set_future, get_future) = new_local env "future" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
-    set_closure_idx ^^
+    set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
@@ -7651,10 +7652,10 @@ and compile_exp (env : E.t) ae exp =
     FuncDec.ic_self_call env Type.[Prim Nat32] ts
       ( IC.get_self_reference env ^^
         IC.actor_public_field env (IC.async_method_name))
-      (get_closure_idx ^^ BoxedSmallWord.box env)
+      get_future
       get_k
       get_r
-      add_cycles
+      add_cycles (* why? *)
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->

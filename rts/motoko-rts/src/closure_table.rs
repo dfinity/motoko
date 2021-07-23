@@ -91,10 +91,31 @@ pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
 
 
 println!(1000, "remember_closure: {}", idx);
-
     
     idx
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn peek_future_closure(idx: u32) -> SkewedPtr {
+
+    if TABLE.0 == 0 {
+        rts_trap_with("peek_future_closure: Closure table not allocated");
+    }
+
+    if idx >= TABLE.as_array().len() {
+        rts_trap_with("peek_future_closure: Closure index out of range");
+    }
+
+    let ptr = TABLE.as_array().get(idx);
+
+    if ptr.0 & 0b1 != 1 {
+        rts_trap_with("peek_future_closure: Closure index not in table");
+    }
+
+    ptr.as_array().get(2)
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
