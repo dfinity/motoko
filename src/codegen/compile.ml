@@ -104,7 +104,7 @@ module Const = struct
 
      These are values that
      * are completely known constantly
-     * do not require Wasm code to be be executed (e.g. in `start`)
+     * do not require Wasm code to be executed (e.g. in `start`)
      * can be used directly (e.g. Call, not CallIndirect)
      * can be turned into Vanilla heap data on demand
 
@@ -985,6 +985,7 @@ module Stack = struct
     free_words env n
 
 end (* Stack *)
+
 
 module ClosureTable = struct
   (* See rts/motoko-rts/src/closure_table.rs *)
@@ -3681,6 +3682,73 @@ module IC = struct
       E.trap_with env "cannot get certificate when running locally"
 
 end (* IC *)
+
+module StableMem = struct
+
+  let register_globals env =
+    (* size (in pages) *)
+    E.add_global32 env "__stablemem_size" Mutable 0l
+
+  let get_size env =
+    G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
+  let set_size env =
+    G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
+
+  (* read word32 from stable mem offset on stack *)
+  let read_word32 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_read_word32"
+        ("offset", I32Type) [I32Type]
+        (fun env get_offset ->
+          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 4l ^^
+            IC.system_call env "ic0" "stable_read" ^^
+            get_temp_ptr ^^ load_unskewed_ptr))
+    | _ -> assert false
+
+  (* write stable mem offset and value, operands on stack *)
+  let write_word32 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_write_word32"
+        (("offset", I32Type),("value", I32Type)) []
+        (fun env get_offset get_value ->
+          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
+            get_offset ^^
+            get_temp_ptr ^^ compile_unboxed_const 4l ^^
+            IC.system_call env "ic0" "stable_write"))
+    | _ -> assert false
+
+
+  (* grow stable memory if needed (WIP)*)
+  let grow env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_grow"
+        ("pages", I32Type) []
+        (fun env get_pages ->
+          let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+          get_pages ^^
+          E.call_import env "ic0" "stable_size" ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          set_pages_needed ^^
+
+          get_pages_needed ^^
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+          G.if_ []
+            ( get_pages_needed ^^
+              E.call_import env "ic0" "stable_grow" ^^
+              (* Check result *)
+              compile_unboxed_zero ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+              E.then_trap_with env "Cannot grow stable memory."
+            ) G.nop)
+    | _ -> assert false
+
+end (* Stack *)
 
 module RTS_Exports = struct
   let system_exports env =
@@ -8156,6 +8224,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
   Stack.register_globals env;
+  StableMem.register_globals env;
 
   IC.system_imports env;
   RTS.system_imports env;
