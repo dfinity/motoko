@@ -88,9 +88,6 @@ pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     FREE_SLOT = (TABLE.as_array().get(idx).0 >> 2) as u32;
     TABLE.as_array().set(idx, ptr);
     N_CLOSURES += 1;
-
-
-println!(1000, "remember_closure: {}", idx);
     
     idx
 }
