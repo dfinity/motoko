@@ -5770,7 +5770,6 @@ module FuncDec = struct
         Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
-IC._compile_static_print env "IN REJECT callback" ^^ 
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
@@ -5873,18 +5872,16 @@ IC._compile_static_print env "IN SELF REJECT callback" ^^
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let _faulting_callback env =
-    let name = "@ignore_callback" in
+    let name = "@faulting_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "ABOUT TO FAULT" ^^ G.i Unreachable);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let cleanup_callback env =
     let name = "@cleanup_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env ->
-        IC._compile_static_print env "ABOUT TO CLEAN UP" ^^
         G.i (LocalGet (nr 0l)) ^^
         ClosureTable.recall env ^^
-        G.i Drop ^^
-        IC._compile_static_print env "HEY");
+        G.i Drop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
