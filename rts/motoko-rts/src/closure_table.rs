@@ -95,7 +95,6 @@ println!(1000, "remember_closure: {}", idx);
     idx
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn peek_future_closure(idx: u32) -> SkewedPtr {
 
@@ -116,11 +115,8 @@ pub unsafe extern "C" fn peek_future_closure(idx: u32) -> SkewedPtr {
     ptr.as_array().get(2)
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
-    println!(1000, "recall_closure: {}", idx);
-    
     if TABLE.0 == 0 {
         rts_trap_with("recall_closure: Closure table not allocated");
     }
@@ -142,7 +138,6 @@ pub unsafe extern "C" fn recall_closure(idx: u32) -> SkewedPtr {
         rts_trap_with("recall_closure: Closure index not in table");
     }
 
-    println!(1000, "recall_closure: {} OUT", idx);
     ptr
 }
 
