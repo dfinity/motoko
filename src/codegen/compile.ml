@@ -5824,22 +5824,14 @@ module FuncDec = struct
 
     let reject_name = "@reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
-        let (set_arr, get_arr) = new_local env "arr" in
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ClosureTable.recall env ^^
-        set_arr ^^ get_arr ^^
-        Arr.load_field 2l ^^ (* get the leaked ClosureTable index *)
-        BoxedSmallWord.unbox env ^^
-        ClosureTable.recall env ^^
-        G.i Drop ^^
-        get_arr ^^
         Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
-IC._compile_static_print env "IN SELF REJECT callback" ^^ 
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
