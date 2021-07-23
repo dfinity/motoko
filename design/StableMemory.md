@@ -139,8 +139,8 @@ move, with stable variables simply serialized and appended in
 
 For backwards compatibility reasons, we can't do that.
 
-Luckily, stable variables always require non-zero bytes to encode, we
-should be able to devise a backwards compatible scheme for upgrading
+Luckily, stable variables always require non-zero bytes to encode, so we
+can devise a backwards compatible scheme for upgrading
 from pre-StableMemory canisters to post-StableMemory
 canisters, as follows.
 
@@ -155,7 +155,7 @@ Otherwise, we compute the length and data of the stable variable encoding (if an
 save the first word of StableMemory at a known offset from the end of physical memory;
 write a 0x00 marker to the first word; and append length (even if zero) and
 data (if any) to the end of StableMem.
-The logical size of StableMemory and a version number are also written a
+The logical size of StableMemory and a version number are also written at
 known offsets from the end of StableMemory.
 
 In post_upgrade, we reverse this process to recover the size of StableMemory,
@@ -174,7 +174,7 @@ Stable memory layout (during execution):
 *  user are responsible for allocating logical pages.
 *  each load/store does a `size`-related bounds check.
 
-(stable variables aren't maintained in stable memory - they are on the Motoko heap.)
+During execution, stable variables aren't maintained in stable memory - they are on the Motoko heap.
 
 Stable memory layout (between upgrades), assuming optional stable variable encoding `v_opt`.
 
