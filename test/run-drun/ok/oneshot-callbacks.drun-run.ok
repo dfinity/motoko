@@ -11,7 +11,7 @@ debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-ingress Err: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: integer division by 0
+ingress Completed: Reply: 0x4449444c0000
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
