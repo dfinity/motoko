@@ -2,21 +2,21 @@
 ← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
-→ update go()
+→ update go(true)
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
 ← rejected (RC_CANISTER_ERROR): canister did not respond
-→ update go()
+→ update go(false)
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-← rejected (RC_CANISTER_ERROR): canister did not respond
-→ update go()
+← replied: ()
+→ update go(true)
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
