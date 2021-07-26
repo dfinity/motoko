@@ -31,8 +31,8 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 10
-debug.print: 9
 ingress Completed: Reply: 0x4449444c0000
+debug.print: 9
 debug.print: 8
 debug.print: 7
 debug.print: 6
