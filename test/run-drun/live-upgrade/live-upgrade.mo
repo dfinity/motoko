@@ -13,11 +13,12 @@ actor this {
   public func yield() : async () {};
   public func repeat() : () {
     n := 10;
+    Prim.debugPrint(debug_show(n));
     while (n > 0) {
-      Prim.debugPrint(debug_show(n));
       await yield();
       n -= 1;
     };
+    Prim.debugPrint(debug_show(n));
   };
 
   public func wait() : async () {
