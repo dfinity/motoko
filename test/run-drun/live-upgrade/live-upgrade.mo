@@ -9,21 +9,24 @@ actor this {
   };
 
   var n = 0;
+  var done = true;
 
   public func yield() : async () {
+    if (not done and n < 40) {
+      n += 1;
+      await yield();
+      n -= 1;
+    }
   };
 
   public func repeat() : () {
-    n := 10;
-    Prim.debugPrint(debug_show(n));
-    while (n > 0) {
-      await yield();
-      n -= 1;
-    };
+    done := false;
+    ignore yield();
   };
 
   public func wait() : async () {
-    if (n > 0) await wait();
+    done := true;
+    while (n > 0) await async {};
   };
 
 }
