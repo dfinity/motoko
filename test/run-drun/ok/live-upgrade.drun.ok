@@ -34,5 +34,12 @@ debug.print: 10
 debug.print: 9
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 8
-debug.print: init'ed
+debug.print: 7
+debug.print: 6
+debug.print: 5
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: callback count non-zero
+debug.print: 4
+debug.print: 3
+debug.print: 2
+debug.print: 1
 ingress Completed: Reply: 0x4449444c0000

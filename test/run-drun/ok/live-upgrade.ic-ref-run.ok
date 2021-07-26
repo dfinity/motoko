@@ -59,3 +59,5 @@ debug.print: 1
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: init'ed
 ← replied: ()
+→ update wait()
+← replied: ()

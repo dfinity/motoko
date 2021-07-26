@@ -3478,7 +3478,10 @@ module IC = struct
 
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
-      G.i (Call (nr (E.built_in env "pre_exp"))) ^^
+      ClosureTable.count env ^^
+      G.if_ []
+       (E.trap_with env "callback count non-zero")
+       (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
       Lifecycle.trans env Lifecycle.PostPreUpgrade
     )) in
 

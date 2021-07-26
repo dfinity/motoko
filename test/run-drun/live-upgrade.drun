@@ -14,5 +14,6 @@ ingress $ID wait "DIDL\x00\x00"
 # upgrade should succeed
 upgrade $ID live-upgrade/live-upgrade.mo ""
 ingress $ID repeat "DIDL\x00\x00"
-# upgrade should fail due to pending callbacks (but doesn't)
+# upgrade should fail due to pending callbacks
 upgrade $ID live-upgrade/live-upgrade.mo ""
+ingress $ID wait "DIDL\x00\x00"
