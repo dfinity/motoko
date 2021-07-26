@@ -5841,7 +5841,7 @@ module FuncDec = struct
       );
 
     (* The (above) upper half of this function must not depend on the
-       get_arg, get_k and get_r parameters, so hide them from above (cute trick) *)
+       get_future, get_k and get_r parameters, so hide them from above (cute trick) *)
     fun get_future get_k get_r ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* store the tuple away *)
