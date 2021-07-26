@@ -226,11 +226,13 @@ impl Array {
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+        debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const SkewedPtr)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, ptr: SkewedPtr) {
+        debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *mut SkewedPtr) = ptr;
     }
