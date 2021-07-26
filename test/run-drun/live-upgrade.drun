@@ -1,0 +1,18 @@
+install $ID live-upgrade/live-upgrade.mo ""
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID inc "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x02"
+ingress $ID inc "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x03"
+upgrade $ID live-upgrade/live-upgrade.mo ""
+query $ID check "DIDL\x00\x01\x7d\x03"
+ingress $ID inc "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x04"
+ingress $ID repeat "DIDL\x00\x00"
+# wait for pending callbacks to clear
+ingress $ID wait "DIDL\x00\x00"
+# upgrade should succeed
+upgrade $ID live-upgrade/live-upgrade.mo ""
+ingress $ID repeat "DIDL\x00\x00"
+# upgrade should fail due to pending callbacks (but doesn't)
+upgrade $ID live-upgrade/live-upgrade.mo ""
