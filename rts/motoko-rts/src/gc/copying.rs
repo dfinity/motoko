@@ -5,12 +5,15 @@ use crate::types::*;
 use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
+unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
+    if super::should_do_gc() {
+        copying_gc(mem);
+    }
+}
+
+#[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-
-    if !super::should_do_gc() {
-        return;
-    }
 
     copying_gc_internal(
         mem,

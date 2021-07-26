@@ -17,12 +17,15 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
+unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
+    if super::should_do_gc() {
+        compacting_gc(mem);
+    }
+}
+
+#[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-
-    if !super::should_do_gc() {
-        return;
-    }
 
     compacting_gc_internal(
         mem,
