@@ -48,6 +48,7 @@ unsafe fn grow_stack<M: Memory>(mem: &mut M) {
 
     let new_cap: Words<u32> = Words(stack_cap.0 * 2);
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
+    STACK_TOP = STACK_BASE.add(new_cap.as_usize());
 }
 
 pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) {

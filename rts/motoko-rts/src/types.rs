@@ -17,6 +17,10 @@ impl Words<u32> {
     pub fn to_bytes(self) -> Bytes<u32> {
         Bytes(self.0 * WORD_SIZE)
     }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
+    }
 }
 
 impl<A: Add<Output = A>> Add for Words<A> {
