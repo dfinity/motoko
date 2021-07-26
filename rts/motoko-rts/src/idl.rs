@@ -100,7 +100,9 @@ unsafe fn parse_idl_header<M: Memory>(
     main_types_out: *mut *mut u8,
 ) {
     if (*buf).ptr == (*buf).end {
-        idl_trap_with("empty input");
+        idl_trap_with(
+            "empty input. Expected Candid-encoded argument, but received a zero-length argument",
+        );
     }
 
     // Magic bytes (DIDL)
