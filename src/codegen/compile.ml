@@ -5797,7 +5797,7 @@ module FuncDec = struct
       get_cb_index
 
   let closures_to_self_reply_reject_callbacks env ts =
-    let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
+    let reply_name = "@self_callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         let (set_arr, get_arr) = new_local env "arr" in
         message_start env (Type.Shared Type.Write) ^^
@@ -5812,9 +5812,6 @@ module FuncDec = struct
 
         (* Deserialize reply arguments  *)
         Serialization.deserialize env ts ^^
-        (*G.i Drop ^^
-        get_arr ^^
-        Arr.load_field 2l ^^*) (* get the reply arguments *)
 
         get_closure ^^
         Closure.call_closure env (List.length ts) 0 ^^
@@ -5822,7 +5819,7 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
 
-    let reject_name = "@reject_callback" in
+    let reject_name = "@self_reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
@@ -5904,7 +5901,7 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
-  let ic_self_call env ts1 ts2 get_meth_pair get_future get_k get_r add_cycles =
+  let ic_self_call env ts get_meth_pair get_future get_k get_r =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5914,23 +5911,21 @@ module FuncDec = struct
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
-      closures_to_self_reply_reject_callbacks env ts2 get_future get_k get_r ^^
+      closures_to_self_reply_reject_callbacks env ts get_future get_k get_r ^^
       set_cb_index ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
-      get_cb_index ^^ BoxedSmallWord.box env ^^ Serialization.serialize env ts1 ^^
+      get_cb_index ^^ BoxedSmallWord.box env ^^ Serialization.serialize env Type.[Prim Nat32] ^^
       IC.system_call env "ic0" "call_data_append" ^^
-      (* the cycles *)
-      add_cycles ^^
       (* done! *)
       IC.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
+      E.trap_with env (Printf.sprintf "cannot perform self call when running locally")
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -5947,8 +5942,6 @@ module FuncDec = struct
       ignoring_callback env ^^ (* TODO: figure out why this one gets called in oneshot-callbacks and not the reply one! *)
       compile_unboxed_zero ^^
       IC.system_call env "ic0" "call_new" ^^
-      (* NOT NEEDED! cleanup_callback env ^^ compile_unboxed_zero ^^
-      IC.system_call env "ic0" "call_on_cleanup" ^^*)
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
       IC.system_call env "ic0" "call_data_append" ^^
@@ -5991,7 +5984,7 @@ module FuncDec = struct
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.peek_future env ^^ (*HERE*)
+        ClosureTable.peek_future env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -7631,20 +7624,18 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-    let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
-    FuncDec.ic_self_call env Type.[Prim Nat32] ts
+    FuncDec.ic_self_call env ts
       ( IC.get_self_reference env ^^
         IC.actor_public_field env (IC.async_method_name))
       get_future
       get_k
       get_r
-      add_cycles (* why? *)
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
