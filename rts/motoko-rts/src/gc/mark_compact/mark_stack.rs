@@ -13,13 +13,13 @@ pub const INIT_STACK_SIZE: Words<u32> = Words(64);
 static mut STACK_BLOB_PTR: *mut Blob = null_mut();
 
 /// Bottom of the mark stack
-static mut STACK_BASE: *mut usize = null_mut();
+pub static mut STACK_BASE: *mut usize = null_mut();
 
 /// Top of the mark stack
-static mut STACK_TOP: *mut usize = null_mut();
+pub static mut STACK_TOP: *mut usize = null_mut();
 
 /// Next free slot in the mark stack
-static mut STACK_PTR: *mut usize = null_mut();
+pub static mut STACK_PTR: *mut usize = null_mut();
 
 pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
     debug_assert!(STACK_BLOB_PTR.is_null());
@@ -39,7 +39,7 @@ pub unsafe fn free_mark_stack() {
 }
 
 /// Doubles the stack size
-unsafe fn grow_stack<M: Memory>(mem: &mut M) {
+pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
     let p = mem.alloc_words(stack_cap).unskew() as *mut usize;
 
@@ -48,6 +48,7 @@ unsafe fn grow_stack<M: Memory>(mem: &mut M) {
 
     let new_cap: Words<u32> = Words(stack_cap.0 * 2);
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
+    STACK_TOP = STACK_BASE.add(new_cap.as_usize());
 }
 
 pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) {
