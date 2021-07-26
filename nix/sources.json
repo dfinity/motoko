@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "530129e854aa9be1ab8fa66fe29d7042c2f2bf37",
+        "rev": "071d8388c1b4905072c9417ede0f75cea4002600",
         "type": "git"
     },
     "esm": {
@@ -57,10 +57,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "aaf3e1645fe8137ef47339af274ebfa142605678",
-        "sha256": "0lgp306xv164rw17ncn33mn87ch61b4h0lglb6af3b06h3sbs5a4",
+        "rev": "c298729bef3ebe135e913d88a04273436815a2aa",
+        "sha256": "0nryc860n5qsv3m4ig9clq778i5ifhashn7f9rhzjagaavkz2w87",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/aaf3e1645fe8137ef47339af274ebfa142605678.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/c298729bef3ebe135e913d88a04273436815a2aa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
