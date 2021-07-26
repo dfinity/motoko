@@ -1,11 +1,15 @@
 import Prim "mo:⛔";
 actor this {
-  Prim.debugPrint ("init'ed");
-  stable var c = "a";
-  public func inc() : async () { c #= "a"; };
-  public query func check(n : Int) : async () {
-    Prim.debugPrint(c);
-    assert (c.size() == n);
+
+  stable var version = 0;
+  Prim.debugPrint (debug_show({ version = version }));
+
+  system func postupgrade() {
+    version += 1;
+  };
+
+  public query func check(ver : Int) : async () {
+    assert version == ver;
   };
 
   var n = 0;
