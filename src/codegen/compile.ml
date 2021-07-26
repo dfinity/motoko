@@ -3480,7 +3480,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
       ClosureTable.count env ^^
       G.if_ []
-       (E.trap_with env "callback count non-zero")
+       (E.trap_with env "canister_pre_upgrade trapped due to outstanding message callbacks (try stopping the canister before upgrade)")
        (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
       Lifecycle.trans env Lifecycle.PostPreUpgrade
     )) in
