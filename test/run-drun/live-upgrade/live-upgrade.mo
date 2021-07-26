@@ -10,7 +10,9 @@ actor this {
 
   var n = 0;
 
-  public func yield() : async () {};
+  public func yield() : async () {
+  };
+
   public func repeat() : () {
     n := 10;
     Prim.debugPrint(debug_show(n));
@@ -18,7 +20,6 @@ actor this {
       await yield();
       n -= 1;
     };
-    Prim.debugPrint(debug_show(n));
   };
 
   public func wait() : async () {

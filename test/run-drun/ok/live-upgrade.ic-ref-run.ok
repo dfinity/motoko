@@ -29,7 +29,6 @@ debug.print: aaaa
 ← replied: ()
 → update repeat()
 debug.print: 10
-debug.print: 0
 ← replied: ()
 → update wait()
 ← replied: ()
@@ -38,7 +37,6 @@ debug.print: init'ed
 ← replied: ()
 → update repeat()
 debug.print: 10
-debug.print: 0
 ← replied: ()
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: init'ed

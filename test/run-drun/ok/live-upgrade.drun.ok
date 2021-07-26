@@ -18,12 +18,10 @@ debug.print: aaaa
 Ok: Reply: 0x4449444c0000
 debug.print: 10
 ingress Completed: Reply: 0x4449444c0000
-debug.print: 0
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 10
 ingress Completed: Reply: 0x4449444c0000
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: callback count non-zero
-debug.print: 0
 ingress Completed: Reply: 0x4449444c0000
