@@ -3304,6 +3304,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
+      E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
@@ -3478,10 +3479,13 @@ module IC = struct
 
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
-      ClosureTable.count env ^^
+      system_call env "ic0" "canister_status" ^^ compile_unboxed_const 3l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ []
-       (E.trap_with env "canister_pre_upgrade trapped due to outstanding message callbacks (try stopping the canister before upgrade)")
-       (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
+       (G.nop)
+       (ClosureTable.count env ^^
+        E.then_trap_with env "canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)") ^^
+      (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
       Lifecycle.trans env Lifecycle.PostPreUpgrade
     )) in
 
