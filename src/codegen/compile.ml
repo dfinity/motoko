@@ -5860,11 +5860,6 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let _faulting_callback env =
-    let name = "@faulting_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "ABOUT TO FAULT" ^^ G.i Unreachable);
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
-
   let cleanup_callback env =
     let name = "@cleanup_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env ->
@@ -5941,7 +5936,7 @@ module FuncDec = struct
       ignoring_callback env ^^
       compile_unboxed_zero ^^
       (* The reject callback *)
-      ignoring_callback env ^^ (* TODO: figure out why this one gets called in oneshot-callbacks and not the reply one! *)
+      ignoring_callback env ^^
       compile_unboxed_zero ^^
       IC.system_call env "ic0" "call_new" ^^
       (* the data *)
