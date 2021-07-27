@@ -92,6 +92,10 @@ pub unsafe fn remember_closure<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
     idx
 }
 
+// Position of the future in explicit self-send ClosureTable entries
+// Invariant: keep this synchronised with compiler.ml (see future_array_index)
+const FUTURE_ARRAY_INDEX: u32 = 2;
+
 #[no_mangle]
 pub unsafe extern "C" fn peek_future_closure(idx: u32) -> SkewedPtr {
     if TABLE.0 == 0 {
@@ -108,7 +112,7 @@ pub unsafe extern "C" fn peek_future_closure(idx: u32) -> SkewedPtr {
         rts_trap_with("peek_future_closure: Closure index not in table");
     }
 
-    ptr.as_array().get(2)
+    ptr.as_array().get(FUTURE_ARRAY_INDEX)
 }
 
 #[no_mangle]
