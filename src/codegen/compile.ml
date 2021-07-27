@@ -2497,7 +2497,7 @@ module BigNumLibtommath : BigNumType = struct
         then []
         else
           let (a, b) = Big_int.quomod_big_int n twoto28 in
-          [ Int32.of_int (Big_int.int_of_big_int b) ] @ go a
+          [ Big_int.int32_of_big_int b ] @ go a
       in go n
     in
     (* how many 32 bit digits *)
