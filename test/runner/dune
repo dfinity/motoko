@@ -1,0 +1,3 @@
+(executable
+  (name moc_test)
+  (libraries alcotest))
