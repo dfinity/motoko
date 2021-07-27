@@ -10,17 +10,17 @@ module To_test = struct
 end
 
 let read_file file_path =
-    let ch = open_in file_path in
-    let s = really_input_string ch (in_channel_length ch) in
-    close_in ch;
-    s
+  let ch = open_in file_path in
+  let s = really_input_string ch (in_channel_length ch) in
+  close_in ch;
+  s
 
-module StringSet = Set.Make(String)
+module StringSet = Set.Make (String)
 
 (* Collect all .mo file names in a .drun file *)
 let collect_drun_mo_files (drun_file_path : string) : StringSet.t =
   let mo_file_regex = Re.compile (Re.Perl.re "[^ ]*mo") in
-  let file_contents = read_file drun_file_path in 
+  let file_contents = read_file drun_file_path in
   StringSet.of_list (Re.matches mo_file_regex file_contents)
 
 (* Run a drun test specified as a .mo file *)
@@ -31,13 +31,14 @@ let drun_mo_test (mo_file_path : string) : unit Alcotest.test_case =
 let rec print_list (strs : string list) =
   match strs with
   | [] -> ()
-  | e :: l -> Printf.printf "%s\n" e; print_list l
+  | e :: l ->
+      Printf.printf "%s\n" e;
+      print_list l
 
 (* Run a drun test specified as a .drun file *)
 let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
   let open Alcotest in
-  test_case (Printf.sprintf "drun: %s\n" drun_file_path) `Quick
-    (fun () -> 
+  test_case (Printf.sprintf "drun: %s\n" drun_file_path) `Quick (fun () ->
       let mo_files = collect_drun_mo_files drun_file_path in
       Printf.printf "Drun .mo files: ";
       print_list (List.of_seq (StringSet.to_seq mo_files));
@@ -48,7 +49,12 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
         (fun mo_file ->
           Printf.printf "Compiling mo file: ../run-drun/%s\n" mo_file;
           let mo_base = Filename.basename mo_file in
-          let exit = Sys.command (Printf.sprintf "moc --hide-warnings -c ../run-drun/%s -o _out/%s/%s.wasm" mo_file test_name mo_base) in
+          let exit =
+            Sys.command
+              (Printf.sprintf
+                 "moc --hide-warnings -c ../run-drun/%s -o _out/%s/%s.wasm"
+                 mo_file test_name mo_base)
+          in
           Alcotest.(check int) "moc exit code" 0 exit)
         mo_files;
 
