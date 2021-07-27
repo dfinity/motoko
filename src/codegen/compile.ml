@@ -5901,7 +5901,7 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
 
-  let ic_self_call env ts get_meth_pair get_future get_k get_r =
+  let ic_self_call env ts get_meth_pair get_future get_k get_r add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5919,6 +5919,8 @@ module FuncDec = struct
       IC.system_call env "ic0" "call_on_cleanup" ^^
       get_cb_index ^^ BoxedSmallWord.box env ^^ Serialization.serialize env Type.[Prim Nat32] ^^
       IC.system_call env "ic0" "call_data_append" ^^
+      (* the cycles *)
+      add_cycles ^^
       (* done! *)
       IC.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
@@ -7624,6 +7626,7 @@ and compile_exp (env : E.t) ae exp =
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
+    let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_future ^^
 
@@ -7636,6 +7639,7 @@ and compile_exp (env : E.t) ae exp =
       get_future
       get_k
       get_r
+      add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
