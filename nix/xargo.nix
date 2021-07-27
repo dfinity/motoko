@@ -3,7 +3,7 @@
 # libraries (core and std) without PIC relocation model, so we use xargo to make
 # PIC versions of core and std.
 
-{ rustPlatform-nightly, fetchFromGitHub, lib }:
+{ rustPlatform-nightly, fetchFromGitHub, lib, python, cmake, llvmPackages, clang, stdenv, darwin, zlib }:
 
 rustPlatform-nightly.buildRustPackage rec {
   name = "xargo";
