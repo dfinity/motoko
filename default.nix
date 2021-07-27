@@ -94,6 +94,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
     pkgs.ocamlPackages.alcotest
+    pkgs.ocamlPackages.re
     pkgs.perl
     pkgs.removeReferencesTo
   ]; in

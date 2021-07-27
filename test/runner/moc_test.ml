@@ -19,24 +19,9 @@ module StringSet = Set.Make(String)
 
 (* Collect all .mo file names in a .drun file *)
 let collect_drun_mo_files (drun_file_path : string) : StringSet.t =
-  let mo_file_regex = Str.regexp "^ .+\\.mo" in
-
+  let mo_file_regex = Re.compile (Re.Perl.re "[^ ]*mo") in
   let file_contents = read_file drun_file_path in 
-
-  let rec find_all str idx =
-    try begin
-      let _match_idx = Str.search_forward mo_file_regex str idx in
-      let matched_str = Str.matched_string str in
-      Printf.printf "Matched string: \"%s\"\n" matched_str;
-      StringSet.add matched_str (find_all str (idx + String.length matched_str))
-    end
-    with
-      Not_found ->
-        Printf.printf "No match\n";
-        StringSet.empty
-  in
-
-  find_all file_contents 0
+  StringSet.of_list (Re.matches mo_file_regex file_contents)
 
 (* Run a drun test specified as a .mo file *)
 let drun_mo_test (mo_file_path : string) : unit Alcotest.test_case =
