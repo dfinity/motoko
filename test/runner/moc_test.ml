@@ -54,7 +54,7 @@ let replace_mo_file_paths (file_path : string) (out_dir : string)
 (** Run a drun test specified as a .drun file *)
 let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
   let open Alcotest in
-  test_case (Printf.sprintf "drun: %s\n" drun_file_path) `Quick (fun () ->
+  test_case (Printf.sprintf "drun: %s" drun_file_path) `Quick (fun () ->
       let mo_files = collect_drun_mo_files drun_file_path in
       Printf.printf "Drun .mo files: ";
       print_list (List.of_seq (StringSet.to_seq mo_files));
