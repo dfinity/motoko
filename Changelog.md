@@ -1,6 +1,5 @@
 # Motoko compiler changelog
 
-* == 0.6.6 (2021-0?-??)
 
 * Fix issue #2640 (leaked `ClosureTable` entry when awaiting futures fails).
 
