@@ -1,14 +1,3 @@
-(* A module with functions to test *)
-module To_test = struct
-  let lowercase = String.lowercase_ascii
-
-  let capitalize = String.capitalize_ascii
-
-  let str_concat = String.concat ""
-
-  let list_concat = List.append
-end
-
 let read_file file_path =
   let ch = open_in file_path in
   let s = really_input_string ch (in_channel_length ch) in
@@ -17,13 +6,13 @@ let read_file file_path =
 
 module StringSet = Set.Make (String)
 
-(* Collect all .mo file names in a .drun file *)
+(** Collect all .mo file names in a .drun file *)
 let collect_drun_mo_files (drun_file_path : string) : StringSet.t =
   let mo_file_regex = Re.compile (Re.Perl.re "[^ ]*mo") in
   let file_contents = read_file drun_file_path in
   StringSet.of_list (Re.matches mo_file_regex file_contents)
 
-(* Run a drun test specified as a .mo file *)
+(** Run a drun test specified as a .mo file *)
 let drun_mo_test (mo_file_path : string) : unit Alcotest.test_case =
   let open Alcotest in
   test_case (Printf.sprintf "drun: %s\n" mo_file_path) `Quick (fun () -> ())
@@ -122,12 +111,11 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
           Alcotest.(check int) "drun exit code" 0 drun_exit;
 
           (* TODO: Compare output files *)
-
           ())
         mo_files)
 
-(* Scan directory drun/ for tests. Only the top-level files are tests. .drun
-   files have .mo files in subdirectories. *)
+(** Scan directory drun/ for tests. Only the top-level files are tests. .drun
+    files have .mo files in subdirectories. *)
 let collect_drun_tests () : unit Alcotest.test_case list =
   let dir_name = "../run-drun" in
 
@@ -145,35 +133,6 @@ let collect_drun_tests () : unit Alcotest.test_case list =
 let collect_tests () : (string * unit Alcotest.test_case list) list =
   [ ("drun", collect_drun_tests ()) ]
 
-(* The tests *)
-let test_lowercase () =
-  Alcotest.(check string) "same string" "hello!" (To_test.lowercase "hELLO!")
-
-let test_capitalize () =
-  Alcotest.(check string) "same string" "World." (To_test.capitalize "world.")
-
-let test_str_concat () =
-  Alcotest.(check string)
-    "same string" "foobar"
-    (To_test.str_concat [ "foo"; "bar" ])
-
-let test_list_concat () =
-  Alcotest.(check (list int))
-    "same lists" [ 1; 2; 3 ]
-    (To_test.list_concat [ 1 ] [ 2; 3 ])
-
-(* Run it *)
 let () =
   let open Alcotest in
   run "Motoko compiler tests" (collect_tests ())
-
-(*
-  run "Utils" [
-      "string-case", [
-          test_case "Lower case"     `Quick test_lowercase;
-          test_case "Capitalization" `Quick test_capitalize;
-        ];
-      "string-concat", [ test_case "String mashing" `Quick test_str_concat  ];
-      "list-concat",   [ test_case "List mashing"   `Slow  test_list_concat ];
-    ]
-*)
