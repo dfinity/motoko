@@ -40,6 +40,8 @@ let rec print_list (strs : string list) =
 
       (`test_name`, `out`, and `runner` are arguments to this function)
 
+    - Insert "create" at the beginning of the script
+
     - Replace "$ID"s in the drun script with the canister id that drun gets
       when installing the canister. This is currently hard-coded in this
       function and needs to be in sync with drun and/or replica.
@@ -58,7 +60,10 @@ let prepare_drun_script (file_path : string) (out_dir : string)
 
   let script = Re.replace re ~f:replace file_contents in
 
-  (* Step 2: replace "$ID" with the actual canister id *)
+  (* Step 2: Insert "create" *)
+  let script = "create\n" ^ script in
+
+  (* Step 3: replace "$ID" with the actual canister id *)
   (* This needs to be in sync with drun and/or replica *)
   let canister_id = "rwlgt-iiaaa-aaaaa-aaaaa-cai" in
   let re = Re.Str.regexp_string "$ID" in
@@ -104,11 +109,19 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
 
           Printf.printf "Drun script: %s\n" drun_script;
 
-          let drun_out =
-            open_out (Printf.sprintf "%s/%s.drun.drun" out_dir test_name)
-          in
+          let drun_path = Printf.sprintf "%s/%s.drun.drun" out_dir test_name in
+          let drun_out = open_out drun_path in
           Printf.fprintf drun_out "%s\n" drun_script;
           close_out drun_out;
+
+          let drun_cmd = Printf.sprintf "drun %s" drun_path in
+
+          Printf.printf "Running %s\n" drun_cmd;
+
+          let drun_exit = Sys.command drun_cmd in
+          Alcotest.(check int) "drun exit code" 0 drun_exit;
+
+          (* TODO: Compare output files *)
 
           ())
         mo_files)
