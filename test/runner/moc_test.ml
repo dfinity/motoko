@@ -1,3 +1,5 @@
+let drun_config_path = "../drun.json5"
+
 let read_file file_path =
   let ch = open_in file_path in
   let s = really_input_string ch (in_channel_length ch) in
@@ -103,7 +105,10 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
           Printf.fprintf drun_out "%s\n" drun_script;
           close_out drun_out;
 
-          let drun_cmd = Printf.sprintf "drun %s" drun_path in
+          let drun_cmd =
+            Printf.sprintf "drun -c %s --extra-batches 1 %s" drun_config_path
+              drun_path
+          in
 
           Printf.printf "Running %s\n" drun_cmd;
 
