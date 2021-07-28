@@ -1,14 +1,8 @@
 
-(* TODO: replace with Printexc.default_uncaught_exception_handler with OCaml 4.11*)
-let default_uncaught_exception_handler exn raw_backtrace =
-  Printexc.(
-    Printf.eprintf "Fatal error: exception %s\n" (to_string exn);
-    print_raw_backtrace stderr raw_backtrace;
-    flush stderr)
-
 let setup_handler () =
-  Printexc.record_backtrace true;
-  Printexc.set_uncaught_exception_handler (fun exn rb ->
+  let open Printexc in
+  record_backtrace true;
+  set_uncaught_exception_handler (fun exn rb ->
     Printf.eprintf "OOPS! You've triggered a compiler bug.\n";
     Printf.eprintf "Please report this at https://github.com/dfinity/motoko/issues/new with the following details:\n\nMotoko %s\n\n" Source_id.banner;
     default_uncaught_exception_handler exn rb
