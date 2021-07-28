@@ -6,6 +6,12 @@ let read_file file_path =
   close_in ch;
   s
 
+(* NB. adds newline *)
+let write_file file_path contents =
+  let out = open_out file_path in
+  Printf.fprintf out "%s\n" contents;
+  close_out out
+
 module StringSet = Set.Make (String)
 
 (** Collect all .mo file names in a .drun file *)
@@ -62,6 +68,13 @@ let prepare_drun_script (file_path : string) (out_dir : string)
 
   Re.Str.global_replace re canister_id script
 
+(** Transform drun output to make it easier to check for correctness. So far we
+    only remove canister ids in debug prints and replace them with the old
+    "debug.print:" prefix. *)
+let normalize_drun_output (output : string) : string =
+  let canister_id_re = Re.compile (Re.Perl.re "\\[Canister [0-9a-z\\-]+\\]") in
+  Re.replace_string canister_id_re ~by:"debug.print:" output
+
 (** Run a drun test specified as a .drun file *)
 let drun_drun_test (drun_file_path : string) :
     string * unit Alcotest.test_case list =
@@ -114,9 +127,7 @@ let drun_drun_test (drun_file_path : string) :
           let drun_processed_script_path =
             Printf.sprintf "%s/%s.drun.drun" out_dir test_name
           in
-          let drun_out = open_out drun_processed_script_path in
-          Printf.fprintf drun_out "%s\n" drun_script;
-          close_out drun_out;
+          write_file drun_processed_script_path drun_script;
 
           let actual_drun_output_path =
             Printf.sprintf "%s/%s.drun.out" out_dir test_name
@@ -139,12 +150,18 @@ let drun_drun_test (drun_file_path : string) :
           let expected_output = read_file expected_drun_output_path in
           let actual_output = read_file actual_drun_output_path in
 
-          if expected_output <> actual_output then (
+          let normalized_actual_output = normalize_drun_output actual_output in
+
+          if expected_output <> normalized_actual_output then (
+            let normalized_output_file_path =
+              Printf.sprintf "%s/%s.drun.out.normal" out_dir test_name
+            in
+            write_file normalized_output_file_path normalized_actual_output;
             let diff_cmd =
               Printf.sprintf
                 "diff -a -u -N --label expected ../run-drun/ok/%s.drun.ok \
-                 --label actual %s/%s.drun.out"
-                test_name out_dir test_name
+                 --label actual %s"
+                test_name normalized_output_file_path
             in
 
             (* TODO: Somehow this line is printed after the `diff` output.
