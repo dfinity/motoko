@@ -158,8 +158,10 @@ let drun_drun_test (drun_file_path : string) :
                return value here *)
             if diff_exit <> 1 then
               Alcotest.fail
-                "Expected and actual drun outputs do not match, diff returned \
-                 non-zero"
+                (Printf.sprintf
+                   "Expected and actual drun outputs do not match, diff \
+                    returned %d"
+                   diff_exit)
             else
               Alcotest.fail
                 "Expected and actual drun outputs do not match. See test \
