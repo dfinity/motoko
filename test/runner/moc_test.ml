@@ -35,12 +35,19 @@ let rec print_list (strs : string list) =
       Printf.printf "%s\n" e;
       print_list l
 
-(** Replace file paths like `$test_name/x.mo` in a file with
-    `$out/x.$runner.wasm` *)
-let replace_mo_file_paths (file_path : string) (out_dir : string)
-    (test_name : string) (runner : string) : string =
-  let re_string = Printf.sprintf "%s\\/([^\\s]+)\\.mo" test_name in
+(** - Replace file paths like `$test_name/x.mo` in a file with
+    `$out/x.$runner.wasm`
 
+      (`test_name`, `out`, and `runner` are arguments to this function)
+
+    - Replace "$ID"s in the drun script with the canister id that drun gets
+      when installing the canister. This is currently hard-coded in this
+      function and needs to be in sync with drun and/or replica.
+    *)
+let prepare_drun_script (file_path : string) (out_dir : string)
+    (test_name : string) (runner : string) : string =
+  (* Step 1: replace .mo file paths with .wasm file paths *)
+  let re_string = Printf.sprintf "%s\\/([^\\s]+)\\.mo" test_name in
   let re = Re.compile (Re.Perl.re re_string) in
   let file_contents = read_file file_path in
 
@@ -49,7 +56,14 @@ let replace_mo_file_paths (file_path : string) (out_dir : string)
     Printf.sprintf "%s/%s.%s.wasm" out_dir match_ runner
   in
 
-  Re.replace re ~f:replace file_contents
+  let script = Re.replace re ~f:replace file_contents in
+
+  (* Step 2: replace "$ID" with the actual canister id *)
+  (* This needs to be in sync with drun and/or replica *)
+  let canister_id = "rwlgt-iiaaa-aaaaa-aaaaa-cai" in
+  let re = Re.Str.regexp_string "$ID" in
+
+  Re.Str.global_replace re canister_id script
 
 (** Run a drun test specified as a .drun file *)
 let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
@@ -85,9 +99,17 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
           Alcotest.(check int) "moc exit code" 0 moc_exit;
 
           let drun_script =
-            replace_mo_file_paths drun_file_path out_dir test_name "drun"
+            prepare_drun_script drun_file_path out_dir test_name "drun"
           in
+
           Printf.printf "Drun script: %s\n" drun_script;
+
+          let drun_out =
+            open_out (Printf.sprintf "%s/%s.drun.drun" out_dir test_name)
+          in
+          Printf.fprintf drun_out "%s\n" drun_script;
+          close_out drun_out;
+
           ())
         mo_files)
 
