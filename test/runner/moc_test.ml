@@ -122,7 +122,7 @@ let drun_drun_test (drun_file_path : string) :
             Printf.sprintf "%s/%s.drun.out" out_dir test_name
           in
           let drun_cmd =
-            Printf.sprintf "drun -c %s --extra-batches 1 %s 2>&1 > %s"
+            Printf.sprintf "drun -c %s --extra-batches 1 %s > %s 2>&1"
               drun_config_path drun_processed_script_path
               actual_drun_output_path
           in
