@@ -35,7 +35,23 @@ let rec print_list (strs : string list) =
       Printf.printf "%s\n" e;
       print_list l
 
-(* Run a drun test specified as a .drun file *)
+(** Replace file paths like `$test_name/x.mo` in a file with
+    `$out/x.$runner.wasm` *)
+let replace_mo_file_paths (file_path : string) (out_dir : string)
+    (test_name : string) (runner : string) : string =
+  let re_string = Printf.sprintf "%s\\/([^\\s]+)\\.mo" test_name in
+
+  let re = Re.compile (Re.Perl.re re_string) in
+  let file_contents = read_file file_path in
+
+  let replace group =
+    let match_ = Re.Group.get group 1 in
+    Printf.sprintf "%s/%s.%s.wasm" out_dir match_ runner
+  in
+
+  Re.replace re ~f:replace file_contents
+
+(** Run a drun test specified as a .drun file *)
 let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
   let open Alcotest in
   test_case (Printf.sprintf "drun: %s\n" drun_file_path) `Quick (fun () ->
@@ -43,20 +59,21 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
       Printf.printf "Drun .mo files: ";
       print_list (List.of_seq (StringSet.to_seq mo_files));
 
-      let test_name = Filename.basename drun_file_path in
+      let test_name =
+        Filename.remove_extension (Filename.basename drun_file_path)
+      in
 
       StringSet.iter
         (fun mo_file ->
-          (* TODO: ../run-drun part should be gnoe *)
+          (* TODO: ../run-drun part should be gone *)
           let mo_file_path = Printf.sprintf "../run-drun/%s" mo_file in
           Printf.printf "Compiling mo file: %s\n" mo_file_path;
 
-          let mo_base = Filename.basename mo_file in
+          let mo_base = Filename.remove_extension (Filename.basename mo_file) in
           let out_dir = Printf.sprintf "_out/%s" test_name in
           let moc_cmd =
-            Printf.sprintf
-              "moc --hide-warnings -c %s -o %s/%s.drun.wasm\n" mo_file_path
-              out_dir mo_base
+            Printf.sprintf "moc --hide-warnings -c %s -o %s/%s.drun.wasm\n"
+              mo_file_path out_dir mo_base
           in
 
           Printf.printf "Compiling %s: `%s`" mo_file moc_cmd;
@@ -65,7 +82,13 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
           Alcotest.(check int) "mkdir exit code" 0 mkdir_exit;
 
           let moc_exit = Sys.command moc_cmd in
-          Alcotest.(check int) "moc exit code" 0 moc_exit)
+          Alcotest.(check int) "moc exit code" 0 moc_exit;
+
+          let drun_script =
+            replace_mo_file_paths drun_file_path out_dir test_name "drun"
+          in
+          Printf.printf "Drun script: %s\n" drun_script;
+          ())
         mo_files)
 
 (* Scan directory drun/ for tests. Only the top-level files are tests. .drun
