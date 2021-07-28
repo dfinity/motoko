@@ -12,6 +12,25 @@ let write_file file_path contents =
   Printf.fprintf out "%s\n" contents;
   close_out out
 
+(** If `str` starts with `prefix`, returns the part after the prefix. Otherwise
+    returns `None`. *)
+let drop_prefix (str : string) (prefix : string) : string option =
+  let prefix_len = String.length prefix in
+  let str_len = String.length str in
+  if str_len < prefix_len then None
+  else
+    let str_prefix = String.sub str 0 prefix_len in
+    if str_prefix = prefix then
+      Some (String.sub str prefix_len (str_len - prefix_len))
+    else None
+
+(** Returns lines starting with `prefix` with `prefix` part removed *)
+let collect_lines_starting_with (contents : string) (prefix : string) :
+    string list =
+  (* TODO: What about "\r\n"? *)
+  let lines = String.split_on_char '\n' contents in
+  List.filter_map (fun line -> drop_prefix line prefix) lines
+
 module StringSet = Set.Make (String)
 
 (** Collect all .mo file names in a .drun file *)
@@ -20,18 +39,37 @@ let collect_drun_mo_files (drun_file_path : string) : StringSet.t =
   let file_contents = read_file drun_file_path in
   StringSet.of_list (Re.matches mo_file_regex file_contents)
 
-(** Run a drun test specified as a .mo file *)
-let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
-    =
-  let test_name = Filename.remove_extension (Filename.basename mo_file_path) in
-  (test_name, [ Alcotest.test_case "" `Quick (fun () -> ()) ])
-
 let rec print_list (strs : string list) =
   match strs with
   | [] -> ()
   | e :: l ->
       Printf.printf "%s\n" e;
       print_list l
+
+(** Run a drun test specified as a .mo file *)
+let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
+    =
+  let test_name = Filename.remove_extension (Filename.basename mo_file_path) in
+
+  let run_test () =
+    let mo_file_contents = read_file mo_file_path in
+    let moc_extra_flags =
+      collect_lines_starting_with mo_file_contents "//MOC-FLAG"
+    in
+    let moc_extra_envs =
+      collect_lines_starting_with mo_file_contents "//MOC-ENV"
+    in
+
+    Printf.printf "moc_extra_flags:";
+    print_list moc_extra_flags;
+
+    Printf.printf "moc_extra_envs:";
+    print_list moc_extra_envs;
+
+    ()
+  in
+
+  (test_name, [ Alcotest.test_case "" `Quick run_test ])
 
 (** - Replace file paths like `$test_name/x.mo` in a file with
     `$out/x.$runner.wasm`
@@ -67,6 +105,9 @@ let prepare_drun_script (file_path : string) (out_dir : string)
   let re = Re.Str.regexp_string "$ID" in
 
   Re.Str.global_replace re canister_id script
+
+(** Create a drun script for a mo file *)
+let prepare_drun_script_for_mo (_file_path : string) = ()
 
 (** Transform drun output to make it easier to check for correctness. So far we
     only remove canister ids in debug prints and replace them with the old
