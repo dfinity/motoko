@@ -1,3 +1,4 @@
 (executable
   (name moc_test)
+  (modules moc_test utils)
   (libraries alcotest re))
