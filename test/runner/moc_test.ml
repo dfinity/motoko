@@ -47,12 +47,15 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
 
       StringSet.iter
         (fun mo_file ->
-          Printf.printf "Compiling mo file: ../run-drun/%s\n" mo_file;
+          (* TODO: ../run-drun part should be gnoe *)
+          let mo_file_path = Printf.sprintf "../run-drun/%s" mo_file in
+          Printf.printf "Compiling mo file: %s\n" mo_file_path;
+
           let mo_base = Filename.basename mo_file in
           let out_dir = Printf.sprintf "_out/%s" test_name in
           let moc_cmd =
             Printf.sprintf
-              "moc --hide-warnings -c ../run-drun/%s -o %s/%s.wasm\n" mo_file
+              "moc --hide-warnings -c %s -o %s/%s.drun.wasm\n" mo_file_path
               out_dir mo_base
           in
 
@@ -63,9 +66,7 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
 
           let moc_exit = Sys.command moc_cmd in
           Alcotest.(check int) "moc exit code" 0 moc_exit)
-        mo_files;
-
-      ())
+        mo_files)
 
 (* Scan directory drun/ for tests. Only the top-level files are tests. .drun
    files have .mo files in subdirectories. *)
