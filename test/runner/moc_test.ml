@@ -153,7 +153,10 @@ let drun_drun_test (drun_file_path : string) :
             Printf.printf "Outputs do not match, running %s\n" diff_cmd;
 
             let diff_exit = Sys.command diff_cmd in
-            if diff_exit <> 0 then
+            (* diff returns 0 when inputs match and 2 when there's a problem. 1
+               is returned when inputs do not match, which is the expected
+               return value here *)
+            if diff_exit <> 1 then
               Alcotest.fail
                 "Expected and actual drun outputs do not match, diff returned \
                  non-zero"
