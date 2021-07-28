@@ -1,6 +1,10 @@
 # Motoko compiler changelog
 
-== 0.6.5 (2021-07-08)
+* == 0.6.6 (2021-0?-??)
+
+* Fix issue #2640 (leaked `ClosureTable` entry when awaiting futures fails).
+
+* == 0.6.5 (2021-07-08)
 
 * Add alternative, _compacting_ gc, enabled with new moc flag `--compacting-gc`.
   The compacting gc supports larger heap sizes than the default, 2-space copying collector.
