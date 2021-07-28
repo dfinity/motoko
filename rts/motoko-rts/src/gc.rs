@@ -23,7 +23,7 @@ unsafe fn should_do_gc() -> bool {
     let heap_limit = min(
         max(
             (f64::from(LAST_HP) * HEAP_GROWTH_FACTOR) as u64,
-            SMALL_HEAP_DELTA.0,
+            u64::from(LAST_HP) + SMALL_HEAP_DELTA.0,
         ),
         MAX_HP_FOR_GC,
     );
