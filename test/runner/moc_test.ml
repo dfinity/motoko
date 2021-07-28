@@ -100,14 +100,20 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
 
           Printf.printf "Drun script: %s\n" drun_script;
 
-          let drun_path = Printf.sprintf "%s/%s.drun.drun" out_dir test_name in
-          let drun_out = open_out drun_path in
+          let drun_processed_script_path =
+            Printf.sprintf "%s/%s.drun.drun" out_dir test_name
+          in
+          let drun_out = open_out drun_processed_script_path in
           Printf.fprintf drun_out "%s\n" drun_script;
           close_out drun_out;
 
+          let actual_drun_output_path =
+            Printf.sprintf "%s/%s.drun.out" out_dir test_name
+          in
           let drun_cmd =
-            Printf.sprintf "drun -c %s --extra-batches 1 %s" drun_config_path
-              drun_path
+            Printf.sprintf "drun -c %s --extra-batches 1 %s > %s"
+              drun_config_path drun_processed_script_path
+              actual_drun_output_path
           in
 
           Printf.printf "Running %s\n" drun_cmd;
@@ -115,8 +121,32 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
           let drun_exit = Sys.command drun_cmd in
           Alcotest.(check int) "drun exit code" 0 drun_exit;
 
-          (* TODO: Compare output files *)
-          ())
+          let expected_drun_output_path =
+            Printf.sprintf "../run-drun/ok/%s.drun.ok" test_name
+          in
+
+          let expected_output = read_file expected_drun_output_path in
+          let actual_output = read_file actual_drun_output_path in
+
+          if expected_output <> actual_output then (
+            let diff_cmd =
+              Printf.sprintf
+                "diff -a -u -N --label expected ../run-drun/ok/%s.drun.ok \
+                 --label actual %s/%s.drun.out"
+                test_name out_dir test_name
+            in
+
+            Printf.printf "Outputs do not match, running %s\n" diff_cmd;
+
+            let diff_exit = Sys.command diff_cmd in
+            if diff_exit <> 0 then
+              Alcotest.fail
+                "Expected and actual drun outputs do not match, diff returned \
+                 non-zero"
+            else
+              Alcotest.fail
+                "Expected and actual drun outputs do not match. See test \
+                 output for the diff."))
         mo_files)
 
 (** Scan directory drun/ for tests. Only the top-level files are tests. .drun
