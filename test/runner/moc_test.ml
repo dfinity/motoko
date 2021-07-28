@@ -49,13 +49,20 @@ let drun_drun_test (drun_file_path : string) : unit Alcotest.test_case =
         (fun mo_file ->
           Printf.printf "Compiling mo file: ../run-drun/%s\n" mo_file;
           let mo_base = Filename.basename mo_file in
-          let exit =
-            Sys.command
-              (Printf.sprintf
-                 "moc --hide-warnings -c ../run-drun/%s -o _out/%s/%s.wasm"
-                 mo_file test_name mo_base)
+          let out_dir = Printf.sprintf "_out/%s" test_name in
+          let moc_cmd =
+            Printf.sprintf
+              "moc --hide-warnings -c ../run-drun/%s -o %s/%s.wasm\n" mo_file
+              out_dir mo_base
           in
-          Alcotest.(check int) "moc exit code" 0 exit)
+
+          Printf.printf "Compiling %s: `%s`" mo_file moc_cmd;
+
+          let mkdir_exit = Sys.command (Printf.sprintf "mkdir -p %s" out_dir) in
+          Alcotest.(check int) "mkdir exit code" 0 mkdir_exit;
+
+          let moc_exit = Sys.command moc_cmd in
+          Alcotest.(check int) "moc exit code" 0 moc_exit)
         mo_files;
 
       ())
