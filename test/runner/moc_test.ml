@@ -69,6 +69,8 @@ let drun_drun_test (drun_file_path : string) :
     Filename.remove_extension (Filename.basename drun_file_path)
   in
 
+  let out_dir = Printf.sprintf "_out/%s" test_name in
+
   ( test_name,
     [
       Alcotest.test_case "" `Quick (fun () ->
@@ -76,7 +78,7 @@ let drun_drun_test (drun_file_path : string) :
           Printf.printf "Drun .mo files: ";
           print_list (List.of_seq (StringSet.to_seq mo_files));
 
-          (* TODO: Loop body below is wrong, move drun lines out of the loop *)
+          (* Compile .mo files *)
           StringSet.iter
             (fun mo_file ->
               (* TODO: ../run-drun part should be gone *)
@@ -86,7 +88,6 @@ let drun_drun_test (drun_file_path : string) :
               let mo_base =
                 Filename.remove_extension (Filename.basename mo_file)
               in
-              let out_dir = Printf.sprintf "_out/%s" test_name in
               let moc_cmd =
                 Printf.sprintf "moc --hide-warnings -c %s -o %s/%s.drun.wasm\n"
                   mo_file_path out_dir mo_base
@@ -100,65 +101,66 @@ let drun_drun_test (drun_file_path : string) :
               Alcotest.(check int) "mkdir exit code" 0 mkdir_exit;
 
               let moc_exit = Sys.command moc_cmd in
-              Alcotest.(check int) "moc exit code" 0 moc_exit;
+              Alcotest.(check int) "moc exit code" 0 moc_exit)
+            mo_files;
 
-              let drun_script =
-                prepare_drun_script drun_file_path out_dir test_name "drun"
-              in
+          (* Run drun, compare outputs *)
+          let drun_script =
+            prepare_drun_script drun_file_path out_dir test_name "drun"
+          in
 
-              Printf.printf "Drun script: %s\n" drun_script;
+          Printf.printf "Drun script: %s\n" drun_script;
 
-              let drun_processed_script_path =
-                Printf.sprintf "%s/%s.drun.drun" out_dir test_name
-              in
-              let drun_out = open_out drun_processed_script_path in
-              Printf.fprintf drun_out "%s\n" drun_script;
-              close_out drun_out;
+          let drun_processed_script_path =
+            Printf.sprintf "%s/%s.drun.drun" out_dir test_name
+          in
+          let drun_out = open_out drun_processed_script_path in
+          Printf.fprintf drun_out "%s\n" drun_script;
+          close_out drun_out;
 
-              let actual_drun_output_path =
-                Printf.sprintf "%s/%s.drun.out" out_dir test_name
-              in
-              let drun_cmd =
-                Printf.sprintf "drun -c %s --extra-batches 1 %s 2>&1 > %s"
-                  drun_config_path drun_processed_script_path
-                  actual_drun_output_path
-              in
+          let actual_drun_output_path =
+            Printf.sprintf "%s/%s.drun.out" out_dir test_name
+          in
+          let drun_cmd =
+            Printf.sprintf "drun -c %s --extra-batches 1 %s 2>&1 > %s"
+              drun_config_path drun_processed_script_path
+              actual_drun_output_path
+          in
 
-              Printf.printf "Running %s\n" drun_cmd;
+          Printf.printf "Running %s\n" drun_cmd;
 
-              let drun_exit = Sys.command drun_cmd in
-              Alcotest.(check int) "drun exit code" 0 drun_exit;
+          let drun_exit = Sys.command drun_cmd in
+          Alcotest.(check int) "drun exit code" 0 drun_exit;
 
-              let expected_drun_output_path =
-                Printf.sprintf "../run-drun/ok/%s.drun.ok" test_name
-              in
+          let expected_drun_output_path =
+            Printf.sprintf "../run-drun/ok/%s.drun.ok" test_name
+          in
 
-              let expected_output = read_file expected_drun_output_path in
-              let actual_output = read_file actual_drun_output_path in
+          let expected_output = read_file expected_drun_output_path in
+          let actual_output = read_file actual_drun_output_path in
 
-              if expected_output <> actual_output then (
-                let diff_cmd =
-                  Printf.sprintf
-                    "diff -a -u -N --label expected ../run-drun/ok/%s.drun.ok \
-                     --label actual %s/%s.drun.out"
-                    test_name out_dir test_name
-                in
+          if expected_output <> actual_output then (
+            let diff_cmd =
+              Printf.sprintf
+                "diff -a -u -N --label expected ../run-drun/ok/%s.drun.ok \
+                 --label actual %s/%s.drun.out"
+                test_name out_dir test_name
+            in
 
-                (* TODO: Somehow this line is printed after the `diff` output.
-                   OCaml runtime probably has its own output buffer, we need to
-                   flush it somehow. *)
-                Printf.printf "Outputs do not match, running %s\n" diff_cmd;
+            (* TODO: Somehow this line is printed after the `diff` output.
+               OCaml runtime probably has its own output buffer, we need to
+               flush it somehow. *)
+            Printf.printf "Outputs do not match, running %s\n" diff_cmd;
 
-                let diff_exit = Sys.command diff_cmd in
-                if diff_exit <> 0 then
-                  Alcotest.fail
-                    "Expected and actual drun outputs do not match, diff \
-                     returned non-zero"
-                else
-                  Alcotest.fail
-                    "Expected and actual drun outputs do not match. See test \
-                     output for the diff."))
-            mo_files);
+            let diff_exit = Sys.command diff_cmd in
+            if diff_exit <> 0 then
+              Alcotest.fail
+                "Expected and actual drun outputs do not match, diff returned \
+                 non-zero"
+            else
+              Alcotest.fail
+                "Expected and actual drun outputs do not match. See test \
+                 output for the diff."));
     ] )
 
 (** Scan directory drun/ for tests. Only the top-level files are tests. .drun
