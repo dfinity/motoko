@@ -18,7 +18,11 @@ actor a {
     };
     await ping();
     try {
-        ignore await (async {Prim.debugPrint("go 2: " # debug_show Prim.rts_callback_table_count()); assert false; 42})
+        ignore await async {
+           Prim.debugPrint("go 2: " # debug_show Prim.rts_callback_table_count()); 
+           assert false; 
+           42
+        }
     } catch _ { if trigger_cleanup { ignore 42/0 } }
   };
 };
