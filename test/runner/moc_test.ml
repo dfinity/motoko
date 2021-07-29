@@ -27,9 +27,7 @@ let typecheck_mo_file (mo_file_path : string) : unit =
   Printf.printf "moc_extra_args for typechecking: %s\n" moc_extra_args;
   Printf.printf "moc_extra_envs for typechecking: %s\n" moc_extra_envs;
 
-  let output_file_path =
-    Printf.sprintf "../run-drun/_out/%s/%s.tc" file_name file_name
-  in
+  let output_file_path = Printf.sprintf "../run-drun/_out/%s.tc" file_name in
   let moc_cmd =
     Printf.sprintf "env %s moc %s --check %s > %s" moc_extra_envs moc_extra_args
       mo_file_path output_file_path
@@ -58,10 +56,10 @@ let typecheck_mo_file (mo_file_path : string) : unit =
   (* If exit code is not 0, compare exit code with the value in "...tc.ret.ok"
      file. This part is a bit hacky, ported from the old shell script without
      changes. *)
-  if moc_exit <> 0 then
+  if moc_exit <> 0 then (
     (* There should be a ".tc.ret.ok" file *)
     let ret_file_path =
-      Printf.sprintf "../run-drun/ok/%s/%s.tc.ret.ok" file_name file_name
+      Printf.sprintf "../run-drun/ok/%s.tc.ret.ok" file_name
     in
 
     let ret_file_contents = read_file ret_file_path in
@@ -70,12 +68,14 @@ let typecheck_mo_file (mo_file_path : string) : unit =
     let prefix = "Return code " in
     let prefix_len = String.length prefix in
     let expected_ret_str =
-      String.sub ret_file_contents prefix_len
-        (String.length ret_file_contents - prefix_len)
+      String.trim
+        (String.sub ret_file_contents prefix_len
+           (String.length ret_file_contents - prefix_len))
     in
+    Printf.printf "expected_ret_str: [%s]\n" expected_ret_str;
     let expected_ret = int_of_string expected_ret_str in
 
-    Alcotest.(check int) "moc --check exit code" expected_ret moc_exit
+    Alcotest.(check int) "moc --check exit code" expected_ret moc_exit)
 
 (** Run a drun test specified as a .mo file *)
 let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
@@ -96,12 +96,12 @@ let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
             typecheck_mo_file mo_file_path);
       ]
     else
-      let moc_extra_args =
+      let _moc_extra_args =
         String.concat " "
           (collect_lines_starting_with mo_file_contents "//MOC-FLAG")
       in
 
-      let moc_extra_envs =
+      let _moc_extra_envs =
         String.concat " "
           (collect_lines_starting_with mo_file_contents "//MOC-ENV")
       in
