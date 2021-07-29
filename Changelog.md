@@ -2,6 +2,7 @@
 
 * Trap on attempt to upgrade when canister not stopped and there are outstanding callbacks.
   (This failure mode can be avoided by stopping the canister before upgrade.)
+* Fix issue #2640 (leaked `ClosureTable` entry when awaiting futures fails).
 
 * Vastly improved garbage collection scheduling: previously Motoko runtime would do GC
   after every upgrade message. We now schedule a GC when
