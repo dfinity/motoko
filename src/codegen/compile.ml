@@ -5788,9 +5788,6 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-
-    (* The (above) upper half of this function must not depend on the
-       closure_getters parameter, so hide them from above (cute trick) *)
     stash_closures_pushing_callbacks env reply_name reject_name
 
   let closures_to_self_reply_reject_callbacks env ts =
@@ -5836,9 +5833,6 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-
-    (* The (above) upper half of this function must not depend on the
-       closure_getters parameter, so hide them from above (cute trick) *)
     stash_closures_pushing_callbacks env reply_name reject_name
 
   let ignoring_callback env =
