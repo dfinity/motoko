@@ -2,6 +2,22 @@ import Prim "mo:⛔";
 
 actor a {
 
+  public func drill(rabbit_hole : Nat8) : async () {
+    Prim.debugPrint("drill! " # debug_show rabbit_hole # " " # debug_show Prim.rts_callback_table_count());
+    try {
+      await async {
+        if (rabbit_hole == 0) {
+          assert false
+        } else {
+          await drill(rabbit_hole - 1)
+        }
+      }
+    } catch _ {
+      // force the cleanup callback half of the time
+      assert rabbit_hole % 2 == 0
+    }
+  };
+
   public shared func oneway_ping() : () {
     Prim.debugPrint("ping! " # debug_show Prim.rts_callback_table_count());
   };
@@ -27,6 +43,7 @@ actor a {
   };
 };
 
+await a.drill(42); //OR-CALL ingress drill "DIDL\x00\x01\x7B\x2A"
 await a.go(true); //OR-CALL ingress go "DIDL\x00\x01\x7E\x01"
 await a.go(false); //OR-CALL ingress go "DIDL\x00\x01\x7E\x00"
 await a.go(true); //OR-CALL ingress go "DIDL\x00\x01\x7E\x01"
