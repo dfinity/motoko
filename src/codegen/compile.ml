@@ -5804,7 +5804,7 @@ module FuncDec = struct
         G.i Drop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
+  let ic_call_threaded env purpose get_meth_pair push_continuations add_data add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5814,14 +5814,14 @@ module FuncDec = struct
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
-      closures_to_reply_reject_callbacks env ts2 [get_k; get_r] ^^
+      push_continuations ^^
       set_cb_index  ^^ get_cb_index ^^
       (* initiate call *)
       IC.system_call env "ic0" "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
       (* the data *)
-      get_arg ^^ Serialization.serialize env ts1 ^^
+      add_data get_cb_index ^^
       IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
@@ -5829,10 +5829,31 @@ module FuncDec = struct
       IC.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.else_trap_with env "could not perform call"
+      E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
+      E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+    ic_call_threaded
+      env
+      "remote call"
+      get_meth_pair
+      (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
+      (fun _ -> get_arg ^^ Serialization.serialize env ts1)
+
+  let ic_self_call env ts get_meth_pair get_future get_k get_r =
+    ic_call_threaded
+      env
+      "self call"
+      get_meth_pair
+      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
+      (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future])
+      (fun get_cb_index ->
+        get_cb_index ^^
+        BoxedSmallWord.box env ^^
+        Serialization.serialize env Type.[Prim Nat32])
+
+(*
   let ic_self_call env ts get_meth_pair get_future get_k get_r add_cycles =
     match E.mode env with
     | Flags.ICMode
@@ -5862,7 +5883,7 @@ module FuncDec = struct
       E.else_trap_with env "could not perform call"
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform self call when running locally")
-
+ *)
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
     | Flags.ICMode
