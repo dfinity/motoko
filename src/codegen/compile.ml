@@ -5735,6 +5735,27 @@ module FuncDec = struct
      serialization); the reject callback function is unique.
   *)
 
+  let message_reject_callback env reject_name =
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
+        (* Look up closure *)
+        let (set_closure, get_closure) = new_local env "closure" in
+        G.i (LocalGet (nr 0l)) ^^
+        ClosureTable.recall env ^^
+        Arr.load_field 1l ^^ (* get the reject closure *)
+        set_closure ^^
+        get_closure ^^
+        (* Synthesize value of type `Text`, the error message
+           (The error code is fetched via a prim)
+        *)
+        IC.error_value env ^^
+
+        get_closure ^^
+        Closure.call_closure env 1 0 ^^
+
+        message_cleanup env (Type.Shared Type.Write)
+      )
+
   let stash_closures_pushing_callbacks env reply_name reject_name closure_getters =
     let (set_cb_index, get_cb_index) = new_local env "cb_index" in
     Arr.lit env closure_getters ^^
@@ -5767,7 +5788,7 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-
+(*
     let reject_name = "@reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
@@ -5787,7 +5808,9 @@ module FuncDec = struct
         Closure.call_closure env 1 0 ^^
 
         message_cleanup env (Type.Shared Type.Write)
-      );
+      );*)
+    let reject_name = "@reject_callback" in
+    message_reject_callback env reject_name;
     stash_closures_pushing_callbacks env reply_name reject_name
 
   let closures_to_self_reply_reject_callbacks env ts =
@@ -5814,7 +5837,7 @@ module FuncDec = struct
       );
 
     let reject_name = "@self_reject_callback" in
-    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
+    (*Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
@@ -5832,7 +5855,8 @@ module FuncDec = struct
         Closure.call_closure env 1 0 ^^
 
         message_cleanup env (Type.Shared Type.Write)
-      );
+      );*)
+    message_reject_callback env reject_name;
     stash_closures_pushing_callbacks env reply_name reject_name
 
   let ignoring_callback env =
