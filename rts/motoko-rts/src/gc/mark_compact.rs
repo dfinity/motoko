@@ -35,7 +35,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // set_hp
         |hp| ic::HP = hp,
         ic::get_static_roots(),
-        crate::closure_table::closure_table_loc(),
+        crate::continuation_table::continuation_table_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
@@ -57,7 +57,7 @@ pub unsafe fn compacting_gc_internal<
     get_hp: GetHp,
     set_hp: SetHp,
     static_roots: SkewedPtr,
-    closure_table_ptr_loc: *mut SkewedPtr,
+    continuation_table_ptr_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -69,7 +69,7 @@ pub unsafe fn compacting_gc_internal<
         heap_base,
         old_hp,
         static_roots,
-        closure_table_ptr_loc,
+        continuation_table_ptr_loc,
     );
 
     let reclaimed = old_hp - (get_hp() as u32);
@@ -85,7 +85,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     heap_base: u32,
     heap_end: u32,
     static_roots: SkewedPtr,
-    closure_table_ptr_loc: *mut SkewedPtr,
+    continuation_table_ptr_loc: *mut SkewedPtr,
 ) {
     let mem_size = Bytes(heap_end - heap_base);
 
@@ -94,12 +94,12 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     mark_static_roots(mem, static_roots, heap_base);
 
-    if (*closure_table_ptr_loc).unskew() >= heap_base as usize {
-        // TODO: No need to check if closure table is already marked
-        mark_object(mem, *closure_table_ptr_loc, heap_base);
-        // Similar to `mark_root_mutbox_fields`, `closure_table_ptr_loc` is in static heap so it
-        // will be readable when we unthread closure table
-        thread(closure_table_ptr_loc);
+    if (*continuation_table_ptr_loc).unskew() >= heap_base as usize {
+        // TODO: No need to check if continuation table is already marked
+        mark_object(mem, *continuation_table_ptr_loc, heap_base);
+        // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so it
+        // will be readable when we unthread continuation table
+        thread(continuation_table_ptr_loc);
     }
 
     mark_stack(mem, heap_base);

@@ -20,7 +20,7 @@ pub mod bigint;
 mod blob_iter;
 pub mod buf;
 mod char;
-pub mod closure_table;
+pub mod continuation_table;
 pub mod constants;
 pub mod gc;
 pub mod leb128;

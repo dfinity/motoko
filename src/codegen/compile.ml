@@ -788,11 +788,11 @@ module RTS = struct
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
-    E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
-    E.add_func_import env "rts" "peek_future_closure" [I32Type] [I32Type];
-    E.add_func_import env "rts" "closure_count" [] [I32Type];
-    E.add_func_import env "rts" "closure_table_size" [] [I32Type];
+    E.add_func_import env "rts" "remember_continuation" [I32Type] [I32Type];
+    E.add_func_import env "rts" "recall_continuation" [I32Type] [I32Type];
+    E.add_func_import env "rts" "peek_future_continuation" [I32Type] [I32Type];
+    E.add_func_import env "rts" "continuation_count" [] [I32Type];
+    E.add_func_import env "rts" "continuation_table_size" [] [I32Type];
     E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_compare" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "text_concat" [I32Type; I32Type] [I32Type];
@@ -990,14 +990,14 @@ module Stack = struct
 
 end (* Stack *)
 
-module ClosureTable = struct
+module ContinuationTable = struct
   (* See rts/motoko-rts/src/closure_table.rs *)
-  let remember env : G.t = E.call_import env "rts" "remember_closure"
-  let recall env : G.t = E.call_import env "rts" "recall_closure"
-  let peek_future env : G.t = E.call_import env "rts" "peek_future_closure"
-  let count env : G.t = E.call_import env "rts" "closure_count"
-  let size env : G.t = E.call_import env "rts" "closure_table_size"
-end (* ClosureTable *)
+  let remember env : G.t = E.call_import env "rts" "remember_continuation"
+  let recall env : G.t = E.call_import env "rts" "recall_continuation"
+  let peek_future env : G.t = E.call_import env "rts" "peek_future_continuation"
+  let count env : G.t = E.call_import env "rts" "continuation_count"
+  let size env : G.t = E.call_import env "rts" "continuation_table_size"
+end (* ContinuationTable *)
 
 module Bool = struct
   (* Boolean literals are either 0 or 1,
@@ -3490,7 +3490,7 @@ module IC = struct
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ []
        (G.nop)
-       (ClosureTable.count env ^^
+       (ContinuationTable.count env ^^
           E.then_trap_with env "canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)") ^^
       (* call pre_upgrade expression & any system method *)
       (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
@@ -5745,7 +5745,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^
+        ContinuationTable.recall env ^^
         Arr.load_field 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
@@ -5765,7 +5765,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^
+        ContinuationTable.recall env ^^
         Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
@@ -5785,7 +5785,7 @@ module FuncDec = struct
     fun closure_getters ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       Arr.lit env closure_getters ^^
-      ClosureTable.remember env ^^
+      ContinuationTable.remember env ^^
       set_cb_index ^^
 
       (* return arguments for the ic.call *)
@@ -5803,7 +5803,7 @@ module FuncDec = struct
     let name = "@cleanup_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env ->
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^
+        ContinuationTable.recall env ^^
         G.i Drop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
@@ -5913,7 +5913,7 @@ module FuncDec = struct
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.peek_future env ^^
+        ContinuationTable.peek_future env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -7264,11 +7264,11 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
-      ClosureTable.count env ^^ Prim.prim_word32toNat env
+      ContinuationTable.count env ^^ Prim.prim_word32toNat env
 
     | OtherPrim "rts_callback_table_size", [] ->
       SR.Vanilla,
-      ClosureTable.size env ^^ Prim.prim_word32toNat env
+      ContinuationTable.size env ^^ Prim.prim_word32toNat env
 
     | OtherPrim "crc32Hash", [e] ->
       SR.UnboxedWord32,
