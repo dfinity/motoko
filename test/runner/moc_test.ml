@@ -8,26 +8,102 @@ let collect_drun_mo_files (drun_file_path : string) : StringSet.t =
   let file_contents = read_file drun_file_path in
   StringSet.of_list (Re.matches mo_file_regex file_contents)
 
+(** Typecheck a mo file, assert that the output is as expected, and return
+    whether typechecking succeeded. Return value is useful for whether we
+    should continue with rest of the steps or stop. *)
+let typecheck_mo_file (mo_file_path : string) : bool =
+  let mo_file_contents = read_file mo_file_path in
+
+  let file_name = Filename.remove_extension (Filename.basename mo_file_path) in
+
+  let moc_extra_args =
+    String.concat " "
+      (collect_lines_starting_with mo_file_contents "//MOC-FLAG")
+  in
+
+  let moc_extra_envs =
+    String.concat " " (collect_lines_starting_with mo_file_contents "//MOC-ENV")
+  in
+
+  Printf.printf "moc_extra_args for typechecking: %s\n" moc_extra_args;
+  Printf.printf "moc_extra_envs for typechecking: %s\n" moc_extra_envs;
+
+  let output_file_path =
+    Printf.sprintf "../run-drun/_out/%s/%s.tc" file_name file_name
+  in
+  let moc_cmd =
+    Printf.sprintf "env %s moc %s --check %s > %s" moc_extra_envs moc_extra_args
+      mo_file_path output_file_path
+  in
+  Printf.printf "Type checking: %s\n" moc_cmd;
+
+  let moc_exit = Sys.command moc_cmd in
+
+  (* If there's an expected output file compare it with the actual output *)
+  let expected_output_path =
+    Printf.sprintf "../run-drun/ok/%s/%s.tc.ok" file_name file_name
+  in
+
+  let expected_output =
+    try Some (read_file expected_output_path) with Sys_error _ -> None
+  in
+
+  (match expected_output with
+  | None -> ()
+  | Some _expected_output ->
+      let _actual_output = read_file output_file_path in
+      (* TODO *)
+      ());
+
+  (* If exit code is not 0, compare exit code with the value in "...tc.ret.ok"
+     file. This part is a bit hacky, ported from the old shell script without
+     changes. *)
+  (if moc_exit <> 0 then
+   (* There should be a ".tc.ret.ok" file *)
+   let ret_file_path =
+     Printf.sprintf "../run-drun/ok/%s/%s.tc.ret.ok" file_name file_name
+   in
+
+   let ret_file_contents = read_file ret_file_path in
+
+   (* File contents will be like "Return code ...", drop the prefix *)
+   let prefix = "Return code " in
+   let prefix_len = String.length prefix in
+   let expected_ret_str =
+     String.sub ret_file_contents prefix_len
+       (String.length ret_file_contents - prefix_len)
+   in
+   let expected_ret = int_of_string expected_ret_str in
+
+   Alcotest.(check int) "moc --check exit code" expected_ret moc_exit);
+
+  true
+
 (** Run a drun test specified as a .mo file *)
 let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
     =
   let test_name = Filename.remove_extension (Filename.basename mo_file_path) in
 
+  let mo_file_contents = read_file mo_file_path in
+
+  let moc_extra_args =
+    String.concat " "
+      (collect_lines_starting_with mo_file_contents "//MOC-FLAG")
+  in
+
+  let moc_extra_envs =
+    String.concat " " (collect_lines_starting_with mo_file_contents "//MOC-ENV")
+  in
+
   let run_test () =
-    let mo_file_contents = read_file mo_file_path in
-    let moc_extra_flags =
-      collect_lines_starting_with mo_file_contents "//MOC-FLAG"
+    (* Type check *)
+    let moc_typecheck_cmd =
+      Printf.sprintf "env %s moc %s --check %s" moc_extra_envs moc_extra_args
+        mo_file_path
     in
-    let moc_extra_envs =
-      collect_lines_starting_with mo_file_contents "//MOC-ENV"
-    in
+    Printf.printf "Type checking: %s\n" moc_typecheck_cmd;
 
-    Printf.printf "moc_extra_flags:";
-    print_list moc_extra_flags;
-
-    Printf.printf "moc_extra_envs:";
-    print_list moc_extra_envs;
-
+    (* let moc_typecheck_exit = *)
     ()
   in
 
