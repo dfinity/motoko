@@ -5780,7 +5780,7 @@ module FuncDec = struct
         set_closure ^^
         get_closure ^^
 
-        (* Deserialize arguments  *)
+        (* Deserialize reply arguments  *)
         Serialization.deserialize env ts ^^
 
         get_closure ^^
@@ -5796,13 +5796,11 @@ module FuncDec = struct
   let closures_to_self_reply_reject_callbacks env ts =
     let reply_name = "@self_callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
-        let (set_arr, get_arr) = new_local env "arr" in
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ClosureTable.recall env ^^
-        set_arr ^^ get_arr ^^
         Arr.load_field 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
