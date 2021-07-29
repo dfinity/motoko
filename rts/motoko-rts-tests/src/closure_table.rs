@@ -1,6 +1,6 @@
 use crate::memory::TestMemory;
 
-use motoko_rts::closure_table::{closure_count, recall_closure, remember_closure};
+use motoko_rts::continuation_table::{closure_count, recall_closure, remember_closure};
 use motoko_rts::types::{SkewedPtr, Words};
 
 pub unsafe fn test() {
@@ -8,7 +8,7 @@ pub unsafe fn test() {
 
     assert_eq!(closure_count(), 0);
 
-    const N: usize = 2000; // >256, to exercise `double_closure_table`
+    const N: usize = 2000; // >256, to exercise `double_continuation_table`
 
     // Array will be doubled 3 times, so 256 + 512 + 1024 + 2048 = 3840 words, plus each array will
     // have 2 word header.

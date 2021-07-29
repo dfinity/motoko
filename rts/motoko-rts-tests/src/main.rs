@@ -2,7 +2,7 @@
 
 mod bigint;
 mod bitmap;
-mod closure_table;
+mod continuation_table;
 mod crc32;
 mod gc;
 mod leb128;
@@ -26,7 +26,7 @@ fn main() {
     unsafe {
         bigint::test();
         bitmap::test();
-        closure_table::test();
+        continuation_table::test();
         crc32::test();
         gc::test();
         leb128::test();
