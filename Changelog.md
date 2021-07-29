@@ -3,17 +3,16 @@
 * Trap on attempt to upgrade when canister not stopped and there are outstanding callbacks.
   (This failure mode can be avoided by stopping the canister before upgrade.)
 
-* New garbage collection scheduling: previously Motoko runtime would do gc
-  after every upgrade message. We now schedule a gc when
+* Vastly improved garbage collection scheduling: previously Motoko runtime would do GC
+  after every upgrade message. We now schedule a GC when
 
   1. Heap grows more than 50% and 10 MiB since the last GC, or
   2. Heap size is more than 3 GiB
 
-  (1) is to make sure we don't do gc on tiny heaps, and for larger heaps we
-  allow small allocations and do gc on large allocations. (2) is to make sure
-  on large heaps we will have enough allocation space in the next message.
+  (1) is to make sure we don't do GC on tiny heaps or after only small amounts of allocation. (2) is to make sure that
+  on large heaps we will have enough allocation space during the next message.
 
-  New scheduling reduces cycles significantly at the cost of more Wasm pages.
+  This scheduling reduces cycles substantially, but may moderately increase memory usage.
 
   New flag `--force-gc` restores the old behavior.
 
