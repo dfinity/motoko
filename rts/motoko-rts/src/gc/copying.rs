@@ -5,23 +5,32 @@ use crate::types::*;
 use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
+unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
+    if super::should_do_gc() {
+        copying_gc(mem);
+    }
+}
+
+#[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
+    use crate::memory::ic;
+
     copying_gc_internal(
         mem,
-        crate::memory::ic::get_heap_base(),
+        ic::get_heap_base(),
         // get_hp
-        || crate::memory::ic::HP as usize,
+        || ic::HP as usize,
         // set_hp
-        |hp| crate::memory::ic::HP = hp,
-        crate::memory::ic::get_static_roots(),
+        |hp| ic::HP = hp,
+        ic::get_static_roots(),
         crate::closure_table::closure_table_loc(),
         // note_live_size
-        |live_size| {
-            crate::memory::ic::MAX_LIVE = ::core::cmp::max(crate::memory::ic::MAX_LIVE, live_size)
-        },
+        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| crate::memory::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
     );
+
+    ic::LAST_HP = ic::HP;
 }
 
 pub unsafe fn copying_gc_internal<
