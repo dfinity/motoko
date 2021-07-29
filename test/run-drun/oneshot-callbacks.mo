@@ -13,7 +13,9 @@ actor a {
   public func go(trigger_cleanup : Bool) : async () {
     Prim.debugPrint("go 0: " # debug_show Prim.rts_callback_table_count());
     oneway_ping();
-    await async {Prim.debugPrint("go 1: " # debug_show Prim.rts_callback_table_count())};
+    await async {
+       Prim.debugPrint("go 1: " # debug_show Prim.rts_callback_table_count())
+    };
     await ping();
     try {
         ignore await (async {Prim.debugPrint("go 2: " # debug_show Prim.rts_callback_table_count()); assert false; 42})
