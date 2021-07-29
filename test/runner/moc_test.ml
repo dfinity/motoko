@@ -16,25 +16,19 @@ let typecheck_mo_file (mo_file_path : string) : unit =
   let file_name = Filename.remove_extension (Filename.basename mo_file_path) in
 
   let moc_extra_args =
-    String.concat " "
-      (collect_lines_starting_with mo_file_contents "//MOC-FLAG")
+    collect_lines_starting_with mo_file_contents "//MOC-FLAG"
   in
 
   let moc_extra_envs =
-    String.concat " " (collect_lines_starting_with mo_file_contents "//MOC-ENV")
+    collect_lines_starting_with mo_file_contents "//MOC-ENV"
   in
-
-  Printf.printf "moc_extra_args for typechecking: %s\n" moc_extra_args;
-  Printf.printf "moc_extra_envs for typechecking: %s\n" moc_extra_envs;
 
   let output_file_path = Printf.sprintf "../run-drun/_out/%s.tc" file_name in
-  let moc_cmd =
-    Printf.sprintf "env %s moc %s --check %s > %s" moc_extra_envs moc_extra_args
-      mo_file_path output_file_path
+  let moc_exit =
+    Runners.moc ~mo_file_path ~moc_output_path:(Some output_file_path)
+      ~args:(moc_extra_args @ [ "--check" ])
+      ~env:moc_extra_envs ()
   in
-  Printf.printf "Type checking: %s\n" moc_cmd;
-
-  let moc_exit = Sys.command moc_cmd in
 
   (* If there's an expected output file compare it with the actual output *)
   let expected_output_path =
@@ -51,12 +45,12 @@ let typecheck_mo_file (mo_file_path : string) : unit =
       let actual_output = read_file output_file_path in
 
       if expected_output <> actual_output then
-        diff ~expected_output_path ~actual_output_path:output_file_path);
+        Runners.diff ~expected_output_path ~actual_output_path:output_file_path);
 
   (* If exit code is not 0, compare exit code with the value in "...tc.ret.ok"
      file. This part is a bit hacky, ported from the old shell script without
      changes. *)
-  if moc_exit <> 0 then (
+  if moc_exit <> 0 then
     (* There should be a ".tc.ret.ok" file *)
     let ret_file_path =
       Printf.sprintf "../run-drun/ok/%s.tc.ret.ok" file_name
@@ -72,10 +66,9 @@ let typecheck_mo_file (mo_file_path : string) : unit =
         (String.sub ret_file_contents prefix_len
            (String.length ret_file_contents - prefix_len))
     in
-    Printf.printf "expected_ret_str: [%s]\n" expected_ret_str;
     let expected_ret = int_of_string expected_ret_str in
 
-    Alcotest.(check int) "moc --check exit code" expected_ret moc_exit)
+    Alcotest.(check int) "moc --check exit code" expected_ret moc_exit
 
 (** Run a drun test specified as a .mo file *)
 let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
@@ -184,19 +177,24 @@ let drun_drun_test (drun_file_path : string) :
               let mo_base =
                 Filename.remove_extension (Filename.basename mo_file)
               in
-              let moc_cmd =
-                Printf.sprintf "moc --hide-warnings -c %s -o %s/%s.drun.wasm\n"
-                  mo_file_path out_dir mo_base
-              in
-
-              Printf.printf "Compiling %s: `%s`" mo_file moc_cmd;
 
               let mkdir_exit =
                 Sys.command (Printf.sprintf "mkdir -p %s" out_dir)
               in
               Alcotest.(check int) "mkdir exit code" 0 mkdir_exit;
 
-              let moc_exit = Sys.command moc_cmd in
+              let moc_exit =
+                Runners.moc ~mo_file_path
+                  ~args:
+                    [
+                      "--hide-warnings";
+                      "-c";
+                      "-o";
+                      Printf.sprintf "%s/%s.drun.wasm" out_dir mo_base;
+                    ]
+                  ()
+              in
+
               Alcotest.(check int) "moc exit code" 0 moc_exit)
             mo_files;
 
@@ -215,15 +213,13 @@ let drun_drun_test (drun_file_path : string) :
           let actual_drun_output_path =
             Printf.sprintf "%s/%s.drun.out" out_dir test_name
           in
-          let drun_cmd =
-            Printf.sprintf "drun -c %s --extra-batches 1 %s > %s 2>&1"
-              drun_config_path drun_processed_script_path
-              actual_drun_output_path
+
+          let drun_exit =
+            Runners.drun ~config_path:drun_config_path
+              ~script_path:drun_processed_script_path
+              ~drun_output_path:actual_drun_output_path
           in
 
-          Printf.printf "Running %s\n" drun_cmd;
-
-          let drun_exit = Sys.command drun_cmd in
           Alcotest.(check int) "drun exit code" 0 drun_exit;
 
           let expected_drun_output_path =
@@ -242,7 +238,7 @@ let drun_drun_test (drun_file_path : string) :
 
             write_file normalized_output_file_path normalized_actual_output;
 
-            diff
+            Runners.diff
               ~expected_output_path:
                 (Printf.sprintf "../run-drun/ok/%s.drun.ok" test_name)
               ~actual_output_path:normalized_output_file_path));
