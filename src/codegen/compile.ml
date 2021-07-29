@@ -5836,12 +5836,10 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
 
-    (* The (above) upper half of this function must not depend on the
-       get_future, get_k and get_r parameters, so hide them from above (cute trick) *)
-    fun get_future get_k get_r ->
+    let stash_closures reply_name reject_name closure_getters =
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* store the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
-      Arr.lit env [get_k; get_r; get_future] ^^
+      Arr.lit env (*[get_k; get_r; get_future]*)closure_getters ^^
       ClosureTable.remember env ^^
       set_cb_index ^^
 
@@ -5849,7 +5847,10 @@ module FuncDec = struct
       compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
       get_cb_index ^^
       compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
-      get_cb_index
+      get_cb_index in
+    (* The (above) upper half of this function must not depend on the
+       get_future, get_k and get_r parameters, so hide them from above (cute trick) *)
+    stash_closures reply_name reject_name
 
   let ignoring_callback env =
     let name = "@ignore_callback" in
@@ -5902,7 +5903,7 @@ module FuncDec = struct
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
-      closures_to_self_reply_reject_callbacks env ts get_future get_k get_r ^^
+      closures_to_self_reply_reject_callbacks env ts [get_k; get_r; get_future] ^^
       set_cb_index ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
