@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+* Trap on attempt to upgrade when canister not stopped and there are outstanding callbacks.
+  (This failure mode can be avoided by stopping the canister before upgrade.)
+
 == 0.6.5 (2021-07-08)
 
 * Add alternative, _compacting_ gc, enabled with new moc flag `--compacting-gc`.
