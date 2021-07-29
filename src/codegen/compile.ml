@@ -5724,15 +5724,15 @@ module FuncDec = struct
     code ^^
     StackRep.adjust env sr SR.Vanilla
 
-  (* Takes the reply and reject callbacks, tuples them up,
-     add them to the closure table, and returns the two callbacks expected by
-     call_simple.
+  (* Takes the reply and reject callbacks, tuples them up (with administrative extras),
+     adds them to the closure table, and returns the two callbacks expected by
+     ic.call_new.
 
      The tupling is necessary because we want to free _both_/_all_ closures
-     when one is called.
+     when the call is answered.
 
-     The reply callback function exists once per type (it has to do
-     serialization); the reject callback function is unique.
+     The reply callback function exists once per type (as it has to do
+     deserialization); the reject callback function is unique.
   *)
 
   let closures_to_reply_reject_callbacks env ts =
@@ -5853,37 +5853,6 @@ module FuncDec = struct
         BoxedSmallWord.box env ^^
         Serialization.serialize env Type.[Prim Nat32])
 
-(*
-  let ic_self_call env ts get_meth_pair get_future get_k get_r add_cycles =
-    match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
-      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-      (* The callee *)
-      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
-      (* The method name *)
-      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
-      (* The reply and reject callback *)
-      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
-      closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future] ^^
-      set_cb_index ^^ get_cb_index ^^
-      (* initiate call *)
-      IC.system_call env "ic0" "call_new" ^^
-      cleanup_callback env ^^ get_cb_index ^^
-      IC.system_call env "ic0" "call_on_cleanup" ^^
-      (* the data *)
-      get_cb_index ^^ BoxedSmallWord.box env ^^ Serialization.serialize env Type.[Prim Nat32] ^^
-      IC.system_call env "ic0" "call_data_append" ^^
-      (* the cycles *)
-      add_cycles ^^
-      (* done! *)
-      IC.system_call env "ic0" "call_perform" ^^
-      (* Check error code *)
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.else_trap_with env "could not perform call"
-    | _ ->
-      E.trap_with env (Printf.sprintf "cannot perform self call when running locally")
- *)
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
     | Flags.ICMode
