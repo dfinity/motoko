@@ -5728,12 +5728,24 @@ module FuncDec = struct
      add them to the closure table, and returns the two callbacks expected by
      call_simple.
 
-     The tupling is necessary because we want to free _both_ closures when
-     one is called.
+     The tupling is necessary because we want to free _both_/_all_ closures
+     when one is called.
 
      The reply callback function exists once per type (it has to do
      serialization); the reject callback function is unique.
   *)
+
+  let stash_closures_pushing_callbacks env reply_name reject_name closure_getters =
+    let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+    Arr.lit env closure_getters ^^
+    ClosureTable.remember env ^^
+    set_cb_index ^^
+
+    (* return arguments for the ic.call *)
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
+    get_cb_index ^^
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
+    get_cb_index
 
   let closures_to_reply_reject_callbacks env ts =
     let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
@@ -5778,19 +5790,8 @@ module FuncDec = struct
       );
 
     (* The (above) upper half of this function must not depend on the
-       get_k and get_r parameters, so hide them from above (cute trick) *)
-    fun get_k get_r ->
-      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-      (* store the tuple away *)
-      Arr.lit env [get_k; get_r] ^^
-      ClosureTable.remember env ^^
-      set_cb_index ^^
-
-      (* return arguments for the ic.call *)
-      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
-      get_cb_index ^^
-      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
-      get_cb_index
+       closure_getters parameter, so hide them from above (cute trick) *)
+    stash_closures_pushing_callbacks env reply_name reject_name
 
   let closures_to_self_reply_reject_callbacks env ts =
     let reply_name = "@self_callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
@@ -5836,21 +5837,9 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
 
-    let stash_closures reply_name reject_name closure_getters =
-      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-      (* store the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
-      Arr.lit env (*[get_k; get_r; get_future]*)closure_getters ^^
-      ClosureTable.remember env ^^
-      set_cb_index ^^
-
-      (* return arguments for the ic.call *)
-      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
-      get_cb_index ^^
-      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
-      get_cb_index in
     (* The (above) upper half of this function must not depend on the
-       get_future, get_k and get_r parameters, so hide them from above (cute trick) *)
-    stash_closures reply_name reject_name
+       closure_getters parameter, so hide them from above (cute trick) *)
+    stash_closures_pushing_callbacks env reply_name reject_name
 
   let ignoring_callback env =
     let name = "@ignore_callback" in
@@ -5875,7 +5864,7 @@ module FuncDec = struct
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
-      closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
+      closures_to_reply_reject_callbacks env ts2 [get_k; get_r] ^^
       set_cb_index  ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
@@ -5903,6 +5892,7 @@ module FuncDec = struct
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
+      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
       closures_to_self_reply_reject_callbacks env ts [get_k; get_r; get_future] ^^
       set_cb_index ^^ get_cb_index ^^
       (* the data *)
