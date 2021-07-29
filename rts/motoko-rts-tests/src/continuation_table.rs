@@ -1,6 +1,8 @@
 use crate::memory::TestMemory;
 
-use motoko_rts::continuation_table::{continuation_count, recall_continuation, remember_continuation};
+use motoko_rts::continuation_table::{
+    continuation_count, recall_continuation, remember_continuation,
+};
 use motoko_rts::types::{SkewedPtr, Words};
 
 pub unsafe fn test() {
@@ -32,7 +34,10 @@ pub unsafe fn test() {
     }
 
     for i in (0..N).rev() {
-        assert_eq!(recall_continuation(references[i]).0, (i << 2).wrapping_sub(1));
+        assert_eq!(
+            recall_continuation(references[i]).0,
+            (i << 2).wrapping_sub(1)
+        );
         assert_eq!(continuation_count(), i as u32);
     }
 }
