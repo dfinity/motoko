@@ -5816,10 +5816,11 @@ module FuncDec = struct
       (* The reply and reject callback *)
       closures_to_reply_reject_callbacks env ts2 [get_k; get_r] ^^
       set_cb_index  ^^ get_cb_index ^^
-      (* the data *)
+      (* initiate call *)
       IC.system_call env "ic0" "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
+      (* the data *)
       get_arg ^^ Serialization.serialize env ts1 ^^
       IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
@@ -5845,10 +5846,11 @@ module FuncDec = struct
       (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
       closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future] ^^
       set_cb_index ^^ get_cb_index ^^
-      (* the data *)
+      (* initiate call *)
       IC.system_call env "ic0" "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
       IC.system_call env "ic0" "call_on_cleanup" ^^
+      (* the data *)
       get_cb_index ^^ BoxedSmallWord.box env ^^ Serialization.serialize env Type.[Prim Nat32] ^^
       IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
