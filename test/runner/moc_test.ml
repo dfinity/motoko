@@ -99,9 +99,46 @@ let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
           (collect_lines_starting_with mo_file_contents "//MOC-ENV")
       in
 
-      (* Otherwise run with the interpreters and drun *)
-      []
-    (* TODO *)
+      (* Otherwise run with the interpreters, ic-ref, and drun *)
+      [
+        Alcotest.test_case "interpret-ast" `Quick (fun () ->
+            let moc_exit =
+              Runners.moc ~mo_file_path
+                ~moc_output_path:
+                  (Some (Printf.sprintf "../run-drun/_out/%s.run" test_name))
+                ~args:[ "--hide-warnings"; "-r" ]
+                ()
+            in
+
+            Alcotest.(check int) "`moc -r` exit code" 0 moc_exit
+            (* TODO: Check output *));
+        Alcotest.test_case "interpret-ir" `Quick (fun () ->
+            let moc_exit =
+              Runners.moc ~mo_file_path
+                ~moc_output_path:
+                  (Some (Printf.sprintf "../run-drun/_out/%s.run-ir" test_name))
+                ~args:
+                  [ "--hide-warnings"; "-r"; "-iR"; "-no-async"; "-no-await" ]
+                ()
+            in
+
+            Alcotest.(check int)
+              "`moc -r -iR -no-async -no-await` exit code" 0 moc_exit
+            (* TODO: Check output *));
+        Alcotest.test_case "interpret-lower" `Quick (fun () ->
+            let moc_exit =
+              Runners.moc ~mo_file_path
+                ~moc_output_path:
+                  (Some (Printf.sprintf "../run-drun/_out/%s.run-low" test_name))
+                ~args:[ "--hide-warnings"; "-r"; "-iR" ]
+                ()
+            in
+
+            Alcotest.(check int) "`moc -r -iR` exit code" 0 moc_exit
+            (* TODO: Check output *));
+        Alcotest.test_case "ic-ref" `Quick (fun () -> ());
+        Alcotest.test_case "drun" `Quick (fun () -> ());
+      ]
   in
 
   (test_name, tests)
