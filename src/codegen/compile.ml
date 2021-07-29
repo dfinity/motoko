@@ -501,6 +501,7 @@ module E = struct
 
   let collect_garbage env =
     let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
+    let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" gc_fn
 end
 
@@ -831,6 +832,8 @@ module RTS = struct
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_copying_gc" [] [];
+    E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
