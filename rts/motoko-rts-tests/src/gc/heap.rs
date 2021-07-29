@@ -78,12 +78,12 @@ impl MotokoHeap {
         self.inner.borrow().static_root_array_address()
     }
 
-    /// Get the offset of the closure table pointer
+    /// Get the offset of the continuation table pointer
     pub fn continuation_table_ptr_offset(&self) -> usize {
         self.inner.borrow().continuation_table_ptr_offset
     }
 
-    /// Get the address of the closure table pointer
+    /// Get the address of the continuation table pointer
     pub fn continuation_table_ptr_address(&self) -> usize {
         self.inner.borrow().continuation_table_ptr_address()
     }
@@ -108,7 +108,7 @@ struct MotokoHeapInner {
     /// Offset of the static root array: an array of pointers below `heap_base`
     static_root_array_offset: usize,
 
-    /// Offset of the closure table pointer.
+    /// Offset of the continuation table pointer.
     ///
     /// Reminder: this location is in static heap and will have pointer to an array in dynamic
     /// heap.
@@ -144,7 +144,7 @@ impl MotokoHeapInner {
         self.offset_to_address(self.static_root_array_offset)
     }
 
-    /// Get the address of the closure table pointer
+    /// Get the address of the continuation table pointer
     fn continuation_table_ptr_address(&self) -> usize {
         self.offset_to_address(self.continuation_table_ptr_offset)
     }
@@ -157,7 +157,7 @@ impl MotokoHeapInner {
     ) -> MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
-        // closure table pointer.
+        // continuation table pointer.
         let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
@@ -324,7 +324,7 @@ fn create_dynamic_heap(
         }
     }
 
-    // Add the closure table
+    // Add the continuation table
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.values().map(|fields| fields.len() + 1).sum();
@@ -396,7 +396,7 @@ fn create_static_heap(
         mutbox_offset += size_of::<MutBox>().to_bytes().0 as usize;
     }
 
-    // Write closure table pointer as the last word in static heap
+    // Write continuation table pointer as the last word in static heap
     let continuation_table_ptr = continuation_table_offset as u32 + heap.as_ptr() as u32;
     write_word(
         heap,
