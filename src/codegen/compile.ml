@@ -5780,16 +5780,16 @@ module FuncDec = struct
     (* result is a function that accepts a list of closure getters, from which
        the first and second must be the reply and reject continuations. *)
     fun closure_getters ->
-    let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-    Arr.lit env closure_getters ^^
-    ClosureTable.remember env ^^
-    set_cb_index ^^
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      Arr.lit env closure_getters ^^
+      ClosureTable.remember env ^^
+      set_cb_index ^^
 
-    (* return arguments for the ic.call *)
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
-    get_cb_index ^^
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
-    get_cb_index
+      (* return arguments for the ic.call *)
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
+      get_cb_index ^^
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
+      get_cb_index
 
   let ignoring_callback env =
     let name = "@ignore_callback" in
