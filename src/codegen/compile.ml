@@ -5735,39 +5735,6 @@ module FuncDec = struct
      serialization); the reject callback function is unique.
   *)
 
-  let message_reject_callback env reject_name =
-    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
-        message_start env (Type.Shared Type.Write) ^^
-        (* Look up closure *)
-        let (set_closure, get_closure) = new_local env "closure" in
-        G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^
-        Arr.load_field 1l ^^ (* get the reject closure *)
-        set_closure ^^
-        get_closure ^^
-        (* Synthesize value of type `Text`, the error message
-           (The error code is fetched via a prim)
-        *)
-        IC.error_value env ^^
-
-        get_closure ^^
-        Closure.call_closure env 1 0 ^^
-
-        message_cleanup env (Type.Shared Type.Write)
-      )
-
-  let stash_closures_pushing_callbacks env reply_name reject_name closure_getters =
-    let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-    Arr.lit env closure_getters ^^
-    ClosureTable.remember env ^^
-    set_cb_index ^^
-
-    (* return arguments for the ic.call *)
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
-    get_cb_index ^^
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
-    get_cb_index
-
   let closures_to_reply_reject_callbacks env ts =
     let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
@@ -5790,33 +5757,39 @@ module FuncDec = struct
       );
 
     let reject_name = "@reject_callback" in
-    message_reject_callback env reject_name;
-    stash_closures_pushing_callbacks env reply_name reject_name
-
-  let closures_to_self_reply_reject_callbacks env ts =
-    let reply_name = "@self_callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
-    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ClosureTable.recall env ^^
-        Arr.load_field 0l ^^ (* get the reply closure *)
+        Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
-
-        (* Deserialize reply arguments  *)
-        Serialization.deserialize env ts ^^
+        (* Synthesize value of type `Text`, the error message
+           (The error code is fetched via a prim)
+        *)
+        IC.error_value env ^^
 
         get_closure ^^
-        Closure.call_closure env (List.length ts) 0 ^^
+        Closure.call_closure env 1 0 ^^
 
         message_cleanup env (Type.Shared Type.Write)
       );
 
-    let reject_name = "@self_reject_callback" in
-    message_reject_callback env reject_name;
-    stash_closures_pushing_callbacks env reply_name reject_name
+    (* result is a function that accepts a list of closure getters, from which
+       the first and second must be the reply and reject continuations. *)
+    fun closure_getters ->
+    let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+    Arr.lit env closure_getters ^^
+    ClosureTable.remember env ^^
+    set_cb_index ^^
+
+    (* return arguments for the ic.call *)
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
+    get_cb_index ^^
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
+    get_cb_index
 
   let ignoring_callback env =
     let name = "@ignore_callback" in
@@ -5870,7 +5843,7 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
-      closures_to_self_reply_reject_callbacks env ts [get_k; get_r; get_future] ^^
+      closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future] ^^
       set_cb_index ^^ get_cb_index ^^
       (* the data *)
       IC.system_call env "ic0" "call_new" ^^
