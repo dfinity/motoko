@@ -8,10 +8,9 @@ let collect_drun_mo_files (drun_file_path : string) : StringSet.t =
   let file_contents = read_file drun_file_path in
   StringSet.of_list (Re.matches mo_file_regex file_contents)
 
-(** Typecheck a mo file, assert that the output is as expected, and return
-    whether typechecking succeeded. Return value is useful for whether we
-    should continue with rest of the steps or stop. *)
-let typecheck_mo_file (mo_file_path : string) : bool =
+(** Typecheck a mo file, assert that the output is as expected. This function
+    is used for tests that expect to not type check. *)
+let typecheck_mo_file (mo_file_path : string) : unit =
   let mo_file_contents = read_file mo_file_path in
 
   let file_name = Filename.remove_extension (Filename.basename mo_file_path) in
@@ -50,34 +49,33 @@ let typecheck_mo_file (mo_file_path : string) : bool =
 
   (match expected_output with
   | None -> ()
-  | Some _expected_output ->
-      let _actual_output = read_file output_file_path in
-      (* TODO *)
-      ());
+  | Some expected_output ->
+      let actual_output = read_file output_file_path in
+
+      if expected_output <> actual_output then
+        diff ~expected_output_path ~actual_output_path:output_file_path);
 
   (* If exit code is not 0, compare exit code with the value in "...tc.ret.ok"
      file. This part is a bit hacky, ported from the old shell script without
      changes. *)
-  (if moc_exit <> 0 then
-   (* There should be a ".tc.ret.ok" file *)
-   let ret_file_path =
-     Printf.sprintf "../run-drun/ok/%s/%s.tc.ret.ok" file_name file_name
-   in
+  if moc_exit <> 0 then
+    (* There should be a ".tc.ret.ok" file *)
+    let ret_file_path =
+      Printf.sprintf "../run-drun/ok/%s/%s.tc.ret.ok" file_name file_name
+    in
 
-   let ret_file_contents = read_file ret_file_path in
+    let ret_file_contents = read_file ret_file_path in
 
-   (* File contents will be like "Return code ...", drop the prefix *)
-   let prefix = "Return code " in
-   let prefix_len = String.length prefix in
-   let expected_ret_str =
-     String.sub ret_file_contents prefix_len
-       (String.length ret_file_contents - prefix_len)
-   in
-   let expected_ret = int_of_string expected_ret_str in
+    (* File contents will be like "Return code ...", drop the prefix *)
+    let prefix = "Return code " in
+    let prefix_len = String.length prefix in
+    let expected_ret_str =
+      String.sub ret_file_contents prefix_len
+        (String.length ret_file_contents - prefix_len)
+    in
+    let expected_ret = int_of_string expected_ret_str in
 
-   Alcotest.(check int) "moc --check exit code" expected_ret moc_exit);
-
-  true
+    Alcotest.(check int) "moc --check exit code" expected_ret moc_exit
 
 (** Run a drun test specified as a .mo file *)
 let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
@@ -86,28 +84,34 @@ let drun_mo_test (mo_file_path : string) : string * unit Alcotest.test_case list
 
   let mo_file_contents = read_file mo_file_path in
 
-  let moc_extra_args =
-    String.concat " "
-      (collect_lines_starting_with mo_file_contents "//MOC-FLAG")
-  in
-
-  let moc_extra_envs =
-    String.concat " " (collect_lines_starting_with mo_file_contents "//MOC-ENV")
-  in
-
-  let run_test () =
-    (* Type check *)
-    let moc_typecheck_cmd =
-      Printf.sprintf "env %s moc %s --check %s" moc_extra_envs moc_extra_args
-        mo_file_path
+  let tests =
+    (* If the test has a ".tc.ok" file then we only typecheck it as it's expect
+       to not type check *)
+    let typecheck_file_path =
+      Printf.sprintf "../run-drun/ok/%s.tc.ok" test_name
     in
-    Printf.printf "Type checking: %s\n" moc_typecheck_cmd;
+    if Sys.file_exists typecheck_file_path then
+      [
+        Alcotest.test_case "tc" `Quick (fun () ->
+            typecheck_mo_file mo_file_path);
+      ]
+    else
+      let moc_extra_args =
+        String.concat " "
+          (collect_lines_starting_with mo_file_contents "//MOC-FLAG")
+      in
 
-    (* let moc_typecheck_exit = *)
-    ()
+      let moc_extra_envs =
+        String.concat " "
+          (collect_lines_starting_with mo_file_contents "//MOC-ENV")
+      in
+
+      (* Otherwise run with the interpreters and drun *)
+      []
+    (* TODO *)
   in
 
-  (test_name, [ Alcotest.test_case "" `Quick run_test ])
+  (test_name, tests)
 
 (** - Replace file paths like `$test_name/x.mo` in a file with
     `$out/x.$runner.wasm`
@@ -235,33 +239,13 @@ let drun_drun_test (drun_file_path : string) :
             let normalized_output_file_path =
               Printf.sprintf "%s/%s.drun.out.normal" out_dir test_name
             in
+
             write_file normalized_output_file_path normalized_actual_output;
-            let diff_cmd =
-              Printf.sprintf
-                "diff -a -u -N --label expected ../run-drun/ok/%s.drun.ok \
-                 --label actual %s"
-                test_name normalized_output_file_path
-            in
 
-            (* TODO: Somehow this line is printed after the `diff` output.
-               OCaml runtime probably has its own output buffer, we need to
-               flush it somehow. *)
-            Printf.printf "Outputs do not match, running %s\n" diff_cmd;
-
-            let diff_exit = Sys.command diff_cmd in
-            (* diff returns 0 when inputs match and 2 when there's a problem. 1
-               is returned when inputs do not match, which is the expected
-               return value here *)
-            if diff_exit <> 1 then
-              Alcotest.fail
-                (Printf.sprintf
-                   "Expected and actual drun outputs do not match, diff \
-                    returned %d"
-                   diff_exit)
-            else
-              Alcotest.fail
-                "Expected and actual drun outputs do not match. See test \
-                 output for the diff."));
+            diff
+              ~expected_output_path:
+                (Printf.sprintf "../run-drun/ok/%s.drun.ok" test_name)
+              ~actual_output_path:normalized_output_file_path));
     ] )
 
 (** Scan directory drun/ for tests. Only the top-level files are tests. .drun
