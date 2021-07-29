@@ -2498,7 +2498,7 @@ module BigNumLibtommath : BigNumType = struct
         then []
         else
           let (a, b) = Big_int.quomod_big_int n twoto28 in
-          [ Int32.of_int (Big_int.int_of_big_int b) ] @ go a
+          [ Big_int.int32_of_big_int b ] @ go a
       in go n
     in
     (* how many 32 bit digits *)
@@ -3305,6 +3305,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
+      E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
@@ -3476,10 +3477,18 @@ module IC = struct
 
   let export_upgrade_methods env =
     if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
-
+    let status_stopped = 3l in
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
-      G.i (Call (nr (E.built_in env "pre_exp"))) ^^
+      (* check status is stopped or trap on outstanding callbacks *)
+      system_call env "ic0" "canister_status" ^^ compile_unboxed_const status_stopped ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if_ []
+       (G.nop)
+       (ClosureTable.count env ^^
+          E.then_trap_with env "canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)") ^^
+      (* call pre_upgrade expression & any system method *)
+      (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
       Lifecycle.trans env Lifecycle.PostPreUpgrade
     )) in
 
@@ -4232,31 +4241,18 @@ module Serialization = struct
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 8l ^^ advance_data_buf
       | Prim (Int32|Nat32) ->
-        get_data_buf ^^
-        get_x ^^ BoxedSmallWord.unbox env ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 4l ^^ advance_data_buf
+        write_word32 (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
-        get_data_buf ^^
-        get_x ^^ TaggedSmallWord.untag_codepoint ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 4l ^^ advance_data_buf
+        write_word32 (get_x ^^ TaggedSmallWord.untag_codepoint)
       | Prim (Int16|Nat16) ->
         get_data_buf ^^
         get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
         compile_unboxed_const 2l ^^ advance_data_buf
       | Prim (Int8|Nat8) ->
-        get_data_buf ^^
-        get_x ^^ TaggedSmallWord.lsb_adjust Nat8 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
+        write_byte (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
-        get_data_buf ^^
-        get_x ^^
-        BoxedSmallWord.unbox env (* essentially SR.adjust SR.Vanilla SR.bool *) ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
+        write_byte (get_x ^^ BoxedSmallWord.unbox env) (* essentially SR.adjust SR.Vanilla SR.bool *)
       | Tup [] -> (* e(()) = null *)
         G.nop
       | Tup ts ->
@@ -6184,6 +6180,13 @@ end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
 
+(* wraps a bigint in range [0…2^32-1] into range [-2^31…2^31-1] *)
+let nat32_to_int32 n =
+  let open Big_int in
+  if ge_big_int n (power_int_positive_int 2 31)
+  then sub_big_int n (power_int_positive_int 2 32)
+  else n
+
 (* wraps a bigint in range [0…2^64-1] into range [-2^63…2^63-1] *)
 let nat64_to_int64 n =
   let open Big_int in
@@ -6199,8 +6202,8 @@ let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int n))
   | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int n))
   | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int n))
-  | Int32Lit n    -> Const.Word32 (Int32.of_int (Numerics.Int_32.to_int n))
-  | Nat32Lit n    -> Const.Word32 (Int32.of_int (Numerics.Nat32.to_int n))
+  | Int32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (Numerics.Int_32.to_big_int n))
+  | Nat32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (nat32_to_int32 (Numerics.Nat32.to_big_int n)))
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
@@ -6898,7 +6901,7 @@ and compile_exp (env : E.t) ae exp =
           let add_cycles = Internals.add_cycles env ae in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
-          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
+          compile_exp_vanilla env ae e2 ^^ set_arg ^^
 
           FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
       end
@@ -7115,13 +7118,13 @@ and compile_exp (env : E.t) ae exp =
     (* Other prims, unary *)
     | SerializePrim ts, [e] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.Vanilla e ^^
+      compile_exp_vanilla env ae e ^^
       Serialization.serialize env ts ^^
       Blob.of_ptr_size env
 
     | DeserializePrim ts, [e] ->
       StackRep.of_arity (List.length ts),
-      compile_exp_as env ae SR.Vanilla e ^^
+      compile_exp_vanilla env ae e ^^
       Serialization.deserialize_from_blob false env ts
 
     | OtherPrim "array_len", [e] ->
@@ -7415,7 +7418,7 @@ and compile_exp (env : E.t) ae exp =
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
-        compile_exp_as env ae SR.Vanilla e ^^
+        compile_exp_vanilla env ae e ^^
         (* TODO: We can try to avoid the boxing and pass the arguments to
           serialize individually *)
         Serialization.serialize env ts ^^
@@ -7440,10 +7443,10 @@ and compile_exp (env : E.t) ae exp =
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
       let add_cycles = Internals.add_cycles env ae in
-      compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
-      compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
-      compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
-      compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
+      compile_exp_vanilla env ae f ^^ set_meth_pair ^^
+      compile_exp_vanilla env ae e ^^ set_arg ^^
+      compile_exp_vanilla env ae k ^^ set_k ^^
+      compile_exp_vanilla env ae r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
       end
 
@@ -7468,7 +7471,7 @@ and compile_exp (env : E.t) ae exp =
 
     | ICStableWrite ty, [e] ->
       SR.unit,
-      compile_exp_as env ae SR.Vanilla e ^^
+      compile_exp_vanilla env ae e ^^
       Stabilization.stabilize env ty
 
     (* Cycles *)
@@ -7492,7 +7495,7 @@ and compile_exp (env : E.t) ae exp =
 
     | SetCertifiedData, [e1] ->
       SR.unit,
-      compile_exp_as env ae SR.Vanilla e1 ^^
+      compile_exp_vanilla env ae e1 ^^
       IC.set_certified_data env
     | GetCertificate, [] ->
       SR.Vanilla,
@@ -7593,8 +7596,8 @@ and compile_exp (env : E.t) ae exp =
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     set_closure_idx ^^
 
-    compile_exp_as env ae SR.Vanilla exp_k ^^ set_k ^^
-    compile_exp_as env ae SR.Vanilla exp_r ^^ set_r ^^
+    compile_exp_vanilla env ae exp_k ^^ set_k ^^
+    compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
     FuncDec.ic_call env Type.[Prim Nat32] ts
       ( IC.get_self_reference env ^^
@@ -7664,7 +7667,7 @@ and compile_exp_as_test env ae e =
 (* Compile a prim of type Char -> Char to a RTS call. *)
 and compile_char_to_char_rts env ae exp rts_fn =
   SR.Vanilla,
-  compile_exp_as env ae SR.Vanilla exp ^^
+  compile_exp_vanilla env ae exp ^^
   TaggedSmallWord.untag_codepoint ^^
   E.call_import env "rts" rts_fn ^^
   TaggedSmallWord.tag_codepoint
@@ -7674,7 +7677,7 @@ and compile_char_to_char_rts env ae exp rts_fn =
    for 'true'. *)
 and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
   SR.bool,
-  compile_exp_as env ae SR.Vanilla exp ^^
+  compile_exp_vanilla env ae exp ^^
   TaggedSmallWord.untag_codepoint ^^
   (* The RTS function returns Motoko True/False values (which are represented as
      1 and 0, respectively) so we don't need any marshalling *)

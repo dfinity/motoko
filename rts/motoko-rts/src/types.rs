@@ -17,6 +17,10 @@ impl Words<u32> {
     pub fn to_bytes(self) -> Bytes<u32> {
         Bytes(self.0 * WORD_SIZE)
     }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
+    }
 }
 
 impl<A: Add<Output = A>> Add for Words<A> {
@@ -226,11 +230,13 @@ impl Array {
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+        debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const SkewedPtr)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, ptr: SkewedPtr) {
+        debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *mut SkewedPtr) = ptr;
     }

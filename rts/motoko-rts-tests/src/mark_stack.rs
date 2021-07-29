@@ -1,15 +1,23 @@
 use crate::memory::TestMemory;
 
 use motoko_rts::gc::mark_compact::mark_stack::{
-    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
+    alloc_mark_stack, free_mark_stack, grow_stack, pop_mark_stack, push_mark_stack,
+    INIT_STACK_SIZE, STACK_BASE, STACK_PTR, STACK_TOP,
 };
 use motoko_rts::memory::Memory;
-use motoko_rts::types::Words;
+use motoko_rts::types::{size_of, Blob, Words};
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
     println!("Testing mark stack ...");
+
+    test_push_pop();
+    test_grow_stack();
+}
+
+fn test_push_pop() {
+    println!("  Testing push/pop");
 
     let mut proptest_runner = TestRunner::new(Config {
         cases: 100,
@@ -54,4 +62,29 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
     }
 
     Ok(())
+}
+
+unsafe fn test_grow_stack() {
+    println!("  Testing grow_stack");
+
+    // Allow doubling twice
+    let mut mem = TestMemory::new(
+        size_of::<Blob>() + INIT_STACK_SIZE + INIT_STACK_SIZE + INIT_STACK_SIZE * 2,
+    );
+
+    alloc_mark_stack(&mut mem);
+
+    let mut current_size = INIT_STACK_SIZE.as_usize();
+    assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
+    assert_eq!(STACK_BASE, STACK_PTR);
+
+    grow_stack(&mut mem);
+    current_size *= 2;
+    assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
+    assert_eq!(STACK_BASE, STACK_PTR);
+
+    grow_stack(&mut mem);
+    current_size *= 2;
+    assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
+    assert_eq!(STACK_BASE, STACK_PTR);
 }
