@@ -9,7 +9,9 @@ actor a {
         if (rabbit_hole == 0) {
           assert false
         } else {
-          await drill(rabbit_hole - 1)
+          await drill(rabbit_hole - 1);
+          // force the reject continuation one third of the time
+          assert rabbit_hole % 3 == 0
         }
       }
     } catch _ {
