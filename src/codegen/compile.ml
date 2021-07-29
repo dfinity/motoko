@@ -3307,6 +3307,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
+      E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
@@ -3478,10 +3479,18 @@ module IC = struct
 
   let export_upgrade_methods env =
     if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
-
+    let status_stopped = 3l in
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
-      G.i (Call (nr (E.built_in env "pre_exp"))) ^^
+      (* check status is stopped or trap on outstanding callbacks *)
+      system_call env "ic0" "canister_status" ^^ compile_unboxed_const status_stopped ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if_ []
+       (G.nop)
+       (ClosureTable.count env ^^
+          E.then_trap_with env "canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)") ^^
+      (* call pre_upgrade expression & any system method *)
+      (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
       Lifecycle.trans env Lifecycle.PostPreUpgrade
     )) in
 
@@ -4167,31 +4176,18 @@ module Serialization = struct
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 8l ^^ advance_data_buf
       | Prim (Int32|Nat32) ->
-        get_data_buf ^^
-        get_x ^^ BoxedSmallWord.unbox env ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 4l ^^ advance_data_buf
+        write_word32 (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
-        get_data_buf ^^
-        get_x ^^ TaggedSmallWord.untag_codepoint ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 4l ^^ advance_data_buf
+        write_word32 (get_x ^^ TaggedSmallWord.untag_codepoint)
       | Prim (Int16|Nat16) ->
         get_data_buf ^^
         get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
         compile_unboxed_const 2l ^^ advance_data_buf
       | Prim (Int8|Nat8) ->
-        get_data_buf ^^
-        get_x ^^ TaggedSmallWord.lsb_adjust Nat8 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
+        write_byte (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
-        get_data_buf ^^
-        get_x ^^
-        BoxedSmallWord.unbox env (* essentially SR.adjust SR.Vanilla SR.bool *) ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
+        write_byte (get_x ^^ BoxedSmallWord.unbox env) (* essentially SR.adjust SR.Vanilla SR.bool *)
       | Tup [] -> (* e(()) = null *)
         G.nop
       | Tup ts ->
@@ -6216,6 +6212,13 @@ end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
 
+(* wraps a bigint in range [0…2^32-1] into range [-2^31…2^31-1] *)
+let nat32_to_int32 n =
+  let open Big_int in
+  if ge_big_int n (power_int_positive_int 2 31)
+  then sub_big_int n (power_int_positive_int 2 32)
+  else n
+
 (* wraps a bigint in range [0…2^64-1] into range [-2^63…2^63-1] *)
 let nat64_to_int64 n =
   let open Big_int in
@@ -6231,8 +6234,8 @@ let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int n))
   | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int n))
   | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int n))
-  | Int32Lit n    -> Const.Word32 (Int32.of_int (Numerics.Int_32.to_int n))
-  | Nat32Lit n    -> Const.Word32 (Int32.of_int (Numerics.Nat32.to_int n))
+  | Int32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (Numerics.Int_32.to_big_int n))
+  | Nat32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (nat32_to_int32 (Numerics.Nat32.to_big_int n)))
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)

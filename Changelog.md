@@ -1,9 +1,10 @@
 # Motoko compiler changelog
 
-
+* Trap on attempt to upgrade when canister not stopped and there are outstanding callbacks.
+  (This failure mode can be avoided by stopping the canister before upgrade.)
 * Fix issue #2640 (leaked `ClosureTable` entry when awaiting futures fails).
 
-* == 0.6.5 (2021-07-08)
+== 0.6.5 (2021-07-08)
 
 * Add alternative, _compacting_ gc, enabled with new moc flag `--compacting-gc`.
   The compacting gc supports larger heap sizes than the default, 2-space copying collector.
