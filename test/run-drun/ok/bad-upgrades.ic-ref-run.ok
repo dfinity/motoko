@@ -1,0 +1,14 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+debug.print: init'ed
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+debug.print: -1
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+debug.print: 666
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+debug.print: "text"
+← replied: ()

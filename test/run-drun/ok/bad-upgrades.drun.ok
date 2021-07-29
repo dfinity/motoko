@@ -1,0 +1,9 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: init'ed
+ingress Completed: Reply: 0x4449444c0000
+debug.print: -1
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 666
+ingress Completed: Reply: 0x4449444c0000
+debug.print: "text"
+ingress Completed: Reply: 0x4449444c0000
