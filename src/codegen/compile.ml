@@ -7629,8 +7629,8 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
     FuncDec.ic_self_call env ts
-      ( IC.get_self_reference env ^^
-        IC.actor_public_field env (IC.async_method_name))
+      (IC.get_self_reference env ^^
+       IC.actor_public_field env (IC.async_method_name))
       get_future
       get_k
       get_r
