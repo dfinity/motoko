@@ -5728,7 +5728,7 @@ module FuncDec = struct
     StackRep.adjust env sr SR.Vanilla
 
   (* Takes the reply and reject callbacks, tuples them up (with administrative extras),
-     adds them to the closure table, and returns the two callbacks expected by
+     adds them to the continuation table, and returns the two callbacks expected by
      ic.call_new.
 
      The tupling is necessary because we want to free _both_/_all_ closures
@@ -5742,7 +5742,7 @@ module FuncDec = struct
     let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
-        (* Look up closure *)
+        (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
@@ -5762,7 +5762,7 @@ module FuncDec = struct
     let reject_name = "@reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
-        (* Look up closure *)
+        (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
@@ -5849,7 +5849,7 @@ module FuncDec = struct
       env
       "self call"
       get_meth_pair
-      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
+      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/continuation_table.rs *)
       (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future])
       (fun get_cb_index ->
         get_cb_index ^^
@@ -5910,7 +5910,7 @@ module FuncDec = struct
         (* Check that we are calling this *)
         IC.assert_caller_self env ^^
 
-        (* Deserialize and look up closure argument *)
+        (* Deserialize and look up continuation argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
         ContinuationTable.peek_future env ^^
