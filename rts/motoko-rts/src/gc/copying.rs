@@ -23,7 +23,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // set_hp
         |hp| ic::HP = hp,
         ic::get_static_roots(),
-        crate::closure_table::closure_table_loc(),
+        crate::continuation_table::continuation_table_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
@@ -45,7 +45,7 @@ pub unsafe fn copying_gc_internal<
     get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: SkewedPtr,
-    closure_table_loc: *mut SkewedPtr,
+    continuation_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -58,12 +58,12 @@ pub unsafe fn copying_gc_internal<
     // Evacuate roots
     evac_static_roots(mem, begin_from_space, begin_to_space, static_roots);
 
-    if (*closure_table_loc).unskew() >= begin_from_space {
+    if (*continuation_table_loc).unskew() >= begin_from_space {
         evac(
             mem,
             begin_from_space,
             begin_to_space,
-            closure_table_loc as usize,
+            continuation_table_loc as usize,
         );
     }
 
