@@ -1,0 +1,70 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update drill((42 : nat8))
+debug.print: drill! 42 0
+debug.print: drill! 41 2
+debug.print: drill! 40 4
+debug.print: drill! 39 6
+debug.print: drill! 38 8
+debug.print: drill! 37 10
+debug.print: drill! 36 12
+debug.print: drill! 35 14
+debug.print: drill! 34 16
+debug.print: drill! 33 18
+debug.print: drill! 32 20
+debug.print: drill! 31 22
+debug.print: drill! 30 24
+debug.print: drill! 29 26
+debug.print: drill! 28 28
+debug.print: drill! 27 30
+debug.print: drill! 26 32
+debug.print: drill! 25 34
+debug.print: drill! 24 36
+debug.print: drill! 23 38
+debug.print: drill! 22 40
+debug.print: drill! 21 42
+debug.print: drill! 20 44
+debug.print: drill! 19 46
+debug.print: drill! 18 48
+debug.print: drill! 17 50
+debug.print: drill! 16 52
+debug.print: drill! 15 54
+debug.print: drill! 14 56
+debug.print: drill! 13 58
+debug.print: drill! 12 60
+debug.print: drill! 11 62
+debug.print: drill! 10 64
+debug.print: drill! 9 66
+debug.print: drill! 8 68
+debug.print: drill! 7 70
+debug.print: drill! 6 72
+debug.print: drill! 5 74
+debug.print: drill! 4 76
+debug.print: drill! 3 78
+debug.print: drill! 2 80
+debug.print: drill! 1 82
+debug.print: drill! 0 84
+← replied: ()
+→ update go(true)
+debug.print: go 0: 0
+debug.print: ping! 1
+debug.print: go 1: 1
+debug.print: ping-async! 1
+debug.print: go 2: 1
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update go(false)
+debug.print: go 0: 0
+debug.print: ping! 1
+debug.print: go 1: 1
+debug.print: ping-async! 1
+debug.print: go 2: 1
+← replied: ()
+→ update go(true)
+debug.print: go 0: 0
+debug.print: ping! 1
+debug.print: go 1: 1
+debug.print: ping-async! 1
+debug.print: go 2: 1
+← rejected (RC_CANISTER_ERROR): canister did not respond

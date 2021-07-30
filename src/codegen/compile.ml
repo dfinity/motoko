@@ -501,6 +501,7 @@ module E = struct
 
   let collect_garbage env =
     let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
+    let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" gc_fn
 end
 
@@ -789,6 +790,7 @@ module RTS = struct
     E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
+    E.add_func_import env "rts" "peek_future_closure" [I32Type] [I32Type];
     E.add_func_import env "rts" "closure_count" [] [I32Type];
     E.add_func_import env "rts" "closure_table_size" [] [I32Type];
     E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
@@ -830,6 +832,8 @@ module RTS = struct
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_copying_gc" [] [];
+    E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
@@ -991,6 +995,7 @@ module ClosureTable = struct
   (* See rts/motoko-rts/src/closure_table.rs *)
   let remember env : G.t = E.call_import env "rts" "remember_closure"
   let recall env : G.t = E.call_import env "rts" "recall_closure"
+  let peek_future env : G.t = E.call_import env "rts" "peek_future_closure"
   let count env : G.t = E.call_import env "rts" "closure_count"
   let size env : G.t = E.call_import env "rts" "closure_table_size"
 end (* ClosureTable *)
@@ -3302,6 +3307,7 @@ module IC = struct
       E.add_func_import env "ic0" "call_cycles_add" [I64Type] [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
+      E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
       E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
@@ -4328,7 +4334,7 @@ module Serialization = struct
     )
 
   (* This value is returned by deserialize_go if deserialization fails in a way
-     that should be recovereable by opt parsing.
+     that should be recoverable by opt parsing.
      By virtue of being a deduped static value, it can be detected by pointer
      comparison.
   *)
@@ -5782,23 +5788,22 @@ module FuncDec = struct
       (SR.Const ct, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
 
-  (* Returns the index of a saved closure *)
+  (* Returns a closure corresponding to a future (async block) *)
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
     let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
     code ^^
-    StackRep.adjust env sr SR.Vanilla ^^
-    ClosureTable.remember env
+    StackRep.adjust env sr SR.Vanilla
 
-  (* Takes the reply and reject callbacks, tuples them up,
-     add them to the closure table, and returns the two callbacks expected by
-     call_simple.
+  (* Takes the reply and reject callbacks, tuples them up (with administrative extras),
+     adds them to the closure table, and returns the two callbacks expected by
+     ic.call_new.
 
-     The tupling is necessary because we want to free _both_ closures when
-     one is called.
+     The tupling is necessary because we want to free _both_/_all_ closures
+     when the call is answered.
 
-     The reply callback function exists once per type (it has to do
-     serialization); the reject callback function is unique.
+     The reply callback function exists once per type (as it has to do
+     deserialization); the reject callback function is unique.
   *)
 
   let closures_to_reply_reject_callbacks env ts =
@@ -5813,7 +5818,7 @@ module FuncDec = struct
         set_closure ^^
         get_closure ^^
 
-        (* Deserialize arguments  *)
+        (* Deserialize reply arguments  *)
         Serialization.deserialize env ts ^^
 
         get_closure ^^
@@ -5832,7 +5837,6 @@ module FuncDec = struct
         Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
-
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
@@ -5844,12 +5848,11 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
 
-    (* The upper half of this function must not depend on the get_k and get_r
-       parameters, so hide them from above (cute trick) *)
-    fun get_k get_r ->
+    (* result is a function that accepts a list of closure getters, from which
+       the first and second must be the reply and reject continuations. *)
+    fun closure_getters ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-      (* store the tuple away *)
-      Arr.lit env [get_k; get_r] ^^
+      Arr.lit env closure_getters ^^
       ClosureTable.remember env ^^
       set_cb_index ^^
 
@@ -5864,19 +5867,32 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles =
+  let cleanup_callback env =
+    let name = "@cleanup_callback" in
+    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        ClosureTable.recall env ^^
+        G.i Drop);
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
+
+  let ic_call_threaded env purpose get_meth_pair push_continuations add_data add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
-      closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
-      (* the data *)
+      push_continuations ^^
+      set_cb_index  ^^ get_cb_index ^^
+      (* initiate call *)
       IC.system_call env "ic0" "call_new" ^^
-      get_arg ^^ Serialization.serialize env ts1 ^^
+      cleanup_callback env ^^ get_cb_index ^^
+      IC.system_call env "ic0" "call_on_cleanup" ^^
+      (* the data *)
+      add_data get_cb_index ^^
       IC.system_call env "ic0" "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
@@ -5884,9 +5900,29 @@ module FuncDec = struct
       IC.system_call env "ic0" "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.else_trap_with env "could not perform call"
+      E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot perform remote call when running locally")
+      E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
+
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+    ic_call_threaded
+      env
+      "remote call"
+      get_meth_pair
+      (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
+      (fun _ -> get_arg ^^ Serialization.serialize env ts1)
+
+  let ic_self_call env ts get_meth_pair get_future get_k get_r =
+    ic_call_threaded
+      env
+      "self call"
+      get_meth_pair
+      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/closure_table.rs *)
+      (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future])
+      (fun get_cb_index ->
+        get_cb_index ^^
+        BoxedSmallWord.box env ^^
+        Serialization.serialize env Type.[Prim Nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -5945,7 +5981,7 @@ module FuncDec = struct
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.recall env ^^
+        ClosureTable.peek_future env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -7587,24 +7623,25 @@ and compile_exp (env : E.t) ae exp =
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     SR.unit,
-    let (set_closure_idx, get_closure_idx) = new_local env "closure_idx" in
+    let (set_future, get_future) = new_local env "future" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
-    set_closure_idx ^^
+    set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
-    FuncDec.ic_call env Type.[Prim Nat32] ts
-      ( IC.get_self_reference env ^^
-        IC.actor_public_field env (IC.async_method_name))
-      (get_closure_idx ^^ BoxedSmallWord.box env)
+    FuncDec.ic_self_call env ts
+      (IC.get_self_reference env ^^
+       IC.actor_public_field env (IC.async_method_name))
+      get_future
       get_k
-      get_r add_cycles
+      get_r
+      add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
