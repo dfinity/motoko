@@ -64,7 +64,7 @@ You can use the following options with the `+moc+` command.
 
 //|`+-iR+` |Interprets the lowered code.
 
-|`+--map+` |Outputs a Javascript source map.
+|`+--map+` |Outputs a JavaScript source map.
 
 //|`+-no-await+` |Disables await-lowering (with -iR).
 
