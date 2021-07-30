@@ -26,6 +26,7 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 
 (* WebAssembly pages are 64kb. *)
 let page_size = Int32.of_int (64*1024)
+let page_size_bits = Int32.of_int 16
 
 (*
 Pointers are skewed (translated) -1 relative to the actual offset.
@@ -3704,10 +3705,42 @@ module StableMem = struct
     (* size (in pages) *)
     E.add_global32 env "__stablemem_size" Mutable 0l
 
-  let get_size env =
+  let get_mem_size env =
     G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
-  let set_size env =
+  let set_mem_size env =
     G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
+
+  (* stable memory bounds check *)
+  let guard env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_guard"
+        ("offset", I32Type) []
+        (fun env get_offset ->
+          get_offset ^^
+          compile_unboxed_const page_size_bits ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+          get_mem_size env ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+          E.else_trap_with env "StableMemory offset out of bounds")
+    | _ -> assert false
+
+  let guard_range env =
+    (* is there something more efficient? *)
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_guard"
+        (("offset", I32Type), ("size", I32Type)) []
+        (fun env get_offset get_size ->
+          get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+          get_mem_size env ^^
+          compile_unboxed_const page_size_bits ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+          E.else_trap_with env "StableMemory offset out of bounds")
+    | _ -> assert false
 
   (* read word32 from stable mem offset on stack *)
   let read_word32 env =
@@ -3762,6 +3795,8 @@ module StableMem = struct
               E.then_trap_with env "Cannot grow stable memory."
             ) G.nop)
     | _ -> assert false
+
+
 
 end (* Stack *)
 
