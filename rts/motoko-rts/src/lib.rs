@@ -17,6 +17,7 @@ mod print;
 pub mod debug;
 
 pub mod bigint;
+mod blob_iter;
 pub mod buf;
 mod char;
 pub mod constants;
@@ -33,9 +34,6 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 mod write_barrier;
-
-#[cfg(feature = "ic")]
-mod blob_iter;
 
 #[cfg(feature = "ic")]
 mod idl;
