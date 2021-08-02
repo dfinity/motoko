@@ -3770,7 +3770,7 @@ module StableMem = struct
     | _ -> assert false
 
 
-  (* grow stable memory if needed (WIP)*)
+  (* grow (real) stable memory if needed (WIP)*)
   let grow env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -3796,7 +3796,21 @@ module StableMem = struct
             ) G.nop)
     | _ -> assert false
 
-
+  (* ensure stable memory includes [offset..offset+size) *)
+  let ensure env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_ensure"
+        (("offset", I32Type), ("size", I32Type)) []
+        (fun env get_offset get_size ->
+          get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+          compile_unboxed_const page_size_bits ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
+          G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^ (* TBR *)
+          grow env)
+    | _ -> assert false
 
 end (* Stack *)
 
