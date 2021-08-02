@@ -5,29 +5,38 @@ use crate::types::*;
 use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn copying_gc<M: Memory>(mem: &mut M) {
-    let heap_base = crate::memory::ic::get_heap_base();
+unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
+    if super::should_do_gc() {
+        copying_gc(mem);
+    }
+}
 
-    crate::write_barrier::check_heap_copy(heap_base, crate::memory::ic::HP);
+#[ic_mem_fn(ic_only)]
+unsafe fn copying_gc<M: Memory>(mem: &mut M) {
+    use crate::memory::ic;
+
+    let heap_base = ic::get_heap_base();
+
+    crate::write_barrier::check_heap_copy(heap_base, ic::HP);
 
     copying_gc_internal(
         mem,
         heap_base,
         // get_hp
-        || crate::memory::ic::HP as usize,
+        || ic::HP as usize,
         // set_hp
-        |hp| crate::memory::ic::HP = hp,
-        crate::memory::ic::get_static_roots(),
-        crate::closure_table::closure_table_loc(),
+        |hp| ic::HP = hp,
+        ic::get_static_roots(),
+        crate::continuation_table::continuation_table_loc(),
         // note_live_size
-        |live_size| {
-            crate::memory::ic::MAX_LIVE = ::core::cmp::max(crate::memory::ic::MAX_LIVE, live_size)
-        },
+        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| crate::memory::ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
     );
 
-    crate::write_barrier::copy_heap(mem, heap_base, crate::memory::ic::HP as u32);
+    crate::write_barrier::copy_heap(mem, heap_base, ic::HP);
+
+    ic::LAST_HP = ic::HP;
 }
 
 pub unsafe fn copying_gc_internal<
@@ -42,7 +51,7 @@ pub unsafe fn copying_gc_internal<
     get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: SkewedPtr,
-    closure_table_loc: *mut SkewedPtr,
+    continuation_table_loc: *mut SkewedPtr,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -55,12 +64,12 @@ pub unsafe fn copying_gc_internal<
     // Evacuate roots
     evac_static_roots(mem, begin_from_space, begin_to_space, static_roots);
 
-    if (*closure_table_loc).unskew() >= begin_from_space {
+    if (*continuation_table_loc).unskew() >= begin_from_space {
         evac(
             mem,
             begin_from_space,
             begin_to_space,
-            closure_table_loc as usize,
+            continuation_table_loc as usize,
         );
     }
 

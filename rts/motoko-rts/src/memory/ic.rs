@@ -19,6 +19,9 @@ pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
 /// Heap pointer
 pub(crate) static mut HP: u32 = 0;
 
+/// Heap pointer after last GC
+pub(crate) static mut LAST_HP: u32 = 0;
+
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
@@ -28,6 +31,7 @@ extern "C" {
 #[no_mangle]
 unsafe extern "C" fn init() {
     HP = get_heap_base() as u32;
+    LAST_HP = HP;
 }
 
 #[no_mangle]
