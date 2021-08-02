@@ -3701,6 +3701,8 @@ end (* IC *)
 
 module StableMem = struct
 
+  let version = Int32.of_int 0
+
   let register_globals env =
     (* size (in pages) *)
     E.add_global32 env "__stablemem_size" Mutable 0l
@@ -5202,6 +5204,7 @@ end (* Serialization *)
 
 module Stabilization = struct
 
+(*
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
@@ -5225,7 +5228,91 @@ module Stabilization = struct
     get_dst ^^
     get_len ^^
     E.call_import env "ic0" "stable_write"
+ *)
 
+  let stabilize env t =
+    let (set_dst, get_dst) = new_local env "dst" in
+    let (set_len, get_len) = new_local env "len" in
+    Serialization.serialize env [t] ^^
+    set_len ^^
+    set_dst ^^
+
+    StableMem.get_mem_size env ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    G.if_ []
+      begin( (* ensure [0,..,3,...len+4) *)
+        compile_unboxed_const 0l ^^
+        get_len ^^
+        compile_add_const 4l ^^  (* reserve one word for size *)
+        StableMem.ensure env ^^
+
+        (* write len to initial word of stable memory*)
+        compile_unboxed_const 0l ^^
+        get_len ^^
+        StableMem.write_word32 env ^^
+
+        (* copy data to following stable memory *)
+        compile_unboxed_const 4l ^^
+        get_dst ^^
+        get_len ^^
+        E.call_import env "ic0" "stable_write")
+      end             
+      begin
+        let (set_N, get_N) = new_local env "N" in
+        let (set_M, get_M) = new_local env "M" in
+        (* let N = !size * page_size *)
+        StableMem.get_mem_size env ^^
+        compile_unboxed_const (Int32.of_int page_size_bits) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+        set_N ^^
+
+        get_N ^^
+        get_len ^^
+        compile_unboxed_const 16l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        StableMem.ensure env  ^^
+
+        E.call_import env "ic0" "stable_size" ^^
+        compile_unboxed_const 1l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_unboxed_const (Int32.of_int page_size_bits) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+        set_M ^^
+
+        get_N ^^
+        get_len ^^
+        StableMem.write_word32 env ^^
+
+        get_N ^^
+        compile_unboxed_const 4l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_dst ^^
+        get_len ^^
+        E.call_import env "ic0" "stable_write" ^^
+
+        get_M ^^
+        compile_unboxed_const (Int32.sub page_size 12l) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        StableMem.get_mem_size env ^^
+        StableMem.write_word32 env ^^
+
+        get_M ^^
+        compile_unboxed_const (Int32.sub page_size 8l) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_unboxed_const 0l ^^
+        StableMem.read_word32 env ^^
+        StableMem.write_word32 env ^^
+
+        get_M ^^
+        compile_unboxed_const (Int32.sub page_size 4l) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_unboxed_const StableMem.version ^^
+        StableMem.write_word32 env ^^
+
+        compile_unboxed_const 0l ^^
+        compile_unboxed_const 0l ^^
+        StableMem.write_word32 env
+      end
 
   (* return the initial i32 in stable memory recording the size of the following stable data *)
   let stable_data_size env =
