@@ -15,8 +15,11 @@ static mut HEAP_COPY: *mut Blob = core::ptr::null_mut();
 //
 // Called before writing the value, so `*loc` gives the old (current) value.
 #[no_mangle]
-unsafe extern "C" fn write_barrier(loc: usize) {
+pub unsafe extern "C" fn write_barrier(loc: usize) {
     assert!(N_UPDATED_FIELDS < 1024);
+
+    println!(100, "Write barrier recording {:#x}", loc);
+
     UPDATED_FIELDS[N_UPDATED_FIELDS] = loc;
     N_UPDATED_FIELDS += 1;
 }

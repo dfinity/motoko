@@ -25,6 +25,7 @@
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::SkewedPtr;
+use crate::write_barrier::write_barrier;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -88,8 +89,13 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u
 
     let idx = FREE_SLOT;
 
-    FREE_SLOT = (TABLE.as_array().get(idx).0 >> 2) as u32;
-    TABLE.as_array().set(idx, ptr);
+    let table = TABLE.as_array();
+
+    FREE_SLOT = (table.get(idx).0 >> 2) as u32;
+
+    write_barrier(table.payload_addr().add(idx as usize) as usize);
+    table.set(idx, ptr);
+
     N_CONTINUATIONS += 1;
 
     idx

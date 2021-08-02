@@ -5468,22 +5468,32 @@ module Var = struct
 
   (* Stores the payload (which is found on the stack) *)
   let set_val env ae var = match VarEnv.lookup_var ae var with
+
     | Some (Local i) ->
       G.i (LocalSet (nr i))
+
     | Some (HeapInd i) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
+
+      G.i (LocalGet (nr i)) ^^
+      E.call_import env "rts" "write_barrier" ^^
+
       G.i (LocalGet (nr i)) ^^
       get_new_val ^^
       Heap.store_field MutBox.field
+
     | Some (HeapStatic ptr) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       compile_unboxed_const ptr ^^
       get_new_val ^^
       Heap.store_field MutBox.field
+
     | Some (Const _) -> fatal "set_val: %s is const" var
+
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
+
     | None   -> fatal "set_val: %s missing" var
 
   (* Returns the payload (optimized representation) *)
