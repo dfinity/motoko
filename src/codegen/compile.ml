@@ -5477,6 +5477,7 @@ module Var = struct
       set_new_val ^^
 
       G.i (LocalGet (nr i)) ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "write_barrier" ^^
 
       G.i (LocalGet (nr i)) ^^
@@ -5486,6 +5487,11 @@ module Var = struct
     | Some (HeapStatic ptr) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
+
+      compile_unboxed_const ptr ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "write_barrier" ^^
+
       compile_unboxed_const ptr ^^
       get_new_val ^^
       Heap.store_field MutBox.field
