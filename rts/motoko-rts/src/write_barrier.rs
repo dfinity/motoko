@@ -80,10 +80,13 @@ pub unsafe fn check_heap_copy(heap_base: u32, hp: u32) {
                 if !found {
                     panic!(
                         "Updated field {:#x} of object {:#x} ({}) not found in \
-                         updated fields recorded by write barrier",
-                        obj_heap as usize,
+                         updated fields recorded by write barrier (heap base={:#x}, hp={:#x}, static={})",
                         obj_field_ptr as usize,
+                        obj_heap as usize,
                         tag_str(tag),
+                        heap_base,
+                        hp,
+                        (obj_heap as u32) < heap_base,
                     );
                 }
             }
