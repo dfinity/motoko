@@ -142,7 +142,10 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
         let blob_payload = blob.payload_addr();
         let mut step: u32 = 0;
         let char = decode_code_point(blob_payload.add(pos as usize), &mut step as *mut u32);
+
+        write_barrier(iter_array.payload_addr().add(ITER_POS_IDX as usize) as usize);
         iter_array.set(ITER_POS_IDX, SkewedPtr(((pos + step) << 2) as usize));
+
         char
     }
 }

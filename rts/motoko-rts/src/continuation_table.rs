@@ -134,11 +134,13 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> SkewedPtr {
         rts_trap_with("recall_continuation: Continuation index out of range");
     }
 
-    let ptr = TABLE.as_array().get(idx);
+    let table = TABLE.as_array();
 
-    TABLE
-        .as_array()
-        .set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
+    let ptr = table.get(idx);
+
+    write_barrier(table.payload_addr().add(idx as usize) as usize);
+    table.set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
+
     FREE_SLOT = idx;
 
     N_CONTINUATIONS -= 1;

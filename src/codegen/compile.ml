@@ -5477,6 +5477,7 @@ module Var = struct
       set_new_val ^^
 
       G.i (LocalGet (nr i)) ^^
+      compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "write_barrier" ^^
 
@@ -5489,6 +5490,7 @@ module Var = struct
       set_new_val ^^
 
       compile_unboxed_const ptr ^^
+      compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "write_barrier" ^^
 
@@ -6836,6 +6838,7 @@ let rec compile_lexp (env : E.t) ae lexp =
        set_new_value ^^
 
        get_field ^^
+       compile_add_const ptr_unskew ^^
        E.call_import env "rts" "write_barrier" ^^
 
        get_field ^^
@@ -6856,6 +6859,7 @@ let rec compile_lexp (env : E.t) ae lexp =
        set_new_value ^^
 
        get_field ^^
+       compile_add_const ptr_unskew ^^
        E.call_import env "rts" "write_barrier" ^^
 
        get_field ^^
