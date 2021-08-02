@@ -5323,11 +5323,19 @@ module Stabilization = struct
       StableMem.read_word32 env
     | _ -> assert false
 
-  let destabilize env t =
-    Blob.of_size_copy env stable_data_size
-      (* copy the stable data from stable memory from offset 4 *)
-      (fun env -> IC.system_call env "ic0" "stable_read") 4l ^^
-    Serialization.deserialize_from_blob true env [t]
+  let destabilize env ty =
+      E.call_import env "ic0" "stable_size" ^^
+      G.if_ [I32Type]
+        (Blob.of_size_copy env stable_data_size
+         (* copy the stable data from stable memory from offset 4 *)
+         (fun env -> IC.system_call env "ic0" "stable_read") 4l ^^
+         Serialization.deserialize_from_blob true env [ty])
+        (let (_, fs) = Type.as_obj ty in
+         let fs' = List.map
+           (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
+            fs in
+         Object.lit_raw env fs')
+ 
 
 end
 
@@ -7602,19 +7610,10 @@ and compile_exp (env : E.t) ae exp =
            1. return record of nulls
       * On upgrade:
            1. deserialize stable store to v : ty,
-           (TODO: inserting null values for missing fields.)
            2. return v
 *)
       SR.Vanilla,
-      E.call_import env "ic0" "stable_size" ^^
-      G.if_ [I32Type]
-        (Stabilization.destabilize env ty)
-        (let (_, fs) = Type.as_obj ty in
-         let fs' = List.map
-           (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
-            fs in
-         Object.lit_raw env fs')
-
+      Stabilization.destabilize env ty
     | ICStableWrite ty, [e] ->
       SR.unit,
       compile_exp_vanilla env ae e ^^
