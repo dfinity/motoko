@@ -17,12 +17,17 @@ mod print;
 pub mod debug;
 
 pub mod bigint;
+#[cfg(feature = "ic")]
 mod blob_iter;
 pub mod buf;
 mod char;
 pub mod constants;
 pub mod continuation_table;
+#[cfg(feature = "ic")]
+mod float;
 pub mod gc;
+#[cfg(feature = "ic")]
+mod idl;
 pub mod leb128;
 mod mem_utils;
 pub mod memory;
@@ -33,12 +38,6 @@ mod tommath_bindings;
 pub mod types;
 pub mod utf8;
 mod visitor;
-
-#[cfg(feature = "ic")]
-mod idl;
-
-#[cfg(feature = "ic")]
-mod float;
 
 use types::Bytes;
 
