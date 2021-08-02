@@ -26,7 +26,7 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 
 (* WebAssembly pages are 64kb. *)
 let page_size = Int32.of_int (64*1024)
-let page_size_bits = Int32.of_int 16
+let page_size_bits = 16
 
 (*
 Pointers are skewed (translated) -1 relative to the actual offset.
@@ -3718,7 +3718,7 @@ module StableMem = struct
         ("offset", I32Type) []
         (fun env get_offset ->
           get_offset ^^
-          compile_unboxed_const page_size_bits ^^
+          compile_unboxed_const (Int32.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
           get_mem_size env ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
@@ -3736,7 +3736,7 @@ module StableMem = struct
           get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
           get_mem_size env ^^
-          compile_unboxed_const page_size_bits ^^
+          compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
@@ -3806,9 +3806,10 @@ module StableMem = struct
           get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          compile_unboxed_const page_size_bits ^^
+          compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
           G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^ (* TBR *)
+          compile_add_const 1l ^^
           grow env)
     | _ -> assert false
 
@@ -5208,41 +5209,16 @@ module Stabilization = struct
     set_len ^^
     set_dst ^^
 
-    let (set_pages, get_pages) = new_local env "pages" in
+    (* ensure [0,..,3,...len+4) *)
+    compile_unboxed_const 0l ^^
     get_len ^^
     compile_add_const 4l ^^  (* reserve one word for size *)
-    compile_divU_const page_size ^^
-    compile_add_const 1l ^^
-    set_pages ^^
-
-    (* grow stable memory if needed *)
-    let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-    get_pages ^^
-    E.call_import env "ic0" "stable_size" ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    set_pages_needed ^^
-
-    get_pages_needed ^^
-    compile_unboxed_zero ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-    G.if_ []
-      ( get_pages_needed ^^
-        E.call_import env "ic0" "stable_grow" ^^
-        (* Check result *)
-        compile_unboxed_zero ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-        E.then_trap_with env "Cannot grow stable memory."
-      ) G.nop
-    ^^
+    StableMem.ensure env ^^
 
     (* write len to initial word of stable memory*)
-    Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
-
-      get_size_ptr ^^ get_len ^^ store_unskewed_ptr ^^
-
-      compile_unboxed_const 0l ^^
-      get_size_ptr ^^ compile_unboxed_const 4l ^^
-      IC.system_call env "ic0" "stable_write") ^^
+    compile_unboxed_const 0l ^^
+    get_len ^^
+    StableMem.write_word32 env ^^
 
     (* copy data to following stable memory *)
     compile_unboxed_const 4l ^^
@@ -5256,10 +5232,8 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       (* read size from initial word of (assumed non-empty) stable memory*)
-      Stack.with_words env "get_size_ptr" 1l (fun get_size_ptr ->
-        get_size_ptr ^^ compile_unboxed_const 0l ^^  compile_unboxed_const 4l ^^
-        IC.system_call env "ic0" "stable_read" ^^
-        get_size_ptr ^^ load_unskewed_ptr)
+      compile_unboxed_const 0l ^^
+      StableMem.read_word32 env
     | _ -> assert false
 
   let destabilize env t =
