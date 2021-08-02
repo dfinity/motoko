@@ -5256,7 +5256,7 @@ module Stabilization = struct
         get_dst ^^
         get_len ^^
         E.call_import env "ic0" "stable_write")
-      end             
+      end
       begin
         let (set_N, get_N) = new_local env "N" in
         let (set_M, get_M) = new_local env "M" in
