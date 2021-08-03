@@ -14,8 +14,8 @@ actor a {
   public func go() : async () {
     oneway_success();
     await async {};
-    oneway_fail()
-    await async {};
+    oneway_fail();
+    await async {}
   }
 };
 
