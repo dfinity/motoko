@@ -5800,12 +5800,12 @@ module FuncDec = struct
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let _faulting_success_callback env =
-    let name = "@faulting_callback" in
+    let name = "@faulting_callback1" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "(success) ABOUT TO FAULT" ^^ G.i Unreachable);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let _faulting_reject_callback env =
-    let name = "@faulting_callback" in
+    let name = "@faulting_callback2" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> IC.error_message env ^^ IC.print_text env ^^ IC._compile_static_print env "(rejection) ABOUT TO FAULT" ^^
 G.i Unreachable);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
