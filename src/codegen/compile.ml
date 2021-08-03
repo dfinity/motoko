@@ -2836,6 +2836,19 @@ module Blob = struct
 
     get_blob
 
+  let of_size_copy_alt env get_size_fun copy_fun get_offset =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_blob, get_blob) = new_local env "blob" in
+    get_size_fun env ^^ set_len ^^
+
+    get_len ^^ alloc env ^^ set_blob ^^
+    get_blob ^^ payload_ptr_unskewed ^^
+    get_offset ^^
+    get_len ^^
+    copy_fun env ^^
+
+    get_blob
+
 
   (* Lexicographic blob comparison. Expects two blobs on the stack *)
   let rec compare env op =
@@ -3713,7 +3726,7 @@ module StableMem = struct
     G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
 
   (* stable memory bounds check *)
-  let guard env =
+  let _guard env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 env "__stablemem_guard"
@@ -3727,7 +3740,7 @@ module StableMem = struct
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
 
-  let guard_range env =
+  let _guard_range env =
     (* is there something more efficient? *)
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5313,7 +5326,7 @@ module Stabilization = struct
         compile_unboxed_const 0l ^^
         StableMem.write_word32 env
       end
-
+(*
   (* return the initial i32 in stable memory recording the size of the following stable data *)
   let stable_data_size env =
     match E.mode env with
@@ -5335,15 +5348,124 @@ module Stabilization = struct
            (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
             fs in
          Object.lit_raw env fs')
- 
+ *)
+  let destabilize env ty =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      let (set_pages, get_pages) = new_local env "pages" in
+      E.call_import env "ic0" "stable_size" ^^
+      set_pages ^^
 
+      get_pages ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      G.if_ [I32Type]
+        begin
+          let (_, fs) = Type.as_obj ty in
+          let fs' = List.map
+           (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
+           fs
+          in
+          StableMem.get_mem_size env ^^
+          E.then_trap_with env "StableMem.mem_size non-zero" ^^
+          Object.lit_raw env fs'
+        end
+        begin
+          let (set_marker, get_marker) = new_local env "marker" in
+          compile_unboxed_const 0l ^^
+          StableMem.read_word32 env ^^
+          set_marker ^^
+
+          get_marker ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+          G.if_ [I32Type]
+            begin
+              let (set_M, get_M) = new_local env "M" in
+              let (set_version, get_version) = new_local env "version" in
+              let (set_N, get_N) = new_local env "N" in
+              let (set_len, get_len) = new_local env "len" in
+              let (set_offset, get_offset) = new_local env "N" in
+              let (set_val, get_val) = new_local env "val" in
+
+              E.call_import env "ic0" "stable_size" ^^
+              compile_unboxed_const 1l ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+              compile_unboxed_const (Int32.of_int page_size_bits) ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+              set_M ^^
+
+              (* read version *)
+              get_M ^^
+              compile_unboxed_const (Int32.sub page_size 4l) ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              StableMem.read_word32 env ^^
+              set_version ^^
+
+              (* check version *)
+              get_version ^^
+              compile_unboxed_const StableMem.version ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+              E.then_trap_with env (Printf.sprintf
+                "higher stable memory version (expected %s)"
+                (Int32.to_string StableMem.version)) ^^
+
+              (* restore StableMem bytes [0..4) *)
+              compile_unboxed_const 0l ^^
+              get_M ^^
+              compile_unboxed_const (Int32.sub page_size 8l) ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              StableMem.read_word32 env ^^
+              StableMem.write_word32 env ^^
+
+              (* restore mem_size *)
+              get_M ^^
+              compile_unboxed_const (Int32.sub page_size 12l) ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              StableMem.read_word32 env ^^
+              StableMem.set_mem_size env ^^
+
+              StableMem.get_mem_size env ^^
+              compile_unboxed_const (Int32.of_int page_size_bits) ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+              set_N ^^
+
+              get_N ^^
+              StableMem.read_word32 env ^^
+              set_len ^^
+
+              get_N ^^
+              compile_add_const 4l ^^
+              set_offset ^^
+
+              Blob.of_size_copy_alt env
+                (fun env -> get_len)
+                (* copy the stable data from stable memory from offset 4 *)
+                (fun env -> IC.system_call env "ic0" "stable_read") get_offset ^^
+              Serialization.deserialize_from_blob true env [ty] ^^
+              set_val ^^
+              (* TODO: zero memory *)
+              get_val
+            end
+            begin
+              (* assert mem_size == 0 *)
+              StableMem.get_mem_size env ^^
+              E.then_trap_with env "unexpected, non-zero stable memory size" ^^
+
+              Blob.of_size_copy env
+                (fun env -> get_marker)
+                (* copy the stable data from stable memory from offset 4 *)
+                (fun env -> IC.system_call env "ic0" "stable_read") 4l ^^
+              Serialization.deserialize_from_blob true env [ty]
+              (* TODO: zero memory *)
+            end
+        end
+    | _ -> assert false 
 end
 
 module GC = struct
 
   let register env static_roots =
 
-    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env -> 
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
       compile_unboxed_const static_roots
     )) in
 
