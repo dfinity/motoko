@@ -5799,6 +5799,11 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
+  let _faulting_success_callback env =
+    let name = "@faulting_callback" in
+    Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "(success) ABOUT TO FAULT" ^^ G.i Unreachable);
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
+
   let _faulting_callback env =
     let name = "@faulting_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> IC._compile_static_print env "ABOUT TO FAULT" ^^ G.i Unreachable);
@@ -5861,7 +5866,7 @@ module FuncDec = struct
         BoxedSmallWord.box env ^^
         Serialization.serialize env Type.[Prim Nat32])
 
-  let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
+  let ic_call_one_way env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -5870,10 +5875,10 @@ module FuncDec = struct
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
-      ignoring_callback env ^^
+      _faulting_success_callback env ^^
       compile_unboxed_zero ^^
       (* The reject callback *)
-      ignoring_callback env ^^ (* TODO: figure out why this one gets called in oneshot-callbacks and not the reply one! *)
+      _faulting_callback env ^^ (* TODO: figure out why this one gets called in oneway-callbacks and not the reply one! *)
       compile_unboxed_zero ^^
       IC.system_call env "ic0" "call_new" ^^
       (* the data *)
@@ -6876,7 +6881,7 @@ and compile_exp (env : E.t) ae exp =
           set_meth_pair ^^
           compile_exp_vanilla env ae e2 ^^ set_arg ^^
 
-          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
+          FuncDec.ic_call_one_way env ts get_meth_pair get_arg add_cycles
       end
 
     (* Operators *)

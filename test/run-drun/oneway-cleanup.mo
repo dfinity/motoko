@@ -6,8 +6,16 @@ actor a {
     Prim.debugPrint "oneway_success!"
   };
 
+  public shared func oneway_fail() : () {
+    Prim.debugPrint "oneway_fail!";
+    assert false
+  };
+
   public func go() : async () {
-    oneway_success()
+    oneway_success();
+    await async {};
+    oneway_fail()
+    await async {};
   }
 };
 
