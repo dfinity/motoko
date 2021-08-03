@@ -5794,7 +5794,7 @@ module FuncDec = struct
       compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
       get_cb_index
 
-  let ignoring_callback env =
+  let _ignoring_callback env =
     let name = "@ignore_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
