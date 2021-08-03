@@ -2941,6 +2941,21 @@ module Blob = struct
 
   let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
 
+  let clear env =
+    Func.share_code1 env "blob_clear" ("x", I32Type) [] (fun env get_x ->
+      let (set_ptr, get_ptr) = new_local env "ptr" in
+      let (set_len, get_len) = new_local env "len" in
+      get_x ^^
+      as_ptr_len env ^^
+      set_len ^^
+      set_ptr ^^
+      get_len ^^
+      from_0_to_n env (fun get_i ->
+        get_ptr ^^ get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_unboxed_const 0l ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})))
+
+
 end (* Blob *)
 
 module Text = struct
@@ -3784,6 +3799,29 @@ module StableMem = struct
             IC.system_call env "ic0" "stable_write"))
     | _ -> assert false
 
+
+  (* read and clear word32 from stable mem offset on stack *)
+  let read_and_clear_word32 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_read_word32"
+        ("offset", I32Type) [I32Type]
+        (fun env get_offset ->
+          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+            let (set_word, get_word) = new_local env "word" in
+            (* read word *)
+            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 4l ^^
+            IC.system_call env "ic0" "stable_read" ^^
+            get_temp_ptr ^^ load_unskewed_ptr ^^
+            set_word ^^
+            (* write 0 *)
+            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
+            get_temp_ptr ^^ compile_unboxed_const 4l ^^
+            IC.system_call env "ic0" "stable_write" ^^
+            (* return word *)
+            get_word
+        ))
+    | _ -> assert false
 
   (* grow (real) stable memory if needed (WIP)*)
   let grow env =
@@ -5371,20 +5409,19 @@ module Stabilization = struct
         end
         begin
           let (set_marker, get_marker) = new_local env "marker" in
+          let (set_len, get_len) = new_local env "len" in
+          let (set_offset, get_offset) = new_local env "offset" in
           compile_unboxed_const 0l ^^
-          StableMem.read_word32 env ^^
+          StableMem.read_and_clear_word32 env ^^
           set_marker ^^
 
           get_marker ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-          G.if_ [I32Type]
+          G.if_ []
             begin
               let (set_M, get_M) = new_local env "M" in
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local env "N" in
-              let (set_len, get_len) = new_local env "len" in
-              let (set_offset, get_offset) = new_local env "N" in
-              let (set_val, get_val) = new_local env "val" in
 
               E.call_import env "ic0" "stable_size" ^^
               compile_unboxed_const 1l ^^
@@ -5397,7 +5434,7 @@ module Stabilization = struct
               get_M ^^
               compile_unboxed_const (Int32.sub page_size 4l) ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-              StableMem.read_word32 env ^^
+              StableMem.read_and_clear_word32 env ^^
               set_version ^^
 
               (* check version *)
@@ -5413,14 +5450,14 @@ module Stabilization = struct
               get_M ^^
               compile_unboxed_const (Int32.sub page_size 8l) ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-              StableMem.read_word32 env ^^
+              StableMem.read_and_clear_word32 env ^^
               StableMem.write_word32 env ^^
 
               (* restore mem_size *)
               get_M ^^
               compile_unboxed_const (Int32.sub page_size 12l) ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-              StableMem.read_word32 env ^^
+              StableMem.read_and_clear_word32 env ^^
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
@@ -5429,36 +5466,55 @@ module Stabilization = struct
               set_N ^^
 
               get_N ^^
-              StableMem.read_word32 env ^^
+              StableMem.read_and_clear_word32 env ^^
               set_len ^^
 
               get_N ^^
               compile_add_const 4l ^^
-              set_offset ^^
-
-              Blob.of_size_copy_alt env
-                (fun env -> get_len)
-                (* copy the stable data from stable memory from offset 4 *)
-                (fun env -> IC.system_call env "ic0" "stable_read") get_offset ^^
-              Serialization.deserialize_from_blob true env [ty] ^^
-              set_val ^^
-              (* TODO: zero memory *)
-              get_val
+              set_offset
             end
             begin
               (* assert mem_size == 0 *)
               StableMem.get_mem_size env ^^
               E.then_trap_with env "unexpected, non-zero stable memory size" ^^
 
-              Blob.of_size_copy env
-                (fun env -> get_marker)
-                (* copy the stable data from stable memory from offset 4 *)
-                (fun env -> IC.system_call env "ic0" "stable_read") 4l ^^
-              Serialization.deserialize_from_blob true env [ty]
-              (* TODO: zero memory *)
-            end
+              get_marker ^^
+              set_len ^^
+
+              compile_unboxed_const 4l ^^
+              set_offset
+            end ^^ (* if_ *)
+
+          let (set_val, get_val) = new_local env "val" in
+          let (set_blob, get_blob) = new_local env "blob" in
+
+          Blob.of_size_copy_alt env
+            (fun env -> get_len)
+            (* copy the stable data from stable memory from offset 4 *)
+            (fun env -> IC.system_call env "ic0" "stable_read") get_offset ^^
+          set_blob ^^
+
+          (* deserialize blob to val *)
+          get_blob ^^
+          Serialization.deserialize_from_blob true env [ty] ^^
+          set_val ^^
+
+(*            
+          (* clear blob contents *)
+          get_blob ^^
+          Blob.clear env ^^
+ *)
+          (* copy zeros from blob to stable memory *)
+
+          get_offset ^^
+          get_blob ^^
+          Blob.as_ptr_len env ^^
+          IC.system_call env "ic0" "stable_write" ^^
+
+          (* return val *)
+          get_val
         end
-    | _ -> assert false 
+    | _ -> assert false
 end
 
 module GC = struct
