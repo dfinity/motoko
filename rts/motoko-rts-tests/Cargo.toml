@@ -10,3 +10,7 @@ libc = { version = "0.2.81", default_features = false }
 maplit = "1.0.2"
 motoko-rts = { path = "../motoko-rts/native" }
 proptest = { version = "1.0.0", default-features = false, features = ["std"] }
+
+# This is not a dep of tests but we have it here as we use this file to vendor
+# dependencies or motoko-rts
+wee_alloc = "0.4.5"
