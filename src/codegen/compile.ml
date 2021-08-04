@@ -3773,7 +3773,7 @@ module StableMem = struct
     | _ -> assert false
 
   (* read word32 from stable mem offset on stack *)
-  let read_word32 env =
+  let _read_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 env "__stablemem_read_word32"
@@ -3816,6 +3816,7 @@ module StableMem = struct
             set_word ^^
             (* write 0 *)
             get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
+            get_offset ^^
             get_temp_ptr ^^ compile_unboxed_const 4l ^^
             IC.system_call env "ic0" "stable_write" ^^
             (* return word *)
@@ -5310,25 +5311,21 @@ module Stabilization = struct
       end
       begin
         let (set_N, get_N) = new_local env "N" in
-        let (set_M, get_M) = new_local env "M" in
+
         (* let N = !size * page_size *)
         StableMem.get_mem_size env ^^
         compile_unboxed_const (Int32.of_int page_size_bits) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
         set_N ^^
 
+        (* grow mem to page including address
+           N + 4 + len + 4 + 4 + 4 = N + len + 16
+        *)
         get_N ^^
         get_len ^^
         compile_unboxed_const 16l ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         StableMem.ensure env  ^^
-
-        E.call_import env "ic0" "stable_size" ^^
-        compile_unboxed_const 1l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_unboxed_const (Int32.of_int page_size_bits) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-        set_M ^^
 
         get_N ^^
         get_len ^^
@@ -5341,28 +5338,39 @@ module Stabilization = struct
         get_len ^^
         E.call_import env "ic0" "stable_write" ^^
 
+        (* let M = pagesize * ic0.stable_size() - 1 *)
+        (* M is beginning of last page *)
+        let (set_M, get_M) = new_local env "M" in
+        E.call_import env "ic0" "stable_size" ^^
+        compile_unboxed_const 1l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_unboxed_const (Int32.of_int page_size_bits) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+        set_M ^^
+
+        (* store mem_size at M + (pagesize - 12) *)
         get_M ^^
         compile_unboxed_const (Int32.sub page_size 12l) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         StableMem.get_mem_size env ^^
         StableMem.write_word32 env ^^
 
+        (* save first word at M + (pagesize - 8);
+           mark first word as 0 *)
         get_M ^^
         compile_unboxed_const (Int32.sub page_size 8l) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         compile_unboxed_const 0l ^^
-        StableMem.read_word32 env ^^
+        StableMem.read_and_clear_word32 env ^^
         StableMem.write_word32 env ^^
 
+        (* save version at M + (pagesize - 4) *)
         get_M ^^
         compile_unboxed_const (Int32.sub page_size 4l) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         compile_unboxed_const StableMem.version ^^
-        StableMem.write_word32 env ^^
-
-        compile_unboxed_const 0l ^^
-        compile_unboxed_const 0l ^^
         StableMem.write_word32 env
+
       end
 (*
   (* return the initial i32 in stable memory recording the size of the following stable data *)
@@ -5499,13 +5507,11 @@ module Stabilization = struct
           Serialization.deserialize_from_blob true env [ty] ^^
           set_val ^^
 
-(*            
           (* clear blob contents *)
           get_blob ^^
           Blob.clear env ^^
- *)
-          (* copy zeros from blob to stable memory *)
 
+          (* copy zeros from blob to stable memory *)
           get_offset ^^
           get_blob ^^
           Blob.as_ptr_len env ^^
