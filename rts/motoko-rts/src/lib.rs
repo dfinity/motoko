@@ -31,7 +31,10 @@ mod idl;
 pub mod leb128;
 mod mem_utils;
 pub mod memory;
+#[cfg(feature = "ic")]
+mod page_alloc;
 pub mod principal_id;
+mod space;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;
@@ -48,6 +51,7 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::SkewedPtr {
     text::text_of_str(mem, "0.1")
 }
 
+/// Mutator allocation interface
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::SkewedPtr {
     mem.alloc_words(n)

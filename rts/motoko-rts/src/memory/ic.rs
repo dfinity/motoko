@@ -1,11 +1,8 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
-use crate::constants::WASM_PAGE_SIZE;
-use crate::rts_trap_with;
+use crate::page_alloc::alloc_page;
 use crate::types::*;
-
-use core::arch::wasm32;
 
 /// Maximum live data retained in a GC.
 pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
@@ -16,10 +13,11 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 /// Counter for total allocations
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
 
-/// Heap pointer
+/// Heap pointer in the current allocation area
 pub(crate) static mut HP: u32 = 0;
 
 /// Heap pointer after last GC
+// FIXME: Won't be correct with the page allocator
 pub(crate) static mut LAST_HP: u32 = 0;
 
 // Provided by generated code
@@ -30,7 +28,7 @@ extern "C" {
 
 #[no_mangle]
 unsafe extern "C" fn init() {
-    HP = get_heap_base() as u32;
+    HP = alloc_page().start() as u32;
     LAST_HP = HP;
 }
 
@@ -51,6 +49,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+    // FIXME: With the page allocator this is no longer correct
     Bytes(HP - get_heap_base())
 }
 
@@ -61,31 +60,23 @@ pub struct IcMemory;
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+        /*
         let bytes = n.to_bytes();
-        // Update ALLOCATED
+
         ALLOCATED += Bytes(bytes.0 as u64);
 
-        // Update heap pointer
-        let old_hp = HP;
-        let new_hp = old_hp + bytes.0;
-        HP = new_hp;
+        let allocation_area = address_to_page(HP as usize);
 
-        // Grow memory if needed
-        grow_memory(new_hp as usize);
+        let alloc = if (HP + bytes.0) as usize >= allocation_area.end() {
+            let alloc = alloc_page().start() as u32;
+            HP = alloc + bytes.0;
+            alloc
+        } else {
+            HP + bytes.0
+        };
 
-        skew(old_hp as usize)
-    }
-}
-
-/// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-#[inline(never)]
-unsafe fn grow_memory(ptr: usize) {
-    let page_size = u64::from(WASM_PAGE_SIZE.0);
-    let total_pages_needed = (((ptr as u64) + page_size - 1) / page_size) as usize;
-    let current_pages = wasm32::memory_size(0);
-    if total_pages_needed > current_pages {
-        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
-            rts_trap_with("Cannot grow memory");
-        }
+        skew(alloc as usize)
+        */
+        todo!()
     }
 }
