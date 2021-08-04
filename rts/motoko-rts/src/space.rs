@@ -11,6 +11,15 @@ pub struct Space {
 }
 
 impl Space {
+    pub unsafe fn new() -> Space {
+        let page = alloc_page();
+
+        Space {
+            page,
+            hp: page.start(),
+        }
+    }
+
     pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes().as_usize();
 
