@@ -1159,6 +1159,8 @@ module Tagged = struct
     | Null (* For opt. Static singleton! *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
+    | OneWordFiller (* Only used by the RTS *)
+    | FreeSpace (* Only used by the RTS *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -1176,6 +1178,8 @@ module Tagged = struct
     | BigInt -> 13l
     | Concat -> 14l
     | Null -> 15l
+    | OneWordFiller -> 16l
+    | FreeSpace -> 17l
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
