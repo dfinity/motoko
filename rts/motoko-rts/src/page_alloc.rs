@@ -25,6 +25,10 @@ struct PageHeader {
 }
 
 impl Page {
+    pub const fn initial_page() -> Page {
+        Page { wasm_page_num: 0 }
+    }
+
     /// Allocate a new page
     pub unsafe fn alloc() -> Page {
         match FREE_PAGES.take() {

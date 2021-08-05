@@ -54,7 +54,7 @@ impl Space {
     pub unsafe fn free(self) {
         let mut next = Some(self.first_page);
         while let Some(page) = next {
-            let next = page.next();
+            next = page.next();
             page.free();
         }
     }

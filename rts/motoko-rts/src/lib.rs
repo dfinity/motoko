@@ -16,6 +16,8 @@ mod print;
 #[cfg(debug_assertions)]
 pub mod debug;
 
+#[cfg(feature = "ic")]
+mod allocation_area;
 pub mod bigint;
 #[cfg(feature = "ic")]
 mod blob_iter;
@@ -51,14 +53,15 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::SkewedPtr {
     text::text_of_str(mem, "0.1")
 }
 
-/// Mutator allocation interface
-#[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::SkewedPtr {
-    mem.alloc_words(n)
-}
-
 extern "C" {
     fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
+}
+
+/// Initialize the runtime system
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn init() {
+    allocation_area::init();
 }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {

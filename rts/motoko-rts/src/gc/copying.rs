@@ -1,8 +1,9 @@
-use crate::mem_utils::{memcpy_bytes, memcpy_words};
+use crate::mem_utils::memcpy_words;
 use crate::space::Space;
 use crate::types::*;
 
 #[cfg(feature = "ic")]
+#[no_mangle]
 unsafe fn schedule_copying_gc() {
     if super::should_do_gc() {
         copying_gc();
@@ -10,15 +11,15 @@ unsafe fn schedule_copying_gc() {
 }
 
 #[cfg(feature = "ic")]
+#[no_mangle]
 unsafe fn copying_gc() {
     use crate::memory::ic;
 
+    let mut to_space = Space::new();
+
     copying_gc_internal(
+        &mut to_space,
         ic::get_heap_base(),
-        // get_hp
-        || ic::HP as usize,
-        // set_hp
-        |hp| ic::HP = hp,
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
@@ -28,90 +29,62 @@ unsafe fn copying_gc() {
     );
 
     ic::LAST_HP = ic::HP;
+
+    crate::allocation_area::free_and_update_allocation_area(to_space);
 }
 
-pub unsafe fn copying_gc_internal<
-    GetHp: Fn() -> usize,
-    SetHp: FnMut(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
->(
+// TODO: Update stats
+pub unsafe fn copying_gc_internal<NoteLiveSize: Fn(Bytes<u32>), NoteReclaimed: Fn(Bytes<u32>)>(
+    to_space: &mut Space,
     heap_base: u32,
-    get_hp: GetHp,
-    mut set_hp: SetHp,
     static_roots: SkewedPtr,
     continuation_table_loc: *mut SkewedPtr,
-    note_live_size: NoteLiveSize,
-    note_reclaimed: NoteReclaimed,
+    _note_live_size: NoteLiveSize,
+    _note_reclaimed: NoteReclaimed,
 ) {
-    let mut to_space = Space::new();
-
     let heap_base = heap_base as usize;
-    let end_from_space = get_hp();
-    let begin_to_space = end_from_space;
 
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(heap_base, &mut to_space, static_roots);
+    evac_static_roots(heap_base, to_space, static_roots);
 
     if (*continuation_table_loc).unskew() >= heap_base {
-        evac(heap_base, &mut to_space, continuation_table_loc as usize);
+        evac(to_space, continuation_table_loc as usize);
     }
 
-    // Scavenge to-space (TODO FIXME)
+    // Scavenge to-space
     let mut to_space_page = Some(to_space.first_page());
     while let Some(page) = to_space_page {
         let mut p = page.start();
 
-        // TODO: This won't work when we have slop at the end
         let page_end = page.end();
 
         while p < page_end {
             let size = object_size(p);
-            scav(heap_base, &mut to_space, p);
+            scav(heap_base, to_space, p);
             p += size.to_bytes().0 as usize;
         }
 
         to_space_page = page.next();
     }
-
-    // Note the stats (TODO)
-    // let new_live_size = end_to_space - begin_to_space;
-    // note_live_size(Bytes(new_live_size as u32));
-
-    // let reclaimed = (end_from_space - heap_base) - (end_to_space - begin_to_space);
-    // note_reclaimed(Bytes(reclaimed as u32));
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
-///
-/// Arguments:
-///
-/// - heap_base: Where the dynamic heap starts. Used for two things:
-///
-///   - An object is static if its address is below this value. These objects either don't point to
-///     dynamic heap, or are listed in static_roots array. Objects in static_roots are scavenged
-///     separately in `evac_static_roots` below. So we skip these objects here.
-///
-///   - After all objects are evacuated we move to-space to from-space, to be able to do that the
-///     pointers need to point to their (eventual) locations in from-space, which is calculated with
-///     `address_in_to_space - begin_to_space + heap_base`.
-///
-/// - begin_to_space: Where to-space starts. See above for how this is used.
-///
-/// - ptr_loc: Location of the object to evacuate, e.g. an object field address.
-///
-unsafe fn evac(heap_base: usize, to_space: &mut Space, ptr_loc: usize) {
+unsafe fn evac(to_space: &mut Space, ptr_loc: usize) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
     let obj = (*ptr_loc).unskew() as *mut Obj;
 
+    let tag = obj.tag();
+
     // Update the field if the object is already evacauted
-    if obj.tag() == TAG_FWD_PTR {
+    if tag == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
+        return;
+    } else if tag == TAG_ONE_WORD_FILLER || tag == TAG_FREE_SPACE {
         return;
     }
 
@@ -136,7 +109,7 @@ unsafe fn scav(heap_base: usize, to_space: &mut Space, obj: usize) {
     let obj = obj as *mut Obj;
 
     crate::visitor::visit_pointer_fields(obj, obj.tag(), heap_base, |field_addr| {
-        evac(heap_base, to_space, field_addr as usize);
+        evac(to_space, field_addr as usize);
     });
 }
 

@@ -1,7 +1,6 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
-use crate::page_alloc::Page;
 use crate::types::*;
 
 /// Maximum live data retained in a GC.
@@ -24,12 +23,6 @@ pub(crate) static mut LAST_HP: u32 = 0;
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> SkewedPtr;
-}
-
-#[no_mangle]
-unsafe extern "C" fn init() {
-    HP = Page::alloc().start() as u32;
-    LAST_HP = HP;
 }
 
 #[no_mangle]
@@ -60,23 +53,6 @@ pub struct IcMemory;
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
-        /*
-        let bytes = n.to_bytes();
-
-        ALLOCATED += Bytes(bytes.0 as u64);
-
-        let allocation_area = address_to_page(HP as usize);
-
-        let alloc = if (HP + bytes.0) as usize >= allocation_area.end() {
-            let alloc = alloc_page().start() as u32;
-            HP = alloc + bytes.0;
-            alloc
-        } else {
-            HP + bytes.0
-        };
-
-        skew(alloc as usize)
-        */
-        todo!()
+        crate::allocation_area::alloc_words(n)
     }
 }
