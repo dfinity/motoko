@@ -1,22 +1,19 @@
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
-use crate::memory::Memory;
+use crate::space::Space;
 use crate::types::*;
 
-use motoko_rts_macros::ic_mem_fn;
-
-#[ic_mem_fn(ic_only)]
-unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
+#[cfg(feature = "ic")]
+unsafe fn schedule_copying_gc() {
     if super::should_do_gc() {
-        copying_gc(mem);
+        copying_gc();
     }
 }
 
-#[ic_mem_fn(ic_only)]
-unsafe fn copying_gc<M: Memory>(mem: &mut M) {
+#[cfg(feature = "ic")]
+unsafe fn copying_gc() {
     use crate::memory::ic;
 
     copying_gc_internal(
-        mem,
         ic::get_heap_base(),
         // get_hp
         || ic::HP as usize,
@@ -34,13 +31,11 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 }
 
 pub unsafe fn copying_gc_internal<
-    M: Memory,
     GetHp: Fn() -> usize,
     SetHp: FnMut(u32),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
-    mem: &mut M,
     heap_base: u32,
     get_hp: GetHp,
     mut set_hp: SetHp,
@@ -49,6 +44,8 @@ pub unsafe fn copying_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
+    let mut to_space = Space::new();
+
     let heap_base = heap_base as usize;
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
@@ -56,44 +53,35 @@ pub unsafe fn copying_gc_internal<
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(mem, heap_base, begin_to_space, static_roots);
+    evac_static_roots(heap_base, &mut to_space, static_roots);
 
     if (*continuation_table_loc).unskew() >= heap_base {
-        evac(
-            mem,
-            heap_base,
-            begin_to_space,
-            continuation_table_loc as usize,
-        );
+        evac(heap_base, &mut to_space, continuation_table_loc as usize);
     }
 
-    // Scavenge to-space
-    let mut p = begin_to_space;
-    while p < get_hp() {
-        let size = object_size(p);
-        scav(mem, heap_base, begin_to_space, p);
-        p += size.to_bytes().0 as usize;
+    // Scavenge to-space (TODO FIXME)
+    let mut to_space_page = Some(to_space.first_page());
+    while let Some(page) = to_space_page {
+        let mut p = page.start();
+
+        // TODO: This won't work when we have slop at the end
+        let page_end = page.end();
+
+        while p < page_end {
+            let size = object_size(p);
+            scav(heap_base, &mut to_space, p);
+            p += size.to_bytes().0 as usize;
+        }
+
+        to_space_page = page.next();
     }
 
-    let end_to_space = get_hp();
+    // Note the stats (TODO)
+    // let new_live_size = end_to_space - begin_to_space;
+    // note_live_size(Bytes(new_live_size as u32));
 
-    // Note the stats
-    let new_live_size = end_to_space - begin_to_space;
-    note_live_size(Bytes(new_live_size as u32));
-
-    let reclaimed = (end_from_space - heap_base) - (end_to_space - begin_to_space);
-    note_reclaimed(Bytes(reclaimed as u32));
-
-    // Copy to-space to the beginning of from-space
-    memcpy_bytes(
-        heap_base,
-        begin_to_space,
-        Bytes((end_to_space - begin_to_space) as u32),
-    );
-
-    // Reset the heap pointer
-    let new_hp = heap_base + (end_to_space - begin_to_space);
-    set_hp(new_hp as u32);
+    // let reclaimed = (end_from_space - heap_base) - (end_to_space - begin_to_space);
+    // note_reclaimed(Bytes(reclaimed as u32));
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -114,7 +102,7 @@ pub unsafe fn copying_gc_internal<
 ///
 /// - ptr_loc: Location of the object to evacuate, e.g. an object field address.
 ///
-unsafe fn evac<M: Memory>(mem: &mut M, heap_base: usize, begin_to_space: usize, ptr_loc: usize) {
+unsafe fn evac(heap_base: usize, to_space: &mut Space, ptr_loc: usize) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
@@ -130,43 +118,35 @@ unsafe fn evac<M: Memory>(mem: &mut M, heap_base: usize, begin_to_space: usize, 
     let obj_size = object_size(obj as usize);
 
     // Allocate space in to-space for the object
-    let obj_addr = mem.alloc_words(obj_size).unskew() as usize;
+    let obj_addr = to_space.alloc_words(obj_size).unskew() as usize;
 
     // Copy object to to-space
     memcpy_words(obj_addr, obj as usize, obj_size);
 
-    // Final location of the object after copying to-space back to from-space
-    let obj_loc = (obj_addr - begin_to_space) + heap_base;
-
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
     (*fwd).header.tag = TAG_FWD_PTR;
-    (*fwd).fwd = skew(obj_loc);
+    (*fwd).fwd = skew(obj_addr);
 
     // Update evacuated field
-    *ptr_loc = skew(obj_loc);
+    *ptr_loc = skew(obj_addr);
 }
 
-unsafe fn scav<M: Memory>(mem: &mut M, heap_base: usize, begin_to_space: usize, obj: usize) {
+unsafe fn scav(heap_base: usize, to_space: &mut Space, obj: usize) {
     let obj = obj as *mut Obj;
 
     crate::visitor::visit_pointer_fields(obj, obj.tag(), heap_base, |field_addr| {
-        evac(mem, heap_base, begin_to_space, field_addr as usize);
+        evac(heap_base, to_space, field_addr as usize);
     });
 }
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots<M: Memory>(
-    mem: &mut M,
-    heap_base: usize,
-    begin_to_space: usize,
-    roots: *mut Array,
-) {
+unsafe fn evac_static_roots(heap_base: usize, to_space: &mut Space, roots: *mut Array) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(mem, heap_base, begin_to_space, obj.unskew());
+        scav(heap_base, to_space, obj.unskew());
     }
 }

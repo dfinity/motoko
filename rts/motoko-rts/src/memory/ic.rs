@@ -1,7 +1,7 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
-use crate::page_alloc::alloc_page;
+use crate::page_alloc::Page;
 use crate::types::*;
 
 /// Maximum live data retained in a GC.
@@ -28,7 +28,7 @@ extern "C" {
 
 #[no_mangle]
 unsafe extern "C" fn init() {
-    HP = alloc_page().start() as u32;
+    HP = Page::alloc().start() as u32;
     LAST_HP = HP;
 }
 
