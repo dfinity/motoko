@@ -3765,11 +3765,12 @@ module StableMem = struct
           get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          get_mem_size env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-          E.else_trap_with env "StableMemory offset + size out of bounds")
+          G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
+          G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^
+          get_mem_size env ^^
+          G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
+          E.else_trap_with env "StableMemory range out of bounds")
     | _ -> assert false
 
   (* read word32 from stable mem offset on stack *)
