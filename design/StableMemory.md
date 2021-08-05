@@ -151,7 +151,7 @@ from bound checks against logical `size()`).
 During upgrade, if StableMemory has zero pages, we use the existing format, writing
 (non_zero) length and content of any stable variables from address 0 or leaving ic0.stable_mem()
 at zero with no pages allocated (if there are no stable variables).
-Otherwise, we compute the length and data of the stable variable encoding (if any);
+Otherwise, we compute the length and data of the stable variable encoding;
 save the first word of StableMemory at a known offset from the end of physical memory;
 write a 0x00 marker to the first word; and append length (even if zero) and
 data (if any) to the end of StableMem.
@@ -161,7 +161,7 @@ known offsets from the end of StableMemory.
 In post_upgrade, we reverse this process to recover the size of StableMemory,
 restore the displaced first word of StableMemory and deserialize any stable vars,
 taking care to zero the (logically) free StableMemory occupied by any encoded stable variables
-(so that initial reads beyond page `size`  always return 0).
+and other metadata (so that initial reads after growing beyond page `size`  always return 0).
 
 This scheme avoids relocating most of StableMem and is constant time when
 there are no stable variables.
@@ -176,13 +176,12 @@ Stable memory layout (during execution):
 
 During execution, stable variables aren't maintained in stable memory - they are on the Motoko heap.
 
-Stable memory layout (between upgrades), assuming optional stable variable encoding `v_opt`.
+Stable memory layout (between upgrades), assuming stable variable encoding `v == {fs:vs}`, a record value of record type {fs:Ts}.
+
+NOTE: A program with no stable variables still writes an empty record value `v = {}`.
 
 ```
 (case !size == 0) // hence N = 0
-  (case v == None)
-  <empty> (ie. ic0.stable_size() == 0)
-  (case v_opt = Some v)
   [0..3] StableVariable data len
   [4..4+len-1] StableVariable data
   [4+len-1,..M-1] 0...0 // zero padding
@@ -197,73 +196,66 @@ Stable memory layout (between upgrades), assuming optional stable variable encod
 [M-4..M-1]  version word
 
 where N = !size * pagesize // logical memory size
-      M = ic0.stable_size() * pagesize
+      M = ic0.stable_size() * pagesize // physical memory size
       pagesize = 64Kb (2^16 bytes)
-where (len, data) = match v_opt with
-  Some v -> serialize(v,data)
-  None -> (0, [])
+where (len, data) = serialize<Ts>(v,data)
+
 ```
 
 On pre_upgrade
 
 ```ocaml
-func save v_opt : value option =
-  let len, data = match v_opt with
-    | Some v -> serialize(v)
-    | None -> 0, []
+func stabilise {fs:Ts} v : value =
+  let len, data = serialize<Ts>(v)
   in
   if !size == 0 then
-    match v with
-    | None -> ()
-    | Some v ->
-      let len, data = serialize(v) in
-      // if necessary, grow mem to at least 4 + len
-      mem[0, .., 3] := len
-      mem[4, ..., 4+len-1] := data
+    mem[0,..,3] := len
+    mem[4,...,4+len-1] := data
   else
     let N = !size * page_size in
-    // if necessary, grow mem to page including address N + 4 + len + 4 + 4 + 1
+    // if necessary, grow mem to page including address N + 4 + len + 4 + 4 + 4
     let M = pagesize * ic0.stable_size() in
-    mem[N,..,N+3] := len            // NB: even when len == 0;
+    mem[N,..,N+3] := len
     mem[N+4,..,N+4+len-1] := data
     mem[M-12..M-9] := !size
     men[M-8..M-5] := mem[0,...,3] // save StableMemory bytes 0-3
-    mem[M-4..M-1] := version
     mem[0,..,3] := 0..0 // write marker
+    mem[M-4..M-1] := version
 ```
-
 on post_upgrade
 
 ```ocaml
 // restores StableMemory (size and memory) and deserializes any stable variables, zeroing their storage
-fun restore() : value option =
+fun destabilize {fs:Ts} : value =
   let pages = ic0.stable_size() in
   if pages == 0 then
     size := 0;
-    None
+    {fs = nulls}
   else
     let marker = mem[0,..,3] in // read zero or size of stable value
-    if marker == 0x0 then
-      let M = ic0.stable_size() * pagesize in
-      let ver = mem[M-4,..,M-1] in
-      if (ver > version) assert false
-      mem[0,..,3] = mem[M-8,..,M-5]; // restore StableMemory bytes 0-3
-      size := mem[M-12,..,M-9];
-      N = size * pagesize;
-      let len = mem[N,..,N+3] in
-      if len > 0
+    mem[0,..,3] = 0;
+    let (offset, len) =
+      if marker == 0x0 then
+        let M = pages * pagesize in
+        let ver = mem[M-4,..,M-1] in
+        mem[M-4,..,M-1] := 0;
+        if (ver > version) assert false
+        mem[0,..,3] = mem[M-8,..,M-5]; // restore StableMemory bytes 0-3
+        size := mem[M-12,..,M-9];
+        mem[M-12,..,M-9] := 0;
+        N = size * pagesize;
+        let len = mem[N,..,N+3] in
+        mem[N,..,N+3] := 0;
+        assert len > 0
         assert (N+4+len-1 <= ic0.stable_size() * pagesize)
-        let v = deserialize(len, N+4) in
-        mem[N+4, ..., N+4+len-1] := [0, ..., 0]; // clear memory
-        Some v
-      else None
-    else
-      size := 0;
-      let len = marker in
-      assert (0 < len <= ic0.stable_size() * pagesize)
-      let v = deserialise(len, 4) in
-      mem[0, len + 1] := 0 // clear memory
-      Some v
+        (N+4, len)
+      else
+        (4, marker)
+    in
+    assert (0 < len <= ic0.stable_size() * pagesize)
+    let v = deserialise<Ts>(offset, len) in
+    mem[offset, len] := 0 // clear serialization memory
+    v
 ```
 
 We explicitly clear memory used by stable variables so StableMem
