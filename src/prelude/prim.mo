@@ -278,3 +278,18 @@ func cyclesAdd(amount: Nat64) : () {
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
 func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob) ();
+
+// stable memory
+
+func stableMemorySize() : Nat32 =
+  (prim "stableMemorySize" : () -> Nat32) ();
+
+func stableMemoryGrow(pages : Nat32) : Nat32 =
+  (prim "stableMemoryGrow" : Nat32 -> Nat32) pages;
+
+func stableMemoryLoadNat32(offset : Nat32) : Nat32 =
+  (prim "stableMemoryLoadNat32" : Nat32 -> Nat32) offset;
+
+func stableMemoryStoreNat32(offset : Nat32, nat32 : Nat32) : () =
+  (prim "stableMemoryStoreNat32" : (Nat32, Nat32) -> ()) (offset, nat32);
+

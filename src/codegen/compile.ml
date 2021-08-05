@@ -3755,7 +3755,7 @@ module StableMem = struct
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
 
-  let _guard_range env =
+  let guard_range env =
     (* is there something more efficient? *)
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -3765,15 +3765,15 @@ module StableMem = struct
           get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          get_mem_size env ^^
+          get_mem_size env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-          E.else_trap_with env "StableMemory offset out of bounds")
+          E.else_trap_with env "StableMemory offset + size out of bounds")
     | _ -> assert false
 
   (* read word32 from stable mem offset on stack *)
-  let _read_word32 env =
+  let read_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 env "__stablemem_read_word32"
@@ -3867,6 +3867,57 @@ module StableMem = struct
           grow env)
     | _ -> assert false
 
+  (* API *)
+
+
+  let logical_grow env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_logical_grow"
+        ("pages", I32Type) [I32Type] (fun env get_pages ->
+          let (set_size, get_size) = new_local env "size" in
+          get_mem_size env ^^
+          set_size ^^
+
+          get_size ^^
+          get_pages ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          (*TODO check for overflow? *)
+          set_mem_size env ^^
+
+          (* physical grow if necessary *)
+          get_mem_size env ^^
+          grow env ^^
+
+           get_size)
+      | _ -> assert false
+
+  let load_nat32 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_load_nat32"
+        (("offset", I32Type)) [I32Type]
+        (fun env get_offset  ->
+          get_offset ^^
+          compile_unboxed_const 4l ^^
+          guard_range env ^^
+          get_offset ^^
+          read_word32 env)
+    | _ -> assert false
+
+  let store_nat32 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_store_nat32"
+        (("offset", I32Type), ("n32", I32Type)) []
+        (fun env get_offset get_n32 ->
+          get_offset ^^
+          compile_unboxed_const 4l ^^
+          guard_range env ^^
+          get_offset ^^
+          get_n32 ^^
+          write_word32 env)
+    | _ -> assert false
 end (* Stack *)
 
 module RTS_Exports = struct
@@ -7453,7 +7504,6 @@ and compile_exp (env : E.t) ae exp =
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
 
-    (* Other prims, unary *)
     | SerializePrim ts, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -7464,6 +7514,8 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity (List.length ts),
       compile_exp_vanilla env ae e ^^
       Serialization.deserialize_from_blob false env ts
+
+    (* Other prims, unary *)
 
     | OtherPrim "array_len", [e] ->
       SR.Vanilla,
@@ -7709,6 +7761,32 @@ and compile_exp (env : E.t) ae exp =
       const_sr SR.Vanilla (Arr.ofBlob env)
     | OtherPrim ("arrayToBlob"|"arrayMutToBlob"), e ->
       const_sr SR.Vanilla (Arr.toBlob env)
+
+    | OtherPrim ("stableMemoryLoadNat32"), [e] ->
+      SR.UnboxedWord32,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      StableMem.load_nat32 env
+
+    | OtherPrim ("stableMemoryStoreNat32"), [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.UnboxedWord32 e2 ^^
+      StableMem.store_nat32 env
+
+    | OtherPrim ("stableMemorySize"), [] ->
+      SR.UnboxedWord32,
+      StableMem.get_mem_size env
+
+    | OtherPrim ("stableMemoryGrow"), [e] ->
+      SR.UnboxedWord32,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      StableMem.logical_grow env
+
+
+(*
+    | OtherPrim ("StableMemory.load_nat8"), [e] ->
+    | OtherPrim ("StableMemory.store_nat8"), [e1, e2] ->
+*)
 
     (* Other prims, binary*)
     | OtherPrim "Array.init", [_;_] ->
