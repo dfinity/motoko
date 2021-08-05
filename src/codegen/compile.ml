@@ -3755,8 +3755,8 @@ module StableMem = struct
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
 
+  (* check [offset,.., offset + size) within bounds *)
   let guard_range env =
-    (* is there something more efficient? *)
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_guard"
@@ -3869,7 +3869,6 @@ module StableMem = struct
     | _ -> assert false
 
   (* API *)
-
 
   let logical_grow env =
     match E.mode env with
