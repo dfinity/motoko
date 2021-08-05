@@ -190,6 +190,8 @@ pub const TAG_BITS32: Tag = 12;
 pub const TAG_BIGINT: Tag = 13;
 pub const TAG_CONCAT: Tag = 14;
 pub const TAG_NULL: Tag = 15;
+pub const TAG_ONE_WORD_FILLER: Tag = 16;
+pub const TAG_FREE_SPACE: Tag = 17;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(packed)]
@@ -315,6 +317,29 @@ impl Blob {
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
         *self.payload_addr().add(idx as usize) = byte;
     }
+
+    /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
+    pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
+        let current_len_words = self.len().to_words();
+        let new_len_words = new_len.to_words();
+
+        debug_assert!(new_len_words <= current_len_words);
+
+        let slop = current_len_words - new_len_words;
+
+        if slop == Words(1) {
+            let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
+                as *mut OneWordFiller;
+            (*filler).header.tag = TAG_ONE_WORD_FILLER;
+        } else if slop != Words(0) {
+            let filler =
+                (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
+            (*filler).header.tag = TAG_FREE_SPACE;
+            (*filler).words = slop - Words(1);
+        }
+
+        (*self).len = new_len;
+    }
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
@@ -417,6 +442,26 @@ pub struct Bits32 {
     pub bits: u32,
 }
 
+/// Marks one word empty space in heap
+#[repr(packed)]
+pub struct OneWordFiller {
+    pub header: Obj,
+}
+
+/// Marks arbitrary sized emtpy space in heap
+#[repr(packed)]
+pub struct FreeSpace {
+    pub header: Obj,
+    pub words: Words<u32>,
+}
+
+impl FreeSpace {
+    /// Size of the free space (includes object header)
+    pub unsafe fn size(self: *mut Self) -> Words<u32> {
+        (*self).words + size_of::<Obj>()
+    }
+}
+
 /// Returns object size in words
 pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     let obj = obj as *mut Obj;
@@ -469,10 +514,11 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_NULL => size_of::<Null>(),
 
-        0 => {
-            // This can happens when we shrink a blob in principal id functions. The slop between
-            // new size and old size is filled with zeros.
-            Words(1)
+        TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
+
+        TAG_FREE_SPACE => {
+            let free_space = obj as *mut FreeSpace;
+            free_space.size()
         }
 
         _ => {
