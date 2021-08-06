@@ -2941,6 +2941,7 @@ module Blob = struct
 
   let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
 
+  (* TODO: rewrite using MemoryFill *)
   let clear env =
     Func.share_code1 env "blob_clear" ("x", I32Type) [] (fun env get_x ->
       let (set_ptr, get_ptr) = new_local env "ptr" in
@@ -2949,12 +2950,20 @@ module Blob = struct
       as_ptr_len env ^^
       set_len ^^
       set_ptr ^^
-      get_len ^^
-      from_0_to_n env (fun get_i ->
-        get_ptr ^^ get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        compile_unboxed_const 0l ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})))
 
+      (* round to word size *)
+      get_len ^^
+      compile_add_const (Int32.sub Heap.word_size 1l) ^^
+      compile_divU_const Heap.word_size ^^
+
+      (* clear all words *)
+      from_0_to_n env (fun get_i ->
+        get_ptr ^^
+        compile_unboxed_const 0l ^^
+        store_unskewed_ptr ^^
+        get_ptr ^^
+        compile_add_const Heap.word_size ^^
+        set_ptr))
 
 end (* Blob *)
 
