@@ -604,6 +604,26 @@ let compile_while cond body =
       cond ^^ G.if_ [] (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
+(* Expects a number n on the stack. Iterates from m to below that number. *)
+let from_m_to_n env m mk_body =
+    let (set_n, get_n) = new_local env "n" in
+    let (set_i, get_i) = new_local env "i" in
+    set_n ^^
+    compile_unboxed_const m ^^
+    set_i ^^
+
+    compile_while
+      ( get_i ^^
+        get_n ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+      ) (
+        mk_body get_i ^^
+
+        get_i ^^
+        compile_add_const 1l ^^
+        set_i
+      )
+
 (* Expects a number on the stack. Iterates from zero to below that number. *)
 let from_0_to_n env mk_body =
     let (set_n, get_n) = new_local env "n" in
@@ -2706,15 +2726,18 @@ module Object = struct
 
 
   (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_hash_raw env =
-    Func.share_code2 env "obj_idx" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+  let idx_hash_raw env m = (* HERE *)
+    let name = match m with
+      | 0 -> "obj_idx"
+      | _ -> Printf.sprintf "obj_idx<%d>" m in
+    Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
       get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
 
       get_x ^^ Heap.load_field size_field ^^
       (* Linearly scan through the fields (binary search can come later) *)
-      from_0_to_n env (fun get_i ->
+      from_m_to_n env (Int32.of_int m) (fun get_i ->
         get_i ^^
         compile_mul_const Heap.word_size  ^^
         get_h_ptr ^^
@@ -2735,29 +2758,43 @@ module Object = struct
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx_hash env indirect =
+  let idx_hash env m indirect =
     if indirect
     then Func.share_code2 env "obj_idx_ind" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
-      idx_hash_raw env ^^
+      idx_hash_raw env m ^^
       load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
-    else idx_hash_raw env
+    else idx_hash_raw env m
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
+  (* Computes a lower bound for the linear index of a field in an object *)
+  let field_lower_bound env obj_type s =
+    let open Type in
+    let _, fields = as_obj_sub [s] obj_type in
+    let fields = List.filter (function {typ = Typ _; _} -> false | _ -> true) fields in
+    let sorted_by_hash =
+      List.sort
+        (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
+        (List.map (fun f -> (Idllib.Escape.unescape_hash f.lab, f)) fields) in
+    let ordered_fields = List.map snd sorted_by_hash in
+    match List.find_opt (fun (_, {lab; _}) -> lab = s) (List.mapi (fun i e -> (i, e)) ordered_fields) with
+      | Some (i, _) -> i
+      | _ -> assert false
+
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_raw env f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash_raw env
+    idx_hash_raw env 0
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx env obj_type f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash env (is_mut_field env obj_type f)
+    idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
 
   (* load the value (or the mutbox) *)
   let load_idx_raw env f =
