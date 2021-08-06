@@ -3846,8 +3846,9 @@ module StableMem = struct
         ))
     | _ -> assert false
 
-  (* grow (real) stable memory if needed (WIP)*)
-  let grow env =
+  (* ensure_pages : ensure at least num pages allocated,
+     growing (real) stable memory if needed *)
+  let ensure_pages env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 env "__stablemem_grow"
@@ -3886,7 +3887,7 @@ module StableMem = struct
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
           G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^ (* TBR *)
           compile_add_const 1l ^^
-          grow env)
+          ensure_pages env)
     | _ -> assert false
 
   (* API *)
