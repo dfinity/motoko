@@ -3762,14 +3762,26 @@ module StableMem = struct
       Func.share_code2 env "__stablemem_guard"
         (("offset", I32Type), ("size", I32Type)) []
         (fun env get_offset get_size ->
+(*
+          (* Using ShrU seems worse - need to subtract 1 *)
           get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+          compile_sub64_const 1L ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
           G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^
           get_mem_size env ^^
-          G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+          E.else_trap_with env "StableMemory range out of bounds")
+ *)
+          get_offset ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+          get_mem_size env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          compile_const_64 (Int64.of_int page_size_bits) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
           E.else_trap_with env "StableMemory range out of bounds")
     | _ -> assert false
 
