@@ -3852,25 +3852,26 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 env "__stablemem_grow"
-        ("pages", I32Type) []
+        ("pages", I32Type) [I32Type]
         (fun env get_pages ->
+          let (set_size, get_size) = new_local env "size" in
           let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-          get_pages ^^
+
           E.call_import env "ic0" "stable_size" ^^
+          set_size ^^
+
+          get_pages ^^
+          get_size ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_pages_needed ^^
 
           get_pages_needed ^^
           compile_unboxed_zero ^^
           G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-          G.if_ []
-            ( get_pages_needed ^^
-              E.call_import env "ic0" "stable_grow" ^^
-              (* Check result *)
-              compile_unboxed_zero ^^
-              G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-              E.then_trap_with env "Cannot grow stable memory."
-            ) G.nop)
+          G.if_ [I32Type]
+            (get_pages_needed ^^
+             E.call_import env "ic0" "stable_grow")
+            get_size)
     | _ -> assert false
 
   (* ensure stable memory includes [offset..offset+size) *)
@@ -3887,7 +3888,11 @@ module StableMem = struct
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
           G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^ (* TBR *)
           compile_add_const 1l ^^
-          ensure_pages env)
+          ensure_pages env ^^
+          (* Check result *)
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.then_trap_with env "Out of stable memory.")
     | _ -> assert false
 
   (* API *)
@@ -3901,18 +3906,42 @@ module StableMem = struct
           get_mem_size env ^^
           set_size ^^
 
+          get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_pages ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I32Op.Add)) ^^
+          compile_const_64 65536L ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+          G.if_ []
+            (G.nop) (* fallthrough *)
+            (compile_unboxed_const (-1l) ^^
+             G.i Return) ^^
+
+          let (set_new_size, get_new_size) = new_local env "new_size" in
           get_size ^^
           get_pages ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          (*TODO check for overflow? *)
-          set_mem_size env ^^
+          set_new_size ^^
 
           (* physical grow if necessary *)
-          get_mem_size env ^^
-          grow env ^^
+          let (set_ensured, get_ensured) = new_local env "ensured" in
+          get_new_size ^^
+          ensure_pages env ^^
+          set_ensured ^^
 
-           get_size)
-      | _ -> assert false
+          (* Check result *)
+          get_ensured ^^
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          G.if_ [I32Type]
+            ((* propagate failure -1; preserve logical size *)
+             get_ensured)
+            ((* update logical size *)
+             get_new_size ^^
+             set_mem_size env ^^
+             (* return old logical size *)
+             get_size))
+
+   | _ -> assert false
 
   let load_nat32 env =
     match E.mode env with
