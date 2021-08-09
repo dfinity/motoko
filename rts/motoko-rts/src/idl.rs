@@ -3,7 +3,8 @@
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
-use crate::memory::{alloc_blob, Memory};
+use crate::page_alloc::PageAlloc;
+use crate::space::Space;
 use crate::types::Words;
 use crate::utf8::utf8_validate;
 
@@ -71,8 +72,11 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 }
 
 // NB. This function assumes the allocation does not need to survive GC
-unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
-    alloc_blob(mem, size.to_bytes()).as_blob().payload_addr()
+unsafe fn alloc<P: PageAlloc>(allocation_area: &mut Space<P>, size: Words<u32>) -> *mut u8 {
+    allocation_area
+        .alloc_blob(size.to_bytes())
+        .as_blob()
+        .payload_addr()
 }
 
 /// This function parses the IDL magic header and type description. It
@@ -91,8 +95,8 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
 /// * returns a pointer to the beginning of the list of main types
 ///   (again via pointer argument, for lack of multi-value returns in C ABI)
 #[ic_mem_fn]
-unsafe fn parse_idl_header<M: Memory>(
-    mem: &mut M,
+unsafe fn parse_idl_header<P: PageAlloc>(
+    allocation_area: &mut Space<P>,
     extended: bool,
     buf: *mut Buf,
     typtbl_out: *mut *mut *mut u8,
@@ -122,7 +126,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *typtbl_size_out = n_types;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types)) as *mut _;
+    let typtbl: *mut *mut u8 = alloc(allocation_area, Words(n_types)) as *mut _;
 
     // Go through the table
     for i in 0..n_types {

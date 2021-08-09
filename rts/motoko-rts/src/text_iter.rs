@@ -10,8 +10,9 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::memory::{alloc_array, Memory};
+use crate::page_alloc::PageAlloc;
 use crate::rts_trap_with;
+use crate::space::Space;
 use crate::text::decode_code_point;
 use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
 
@@ -22,8 +23,8 @@ const TODO_LINK_IDX: u32 = 1;
 
 /// Find the left-most leaf of a text, putting all the others onto a list. Used to enforce the
 /// invariant about TEXT_ITER_BLOB to be a blob.
-unsafe fn find_leaf<M: Memory>(
-    mem: &mut M,
+unsafe fn find_leaf<P: PageAlloc>(
+    allocation_area: &mut Space<P>,
     mut text: SkewedPtr,
     todo: *mut SkewedPtr,
 ) -> SkewedPtr {
@@ -31,7 +32,7 @@ unsafe fn find_leaf<M: Memory>(
         let concat = text.as_concat();
 
         // Add right node to TODOs
-        let new_todo = alloc_array(mem, 2);
+        let new_todo = allocation_area.alloc_array(2);
         let new_todo_array = new_todo.as_array();
         new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
         new_todo_array.set(TODO_LINK_IDX, *todo);
@@ -51,8 +52,11 @@ const ITER_TODO_IDX: u32 = 2;
 
 /// Returns a new iterator for the text
 #[ic_mem_fn]
-pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
-    let iter = alloc_array(mem, 3);
+pub unsafe fn text_iter<P: PageAlloc>(
+    allocation_area: &mut Space<P>,
+    text: SkewedPtr,
+) -> SkewedPtr {
+    let iter = allocation_area.alloc_array(3);
     let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
@@ -63,7 +67,10 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
     array.set(ITER_POS_IDX, SkewedPtr(0));
 
     // Initialize blob field
-    array.set(ITER_BLOB_IDX, find_leaf(mem, text, todo_addr as *mut _));
+    array.set(
+        ITER_BLOB_IDX,
+        find_leaf(allocation_area, text, todo_addr as *mut _),
+    );
 
     iter
 }
@@ -85,7 +92,7 @@ pub unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
 
 /// Returns next character in the iterator, advances the iterator
 #[ic_mem_fn]
-pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
+pub unsafe fn text_iter_next<P: PageAlloc>(allocation_area: &mut Space<P>, iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX).as_blob();
@@ -111,15 +118,18 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
             todo_array.set(TODO_TEXT_IDX, (*concat).text2);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
-            iter_array.set(ITER_BLOB_IDX, find_leaf(mem, (*concat).text1, todo_addr));
-            text_iter_next(mem, iter)
+            iter_array.set(
+                ITER_BLOB_IDX,
+                find_leaf(allocation_area, (*concat).text1, todo_addr),
+            );
+            text_iter_next(allocation_area, iter)
         } else {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
             iter_array.set(ITER_BLOB_IDX, text);
             iter_array.set(ITER_POS_IDX, SkewedPtr(0));
             iter_array.set(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX));
-            text_iter_next(mem, iter)
+            text_iter_next(allocation_area, iter)
         }
     } else {
         // We are not at the end, read the next character from the blob

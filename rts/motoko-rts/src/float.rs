@@ -1,4 +1,5 @@
-use crate::memory::Memory;
+use crate::page_alloc::PageAlloc;
+use crate::space::Space;
 use crate::text::text_of_ptr_size;
 use crate::types::{Bytes, SkewedPtr};
 
@@ -6,7 +7,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 // The meaning of the `mode` parameter is documented in motoko-base, function Float.format()
 #[ic_mem_fn]
-unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> SkewedPtr {
+unsafe fn float_fmt<P: PageAlloc>(
+    allocation_area: &mut Space<P>,
+    a: f64,
+    prec: u32,
+    mode: u32,
+) -> SkewedPtr {
     // prec and mode are tagged (TODO (osa): what tag???)
     let mode = mode >> 24;
     let prec = core::cmp::min(prec >> 24, 100) as usize;
@@ -33,5 +39,5 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Ske
 
     assert!(n_written > 0);
 
-    text_of_ptr_size(mem, buf.as_ptr(), Bytes(n_written as u32))
+    text_of_ptr_size(allocation_area, buf.as_ptr(), Bytes(n_written as u32))
 }

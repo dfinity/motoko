@@ -6,18 +6,28 @@ use quote::quote;
 ///
 /// ```
 /// #[ic_mem_fn]
-/// pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
+/// pub unsafe fn text_concat<P: PageAlloc>(
+///     allocation_area: &mut Space<P>,
+///     s1: SkewedPtr,
+///     s2: SkewedPtr,
+/// ) -> SkewedPtr
+/// {
 ///     ...
 /// }
 /// ```
 ///
-/// This functions has a `Memory` parameter to be able to allocate on heap. To compile this
-/// function to use in generated code we need a monomorphic version, without a `Memory` parameter.
-/// This macro generates the monomorphic version. Macro expansion looks like this:
+/// This functions has a `Space` parameter to be able to allocate on heap. To compile this function
+/// to use in generated code we need a monomorphic version, without a `Space` parameter. This macro
+/// generates the monomorphic version. Macro expansion looks like this:
 ///
 /// ```
 /// // Original function generated directly, to allow use from the test suite
-/// pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
+/// pub unsafe fn text_concat<P: PageAlloc>(
+///     allocation_area: &mut Space<P>,
+///     s1: SkewedPtr,
+///     s2: SkewedPtr,
+/// ) -> SkewedPtr
+/// {
 ///     ...
 /// }
 ///
@@ -25,7 +35,7 @@ use quote::quote;
 /// #[cfg(feature = "ic")]
 /// #[export_name = "text_concat"]
 /// unsafe extern "C" fn ic_text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
-///     text_concat(crate::memory::ic::IcMemory, s1, s2)
+///     text_concat(crate::allocation_area::ALLOCATION_AREA.assume_init_mut(), s1, s2)
 /// }
 /// ```
 ///
@@ -49,7 +59,7 @@ use quote::quote;
 /// #[cfg(feature = "ic")]
 /// #[export_name = "text_concat"]
 /// unsafe extern "C" fn ic_my_function() {
-///     my_function(crate::memory::ic::IcMemory)
+///     my_function(crate::allocation_area::ALLOCATION_AREA.assume_init_mut())
 /// }
 /// ```
 ///
@@ -72,7 +82,7 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
     assert_eq!(
         fun_sig.generics.params.len(),
         1,
-        "IC memory functions should have one generic argument for the memory implementation"
+        "IC memory functions should have one generic argument: `<P: PageAlloc>`"
     );
     assert!(
         fun_sig.abi.is_none(),
@@ -131,7 +141,7 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
         #[cfg(feature = "ic")]
         #[export_name = #fn_name]
         unsafe extern "C" fn #fn_wrapper_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
-            #fn_ident(&mut crate::memory::ic::IcMemory, #(#wrapper_args_syn,)*)
+            #fn_ident(crate::allocation_area::ALLOCATION_AREA.as_mut().unwrap(), #(#wrapper_args_syn,)*)
         }
     )
     .into()

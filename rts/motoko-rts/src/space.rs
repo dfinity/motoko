@@ -1,8 +1,12 @@
 use crate::page_alloc::{Page, PageAlloc};
-use crate::types::{skew, SkewedPtr, Words};
+use crate::rts_trap_with;
+use crate::types::{size_of, skew, Array, Blob, Bytes, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB};
 
 /// A space is an allocation area, consists of a linked list of pages.
 pub struct Space<P: PageAlloc> {
+    /// Page allocator
+    page_alloc: P,
+
     /// First page of this space. Scan through the space with `Page::next()`.
     first_page: P::Page,
 
@@ -15,10 +19,11 @@ pub struct Space<P: PageAlloc> {
 }
 
 impl<P: PageAlloc> Space<P> {
-    pub unsafe fn new(page_alloc: &mut P) -> Space<P> {
+    pub unsafe fn new(mut page_alloc: P) -> Space<P> {
         let page = page_alloc.alloc();
 
         Space {
+            page_alloc,
             first_page: page,
             current_page: page,
             hp: page.contents_start(),
@@ -31,11 +36,11 @@ impl<P: PageAlloc> Space<P> {
         self.first_page
     }
 
-    pub unsafe fn alloc_words(&mut self, page_alloc: &mut P, n: Words<u32>) -> SkewedPtr {
+    pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes().as_usize();
 
         let alloc = if self.hp + bytes >= self.current_page.end() {
-            let new_page = page_alloc.alloc();
+            let new_page = self.page_alloc.alloc();
 
             new_page.set_prev(Some(self.current_page));
             self.current_page.set_next(Some(new_page));
@@ -51,11 +56,35 @@ impl<P: PageAlloc> Space<P> {
     }
 
     /// Free all pages of the space. The space itself should not be used afterwards.
-    pub unsafe fn free(self, page_alloc: &mut P) {
+    pub unsafe fn free(&mut self) {
         let mut next = Some(self.first_page);
         while let Some(page) = next {
             next = page.next();
-            page_alloc.free(page);
+            self.page_alloc.free(page);
         }
+    }
+
+    pub unsafe fn alloc_array(&mut self, len: u32) -> SkewedPtr {
+        // Array payload should not be larger than half of the memory
+        if len > 1 << (32 - 2 - 1) {
+            // 2 for word size, 1 to divide by two
+            rts_trap_with("Array allocation too large");
+        }
+
+        let skewed_ptr = self.alloc_words(size_of::<Array>() + Words(len));
+
+        let ptr: *mut Array = skewed_ptr.unskew() as *mut Array;
+        (*ptr).header.tag = TAG_ARRAY;
+        (*ptr).len = len;
+
+        skewed_ptr
+    }
+
+    pub unsafe fn alloc_blob(&mut self, size: Bytes<u32>) -> SkewedPtr {
+        let ptr = self.alloc_words(size_of::<Blob>() + size.to_words());
+        let blob = ptr.unskew() as *mut Blob;
+        (*blob).header.tag = TAG_BLOB;
+        (*blob).len = size;
+        ptr
     }
 }

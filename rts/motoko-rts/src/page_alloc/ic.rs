@@ -65,7 +65,7 @@ impl Page for IcPage {
         // TODO: This will break if static data is multiple pages
         if self.wasm_page_num == 0 {
             // Skip static data
-            crate::memory::ic::get_heap_base() as usize
+            crate::get_heap_base() as usize
         } else {
             (usize::from(self.wasm_page_num) * WASM_PAGE_SIZE.as_usize()) as usize
         }

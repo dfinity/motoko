@@ -32,7 +32,6 @@ mod float;
 mod idl;
 pub mod leb128;
 mod mem_utils;
-pub mod memory;
 #[cfg(feature = "ic")]
 mod page_alloc;
 pub mod principal_id;
@@ -44,13 +43,22 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::Bytes;
+use types::{Bytes, SkewedPtr};
 
 use motoko_rts_macros::ic_mem_fn;
 
+// Provided by generated code
+#[cfg(feature = "ic")]
+extern "C" {
+    pub(crate) fn get_heap_base() -> u32;
+    pub(crate) fn get_static_roots() -> SkewedPtr;
+}
+
 #[ic_mem_fn(ic_only)]
-unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::SkewedPtr {
-    text::text_of_str(mem, "0.1")
+unsafe fn version<P: page_alloc::PageAlloc>(
+    allocation_area: &mut space::Space<P>,
+) -> types::SkewedPtr {
+    text::text_of_str(allocation_area, "0.1")
 }
 
 extern "C" {

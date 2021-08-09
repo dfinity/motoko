@@ -22,8 +22,9 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::memory::{alloc_array, Memory};
+use crate::page_alloc::PageAlloc;
 use crate::rts_trap_with;
+use crate::space::Space;
 use crate::types::SkewedPtr;
 
 use motoko_rts_macros::ic_mem_fn;
@@ -40,8 +41,8 @@ static mut N_CONTINUATIONS: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
-    TABLE = alloc_array(mem, INITIAL_SIZE);
+unsafe fn create_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>) {
+    TABLE = allocation_area.alloc_array(INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CONTINUATIONS = 0;
 
@@ -51,7 +52,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
     }
 }
 
-unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
+unsafe fn double_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>) {
     let old_array = TABLE.as_array();
     let old_size = old_array.len();
 
@@ -59,7 +60,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     let new_size = old_size * 2;
 
-    TABLE = alloc_array(mem, new_size);
+    TABLE = allocation_area.alloc_array(new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
@@ -72,13 +73,16 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 }
 
 #[ic_mem_fn]
-pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: SkewedPtr) -> u32 {
+pub unsafe fn remember_continuation<P: PageAlloc>(
+    allocation_area: &mut Space<P>,
+    ptr: SkewedPtr,
+) -> u32 {
     if TABLE.0 == 0 {
-        create_continuation_table(mem);
+        create_continuation_table(allocation_area);
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
-        double_continuation_table(mem);
+        double_continuation_table(allocation_area);
     }
 
     // Just as a sanity check make sure the ptr is really skewed
