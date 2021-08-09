@@ -27,7 +27,7 @@ pub mod constants;
 pub mod continuation_table;
 #[cfg(feature = "ic")]
 mod float;
-pub mod gc;
+//pub mod gc;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
@@ -58,11 +58,11 @@ extern "C" {
 }
 
 /// Initialize the runtime system
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn init() {
-    allocation_area::init();
-}
+// #[cfg(feature = "ic")]
+// #[no_mangle]
+// unsafe extern "C" fn init() {
+//     allocation_area::init();
+// }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     // Rust currently doesn't support stack-allocated dynamically-sized arrays or alloca, so we

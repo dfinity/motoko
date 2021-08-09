@@ -29,7 +29,7 @@ static mut FREE_PAGES: Option<IcPage> = Some(IcPage { wasm_page_num: 0 });
 impl PageAlloc for IcPageAlloc {
     type Page = IcPage;
 
-    unsafe fn alloc() -> IcPage {
+    unsafe fn alloc(&mut self) -> IcPage {
         match FREE_PAGES.take() {
             None => {
                 let wasm_page_num = wasm32::memory_grow(0, 1);
@@ -52,7 +52,7 @@ impl PageAlloc for IcPageAlloc {
         }
     }
 
-    unsafe fn free(self, page: IcPage) {
+    unsafe fn free(&mut self, page: IcPage) {
         // No need to set prev
         page.set_next(FREE_PAGES);
         FREE_PAGES = Some(page);
@@ -60,7 +60,7 @@ impl PageAlloc for IcPageAlloc {
 }
 
 impl Page for IcPage {
-    unsafe fn start(&self) -> usize {
+    fn start(&self) -> usize {
         // First page is special: it contains static data
         // TODO: This will break if static data is multiple pages
         if self.wasm_page_num == 0 {
@@ -71,27 +71,27 @@ impl Page for IcPage {
         }
     }
 
-    unsafe fn contents_start(&self) -> usize {
-        (self.start() as *const PageHeader).add(1) as usize
+    fn contents_start(&self) -> usize {
+        (self.start() as *const PageHeader<IcPage>).add(1) as usize
     }
 
-    unsafe fn end(&self) -> usize {
+    fn end(&self) -> usize {
         (usize::from(self.wasm_page_num) + 1) * WASM_PAGE_SIZE.as_usize()
     }
 
     unsafe fn prev(&self) -> Option<IcPage> {
-        (self.page_contents_start() as *mut PageHeader).prev()
+        (self.start() as *mut PageHeader<IcPage>).prev()
     }
 
     unsafe fn set_prev(&self, prev: Option<IcPage>) {
-        (self.page_contents_start() as *mut PageHeader).set_prev(prev)
+        (self.start() as *mut PageHeader<IcPage>).set_prev(prev)
     }
 
     unsafe fn next(&self) -> Option<IcPage> {
-        (self.page_contents_start() as *mut PageHeader).next()
+        (self.start() as *mut PageHeader<IcPage>).next()
     }
 
     unsafe fn set_next(&self, next: Option<IcPage>) {
-        (self.page_contents_start() as *mut PageHeader).set_next(next)
+        (self.start() as *mut PageHeader<IcPage>).set_next(next)
     }
 }

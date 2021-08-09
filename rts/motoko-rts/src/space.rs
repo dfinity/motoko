@@ -1,33 +1,33 @@
-use crate::page_alloc::Page;
+use crate::page_alloc::{Page, PageAlloc};
 use crate::types::{skew, SkewedPtr, Words};
 
-/// A space is basically an allocation area, consists of a linked list of pages.
-pub struct Space {
+/// A space is an allocation area, consists of a linked list of pages.
+pub struct Space<P: PageAlloc> {
     /// First page of this space. Scan through the space with `Page::next()`.
-    first_page: Page,
+    first_page: P::Page,
 
     /// `hp` is in this page and allocation is done here. `Page::prev()` gives us previous (filled)
     /// page of this space.
-    current_page: Page,
+    current_page: P::Page,
 
     /// Allocation pointer in the current page
     hp: usize,
 }
 
-impl Space {
-    pub unsafe fn new() -> Space {
-        let page = Page::alloc();
+impl<P: PageAlloc> Space<P> {
+    pub unsafe fn new(page_alloc: &mut P) -> Space<P> {
+        let page = page_alloc.alloc();
 
         Space {
             first_page: page,
             current_page: page,
-            hp: page.start(),
+            hp: page.contents_start(),
         }
     }
 
     /// Get the first page of this space. Can be used to scan the space from start to end.
     /// (e.g. when scavenging to-space in gc)
-    pub fn first_page(&self) -> Page {
+    pub fn first_page(&self) -> P::Page {
         self.first_page
     }
 
@@ -35,7 +35,7 @@ impl Space {
         let bytes = n.to_bytes().as_usize();
 
         let alloc = if self.hp + bytes >= self.current_page.end() {
-            let new_page = Page::alloc();
+            let new_page = P::alloc();
 
             new_page.set_prev(Some(self.current_page));
             self.current_page.set_next(Some(new_page));

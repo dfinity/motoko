@@ -22,7 +22,7 @@ pub trait PageAlloc {
 /// both.
 
 // TODO: `Copy` is convenient but not sure if really necessary
-pub trait Page: Copy {
+pub trait Page: Copy + Sized {
     /// Get the start of this page
     fn start(&self) -> usize;
 
@@ -61,33 +61,33 @@ pub trait Page: Copy {
 
 /// A header type for pages that implements the doubly linked list intrusively
 #[repr(packed)]
-pub struct PageHeader<P: Copy> {
+pub struct PageHeader<P: Copy + Sized> {
     pub next: Option<P>,
     pub prev: Option<P>,
 }
 
-impl<P: Copy> PageHeader<P> {
-    unsafe fn prev(self: *mut Self) -> Option<Page> {
+impl<P: Copy + Sized> PageHeader<P> {
+    unsafe fn prev(self: *mut Self) -> Option<P> {
         (*self).prev
     }
 
-    unsafe fn set_prev(self: *mut Self, prev: Option<Page>) {
+    unsafe fn set_prev(self: *mut Self, prev: Option<P>) {
         (*self).prev = prev;
     }
 
-    unsafe fn take_prev(self: *mut Self) -> Option<Page> {
+    unsafe fn take_prev(self: *mut Self) -> Option<P> {
         (*self).prev.take()
     }
 
-    unsafe fn next(self: *mut Self) -> Option<Page> {
+    unsafe fn next(self: *mut Self) -> Option<P> {
         (*self).next
     }
 
-    unsafe fn set_next(self: *mut Self, next: Option<Page>) {
+    unsafe fn set_next(self: *mut Self, next: Option<P>) {
         (*self).next = next;
     }
 
-    unsafe fn take_next(self: *mut Self) -> Option<Page> {
+    unsafe fn take_next(self: *mut Self) -> Option<P> {
         (*self).next.take()
     }
 }
