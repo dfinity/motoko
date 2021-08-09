@@ -14,7 +14,7 @@ To provide more fine-grained access to stable memory we propose
 extending the existing stable variable implementation with an orthogonal,
 library providing (almost) direct access to the IC Stable Memory API.
 
-Since the implementation of stable variables itself makes use of
+Since the implementation of stable variables itself makes temporary use of
 stable memory, some coordination between these two alternative, co-existing
 interfaces to IC stable memory is required.
 
@@ -152,7 +152,7 @@ During upgrade, if StableMemory has zero pages, we use the existing format, writ
 (non_zero) length and content of any stable variables from address 0 or leaving ic0.stable_mem()
 at zero with no pages allocated (if there are no stable variables).
 Otherwise, we compute the length and data of the stable variable encoding;
-save the first word of StableMemory at a known offset from the end of physical memory;
+save the first word of StableMemory at a known offset from the end of stable memory;
 write a 0x00 marker to the first word; and append length (even if zero) and
 data (if any) to the end of StableMem.
 The logical size of StableMemory and a version number are also written at
@@ -254,7 +254,7 @@ fun destabilize {fs:Ts} : value =
     in
     assert (0 < len <= ic0.stable_size() * pagesize)
     let v = deserialise<Ts>(offset, len) in
-    mem[offset, len] := 0 // clear serialization memory
+    mem[offset,..,offset+len-1] := 0 // clear serialization memory
     v
 ```
 
@@ -271,7 +271,7 @@ budget.
 REMARK:
 
 * An actor that has no stable variables and allocates no StableMem
-  should requize no physical stable memory
+  should require no physical stable memory
 
 * An actor that has n > 0 pages of StableMem will (unfortunately)
   require at least n+1 pages of physical memory since we need at least
