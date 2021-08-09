@@ -36,7 +36,7 @@ These grow memory and do bulk transfers between Wasm and stable
 memory.  The `// *` means that they can be called in all contexts
 (e.g. init, update, query etc).  Direct reads and writes of word-sized
 data to/from the stack are not supported but can be emulated at cost.
-The contents of fresh pages (after grow) is initially zero.
+The initial size of the stable memory is zero. The contents of fresh pages (after grow) is initially zero.
 
 Note that, in this API, the client is responsible for growing (both
 stable and wasm) memory before access by read or write (out-of-bounds
