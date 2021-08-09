@@ -2726,11 +2726,12 @@ module Object = struct
 
 
   (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_hash_raw env m = (* HERE *)
+  let idx_hash_raw env haha m = (* HERE *)
     let name = match m with
       | 0 -> "obj_idx"
-      | _ -> Printf.sprintf "obj_idx<%d>" m in
+      | _ -> Printf.sprintf "obj_idx<%d,%d>" m (Int32.to_int haha) in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+  let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr"))) in
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
       get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
@@ -2739,7 +2740,7 @@ module Object = struct
       (* Linearly scan through the fields (binary search can come later) *)
       from_m_to_n env (Int32.of_int m) (fun get_i ->
         get_i ^^
-        compile_mul_const Heap.word_size  ^^
+        compile_mul_const Heap.word_size ^^
         get_h_ptr ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         Heap.load_field 0l ^^
@@ -2754,18 +2755,33 @@ module Object = struct
             G.i Return
           ) G.nop
       ) ^^
-      E.trap_with env "internal error: object field not found"
+
+      get_h_ptr ^^
+      compile_unboxed_const 13l ^^
+      print_ptr_len env ^^
+      get_h_ptr ^^
+        compile_add_const 5l ^^
+          get_hash ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+      get_h_ptr ^^
+      compile_unboxed_const 9l ^^
+      print_ptr_len env ^^
+      E.trap_with env (Printf.sprintf "internal error: object field not found: %d (hash: %d)" m (Int32.to_int haha))
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx_hash env m indirect =
+  let idx_hash env haha m indirect =
     if indirect
-    then Func.share_code2 env "obj_idx_ind" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+    then
+      let name = match m with
+        | 0 -> "obj_idx_ind"
+        | _ -> Printf.sprintf "obj_idx_ind<%d>" m in
+      Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
-      idx_hash_raw env m ^^
+      idx_hash_raw env haha m ^^
       load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
-    else idx_hash_raw env m
+    else idx_hash_raw env haha m
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
@@ -2780,21 +2796,21 @@ module Object = struct
     let sorted_by_hash =
       List.sort
         (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
-        (List.map (fun f -> (Idllib.Escape.unescape_hash f.lab, f)) fields) in
-    let ordered_fields = List.map snd sorted_by_hash in
-    match List.find_opt (fun (_, {lab; _}) -> lab = s) (List.mapi (fun i e -> (i, e)) ordered_fields) with
-      | Some (i, _) -> i
-      | _ -> assert false
+        (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
+    (* if s = "keyvals" then List.iteri (fun i (h,{lab; _}) -> Printf.eprintf "index: %d hash: %lu, lab: %s, want: (%lu, %lu, %s)\n" i (Lib.Uint32.to_int32 h) lab (E.hash env s) (Lib.Uint32.to_int32 (Idllib.Escape.unescape_hash s)) s) sorted_by_hash; *)
+    match List.find_opt (fun (_, (h,{lab; _})) -> Lib.Uint32.to_int32 h = E.hash env s) (List.mapi (fun i e -> (i, (*snd*) e)) sorted_by_hash) with
+    | Some (i, (h,_)) -> (*assert (h != Lib.Uint32.of_int32 1028221841l);*) i
+    | _ -> assert false
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_raw env f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash_raw env 0
+    idx_hash_raw env 99l 0
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx env obj_type f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
+    idx_hash env (E.hash env f) (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
 
   (* load the value (or the mutbox) *)
   let load_idx_raw env f =
@@ -3789,10 +3805,11 @@ module Serialization = struct
 
   open Typ_hash
 
-  let sort_by_hash fs =
+  let sort_by_hash env fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
-      (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Idllib.Escape.unescape_hash f.Type.lab), f)) fs)
+      (* (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Idllib.Escape.unescape_hash f.Type.lab), f)) fs) *)
+      (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Lib.Uint32.of_int32 (E.hash env f.Type.lab)), f)) fs)
 
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,
@@ -3927,7 +3944,7 @@ module Serialization = struct
         List.iter (fun (h, f) ->
           add_leb128_32 h;
           add_idx f.typ
-        ) (sort_by_hash fs)
+        ) (sort_by_hash env fs)
       | Array (Mut t) ->
         add_sleb128 idl_alias; add_idx (Array t)
       | Array t ->
@@ -3940,7 +3957,7 @@ module Serialization = struct
         List.iter (fun (h, f) ->
           add_leb128_32 h;
           add_idx f.typ
-        ) (sort_by_hash vs)
+        ) (sort_by_hash env vs)
       | Func (s, c, tbs, ts1, ts2) ->
         assert (Type.is_shared_sort s);
         add_sleb128 idl_func;
@@ -4059,7 +4076,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           size env f.typ
-          ) (sort_by_hash fs)
+          ) (sort_by_hash env fs)
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
@@ -4092,7 +4109,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ size env t
               ) continue
           )
-          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash env vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
@@ -4242,7 +4259,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
-        ) (sort_by_hash fs)
+        ) (sort_by_hash env fs)
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
@@ -4269,7 +4286,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ write env t)
               continue
           )
-          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash env vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
@@ -4761,7 +4778,7 @@ module Serialization = struct
                   | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
-          ) (sort_by_hash fs)) ^^
+          ) (sort_by_hash env fs)) ^^
 
           (* skip all possible trailing extra fields *)
           get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
@@ -4879,7 +4896,7 @@ module Serialization = struct
                 ))
                 continue
             )
-            ( sort_by_hash vs )
+            ( sort_by_hash env vs )
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
