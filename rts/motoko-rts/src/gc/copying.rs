@@ -1,4 +1,5 @@
 use crate::mem_utils::memcpy_words;
+use crate::page_alloc::PageAlloc;
 use crate::space::Space;
 use crate::types::*;
 
@@ -13,29 +14,29 @@ unsafe fn schedule_copying_gc() {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn copying_gc() {
-    use crate::memory::ic;
-
     let mut to_space = Space::new();
 
     copying_gc_internal(
         &mut to_space,
-        ic::get_heap_base(),
-        ic::get_static_roots(),
+        crate::get_heap_base(),
+        crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
+        |live_size| {}, // TODO
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| {}, // TODO
     );
-
-    ic::LAST_HP = ic::HP;
 
     crate::allocation_space::free_and_update_allocation_space(to_space);
 }
 
 // TODO: Update stats
-pub unsafe fn copying_gc_internal<NoteLiveSize: Fn(Bytes<u32>), NoteReclaimed: Fn(Bytes<u32>)>(
-    to_space: &mut Space,
+pub unsafe fn copying_gc_internal<
+    P: PageAlloc,
+    NoteLiveSize: Fn(Bytes<u32>),
+    NoteReclaimed: Fn(Bytes<u32>),
+>(
+    to_space: &mut Space<P>,
     heap_base: u32,
     static_roots: SkewedPtr,
     continuation_table_loc: *mut SkewedPtr,
@@ -71,7 +72,7 @@ pub unsafe fn copying_gc_internal<NoteLiveSize: Fn(Bytes<u32>), NoteReclaimed: F
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
-unsafe fn evac(to_space: &mut Space, ptr_loc: usize) {
+unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut SkewedPtr;
 
@@ -105,7 +106,7 @@ unsafe fn evac(to_space: &mut Space, ptr_loc: usize) {
     *ptr_loc = skew(obj_addr);
 }
 
-unsafe fn scav(heap_base: usize, to_space: &mut Space, obj: usize) {
+unsafe fn scav<P: PageAlloc>(heap_base: usize, to_space: &mut Space<P>, obj: usize) {
     let obj = obj as *mut Obj;
 
     crate::visitor::visit_pointer_fields(obj, obj.tag(), heap_base, |field_addr| {
@@ -115,7 +116,11 @@ unsafe fn scav(heap_base: usize, to_space: &mut Space, obj: usize) {
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots(heap_base: usize, to_space: &mut Space, roots: *mut Array) {
+unsafe fn evac_static_roots<P: PageAlloc>(
+    heap_base: usize,
+    to_space: &mut Space<P>,
+    roots: *mut Array,
+) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {

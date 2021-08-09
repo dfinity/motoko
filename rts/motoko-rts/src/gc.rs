@@ -1,9 +1,11 @@
 pub mod copying;
 pub mod mark_compact;
 
+use crate::page_alloc::PageAlloc;
+use crate::space::Space;
+
 #[cfg(feature = "ic")]
-unsafe fn should_do_gc() -> bool {
-    use crate::memory::ic::{HP, LAST_HP};
+unsafe fn should_do_gc<P: PageAlloc>(heap: Space<P>) -> bool {
     use crate::types::Bytes;
 
     use core::cmp::{max, min};
@@ -28,5 +30,5 @@ unsafe fn should_do_gc() -> bool {
         MAX_HP_FOR_GC,
     );
 
-    u64::from(HP) >= heap_limit
+    heap.total_alloc() >= heap_limit
 }

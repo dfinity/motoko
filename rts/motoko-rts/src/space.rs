@@ -16,6 +16,11 @@ pub struct Space<P: PageAlloc> {
 
     /// Allocation pointer in the current page
     hp: usize,
+
+    /// Total amount allocated in this space so far. Note that when we allocate a new space because
+    /// an allocation request is too much for the current space, rest of the current space will be
+    /// accounted as allocated. (TODO: not sure about this part)
+    total_alloc: usize,
 }
 
 impl<P: PageAlloc> Space<P> {
@@ -27,6 +32,7 @@ impl<P: PageAlloc> Space<P> {
             first_page: page,
             current_page: page,
             hp: page.contents_start(),
+            total_alloc: 0,
         }
     }
 
@@ -36,11 +42,18 @@ impl<P: PageAlloc> Space<P> {
         self.first_page
     }
 
+    pub fn total_alloc(&self) -> usize {
+        self.total_alloc
+    }
+
     pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes().as_usize();
 
         let alloc = if self.hp + bytes >= self.current_page.end() {
             let new_page = self.page_alloc.alloc();
+
+            // Rest of the page is considered allocated
+            self.total_alloc += self.current_page.end() - self.hp;
 
             new_page.set_prev(Some(self.current_page));
             self.current_page.set_next(Some(new_page));
@@ -51,6 +64,8 @@ impl<P: PageAlloc> Space<P> {
         } else {
             self.hp + bytes
         };
+
+        self.total_alloc += bytes;
 
         skew(alloc)
     }

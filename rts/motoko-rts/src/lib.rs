@@ -30,7 +30,7 @@ pub mod constants;
 pub mod continuation_table;
 #[cfg(feature = "ic")]
 mod float;
-//pub mod gc;
+pub mod gc;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;

@@ -1,12 +1,6 @@
 #[cfg(feature = "ic")]
 pub mod ic;
 
-use crate::constants::WASM_PAGE_SIZE;
-use crate::rts_trap_with;
-
-use core::arch::wasm32;
-use core::convert::TryFrom;
-
 /// Trait for page allocators. A page is a unit of allocation from the underlying systme (Wasm, OS,
 /// some kind of mock or simulation in tests etc.).
 pub trait PageAlloc {
