@@ -3808,8 +3808,7 @@ module Serialization = struct
   let sort_by_hash env fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
-      (* (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Idllib.Escape.unescape_hash f.Type.lab), f)) fs) *)
-      (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Lib.Uint32.of_int32 (E.hash env f.Type.lab)), f)) fs)
+      (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Idllib.Escape.unescape_hash f.Type.lab), f)) fs)
 
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,
