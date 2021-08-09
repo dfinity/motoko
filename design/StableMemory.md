@@ -5,7 +5,7 @@ serialization and deserialization of all stable data on upgrade. This
 clearly doesn't scale to large amounts of stable data as there may not
 be enough cycles to perform (de)serialization.
 
-To avoid this upgrade hazard, some Rust canisters with low-level API
+To avoid this upgrade hazard, some canisters with low-level API
 access, and large stable memory footprints, arrange to store their
 persistent data in stable memory at all times, using either a custom
 binary encoding or a mixture of candid and raw binary.
