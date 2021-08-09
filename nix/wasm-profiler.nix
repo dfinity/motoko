@@ -10,7 +10,7 @@ in {
       src = wasm-profiler-src;
 
       # update this after dependency changes
-      cargoSha256 = "1nwg12pghddn1f0as6mnqhzf3xissch9fbsrm1ah8hgjvh98cj42";
+      cargoSha256 = "1yr8dw3x0591w0h6576ya29n1qm8lgmww9w33znx10b4dwli0gkb";
     };
 
   wasm-profiler-postproc = pkgs.stdenv.mkDerivation rec {
