@@ -8,7 +8,7 @@ use motoko_rts_macros::ic_mem_fn;
 // The meaning of the `mode` parameter is documented in motoko-base, function Float.format()
 #[ic_mem_fn]
 unsafe fn float_fmt<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     a: f64,
     prec: u32,
     mode: u32,
@@ -39,5 +39,5 @@ unsafe fn float_fmt<P: PageAlloc>(
 
     assert!(n_written > 0);
 
-    text_of_ptr_size(allocation_area, buf.as_ptr(), Bytes(n_written as u32))
+    text_of_ptr_size(allocation_space, buf.as_ptr(), Bytes(n_written as u32))
 }

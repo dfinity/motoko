@@ -40,8 +40,8 @@ use crate::types::{size_of, skew, BigInt, Bytes, SkewedPtr, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
-unsafe fn mp_alloc<P: PageAlloc>(allocation_area: &mut Space<P>, size: Bytes<u32>) -> *mut u8 {
-    let ptr = allocation_area.alloc_words(size_of::<BigInt>() + size.to_words());
+unsafe fn mp_alloc<P: PageAlloc>(allocation_space: &mut Space<P>, size: Bytes<u32>) -> *mut u8 {
+    let ptr = allocation_space.alloc_words(size_of::<BigInt>() + size.to_words());
     let blob = ptr.unskew() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
     // libtommath stores the size of the object in alloc
@@ -53,7 +53,7 @@ unsafe fn mp_alloc<P: PageAlloc>(allocation_area: &mut Space<P>, size: Bytes<u32
 
 #[ic_mem_fn]
 pub unsafe fn mp_calloc<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     n_elems: usize,
     elem_size: Bytes<usize>,
 ) -> *mut libc::c_void {
@@ -63,7 +63,7 @@ pub unsafe fn mp_calloc<P: PageAlloc>(
         bigint_trap();
     }
     let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(allocation_area, size) as *mut u32;
+    let payload = mp_alloc(allocation_space, size) as *mut u32;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().0 {
@@ -75,7 +75,7 @@ pub unsafe fn mp_calloc<P: PageAlloc>(
 
 #[ic_mem_fn]
 pub unsafe fn mp_realloc<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     ptr: *mut libc::c_void,
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
@@ -86,7 +86,7 @@ pub unsafe fn mp_realloc<P: PageAlloc>(
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {
-        let new_ptr = mp_alloc(allocation_area, new_size);
+        let new_ptr = mp_alloc(allocation_space, new_size);
         memcpy_bytes(new_ptr as usize, ptr as usize, old_size);
         new_ptr as *mut _
     } else if new_size == bigint.len() {

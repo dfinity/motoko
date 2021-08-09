@@ -30,7 +30,7 @@ unsafe fn copying_gc() {
 
     ic::LAST_HP = ic::HP;
 
-    crate::allocation_area::free_and_update_allocation_area(to_space);
+    crate::allocation_space::free_and_update_allocation_space(to_space);
 }
 
 // TODO: Update stats

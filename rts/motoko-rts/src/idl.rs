@@ -72,8 +72,8 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 }
 
 // NB. This function assumes the allocation does not need to survive GC
-unsafe fn alloc<P: PageAlloc>(allocation_area: &mut Space<P>, size: Words<u32>) -> *mut u8 {
-    allocation_area
+unsafe fn alloc<P: PageAlloc>(allocation_space: &mut Space<P>, size: Words<u32>) -> *mut u8 {
+    allocation_space
         .alloc_blob(size.to_bytes())
         .as_blob()
         .payload_addr()
@@ -96,7 +96,7 @@ unsafe fn alloc<P: PageAlloc>(allocation_area: &mut Space<P>, size: Words<u32>) 
 ///   (again via pointer argument, for lack of multi-value returns in C ABI)
 #[ic_mem_fn]
 unsafe fn parse_idl_header<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     extended: bool,
     buf: *mut Buf,
     typtbl_out: *mut *mut *mut u8,
@@ -126,7 +126,7 @@ unsafe fn parse_idl_header<P: PageAlloc>(
     *typtbl_size_out = n_types;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(allocation_area, Words(n_types)) as *mut _;
+    let typtbl: *mut *mut u8 = alloc(allocation_space, Words(n_types)) as *mut _;
 
     // Go through the table
     for i in 0..n_types {

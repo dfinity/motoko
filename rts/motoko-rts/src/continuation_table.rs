@@ -41,8 +41,8 @@ static mut N_CONTINUATIONS: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn create_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>) {
-    TABLE = allocation_area.alloc_array(INITIAL_SIZE);
+unsafe fn create_continuation_table<P: PageAlloc>(allocation_space: &mut Space<P>) {
+    TABLE = allocation_space.alloc_array(INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CONTINUATIONS = 0;
 
@@ -52,7 +52,7 @@ unsafe fn create_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>
     }
 }
 
-unsafe fn double_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>) {
+unsafe fn double_continuation_table<P: PageAlloc>(allocation_space: &mut Space<P>) {
     let old_array = TABLE.as_array();
     let old_size = old_array.len();
 
@@ -60,7 +60,7 @@ unsafe fn double_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>
 
     let new_size = old_size * 2;
 
-    TABLE = allocation_area.alloc_array(new_size);
+    TABLE = allocation_space.alloc_array(new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
@@ -74,15 +74,15 @@ unsafe fn double_continuation_table<P: PageAlloc>(allocation_area: &mut Space<P>
 
 #[ic_mem_fn]
 pub unsafe fn remember_continuation<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     ptr: SkewedPtr,
 ) -> u32 {
     if TABLE.0 == 0 {
-        create_continuation_table(allocation_area);
+        create_continuation_table(allocation_space);
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
-        double_continuation_table(allocation_area);
+        double_continuation_table(allocation_space);
     }
 
     // Just as a sanity check make sure the ptr is really skewed

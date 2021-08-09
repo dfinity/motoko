@@ -94,14 +94,14 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 
 /// Encode a blob into an checksum-prepended base32 representation
 pub unsafe fn base32_of_checksummed_blob<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     b: SkewedPtr,
 ) -> SkewedPtr {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
-    let r = allocation_area.alloc_blob(Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
+    let r = allocation_space.alloc_blob(Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob();
     let dest = blob.payload_addr();
 
@@ -184,14 +184,14 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
 }
 
 pub unsafe fn base32_to_blob<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     b: SkewedPtr,
 ) -> SkewedPtr {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = allocation_area.alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
+    let r = allocation_space.alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob();
     let dest = blob.payload_addr();
 
@@ -217,17 +217,17 @@ pub unsafe fn base32_to_blob<P: PageAlloc>(
 /// Encode a blob into its textual representation
 #[ic_mem_fn]
 pub unsafe fn principal_of_blob<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     b: SkewedPtr,
 ) -> SkewedPtr {
-    let base32 = base32_of_checksummed_blob(allocation_area, b);
-    base32_to_principal(allocation_area, base32)
+    let base32 = base32_of_checksummed_blob(allocation_space, b);
+    base32_to_principal(allocation_space, base32)
 }
 
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
 unsafe fn base32_to_principal<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     b: SkewedPtr,
 ) -> SkewedPtr {
     let blob = b.as_blob();
@@ -236,7 +236,7 @@ unsafe fn base32_to_principal<P: PageAlloc>(
     let mut data = blob.payload_addr();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = allocation_area.alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
+    let r = allocation_space.alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
     let blob = r.as_blob();
     let mut dest = blob.payload_addr();
 
@@ -271,11 +271,11 @@ unsafe fn base32_to_principal<P: PageAlloc>(
 // Decode an textual principal representation into a blob
 #[ic_mem_fn]
 pub unsafe fn blob_of_principal<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     t: SkewedPtr,
 ) -> SkewedPtr {
-    let b0 = blob_of_text(allocation_area, t);
-    let bytes = base32_to_blob(allocation_area, b0);
+    let b0 = blob_of_text(allocation_space, t);
+    let bytes = base32_to_blob(allocation_space, b0);
 
     // Strip first four bytes
     let bytes_len = bytes.as_blob().len();
@@ -283,7 +283,7 @@ pub unsafe fn blob_of_principal<P: PageAlloc>(
         rts_trap_with("blob_of_principal: principal too short");
     }
 
-    let stripped = allocation_area.alloc_blob(bytes_len - Bytes(4));
+    let stripped = allocation_space.alloc_blob(bytes_len - Bytes(4));
     memcpy_bytes(
         stripped.as_blob().payload_addr() as usize,
         bytes.as_blob().payload_addr().add(4) as usize,
@@ -291,7 +291,7 @@ pub unsafe fn blob_of_principal<P: PageAlloc>(
     );
 
     // Check encoding
-    let expected = principal_of_blob(allocation_area, stripped);
+    let expected = principal_of_blob(allocation_space, stripped);
     if blob_compare(b0, expected) != 0 {
         rts_trap_with("blob_of_principal: invalid principal");
     }

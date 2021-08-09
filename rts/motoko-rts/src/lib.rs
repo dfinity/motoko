@@ -17,7 +17,7 @@ mod print;
 pub mod debug;
 
 #[cfg(feature = "ic")]
-mod allocation_area;
+mod allocation_space;
 pub mod bigint;
 #[cfg(feature = "ic")]
 mod blob_iter;
@@ -56,9 +56,9 @@ extern "C" {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn version<P: page_alloc::PageAlloc>(
-    allocation_area: &mut space::Space<P>,
+    allocation_space: &mut space::Space<P>,
 ) -> types::SkewedPtr {
-    text::text_of_str(allocation_area, "0.1")
+    text::text_of_str(allocation_space, "0.1")
 }
 
 extern "C" {
@@ -69,7 +69,7 @@ extern "C" {
 // #[cfg(feature = "ic")]
 // #[no_mangle]
 // unsafe extern "C" fn init() {
-//     allocation_area::init();
+//     allocation_space::init();
 // }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {

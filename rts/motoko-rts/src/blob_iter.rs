@@ -10,8 +10,8 @@ const ITER_POS_IDX: u32 = 1;
 
 /// Returns iterator for the given blob
 #[ic_mem_fn]
-unsafe fn blob_iter<P: PageAlloc>(allocation_area: &mut Space<P>, blob: SkewedPtr) -> SkewedPtr {
-    let iter_ptr = allocation_area.alloc_words(size_of::<Array>() + Words(2));
+unsafe fn blob_iter<P: PageAlloc>(allocation_space: &mut Space<P>, blob: SkewedPtr) -> SkewedPtr {
+    let iter_ptr = allocation_space.alloc_words(size_of::<Array>() + Words(2));
 
     let iter_array = iter_ptr.unskew() as *mut Array;
     (*iter_array).header.tag = TAG_ARRAY;

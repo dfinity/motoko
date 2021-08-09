@@ -43,34 +43,34 @@ const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 
 unsafe fn alloc_text_blob<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     size: Bytes<u32>,
 ) -> SkewedPtr {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_bloc: Text too large");
     }
-    allocation_area.alloc_blob(size)
+    allocation_space.alloc_blob(size)
 }
 
 #[ic_mem_fn]
 pub unsafe fn text_of_ptr_size<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     buf: *const u8,
     n: Bytes<u32>,
 ) -> SkewedPtr {
-    let blob = alloc_text_blob(allocation_area, n);
+    let blob = alloc_text_blob(allocation_space, n);
     let payload_addr = blob.as_blob().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
     blob
 }
 
-pub unsafe fn text_of_str<P: PageAlloc>(allocation_area: &mut Space<P>, s: &str) -> SkewedPtr {
-    text_of_ptr_size(allocation_area, s.as_ptr(), Bytes(s.len() as u32))
+pub unsafe fn text_of_str<P: PageAlloc>(allocation_space: &mut Space<P>, s: &str) -> SkewedPtr {
+    text_of_ptr_size(allocation_space, s.as_ptr(), Bytes(s.len() as u32))
 }
 
 #[ic_mem_fn]
 pub unsafe fn text_concat<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     s1: SkewedPtr,
     s2: SkewedPtr,
 ) -> SkewedPtr {
@@ -94,7 +94,7 @@ pub unsafe fn text_concat<P: PageAlloc>(
         let blob1 = s1.as_blob();
         let blob2 = s2.as_blob();
 
-        let r = alloc_text_blob(allocation_area, new_len);
+        let r = alloc_text_blob(allocation_space, new_len);
         let r_payload: *const u8 = r.as_blob().payload_addr();
         memcpy_bytes(r_payload as usize, blob1.payload_addr() as usize, blob1_len);
         memcpy_bytes(
@@ -112,7 +112,7 @@ pub unsafe fn text_concat<P: PageAlloc>(
     }
 
     // Create concat node
-    let r = allocation_area.alloc_words(size_of::<Concat>());
+    let r = allocation_space.alloc_words(size_of::<Concat>());
     let r_concat = r.unskew() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).n_bytes = new_len;
@@ -176,7 +176,7 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[ic_mem_fn]
 pub unsafe fn blob_of_text<P: PageAlloc>(
-    allocation_area: &mut Space<P>,
+    allocation_space: &mut Space<P>,
     s: SkewedPtr,
 ) -> SkewedPtr {
     let obj = s.as_obj();
@@ -184,7 +184,7 @@ pub unsafe fn blob_of_text<P: PageAlloc>(
         s
     } else {
         let concat = obj.as_concat();
-        let r = alloc_text_blob(allocation_area, (*concat).n_bytes);
+        let r = alloc_text_blob(allocation_space, (*concat).n_bytes);
         text_to_buf(s, r.as_blob().payload_addr());
         r
     }
@@ -396,11 +396,14 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut u32) -> u32 {
 
 /// Allocate a text from a character
 #[ic_mem_fn]
-pub unsafe fn text_singleton<P: PageAlloc>(allocation_area: &mut Space<P>, char: u32) -> SkewedPtr {
+pub unsafe fn text_singleton<P: PageAlloc>(
+    allocation_space: &mut Space<P>,
+    char: u32,
+) -> SkewedPtr {
     let mut buf = [0u8; 4];
     let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
 
-    let blob_ptr = alloc_text_blob(allocation_area, Bytes(str_len));
+    let blob_ptr = alloc_text_blob(allocation_space, Bytes(str_len));
 
     let blob = blob_ptr.as_blob();
 
