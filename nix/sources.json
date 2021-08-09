@@ -15,7 +15,7 @@
     "dfinity": {
         "branch": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "2760865b88b726023a951705189671716cef3601",
+        "rev": "071d8388c1b4905072c9417ede0f75cea4002600",
         "type": "git"
     },
     "esm": {
@@ -33,10 +33,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "f39853215d89ee302dda20554544e123ed4080d9",
-        "sha256": "0w6l5j90i5c4inzbmiy3mi7gawn4m3r6dp1n2hr1xw9h1bcx2snk",
+        "rev": "c49a2f443d177b6486a1797ca646d8546ac7288c",
+        "sha256": "0pfnz3x4ls8asnq4x7jpp0ijiss24j2sg77bn4hg6gvbfmczp4x6",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/f39853215d89ee302dda20554544e123ed4080d9.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/c49a2f443d177b6486a1797ca646d8546ac7288c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -57,10 +57,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "c298729bef3ebe135e913d88a04273436815a2aa",
-        "sha256": "0nryc860n5qsv3m4ig9clq778i5ifhashn7f9rhzjagaavkz2w87",
+        "rev": "51758e16085f212752cd2442683a79368f9fe3fa",
+        "sha256": "0xdqnazy89hvxawhi60x4ipjp6f66fv607n0y89yizf5xh8a5zjr",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/c298729bef3ebe135e913d88a04273436815a2aa.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/51758e16085f212752cd2442683a79368f9fe3fa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -122,10 +122,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "3f3fba4e2066f28a1ad7ac60e86a688a92eb5b5f",
-        "sha256": "1mrj89gzrzhci4lssvzmmk31l715cddp7l39favnfs1qaijly814",
+        "rev": "b1001ed670666ca4ce1c1b064481f88694315c1d",
+        "sha256": "1hpig8z4pzdwc2vazr6hg7qyxllbgznsaivaigjnmrdszlxz55zz",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/3f3fba4e2066f28a1ad7ac60e86a688a92eb5b5f.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/b1001ed670666ca4ce1c1b064481f88694315c1d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

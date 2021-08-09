@@ -1,5 +1,27 @@
 # Motoko compiler changelog
 
+== 0.6.6 (2021-07-30)
+
+* Vastly improved garbage collection scheduling: previously Motoko runtime would do GC
+  after every update message. We now schedule a GC when
+
+  1. Heap grows more than 50% and 10 MiB since the last GC, or
+  2. Heap size is more than 3 GiB
+
+  (1) is to make sure we don't do GC on tiny heaps or after only small amounts of allocation.
+  (2) is to make sure that on large heaps we will have enough allocation space during the next message.
+
+  This scheduling reduces cycles substantially, but may moderately increase memory usage.
+
+  New flag `--force-gc` restores the old behavior.
+
+* Fix bug in compacting gc causing unnecessary memory growth (#2673)
+
+* Trap on attempt to upgrade when canister not stopped and there are outstanding callbacks.
+  (This failure mode can be avoided by stopping the canister before upgrade.)
+
+* Fix issue #2640 (leaked `ClosureTable` entry when awaiting futures fails).
+
 == 0.6.5 (2021-07-08)
 
 * Add alternative, _compacting_ gc, enabled with new moc flag `--compacting-gc`.

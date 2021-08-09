@@ -89,7 +89,7 @@ pub unsafe fn visit_pointer_fields<F>(
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => {
             // These don't have pointers, skip
         }
 
