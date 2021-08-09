@@ -1,113 +1,72 @@
+#[cfg(feature = "ic")]
+pub mod ic;
+
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
 use core::arch::wasm32;
 use core::convert::TryFrom;
 
-// Initially the first page is free (TODO: won't work if static data is multiple pages).
-// `Page::start` accounts for static data. Pages linked with the `next` field. `prev` is not used.
-static mut FREE_PAGES: Option<Page> = Some(Page { wasm_page_num: 0 });
+/// Trait for page allocators. A page is a unit of allocation from the underlying systme (Wasm, OS,
+/// some kind of mock or simulation in tests etc.).
+pub trait PageAlloc {
+    type Page: Page;
 
-/// A chunk of memory that can be used for allocation. Pages can be linked together.
-// NB. currently this is a single Wasm page, but this may change in the future. When compiling for
-// IC first page is special: the contents start at heap base instead of 0.
-#[derive(Debug, Clone, Copy)]
-pub struct Page {
-    // Wasm page number for this page
-    wasm_page_num: u16,
+    unsafe fn alloc(&mut self) -> Self::Page;
+
+    unsafe fn free(&mut self, page: Self::Page);
 }
 
-/// Header of a page. `page.page_contents_start()` will point to this struct. Rest of the page is
-/// available for allocation.
-struct PageHeader {
-    next: Option<Page>,
-    prev: Option<Page>,
-}
+/// Trait for allocation units from the underlying system (Wasm, OS, ...). Page state can be held
+/// withing the pages, or externally (e.g. in an array indexed by a page), or a combination of
+/// both.
 
-impl Page {
-    pub const fn initial_page() -> Page {
-        Page { wasm_page_num: 0 }
+// TODO: `Copy` is convenient but not sure if really necessary
+pub trait Page: Copy {
+    /// Get the start of this page
+    fn start(&self) -> usize;
+
+    /// Get the start of this page after the page header (e.g. linked list fields)
+    fn contents_start(&self) -> usize;
+
+    /// Get the end (exclusive) of this page
+    fn end(&self) -> usize;
+
+    /// Get the previous page in the list
+    unsafe fn prev(&self) -> Option<Self>;
+
+    /// Get the next page in the list
+    unsafe fn next(&self) -> Option<Self>;
+
+    /// Set the previous page in the list
+    unsafe fn set_prev(&self, prev: Option<Self>);
+
+    /// Set the next page in the list
+    unsafe fn set_next(&self, next: Option<Self>);
+
+    /// `Option::take` for the prev field
+    unsafe fn take_prev(&self) -> Option<Self> {
+        let prev = self.prev();
+        self.set_prev(None);
+        prev
     }
 
-    /// Allocate a new page
-    pub unsafe fn alloc() -> Page {
-        match FREE_PAGES.take() {
-            None => {
-                let wasm_page_num = wasm32::memory_grow(0, 1);
-
-                // First page should be in use
-                debug_assert_ne!(wasm_page_num, 0);
-
-                if wasm_page_num == usize::MAX {
-                    rts_trap_with("Cannot grow memory");
-                }
-
-                Page {
-                    wasm_page_num: u16::try_from(wasm_page_num).unwrap(),
-                }
-            }
-            Some(free_page) => {
-                FREE_PAGES = free_page.take_next();
-                free_page
-            }
-        }
-    }
-
-    /// Free the page
-    pub unsafe fn free(self) {
-        // No need to set prev
-        self.set_next(FREE_PAGES);
-        FREE_PAGES = Some(self);
-    }
-
-    unsafe fn page_contents_start(&self) -> *mut PageHeader {
-        // First page is special: it contains static data
-        // TODO: This will break if static data is multiple pages
-        if self.wasm_page_num == 0 {
-            // Skip static data
-            crate::memory::ic::get_heap_base() as *mut PageHeader
-        } else {
-            (usize::from(self.wasm_page_num) * WASM_PAGE_SIZE.as_usize()) as *mut PageHeader
-        }
-    }
-
-    /// Get the beginning of allocation area of this page
-    pub unsafe fn start(&self) -> usize {
-        // Skip page header
-        self.page_contents_start().add(1) as usize
-    }
-
-    /// Get the end of allocation of this page
-    pub fn end(&self) -> usize {
-        (usize::from(self.wasm_page_num) + 1) * WASM_PAGE_SIZE.as_usize()
-    }
-
-    pub unsafe fn prev(&self) -> Option<Page> {
-        self.page_contents_start().prev()
-    }
-
-    pub unsafe fn set_prev(&self, next: Option<Page>) {
-        self.page_contents_start().set_prev(next)
-    }
-
-    pub unsafe fn take_prev(&self) -> Option<Page> {
-        self.page_contents_start().take_prev()
-    }
-
-    pub unsafe fn next(&self) -> Option<Page> {
-        self.page_contents_start().next()
-    }
-
-    pub unsafe fn set_next(&self, next: Option<Page>) {
-        self.page_contents_start().set_next(next)
-    }
-
-    pub unsafe fn take_next(&self) -> Option<Page> {
-        self.page_contents_start().take_next()
+    /// `Option::take` for the next field
+    unsafe fn take_next(&self) -> Option<Self> {
+        let next = self.next();
+        self.set_next(None);
+        next
     }
 }
 
-impl PageHeader {
+/// A header type for pages that implements the doubly linked list intrusively
+#[repr(packed)]
+pub struct PageHeader<P: Copy> {
+    pub next: Option<P>,
+    pub prev: Option<P>,
+}
+
+impl<P: Copy> PageHeader<P> {
     unsafe fn prev(self: *mut Self) -> Option<Page> {
         (*self).prev
     }
