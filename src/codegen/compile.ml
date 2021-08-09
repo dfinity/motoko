@@ -3738,7 +3738,8 @@ end (* IC *)
 
 module StableMem = struct
 
-  let version = Int32.of_int 0
+  (* start from 1 to avoid accidental reads of 0 *)
+  let version = Int32.of_int 1
 
   let register_globals env =
     (* size (in pages) *)
@@ -3764,7 +3765,7 @@ module StableMem = struct
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
 
-  (* check [offset,.., offset + size) within bounds *)
+  (* check [offset,.., offset + size) within bounds, assumes size > 0 *)
   let guard_range env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5354,7 +5355,13 @@ To detect and preserve aliasing, these steps are taken:
 end (* Serialization *)
 
 
-(* Stabilization (serialization to/from stable memory) *)
+(* Stabilization (serialization to/from stable memory) of both:
+   * stable variables; and
+   * virtual stable memory.
+   c.f.
+   * ../../design/Stable.md
+   * ../../design/StableMemory.md
+*)
 
 module Stabilization = struct
 
@@ -5390,8 +5397,7 @@ module Stabilization = struct
 
         (* let N = !size * page_size *)
         StableMem.get_mem_size env ^^
-        compile_unboxed_const (Int32.of_int page_size_bits) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+        compile_shl_const (Int32.of_int page_size_bits) ^^
         set_N ^^
 
         (* grow mem to page including address
@@ -5399,8 +5405,7 @@ module Stabilization = struct
         *)
         get_N ^^
         get_len ^^
-        compile_unboxed_const 16l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_add_const 16l ^^
         StableMem.ensure env  ^^
 
         get_N ^^
@@ -5408,8 +5413,7 @@ module Stabilization = struct
         StableMem.write_word32 env ^^
 
         get_N ^^
-        compile_unboxed_const 4l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_add_const 4l ^^
         get_dst ^^
         get_len ^^
         E.call_import env "ic0" "stable_write" ^^
@@ -5418,32 +5422,27 @@ module Stabilization = struct
         (* M is beginning of last page *)
         let (set_M, get_M) = new_local env "M" in
         E.call_import env "ic0" "stable_size" ^^
-        compile_unboxed_const 1l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_unboxed_const (Int32.of_int page_size_bits) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+        compile_sub_const 1l ^^
+        compile_shl_const (Int32.of_int page_size_bits) ^^
         set_M ^^
 
         (* store mem_size at M + (pagesize - 12) *)
         get_M ^^
-        compile_unboxed_const (Int32.sub page_size 12l) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_add_const (Int32.sub page_size 12l) ^^
         StableMem.get_mem_size env ^^
         StableMem.write_word32 env ^^
 
         (* save first word at M + (pagesize - 8);
            mark first word as 0 *)
         get_M ^^
-        compile_unboxed_const (Int32.sub page_size 8l) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_add_const (Int32.sub page_size 8l) ^^
         compile_unboxed_const 0l ^^
         StableMem.read_and_clear_word32 env ^^
         StableMem.write_word32 env ^^
 
         (* save version at M + (pagesize - 4) *)
         get_M ^^
-        compile_unboxed_const (Int32.sub page_size 4l) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        compile_add_const (Int32.sub page_size 4l) ^^
         compile_unboxed_const StableMem.version ^^
         StableMem.write_word32 env
 
@@ -5486,16 +5485,13 @@ module Stabilization = struct
               let (set_N, get_N) = new_local env "N" in
 
               E.call_import env "ic0" "stable_size" ^^
-              compile_unboxed_const 1l ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-              compile_unboxed_const (Int32.of_int page_size_bits) ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+              compile_sub_const 1l ^^
+              compile_shl_const (Int32.of_int page_size_bits) ^^
               set_M ^^
 
               (* read version *)
               get_M ^^
-              compile_unboxed_const (Int32.sub page_size 4l) ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              compile_add_const (Int32.sub page_size 4l) ^^
               StableMem.read_and_clear_word32 env ^^
               set_version ^^
 
@@ -5510,27 +5506,26 @@ module Stabilization = struct
               (* restore StableMem bytes [0..4) *)
               compile_unboxed_const 0l ^^
               get_M ^^
-              compile_unboxed_const (Int32.sub page_size 8l) ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              compile_add_const (Int32.sub page_size 8l) ^^
               StableMem.read_and_clear_word32 env ^^
               StableMem.write_word32 env ^^
 
               (* restore mem_size *)
               get_M ^^
-              compile_unboxed_const (Int32.sub page_size 12l) ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              compile_add_const (Int32.sub page_size 12l) ^^
               StableMem.read_and_clear_word32 env ^^
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
-              compile_unboxed_const (Int32.of_int page_size_bits) ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+              compile_shl_const (Int32.of_int page_size_bits) ^^
               set_N ^^
 
+              (* set len *)
               get_N ^^
               StableMem.read_and_clear_word32 env ^^
               set_len ^^
 
+              (* set offset *)
               get_N ^^
               compile_add_const 4l ^^
               set_offset
@@ -5540,9 +5535,11 @@ module Stabilization = struct
               StableMem.get_mem_size env ^^
               E.then_trap_with env "unexpected, non-zero stable memory size" ^^
 
+              (* set len *)
               get_marker ^^
               set_len ^^
 
+              (* set offset *)
               compile_unboxed_const 4l ^^
               set_offset
             end ^^ (* if_ *)
@@ -7871,7 +7868,7 @@ and compile_exp (env : E.t) ae exp =
 
     | ICStableRead ty, [] ->
       (*
-       * On initial install:
+        * On initial install:
           1. return record of nulls
         * On upgrade:
           1. deserialize stable store to v : ty,
