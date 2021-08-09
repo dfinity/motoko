@@ -7774,12 +7774,6 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       StableMem.logical_grow env
 
-
-(*
-    | OtherPrim ("StableMemory.load_nat8"), [e] ->
-    | OtherPrim ("StableMemory.store_nat8"), [e1, e2] ->
-*)
-
     (* Other prims, binary*)
     | OtherPrim "Array.init", [_;_] ->
       const_sr SR.Vanilla (Arr.init env)
