@@ -14,10 +14,13 @@ pub unsafe fn init() {
 
 #[no_mangle]
 pub(crate) unsafe fn alloc_words(n: Words<u32>) -> SkewedPtr {
-    ALLOCATION_AREA.as_mut().unwrap().alloc_words(n)
+    ALLOCATION_AREA
+        .as_mut()
+        .unwrap()
+        .alloc_words(&mut IcPageAlloc {}, n)
 }
 
 pub(crate) unsafe fn free_and_update_allocation_area(new: Space<IcPageAlloc>) {
     let old = ALLOCATION_AREA.replace(new).unwrap();
-    old.free();
+    old.free(&mut IcPageAlloc {});
 }

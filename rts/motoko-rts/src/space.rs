@@ -31,11 +31,11 @@ impl<P: PageAlloc> Space<P> {
         self.first_page
     }
 
-    pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    pub unsafe fn alloc_words(&mut self, page_alloc: &mut P, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes().as_usize();
 
         let alloc = if self.hp + bytes >= self.current_page.end() {
-            let new_page = P::alloc();
+            let new_page = page_alloc.alloc();
 
             new_page.set_prev(Some(self.current_page));
             self.current_page.set_next(Some(new_page));
@@ -51,11 +51,11 @@ impl<P: PageAlloc> Space<P> {
     }
 
     /// Free all pages of the space. The space itself should not be used afterwards.
-    pub unsafe fn free(self) {
+    pub unsafe fn free(self, page_alloc: &mut P) {
         let mut next = Some(self.first_page);
         while let Some(page) = next {
             next = page.next();
-            page.free();
+            page_alloc.free(page);
         }
     }
 }

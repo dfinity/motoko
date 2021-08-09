@@ -60,7 +60,7 @@ impl PageAlloc for IcPageAlloc {
 }
 
 impl Page for IcPage {
-    fn start(&self) -> usize {
+    unsafe fn start(&self) -> usize {
         // First page is special: it contains static data
         // TODO: This will break if static data is multiple pages
         if self.wasm_page_num == 0 {
@@ -71,11 +71,11 @@ impl Page for IcPage {
         }
     }
 
-    fn contents_start(&self) -> usize {
+    unsafe fn contents_start(&self) -> usize {
         (self.start() as *const PageHeader<IcPage>).add(1) as usize
     }
 
-    fn end(&self) -> usize {
+    unsafe fn end(&self) -> usize {
         (usize::from(self.wasm_page_num) + 1) * WASM_PAGE_SIZE.as_usize()
     }
 

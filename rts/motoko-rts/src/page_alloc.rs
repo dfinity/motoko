@@ -24,13 +24,13 @@ pub trait PageAlloc {
 // TODO: `Copy` is convenient but not sure if really necessary
 pub trait Page: Copy + Sized {
     /// Get the start of this page
-    fn start(&self) -> usize;
+    unsafe fn start(&self) -> usize;
 
     /// Get the start of this page after the page header (e.g. linked list fields)
-    fn contents_start(&self) -> usize;
+    unsafe fn contents_start(&self) -> usize;
 
     /// Get the end (exclusive) of this page
-    fn end(&self) -> usize;
+    unsafe fn end(&self) -> usize;
 
     /// Get the previous page in the list
     unsafe fn prev(&self) -> Option<Self>;
