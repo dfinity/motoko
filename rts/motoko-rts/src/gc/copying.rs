@@ -1,12 +1,12 @@
 use crate::mem_utils::memcpy_words;
-use crate::page_alloc::PageAlloc;
+use crate::page_alloc::{Page, PageAlloc};
 use crate::space::Space;
 use crate::types::*;
 
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn schedule_copying_gc() {
-    if super::should_do_gc() {
+    if super::should_do_gc(crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap()) {
         copying_gc();
     }
 }
@@ -14,7 +14,7 @@ unsafe fn schedule_copying_gc() {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn copying_gc() {
-    let mut to_space = Space::new();
+    let mut to_space = Space::new(crate::page_alloc::ic::IcPageAlloc {});
 
     copying_gc_internal(
         &mut to_space,

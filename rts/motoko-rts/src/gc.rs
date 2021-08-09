@@ -4,8 +4,10 @@ pub mod mark_compact;
 use crate::page_alloc::PageAlloc;
 use crate::space::Space;
 
+static mut LAST_TOTAL_ALLOC: u32 = 0;
+
 #[cfg(feature = "ic")]
-unsafe fn should_do_gc<P: PageAlloc>(heap: Space<P>) -> bool {
+unsafe fn should_do_gc<P: PageAlloc>(heap: &Space<P>) -> bool {
     use crate::types::Bytes;
 
     use core::cmp::{max, min};
@@ -24,11 +26,11 @@ unsafe fn should_do_gc<P: PageAlloc>(heap: Space<P>) -> bool {
 
     let heap_limit = min(
         max(
-            (f64::from(LAST_HP) * HEAP_GROWTH_FACTOR) as u64,
-            u64::from(LAST_HP) + SMALL_HEAP_DELTA.0,
+            (f64::from(LAST_TOTAL_ALLOC) * HEAP_GROWTH_FACTOR) as u64,
+            u64::from(LAST_TOTAL_ALLOC) + SMALL_HEAP_DELTA.0,
         ),
         MAX_HP_FOR_GC,
     );
 
-    heap.total_alloc() >= heap_limit
+    heap.total_alloc() as u64 >= heap_limit
 }

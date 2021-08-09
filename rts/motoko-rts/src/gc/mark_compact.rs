@@ -16,17 +16,17 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[ic_mem_fn(ic_only)]
-unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
-    if super::should_do_gc() {
-        compacting_gc(mem);
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe fn schedule_compacting_gc() {
+    if super::should_do_gc(crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap()) {
+        compacting_gc();
     }
 }
 
-#[ic_mem_fn(ic_only)]
-unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe fn compacting_gc() {
     compacting_gc_internal(
         mem,
         ic::get_heap_base(),
@@ -37,12 +37,10 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
+        |live_size| {}, // TODO
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| {}, // TODO
     );
-
-    ic::LAST_HP = ic::HP;
 }
 
 pub unsafe fn compacting_gc_internal<
