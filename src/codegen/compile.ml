@@ -2726,10 +2726,10 @@ module Object = struct
 
 
   (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_hash_raw env haha m = (* HERE *)
+  let idx_hash_raw env m = (* HERE *)
     let name = match m with
       | 0 -> "obj_idx"
-      | _ -> Printf.sprintf "obj_idx<%d,%d>" m (Int32.to_int haha) in
+      | _ -> Printf.sprintf "obj_idx<%d>" m  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr"))) in
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
@@ -2766,11 +2766,11 @@ module Object = struct
       get_h_ptr ^^
       compile_unboxed_const 9l ^^
       print_ptr_len env ^^
-      E.trap_with env (Printf.sprintf "internal error: object field not found: %d (hash: %d)" m (Int32.to_int haha))
+      E.trap_with env (Printf.sprintf "internal error: object field not found")
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx_hash env haha m indirect =
+  let idx_hash env m indirect =
     if indirect
     then
       let name = match m with
@@ -2778,10 +2778,10 @@ module Object = struct
         | _ -> Printf.sprintf "obj_idx_ind<%d>" m in
       Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
-      idx_hash_raw env haha m ^^
+      idx_hash_raw env m ^^
       load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
-    else idx_hash_raw env haha m
+    else idx_hash_raw env m
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
@@ -2806,12 +2806,12 @@ module Object = struct
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_raw env f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash_raw env 99l 0
+    idx_hash_raw env 0
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx env obj_type f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash env (E.hash env f) (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
+    idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
 
   (* load the value (or the mutbox) *)
   let load_idx_raw env f =
