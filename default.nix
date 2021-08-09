@@ -647,7 +647,7 @@ rec {
     # both, while not actually building `moc`
     #
     propagatedBuildInputs =
-      let dont_build = [ moc mo-ld didc deser ]; in
+      let dont_build = [ moc mo-ld didc deser candid-tests ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
