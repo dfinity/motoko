@@ -10,7 +10,6 @@ pkgs:
 
       nativeBuildInputs = with pkgs; [
         openssl
-        openssl.dev
         pkg-config
         cmake
         llvm_10
@@ -18,9 +17,9 @@ pkgs:
         lmdb
       ];
 
-      #PKG_CONFIG = "${pkgs.pkg-config}/bin/pkg-config";
-      #OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
-      # OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
+      # needed for openssl-sys
+      OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+      OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
 
       # needed for bindgen
       LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
