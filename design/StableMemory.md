@@ -75,7 +75,7 @@ fun storeNat8(offset, b) =
 
 ```
 
-(To avoid overflow on the rhs, we could implement the check as `assert ((offset >> 6) < StableMemory.size())`.)
+(To avoid overflow on the rhs, we could implement the check as `assert ((offset >> 16) < StableMemory.size())`.)
 
 On top of this basic API, users should be able to build more
 interesting higher-level APIs for pickling user-defined data.

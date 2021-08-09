@@ -5358,32 +5358,6 @@ end (* Serialization *)
 
 module Stabilization = struct
 
-(*
-  let stabilize env t =
-    let (set_dst, get_dst) = new_local env "dst" in
-    let (set_len, get_len) = new_local env "len" in
-    Serialization.serialize env [t] ^^
-    set_len ^^
-    set_dst ^^
-
-    (* ensure [0,..,3,...len+4) *)
-    compile_unboxed_const 0l ^^
-    get_len ^^
-    compile_add_const 4l ^^  (* reserve one word for size *)
-    StableMem.ensure env ^^
-
-    (* write len to initial word of stable memory*)
-    compile_unboxed_const 0l ^^
-    get_len ^^
-    StableMem.write_word32 env ^^
-
-    (* copy data to following stable memory *)
-    compile_unboxed_const 4l ^^
-    get_dst ^^
-    get_len ^^
-    E.call_import env "ic0" "stable_write"
- *)
-
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
@@ -5474,29 +5448,7 @@ module Stabilization = struct
         StableMem.write_word32 env
 
       end
-(*
-  (* return the initial i32 in stable memory recording the size of the following stable data *)
-  let stable_data_size env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      (* read size from initial word of (assumed non-empty) stable memory*)
-      compile_unboxed_const 0l ^^
-      StableMem.read_word32 env
-    | _ -> assert false
 
-  let destabilize env ty =
-      E.call_import env "ic0" "stable_size" ^^
-      G.if_ [I32Type]
-        (Blob.of_size_copy env stable_data_size
-         (* copy the stable data from stable memory from offset 4 *)
-         (fun env -> IC.system_call env "ic0" "stable_read") 4l ^^
-         Serialization.deserialize_from_blob true env [ty])
-        (let (_, fs) = Type.as_obj ty in
-         let fs' = List.map
-           (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
-            fs in
-         Object.lit_raw env fs')
- *)
   let destabilize env ty =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -7918,13 +7870,13 @@ and compile_exp (env : E.t) ae exp =
       end
 
     | ICStableRead ty, [] ->
-(*
-      * On initial install:
-           1. return record of nulls
-      * On upgrade:
-           1. deserialize stable store to v : ty,
-           2. return v
-*)
+      (*
+       * On initial install:
+          1. return record of nulls
+        * On upgrade:
+          1. deserialize stable store to v : ty,
+          2. return v
+      *)
       SR.Vanilla,
       Stabilization.destabilize env ty
     | ICStableWrite ty, [e] ->
