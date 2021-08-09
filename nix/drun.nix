@@ -8,7 +8,7 @@ pkgs:
       # update this after dependency changes
       cargoSha256 = "0fnqgvqiv8lb8d0280kyhrml9fpmgw7mvvlhgkp4mxl3y77r0r0p";
 
-      buildInputs = with pkgs; [
+      nativeBuildInputs = with pkgs; [
         openssl
         openssl.dev
         pkg-config
@@ -18,8 +18,7 @@ pkgs:
         lmdb
       ];
 
-      PKG_CONFIG = "${pkgs.pkg-config}/bin/pkg-config";
-
+      #PKG_CONFIG = "${pkgs.pkg-config}/bin/pkg-config";
       #OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
       # OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
 
