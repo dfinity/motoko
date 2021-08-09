@@ -28,6 +28,7 @@
     },
     "ic": {
         "branch": "master",
+        "builtin": false,
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "dfinity",
