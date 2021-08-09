@@ -2797,9 +2797,8 @@ module Object = struct
       List.sort
         (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
         (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
-    (* if s = "keyvals" then List.iteri (fun i (h,{lab; _}) -> Printf.eprintf "index: %d hash: %lu, lab: %s, want: (%lu, %lu, %s)\n" i (Lib.Uint32.to_int32 h) lab (E.hash env s) (Lib.Uint32.to_int32 (Idllib.Escape.unescape_hash s)) s) sorted_by_hash; *)
-    match List.find_opt (fun (_, (h,{lab; _})) -> Lib.Uint32.to_int32 h = E.hash env s) (List.mapi (fun i e -> (i, (*snd*) e)) sorted_by_hash) with
-    | Some (i, (h,_)) -> (*assert (h != Lib.Uint32.of_int32 1028221841l);*) i
+    match List.find_opt (fun (_, (h,{lab; _})) -> lab = s) (List.mapi (fun i e -> (i, (*snd*) e)) sorted_by_hash) with
+    | Some (i, (h,_)) -> i
     | _ -> assert false
 
   (* Returns a pointer to the object field (without following the indirection) *)
