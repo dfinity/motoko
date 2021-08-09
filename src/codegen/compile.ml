@@ -2823,32 +2823,18 @@ module Blob = struct
       get_x
     )
 
-  let of_size_copy env get_size_fun copy_fun offset =
+  let of_size_copy env get_size_fun copy_fun offset_fun =
     let (set_len, get_len) = new_local env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
     get_size_fun env ^^ set_len ^^
 
     get_len ^^ alloc env ^^ set_blob ^^
     get_blob ^^ payload_ptr_unskewed ^^
-    compile_unboxed_const offset ^^
+    offset_fun env ^^
     get_len ^^
     copy_fun env ^^
 
     get_blob
-
-  let of_size_copy_alt env get_size_fun copy_fun get_offset =
-    let (set_len, get_len) = new_local env "len" in
-    let (set_blob, get_blob) = new_local env "blob" in
-    get_size_fun env ^^ set_len ^^
-
-    get_len ^^ alloc env ^^ set_blob ^^
-    get_blob ^^ payload_ptr_unskewed ^^
-    get_offset ^^
-    get_len ^^
-    copy_fun env ^^
-
-    get_blob
-
 
   (* Lexicographic blob comparison. Expects two blobs on the stack *)
   let rec compare env op =
@@ -3562,7 +3548,8 @@ module IC = struct
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         Blob.of_size_copy env
           (fun env -> system_call env "ic0" "canister_self_size")
-          (fun env -> system_call env "ic0" "canister_self_copy") 0l
+          (fun env -> system_call env "ic0" "canister_self_copy")
+          (fun env -> compile_unboxed_const 0l)
       )
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
@@ -3580,7 +3567,8 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
         (fun env -> system_call env "ic0" "msg_caller_size")
-        (fun env -> system_call env "ic0" "msg_caller_copy") 0l
+        (fun env -> system_call env "ic0" "msg_caller_copy")
+        (fun env -> compile_unboxed_const 0l)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
 
@@ -3614,7 +3602,8 @@ module IC = struct
     Func.share_code0 env "error_message" [I32Type] (fun env ->
       Blob.of_size_copy env
         (fun env -> system_call env "ic0" "msg_reject_msg_size")
-        (fun env -> system_call env "ic0" "msg_reject_msg_copy") 0l
+        (fun env -> system_call env "ic0" "msg_reject_msg_copy")
+        (fun env -> compile_unboxed_const 0l)
     )
 
   let error_value env =
@@ -3728,7 +3717,8 @@ module IC = struct
         Opt.inject_noop env (
           Blob.of_size_copy env
             (fun env -> system_call env "ic0" "data_certificate_size")
-            (fun env -> system_call env "ic0" "data_certificate_copy") 0l
+            (fun env -> system_call env "ic0" "data_certificate_copy")
+            (fun env -> compile_unboxed_const 0l)
         )
       end (Opt.null_lit env)
     | _ ->
@@ -5280,7 +5270,8 @@ module Serialization = struct
   let deserialize env ts =
     Blob.of_size_copy env
       (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
-      (fun env -> IC.system_call env "ic0" "msg_arg_data_copy") 0l ^^
+      (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
+      (fun env -> compile_unboxed_const 0l) ^^
     deserialize_from_blob false env ts
 
 (*
@@ -5547,10 +5538,11 @@ module Stabilization = struct
           let (set_val, get_val) = new_local env "val" in
           let (set_blob, get_blob) = new_local env "blob" in
 
-          Blob.of_size_copy_alt env
+          Blob.of_size_copy env
             (fun env -> get_len)
             (* copy the stable data from stable memory from offset 4 *)
-            (fun env -> IC.system_call env "ic0" "stable_read") get_offset ^^
+            (fun env -> IC.system_call env "ic0" "stable_read")
+            (fun env -> get_offset) ^^
           set_blob ^^
 
           (* deserialize blob to val *)
