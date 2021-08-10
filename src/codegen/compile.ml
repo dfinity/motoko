@@ -2734,7 +2734,7 @@ module Object = struct
             G.i Return
           ) G.nop
       ) ^^
-      E.trap_with env (Printf.sprintf "internal error: object field not found")
+      E.trap_with env "internal error: object field not found"
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
