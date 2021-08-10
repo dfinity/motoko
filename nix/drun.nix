@@ -9,9 +9,12 @@ pkgs:
       cargoSha256 = "0fnqgvqiv8lb8d0280kyhrml9fpmgw7mvvlhgkp4mxl3y77r0r0p";
 
       nativeBuildInputs = with pkgs; [
-        openssl
         pkg-config
         cmake
+      ];
+
+      buildInputs = with pkgs; [
+        openssl
         llvm_10
         llvmPackages_10.libclang
         lmdb
