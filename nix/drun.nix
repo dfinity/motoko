@@ -20,10 +20,6 @@ pkgs:
         lmdb
       ];
 
-      # needed for openssl-sys
-      OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
-      OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
-
       # needed for bindgen
       LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
       CLANG_PATH = "${pkgs.llvmPackages_10.clang}/bin/clang";
