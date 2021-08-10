@@ -1,3 +1,5 @@
+use crate::bitmap::Bitmap;
+
 #[cfg(feature = "ic")]
 pub mod ic;
 
@@ -9,6 +11,10 @@ pub trait PageAlloc {
     unsafe fn alloc(&mut self) -> Self::Page;
 
     unsafe fn free(&mut self, page: Self::Page);
+
+    /// Get the page of a given address. May panic if address does not belong to a page for this
+    /// allocator.
+    unsafe fn get_address_page(&self, addr: usize) -> Self::Page;
 }
 
 /// Trait for allocation units from the underlying system (Wasm, OS, ...). Page state can be held
@@ -51,13 +57,22 @@ pub trait Page: Copy + Sized {
         self.set_next(None);
         next
     }
+
+    unsafe fn get_bitmap(&self) -> Option<&Bitmap>;
+
+    unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>);
+
+    /// `Option::take` for the bitmap field
+    unsafe fn take_bitmap(&self) -> Option<Bitmap>;
 }
 
-/// A header type for pages that implements the doubly linked list intrusively
 #[repr(packed)]
 pub struct PageHeader<P: Copy + Sized> {
     pub next: Option<P>,
     pub prev: Option<P>,
+
+    // Bitmap used when marking the page for garbage collection
+    pub bitmap: Option<Bitmap>,
 }
 
 impl<P: Copy + Sized> PageHeader<P> {
@@ -83,5 +98,17 @@ impl<P: Copy + Sized> PageHeader<P> {
 
     unsafe fn take_next(self: *mut Self) -> Option<P> {
         (*self).next.take()
+    }
+
+    unsafe fn get_bitmap<'a>(self: *mut Self) -> Option<&'a Bitmap> {
+        (*self).bitmap.as_ref()
+    }
+
+    unsafe fn set_bitmap(self: *mut Self, bitmap: Option<Bitmap>) {
+        (*self).bitmap = bitmap;
+    }
+
+    unsafe fn take_bitmap(self: *mut Self) -> Option<Bitmap> {
+        (*self).bitmap.take()
     }
 }

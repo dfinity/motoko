@@ -2,21 +2,13 @@
 //! Memory-Constrained Environments" section 5.1.2, which is an improved version of the original
 //! threaded compaction algorithm described in The Garbage Collection Handbook section 3.3.
 
-pub mod bitmap;
 pub mod mark_stack;
 
-// use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-// use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
-//
-// use crate::constants::WORD_SIZE;
-// use crate::mem_utils::memcpy_words;
-// use crate::memory::Memory;
-// use crate::types::*;
-// use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
-//
-// use motoko_rts_macros::ic_mem_fn;
+use crate::bitmap::Bitmap;
+use crate::page_alloc::{Page, PageAlloc};
+use crate::space::Space;
+use crate::types::{Bytes, SkewedPtr};
 
-/*
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn schedule_compacting_gc() {
@@ -29,13 +21,9 @@ unsafe fn schedule_compacting_gc() {
 #[no_mangle]
 unsafe fn compacting_gc() {
     compacting_gc_internal(
-        mem,
-        ic::get_heap_base(),
-        // get_hp
-        || ic::HP as usize,
-        // set_hp
-        |hp| ic::HP = hp,
-        ic::get_static_roots(),
+        crate::allocation_space::ALLOCATION_SPACE.as_mut().unwrap(),
+        crate::get_heap_base(),
+        crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
         |live_size| {}, // TODO
@@ -45,47 +33,40 @@ unsafe fn compacting_gc() {
 }
 
 pub unsafe fn compacting_gc_internal<
-    M: Memory,
-    GetHp: Fn() -> usize,
-    SetHp: Fn(u32),
+    P: PageAlloc,
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
-    mem: &mut M,
+    space: &mut Space<P>,
     heap_base: u32,
-    get_hp: GetHp,
-    set_hp: SetHp,
     static_roots: SkewedPtr,
     continuation_table_ptr_loc: *mut SkewedPtr,
-    note_live_size: NoteLiveSize,
-    note_reclaimed: NoteReclaimed,
+    _note_live_size: NoteLiveSize,
+    _note_reclaimed: NoteReclaimed,
 ) {
-    let old_hp = get_hp() as u32;
+    mark_compact(space, heap_base, static_roots, continuation_table_ptr_loc);
 
-    mark_compact(
-        mem,
-        set_hp,
-        heap_base,
-        old_hp,
-        static_roots,
-        continuation_table_ptr_loc,
-    );
-
-    let reclaimed = old_hp - (get_hp() as u32);
-    note_reclaimed(Bytes(reclaimed));
-
-    let live = get_hp() as u32 - heap_base;
-    note_live_size(Bytes(live));
+    // TODO: Update stats
 }
 
-unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
-    mem: &mut M,
-    set_hp: SetHp,
+unsafe fn mark_compact<P: PageAlloc>(
+    space: &mut Space<P>,
     heap_base: u32,
-    heap_end: u32,
     static_roots: SkewedPtr,
     continuation_table_ptr_loc: *mut SkewedPtr,
 ) {
+    // Allocate bitmaps
+    {
+        let mut page = Some(space.first_page());
+        while let Some(page_) = page {
+            let page_size_words =
+                Bytes(page_.end() as u32 - page_.contents_start() as u32).to_words();
+            page_.set_bitmap(Some(Bitmap::new(page_size_words.0)));
+            page = page_.next();
+        }
+    }
+
+    /*
     let mem_size = Bytes(heap_end - heap_base);
 
     alloc_bitmap(mem, mem_size);
@@ -106,9 +87,20 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     update_refs(set_hp, heap_base);
 
     free_mark_stack();
-    free_bitmap();
+    */
+
+    // Free bitmaps
+    {
+        let mut page = Some(space.first_page());
+        while let Some(page_) = page {
+            let bitmap = page_.take_bitmap().unwrap();
+            bitmap.free();
+            page = page_.next();
+        }
+    }
 }
 
+/*
 unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, heap_base: u32) {
     let root_array = static_roots.as_array();
 

@@ -5,6 +5,7 @@ use crate::ALLOC;
 use core::alloc::{GlobalAlloc, Layout};
 use core::convert::TryFrom;
 
+#[repr(packed)]
 pub struct Bitmap {
     ptr: *mut u8,
 
@@ -14,11 +15,8 @@ pub struct Bitmap {
 
 impl Bitmap {
     // NB. Does not take a page allocator, allocates using global allocator
-    pub unsafe fn new(heap_size: Bytes<u32>) -> Bitmap {
-        // We will have at most this many objects in the heap, each requiring a bit
-        let n_bits = heap_size.to_words().0;
-
-        // Each byte will hold 8 bits.
+    pub unsafe fn new(n_bits: u32) -> Bitmap {
+        // Each byte will hold 8 bits
         let bitmap_bytes = (n_bits + 7) / 8;
 
         // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
@@ -37,14 +35,14 @@ impl Bitmap {
         ALLOC.dealloc(self.ptr, self.layout);
     }
 
-    pub unsafe fn get_bit(&mut self, idx: u32) -> bool {
+    pub unsafe fn get_bit(&self, idx: u32) -> bool {
         let byte_idx = idx / 8;
         let byte = *self.ptr.add(byte_idx as usize);
         let bit_idx = idx % 8;
         (byte >> bit_idx) & 0b1 == 0b1
     }
 
-    pub unsafe fn set_bit(&mut self, idx: u32) {
+    pub unsafe fn set_bit(&self, idx: u32) {
         let byte_idx = idx / 8;
         let byte = *self.ptr.add(byte_idx as usize);
         let bit_idx = idx % 8;

@@ -1,4 +1,5 @@
 use super::{Page, PageAlloc, PageHeader};
+use crate::bitmap::Bitmap;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
@@ -57,6 +58,12 @@ impl PageAlloc for IcPageAlloc {
         page.set_next(FREE_PAGES);
         FREE_PAGES = Some(page);
     }
+
+    unsafe fn get_address_page(&self, addr: usize) -> IcPage {
+        IcPage {
+            wasm_page_num: (addr / WASM_PAGE_SIZE.as_usize()) as u16,
+        }
+    }
 }
 
 impl Page for IcPage {
@@ -93,5 +100,17 @@ impl Page for IcPage {
 
     unsafe fn set_next(&self, next: Option<IcPage>) {
         (self.start() as *mut PageHeader<IcPage>).set_next(next)
+    }
+
+    unsafe fn get_bitmap(&self) -> Option<&Bitmap> {
+        (self.start() as *mut PageHeader<IcPage>).get_bitmap()
+    }
+
+    unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
+        (self.start() as *mut PageHeader<IcPage>).set_bitmap(bitmap)
+    }
+
+    unsafe fn take_bitmap(&self) -> Option<Bitmap> {
+        (self.start() as *mut PageHeader<IcPage>).take_bitmap()
     }
 }

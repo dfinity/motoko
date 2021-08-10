@@ -19,6 +19,7 @@ pub mod debug;
 #[cfg(feature = "ic")]
 mod allocation_space;
 pub mod bigint;
+pub mod bitmap;
 #[cfg(feature = "ic")]
 mod blob_iter;
 pub mod buf;
@@ -32,7 +33,6 @@ pub mod gc;
 mod idl;
 pub mod leb128;
 mod mem_utils;
-#[cfg(feature = "ic")]
 mod page_alloc;
 pub mod principal_id;
 mod space;
