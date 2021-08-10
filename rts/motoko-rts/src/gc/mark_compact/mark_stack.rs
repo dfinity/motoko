@@ -1,75 +1,97 @@
-//! A stack for marking heap objects (for GC). There should be no allocation after the stack
-//! otherwise things will break as we push. This invariant is checked in debug builds.
+//! A mark stack implementation for garbage collection.
 
-use crate::memory::{alloc_blob, Memory};
+use crate::constants::WORD_SIZE;
+use crate::page_alloc::{Page, PageAlloc};
+use crate::space::Space;
 use crate::types::{Blob, Tag, Words};
 
+use core::convert::TryFrom;
 use core::ptr::null_mut;
 
-/// Initial stack size
-pub const INIT_STACK_SIZE: Words<u32> = Words(64);
+pub struct MarkStack<P: PageAlloc> {
+    /// Current page for pushing new objects. Follow `prev` links when popping and freeing the mark
+    /// stack.
+    current_page: P::Page,
 
-/// Pointer to the `blob` object for the mark stack. Used to get the capacity of the stack.
-static mut STACK_BLOB_PTR: *mut Blob = null_mut();
+    /// Page allocator used to allocate new mark stack pages
+    page_alloc: P,
 
-/// Bottom of the mark stack
-pub static mut STACK_BASE: *mut usize = null_mut();
-
-/// Top of the mark stack
-pub static mut STACK_TOP: *mut usize = null_mut();
-
-/// Next free slot in the mark stack
-pub static mut STACK_PTR: *mut usize = null_mut();
-
-pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
-    debug_assert!(STACK_BLOB_PTR.is_null());
-
-    // Allocating an actual object here to not break dump_heap
-    STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).unskew() as *mut Blob;
-    STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
-    STACK_PTR = STACK_BASE;
-    STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.0 as usize);
+    /// Location in `current_page` for the next allocation
+    hp: usize,
 }
 
-pub unsafe fn free_mark_stack() {
-    STACK_BLOB_PTR = null_mut();
-    STACK_BASE = null_mut();
-    STACK_PTR = null_mut();
-    STACK_TOP = null_mut();
-}
-
-/// Doubles the stack size
-pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
-    let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
-    let p = mem.alloc_words(stack_cap).unskew() as *mut usize;
-
-    // Make sure nothing was allocated after the stack
-    debug_assert_eq!(STACK_TOP, p);
-
-    let new_cap: Words<u32> = Words(stack_cap.0 * 2);
-    (*STACK_BLOB_PTR).len = new_cap.to_bytes();
-    STACK_TOP = STACK_BASE.add(new_cap.as_usize());
-}
-
-pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) {
-    // We add 2 words in a push, and `STACK_PTR` and `STACK_TOP` are both multiples of 2, so we can
-    // do simple equality check here
-    if STACK_PTR == STACK_TOP {
-        grow_stack(mem);
+impl<P: PageAlloc> MarkStack<P> {
+    pub unsafe fn new(mut page_alloc: P) -> Self {
+        let current_page = page_alloc.alloc();
+        let hp = current_page.contents_start();
+        MarkStack {
+            current_page,
+            page_alloc,
+            hp,
+        }
     }
 
-    *STACK_PTR = obj;
-    *(STACK_PTR.add(1)) = obj_tag as usize;
-    STACK_PTR = STACK_PTR.add(2);
-}
+    pub unsafe fn free(mut self) {
+        let mut page_alloc = self.page_alloc;
+        let mut page = Some(self.current_page);
+        while let Some(page_) = page {
+            page = page_.prev();
+            page_alloc.free(page_);
+        }
+    }
 
-pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
-    if STACK_PTR == STACK_BASE {
-        None
-    } else {
-        STACK_PTR = STACK_PTR.sub(2);
-        let p = *STACK_PTR;
-        let tag = *STACK_PTR.add(1);
-        Some((p, tag as u32))
+    pub unsafe fn push(&mut self, obj: usize, obj_tag: Tag) {
+        let new_hp = self.hp + (WORD_SIZE as usize) * 2;
+        let page_end = self.current_page.end();
+
+        if new_hp >= page_end {
+            if new_hp > page_end {
+                // Fill unused word with 0. We allocate 2 words at a time so the free space can be
+                // at most one word.
+                *(self.hp as *mut u32) = 0;
+            }
+
+            let new_page = self.page_alloc.alloc();
+            new_page.set_prev(Some(self.current_page));
+
+            self.current_page = new_page;
+            let hp = new_page.contents_start();
+
+            *(hp as *mut usize) = obj;
+            // try_from disappears on Wasm
+            *(hp as *mut usize).add(1) = usize::try_from(obj_tag).unwrap();
+
+            self.hp = hp + (WORD_SIZE as usize) * 2;
+        } else {
+            *(self.hp as *mut usize) = obj;
+            // try_from disappears on Wasm
+            *(self.hp as *mut usize).add(1) = usize::try_from(obj_tag).unwrap();
+
+            self.hp += (WORD_SIZE as usize) * 2;
+        }
+    }
+
+    pub unsafe fn pop(&mut self) -> Option<(usize, Tag)> {
+        if self.hp == self.current_page.contents_start() {
+            let prev_page = match self.current_page.prev() {
+                None => return None,
+                Some(prev_page) => prev_page,
+            };
+
+            self.page_alloc.free(self.current_page);
+            self.current_page = prev_page;
+            self.hp = prev_page.end();
+        }
+
+        if *((self.hp - (WORD_SIZE as usize)) as *const u32) == 0 {
+            self.hp -= (WORD_SIZE as usize) * 3;
+        } else {
+            self.hp -= WORD_SIZE as usize * 2;
+        }
+
+        let p = *(self.hp as *const usize);
+        let tag = *(self.hp as *const usize).add(1) as u32;
+
+        Some((p, tag))
     }
 }

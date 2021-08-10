@@ -3,7 +3,7 @@
 //! threaded compaction algorithm described in The Garbage Collection Handbook section 3.3.
 
 pub mod bitmap;
-// pub mod mark_stack;
+pub mod mark_stack;
 
 // use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 // use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
