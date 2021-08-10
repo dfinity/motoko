@@ -659,6 +659,7 @@ rec {
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
           nixpkgs.niv
+          nixpkgs.inotify-tools
         ]
       ));
 

@@ -5282,7 +5282,8 @@ module StackRep = struct
       | Const.Blob t     -> Blob.vanilla_lit env t
 
   let rec materialize_const_t env (p, cv) : int32 =
-    Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
+    materialize_const_v env cv
+    (* Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv) *)
 
   and materialize_const_v env = function
     | Const.Fun get_fi -> Closure.static_closure env (get_fi ())
