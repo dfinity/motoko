@@ -24,7 +24,7 @@ pkgs:
       LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
       CLANG_PATH = "${pkgs.llvmPackages_10.clang}/bin/clang";
 
-      # needed for protobuf
+      # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";
 
       doCheck = false;
