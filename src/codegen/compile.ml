@@ -3806,7 +3806,7 @@ module Serialization = struct
 
   open Typ_hash
 
-  let sort_by_hash env fs =
+  let sort_by_hash fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> ((match f with Type.{ typ = Typ _; _} -> assert false | _ -> Idllib.Escape.unescape_hash f.Type.lab), f)) fs)
@@ -3944,7 +3944,7 @@ module Serialization = struct
         List.iter (fun (h, f) ->
           add_leb128_32 h;
           add_idx f.typ
-        ) (sort_by_hash env fs)
+        ) (sort_by_hash fs)
       | Array (Mut t) ->
         add_sleb128 idl_alias; add_idx (Array t)
       | Array t ->
@@ -3957,7 +3957,7 @@ module Serialization = struct
         List.iter (fun (h, f) ->
           add_leb128_32 h;
           add_idx f.typ
-        ) (sort_by_hash env vs)
+        ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
         assert (Type.is_shared_sort s);
         add_sleb128 idl_func;
@@ -4076,7 +4076,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           size env f.typ
-          ) (sort_by_hash env fs)
+          ) (sort_by_hash fs)
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
@@ -4109,7 +4109,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ size env t
               ) continue
           )
-          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash env vs) )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
@@ -4259,7 +4259,7 @@ module Serialization = struct
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
-        ) (sort_by_hash env fs)
+        ) (sort_by_hash fs)
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
@@ -4286,7 +4286,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ write env t)
               continue
           )
-          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash env vs) )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
@@ -4778,7 +4778,7 @@ module Serialization = struct
                   | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
-          ) (sort_by_hash env fs)) ^^
+          ) (sort_by_hash fs)) ^^
 
           (* skip all possible trailing extra fields *)
           get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n_ptr ^^
@@ -4896,7 +4896,7 @@ module Serialization = struct
                 ))
                 continue
             )
-            ( sort_by_hash env vs )
+            ( sort_by_hash vs )
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
