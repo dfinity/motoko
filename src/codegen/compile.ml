@@ -1161,6 +1161,8 @@ module Tagged = struct
     | Null (* For opt. Static singleton! *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
+    | OneWordFiller (* Only used by the RTS *)
+    | FreeSpace (* Only used by the RTS *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -1178,6 +1180,8 @@ module Tagged = struct
     | BigInt -> 13l
     | Concat -> 14l
     | Null -> 15l
+    | OneWordFiller -> 16l
+    | FreeSpace -> 17l
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
@@ -3511,8 +3515,7 @@ module IC = struct
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
       (* check status is stopped or trap on outstanding callbacks *)
-      system_call env "ic0" "canister_status" ^^ compile_unboxed_const status_stopped ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      system_call env "ic0" "canister_status" ^^ compile_eq_const status_stopped ^^
       G.if_ []
        (G.nop)
        (ContinuationTable.count env ^^

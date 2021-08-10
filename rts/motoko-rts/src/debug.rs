@@ -226,6 +226,13 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 (*concat).text2.0
             );
         }
+        TAG_ONE_WORD_FILLER => {
+            let _ = write!(buf, "<One word filler>",);
+        }
+        TAG_FREE_SPACE => {
+            let free_space = obj as *const FreeSpace;
+            let _ = write!(buf, "<Free space {} words>", (*free_space).words.0);
+        }
         other => {
             let _ = write!(buf, "<??? {} ???>", other);
         }
