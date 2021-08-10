@@ -625,25 +625,7 @@ let from_m_to_n env m mk_body =
       )
 
 (* Expects a number on the stack. Iterates from zero to below that number. *)
-let from_0_to_n env mk_body =
-    let (set_n, get_n) = new_local env "n" in
-    let (set_i, get_i) = new_local env "i" in
-    set_n ^^
-    compile_unboxed_zero ^^
-    set_i ^^
-
-    compile_while
-      ( get_i ^^
-        get_n ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.LtU))
-      ) (
-        mk_body get_i ^^
-
-        get_i ^^
-        compile_add_const 1l ^^
-        set_i
-      )
-
+let from_0_to_n env mk_body = from_m_to_n env 0l mk_body
 
 (* Pointer reference and dereference  *)
 
