@@ -2709,9 +2709,7 @@ module Object = struct
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_hash_raw env m = (* HERE *)
-    let name = match m with
-      | 0 -> "obj_idx"
-      | _ -> Printf.sprintf "obj_idx<%d>" m  in
+    let name = Printf.sprintf "obj_idx<%d>" m  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
@@ -2743,9 +2741,7 @@ module Object = struct
   let idx_hash env m indirect =
     if indirect
     then
-      let name = match m with
-        | 0 -> "obj_idx_ind"
-        | _ -> Printf.sprintf "obj_idx_ind<%d>" m in
+      let name = Printf.sprintf "obj_idx_ind<%d>" m in
       Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env m ^^
