@@ -11,6 +11,12 @@ pkgs:
       nativeBuildInputs = with pkgs; [
         pkg-config
         cmake
+      ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+        pkgs.darwin.apple_sdk.frameworks.Security
+        pkgs.darwin.apple_sdk.frameworks.CoreServices
+        pkgs.darwin.apple_sdk.frameworks.Foundation
+        pkgs.darwin.CF
+        pkgs.xcbuild
       ];
 
       buildInputs = with pkgs; [
