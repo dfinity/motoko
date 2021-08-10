@@ -2731,7 +2731,6 @@ module Object = struct
       | 0 -> "obj_idx"
       | _ -> Printf.sprintf "obj_idx<%d>" m  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-  let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr"))) in
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
       get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
@@ -2755,17 +2754,6 @@ module Object = struct
             G.i Return
           ) G.nop
       ) ^^
-
-      get_h_ptr ^^
-      compile_unboxed_const 13l ^^
-      print_ptr_len env ^^
-      get_h_ptr ^^
-        compile_add_const 5l ^^
-          get_hash ^^
-            G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
-      get_h_ptr ^^
-      compile_unboxed_const 9l ^^
-      print_ptr_len env ^^
       E.trap_with env (Printf.sprintf "internal error: object field not found")
     )
 
