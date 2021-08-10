@@ -1,26 +1,36 @@
 use crate::mem_utils::memzero;
-use crate::memory::{alloc_blob, Memory};
-use crate::types::{size_of, Blob, Bytes, Obj};
+use crate::types::Bytes;
+use crate::ALLOC;
+
+use core::alloc::{GlobalAlloc, Layout};
+use core::convert::TryFrom;
 
 /// Current bitmap
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 
-pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>) {
+/// Layout of the memory pointed by `BITMAP_PTR`. Used to get bitmap size and for deallocating.
+static mut BITMAP_LAYOUT: Layout = unsafe { Layout::from_size_align_unchecked(0, 1) };
+
+pub unsafe fn alloc_bitmap(heap_size: Bytes<u32>) {
     // We will have at most this many objects in the heap, each requiring a bit
     let n_bits = heap_size.to_words().0;
+
     // Each byte will hold 8 bits.
     let bitmap_bytes = (n_bits + 7) / 8;
+
     // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
     let bitmap_bytes = Bytes(((bitmap_bytes + 7) / 8) * 8);
-    // Allocating an actual object here as otherwise dump_heap gets confused
-    let blob = alloc_blob(mem, bitmap_bytes).unskew() as *mut Blob;
-    memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
-    BITMAP_PTR = blob.payload_addr()
+    BITMAP_LAYOUT = Layout::from_size_align_unchecked(bitmap_bytes.as_usize(), 1);
+    BITMAP_PTR = ALLOC.alloc(BITMAP_LAYOUT);
+
+    assert!(!BITMAP_PTR.is_null());
 }
 
 pub unsafe fn free_bitmap() {
+    ALLOC.dealloc(BITMAP_PTR, BITMAP_LAYOUT);
+    // TODO: How is `null_mut` compiled to Wasm? 0 is a valid address and won't cause a trap
     BITMAP_PTR = core::ptr::null_mut();
 }
 
@@ -42,11 +52,14 @@ pub unsafe fn set_bit(idx: u32) {
 pub struct BitmapIter {
     /// Size of the bitmap, in 64-bit words words. Does not change after initialization.
     size: u32,
+
     /// Current 64-bit word index
     current_word_idx: u32,
+
     /// Current 64-bit word in the bitmap that we're iterating. We read in 64-bit chunks to be able
     /// to check as many bits as possible with a single `word != 0`.
     current_word: u64,
+
     /// Bits left in the current 64-bit word. Used to compute index of a bit in the bitmap. We
     /// can't use a global index here as we don't know how much to bump it when `current_word` is
     /// 0 and we move to the next 64-bit word.
@@ -54,14 +67,11 @@ pub struct BitmapIter {
 }
 
 pub unsafe fn iter_bits() -> BitmapIter {
-    let blob_len_bytes = (BITMAP_PTR.sub(size_of::<Blob>().to_bytes().0 as usize) as *mut Obj)
-        .as_blob()
-        .len()
-        .0;
+    let bitmap_bytes = BITMAP_LAYOUT.size();
 
-    debug_assert_eq!(blob_len_bytes % 8, 0);
+    debug_assert_eq!(bitmap_bytes % 8, 0);
 
-    let blob_len_64bit_words = blob_len_bytes / 8;
+    let blob_len_64bit_words = bitmap_bytes / 8;
 
     let current_word = if blob_len_64bit_words == 0 {
         0
@@ -69,8 +79,9 @@ pub unsafe fn iter_bits() -> BitmapIter {
         *(BITMAP_PTR as *const u64)
     };
 
+    // `try_from` below disappears on Wasm as usize and u32 are the same
     BitmapIter {
-        size: blob_len_64bit_words,
+        size: u32::try_from(blob_len_64bit_words).unwrap(),
         current_word_idx: 0,
         current_word,
         bits_left: 64,

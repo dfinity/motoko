@@ -3,19 +3,20 @@
 //! threaded compaction algorithm described in The Garbage Collection Handbook section 3.3.
 
 pub mod bitmap;
-pub mod mark_stack;
+// pub mod mark_stack;
 
-use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
+// use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
+// use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
+//
+// use crate::constants::WORD_SIZE;
+// use crate::mem_utils::memcpy_words;
+// use crate::memory::Memory;
+// use crate::types::*;
+// use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+//
+// use motoko_rts_macros::ic_mem_fn;
 
-use crate::constants::WORD_SIZE;
-use crate::mem_utils::memcpy_words;
-use crate::memory::Memory;
-use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
-
-use motoko_rts_macros::ic_mem_fn;
-
+/*
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn schedule_compacting_gc() {
@@ -239,3 +240,4 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
     (*obj).tag = header;
 }
+*/

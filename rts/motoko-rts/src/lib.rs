@@ -47,6 +47,9 @@ use types::{Bytes, SkewedPtr};
 
 use motoko_rts_macros::ic_mem_fn;
 
+/// malloc/free style allocator for GC metadata
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 // Provided by generated code
 #[cfg(feature = "ic")]
 extern "C" {
