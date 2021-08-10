@@ -3865,7 +3865,7 @@ module StableMem = struct
             get_size)
     | _ -> assert false
 
-  (* ensure stable memory includes [offset..offset+size) *)
+  (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
   let ensure env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -3877,7 +3877,7 @@ module StableMem = struct
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^ (* TBR *)
+          G.i (Convert (Wasm.Values.I32 I64Op.WrapI64)) ^^
           compile_add_const 1l ^^
           ensure_pages env ^^
           (* Check result *)
