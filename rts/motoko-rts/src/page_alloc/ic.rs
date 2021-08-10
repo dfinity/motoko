@@ -7,6 +7,7 @@ use core::arch::wasm32;
 use core::convert::TryFrom;
 
 /// A `PageAlloc` implementation for the IC
+#[derive(Clone)]
 pub struct IcPageAlloc {}
 
 /// A `Page` implementation for the IC. Currently maps to a single Wasm page, but we may want to

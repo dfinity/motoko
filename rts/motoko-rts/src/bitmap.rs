@@ -50,7 +50,7 @@ impl Bitmap {
         *self.ptr.add(byte_idx as usize) = new_byte;
     }
 
-    pub unsafe fn bitmap_iter(&self) -> BitmapIter {
+    pub unsafe fn iter(&self) -> BitmapIter {
         let bitmap_bytes = self.layout.size();
 
         debug_assert_eq!(bitmap_bytes % 8, 0);

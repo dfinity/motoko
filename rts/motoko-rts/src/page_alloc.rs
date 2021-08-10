@@ -5,7 +5,7 @@ pub mod ic;
 
 /// Trait for page allocators. A page is a unit of allocation from the underlying systme (Wasm, OS,
 /// some kind of mock or simulation in tests etc.).
-pub trait PageAlloc {
+pub trait PageAlloc: Clone {
     type Page: Page;
 
     unsafe fn alloc(&mut self) -> Self::Page;
