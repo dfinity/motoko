@@ -458,7 +458,14 @@ struct
   let value_opt p = !p
   let value p = match !p with Some x -> x | None -> raise Promise
   let lazy_value p f =
-    (if not (is_fulfilled p) then fulfill p (f ()));
+    begin
+      if not (is_fulfilled p) then
+      let x = f () in
+      (* Evaluating f might have actually fulfilled this. We assume f to be pure
+         (or at least be idempotent), and do not try to update it again.
+      *)
+      if not (is_fulfilled p) then fulfill p x
+    end;
     value p
 end
 
