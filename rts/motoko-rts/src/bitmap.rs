@@ -35,14 +35,14 @@ impl Bitmap {
         ALLOC.dealloc(self.ptr, self.layout);
     }
 
-    pub unsafe fn get_bit(&self, idx: u32) -> bool {
+    pub unsafe fn get(&self, idx: u32) -> bool {
         let byte_idx = idx / 8;
         let byte = *self.ptr.add(byte_idx as usize);
         let bit_idx = idx % 8;
         (byte >> bit_idx) & 0b1 == 0b1
     }
 
-    pub unsafe fn set_bit(&self, idx: u32) {
+    pub unsafe fn set(&self, idx: u32) {
         let byte_idx = idx / 8;
         let byte = *self.ptr.add(byte_idx as usize);
         let bit_idx = idx % 8;

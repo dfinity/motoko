@@ -464,8 +464,13 @@ impl FreeSpace {
 
 /// Returns object size in words
 pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
+    let obj_ = obj as *mut Obj;
+    object_size_(obj, obj_.tag())
+}
+
+pub(crate) unsafe fn object_size_(obj: usize, tag: Tag) -> Words<u32> {
     let obj = obj as *mut Obj;
-    match obj.tag() {
+    match tag {
         TAG_OBJECT => {
             let object = obj as *mut Object;
             let size = object.size();

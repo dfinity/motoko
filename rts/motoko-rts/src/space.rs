@@ -102,4 +102,10 @@ impl<P: PageAlloc> Space<P> {
         (*blob).len = size;
         ptr
     }
+
+    /// Get page of an object in this space. May panic or return incorrect results if the object is
+    /// not in the space.
+    pub unsafe fn get_address_page(&self, obj: usize) -> P::Page {
+        self.page_alloc.get_address_page(obj)
+    }
 }

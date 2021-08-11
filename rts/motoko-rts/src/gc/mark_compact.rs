@@ -82,24 +82,19 @@ unsafe fn mark_compact<P: PageAlloc>(
 
     let mut stack = MarkStack::new(page_alloc.clone());
 
-    mark_static_roots(&page_alloc, &mut stack, static_roots, heap_base);
+    mark_static_roots(space, &mut stack, static_roots, heap_base);
 
     if (*continuation_table_ptr_loc).unskew() >= heap_base as usize {
         // TODO: No need to check if continuation table is already marked
-        mark_object(
-            &page_alloc,
-            &mut stack,
-            *continuation_table_ptr_loc,
-            heap_base,
-        );
+        mark_object(space, &mut stack, *continuation_table_ptr_loc, heap_base);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so it
         // will be readable when we unthread continuation table
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(&page_alloc, &mut stack, heap_base);
+    mark_stack(space, &mut stack, heap_base);
 
-    update_refs(&page_alloc, space, heap_base);
+    update_refs(space, heap_base);
 
     stack.free();
 
@@ -115,7 +110,7 @@ unsafe fn mark_compact<P: PageAlloc>(
 }
 
 unsafe fn mark_static_roots<P: PageAlloc>(
-    page_alloc: &P,
+    space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     static_roots: SkewedPtr,
     heap_base: u32,
@@ -128,13 +123,13 @@ unsafe fn mark_static_roots<P: PageAlloc>(
         // Root array should only has pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!((obj as u32) < heap_base); // check that MutBox is static
-        mark_root_mutbox_fields(page_alloc, mark_stack, obj as *mut MutBox, heap_base);
+        mark_root_mutbox_fields(space, mark_stack, obj as *mut MutBox, heap_base);
     }
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
-    page_alloc: &P,
+    space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     mutbox: *mut MutBox,
     heap_base: u32,
@@ -144,7 +139,7 @@ unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
-        mark_object(page_alloc, mark_stack, *field_addr, heap_base);
+        mark_object(space, mark_stack, *field_addr, heap_base);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
@@ -152,7 +147,7 @@ unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
 }
 
 unsafe fn mark_object<P: PageAlloc>(
-    page_alloc: &P,
+    space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     obj: SkewedPtr,
     heap_base: u32,
@@ -160,28 +155,33 @@ unsafe fn mark_object<P: PageAlloc>(
     let obj_tag = obj.tag();
     let obj = obj.unskew();
 
-    let obj_page = page_alloc.get_address_page(obj as usize);
-    let obj_bitmap = obj_page.get_bitmap();
+    let obj_page = space.get_address_page(obj as usize);
+    let obj_bitmap = obj_page.get_bitmap().unwrap();
 
-    //let obj_idx = (obj - heap_base) / WORD_SIZE;
+    let obj_bit_idx = (obj - obj_page.contents_start()) as u32 / WORD_SIZE;
 
-    //if get_bit(obj_idx) {
-    //    // Already marked
-    //    return;
-    //}
+    if obj_bitmap.get(obj_bit_idx) {
+        // Already marked
+        return;
+    }
 
-    //set_bit(obj_idx);
-    //push_mark_stack(mem, obj as usize, obj_tag);
+    obj_bitmap.set(obj_bit_idx);
+
+    mark_stack.push(obj, obj_tag);
 }
 
-unsafe fn mark_stack<P: PageAlloc>(page_alloc: &P, mark_stack: &mut MarkStack<P>, heap_base: u32) {
+unsafe fn mark_stack<P: PageAlloc>(
+    space: &Space<P>,
+    mark_stack: &mut MarkStack<P>,
+    heap_base: u32,
+) {
     while let Some((obj, tag)) = mark_stack.pop() {
-        mark_fields(page_alloc, mark_stack, obj as *mut Obj, tag, heap_base);
+        mark_fields(space, mark_stack, obj as *mut Obj, tag, heap_base);
     }
 }
 
 unsafe fn mark_fields<P: PageAlloc>(
-    page_alloc: &P,
+    space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     obj: *mut Obj,
     obj_tag: Tag,
@@ -189,7 +189,7 @@ unsafe fn mark_fields<P: PageAlloc>(
 ) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
-        mark_object(page_alloc, mark_stack, field_value, heap_base);
+        mark_object(space, mark_stack, field_value, heap_base);
 
         // Thread if backwards pointer
         if field_value.unskew() < obj as usize {
@@ -207,34 +207,57 @@ unsafe fn mark_fields<P: PageAlloc>(
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<P: PageAlloc>(page_alloc: &P, space: &Space<P>, heap_base: u32) {
-    todo!()
-    /*
-    let mut free = heap_base;
+unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
+    // Next object will be moved to this page
+    let mut to_page = space.first_page();
 
-    let mut bitmap_iter = bitmap.iter();
-    let mut bit = bitmap_iter.next();
-    while bit != BITMAP_ITER_END {
-        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
-        let p_new = free;
+    // Next object will be moved to this address in `to_page`
+    let mut to_addr = to_page.contents_start();
 
-        // Update backwards references to the object's new location and restore object header
-        unthread(p, p_new);
+    // Traverse all marked bits in all pages
+    let mut from_page = Some(space.first_page());
 
-        // Move the object
-        let p_size_words = object_size(p as usize);
-        if p_new as usize != p as usize {
-            memcpy_words(p_new as usize, p as usize, p_size_words);
+    while let Some(page) = from_page {
+        let page_start = page.contents_start();
+
+        let bitmap = page.get_bitmap().unwrap();
+        let mut bitmap_iter = bitmap.iter();
+        let mut bit = bitmap_iter.next();
+
+        while bit != BITMAP_ITER_END {
+            let p = (page_start + (bit * WORD_SIZE) as usize) as *mut Obj;
+
+            // Get the object header first, to be able to check whether it will fit the current page or we
+            // need to move on to the next page
+            let obj_tag = get_header(p);
+            let obj_size = object_size_(p as usize, obj_tag);
+
+            if to_addr + obj_size.to_bytes().as_usize() > to_page.end() {
+                // Object does not fit into the current page, move on to the next page
+                // We know there must be more pages in the space as we compact the space and don't
+                // allocate in it
+                to_page = to_page.next().unwrap();
+                to_addr = to_page.contents_start();
+            }
+
+            // Update backwards references to the object's new location and restore object header
+            unthread(p, to_addr as u32);
+
+            // Move the object
+            if to_addr != p as usize {
+                memcpy_words(to_addr, p as usize, obj_size);
+            }
+
+            // Thread forward pointers of the object
+            thread_fwd_pointers(to_addr as *mut Obj, heap_base);
+
+            to_addr += obj_size.to_bytes().as_usize();
+
+            bit = bitmap_iter.next();
         }
 
-        free += p_size_words.to_bytes().0;
-
-        // Thread forward pointers of the object
-        thread_fwd_pointers(p_new as *mut Obj, heap_base);
-
-        bit = bitmap_iter.next();
+        from_page = page.next();
     }
-    */
 }
 
 /// Thread forwards pointers in object
@@ -269,4 +292,15 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     // At the end of the chain is the original header for the object
     debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
     (*obj).tag = header;
+}
+
+/// Follow a chain, return object header. Does not unthread.
+unsafe fn get_header(obj: *mut Obj) -> Tag {
+    let mut header = (*obj).tag;
+    while header > TAG_NULL {
+        header = (*(header as *mut Obj)).tag;
+    }
+    // At the end of the chain is the original header for the object
+    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+    header
 }
