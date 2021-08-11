@@ -2,11 +2,9 @@
 
 use crate::constants::WORD_SIZE;
 use crate::page_alloc::{Page, PageAlloc};
-use crate::space::Space;
-use crate::types::{Blob, Tag, Words};
+use crate::types::Tag;
 
 use core::convert::TryFrom;
-use core::ptr::null_mut;
 
 pub struct MarkStack<P: PageAlloc> {
     /// Current page for pushing new objects. Follow `prev` links when popping and freeing the mark
@@ -31,7 +29,7 @@ impl<P: PageAlloc> MarkStack<P> {
         }
     }
 
-    pub unsafe fn free(mut self) {
+    pub unsafe fn free(self) {
         let mut page_alloc = self.page_alloc;
         let mut page = Some(self.current_page);
         while let Some(page_) = page {

@@ -22,9 +22,9 @@ unsafe fn copying_gc() {
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
-        |live_size| {}, // TODO
+        |_live_size| {}, // TODO
         // note_reclaimed
-        |reclaimed| {}, // TODO
+        |_reclaimed| {}, // TODO
     );
 
     crate::allocation_space::free_and_update_allocation_space(to_space);

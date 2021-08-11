@@ -32,9 +32,9 @@ unsafe fn compacting_gc() {
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
-        |live_size| {}, // TODO
+        |_live_size| {}, // TODO
         // note_reclaimed
-        |reclaimed| {}, // TODO
+        |_reclaimed| {}, // TODO
     );
 }
 
@@ -86,7 +86,7 @@ unsafe fn mark_compact<P: PageAlloc>(
 
     if (*continuation_table_ptr_loc).unskew() >= heap_base as usize {
         // TODO: No need to check if continuation table is already marked
-        mark_object(space, &mut stack, *continuation_table_ptr_loc, heap_base);
+        mark_object(space, &mut stack, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so it
         // will be readable when we unthread continuation table
         thread(continuation_table_ptr_loc);
@@ -139,7 +139,7 @@ unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
-        mark_object(space, mark_stack, *field_addr, heap_base);
+        mark_object(space, mark_stack, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
@@ -150,7 +150,6 @@ unsafe fn mark_object<P: PageAlloc>(
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     obj: SkewedPtr,
-    heap_base: u32,
 ) {
     let obj_tag = obj.tag();
     let obj = obj.unskew();
@@ -189,7 +188,7 @@ unsafe fn mark_fields<P: PageAlloc>(
 ) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
-        mark_object(space, mark_stack, field_value, heap_base);
+        mark_object(space, mark_stack, field_value);
 
         // Thread if backwards pointer
         if field_value.unskew() < obj as usize {
