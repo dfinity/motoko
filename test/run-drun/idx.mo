@@ -1,3 +1,5 @@
+import CO4 "ok/idx-class"
+
 actor a {
     type O1 = { field : Int }; // "\ba\94\93\00"
     type O2 = { a: Int; field : Int }; // "a\00\00\00\ba\94\93\00"
@@ -15,7 +17,8 @@ actor a {
         go1({ field = 42 }); // field: 9671866
         go2({ a = 25; field = 42 });
         go3({ a = 25; field = 42; other = 83 });
-        go4({ a = 25; foo = 8; field = 42; other = 83 })
+        go4({ a = 25; foo = 8; field = 42; other = 83 });
+        go4(CO4.CO4())
     }
 
 };
