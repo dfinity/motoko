@@ -1,4 +1,4 @@
-use crate::mem_utils::memzero;
+use crate::mem_utils::memzero_bytes;
 use crate::types::Bytes;
 use crate::ALLOC;
 
@@ -25,6 +25,8 @@ impl Bitmap {
 
         let layout = Layout::from_size_align_unchecked(bitmap_bytes.as_usize(), 1);
         let ptr = ALLOC.alloc(layout);
+
+        memzero_bytes(ptr as usize, bitmap_bytes);
 
         assert!(!ptr.is_null());
 
