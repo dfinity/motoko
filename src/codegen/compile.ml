@@ -2758,11 +2758,12 @@ module Object = struct
   let field_lower_bound env obj_type s =
     let open Type in
     let _, fields = as_obj_sub [s] obj_type in
-    let fields = List.filter (function {typ = Typ _; _} -> assert false; false | _ -> true) fields in
+    List.iter (function {typ = Typ _; _} -> assert false | _ -> ()) fields;
     let sorted_by_hash =
       List.sort
         (fun (h1, _) (h2, _) -> Lib.Uint32.compare h1 h2)
         (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
+    List.iter2 (fun {lab; _} (_,{lab=lab2; _}) -> Printf.eprintf "(%s, %s)\n" lab lab2; assert (lab = lab2)) fields sorted_by_hash;
     match List.find_opt
       (fun (_, {lab; _}) -> lab = s)
       (List.mapi (fun i e -> (i, snd e)) sorted_by_hash) with
