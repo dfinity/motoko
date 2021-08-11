@@ -2764,8 +2764,8 @@ module Object = struct
         (fun (h1, _) (h2, _) -> Lib.Uint32.compare h1 h2)
         (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
     match List.find_opt
-            (fun (_, {lab; _}) -> lab = s)
-            (List.mapi (fun i e -> (i, snd e)) sorted_by_hash) with
+      (fun (_, {lab; _}) -> lab = s)
+      (List.mapi (fun i e -> (i, snd e)) sorted_by_hash) with
     | Some (i, _) -> i
     | _ -> assert false
 
