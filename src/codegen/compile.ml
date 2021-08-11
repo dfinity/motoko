@@ -2758,7 +2758,7 @@ module Object = struct
   let field_lower_bound env obj_type s =
     let open Type in
     let _, fields = as_obj_sub [s] obj_type in
-    let fields = List.filter (function {typ = Typ _; _} -> false | _ -> true) fields in
+    let fields = List.filter (function {typ = Typ _; _} -> assert false; false | _ -> true) fields in
     let sorted_by_hash =
       List.sort
         (fun (h1, _) (h2, _) -> Lib.Uint32.compare h1 h2)

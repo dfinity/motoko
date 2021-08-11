@@ -18,7 +18,9 @@ actor a {
         go2({ a = 25; field = 42 });
         go3({ a = 25; field = 42; other = 83 });
         go4({ a = 25; foo = 8; field = 42; other = 83 });
-        go4(CO4.CO4())
+        let co4 = CO4.CO4();
+        let a = co4.a;
+        go4(co4)
     }
 
 };
