@@ -2784,7 +2784,6 @@ module Object = struct
     idx_raw env f ^^
     load_ptr
 
-
   (* load the actual value (dereferencing the mutbox) *)
   let load_idx env obj_type f =
     idx env obj_type f ^^
