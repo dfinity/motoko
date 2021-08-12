@@ -33,11 +33,17 @@ fn test_heaps() -> Vec<TestHeap> {
     vec![
         // Just a random test that covers a bunch of cases:
         // - Self references
+        // - Unreachable objects
         // - Forward pointers
         // - Backwards pointers
         // - More than one fields in an object
         TestHeap {
-            heap: vec![(0, vec![0, 2]), (2, vec![0]), (3, vec![3])],
+            heap: vec![
+                (0, vec![0, 2]),
+                (1, vec![0, 1, 2, 3]),
+                (2, vec![0]),
+                (3, vec![3]),
+            ],
             roots: vec![0, 2, 3],
             continuation_table: vec![0],
         },
