@@ -31,7 +31,7 @@ static mut FREE_PAGES: Option<IcPage> = Some(IcPage { wasm_page_num: 0 });
 impl PageAlloc for IcPageAlloc {
     type Page = IcPage;
 
-    unsafe fn alloc(&mut self) -> IcPage {
+    unsafe fn alloc(&self) -> IcPage {
         match FREE_PAGES.take() {
             None => {
                 let wasm_page_num = wasm32::memory_grow(0, 1);
@@ -54,7 +54,7 @@ impl PageAlloc for IcPageAlloc {
         }
     }
 
-    unsafe fn free(&mut self, page: IcPage) {
+    unsafe fn free(&self, page: IcPage) {
         // No need to set prev
         page.set_next(FREE_PAGES);
         FREE_PAGES = Some(page);

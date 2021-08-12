@@ -8,9 +8,9 @@ pub mod ic;
 pub trait PageAlloc: Clone {
     type Page: Page;
 
-    unsafe fn alloc(&mut self) -> Self::Page;
+    unsafe fn alloc(&self) -> Self::Page;
 
-    unsafe fn free(&mut self, page: Self::Page);
+    unsafe fn free(&self, page: Self::Page);
 
     /// Get the page of a given address. May panic if address does not belong to a page for this
     /// allocator.

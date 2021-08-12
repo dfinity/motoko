@@ -1,16 +1,16 @@
 #![feature(ptr_offset_from, map_first_last, clamp)]
 
-mod bigint;
-mod bitmap;
-mod continuation_table;
-mod crc32;
-mod gc;
-mod leb128;
-mod mark_stack;
-mod memory;
-mod principal_id;
-mod text;
-mod utf8;
+// mod bigint;
+// mod bitmap;
+// mod continuation_table;
+// mod crc32;
+// mod gc;
+// mod leb128;
+// mod mark_stack;
+// mod principal_id;
+// mod text;
+// mod utf8;
+mod page_alloc;
 
 use motoko_rts::types::Bytes;
 
@@ -24,16 +24,16 @@ fn main() {
     }
 
     unsafe {
-        bigint::test();
-        bitmap::test();
-        continuation_table::test();
-        crc32::test();
-        gc::test();
-        leb128::test();
-        mark_stack::test();
-        principal_id::test();
-        text::test();
-        utf8::test();
+        // bigint::test();
+        // bitmap::test();
+        // continuation_table::test();
+        // crc32::test();
+        // gc::test();
+        // leb128::test();
+        // mark_stack::test();
+        // principal_id::test();
+        // text::test();
+        // utf8::test();
     }
 }
 
