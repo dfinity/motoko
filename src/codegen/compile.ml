@@ -2738,7 +2738,7 @@ module Object = struct
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx_hash env m indirect =
+  let idx_hash env low_bound indirect =
     if indirect
     then
       let name = Printf.sprintf "obj_idx_ind<%d>" m in
