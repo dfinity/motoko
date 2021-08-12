@@ -29,11 +29,6 @@ export LANG=C.UTF-8
 # affected tests on drun (only ic-ref-run).
 EXTRA_BATCHES=1
 
-# on darwin, I have seen
-#   thread 'MR Batch Processor' has overflowed its stack
-# and this helps (default is 2MB)
-export RUST_MIN_STACK=$((10*1024*1024))
-
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
 
