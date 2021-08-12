@@ -22,6 +22,7 @@ pkgs:
       buildInputs = with pkgs; [
         openssl
         llvm_10
+        llvmPackages_10.clang
         llvmPackages_10.libclang
         lmdb
       ];
