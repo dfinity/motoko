@@ -3,4 +3,4 @@
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: ok1
 debug.print: ok2
-← rejected (RC_CANISTER_ERROR): Initialization trapped: EvalExhaustionError region:0xXXX-0xXXX "call stack exhausted"
+← replied: ()

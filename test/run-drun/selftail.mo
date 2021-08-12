@@ -19,5 +19,7 @@ assert(100000 == f (true, 100000, 0));
 Prim.debugPrint "ok2";
 
 // check recursion overflows for large n (overflows on drun only)
-assert(100000 == f (false, 100000, 0));
-Prim.debugPrint "ok3 (unreachable on drun)";
+// this would throw a stack overflow in drun; but we do not run
+// this in our test suite, as the output differs from linux to darwin etc.
+// assert(100000 == f (false, 100000, 0));
+// Prim.debugPrint "ok3 (unreachable on drun)";
