@@ -2708,8 +2708,8 @@ module Object = struct
 
 
   (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_hash_raw env m =
-    let name = Printf.sprintf "obj_idx<%d>" m  in
+  let idx_hash_raw env low_bound =
+    let name = Printf.sprintf "obj_idx<%d>" low_bound  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
@@ -2717,7 +2717,7 @@ module Object = struct
 
       get_x ^^ Heap.load_field size_field ^^
       (* Linearly scan through the fields (binary search can come later) *)
-      from_m_to_n env (Int32.of_int m) (fun get_i ->
+      from_m_to_n env (Int32.of_int low_bound) (fun get_i ->
         get_i ^^
         compile_mul_const Heap.word_size ^^
         get_h_ptr ^^
@@ -2741,13 +2741,13 @@ module Object = struct
   let idx_hash env low_bound indirect =
     if indirect
     then
-      let name = Printf.sprintf "obj_idx_ind<%d>" m in
+      let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
       Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
-      idx_hash_raw env m ^^
+      idx_hash_raw env low_bound ^^
       load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
-    else idx_hash_raw env m
+    else idx_hash_raw env low_bound
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
