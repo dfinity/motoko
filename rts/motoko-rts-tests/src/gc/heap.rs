@@ -7,9 +7,10 @@ use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
+
+use fxhash::FxHashMap;
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.
@@ -32,7 +33,7 @@ impl MotokoHeap {
     /// `super::MAX_MARK_STACK_SIZE`. In the worst case the size would be the same as the heap
     /// size, but that's not a realistic scenario.
     pub fn new(
-        map: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+        map: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
         gc: GC,
@@ -150,7 +151,7 @@ impl MotokoHeapInner {
     }
 
     fn new(
-        map: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+        map: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
         gc: GC,
@@ -183,7 +184,7 @@ impl MotokoHeapInner {
         let mut heap: Vec<u8> = vec![0; heap_size];
 
         // Maps `ObjectIdx`s into their offsets in the heap
-        let object_addrs: HashMap<ObjectIdx, usize> =
+        let object_addrs: FxHashMap<ObjectIdx, usize> =
             create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_bytes..]);
 
         // Closure table pointer is the last word in static heap
@@ -273,14 +274,14 @@ fn heap_size_for_gc(
 /// Returns a mapping from object indices (`ObjectIdx`) to their addresses (see module
 /// documentation for "offset" and "address" definitions).
 fn create_dynamic_heap(
-    refs: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    refs: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
-) -> HashMap<ObjectIdx, usize> {
+) -> FxHashMap<ObjectIdx, usize> {
     let heap_start = dynamic_heap.as_ptr() as usize;
 
     // Maps objects to their addresses
-    let mut object_addrs: HashMap<ObjectIdx, usize> = HashMap::new();
+    let mut object_addrs: FxHashMap<ObjectIdx, usize> = Default::default();
 
     // First pass allocates objects without fields
     {
@@ -355,7 +356,7 @@ fn create_dynamic_heap(
 /// root array.
 fn create_static_heap(
     roots: &[ObjectIdx],
-    object_addrs: &HashMap<ObjectIdx, usize>,
+    object_addrs: &FxHashMap<ObjectIdx, usize>,
     continuation_table_ptr_offset: usize,
     continuation_table_offset: usize,
     heap: &mut [u8],
