@@ -10,7 +10,7 @@ use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
 use std::rc::Rc;
 
-use fxhash::FxHashMap;
+use fxhash::{FxHashMap, FxHashSet};
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.
@@ -156,6 +156,16 @@ impl MotokoHeapInner {
         continuation_table: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeapInner {
+        // Check test correctness: an object should appear at most once in `map`
+        {
+            let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
+            assert_eq!(
+                heap_objects.len(),
+                map.len(),
+                "Invalid test heap: some objects appear multiple times"
+            );
+        }
+
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
