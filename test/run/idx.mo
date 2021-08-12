@@ -1,4 +1,4 @@
-public class CO4() {
+class CO4() {
     public type b = Nat;
     public let a : b = 25;
     public let foo : b = 8;
@@ -14,18 +14,18 @@ type O4 = { a: Int; foo : Int; field : Int; other : Int }; // "a\00\00\00\06\c7M
 func go1(o : O1) : () = inner o;
 func go2(o : O2) : () = inner o;
 func go3(o : O3) : () = inner o;
-public shared func go4(o : O4) : () { assert o.a == 25; assert o.field == 42; assert o.other == 83; assert o.foo == 8; inner o };
+func go4(o : O4) : () { assert o.a == 25; assert o.field == 42; assert o.other == 83; assert o.foo == 8; inner o };
 
 func inner(o : O1) { assert o.field == 42 };
 
-public func go() : async () {
+func go() {
     go1({ field = 42 }); // field: 9671866
     go2({ a = 25; field = 42 });
     go3({ a = 25; field = 42; other = 83 });
     go4({ a = 25; foo = 8; field = 42; other = 83 });
-    let co4 = CO4.CO4();
+    let co4 = CO4();
     let a = co4.a;
     go4(co4)
 };
 
-a.go();
+go();
