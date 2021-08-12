@@ -33,39 +33,42 @@ fn test_heaps() -> Vec<TestHeap> {
     vec![
         // Just a random test that covers a bunch of cases:
         // - Self references
+        // - Unreachable objects
         // - Forward pointers
         // - Backwards pointers
         // - More than one fields in an object
         TestHeap {
-            heap: vec![(0, vec![0, 2]), (2, vec![0]), (3, vec![3])]
-                .into_iter()
-                .collect(),
+            heap: vec![
+                (0, vec![0, 2]),
+                (1, vec![0, 1, 2, 3]),
+                (2, vec![0]),
+                (3, vec![3]),
+            ],
             roots: vec![0, 2, 3],
             continuation_table: vec![0],
         },
         // Tests pointing to the same object in multiple fields of an object. Also has unreachable
         // objects.
         TestHeap {
-            heap: vec![(0, vec![]), (1, vec![]), (2, vec![])]
-                .into_iter()
-                .collect(),
+            heap: vec![(0, vec![]), (1, vec![]), (2, vec![])],
             roots: vec![1],
             continuation_table: vec![0, 0],
         },
         // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
-            heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])]
-                .into_iter()
-                .collect(),
+            heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])],
             roots: vec![2],
             continuation_table: vec![],
         },
     ]
 }
 
+// All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
+// the same order they appear in these vectors. Each object in `heap` should have a unique index,
+// which is checked when creating the heap.
 #[derive(Debug)]
 struct TestHeap {
-    heap: FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+    heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
     roots: Vec<ObjectIdx>,
     continuation_table: Vec<ObjectIdx>,
 }
@@ -84,7 +87,7 @@ fn test_gcs(heap_descr: &TestHeap) {
 
 fn test_gc(
     gc: GC,
-    refs: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+    refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
@@ -132,7 +135,7 @@ fn test_gc(
 ///
 fn check_dynamic_heap(
     post_gc: bool,
-    objects: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+    objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
     heap: &[u8],
@@ -140,6 +143,11 @@ fn check_dynamic_heap(
     heap_ptr_offset: usize,
     continuation_table_ptr_offset: usize,
 ) {
+    let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
+        .iter()
+        .map(|(obj, refs)| (*obj, refs.as_slice()))
+        .collect();
+
     // Current offset in the heap
     let mut offset = heap_base_offset;
 
@@ -184,7 +192,7 @@ fn check_dynamic_heap(
             );
         }
 
-        let object_expected_pointees = objects.get(&object_idx).unwrap_or_else(|| {
+        let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
             panic!("Object with index {} is not in the objects map", object_idx)
         });
 
@@ -212,7 +220,7 @@ fn check_dynamic_heap(
     // At this point we've checked that all seen objects point to the expected objects (as
     // specified by `objects`). Check that we've seen the reachable objects and only the reachable
     // objects.
-    let reachable_objects = compute_reachable_objects(roots, continuation_table, objects);
+    let reachable_objects = compute_reachable_objects(roots, continuation_table, &objects_map);
 
     // Objects we've seen in the heap
     let seen_objects: FxHashSet<ObjectIdx> = seen.keys().copied().collect();
@@ -264,7 +272,7 @@ fn check_dynamic_heap(
 fn compute_reachable_objects(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
-    heap: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+    heap: &FxHashMap<ObjectIdx, &[ObjectIdx]>,
 ) -> FxHashSet<ObjectIdx> {
     let root_iter = roots.iter().chain(continuation_table.iter()).copied();
 
@@ -272,7 +280,7 @@ fn compute_reachable_objects(
     let mut work_list: Vec<ObjectIdx> = root_iter.collect();
 
     while let Some(next) = work_list.pop() {
-        let pointees = heap
+        let pointees = *heap
             .get(&next)
             .unwrap_or_else(|| panic!("Object {} is in the work list, but not in heap", next));
 

@@ -10,7 +10,7 @@ use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
 use std::rc::Rc;
 
-use fxhash::FxHashMap;
+use fxhash::{FxHashMap, FxHashSet};
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.
@@ -33,7 +33,7 @@ impl MotokoHeap {
     /// `super::MAX_MARK_STACK_SIZE`. In the worst case the size would be the same as the heap
     /// size, but that's not a realistic scenario.
     pub fn new(
-        map: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+        map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
         gc: GC,
@@ -151,11 +151,21 @@ impl MotokoHeapInner {
     }
 
     fn new(
-        map: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+        map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeapInner {
+        // Check test correctness: an object should appear at most once in `map`
+        {
+            let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
+            assert_eq!(
+                heap_objects.len(),
+                map.len(),
+                "Invalid test heap: some objects appear multiple times"
+            );
+        }
+
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
@@ -163,7 +173,7 @@ impl MotokoHeapInner {
 
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * 3;
-            let references_words = map.values().map(Vec::len).sum::<usize>();
+            let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
         };
 
@@ -274,7 +284,7 @@ fn heap_size_for_gc(
 /// Returns a mapping from object indices (`ObjectIdx`) to their addresses (see module
 /// documentation for "offset" and "address" definitions).
 fn create_dynamic_heap(
-    refs: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+    refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
 ) -> FxHashMap<ObjectIdx, usize> {
@@ -328,7 +338,7 @@ fn create_dynamic_heap(
     // Add the continuation table
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
-    let n_fields: usize = refs.values().map(|fields| fields.len() + 1).sum();
+    let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
     let continuation_table_offset =
         (size_of::<Array>() * n_objects as u32).to_bytes().0 as usize + n_fields * WORD_SIZE;
 
