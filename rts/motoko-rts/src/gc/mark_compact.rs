@@ -7,7 +7,6 @@ pub mod mark_stack;
 use crate::bitmap::{Bitmap, BITMAP_ITER_END};
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
-use crate::page_alloc::ic::IcPageAlloc;
 use crate::page_alloc::{Page, PageAlloc};
 use crate::space::Space;
 use crate::types::*;
@@ -26,7 +25,7 @@ unsafe fn schedule_compacting_gc() {
 #[no_mangle]
 unsafe fn compacting_gc() {
     compacting_gc_internal(
-        IcPageAlloc {},
+        crate::page_alloc::ic::IcPageAlloc {},
         crate::allocation_space::ALLOCATION_SPACE.as_mut().unwrap(),
         crate::get_heap_base(),
         crate::get_static_roots(),

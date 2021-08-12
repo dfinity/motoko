@@ -1,6 +1,5 @@
 use crate::mem_utils::memzero;
 use crate::types::Bytes;
-use crate::ALLOC;
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::convert::TryFrom;
@@ -24,7 +23,12 @@ impl Bitmap {
         let bitmap_bytes = Bytes(((bitmap_bytes + 7) / 8) * 8);
 
         let layout = Layout::from_size_align_unchecked(bitmap_bytes.as_usize(), 1);
-        let ptr = ALLOC.alloc(layout);
+
+        #[cfg(feature = "ic")]
+        let ptr = crate::ALLOC.alloc(layout);
+
+        #[cfg(not(feature = "ic"))]
+        let ptr = alloc::alloc::alloc(layout);
 
         memzero(ptr as usize, bitmap_bytes);
 
@@ -34,7 +38,11 @@ impl Bitmap {
     }
 
     pub unsafe fn free(self) {
-        ALLOC.dealloc(self.ptr, self.layout);
+        #[cfg(feature = "ic")]
+        crate::ALLOC.dealloc(self.ptr, self.layout);
+
+        #[cfg(not(feature = "ic"))]
+        alloc::alloc::dealloc(self.ptr, self.layout);
     }
 
     pub unsafe fn get(&self, idx: u32) -> bool {
