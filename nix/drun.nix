@@ -11,20 +11,19 @@ pkgs:
       nativeBuildInputs = with pkgs; [
         pkg-config
         cmake
+      ];
+
+      buildInputs = with pkgs; [
+        openssl
+        llvm_10
+        llvmPackages_10.libclang
+        lmdb
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
         pkgs.darwin.apple_sdk.frameworks.CoreServices
         pkgs.darwin.apple_sdk.frameworks.Foundation
         pkgs.darwin.CF
         pkgs.xcbuild
-      ];
-
-      buildInputs = with pkgs; [
-        openssl
-        llvm_10
-        llvmPackages_10.clang
-        llvmPackages_10.libclang
-        lmdb
       ];
 
       # needed for bindgen
