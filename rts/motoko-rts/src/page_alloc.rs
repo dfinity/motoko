@@ -22,7 +22,7 @@ pub trait PageAlloc: Clone {
 /// both.
 
 // TODO: `Copy` is convenient but not sure if really necessary
-pub trait Page: Copy + Sized {
+pub trait Page: Copy {
     /// Get the start of this page
     unsafe fn start(&self) -> usize;
 
