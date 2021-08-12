@@ -50,9 +50,9 @@ impl<P: PageAlloc> MarkStack<P> {
             }
 
             let new_page = self.page_alloc.alloc();
-            new_page.set_prev(Some(self.current_page));
+            new_page.set_prev(Some(self.current_page.clone()));
 
-            self.current_page = new_page;
+            self.current_page = new_page.clone();
             let hp = new_page.contents_start();
 
             *(hp as *mut usize) = obj;
@@ -76,8 +76,8 @@ impl<P: PageAlloc> MarkStack<P> {
                 Some(prev_page) => prev_page,
             };
 
-            self.page_alloc.free(self.current_page);
-            self.current_page = prev_page;
+            self.page_alloc.free(self.current_page.clone());
+            self.current_page = prev_page.clone();
             self.hp = prev_page.end();
         }
 

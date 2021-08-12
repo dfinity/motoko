@@ -20,9 +20,7 @@ pub trait PageAlloc: Clone {
 /// Trait for allocation units from the underlying system (Wasm, OS, ...). Page state can be held
 /// withing the pages, or externally (e.g. in an array indexed by a page), or a combination of
 /// both.
-
-// TODO: `Copy` is convenient but not sure if really necessary
-pub trait Page: Copy {
+pub trait Page: Clone {
     /// Get the start of this page
     unsafe fn start(&self) -> usize;
 

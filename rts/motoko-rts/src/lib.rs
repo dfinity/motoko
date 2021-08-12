@@ -33,7 +33,7 @@ pub mod gc;
 mod idl;
 pub mod leb128;
 mod mem_utils;
-mod page_alloc;
+pub mod page_alloc;
 pub mod principal_id;
 mod space;
 pub mod text;

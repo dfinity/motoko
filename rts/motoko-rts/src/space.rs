@@ -29,8 +29,8 @@ impl<P: PageAlloc> Space<P> {
 
         Space {
             page_alloc,
-            first_page: page,
-            current_page: page,
+            first_page: page.clone(),
+            current_page: page.clone(),
             hp: page.contents_start(),
             total_alloc: 0,
         }
@@ -39,7 +39,7 @@ impl<P: PageAlloc> Space<P> {
     /// Get the first page of this space. Can be used to scan the space from start to end.
     /// (e.g. when scavenging to-space in gc)
     pub fn first_page(&self) -> P::Page {
-        self.first_page
+        self.first_page.clone()
     }
 
     pub fn total_alloc(&self) -> usize {
@@ -55,8 +55,8 @@ impl<P: PageAlloc> Space<P> {
             // Rest of the page is considered allocated
             self.total_alloc += self.current_page.end() - self.hp;
 
-            new_page.set_prev(Some(self.current_page));
-            self.current_page.set_next(Some(new_page));
+            new_page.set_prev(Some(self.current_page.clone()));
+            self.current_page.set_next(Some(new_page.clone()));
 
             let alloc = new_page.start();
             self.hp = alloc + bytes;
@@ -72,7 +72,7 @@ impl<P: PageAlloc> Space<P> {
 
     /// Free all pages of the space. The space itself should not be used afterwards.
     pub unsafe fn free(&mut self) {
-        let mut next = Some(self.first_page);
+        let mut next = Some(self.first_page.clone());
         while let Some(page) = next {
             next = page.next();
             self.page_alloc.free(page);
