@@ -2708,7 +2708,7 @@ module Object = struct
 
 
   (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_hash_raw env m = (* HERE *)
+  let idx_hash_raw env m =
     let name = Printf.sprintf "obj_idx<%d>" m  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
@@ -2754,7 +2754,7 @@ module Object = struct
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
-  (* Computes a lower bound for the linear index of a field in an object *)
+  (* Computes a lower bound for the positional index of a field in an object *)
   let field_lower_bound env obj_type s =
     let open Type in
     let _, fields = as_obj_sub [s] obj_type in
