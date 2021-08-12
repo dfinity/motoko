@@ -15,8 +15,9 @@ use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
-use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+
+use fxhash::{FxHashMap, FxHashSet};
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -36,32 +37,26 @@ fn test_heaps() -> Vec<TestHeap> {
         // - Backwards pointers
         // - More than one fields in an object
         TestHeap {
-            heap: hashmap! {
-                0 => vec![0, 2],
-                2 => vec![0],
-                3 => vec![3],
-            },
+            heap: vec![(0, vec![0, 2]), (2, vec![0]), (3, vec![3])]
+                .into_iter()
+                .collect(),
             roots: vec![0, 2, 3],
             continuation_table: vec![0],
         },
         // Tests pointing to the same object in multiple fields of an object. Also has unreachable
         // objects.
         TestHeap {
-            heap: hashmap! {
-                0 => vec![],
-                1 => vec![],
-                2 => vec![],
-            },
+            heap: vec![(0, vec![]), (1, vec![]), (2, vec![])]
+                .into_iter()
+                .collect(),
             roots: vec![1],
             continuation_table: vec![0, 0],
         },
         // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
-            heap: hashmap! {
-                0 => vec![],
-                1 => vec![2],
-                2 => vec![1],
-            },
+            heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])]
+                .into_iter()
+                .collect(),
             roots: vec![2],
             continuation_table: vec![],
         },
@@ -70,7 +65,7 @@ fn test_heaps() -> Vec<TestHeap> {
 
 #[derive(Debug)]
 struct TestHeap {
-    heap: HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    heap: FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: Vec<ObjectIdx>,
     continuation_table: Vec<ObjectIdx>,
 }
@@ -89,7 +84,7 @@ fn test_gcs(heap_descr: &TestHeap) {
 
 fn test_gc(
     gc: GC,
-    refs: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    refs: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
@@ -137,7 +132,7 @@ fn test_gc(
 ///
 fn check_dynamic_heap(
     post_gc: bool,
-    objects: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    objects: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
     heap: &[u8],
@@ -149,7 +144,7 @@ fn check_dynamic_heap(
     let mut offset = heap_base_offset;
 
     // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
-    let mut seen: HashMap<ObjectIdx, usize> = Default::default();
+    let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
 
     let continuation_table_addr = unskew_pointer(read_word(heap, continuation_table_ptr_offset));
     let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
@@ -220,7 +215,7 @@ fn check_dynamic_heap(
     let reachable_objects = compute_reachable_objects(roots, continuation_table, objects);
 
     // Objects we've seen in the heap
-    let seen_objects: HashSet<ObjectIdx> = seen.keys().copied().collect();
+    let seen_objects: FxHashSet<ObjectIdx> = seen.keys().copied().collect();
 
     // Reachable objects that we haven't seen in the heap
     let missing_objects: Vec<ObjectIdx> = reachable_objects
@@ -269,11 +264,11 @@ fn check_dynamic_heap(
 fn compute_reachable_objects(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
-    heap: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
-) -> HashSet<ObjectIdx> {
+    heap: &FxHashMap<ObjectIdx, Vec<ObjectIdx>>,
+) -> FxHashSet<ObjectIdx> {
     let root_iter = roots.iter().chain(continuation_table.iter()).copied();
 
-    let mut closure: HashSet<ObjectIdx> = root_iter.clone().collect();
+    let mut closure: FxHashSet<ObjectIdx> = root_iter.clone().collect();
     let mut work_list: Vec<ObjectIdx> = root_iter.collect();
 
     while let Some(next) = work_list.pop() {
