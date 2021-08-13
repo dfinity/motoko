@@ -1,8 +1,9 @@
 //! Text and text iterator tests
 
-use crate::memory::TestMemory;
+use crate::page_alloc::TestPageAlloc;
 
-use motoko_rts::memory::Memory;
+use motoko_rts::page_alloc::PageAlloc;
+use motoko_rts::space::Space;
 use motoko_rts::text::{
     blob_of_text, decode_code_point, text_compare, text_concat, text_len, text_of_str,
     text_singleton, text_size,
@@ -16,21 +17,21 @@ use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 static STR: &str = "abcdefgh";
 
-struct TextIter<'a, M: Memory> {
+struct TextIter<'a, P: PageAlloc> {
     obj: SkewedPtr,
-    mem: &'a mut M,
+    space: &'a mut Space<P>,
 }
 
-impl<'a, M: Memory> TextIter<'a, M> {
-    fn from_text(mem: &'a mut M, text: SkewedPtr) -> Self {
+impl<'a, P: PageAlloc> TextIter<'a, P> {
+    fn from_text(space: &'a mut Space<P>, text: SkewedPtr) -> Self {
         TextIter {
-            obj: unsafe { text_iter(mem, text) },
-            mem,
+            obj: unsafe { text_iter(space, text) },
+            space,
         }
     }
 }
 
-impl<'a, M: Memory> Iterator for TextIter<'a, M> {
+impl<'a, P: PageAlloc> Iterator for TextIter<'a, P> {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
@@ -38,7 +39,7 @@ impl<'a, M: Memory> Iterator for TextIter<'a, M> {
             if text_iter_done(self.obj) == 1 {
                 None
             } else {
-                let next = text_iter_next(self.mem, self.obj);
+                let next = text_iter_next(self.space, self.obj);
                 Some(char::try_from(next).unwrap())
             }
         }
@@ -48,7 +49,8 @@ impl<'a, M: Memory> Iterator for TextIter<'a, M> {
 pub unsafe fn test() {
     println!("Testing text and text iterators ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    let page_alloc = TestPageAlloc::new(1024);
+    let mut space = Space::new(page_alloc.clone());
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
     for i in 0..=255u32 {
@@ -60,23 +62,26 @@ pub unsafe fn test() {
         assert_eq!(out, str.len() as u32);
         assert_eq!(char::try_from(char_decoded).unwrap(), char);
 
-        let text = text_singleton(&mut mem, char as u32);
-        assert_eq!(TextIter::from_text(&mut mem, text).collect::<String>(), str);
+        let text = text_singleton(&mut space, char as u32);
+        assert_eq!(
+            TextIter::from_text(&mut space, text).collect::<String>(),
+            str
+        );
     }
 
     println!("  Testing text blob iteration");
     for i in 0..8 {
         let str = &STR[0..i + 1];
-        let text = text_of_str(&mut mem, str);
+        let text = text_of_str(&mut space, str);
         assert_eq!(text.tag(), TAG_BLOB);
-        let iter = TextIter::from_text(&mut mem, text);
+        let iter = TextIter::from_text(&mut space, text);
         assert_eq!(iter.collect::<String>(), str);
     }
 
     println!("  Testing concatenation");
-    concat1(&mut mem);
+    concat1(&mut space);
 
-    drop(mem);
+    drop(space);
 
     let mut proptest_runner = TestRunner::new(Config {
         cases: 1_000,
@@ -88,21 +93,21 @@ pub unsafe fn test() {
         .run(
             &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
             |strs| {
-                let mut mem = TestMemory::new(Words(1024 * 1024));
-                concat_prop(&mut mem, strs)
+                let mut space = Space::new(page_alloc.clone());
+                concat_prop(&mut space, strs)
             },
         )
         .unwrap();
 }
 
-unsafe fn concat1<M: Memory>(mem: &mut M) {
+unsafe fn concat1<P: PageAlloc>(space: &mut Space<P>) {
     // A simple test extracted from a QuickCheck generated test case
     let strs = ["a", "öabcdef", "y"];
 
-    let mut obj = text_of_str(mem, "");
+    let mut obj = text_of_str(space, "");
     for str in &strs {
-        let str_obj = text_of_str(mem, str);
-        obj = text_concat(mem, obj, str_obj);
+        let str_obj = text_of_str(space, str);
+        obj = text_concat(space, obj, str_obj);
     }
 
     let expected = strs.concat();
@@ -114,7 +119,7 @@ unsafe fn concat1<M: Memory>(mem: &mut M) {
     assert_eq!(text_size(obj), Bytes(expected.len() as u32));
 
     // Generate blob
-    let text_blob = blob_of_text(mem, obj);
+    let text_blob = blob_of_text(space, obj);
 
     // Check number of characters in blob
     assert_eq!(text_len(text_blob), expected.chars().count() as u32);
@@ -123,22 +128,28 @@ unsafe fn concat1<M: Memory>(mem: &mut M) {
     assert_eq!(text_size(text_blob), Bytes(expected.len() as u32));
 
     // Check blob iteration
-    let blob = blob_of_text(mem, obj);
-    assert_eq!(TextIter::from_text(mem, blob).collect::<String>(), expected);
+    let blob = blob_of_text(space, obj);
+    assert_eq!(
+        TextIter::from_text(space, blob).collect::<String>(),
+        expected
+    );
 
     // Check blob-concat comparison
     assert_eq!(text_compare(text_blob, obj), 0);
 
     // Check concat iteration
-    assert_eq!(TextIter::from_text(mem, obj).collect::<String>(), expected);
+    assert_eq!(
+        TextIter::from_text(space, obj).collect::<String>(),
+        expected
+    );
 }
 
-fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
+fn concat_prop<P: PageAlloc>(space: &mut Space<P>, strs: Vec<String>) -> TestCaseResult {
     unsafe {
-        let mut obj = text_of_str(mem, "");
+        let mut obj = text_of_str(space, "");
         for str in &strs {
-            let str_obj = text_of_str(mem, str);
-            obj = text_concat(mem, obj, str_obj);
+            let str_obj = text_of_str(space, str);
+            obj = text_concat(space, obj, str_obj);
         }
 
         let expected = strs.concat();
@@ -154,7 +165,7 @@ fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
         }
 
         // Generate blob
-        let text_blob = blob_of_text(mem, obj);
+        let text_blob = blob_of_text(space, obj);
 
         // Check number of characters in blob
         if text_len(text_blob) != expected.chars().count() as u32 {
@@ -167,8 +178,8 @@ fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
         }
 
         // Check blob iteration
-        let blob = blob_of_text(mem, obj);
-        if TextIter::from_text(mem, blob).collect::<String>() != expected {
+        let blob = blob_of_text(space, obj);
+        if TextIter::from_text(space, blob).collect::<String>() != expected {
             return Err(TestCaseError::Fail("blob_of_text iteration".into()));
         }
 
@@ -178,7 +189,7 @@ fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
         }
 
         // Check concat iteration
-        if TextIter::from_text(mem, obj).collect::<String>() != expected {
+        if TextIter::from_text(space, obj).collect::<String>() != expected {
             return Err(TestCaseError::Fail("iteration".into()));
         }
 

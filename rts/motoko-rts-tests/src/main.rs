@@ -8,7 +8,7 @@ mod bigint;
 // mod leb128;
 // mod mark_stack;
 // mod principal_id;
-// mod text;
+mod text;
 // mod utf8;
 mod page_alloc;
 
@@ -29,7 +29,7 @@ fn main() {
         // leb128::test();
         // mark_stack::test();
         // principal_id::test();
-        // text::test();
+        text::test();
         // utf8::test();
     }
 }
