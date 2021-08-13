@@ -49,6 +49,7 @@ actor Life {
     #v3 : {size : Nat; offset : Nat32}
   };
 
+/*
   var nextOffset : Nat32 = 0;
   func alloc(words : Nat) : (offset : Nat32) {
       let temp = nextOffset;
@@ -61,15 +62,24 @@ actor Life {
       P.debugPrint(debug_show{alloc=temp});
       return temp;
   };
+*/
 
-  class Grid(state : State) {
+  func ensureMemory(offset : Nat32) {
+      let pagesNeeded = ((offset + 65535) / 65536) - SM.size();
+      if (pagesNeeded > 0) {
+        assert (SM.grow(pagesNeeded) != 0xFFFF)
+      };
+  };
+
+  class Grid(index: Nat, state : State) {
 
    let (n : Nat, offset) =
       switch state {
         case (#v1 css) {
           let n = css.size();
           let len = (n * n) / 32 + 1;
-          let offset : Nat32 = alloc(len);
+          let offset : Nat32 = P.natToNat32(index * len * 4);
+          ensureMemory(offset + P.natToNat32(len) * 4);
           for (i in css.keys()) {
             for (j in css[i].keys()) {
               writeBit(offset, i * n + j, css[i][j]);
@@ -79,7 +89,8 @@ actor Life {
         };
         case (#v2 {size; bits}) {
           let len = (size * size) / 32 + 1;
-          let offset : Nat32 = alloc(len);
+          let offset : Nat32 = P.natToNat32(index * len * 4);
+          ensureMemory(offset + P.natToNat32(len) * 4);
           for (i in below(size)) {
             for (j in below(size)) {
                let k = i * size + j;
@@ -147,9 +158,11 @@ actor Life {
     };
   };
 
-  func newState(size : Nat) : State {
+  func newState(index : Nat, size : Nat) : State {
     let len = (size * size) / 32 + 1;
-    let offset : Nat32 = alloc(len);
+    let offset : Nat32 = P.natToNat32(index * len * 4);
+    ensureMemory(offset + P.natToNat32(len) * 4);
+ /*   
     for (i in below(len)) {
       var word : Nat32 = 0;
       for (j in below(32)) {
@@ -159,13 +172,14 @@ actor Life {
       };
       SM.storeNat32(offset + P.natToNat32(i)*4, word);
     };
+ */
     #v3 { size; offset};
   };
 
-  stable var state : State = newState(32);
+  stable var state : State = newState(0, 32);
 
-  flexible var src = Grid(state);
-  flexible var dst = Grid(newState(src.size()));
+  flexible var src = Grid(0, state);
+  flexible var dst = Grid(1, newState(1, src.size()));
 
   func update(c : Nat) {
     var i = c;
@@ -183,7 +197,7 @@ actor Life {
   };
 
   system func postupgrade() {
-    P.debugPrint("upgraded V3!");
+    P.debugPrint("upgraded!");
   };
 
   public func advance(n : Nat) : async () {
