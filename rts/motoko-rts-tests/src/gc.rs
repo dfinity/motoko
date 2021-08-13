@@ -15,8 +15,9 @@ use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
-use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+
+use fxhash::{FxHashMap, FxHashSet};
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -32,47 +33,44 @@ fn test_heaps() -> Vec<TestHeap> {
     vec![
         // Just a random test that covers a bunch of cases:
         // - Self references
+        // - Unreachable objects
         // - Forward pointers
         // - Backwards pointers
         // - More than one fields in an object
         TestHeap {
-            heap: hashmap! {
-                0 => vec![0, 2],
-                2 => vec![0],
-                3 => vec![3],
-            },
+            heap: vec![
+                (0, vec![0, 2]),
+                (1, vec![0, 1, 2, 3]),
+                (2, vec![0]),
+                (3, vec![3]),
+            ],
             roots: vec![0, 2, 3],
-            closure_table: vec![0],
+            continuation_table: vec![0],
         },
         // Tests pointing to the same object in multiple fields of an object. Also has unreachable
         // objects.
         TestHeap {
-            heap: hashmap! {
-                0 => vec![],
-                1 => vec![],
-                2 => vec![],
-            },
+            heap: vec![(0, vec![]), (1, vec![]), (2, vec![])],
             roots: vec![1],
-            closure_table: vec![0, 0],
+            continuation_table: vec![0, 0],
         },
         // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
-            heap: hashmap! {
-                0 => vec![],
-                1 => vec![2],
-                2 => vec![1],
-            },
+            heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])],
             roots: vec![2],
-            closure_table: vec![],
+            continuation_table: vec![],
         },
     ]
 }
 
+// All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
+// the same order they appear in these vectors. Each object in `heap` should have a unique index,
+// which is checked when creating the heap.
 #[derive(Debug)]
 struct TestHeap {
-    heap: HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
     roots: Vec<ObjectIdx>,
-    closure_table: Vec<ObjectIdx>,
+    continuation_table: Vec<ObjectIdx>,
 }
 
 /// Test all GC implementations with the given heap
@@ -82,29 +80,29 @@ fn test_gcs(heap_descr: &TestHeap) {
             *gc,
             &heap_descr.heap,
             &heap_descr.roots,
-            &heap_descr.closure_table,
+            &heap_descr.continuation_table,
         );
     }
 }
 
 fn test_gc(
     gc: GC,
-    refs: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
-    closure_table: &[ObjectIdx],
+    continuation_table: &[ObjectIdx],
 ) {
-    let heap = MotokoHeap::new(refs, roots, closure_table, gc);
+    let heap = MotokoHeap::new(refs, roots, continuation_table, gc);
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         false, // before gc
         refs,
         roots,
-        closure_table,
+        continuation_table,
         &**heap.heap(),
         heap.heap_base_offset(),
         heap.heap_ptr_offset(),
-        heap.closure_table_ptr_offset(),
+        heap.continuation_table_ptr_offset(),
     );
 
     for _ in 0..3 {
@@ -112,16 +110,16 @@ fn test_gc(
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
-        let closure_table_ptr_offset = heap.closure_table_ptr_offset();
+        let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         check_dynamic_heap(
             true, // after gc
             refs,
             roots,
-            closure_table,
+            continuation_table,
             &**heap.heap(),
             heap_base_offset,
             heap_ptr_offset,
-            closure_table_ptr_offset,
+            continuation_table_ptr_offset,
         );
     }
 }
@@ -137,22 +135,27 @@ fn test_gc(
 ///
 fn check_dynamic_heap(
     post_gc: bool,
-    objects: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
+    objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
-    closure_table: &[ObjectIdx],
+    continuation_table: &[ObjectIdx],
     heap: &[u8],
     heap_base_offset: usize,
     heap_ptr_offset: usize,
-    closure_table_ptr_offset: usize,
+    continuation_table_ptr_offset: usize,
 ) {
+    let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
+        .iter()
+        .map(|(obj, refs)| (*obj, refs.as_slice()))
+        .collect();
+
     // Current offset in the heap
     let mut offset = heap_base_offset;
 
     // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
-    let mut seen: HashMap<ObjectIdx, usize> = Default::default();
+    let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
 
-    let closure_table_addr = unskew_pointer(read_word(heap, closure_table_ptr_offset));
-    let closure_table_offset = closure_table_addr as usize - heap.as_ptr() as usize;
+    let continuation_table_addr = unskew_pointer(read_word(heap, continuation_table_ptr_offset));
+    let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
 
     while offset < heap_ptr_offset {
         let object_offset = offset;
@@ -160,9 +163,9 @@ fn check_dynamic_heap(
         // Address of the current object. Used for debugging.
         let address = offset as usize + heap.as_ptr() as usize;
 
-        if object_offset == closure_table_offset {
-            check_closure_table(object_offset, closure_table, heap);
-            offset += (size_of::<Array>() + Words(closure_table.len() as u32))
+        if object_offset == continuation_table_offset {
+            check_continuation_table(object_offset, continuation_table, heap);
+            offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
                 .0 as usize;
             continue;
@@ -189,7 +192,7 @@ fn check_dynamic_heap(
             );
         }
 
-        let object_expected_pointees = objects.get(&object_idx).unwrap_or_else(|| {
+        let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
             panic!("Object with index {} is not in the objects map", object_idx)
         });
 
@@ -217,10 +220,10 @@ fn check_dynamic_heap(
     // At this point we've checked that all seen objects point to the expected objects (as
     // specified by `objects`). Check that we've seen the reachable objects and only the reachable
     // objects.
-    let reachable_objects = compute_reachable_objects(roots, closure_table, objects);
+    let reachable_objects = compute_reachable_objects(roots, continuation_table, &objects_map);
 
     // Objects we've seen in the heap
-    let seen_objects: HashSet<ObjectIdx> = seen.keys().copied().collect();
+    let seen_objects: FxHashSet<ObjectIdx> = seen.keys().copied().collect();
 
     // Reachable objects that we haven't seen in the heap
     let missing_objects: Vec<ObjectIdx> = reachable_objects
@@ -268,16 +271,16 @@ fn check_dynamic_heap(
 
 fn compute_reachable_objects(
     roots: &[ObjectIdx],
-    closure_table: &[ObjectIdx],
-    heap: &HashMap<ObjectIdx, Vec<ObjectIdx>>,
-) -> HashSet<ObjectIdx> {
-    let root_iter = roots.iter().chain(closure_table.iter()).copied();
+    continuation_table: &[ObjectIdx],
+    heap: &FxHashMap<ObjectIdx, &[ObjectIdx]>,
+) -> FxHashSet<ObjectIdx> {
+    let root_iter = roots.iter().chain(continuation_table.iter()).copied();
 
-    let mut closure: HashSet<ObjectIdx> = root_iter.clone().collect();
+    let mut closure: FxHashSet<ObjectIdx> = root_iter.clone().collect();
     let mut work_list: Vec<ObjectIdx> = root_iter.collect();
 
     while let Some(next) = work_list.pop() {
-        let pointees = heap
+        let pointees = *heap
             .get(&next)
             .unwrap_or_else(|| panic!("Object {} is in the work list, but not in heap", next));
 
@@ -291,14 +294,14 @@ fn compute_reachable_objects(
     closure
 }
 
-fn check_closure_table(mut offset: usize, closure_table: &[ObjectIdx], heap: &[u8]) {
+fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), closure_table.len() as u32);
+    assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
     offset += WORD_SIZE;
 
-    for obj in closure_table.iter() {
+    for obj in continuation_table.iter() {
         let ptr = unskew_pointer(read_word(heap, offset));
         offset += WORD_SIZE;
 
@@ -314,7 +317,8 @@ impl GC {
     fn run(&self, mut heap: MotokoHeap) {
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = skew(heap.static_root_array_address());
-        let closure_table_ptr_address = heap.closure_table_ptr_address() as *mut SkewedPtr;
+        let continuation_table_ptr_address =
+            heap.continuation_table_ptr_address() as *mut SkewedPtr;
 
         let heap_1 = heap.clone();
         let heap_2 = heap.clone();
@@ -330,7 +334,7 @@ impl GC {
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
-                        closure_table_ptr_address,
+                        continuation_table_ptr_address,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -349,7 +353,7 @@ impl GC {
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
-                        closure_table_ptr_address,
+                        continuation_table_ptr_address,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
