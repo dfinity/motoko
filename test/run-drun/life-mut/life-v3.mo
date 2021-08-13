@@ -49,20 +49,6 @@ actor Life {
     #v3 : {size : Nat; offset : Nat32}
   };
 
-/*
-  var nextOffset : Nat32 = 0;
-  func alloc(words : Nat) : (offset : Nat32) {
-      let temp = nextOffset;
-      nextOffset += P.natToNat32(words * 4);
-      let pagesNeeded = ((nextOffset + 65535) / 65536) - SM.size();
-//      P.debugPrint(debug_show({size = SM.size(); pagesNeeded = pagesNeeded}));
-      if (pagesNeeded > 0) {
-        assert (SM.grow(pagesNeeded) != 0xFFFF)
-      };
-      P.debugPrint(debug_show{alloc=temp});
-      return temp;
-  };
-*/
 
   func ensureMemory(offset : Nat32) {
       let pagesNeeded = ((offset + 65535) / 65536) - SM.size();
@@ -71,9 +57,9 @@ actor Life {
       };
   };
 
-  class Grid(index: Nat, state : State) {
+  class Grid(index : Nat, state : State) {
 
-   let (n : Nat, offset) =
+    let (n : Nat, offset) =
       switch state {
         case (#v1 css) {
           let n = css.size();
@@ -104,12 +90,12 @@ actor Life {
           let newoffset : Nat32 = P.natToNat32(index * len * 4);
           ensureMemory(newoffset + P.natToNat32(len) * 4);
           if (offset != newoffset) {
-          for (i in below(size)) {
-            for (j in below(size)) {
-               let k = i * size + j;
-               writeBit(newoffset, k, readBit(offset, k));
-            }
-          };
+            for (i in below(size)) {
+              for (j in below(size)) {
+                let k = i * size + j;
+                writeBit(newoffset, k, readBit(offset, k));
+              }
+            };
           };
           (size, newoffset)
         };
@@ -218,4 +204,3 @@ actor Life {
   };
 
 };
- 
