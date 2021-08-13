@@ -11,14 +11,15 @@ jobs:
     - uses: actions/checkout@v2
     - uses: cachix/install-nix-action@v13
       with:
-        # We need a nix version with NixOS/nix#3564 to be able to use
-        # `--max-jobs`, so using NixOS/nix@323e545. See 8365e73 for the problem
-        # with `--max-jobs`. Install URL is obtained from CI logs for the nix
+        # We need a recent nix version
+        # * to be able to use. See 8365e73 for the problem with `--max-jobs`
+        # * to not get a segfault on darwin. see #5125
+        # Install URL is obtained from CI logs for the nix
         # commit: https://github.com/NixOS/nix/runs/2895674848 expand "Run
         # cachenix/install-nix-action@v13" job, then the "Run
         # cachenix/install-nix-action@v13" step, and you'll see a line starting
         # with `install_url`.
-        install_url: https://nixos-nix-install-tests.cachix.org/serve/i6laym9jw3wg9mw6ncyrk6gjx4l34vvx/install
+        install_url: https://nixos-nix-install-tests.cachix.org/serve/jaj9pkz222c7a7ccdyg4cwp0xxhrbfyb/install
         install_options: '--tarball-url-prefix https://nixos-nix-install-tests.cachix.org/serve'
 
     # We are using the ic-hs-test cachix cache that is also used by
