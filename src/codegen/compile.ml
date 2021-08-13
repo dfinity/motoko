@@ -604,6 +604,26 @@ let compile_while cond body =
       cond ^^ G.if_ [] (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
+(* Expects a number n on the stack. Iterates from start expr to below that number. *)
+let from_start_to_n env get_start mk_body =
+    let (set_n, get_n) = new_local env "n" in
+    let (set_i, get_i) = new_local env "i" in
+    set_n ^^
+    get_start ^^
+    set_i ^^
+
+    compile_while
+      ( get_i ^^
+        get_n ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+      ) (
+        mk_body get_i ^^
+
+        get_i ^^
+        compile_add_const 1l ^^
+        set_i
+      )
+
 (* Expects a number n on the stack. Iterates from m to below that number. *)
 let from_m_to_n env m mk_body =
     let (set_n, get_n) = new_local env "n" in
@@ -2709,15 +2729,16 @@ module Object = struct
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_hash_raw env low_bound =
-    let name = Printf.sprintf "obj_idx<%d>" low_bound  in
-    Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+    compile_unboxed_const (Int32.of_int low_bound) ^^
+    let name = Printf.sprintf "obj_idx"  in
+    Func.share_code3 env name (("x", I32Type), ("hash", I32Type), ("low_bound", I32Type)) [I32Type] (fun env get_x get_hash get_bound ->
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
       get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
 
       get_x ^^ Heap.load_field size_field ^^
       (* Linearly scan through the fields (binary search can come later) *)
-      from_m_to_n env (Int32.of_int low_bound) (fun get_i ->
+      from_start_to_n env get_bound (fun get_i ->
         get_i ^^
         compile_mul_const Heap.word_size ^^
         get_h_ptr ^^
