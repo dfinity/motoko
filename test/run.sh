@@ -31,6 +31,9 @@ SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
+# Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
+EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+
 while getopts "adpstir" o; do
     case "${o}" in
         a)

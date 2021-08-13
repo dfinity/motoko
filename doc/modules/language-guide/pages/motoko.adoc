@@ -48,7 +48,7 @@ include::../examples/factorial.mo[lines=9..-1]
 [.card]
 == Modern type system
 
-Motoko has been designed to be intuitive to those familiar with Javascript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
+Motoko has been designed to be intuitive to those familiar with JavaScript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
 
 [source,motoko]
 ----

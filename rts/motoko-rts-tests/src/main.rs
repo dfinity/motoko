@@ -2,7 +2,7 @@
 
 mod bigint;
 mod bitmap;
-mod closure_table;
+mod continuation_table;
 mod crc32;
 mod gc;
 mod leb128;
@@ -14,9 +14,6 @@ mod utf8;
 
 use motoko_rts::types::Bytes;
 
-#[macro_use]
-extern crate maplit;
-
 fn main() {
     if std::mem::size_of::<usize>() != 4 {
         println!("Motoko RTS only works on 32-bit architectures");
@@ -26,7 +23,7 @@ fn main() {
     unsafe {
         bigint::test();
         bitmap::test();
-        closure_table::test();
+        continuation_table::test();
         crc32::test();
         gc::test();
         leb128::test();

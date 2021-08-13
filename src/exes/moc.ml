@@ -104,6 +104,10 @@ let argspec = [
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.compacting_gc := true),
   " link with compacting GC instead of copying GC";
+
+  "--force-gc",
+  Arg.Unit (fun () -> Flags.force_gc := true),
+  " disable GC scheduling, always do GC after an update message (for testing)";
     ]
 
   @  Args.inclusion_args

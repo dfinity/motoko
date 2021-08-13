@@ -124,13 +124,8 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -
         stash_enc_base32(pump.pending_data as u8, pump.dest);
         pump.dest = pump.dest.add(1);
         // Discount padding
-        let old_len = blob.len();
         let new_len = Bytes(pump.dest.offset_from(dest) as u32);
-        // Zero the slop, for debug functions
-        for i in new_len.0..old_len.0 {
-            blob.set(i, 0);
-        }
-        (*blob).len = new_len;
+        blob.shrink(new_len);
     }
 
     r
@@ -207,13 +202,8 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr 
     }
 
     // Adjust resulting blob len
-    let old_len = blob.len();
     let new_len = Bytes(pump.dest.offset_from(dest) as u32);
-    // Zero the slop, for debug functions
-    for i in new_len.0..old_len.0 {
-        blob.set(i, 0);
-    }
-    (*blob).len = new_len;
+    blob.shrink(new_len);
     r
 }
 
@@ -260,13 +250,8 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr
     }
 
     // Adjust result length
-    let old_len = blob.len();
     let new_len = Bytes(dest as u32 - blob.payload_addr() as u32);
-    // Zero the slop, for debug functions
-    for i in new_len.0..old_len.0 {
-        blob.set(i, 0);
-    }
-    (*blob).len = new_len;
+    blob.shrink(new_len);
     r
 }
 

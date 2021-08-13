@@ -24,7 +24,7 @@ let out_file = ref ""
 
 let argspec =
 [
-  "--js", Arg.Unit (set_mode Js), " output Javascript binding";
+  "--js", Arg.Unit (set_mode Js), " output JavaScript binding";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--pp", Arg.Unit (set_mode PrettyPrint), " Pretty print did file";
   "-v", Arg.Set Flags.verbose, " verbose output";

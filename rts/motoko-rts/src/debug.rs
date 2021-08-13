@@ -25,14 +25,14 @@ pub unsafe fn dump_heap(
     heap_base: u32,
     hp: u32,
     static_roots: SkewedPtr,
-    closure_table_loc: *mut SkewedPtr,
+    continuation_table_loc: *mut SkewedPtr,
 ) {
-    print_closure_table(closure_table_loc);
+    print_continuation_table(continuation_table_loc);
     print_static_roots(static_roots);
     print_heap(heap_base, hp);
 }
 
-pub(crate) unsafe fn print_closure_table(closure_tbl_loc: *mut SkewedPtr) {
+pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut SkewedPtr) {
     if (*closure_tbl_loc).0 == 0 {
         println!(100, "Closure table not initialized");
         return;
@@ -225,6 +225,13 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 (*concat).text1.0,
                 (*concat).text2.0
             );
+        }
+        TAG_ONE_WORD_FILLER => {
+            let _ = write!(buf, "<One word filler>",);
+        }
+        TAG_FREE_SPACE => {
+            let free_space = obj as *const FreeSpace;
+            let _ = write!(buf, "<Free space {} words>", (*free_space).words.0);
         }
         other => {
             let _ = write!(buf, "<??? {} ???>", other);

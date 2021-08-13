@@ -167,7 +167,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "1vr9mvjrddjv7xga6hhzq39x8qzdqsnhwic76apv7ksfkh0psfx2";
+        sha256 = "0sy7jglz9pxw2lz0qjyplchcfn78d7789sd93xwybisamjynlniy";
         copyLockfile = true;
       };
     in
@@ -647,7 +647,7 @@ rec {
     # both, while not actually building `moc`
     #
     propagatedBuildInputs =
-      let dont_build = [ moc mo-ld didc deser ]; in
+      let dont_build = [ moc mo-ld didc deser candid-tests ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
