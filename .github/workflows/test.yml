@@ -23,4 +23,4 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: "nix-build"
-      run: nix-build --max-jobs 10 -A all-systems-go
+      run: nix-build --max-jobs 4 -A all-systems-go
