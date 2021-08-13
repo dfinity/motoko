@@ -19,7 +19,7 @@ pub struct MarkStack<P: PageAlloc> {
 }
 
 impl<P: PageAlloc> MarkStack<P> {
-    pub unsafe fn new(mut page_alloc: P) -> Self {
+    pub unsafe fn new(page_alloc: P) -> Self {
         let current_page = page_alloc.alloc();
         let hp = current_page.contents_start();
         MarkStack {
@@ -30,7 +30,7 @@ impl<P: PageAlloc> MarkStack<P> {
     }
 
     pub unsafe fn free(self) {
-        let mut page_alloc = self.page_alloc;
+        let page_alloc = self.page_alloc;
         let mut page = Some(self.current_page);
         while let Some(page_) = page {
             page = page_.prev();

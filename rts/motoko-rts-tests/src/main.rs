@@ -1,6 +1,6 @@
 #![feature(ptr_offset_from, map_first_last, clamp)]
 
-// mod bigint;
+mod bigint;
 // mod bitmap;
 // mod continuation_table;
 // mod crc32;
@@ -21,7 +21,7 @@ fn main() {
     }
 
     unsafe {
-        // bigint::test();
+        bigint::test();
         // bitmap::test();
         // continuation_table::test();
         // crc32::test();

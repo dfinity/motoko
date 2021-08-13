@@ -1,7 +1,9 @@
 use crate::mem_utils::memzero;
 use crate::types::Bytes;
 
-use core::alloc::{GlobalAlloc, Layout};
+#[cfg(feature = "ic")]
+use core::alloc::GlobalAlloc;
+use core::alloc::Layout;
 use core::convert::TryFrom;
 
 #[repr(packed)]

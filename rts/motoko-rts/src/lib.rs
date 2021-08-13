@@ -35,7 +35,7 @@ pub mod leb128;
 mod mem_utils;
 pub mod page_alloc;
 pub mod principal_id;
-mod space;
+pub mod space;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;
@@ -73,11 +73,11 @@ extern "C" {
 }
 
 /// Initialize the runtime system
-// #[cfg(feature = "ic")]
-// #[no_mangle]
-// unsafe extern "C" fn init() {
-//     allocation_space::init();
-// }
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn init() {
+    allocation_space::init();
+}
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     // Rust currently doesn't support stack-allocated dynamically-sized arrays or alloca, so we

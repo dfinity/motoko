@@ -1,18 +1,22 @@
-use crate::memory::TestMemory;
+use crate::page_alloc::TestPageAlloc;
 
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
+use motoko_rts::space::Space;
 use motoko_rts::types::{Bytes, SkewedPtr, Words};
 
 // mp functions below are implemented separately for tests as we can't modify mp_int source code to
-// pass a generic heap argument (then monomorphise it for IC).
+// pass a page allocator/space for allocation and generate a monomorphic version for IC.
 
-// This global is used to pass a reference to heap to the mp functions
-static mut HEAP: *mut TestMemory = std::ptr::null_mut();
+// Global variable for the allocation space as mp allocation routines are static functions and
+// can't capture values
+//
+// TODO: Update Rust and use MaybeUninit here
+static mut ALLOCATION_SPACE: Option<Space<TestPageAlloc>> = None;
 
 #[no_mangle]
 unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
-    bigint::mp_calloc(&mut *HEAP, n_elems, elem_size)
+    bigint::mp_calloc(ALLOCATION_SPACE.as_mut().unwrap(), n_elems, elem_size)
 }
 
 #[no_mangle]
@@ -21,15 +25,14 @@ unsafe extern "C" fn mp_realloc(
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
 ) -> *mut libc::c_void {
-    bigint::mp_realloc(&mut *HEAP, ptr, old_size, new_size)
+    bigint::mp_realloc(ALLOCATION_SPACE.as_mut().unwrap(), ptr, old_size, new_size)
 }
 
 pub unsafe fn test() {
     println!("Testing BigInt ...");
 
-    // Not sure how much we will need in these tests but 1G should be enough
-    let mut heap = TestMemory::new(Words(1024 * 1024));
-    HEAP = &mut heap;
+    let page_alloc = TestPageAlloc::new(1024);
+    ALLOCATION_SPACE = Some(Space::new(page_alloc));
 
     assert!(bigint_eq(
         bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
@@ -62,8 +65,8 @@ pub unsafe fn test() {
         test_bigint_sleb128(bigint_neg(plus_one));
     }
 
-    HEAP = std::ptr::null_mut();
-    drop(heap);
+    let mut space = ALLOCATION_SPACE.take().unwrap();
+    space.free();
 }
 
 // Check leb128 encode/decode roundtrip

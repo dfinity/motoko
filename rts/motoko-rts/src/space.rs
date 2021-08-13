@@ -24,7 +24,7 @@ pub struct Space<P: PageAlloc> {
 }
 
 impl<P: PageAlloc> Space<P> {
-    pub unsafe fn new(mut page_alloc: P) -> Space<P> {
+    pub unsafe fn new(page_alloc: P) -> Space<P> {
         let page = page_alloc.alloc();
 
         Space {
