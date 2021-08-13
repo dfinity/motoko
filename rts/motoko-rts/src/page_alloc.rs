@@ -56,7 +56,7 @@ pub trait Page: Clone {
         next
     }
 
-    unsafe fn get_bitmap(&self) -> Option<&Bitmap>;
+    unsafe fn get_bitmap(&self) -> Option<*mut Bitmap>;
 
     unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>);
 
@@ -65,7 +65,7 @@ pub trait Page: Clone {
 }
 
 #[repr(packed)]
-pub struct PageHeader<P: Copy + Sized> {
+pub struct PageHeader<P: Clone> {
     pub next: Option<P>,
     pub prev: Option<P>,
 
@@ -73,40 +73,40 @@ pub struct PageHeader<P: Copy + Sized> {
     pub bitmap: Option<Bitmap>,
 }
 
-impl<P: Copy + Sized> PageHeader<P> {
-    unsafe fn prev(self: *mut Self) -> Option<P> {
-        (*self).prev
+impl<P: Clone> PageHeader<P> {
+    pub unsafe fn prev(self: *mut Self) -> Option<P> {
+        (*self).prev.clone()
     }
 
-    unsafe fn set_prev(self: *mut Self, prev: Option<P>) {
+    pub unsafe fn set_prev(self: *mut Self, prev: Option<P>) {
         (*self).prev = prev;
     }
 
-    unsafe fn take_prev(self: *mut Self) -> Option<P> {
+    pub unsafe fn take_prev(self: *mut Self) -> Option<P> {
         (*self).prev.take()
     }
 
-    unsafe fn next(self: *mut Self) -> Option<P> {
-        (*self).next
+    pub unsafe fn next(self: *mut Self) -> Option<P> {
+        (*self).next.clone()
     }
 
-    unsafe fn set_next(self: *mut Self, next: Option<P>) {
+    pub unsafe fn set_next(self: *mut Self, next: Option<P>) {
         (*self).next = next;
     }
 
-    unsafe fn take_next(self: *mut Self) -> Option<P> {
+    pub unsafe fn take_next(self: *mut Self) -> Option<P> {
         (*self).next.take()
     }
 
-    unsafe fn get_bitmap<'a>(self: *mut Self) -> Option<&'a Bitmap> {
-        (*self).bitmap.as_ref()
+    pub unsafe fn get_bitmap(self: *mut Self) -> Option<*mut Bitmap> {
+        (*self).bitmap.as_mut().map(|r| r as *mut Bitmap)
     }
 
-    unsafe fn set_bitmap(self: *mut Self, bitmap: Option<Bitmap>) {
+    pub unsafe fn set_bitmap(self: *mut Self, bitmap: Option<Bitmap>) {
         (*self).bitmap = bitmap;
     }
 
-    unsafe fn take_bitmap(self: *mut Self) -> Option<Bitmap> {
+    pub unsafe fn take_bitmap(self: *mut Self) -> Option<Bitmap> {
         (*self).bitmap.take()
     }
 }

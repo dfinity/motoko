@@ -1,5 +1,5 @@
 use motoko_rts::bitmap::Bitmap;
-use motoko_rts::page_alloc::{Page, PageAlloc};
+use motoko_rts::page_alloc::{Page, PageAlloc, PageHeader};
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -26,9 +26,24 @@ struct TestPageAllocInner {
     n_total_pages: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct TestPageRef {
     page_idx: usize,
+    page_alloc: TestPageAlloc,
+}
+
+impl PartialEq for TestPageRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.page_idx.eq(&other.page_idx)
+    }
+}
+
+impl Eq for TestPageRef {}
+
+impl std::hash::Hash for TestPageRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.page_idx.hash(state)
+    }
 }
 
 struct TestPage {
@@ -37,6 +52,8 @@ struct TestPage {
 
 impl TestPageAlloc {
     pub fn new(page_size_bytes: usize) -> TestPageAlloc {
+        // Should have enough space in a page for the header + more (TODO)
+        assert!(page_size_bytes > std::mem::size_of::<PageHeader<TestPageAlloc>>());
         TestPageAlloc {
             inner: Rc::new(RefCell::new(TestPageAllocInner::new(page_size_bytes))),
         }
@@ -58,7 +75,8 @@ impl PageAlloc for TestPageAlloc {
     type Page = TestPageRef;
 
     unsafe fn alloc(&self) -> Self::Page {
-        self.inner.borrow_mut().alloc()
+        let alloc_ref = self.clone();
+        self.inner.borrow_mut().alloc(alloc_ref)
     }
 
     unsafe fn free(&self, page: Self::Page) {
@@ -71,7 +89,7 @@ impl PageAlloc for TestPageAlloc {
 }
 
 impl TestPageAllocInner {
-    unsafe fn alloc(&mut self) -> TestPageRef {
+    unsafe fn alloc(&mut self, page_alloc: TestPageAlloc) -> TestPageRef {
         let page = TestPage {
             contents: vec![0u8; self.page_size_bytes].into_boxed_slice(),
         };
@@ -81,7 +99,10 @@ impl TestPageAllocInner {
         let page_idx = self.n_total_pages;
         self.n_total_pages += 1;
 
-        let page_ref = TestPageRef { page_idx };
+        let page_ref = TestPageRef {
+            page_idx,
+            page_alloc,
+        };
         self.pages.insert(page_ref.clone(), page);
 
         match self
@@ -128,84 +149,144 @@ impl TestPageAllocInner {
 
 impl Page for TestPageRef {
     unsafe fn start(&self) -> usize {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::start called on a freed page")
+            .start()
     }
 
     unsafe fn contents_start(&self) -> usize {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::contents_start called on a freed page")
+            .contents_start()
     }
 
     unsafe fn end(&self) -> usize {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::end called on a freed page")
+            .end(&self.page_alloc)
     }
 
     unsafe fn prev(&self) -> Option<Self> {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::prev called on a freed page")
+            .prev()
     }
 
     unsafe fn next(&self) -> Option<Self> {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::next called on a freed page")
+            .next()
     }
 
     unsafe fn set_prev(&self, prev: Option<Self>) {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::set_prev called on a freed page")
+            .set_prev(prev)
     }
 
     unsafe fn set_next(&self, next: Option<Self>) {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::set_next called on a freed page")
+            .set_next(next)
     }
 
-    unsafe fn get_bitmap(&self) -> Option<&Bitmap> {
-        todo!()
+    unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::get_bitmap called on a freed page")
+            .get_bitmap()
     }
 
     unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::set_bitmap called on a freed page")
+            .set_bitmap(bitmap)
     }
 
     unsafe fn take_bitmap(&self) -> Option<Bitmap> {
-        todo!()
+        self.page_alloc
+            .inner
+            .borrow()
+            .pages
+            .get(self)
+            .expect("Page::take_bitmap called on a freed page")
+            .take_bitmap()
     }
 }
 
 impl TestPage {
     unsafe fn start(&self) -> usize {
-        todo!()
+        self.contents.as_ptr() as usize
     }
 
     unsafe fn contents_start(&self) -> usize {
-        todo!()
+        (self.contents.as_ptr() as *const PageHeader<TestPageAlloc>).add(1) as usize
     }
 
-    unsafe fn end(&self) -> usize {
-        todo!()
+    unsafe fn end(&self, page_alloc: &TestPageAlloc) -> usize {
+        self.start() + page_alloc.inner.borrow().page_size_bytes
     }
 
-    unsafe fn prev(&self) -> Option<Self> {
-        todo!()
+    unsafe fn prev(&self) -> Option<TestPageRef> {
+        (self.start() as *mut PageHeader<TestPageRef>).prev()
     }
 
-    unsafe fn next(&self) -> Option<Self> {
-        todo!()
+    unsafe fn next(&self) -> Option<TestPageRef> {
+        (self.start() as *mut PageHeader<TestPageRef>).next()
     }
 
-    unsafe fn set_prev(&self, prev: Option<Self>) {
-        todo!()
+    unsafe fn set_prev(&self, prev: Option<TestPageRef>) {
+        (self.start() as *mut PageHeader<TestPageRef>).set_prev(prev)
     }
 
-    unsafe fn set_next(&self, next: Option<Self>) {
-        todo!()
+    unsafe fn set_next(&self, next: Option<TestPageRef>) {
+        (self.start() as *mut PageHeader<TestPageRef>).set_next(next)
     }
 
-    unsafe fn get_bitmap(&self) -> Option<&Bitmap> {
-        todo!()
+    unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
+        (self.start() as *mut PageHeader<TestPageRef>).get_bitmap()
     }
 
     unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
-        todo!()
+        (self.start() as *mut PageHeader<TestPageRef>).set_bitmap(bitmap)
     }
 
     unsafe fn take_bitmap(&self) -> Option<Bitmap> {
-        todo!()
+        (self.start() as *mut PageHeader<TestPageRef>).take_bitmap()
     }
 }

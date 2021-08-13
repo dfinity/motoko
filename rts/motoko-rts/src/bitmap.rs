@@ -45,23 +45,23 @@ impl Bitmap {
         alloc::alloc::dealloc(self.ptr, self.layout);
     }
 
-    pub unsafe fn get(&self, idx: u32) -> bool {
+    pub unsafe fn get(self: *mut Self, idx: u32) -> bool {
         let byte_idx = idx / 8;
-        let byte = *self.ptr.add(byte_idx as usize);
+        let byte = *(*self).ptr.add(byte_idx as usize);
         let bit_idx = idx % 8;
         (byte >> bit_idx) & 0b1 == 0b1
     }
 
-    pub unsafe fn set(&self, idx: u32) {
+    pub unsafe fn set(self: *mut Self, idx: u32) {
         let byte_idx = idx / 8;
-        let byte = *self.ptr.add(byte_idx as usize);
+        let byte = *(*self).ptr.add(byte_idx as usize);
         let bit_idx = idx % 8;
         let new_byte = byte | (0b1 << bit_idx);
-        *self.ptr.add(byte_idx as usize) = new_byte;
+        *(*self).ptr.add(byte_idx as usize) = new_byte;
     }
 
-    pub unsafe fn iter(&self) -> BitmapIter {
-        let bitmap_bytes = self.layout.size();
+    pub unsafe fn iter(self: *mut Self) -> BitmapIter {
+        let bitmap_bytes = (*self).layout.size();
 
         debug_assert_eq!(bitmap_bytes % 8, 0);
 
@@ -70,7 +70,7 @@ impl Bitmap {
         let current_word = if blob_len_64bit_words == 0 {
             0
         } else {
-            *(self.ptr as *const u64)
+            *((*self).ptr as *const u64)
         };
 
         // `try_from` below disappears on Wasm as usize and u32 are the same
@@ -84,9 +84,9 @@ impl Bitmap {
     }
 }
 
-pub struct BitmapIter<'a> {
+pub struct BitmapIter {
     /// The bitmap we're iterating
-    bitmap: &'a Bitmap,
+    bitmap: *mut Bitmap,
 
     /// Size of the bitmap, in 64-bit words words. Does not change after initialization.
     size: u32,
@@ -114,7 +114,7 @@ pub struct BitmapIter<'a> {
 // stack and can't do GC)
 pub const BITMAP_ITER_END: u32 = 1024 * 1024 * 1024;
 
-impl<'a> BitmapIter<'a> {
+impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_word_idx <= self.size);
@@ -145,7 +145,7 @@ impl<'a> BitmapIter<'a> {
                 return BITMAP_ITER_END;
             }
             self.current_word =
-                unsafe { *(self.bitmap.ptr as *const u64).add(self.current_word_idx as usize) };
+                unsafe { *((*self.bitmap).ptr as *const u64).add(self.current_word_idx as usize) };
             self.bits_left = 64;
         }
     }

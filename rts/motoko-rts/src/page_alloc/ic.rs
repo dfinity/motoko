@@ -103,7 +103,7 @@ impl Page for IcPage {
         (self.start() as *mut PageHeader<IcPage>).set_next(next)
     }
 
-    unsafe fn get_bitmap(&self) -> Option<&Bitmap> {
+    unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
         (self.start() as *mut PageHeader<IcPage>).get_bitmap()
     }
 
