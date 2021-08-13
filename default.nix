@@ -167,7 +167,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "1g8694qk0gjxp5jh2cmxqb253r1xfxkkbcy3n2mimp6dgkd8yl1m";
+        sha256 = "1sq6i6alzk69qj8xz1c2ivxf38x55yr7s72n27ld6yq8sllivviy";
         copyLockfile = true;
       };
     in

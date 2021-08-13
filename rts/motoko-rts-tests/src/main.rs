@@ -14,9 +14,6 @@ mod page_alloc;
 
 use motoko_rts::types::Bytes;
 
-#[macro_use]
-extern crate maplit;
-
 fn main() {
     if std::mem::size_of::<usize>() != 4 {
         println!("Motoko RTS only works on 32-bit architectures");

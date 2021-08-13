@@ -189,8 +189,8 @@ unsafe fn mark_fields<P: PageAlloc>(
         let field_value = *field_addr;
         mark_object(space, mark_stack, field_value);
 
-        // Thread if backwards pointer
-        if field_value.unskew() < obj as usize {
+        // Thread if backwards or self pointer
+        if field_value.unskew() <= obj as usize {
             thread(field_addr);
         }
     });
@@ -261,7 +261,7 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
 /// Thread forwards pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
-        if (*field_addr).unskew() > field_addr as usize {
+        if (*field_addr).unskew() > obj as usize {
             thread(field_addr)
         }
     });
