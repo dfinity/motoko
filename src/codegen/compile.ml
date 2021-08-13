@@ -3820,7 +3820,7 @@ module StableMem = struct
   let read_and_clear_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_word32"
+      Func.share_code1 env "__stablemem_read_and_clear_word32"
         ("offset", I32Type) [I32Type]
         (fun env get_offset ->
           Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
