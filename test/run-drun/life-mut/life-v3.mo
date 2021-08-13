@@ -166,7 +166,7 @@ actor Life {
         word |= bit;
         word <<= 1;
       };
-      SM.storeNat32(offset + P.natToNat32(i)*4, word);
+      SM.storeNat32(offset + P.natToNat32(i) * 4, word);
     };
     #v3 { size; offset};
   };
