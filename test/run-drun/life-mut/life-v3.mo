@@ -100,7 +100,18 @@ actor Life {
           (size, offset)
         };
         case (#v3 {size; offset}) {
-          (size, offset)
+          let len = (size * size) / 32 + 1;
+          let newoffset : Nat32 = P.natToNat32(index * len * 4);
+          ensureMemory(newoffset + P.natToNat32(len) * 4);
+          if (offset != newoffset) {
+          for (i in below(size)) {
+            for (j in below(size)) {
+               let k = i * size + j;
+               writeBit(newoffset, k, readBit(offset, k));
+            }
+          };
+          };
+          (size, newoffset)
         };
       };
 
@@ -162,7 +173,6 @@ actor Life {
     let len = (size * size) / 32 + 1;
     let offset : Nat32 = P.natToNat32(index * len * 4);
     ensureMemory(offset + P.natToNat32(len) * 4);
- /*   
     for (i in below(len)) {
       var word : Nat32 = 0;
       for (j in below(32)) {
@@ -172,7 +182,6 @@ actor Life {
       };
       SM.storeNat32(offset + P.natToNat32(i)*4, word);
     };
- */
     #v3 { size; offset};
   };
 
