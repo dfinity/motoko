@@ -51,9 +51,21 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * Type annotations (to help type inference): +
 `(42 : Int)`
 
+=== Libraries
+
+[source#impDebugInt, motoko]
+....
+  import Debug "mo:base/Debug";
+  import Int "mo:base/Int";
+
+  // ... Debug.print(...) ...
+  // ... Int.toText(...) ...
+....
+
 === Blocks and declarations
 
-[source, motoko]
+
+[source.include_impDebugInt, motoko]
 ....
   type Delta = Nat;
   func print() {
@@ -61,7 +73,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
   };
   let d : Delta = 42;
   var counter = 1;
-  counter := counter + tmp;
+  counter := counter + d;
   print();
 ....
 
@@ -182,7 +194,7 @@ let funcs : [<T>(T) -> T] = …
 
 === Function Declarations & Use
 
-[source, motoko]
+[source.include_impDebugInt, motoko]
 ....
 func add(x : Int, y : Int) : Int = x + y;
 
@@ -190,9 +202,9 @@ func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
   if (n == 0) return;
   f(x);
   applyNTimes(n-1, x, f);
-}
+};
 
-applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
+applyNTimes<Text>(10, "Hello!", func(x) { Debug.print(x) } );
 ....
 
 * `func() { … }` short for `func() : () = { … }`
@@ -208,41 +220,58 @@ applyNTimes<Text>(10, "Hello!", func(x) = { Debug.print(x) } );
 
 immutable, heterogeneous, fixed size
 
-[source, motoko]
+[source#tuple, motoko]
 ....
-let tuple = (true, 1.2, "foo");
-tuple.1 > 0.0;
+let tuple = (true or false, 0.6 * 2.0, "foo" # "bar");
+....
+
+[source.include_tuple, motoko]
+....
+tuple.1;
+....
+
+[source.include_tuple, motoko]
+....
 let (_,_,t) = tuple;
+t
 ....
 
 === Options
 
 `?Text`
 
-is either a value of that type, or `null`
+is either a value of that type, e.g. `?"hello"`, or `null`.
 
 
-[source, motoko]
+[source#display, motoko]
 ....
-func foo(x : ?Text) : Text {
+func display(x : ?Text) : Text {
   switch x {
     case (null) { "No value" };
     case (?y) { "Value: " # y };
   };
 };
-foo(null);
-foo(?"Test");
+....
+
+[source.include_display, motoko]
+....
+display(null);
+....
+
+[source.include_display, motoko]
+....
+display(?"Test");
 ....
 
 === Arrays (immutable)
 
 `[Text]`
 
-[source, motoko]
+[source.include_impDebugInt, motoko]
 ....
-let days = ["Monday", "Tuesday", … ];
-assert(days.len() == 7);
-assert(days[1] == "Tuesday");
+let days = [ "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" ];
+assert(days.size() == 7);
+assert(days[1] == "Tue");
 // days[7] will trap (fixed size)
 for (d in days.vals()) { Debug.print(d) };
 ....
@@ -254,7 +283,7 @@ for (d in days.vals()) { Debug.print(d) };
 [source, motoko]
 ....
 let counters = [var 1, 2, 3];
-assert(counters.len() == 3);
+assert(counters.size() == 3);
 counters[1] := counters[1] + 1;
 // counters[3] will trap (fixed size)
 ....
@@ -263,7 +292,7 @@ counters[1] := counters[1] + 1;
 
 `{name : Text; points : var Int}`
 
-[source, motoko]
+[source.include_impDebugInt, motoko]
 ....
 let player = { name = "Joachim";  var points = 0 };
 Debug.print(
@@ -281,7 +310,7 @@ player.points += 1;
 ....
 object self {
   var points = 0; // private by default
-  public func get() = points;
+  public func get() : Int = points;
   public func add(p : Int) { points += p };
 }
 ....
@@ -295,6 +324,7 @@ Different syntax, same type as records
 [source, motoko]
 ....
 type Health = { #invincible; #alive : Nat; #dead };
+
 func takeDamage(h : Health, p : Nat) : Health {
   switch (h) {
     case (#invincible) #invincible;
@@ -304,7 +334,11 @@ func takeDamage(h : Health, p : Nat) : Health {
     case (#dead) #dead;
   }
 }
+
+takeDamage(#alive 20,50);
 ....
+
+// GOT HERE
 
 == Packages and modules
 
