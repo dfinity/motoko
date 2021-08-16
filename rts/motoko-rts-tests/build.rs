@@ -12,9 +12,6 @@ fn main() {
             println!("cargo:rustc-link-lib=static=tommath_i686");
         }
 
-        other => panic!(
-            "Don't know how to link the runtime system for '{}'",
-            other
-        ),
+        other => panic!("Don't know how to link the runtime system for '{}'", other),
     }
 }
