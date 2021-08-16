@@ -1,5 +1,18 @@
 # Motoko compiler changelog
 
+== 0.6.7 (2021-08-16)
+
+* moc
+
+  *  Optimize field access by exploiting field ordering (#2708)
+  *  Fix handling of self references in mark-compact GC (#2721)
+  *  Restore CI reporting of perf-regressions (#2643)
+
+* motoko-base:
+
+  * Fix bug in `AssocList.diff` (#277)
+  * Deprecate unsafe or redundant functions in library `Option` ( `unwrap`, `assertSome`, `assertNull`) (#275)
+
 == 0.6.6 (2021-07-30)
 
 * Vastly improved garbage collection scheduling: previously Motoko runtime would do GC
