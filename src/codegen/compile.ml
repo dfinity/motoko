@@ -2714,43 +2714,22 @@ module Object = struct
       let set_x = G.i (LocalSet (nr 0l)) in
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
-      get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
+      get_x ^^ Heap.load_field hash_ptr_field ^^
 
-        (*get_x ^^ Heap.load_field size_field ^^*)
       (* Linearly scan through the fields (binary search can come later) *)
-        (* unskew h_ptr and advance both to low bound *)
-        get_h_ptr ^^ compile_add_const Int32.(of_int (1 + low_bound * to_int Heap.word_size)) ^^ set_h_ptr ^^
-          get_x ^^ compile_add_const Int32.(of_int ((3 + low_bound) * to_int Heap.word_size)) ^^ set_x ^^
-    G.loop_ [] (
-        get_h_ptr ^^ load_unskewed_ptr ^^
-        get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ [] (get_x ^^ G.i Return)
-          (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-             get_x ^^ compile_add_const Heap.word_size ^^ set_x
-          ^^ G.i (Br (nr 1l)))
-    ) ^^ G.i Unreachable
-
-(*
-      from_m_to_n env (Int32.of_int low_bound) (fun get_i ->
-        get_i ^^
-        compile_mul_const Heap.word_size ^^
-        get_h_ptr ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        Heap.load_field 0l ^^
-        get_hash ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ []
-          ( get_i ^^
-            compile_add_const header_size ^^
-            compile_mul_const Heap.word_size ^^
-            get_x ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            G.i Return
-          ) G.nop
-      ) ^^
-      E.trap_with env "internal error: object field not found"
- *)
-
+      (* unskew h_ptr and advance both to low bound *)
+      compile_add_const Int32.(of_int (1 + low_bound * to_int Heap.word_size)) ^^ set_h_ptr ^^
+      get_x ^^ compile_add_const Int32.(of_int ((3 + low_bound) * to_int Heap.word_size)) ^^ set_x ^^
+      G.loop_ [] (
+          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ []
+            (get_x ^^ G.i Return)
+            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+             get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+             G.i (Br (nr 1l)))
+        ) ^^
+      G.i Unreachable
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
