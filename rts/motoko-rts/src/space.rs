@@ -58,7 +58,7 @@ impl<P: PageAlloc> Space<P> {
             new_page.set_prev(Some(self.current_page.clone()));
             self.current_page.set_next(Some(new_page.clone()));
 
-            let alloc = new_page.start();
+            let alloc = new_page.contents_start();
             self.hp = alloc + bytes;
             alloc
         } else {
