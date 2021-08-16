@@ -114,6 +114,9 @@ _build:
 _build/wasm:
 	mkdir -p $@
 
+_build/i686:
+	mkdir -p $@
+
 #
 # Let make automatically search these directorys (tommath and musl) for .c files
 #
@@ -128,10 +131,20 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_WASM_A=_build/libtommath.a
 
+TOMMATH_i686_O=$(TOMMATHFILES:%=_build/i686/tommath_%.o)
+TOMMATH_i686_A=_build/libtommath_i686.a
+
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 $(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
+
+_build/i686/tommath_%.o: bn_%.c | _build/i686
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --target=i686-unknown-linux $< --output $@
+
+$(TOMMATH_i686_A): $(TOMMATH_i686_O)
 	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
