@@ -69,14 +69,9 @@ unsafe fn mark_compact<P: PageAlloc>(
     continuation_table_ptr_loc: *mut SkewedPtr,
 ) {
     // Allocate bitmaps
-    {
-        let mut page = Some(space.first_page());
-        while let Some(page_) = page {
-            let page_size_words =
-                Bytes(page_.end() as u32 - page_.contents_start() as u32).to_words();
-            page_.set_bitmap(Some(Bitmap::new(page_size_words.0)));
-            page = page_.next();
-        }
+    for page in space.iter_pages() {
+        let page_size = Bytes(page.size() as u32).to_words();
+        page.set_bitmap(Some(Bitmap::new(page_size.0)));
     }
 
     let mut stack = MarkStack::new(page_alloc.clone());
@@ -98,13 +93,9 @@ unsafe fn mark_compact<P: PageAlloc>(
     stack.free();
 
     // Free bitmaps
-    {
-        let mut page = Some(space.first_page());
-        while let Some(page_) = page {
-            let bitmap = page_.take_bitmap().unwrap();
-            bitmap.free();
-            page = page_.next();
-        }
+    for page in space.iter_pages() {
+        let bitmap = page_.take_bitmap().unwrap();
+        bitmap.free();
     }
 }
 

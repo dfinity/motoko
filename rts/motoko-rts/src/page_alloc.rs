@@ -30,6 +30,11 @@ pub trait Page: Clone {
     /// Get the end (exclusive) of this page
     unsafe fn end(&self) -> usize;
 
+    /// Size of the page, excluding any headers
+    unsafe fn size(&self) -> usize {
+        self.end() - self.contents_start()
+    }
+
     /// Get the previous page in the list
     unsafe fn prev(&self) -> Option<Self>;
 

@@ -55,8 +55,8 @@ pub unsafe fn copying_gc_internal<
     }
 
     // Scavenge to-space
-    let mut to_space_page = Some(to_space.first_page());
-    while let Some(page) = to_space_page {
+    let mut to_space_page_idx = to_space.first_page();
+    while let Some(page) = to_space.get_page(to_space_page_idx) {
         let mut p = page.contents_start();
 
         let page_end = page.end();
@@ -67,7 +67,7 @@ pub unsafe fn copying_gc_internal<
             p += size.to_bytes().0 as usize;
         }
 
-        to_space_page = page.next();
+        to_space_page_idx = to_space_page_idx.next();
     }
 }
 
