@@ -60,6 +60,8 @@ impl<P: PageAlloc> Space<P> {
 
             let alloc = new_page.contents_start();
             self.hp = new_page.contents_start();
+
+            self.current_page = new_page;
         }
 
         let alloc = self.hp;
