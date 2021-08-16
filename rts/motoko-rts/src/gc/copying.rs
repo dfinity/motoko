@@ -57,7 +57,7 @@ pub unsafe fn copying_gc_internal<
     // Scavenge to-space
     let mut to_space_page = Some(to_space.first_page());
     while let Some(page) = to_space_page {
-        let mut p = page.start();
+        let mut p = page.contents_start();
 
         let page_end = page.end();
 
