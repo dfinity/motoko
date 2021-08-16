@@ -168,25 +168,25 @@ Literals: `true`, `false`
 
 * Simple functions:
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 Int.toText : Int -> Text
 ....
 * multiple arguments and return values
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 divRem : (Int, Int) -> (Int, Int)
 ....
 * can be generic/polymorphic
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 Option.unwrapOr : <T>(?T, default : T) -> T
 ....
 * first-class (can be passed around, stored)
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 map : <A, B>(f : A -> B, xs : [A]) -> [B]
 let funcs : [<T>(T) -> T] = …
@@ -304,14 +304,14 @@ player.points += 1;
 
 === Objects
 
-`{ get : () -> Int; add : Int -> () }`
+`{ get : () -> Nat; add : Nat -> () }`
 
 [source, motoko]
 ....
 object self {
-  var points = 0; // private by default
-  public func get() : Int = points;
-  public func add(p : Int) { points += p };
+  var points : Nat = 0; // private by default
+  public func get() : Nat = points;
+  public func add(p : Nat) { points += p };
 }
 ....
 
@@ -333,24 +333,22 @@ func takeDamage(h : Health, p : Nat) : Health {
     };
     case (#dead) #dead;
   }
-}
+};
 
 takeDamage(#alive 20,50);
 ....
-
-// GOT HERE
 
 == Packages and modules
 
 === Modules
 
-[source, motoko]
+[source.no-repl, motoko]
 ....
 // the type of base/Int.mo
 module {
   toText : Int -> Text;
   abs : Int -> Nat;
-  …
+  // ...
 }
 ....
 
@@ -376,13 +374,13 @@ More libraries popping up!
 
 Like object types, but marked as `actor`:
 
-[source, motoko]
+[source#actorTypes, motoko]
 ....
 type Receiver = actor { recv : Text -> async Nat };
 type Broadcast = actor {
   register : Receiver -> ();
   send : Text -> async Nat;
-}
+};
 ....
 
 _sharable_ arguments and _no_ or _async_ result type.
@@ -402,17 +400,20 @@ with immutable sharable components
 
 === A complete actor
 
-[source, motoko]
+[source.include_actorTypes, motoko]
 ....
 import Array "mo:base/Array";
 actor {
+
   var r : [Receiver] = [];
+
   public func register(a : Receiver) {
     r := Array.append(r, [a]);
   };
+
   public func send(t : Text) : async Nat {
-    var sum := 0;
-    for (a in r.values()) {
+    var sum = 0;
+    for (a in r.vals()) {
       sum += await a.recv(t);
     };
     return sum;
@@ -438,13 +439,17 @@ suspends computation pending `e`’s result
 
 [source, motoko]
 ....
-import Broadcast "ic:ABCDEF23";
+import Broadcast "ic:r7inp-6aaaa-aaaaa-aaabq-cai";
 actor Self {
+
+  var count = 0;
+
   public func go() {
     Broadcast.register(Self);
   };
+
   public func recv(msg : Text) : async Nat {
-    …
+    return count;
   }
 }
 ....
@@ -453,15 +458,19 @@ actor Self {
 
 [source, motoko]
 ....
+import Principal "mo:base/Principal";
+
 actor Self {
-  let myself : Principal = Principal.fromActor(Self);
+
   public shared(context) func hello() : async Text {
+    let myself : Principal = Principal.fromActor(Self);
     if (context.caller == myself) {
       "Talking to yourself is the first sign of madness";
     } else {
       "Hello, nice to see you";
     };
   };
+
 }
 ....
 
