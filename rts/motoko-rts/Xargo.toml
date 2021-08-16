@@ -1,6 +1,4 @@
 [dependencies.core]
 stage = 0
 
-[dependencies.compiler_builtins]
-stage = 1
-version = "0.1.39"
+[dependencies.alloc]

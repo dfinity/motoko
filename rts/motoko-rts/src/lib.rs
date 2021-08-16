@@ -3,10 +3,11 @@
 #![no_std]
 // TODO (osa): Some of these are stabilized, we need to update rustc
 #![feature(
+    alloc_error_handler,
     arbitrary_self_types,
-    panic_info_message,
     assoc_char_funcs,
     core_intrinsics,
+    panic_info_message,
     ptr_offset_from
 )]
 
@@ -47,11 +48,11 @@ use types::{Bytes, SkewedPtr};
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[cfg(not(feature = "ic"))]
 extern crate alloc;
 
 /// malloc/free style allocator for GC metadata
 #[cfg(feature = "ic")]
+#[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 // Provided by generated code
@@ -144,4 +145,10 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
         rts_trap_with("RTS panicked");
     }
+}
+
+#[cfg(feature = "ic")]
+#[alloc_error_handler]
+fn foo(_: core::alloc::Layout) -> ! {
+    unsafe { rts_trap_with("Allocation error") };
 }
