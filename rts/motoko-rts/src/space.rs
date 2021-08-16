@@ -49,7 +49,7 @@ impl<P: PageAlloc> Space<P> {
     pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
         let bytes = n.to_bytes().as_usize();
 
-        let alloc = if self.hp + bytes >= self.current_page.end() {
+        if self.hp + bytes > self.current_page.end() {
             let new_page = self.page_alloc.alloc();
 
             // Rest of the page is considered allocated
@@ -59,11 +59,12 @@ impl<P: PageAlloc> Space<P> {
             self.current_page.set_next(Some(new_page.clone()));
 
             let alloc = new_page.contents_start();
-            self.hp = alloc + bytes;
-            alloc
-        } else {
-            self.hp + bytes
-        };
+            self.hp = new_page.contents_start();
+        }
+
+        let alloc = self.hp;
+
+        self.hp += bytes;
 
         self.total_alloc += bytes;
 
