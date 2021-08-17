@@ -3,7 +3,7 @@ use crate::page_alloc::TestPageAlloc;
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
 use motoko_rts::space::Space;
-use motoko_rts::types::{Bytes, SkewedPtr, Words};
+use motoko_rts::types::{Bytes, SkewedPtr};
 
 // mp functions below are implemented separately for tests as we can't modify mp_int source code to
 // pass a page allocator/space for allocation and generate a monomorphic version for IC.

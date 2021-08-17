@@ -44,7 +44,7 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::{Bytes, SkewedPtr};
+use types::Bytes;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -59,7 +59,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 #[cfg(feature = "ic")]
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
-    pub(crate) fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_static_roots() -> types::SkewedPtr;
 }
 
 #[ic_mem_fn(ic_only)]

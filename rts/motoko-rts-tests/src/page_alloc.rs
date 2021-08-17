@@ -2,7 +2,7 @@ use motoko_rts::bitmap::Bitmap;
 use motoko_rts::page_alloc::{Page, PageAlloc, PageHeader};
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 #[derive(Clone)]

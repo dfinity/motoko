@@ -1,13 +1,11 @@
 pub mod copying;
 pub mod mark_compact;
 
-use crate::page_alloc::PageAlloc;
-use crate::space::Space;
-
+#[cfg(feature = "ic")]
 static mut LAST_TOTAL_ALLOC: u32 = 0;
 
 #[cfg(feature = "ic")]
-unsafe fn should_do_gc<P: PageAlloc>(heap: &Space<P>) -> bool {
+unsafe fn should_do_gc<P: crate::page_alloc::PageAlloc>(heap: &crate::space::Space<P>) -> bool {
     use crate::types::Bytes;
 
     use core::cmp::{max, min};

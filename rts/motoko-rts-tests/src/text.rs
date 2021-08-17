@@ -9,7 +9,7 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, SkewedPtr, Words, TAG_BLOB};
+use motoko_rts::types::{Bytes, SkewedPtr, TAG_BLOB};
 
 use std::convert::TryFrom;
 

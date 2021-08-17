@@ -1,8 +1,5 @@
-use crate::page_alloc::TestPageAlloc;
-
 use motoko_rts::bitmap::{Bitmap, BITMAP_ITER_END};
-use motoko_rts::constants::WORD_SIZE;
-use motoko_rts::types::{Bytes, Words};
+use motoko_rts::types::Words;
 
 use std::collections::HashSet;
 
@@ -51,7 +48,7 @@ fn test_set_get(mut bits: Vec<u16>) -> Result<(), String> {
     }
 
     unsafe {
-        let mut bitmap = Bitmap::new((u32::from(*bits.iter().max().unwrap()) + 1));
+        let mut bitmap = Bitmap::new(u32::from(*bits.iter().max().unwrap()) + 1);
 
         for bit in &bits {
             (&mut bitmap as *mut Bitmap).set(u32::from(*bit));
