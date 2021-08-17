@@ -81,11 +81,8 @@ impl<P: PageAlloc> MarkStack<P> {
             }
 
             // Free the current page, pop from previous page
-            let empty_page = match self.pages.pop() {
-                None => return None,
-                Some(page) => page,
-            };
-
+            // TODO: Use unwrap_unchecked, we check the length above
+            let empty_page = self.pages.pop().unwrap();
             self.page_alloc.free(empty_page);
 
             self.hp = self.current_page().end();
