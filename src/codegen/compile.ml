@@ -2712,14 +2712,17 @@ module Object = struct
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let set_x = G.setter_for get_x in
-      let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
+      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
       get_x ^^ Heap.load_field hash_ptr_field ^^
 
       (* Linearly scan through the fields (binary search can come later) *)
       (* unskew h_ptr and advance both to low bound *)
-      compile_add_const Int32.(of_int (1 + low_bound * to_int Heap.word_size)) ^^ set_h_ptr ^^
-      get_x ^^ compile_add_const Int32.(of_int ((3 + low_bound) * to_int Heap.word_size)) ^^ set_x ^^
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
+      set_h_ptr ^^
+      get_x ^^
+      compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
+      set_x ^^
       G.loop_ [] (
           get_h_ptr ^^ load_unskewed_ptr ^^
           get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
