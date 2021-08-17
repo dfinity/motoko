@@ -189,6 +189,14 @@ let branch_to_ (p : depth) : t =
 let labeled_block_ (ty : stack_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
 
+(* Obtain the setter from a known variable's getter *)
+
+let setter_for (getter : t) =
+  match List.map (fun {it; _} -> it) (getter 0l Wasm.Source.no_region []) with
+  | [LocalGet v] -> i (LocalSet v)
+  | [GlobalGet v] -> i (GlobalSet v)
+  | _ -> failwith "input must be a getter"
+
 (* Intended to be used within assert *)
 
 let is_nop (is : t) =
