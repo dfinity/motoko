@@ -1,7 +1,7 @@
 #![feature(ptr_offset_from, map_first_last, clamp)]
 
 mod bigint;
-// mod bitmap;
+mod bitmap;
 // mod continuation_table;
 // mod crc32;
 // mod gc;
@@ -22,7 +22,7 @@ fn main() {
 
     unsafe {
         bigint::test();
-        // bitmap::test();
+        bitmap::test();
         // continuation_table::test();
         // crc32::test();
         // gc::test();
