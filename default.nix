@@ -26,7 +26,12 @@ let drun =
   only_internal (dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun); in
 
 let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
-let ic-hs = ic-hs-pkgs.ic-hs; in
+let ic-ref-run =
+  # copy out the binary, to remove dependencies on the libraries
+  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
+      mkdir -p $out/bin
+      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
+  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -234,7 +239,7 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-hs;
+  inherit ic-ref-run;
 
   tests = let
     testDerivationArgs = {
@@ -380,8 +385,8 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-hs ] ;
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
@@ -625,7 +630,7 @@ rec {
       base-tests
       base-doc
       docs
-      ic-hs
+      ic-ref-run
       shell
       check-formatting
       check-rts-formatting
