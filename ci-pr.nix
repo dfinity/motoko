@@ -28,11 +28,17 @@ let
         do
           # ignore all errors
           echo -n $file
-          if timeout 10s -- moc $file -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
+          if timeout 10s moc $file -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
           then echo " failed (ignored)"
           else echo " ok"
           fi
         done
+
+        if ! test -n "$(find . -name \*.wasm -print -quit)"
+        then
+          echo "No wasm files generated. wasm-hash-for broken?"
+          exit 1
+        fi
       '';
       installPhase = ''
         sha256sum **/*.wasm > $out
