@@ -3,6 +3,7 @@ use crate::bitmap::Bitmap;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
+use alloc::vec::Vec;
 use core::arch::wasm32;
 use core::convert::TryFrom;
 
@@ -26,38 +27,30 @@ pub struct IcPage {
 ///
 /// `IcPage::start` accounts for static data. Pages linked with the `next` field. `prev` is not
 /// used in this list.
-static mut FREE_PAGES: Option<IcPage> = Some(IcPage { wasm_page_num: 0 });
+static mut FREE_PAGES: Vec<IcPage> = Vec::new();
 
 impl PageAlloc for IcPageAlloc {
     type Page = IcPage;
 
     unsafe fn alloc(&self) -> IcPage {
-        match FREE_PAGES.take() {
-            None => {
-                let wasm_page_num = wasm32::memory_grow(0, 1);
+        FREE_PAGES.pop().unwrap_or_else(|| {
+            let wasm_page_num = wasm32::memory_grow(0, 1);
 
-                // First page should be in use
-                debug_assert_ne!(wasm_page_num, 0);
+            // First page should be in use
+            debug_assert_ne!(wasm_page_num, 0);
 
-                if wasm_page_num == usize::MAX {
-                    rts_trap_with("Cannot grow memory");
-                }
-
-                IcPage {
-                    wasm_page_num: u16::try_from(wasm_page_num).unwrap(),
-                }
+            if wasm_page_num == usize::MAX {
+                rts_trap_with("Cannot grow memory");
             }
-            Some(free_page) => {
-                FREE_PAGES = free_page.take_next();
-                free_page
+
+            IcPage {
+                wasm_page_num: u16::try_from(wasm_page_num).unwrap(),
             }
-        }
+        })
     }
 
     unsafe fn free(&self, page: IcPage) {
-        // No need to set prev
-        page.set_next(FREE_PAGES);
-        FREE_PAGES = Some(page);
+        FREE_PAGES.push(page)
     }
 
     unsafe fn get_address_page(&self, addr: usize) -> IcPage {
@@ -80,38 +73,22 @@ impl Page for IcPage {
     }
 
     unsafe fn contents_start(&self) -> usize {
-        (self.start() as *const PageHeader<IcPage>).add(1) as usize
+        (self.start() as *const PageHeader).add(1) as usize
     }
 
     unsafe fn end(&self) -> usize {
         (usize::from(self.wasm_page_num) + 1) * WASM_PAGE_SIZE.as_usize()
     }
 
-    unsafe fn prev(&self) -> Option<IcPage> {
-        (self.start() as *mut PageHeader<IcPage>).prev()
-    }
-
-    unsafe fn set_prev(&self, prev: Option<IcPage>) {
-        (self.start() as *mut PageHeader<IcPage>).set_prev(prev)
-    }
-
-    unsafe fn next(&self) -> Option<IcPage> {
-        (self.start() as *mut PageHeader<IcPage>).next()
-    }
-
-    unsafe fn set_next(&self, next: Option<IcPage>) {
-        (self.start() as *mut PageHeader<IcPage>).set_next(next)
-    }
-
     unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
-        (self.start() as *mut PageHeader<IcPage>).get_bitmap()
+        (self.start() as *mut PageHeader).get_bitmap()
     }
 
     unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
-        (self.start() as *mut PageHeader<IcPage>).set_bitmap(bitmap)
+        (self.start() as *mut PageHeader).set_bitmap(bitmap)
     }
 
     unsafe fn take_bitmap(&self) -> Option<Bitmap> {
-        (self.start() as *mut PageHeader<IcPage>).take_bitmap()
+        (self.start() as *mut PageHeader).take_bitmap()
     }
 }

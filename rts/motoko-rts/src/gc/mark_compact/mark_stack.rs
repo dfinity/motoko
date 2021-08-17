@@ -4,12 +4,13 @@ use crate::constants::WORD_SIZE;
 use crate::page_alloc::{Page, PageAlloc};
 use crate::types::Tag;
 
+use alloc::vec;
+use alloc::vec::Vec;
 use core::convert::TryFrom;
 
 pub struct MarkStack<P: PageAlloc> {
-    /// Current page for pushing new objects. Follow `prev` links when popping and freeing the mark
-    /// stack.
-    current_page: P::Page,
+    /// Pages allocated so far. Never empty. Always push to and pop from the last page.
+    pages: Vec<P::Page>,
 
     /// Page allocator used to allocate new mark stack pages
     page_alloc: P,
@@ -20,10 +21,10 @@ pub struct MarkStack<P: PageAlloc> {
 
 impl<P: PageAlloc> MarkStack<P> {
     pub unsafe fn new(page_alloc: P) -> Self {
-        let current_page = page_alloc.alloc();
-        let hp = current_page.contents_start();
+        let page = page_alloc.alloc();
+        let hp = page.contents_start();
         MarkStack {
-            current_page,
+            pages: vec![page],
             page_alloc,
             hp,
         }
@@ -31,16 +32,19 @@ impl<P: PageAlloc> MarkStack<P> {
 
     pub unsafe fn free(self) {
         let page_alloc = self.page_alloc;
-        let mut page = Some(self.current_page);
-        while let Some(page_) = page {
-            page = page_.prev();
-            page_alloc.free(page_);
+        for page in self.pages {
+            page_alloc.free(page);
         }
+    }
+
+    fn current_page(&self) -> &P::Page {
+        self.pages.last().unwrap()
     }
 
     pub unsafe fn push(&mut self, obj: usize, obj_tag: Tag) {
         let new_hp = self.hp + (WORD_SIZE as usize) * 2;
-        let page_end = self.current_page.end();
+        let current_page = self.current_page();
+        let page_end = current_page.end();
 
         if new_hp >= page_end {
             if new_hp > page_end {
@@ -50,10 +54,9 @@ impl<P: PageAlloc> MarkStack<P> {
             }
 
             let new_page = self.page_alloc.alloc();
-            new_page.set_prev(Some(self.current_page.clone()));
-
-            self.current_page = new_page.clone();
             let hp = new_page.contents_start();
+
+            self.pages.push(new_page);
 
             *(hp as *mut usize) = obj;
             // try_from disappears on Wasm
@@ -70,15 +73,22 @@ impl<P: PageAlloc> MarkStack<P> {
     }
 
     pub unsafe fn pop(&mut self) -> Option<(usize, Tag)> {
-        if self.hp == self.current_page.contents_start() {
-            let prev_page = match self.current_page.prev() {
+        let current_page = self.current_page();
+        if self.hp == current_page.contents_start() {
+            if self.pages.len() == 1 {
+                // Stack empty
+                return None;
+            }
+
+            // Free the current page, pop from previous page
+            let empty_page = match self.pages.pop() {
                 None => return None,
-                Some(prev_page) => prev_page,
+                Some(page) => page,
             };
 
-            self.page_alloc.free(self.current_page.clone());
-            self.current_page = prev_page.clone();
-            self.hp = prev_page.end();
+            self.page_alloc.free(empty_page);
+
+            self.hp = self.current_page().end();
         }
 
         if *((self.hp - (WORD_SIZE as usize)) as *const u32) == 0 {
