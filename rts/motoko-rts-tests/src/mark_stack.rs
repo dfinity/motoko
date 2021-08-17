@@ -1,11 +1,7 @@
-use crate::memory::TestMemory;
+use crate::page_alloc::TestPageAlloc;
 
-use motoko_rts::gc::mark_compact::mark_stack::{
-    alloc_mark_stack, free_mark_stack, grow_stack, pop_mark_stack, push_mark_stack,
-    INIT_STACK_SIZE, STACK_BASE, STACK_PTR, STACK_TOP,
-};
-use motoko_rts::memory::Memory;
-use motoko_rts::types::{size_of, Blob, Words};
+use motoko_rts::gc::mark_compact::mark_stack::MarkStack;
+use motoko_rts::page_alloc::PageAlloc;
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
@@ -13,7 +9,6 @@ pub unsafe fn test() {
     println!("Testing mark stack ...");
 
     test_push_pop();
-    test_grow_stack();
 }
 
 fn test_push_pop() {
@@ -27,27 +22,27 @@ fn test_push_pop() {
 
     proptest_runner
         .run(&(0u32..1000u32), |n_objs| {
-            let mut mem = TestMemory::new(Words(1024 * 1024));
-            test_(&mut mem, n_objs)
+            let mut page_alloc = TestPageAlloc::new(1024); // 1 KiB
+            test_(&mut page_alloc, n_objs)
         })
         .unwrap();
 }
 
-fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
+fn test_<P: PageAlloc>(page_alloc: &mut P, n_objs: u32) -> TestCaseResult {
     let objs: Vec<u32> = (0..n_objs).collect();
 
     unsafe {
-        alloc_mark_stack(mem);
+        let mut mark_stack = MarkStack::new(page_alloc.clone());
 
         for obj in &objs {
             // Pushing a dummy argument derived from `obj` for tag
-            push_mark_stack(mem, *obj as usize, obj.wrapping_sub(1));
+            mark_stack.push(*obj as usize, obj.wrapping_sub(1));
         }
 
         for obj in objs.iter().copied().rev() {
-            let popped = pop_mark_stack();
+            let popped = mark_stack.pop();
             if popped != Some((obj as usize, obj.wrapping_sub(1))) {
-                free_mark_stack();
+                mark_stack.free();
                 return Err(TestCaseError::Fail(
                     format!(
                         "Unexpected object popped, expected={:?}, popped={:?}",
@@ -58,33 +53,8 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
             }
         }
 
-        free_mark_stack();
+        mark_stack.free();
     }
 
     Ok(())
-}
-
-unsafe fn test_grow_stack() {
-    println!("  Testing grow_stack");
-
-    // Allow doubling twice
-    let mut mem = TestMemory::new(
-        size_of::<Blob>() + INIT_STACK_SIZE + INIT_STACK_SIZE + INIT_STACK_SIZE * 2,
-    );
-
-    alloc_mark_stack(&mut mem);
-
-    let mut current_size = INIT_STACK_SIZE.as_usize();
-    assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
-    assert_eq!(STACK_BASE, STACK_PTR);
-
-    grow_stack(&mut mem);
-    current_size *= 2;
-    assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
-    assert_eq!(STACK_BASE, STACK_PTR);
-
-    grow_stack(&mut mem);
-    current_size *= 2;
-    assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
-    assert_eq!(STACK_BASE, STACK_PTR);
 }
