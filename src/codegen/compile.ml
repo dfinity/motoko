@@ -1516,8 +1516,8 @@ module Word64 = struct
     let name = prim_fun_name Type.Nat64 "wpow_nat" in
     Func.share_code2 env name (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
-        let set_n = G.i (LocalSet (nr 0l)) in
-        let set_exp = G.i (LocalSet (nr 1l)) in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local64 env "acc" in
 
         (* start with result = 1 *)
@@ -1730,8 +1730,8 @@ module TaggedSmallWord = struct
     let name = prim_fun_name ty "wpow_nat" in
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
-        let set_n = G.i (LocalSet (nr 0l)) in
-        let set_exp = G.i (LocalSet (nr 1l)) in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local env "acc" in
 
         (* unshift arguments *)
@@ -2711,7 +2711,7 @@ module Object = struct
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      let set_x = G.i (LocalSet (nr 0l)) in
+      let set_x = G.setter_for get_x in
       let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
       get_x ^^ Heap.load_field hash_ptr_field ^^
@@ -4093,8 +4093,8 @@ module Serialization = struct
     let name = "@serialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
-      let set_data_buf = G.i (LocalSet (nr 1l)) in
-      let set_ref_buf = G.i (LocalSet (nr 2l)) in
+      let set_data_buf = G.setter_for get_data_buf in
+      let set_ref_buf = G.setter_for get_ref_buf in
 
       (* Some combinators for writing values *)
 
