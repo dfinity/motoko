@@ -12,12 +12,6 @@
         "url": "https://github.com/dfinity/candid/archive/a555d77704d691bb8f34e21a049d44ba0acee3f8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "dfinity": {
-        "branch": "master",
-        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "d8dabe1cb0bb1e60a11e5bb8033d1615fefb252f",
-        "type": "git"
-    },
     "esm": {
         "builtin": false,
         "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
@@ -25,6 +19,19 @@
         "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz",
         "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
         "version": "3.2.25"
+    },
+    "ic": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Internet Computer blockchain source: the client/replica software run by nodes",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "ic",
+        "rev": "074feaa2c6cd61f98042ed4adde0a6d913387ff2",
+        "sha256": "19jl1hvriqg2c770xgx1q2rn5wzix46ky3vaz2qrhinfnk3lkwn5",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/ic/archive/074feaa2c6cd61f98042ed4adde0a6d913387ff2.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
         "branch": "master",
