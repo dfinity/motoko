@@ -53,7 +53,7 @@ struct TestPage {
 impl TestPageAlloc {
     pub fn new(page_size_bytes: usize) -> TestPageAlloc {
         // Should have enough space in a page for the header + more (TODO)
-        assert!(page_size_bytes > std::mem::size_of::<PageHeader<TestPageAlloc>>());
+        assert!(page_size_bytes > std::mem::size_of::<PageHeader>());
         TestPageAlloc {
             inner: Rc::new(RefCell::new(TestPageAllocInner::new(page_size_bytes))),
         }
@@ -178,46 +178,6 @@ impl Page for TestPageRef {
             .end(&self.page_alloc)
     }
 
-    unsafe fn prev(&self) -> Option<Self> {
-        self.page_alloc
-            .inner
-            .borrow()
-            .pages
-            .get(self)
-            .expect("Page::prev called on a freed page")
-            .prev()
-    }
-
-    unsafe fn next(&self) -> Option<Self> {
-        self.page_alloc
-            .inner
-            .borrow()
-            .pages
-            .get(self)
-            .expect("Page::next called on a freed page")
-            .next()
-    }
-
-    unsafe fn set_prev(&self, prev: Option<Self>) {
-        self.page_alloc
-            .inner
-            .borrow()
-            .pages
-            .get(self)
-            .expect("Page::set_prev called on a freed page")
-            .set_prev(prev)
-    }
-
-    unsafe fn set_next(&self, next: Option<Self>) {
-        self.page_alloc
-            .inner
-            .borrow()
-            .pages
-            .get(self)
-            .expect("Page::set_next called on a freed page")
-            .set_next(next)
-    }
-
     unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
         self.page_alloc
             .inner
@@ -255,38 +215,22 @@ impl TestPage {
     }
 
     unsafe fn contents_start(&self) -> usize {
-        (self.contents.as_ptr() as *const PageHeader<TestPageAlloc>).add(1) as usize
+        (self.contents.as_ptr() as *const PageHeader).add(1) as usize
     }
 
     unsafe fn end(&self, page_alloc: &TestPageAlloc) -> usize {
         self.start() + page_alloc.inner.borrow().page_size_bytes
     }
 
-    unsafe fn prev(&self) -> Option<TestPageRef> {
-        (self.start() as *mut PageHeader<TestPageRef>).prev()
-    }
-
-    unsafe fn next(&self) -> Option<TestPageRef> {
-        (self.start() as *mut PageHeader<TestPageRef>).next()
-    }
-
-    unsafe fn set_prev(&self, prev: Option<TestPageRef>) {
-        (self.start() as *mut PageHeader<TestPageRef>).set_prev(prev)
-    }
-
-    unsafe fn set_next(&self, next: Option<TestPageRef>) {
-        (self.start() as *mut PageHeader<TestPageRef>).set_next(next)
-    }
-
     unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
-        (self.start() as *mut PageHeader<TestPageRef>).get_bitmap()
+        (self.start() as *mut PageHeader).get_bitmap()
     }
 
     unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
-        (self.start() as *mut PageHeader<TestPageRef>).set_bitmap(bitmap)
+        (self.start() as *mut PageHeader).set_bitmap(bitmap)
     }
 
     unsafe fn take_bitmap(&self) -> Option<Bitmap> {
-        (self.start() as *mut PageHeader<TestPageRef>).take_bitmap()
+        (self.start() as *mut PageHeader).take_bitmap()
     }
 }
