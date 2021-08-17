@@ -26,7 +26,7 @@ func go() {
     let co4 = CO4();
     let a = co4.a;
     go4(co4);
-    if (co4.a == 0) { absurdities(co4.foo) }
+    absurdities(co4.foo)
 };
 
 func absurdities(inp : Int) {
