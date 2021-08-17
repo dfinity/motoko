@@ -94,7 +94,7 @@ unsafe fn mark_compact<P: PageAlloc>(
 
     // Free bitmaps
     for page in space.iter_pages() {
-        let bitmap = page_.take_bitmap().unwrap();
+        let bitmap = page.take_bitmap().unwrap();
         bitmap.free();
     }
 }
@@ -198,15 +198,18 @@ unsafe fn mark_fields<P: PageAlloc>(
 ///
 unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
     // Next object will be moved to this page
-    let mut to_page = space.first_page();
+    let mut to_page_idx = space.first_page();
+
+    // TODO: Update rustc, use unwrap_unchecked
+    let mut to_page = space.get_page(to_page_idx).unwrap();
 
     // Next object will be moved to this address in `to_page`
     let mut to_addr = to_page.contents_start();
 
     // Traverse all marked bits in all pages
-    let mut from_page = Some(space.first_page());
+    let mut from_page_idx = space.first_page();
 
-    while let Some(page) = from_page {
+    while let Some(page) = space.get_page(from_page_idx) {
         let page_start = page.contents_start();
 
         let bitmap = page.get_bitmap().unwrap();
@@ -225,7 +228,8 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
                 // Object does not fit into the current page, move on to the next page
                 // We know there must be more pages in the space as we compact the space and don't
                 // allocate in it
-                to_page = to_page.next().unwrap();
+                to_page_idx = to_page_idx.next();
+                to_page = space.get_page(to_page_idx).unwrap();
                 to_addr = to_page.contents_start();
             }
 
@@ -245,7 +249,7 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
             bit = bitmap_iter.next();
         }
 
-        from_page = page.next();
+        from_page_idx = from_page_idx.next();
     }
 }
 
