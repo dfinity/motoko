@@ -290,33 +290,35 @@ counters[1] := counters[1] + 1;
 
 === Records
 
-`{name : Text; points : var Int}`
+`{ first : Text; last : Text; salary : var Nat }`
 
 [source.include_impDebugInt, motoko]
 ....
-let player = { name = "Joachim";  var points = 0 };
+let employee = { first = "Boris"; last = "Johnson"; var salary = 81_932 };
 Debug.print(
-  player.name # " has " #
-  Int.toText(player.points) # " points."
+  employee.first # " " # employee.last # " earns " #
+  Int.toText(employee.salary) # " pounds."
 );
-player.points += 1;
+employee.salary += 79_496;
 ....
 
 === Objects
 
-`{ get : () -> Nat; add : Nat -> () }`
+`{ first : Text; last : Text; get : () -> Nat; add : Nat -> () }`
 
 [source, motoko]
 ....
 object self {
-  var points : Nat = 0; // private by default
-  public func get() : Nat = points;
-  public func add(p : Nat) { points += p };
+  public let first = "Boris";
+  public let last = "Johnson";
+  var salary : Nat = 81_932; // private by default
+  public func get() : Nat = salary;
+  public func add(bump : Nat) { salary += bump };
 }
 ....
 
 Different syntax, same type as records
-
+////
 === Variants
 
 `{ #invincible; #alive : Int; #dead }`
@@ -336,6 +338,59 @@ func takeDamage(h : Health, p : Nat) : Health {
 };
 
 takeDamage(#alive 20,50);
+....
+////
+
+=== Variants
+`{ #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat }`
+
+[source, motoko]
+....
+type Day = { #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat };
+
+func toText(d : Day) : Text {
+  switch d {
+     case (#Sun) "Sunday";
+     case (#Mon) "Monday";
+     case (#Tue) "Tuesday";
+     case (#Wed) "Wednesday";
+     case (#Thu) "Thursday";
+     case (#Fri) "Friday";
+     case (#Sat) "Saturday";
+   };
+};
+
+func sort(d : Day) : { #WeekDay; #WeekEnd } {
+  switch d {
+    case (#Sun) #WeekEnd;
+    case (#Mon) #WeekEnd;
+    case _ #WeekDay;
+  };
+};
+....
+
+=== Recursive Types
+
+[source#Lists, motoko]
+....
+type List = {
+  #item : { head : Text; tail : List }; // variant with payload!
+  #empty
+};
+
+func reverse(l : List) : List {
+  func rev(l : List, r : List) : List {
+    switch l {
+      case (#empty) { r };
+      case (#item { head; tail }) { // nested patterns
+        rev(tail, #item {head; tail = r})
+      }
+    }
+  };
+  rev(l, #empty);
+};
+
+let l = reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
 ....
 
 == Packages and modules
@@ -376,7 +431,10 @@ Like object types, but marked as `actor`:
 
 [source#actorTypes, motoko]
 ....
-type Receiver = actor { recv : Text -> async Nat };
+type Receiver = actor {
+  recv : Text -> async Nat
+};
+
 type Broadcast = actor {
   register : Receiver -> ();
   send : Text -> async Nat;
@@ -385,15 +443,20 @@ type Broadcast = actor {
 
 _sharable_ arguments and _no_ or _async_ result type.
 
-``canister'' ≈ ``actor''
+IC "canister" ≈ Motoko "actor"
 
 === sharable ≈ serializable
+
+**Sharable:**
 
 * all primitive types
 * records, tuples, arrays, variants, options +
 with immutable sharable components
 * `actor` types
-* `shared` function type**Not sharable:**
+* `shared` function type
+
+**Not sharable:**
+
 * mutable things
 * local functions
 * objects (with methods)
@@ -439,7 +502,10 @@ suspends computation pending `e`’s result
 
 [source, motoko]
 ....
+import Broadcast "canister:Broadcast";
+/* or
 import Broadcast "ic:r7inp-6aaaa-aaaaa-aaabq-cai";
+*/
 actor Self {
 
   var count = 0;
@@ -478,6 +544,7 @@ actor Self {
 
 == Type system
 
+////
 === Structural
 
 [source, motoko]
@@ -493,7 +560,81 @@ let h' = takeDamage(h, 100); // works
 Type definitions +
 do not create types, +
 but name existing types
+////
+=== Structural
 
+[source.include_Lists, motoko]
+....
+/*
+type List = {
+  #item : { head : Text; tail : List };
+  #empty
+};
+
+func reverse(l : List) : List { //... };
+*/
+type Stack = {
+   #empty;
+   #item : { tail : Stack; head : Text };
+};
+
+let stack : Stack = #empty;
+
+let revStack = reverse(stack); // works though reverse defined on List.
+....
+
+Type definitions +
+do not create types, +
+but name existing types
+
+Despite their different names, `Stack` and `List` are equivalent types.
+
+=== Subtyping
+
+`WeekDay <: Day`
+
+[source, motoko]
+....
+type WeekDay = { #Mon; #Tue; #Wed; #Thu; #Fri };
+
+type Day = { #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat };
+
+func toText(d : Day) : Text {
+  switch d
+   { case (#Sun) "Sunday";
+     case (#Mon) "Monday";
+     //...
+   };
+};
+
+let mon : WeekDay = #Mon;
+let t = toText(mon); // also works
+....
+
+`t1 <: t2`: `t1` can be used wherever `t2` is expected
+
+[source, motoko]
+=== Subtyping
+
+`Employee <: Person`
+
+[source, motoko]
+....
+
+type Employee = { first : Text; last : Text; var salary : Nat };
+type Person = { first : Text; last : Text};
+
+func toText(p : Person) : Text {
+  p.last # "," # p.first;
+};
+
+let employee : Employee =
+  { first = "Boris"; last = "Johnson"; var salary = 161_401};
+
+let t = toText(employee); // also works
+....
+
+////
 === Subtyping
 
 `Mortal <: Health`
@@ -509,15 +650,33 @@ let h' = takeDamage(h, 100); // also works
 ....
 
 `t1 <: t2`: `t1` can be used wherever `t2` is expected
-
+////
 === Generic types
 
 [source, motoko]
 ....
-type List<T> = ?{head : T; tail : List<T>};
+type List<T> = {
+  #item : { head : T; tail : List<T> };
+  #empty
+};
 
-// …
-let l : List<Nat> = ?{head = 0; tail = ?{head = 1 ; tail = null }};
+func reverse<T>(l : List<T>) : List<T> {
+  func rev(l : List<T>, r : List<T>) : List<T> {
+    switch l {
+      case (#empty) { r };
+      case (#item { head; tail }) { // a nested pattern
+        rev(tail, #item {head; tail = r})
+      }
+    }
+  };
+  rev(l, #empty);
+};
+
+let s : List<Text> =
+  reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
+
+let ns : List<Nat> =
+  reverse(#item { head = 0; tail = #item { head = 1; tail = #empty }})
 ....
 
 == Fin
