@@ -34,6 +34,11 @@ func absurdities(inp : Int) {
     if (inp == 2) go2(loop {});
     if (inp == 3) go3(loop {});
     if (inp == 4) go4(loop {});
+
+    if (inp == 1) (loop {}).field;
+    if (inp == 2) (loop {}).a;
+    if (inp == 3) (loop {}).other;
+    if (inp == 4) (loop {}).foo;
 };
 
 go();
