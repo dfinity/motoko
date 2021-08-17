@@ -1516,8 +1516,8 @@ module Word64 = struct
     let name = prim_fun_name Type.Nat64 "wpow_nat" in
     Func.share_code2 env name (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
-        let set_n = G.i (LocalSet (nr 0l)) in
-        let set_exp = G.i (LocalSet (nr 1l)) in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local64 env "acc" in
 
         (* start with result = 1 *)
@@ -1730,8 +1730,8 @@ module TaggedSmallWord = struct
     let name = prim_fun_name ty "wpow_nat" in
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
-        let set_n = G.i (LocalSet (nr 0l)) in
-        let set_exp = G.i (LocalSet (nr 1l)) in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local env "acc" in
 
         (* unshift arguments *)
@@ -2711,30 +2711,28 @@ module Object = struct
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
+      let set_x = G.setter_for get_x in
+      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
-      get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
+      get_x ^^ Heap.load_field hash_ptr_field ^^
 
-      get_x ^^ Heap.load_field size_field ^^
       (* Linearly scan through the fields (binary search can come later) *)
-      from_m_to_n env (Int32.of_int low_bound) (fun get_i ->
-        get_i ^^
-        compile_mul_const Heap.word_size ^^
-        get_h_ptr ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        Heap.load_field 0l ^^
-        get_hash ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ []
-          ( get_i ^^
-            compile_add_const header_size ^^
-            compile_mul_const Heap.word_size ^^
-            get_x ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            G.i Return
-          ) G.nop
-      ) ^^
-      E.trap_with env "internal error: object field not found"
+      (* unskew h_ptr and advance both to low bound *)
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
+      set_h_ptr ^^
+      get_x ^^
+      compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
+      set_x ^^
+      G.loop_ [] (
+          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ []
+            (get_x ^^ G.i Return)
+            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+             get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+             G.i (Br (nr 1l)))
+        ) ^^
+      G.i Unreachable
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
@@ -4098,8 +4096,8 @@ module Serialization = struct
     let name = "@serialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
-      let set_data_buf = G.i (LocalSet (nr 1l)) in
-      let set_ref_buf = G.i (LocalSet (nr 2l)) in
+      let set_data_buf = G.setter_for get_data_buf in
+      let set_ref_buf = G.setter_for get_ref_buf in
 
       (* Some combinators for writing values *)
 
