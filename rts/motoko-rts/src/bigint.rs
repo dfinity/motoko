@@ -258,10 +258,10 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_to_float64(p: SkewedPtr) -> f64 {
     if p.is_tagged_scalar() {
-	(p.0 as i32 >> 1) as f64
+        (p.0 as i32 >> 1) as f64
     } else {
-	let mp_int = p.as_bigint().mp_int_ptr();
-	mp_get_double(mp_int)
+        let mp_int = p.as_bigint().mp_int_ptr();
+        mp_get_double(mp_int)
     }
 }
 
