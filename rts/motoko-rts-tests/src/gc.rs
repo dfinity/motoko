@@ -13,7 +13,8 @@ use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
-use motoko_rts::page_alloc::PageAlloc;
+use motoko_rts::page_alloc::{Page, PageAlloc};
+use motoko_rts::space::Space;
 use motoko_rts::types::*;
 
 use std::fmt::Write;
@@ -131,7 +132,6 @@ fn test_gc<P: PageAlloc>(
     */
 }
 
-/*
 /// Check the dynamic heap:
 ///
 /// - All (and in post-gc mode, only) reachable objects should be in the heap. Reachable objects
@@ -141,112 +141,106 @@ fn test_gc<P: PageAlloc>(
 ///   indices Y and Z in the `objects` map, it should point to objects with indices Y and Z on the
 ///   heap.
 ///
-fn check_dynamic_heap(
+fn check_dynamic_heap<P: PageAlloc>(
+    space: &Space<P>,
     post_gc: bool,
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
     heap: &[u8],
-    heap_base_offset: usize,
-    heap_ptr_offset: usize,
-    continuation_table_ptr_offset: usize,
+    heap_base: usize,
+    heap_ptr: usize,
+    continuation_table_ptr_ptr: *const SkewedPtr,
 ) {
-    let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
+    // Maps objects to their fields
+    let object_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
         .iter()
         .map(|(obj, refs)| (*obj, refs.as_slice()))
         .collect();
 
-    // Current offset in the heap
-    let mut offset = heap_base_offset;
-
-    // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
+    // Maps seen objects to their addresses. Used when debugging duplicate objects.
     let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
 
-    let continuation_table_addr = unskew_pointer(read_word(heap, continuation_table_ptr_offset));
-    let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
+    // Current page
+    let mut page_idx = space.first_page();
 
-    while offset < heap_ptr_offset {
-        let object_offset = offset;
+    // Continuation table location
+    let continuation_table_ptr = unsafe { *continuation_table_ptr_ptr }.unskew();
 
-        // Address of the current object. Used for debugging.
-        let address = offset as usize + heap.as_ptr() as usize;
+    // Scan the space, check that objects are not seen multiple times and have the right fields
+    loop {
+        let page = space.get_page(page_idx).unwrap();
 
-        if object_offset == continuation_table_offset {
-            check_continuation_table(object_offset, continuation_table, heap);
-            offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
-                .to_bytes()
-                .0 as usize;
-            continue;
+        let mut scan = unsafe { page.contents_start() };
+
+        let end = if page_idx == space.current_page_idx() {
+            heap_ptr
+        } else {
+            unsafe { page.end() }
+        };
+
+        while scan < end {
+            if scan == continuation_table_ptr {
+                // TODO: check continuation table
+                scan += unsafe { object_size(scan) }.to_bytes().as_usize();
+                continue;
+            }
+
+            let obj = scan as *mut Array;
+            assert_eq!(unsafe { (*obj).header.tag }, TAG_ARRAY);
+
+            let tag = get_scalar_value(unsafe { obj.get(1) }.0 as u32);
+            let expected_fields = object_map.get(&tag).unwrap();
+
+            let old = seen.insert(tag, scan);
+            if let Some(old) = old {
+                panic!(
+                    "Object with tag {} is seen twice: {:#x}, {:#x}",
+                    tag, old, scan
+                );
+            }
+
+            // +1 for the tag
+            assert_eq!(unsafe { obj.len() }, expected_fields.len() as u32 + 1);
+
+            // Check that the fields are as expected
+            for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
+                // +1 to skip the tag
+                let field = unsafe { obj.get(field_idx as u32 + 1) }.unskew();
+                let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.0 as u32);
+                assert_eq!(field_tag, *expected_field_tag);
+            }
+
+            scan += unsafe { object_size(scan) }.to_bytes().as_usize();
         }
 
-        let tag = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        assert_eq!(tag, TAG_ARRAY);
-
-        let n_fields = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        // There should be at least one field for the index
-        assert!(n_fields >= 1);
-
-        let object_idx = get_scalar_value(read_word(heap, offset));
-        offset += WORD_SIZE;
-        let old = seen.insert(object_idx, address);
-        if let Some(old) = old {
-            panic!(
-                "Object with index {} seen multiple times: {:#x}, {:#x}",
-                object_idx, old, address
-            );
-        }
-
-        let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
-            panic!("Object with index {} is not in the objects map", object_idx)
-        });
-
-        for field_idx in 1..n_fields {
-            let field = read_word(heap, offset);
-            offset += WORD_SIZE;
-            // Get index of the object pointed by the field
-            let pointee_address = field.wrapping_add(1); // unskew
-            let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-            let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
-            let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
-            assert_eq!(
-                pointee_idx,
-                expected_pointee_idx,
-                "Object with index {} points to {} in field {}, but expected to point to {}",
-                object_idx,
-                pointee_idx,
-                field_idx - 1,
-                expected_pointee_idx,
-            );
+        if page_idx == space.current_page_idx() {
+            break;
+        } else {
+            page_idx = page_idx.next();
         }
     }
 
     // At this point we've checked that all seen objects point to the expected objects (as
-    // specified by `objects`). Check that we've seen the reachable objects and only the reachable
-    // objects.
-    let reachable_objects = compute_reachable_objects(roots, continuation_table, &objects_map);
+    // specified by `objects`). Check that we've seen the reachable objects and in post-gc only the
+    // reachable objects.
+    let reachable_objects = compute_reachable_objects(roots, continuation_table, &object_map);
 
-    // Objects we've seen in the heap
     let seen_objects: FxHashSet<ObjectIdx> = seen.keys().copied().collect();
 
-    // Reachable objects that we haven't seen in the heap
-    let missing_objects: Vec<ObjectIdx> = reachable_objects
+    let missing_reachable_objects: Vec<ObjectIdx> = reachable_objects
         .difference(&seen_objects)
         .copied()
         .collect();
 
     let mut error_message = String::new();
 
-    if !missing_objects.is_empty() {
+    if !missing_reachable_objects.is_empty() {
         write!(
             &mut error_message,
             "Reachable objects missing in the {} heap: {:?}",
             if post_gc { "post-gc" } else { "pre-gc" },
-            missing_objects,
+            missing_reachable_objects,
         )
         .unwrap();
     }
@@ -302,25 +296,19 @@ fn compute_reachable_objects(
     closure
 }
 
-fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
-    offset += WORD_SIZE;
+fn check_continuation_table(cont_tbl_addr: usize, cont_tbl: &[ObjectIdx]) {
+    let cont_tbl_ = cont_tbl_addr as *mut Array;
+    assert_eq!(unsafe { (*cont_tbl_).header.tag }, TAG_ARRAY);
+    assert_eq!(unsafe { cont_tbl_.len() }, cont_tbl.len() as u32);
 
-    assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
-    offset += WORD_SIZE;
-
-    for obj in continuation_table.iter() {
-        let ptr = unskew_pointer(read_word(heap, offset));
-        offset += WORD_SIZE;
-
-        // Skip object header for idx
-        let idx_address = ptr as usize + size_of::<Array>().to_bytes().0 as usize;
-        let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
-
-        assert_eq!(idx, *obj);
+    for (i, obj_tag) in cont_tbl.iter().enumerate() {
+        let field = unsafe { cont_tbl_.get(i as u32) }.unskew();
+        let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.0 as u32);
+        assert_eq!(field_tag, *obj_tag);
     }
 }
 
+/*
 impl GC {
     fn run(&self, mut heap: MotokoHeap) {
         let heap_base = heap.heap_base_address() as u32;

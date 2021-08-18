@@ -25,7 +25,7 @@ pub struct Space<P: PageAlloc> {
     total_alloc: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PageIdx(usize);
 
 impl PageIdx {
@@ -62,6 +62,10 @@ impl<P: PageAlloc> Space<P> {
 
     pub fn first_page(&self) -> PageIdx {
         PageIdx(0)
+    }
+
+    pub fn current_page_idx(&self) -> PageIdx {
+        PageIdx(self.current_page)
     }
 
     pub fn get_page(&self, idx: PageIdx) -> Option<&P::Page> {
