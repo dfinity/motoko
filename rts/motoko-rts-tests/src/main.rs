@@ -27,7 +27,7 @@ fn main() {
         crc32::test();
         // gc::test();
         leb128::test();
-        // mark_stack::test();
+        mark_stack::test();
         principal_id::test();
         text::test();
         utf8::test();

@@ -29,19 +29,19 @@ fn test_push_pop() {
 }
 
 fn test_<P: PageAlloc>(page_alloc: &mut P, n_objs: u32) -> TestCaseResult {
-    let objs: Vec<u32> = (0..n_objs).collect();
+    let objs: Vec<u32> = (1..=n_objs).collect();
 
     unsafe {
         let mut mark_stack = MarkStack::new(page_alloc.clone());
 
         for obj in &objs {
             // Pushing a dummy argument derived from `obj` for tag
-            mark_stack.push(*obj as usize, obj.wrapping_sub(1));
+            mark_stack.push(*obj as usize, obj + 1);
         }
 
         for obj in objs.iter().copied().rev() {
             let popped = mark_stack.pop();
-            if popped != Some((obj as usize, obj.wrapping_sub(1))) {
+            if popped != Some((obj as usize, obj + 1)) {
                 mark_stack.free();
                 return Err(TestCaseError::Fail(
                     format!(

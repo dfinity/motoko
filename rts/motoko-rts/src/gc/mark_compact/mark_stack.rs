@@ -42,6 +42,12 @@ impl<P: PageAlloc> MarkStack<P> {
     }
 
     pub unsafe fn push(&mut self, obj: usize, obj_tag: Tag) {
+        debug_assert!(
+            obj_tag != 0,
+            "MarkStack::push tag cannot be 0, \
+             0 is used in mark stack to mark unused space in pages"
+        );
+
         let new_hp = self.hp + (WORD_SIZE as usize) * 2;
         let current_page = self.current_page();
         let page_end = current_page.end();
