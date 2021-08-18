@@ -90,3 +90,18 @@ assert (Prim.floatToInt64(-pi) == (-3 : Int64));
 
 assert (Prim.int64ToFloat(42) == 42.0);
 assert (Prim.int64ToFloat(-42) == -42.0);
+
+/*Prim.debugPrint (debug_show Prim.floatToInt(pi));
+Prim.debugPrint (debug_show Prim.intToFloat(42));
+Prim.debugPrint (debug_show Prim.intToFloat(-42));
+Prim.debugPrint (debug_show Prim.intToFloat(-42_000_000_000));*/
+
+assert (Prim.floatToInt(pi) == 3);
+//assert (Prim.floatToInt(-pi) == -3);
+
+assert (Prim.intToFloat(42) == 42.0);
+assert (Prim.intToFloat(-42) == -42.0);
+
+
+assert (Prim.intToFloat(42_000_000_000) == 42000000000.0);
+assert (Prim.intToFloat(-42_000_000_000) == -42000000000.0);

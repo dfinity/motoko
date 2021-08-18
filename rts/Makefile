@@ -13,6 +13,7 @@ TOMMATHFILES = \
    mp_init mp_zero mp_add mp_sub mp_mul mp_cmp \
    mp_set_u32 mp_set_i32 mp_get_i32 mp_get_mag_u32 \
    mp_set_u64 mp_set_i64 mp_get_i64 mp_get_mag_u64 \
+   mp_set_double mp_get_double \
    mp_div mp_init_copy mp_neg mp_abs mp_2expt mp_expt_u32 mp_set mp_sqr \
    s_mp_add mp_cmp_mag s_mp_sub mp_grow mp_clamp \
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
@@ -175,6 +176,8 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --whitelist-function mp_set_u64 \
 	    --whitelist-function mp_set_i64 \
 	    --whitelist-function mp_get_i64 \
+	    --whitelist-function mp_set_double \
+	    --whitelist-function mp_get_double \
 	    --whitelist-function mp_count_bits \
 	    --whitelist-function mp_cmp \
 	    --whitelist-function mp_add \

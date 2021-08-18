@@ -757,6 +757,13 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
+
+
+    E.add_func_import env "rts" "bigint_of_float64" [F64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_float64" [I32Type] [F64Type];
+
+
+
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
@@ -7087,6 +7094,16 @@ and compile_exp (env : E.t) ae exp =
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         TaggedSmallWord.check_and_tag_codepoint env
+
+      | Float, Int ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedFloat64 e ^^
+        E.call_import env "rts" "bigint_of_float64"
+
+      | Int, Float ->
+        SR.UnboxedFloat64,
+        compile_exp_vanilla env ae e ^^
+        E.call_import env "rts" "bigint_to_float64"
 
       | Float, Int64 ->
         SR.UnboxedWord64,
