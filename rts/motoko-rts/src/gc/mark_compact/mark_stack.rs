@@ -54,22 +54,16 @@ impl<P: PageAlloc> MarkStack<P> {
             }
 
             let new_page = self.page_alloc.alloc();
-            let hp = new_page.contents_start();
+            self.hp = new_page.contents_start();
 
             self.pages.push(new_page);
-
-            *(hp as *mut usize) = obj;
-            // try_from disappears on Wasm
-            *(hp as *mut usize).add(1) = usize::try_from(obj_tag).unwrap();
-
-            self.hp = hp + (WORD_SIZE as usize) * 2;
-        } else {
-            *(self.hp as *mut usize) = obj;
-            // try_from disappears on Wasm
-            *(self.hp as *mut usize).add(1) = usize::try_from(obj_tag).unwrap();
-
-            self.hp += (WORD_SIZE as usize) * 2;
         }
+
+        *(self.hp as *mut usize) = obj;
+        // try_from disappears on Wasm
+        *(self.hp as *mut usize).add(1) = usize::try_from(obj_tag).unwrap();
+
+        self.hp += (WORD_SIZE as usize) * 2;
     }
 
     pub unsafe fn pop(&mut self) -> Option<(usize, Tag)> {
