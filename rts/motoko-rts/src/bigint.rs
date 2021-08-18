@@ -250,7 +250,6 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> SkewedPtr {
 #[no_mangle]
 unsafe extern "C" fn bigint_of_float64(j: f64) -> SkewedPtr {
     let mut i = tmp_bigint();
-    //mp_set_i64(&mut i, 3);
     mp_set_double(&mut i, j);
     persist_bigint(i)
 }
