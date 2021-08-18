@@ -42,24 +42,13 @@ impl<P: PageAlloc> MarkStack<P> {
     }
 
     pub unsafe fn push(&mut self, obj: usize, obj_tag: Tag) {
-        debug_assert!(
-            obj_tag != 0,
-            "MarkStack::push tag cannot be 0, \
-             0 is used in mark stack to mark unused space in pages"
-        );
-
         let new_hp = self.hp + (WORD_SIZE as usize) * 2;
         let current_page = self.current_page();
         let page_end = current_page.end();
 
-        if new_hp >= page_end {
-            if new_hp > page_end {
-                // Fill unused word with 0. We allocate 2 words at a time so the free space can be
-                // at most one word.
-                *(self.hp as *mut u32) = 0;
-            }
-
+        if new_hp > page_end {
             let new_page = self.page_alloc.alloc();
+            debug_assert_eq!(new_page.size() % WORD_SIZE as usize, 0);
             self.hp = new_page.contents_start();
 
             self.pages.push(new_page);
@@ -86,13 +75,14 @@ impl<P: PageAlloc> MarkStack<P> {
             self.page_alloc.free(empty_page);
 
             self.hp = self.current_page().end();
+            let page_size = self.current_page().size();
+
+            if (page_size / WORD_SIZE as usize) % 2 != 0 {
+                self.hp -= WORD_SIZE as usize;
+            }
         }
 
-        if *((self.hp - (WORD_SIZE as usize)) as *const u32) == 0 {
-            self.hp -= (WORD_SIZE as usize) * 3;
-        } else {
-            self.hp -= WORD_SIZE as usize * 2;
-        }
+        self.hp -= WORD_SIZE as usize * 2;
 
         let p = *(self.hp as *const usize);
         let tag = *(self.hp as *const usize).add(1) as u32;
