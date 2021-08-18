@@ -4,7 +4,7 @@ mod bigint;
 mod bitmap;
 mod continuation_table;
 mod crc32;
-// mod gc;
+mod gc;
 mod leb128;
 mod mark_stack;
 mod page_alloc;

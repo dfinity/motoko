@@ -8,11 +8,12 @@
 mod heap;
 mod utils;
 
-use heap::MotokoHeap;
+use crate::page_alloc::TestPageAlloc;
 use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
+use motoko_rts::page_alloc::PageAlloc;
 use motoko_rts::types::*;
 
 use std::fmt::Write;
@@ -24,8 +25,10 @@ pub fn test() {
 
     // TODO: Add more tests
 
+    let mut page_alloc = TestPageAlloc::new(1024);
+
     for test_heap in test_heaps() {
-        test_gcs(&test_heap);
+        test_gcs(&mut page_alloc, &test_heap);
     }
 }
 
@@ -74,9 +77,10 @@ struct TestHeap {
 }
 
 /// Test all GC implementations with the given heap
-fn test_gcs(heap_descr: &TestHeap) {
+fn test_gcs<P: PageAlloc>(page_alloc: &mut P, heap_descr: &TestHeap) {
     for gc in &GC_IMPLS {
         test_gc(
+            page_alloc,
             *gc,
             &heap_descr.heap,
             &heap_descr.roots,
@@ -85,14 +89,16 @@ fn test_gcs(heap_descr: &TestHeap) {
     }
 }
 
-fn test_gc(
+fn test_gc<P: PageAlloc>(
+    page_alloc: &mut P,
     gc: GC,
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let space = unsafe { heap::create_motoko_heap(page_alloc, refs, roots, continuation_table) };
 
+    /*
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         false, // before gc
@@ -122,8 +128,10 @@ fn test_gc(
             continuation_table_ptr_offset,
         );
     }
+    */
 }
 
+/*
 /// Check the dynamic heap:
 ///
 /// - All (and in post-gc mode, only) reachable objects should be in the heap. Reachable objects
@@ -364,3 +372,4 @@ impl GC {
         }
     }
 }
+*/

@@ -2,8 +2,8 @@ use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
-use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
-use motoko_rts::memory::Memory;
+use motoko_rts::page_alloc::PageAlloc;
+use motoko_rts::space::Space;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
@@ -12,406 +12,141 @@ use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
 
-/// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
-/// of this type to GC callbacks.
-#[derive(Clone)]
-pub struct MotokoHeap {
-    inner: Rc<RefCell<MotokoHeapInner>>,
-}
-
-impl Memory for MotokoHeap {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
-        self.inner.borrow_mut().alloc_words(n)
-    }
-}
-
-impl MotokoHeap {
-    /// Create a new Motoko heap from the given object graph and roots. `GC` argument is used to
-    /// allocate as little space as possible for the dynamic heap.
-    ///
-    /// Note that for `GC::MarkCompact` we limit the upper bound on mark stack size as
-    /// `super::MAX_MARK_STACK_SIZE`. In the worst case the size would be the same as the heap
-    /// size, but that's not a realistic scenario.
-    pub fn new(
-        map: &[(ObjectIdx, Vec<ObjectIdx>)],
-        roots: &[ObjectIdx],
-        continuation_table: &[ObjectIdx],
-        gc: GC,
-    ) -> MotokoHeap {
-        MotokoHeap {
-            inner: Rc::new(RefCell::new(MotokoHeapInner::new(
-                map,
-                roots,
-                continuation_table,
-                gc,
-            ))),
-        }
-    }
-
-    /// Get the beginning of dynamic heap, as offset in the heap array
-    pub fn heap_base_offset(&self) -> usize {
-        self.inner.borrow().heap_base_offset
-    }
-
-    /// Get the heap pointer, as offset in the heap array
-    pub fn heap_ptr_offset(&self) -> usize {
-        self.inner.borrow().heap_ptr_offset
-    }
-
-    /// Get the heap pointer, as address in the current process. The address can be used to mutate
-    /// the heap.
-    pub fn heap_ptr_address(&self) -> usize {
-        self.inner.borrow().heap_ptr_address()
-    }
-
-    /// Update the heap pointer given as an address in the current process.
-    pub fn set_heap_ptr_address(&self, address: usize) {
-        self.inner.borrow_mut().set_heap_ptr_address(address)
-    }
-
-    /// Get the beginning of dynamic heap, as an address in the current process
-    pub fn heap_base_address(&self) -> usize {
-        self.inner.borrow().heap_base_address()
-    }
-
-    /// Get the address of the static root array
-    pub fn static_root_array_address(&self) -> usize {
-        self.inner.borrow().static_root_array_address()
-    }
-
-    /// Get the offset of the continuation table pointer
-    pub fn continuation_table_ptr_offset(&self) -> usize {
-        self.inner.borrow().continuation_table_ptr_offset
-    }
-
-    /// Get the address of the continuation table pointer
-    pub fn continuation_table_ptr_address(&self) -> usize {
-        self.inner.borrow().continuation_table_ptr_address()
-    }
-
-    /// Get the heap as an array. Use `offset` values returned by the methods above to read.
-    pub fn heap(&self) -> Ref<Box<[u8]>> {
-        Ref::map(self.inner.borrow(), |heap| &heap.heap)
-    }
-}
-
-struct MotokoHeapInner {
-    /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
-    /// (all pointers would have to be updated).
-    heap: Box<[u8]>,
-
-    /// Where the dynamic heap starts
-    heap_base_offset: usize,
-
-    /// Where the dynamic heap ends, i.e. the heap pointer
-    heap_ptr_offset: usize,
-
-    /// Offset of the static root array: an array of pointers below `heap_base`
-    static_root_array_offset: usize,
-
-    /// Offset of the continuation table pointer.
-    ///
-    /// Reminder: this location is in static heap and will have pointer to an array in dynamic
-    /// heap.
-    continuation_table_ptr_offset: usize,
-}
-
-impl MotokoHeapInner {
-    fn address_to_offset(&self, address: usize) -> usize {
-        address - self.heap.as_ptr() as usize
-    }
-
-    fn offset_to_address(&self, offset: usize) -> usize {
-        offset + self.heap.as_ptr() as usize
-    }
-
-    /// Get heap base in the process's address space
-    fn heap_base_address(&self) -> usize {
-        self.offset_to_address(self.heap_base_offset)
-    }
-
-    /// Get heap pointer (i.e. where the dynamic heap ends) in the process's address space
-    fn heap_ptr_address(&self) -> usize {
-        self.offset_to_address(self.heap_ptr_offset)
-    }
-
-    /// Set heap pointer
-    fn set_heap_ptr_address(&mut self, address: usize) {
-        self.heap_ptr_offset = self.address_to_offset(address);
-    }
-
-    /// Get static root array address in the process's address space
-    fn static_root_array_address(&self) -> usize {
-        self.offset_to_address(self.static_root_array_offset)
-    }
-
-    /// Get the address of the continuation table pointer
-    fn continuation_table_ptr_address(&self) -> usize {
-        self.offset_to_address(self.continuation_table_ptr_offset)
-    }
-
-    fn new(
-        map: &[(ObjectIdx, Vec<ObjectIdx>)],
-        roots: &[ObjectIdx],
-        continuation_table: &[ObjectIdx],
-        gc: GC,
-    ) -> MotokoHeapInner {
-        // Check test correctness: an object should appear at most once in `map`
-        {
-            let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
-            assert_eq!(
-                heap_objects.len(),
-                map.len(),
-                "Invalid test heap: some objects appear multiple times"
-            );
-        }
-
-        // Each object will be 3 words per object + one word for each reference. Static heap will
-        // have an array (header + length) with one element, one MutBox for each root. +1 for
-        // continuation table pointer.
-        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
-
-        let dynamic_heap_size_without_continuation_table_bytes = {
-            let object_headers_words = map.len() * 3;
-            let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
-            (object_headers_words + references_words) * WORD_SIZE
-        };
-
-        let dynamic_heap_size_bytes = dynamic_heap_size_without_continuation_table_bytes
-            + (size_of::<Array>() + Words(continuation_table.len() as u32))
-                .to_bytes()
-                .0 as usize;
-
-        let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
-
-        let heap_size = heap_size_for_gc(
-            gc,
-            static_heap_size_bytes,
-            dynamic_heap_size_bytes,
+pub unsafe fn create_motoko_heap<P: PageAlloc>(
+    page_alloc: &mut P,
+    map: &[(ObjectIdx, Vec<ObjectIdx>)],
+    roots: &[ObjectIdx],
+    continuation_table: &[ObjectIdx],
+) -> Space<P> {
+    // Check test correctness: an object should appear at most once in `map`
+    {
+        let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
+        assert_eq!(
+            heap_objects.len(),
             map.len(),
+            "Invalid test heap: some objects appear multiple times"
         );
-
-        let mut heap: Vec<u8> = vec![0; heap_size];
-
-        // Maps `ObjectIdx`s into their offsets in the heap
-        let object_addrs: FxHashMap<ObjectIdx, usize> =
-            create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_bytes..]);
-
-        // Closure table pointer is the last word in static heap
-        let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
-        create_static_heap(
-            roots,
-            &object_addrs,
-            continuation_table_ptr_offset,
-            static_heap_size_bytes + dynamic_heap_size_without_continuation_table_bytes,
-            &mut heap[..static_heap_size_bytes],
-        );
-
-        MotokoHeapInner {
-            heap: heap.into_boxed_slice(),
-            heap_base_offset: static_heap_size_bytes,
-            heap_ptr_offset: total_heap_size_bytes,
-            static_root_array_offset: 0,
-            continuation_table_ptr_offset: continuation_table_ptr_offset,
-        }
     }
 
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
-        let bytes = n.to_bytes();
+    let mut space = Space::new(page_alloc.clone());
 
-        // Update heap pointer
-        let old_hp = self.heap_ptr_address();
-        let new_hp = old_hp + bytes.0 as usize;
-        self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
+    let (mutbox_ptrs, closure_tbl_ptr_ptr) =
+        create_static_heap(&mut space, u32::try_from(roots.len()).unwrap());
 
-        // Grow memory if needed
-        self.grow_memory(new_hp as usize);
+    let (obj_addrs, closure_tbl_ptr) = create_dynamic_heap(&mut space, map, continuation_table);
 
-        skew(old_hp)
+    // Update root MutBox fields
+    for (root_idx, root_mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
+        let mutbox = root_mutbox.unskew() as *mut MutBox;
+        let root_ptr = *obj_addrs.get(root_idx).unwrap();
+        (*mutbox).field = root_ptr;
     }
 
-    unsafe fn grow_memory(&mut self, ptr: usize) {
-        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
-        if ptr > heap_end {
-            // We don't allow growing memory in tests, allocate large enough for the test
-            panic!(
-                "MotokoHeap::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
-                heap_end, ptr
-            );
-        }
-    }
+    // Update closure table ptr location
+    *(closure_tbl_ptr_ptr.unskew() as *mut SkewedPtr) = closure_tbl_ptr;
+
+    space
 }
 
-/// Compute the size of the heap to be allocated for the GC test.
-fn heap_size_for_gc(
-    gc: GC,
-    static_heap_size_bytes: usize,
-    dynamic_heap_size_bytes: usize,
-    n_objects: usize,
-) -> usize {
-    let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
-    match gc {
-        GC::Copying => {
-            let to_space_bytes = dynamic_heap_size_bytes;
-            total_heap_size_bytes + to_space_bytes
-        }
-        GC::MarkCompact => {
-            let bitmap_size_bytes = {
-                let dynamic_heap_bytes = Bytes(dynamic_heap_size_bytes as u32);
-                // `...to_words().to_bytes()` below effectively rounds up heap size to word size
-                // then gets the bytes
-                let dynamic_heap_words = dynamic_heap_bytes.to_words();
-                let mark_bit_bytes = dynamic_heap_words.to_bytes();
-
-                // The bitmap implementation rounds up to 64-bits to be able to read as many
-                // bits as possible in one instruction and potentially skip 64 words in the
-                // heap with single 64-bit comparison
-                (((mark_bit_bytes.0 + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0
-            };
-            // In the worst case the entire heap will be pushed to the mark stack, but in tests
-            // we limit the size
-            let mark_stack_words = n_objects.clamp(INIT_STACK_SIZE.0 as usize, MAX_MARK_STACK_SIZE)
-                + size_of::<Blob>().0 as usize;
-
-            total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
-        }
-    }
-}
-
-/// Given a heap description (as a map from objects to objects), and the dynamic part of the heap
-/// (as an array), initialize the dynamic heap with objects.
+/// Creates static part of the heap, with space left for continuation table pointer and the roots.
+/// Returns:
 ///
-/// Returns a mapping from object indices (`ObjectIdx`) to their addresses (see module
-/// documentation for "offset" and "address" definitions).
-fn create_dynamic_heap(
+/// 1. Pointers to MutBoxes for the roots. Nth root will need to be pointed by Nth MutBox in the
+///    vector.
+///
+/// 2. Pointer to the closure table pointer.
+unsafe fn create_static_heap<P: PageAlloc>(
+    space: &mut Space<P>,
+    n_roots: u32,
+) -> (Vec<SkewedPtr>, SkewedPtr) {
+    // The layout is:
+    //
+    // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
+    //   after allocating dynamic objects.
+    //
+    // - MutBoxes. Fields of these MutBoxes need to be updated with pointers to dynamic hepa.
+    //
+    // - Continuation table pointer. This location needs to be updated with the location of
+    //   continuation table in dynamic heap.
+
+    // Allocate the root array
+    let root_array_size = Words(n_roots) + size_of::<Array>();
+    let root_array_ptr = space.alloc_words(root_array_size);
+    let root_array = root_array_ptr.unskew() as *mut Array;
+    (*root_array).header.tag = TAG_ARRAY;
+    (*root_array).len = n_roots;
+
+    // Allocate MutBoxes for roots, add MutBoxes to the root array
+    let mut mutbox_ptrs = Vec::with_capacity(n_roots as usize);
+    for i in 0..n_roots {
+        let mutbox = space.alloc_words(size_of::<MutBox>());
+        root_array.set(i, mutbox);
+        // Field unset at this point, will be updated after allocating dynamic heap
+
+        mutbox_ptrs.push(mutbox);
+    }
+
+    let closure_table_pointer_loc = space.alloc_words(Words(1));
+
+    (mutbox_ptrs, closure_table_pointer_loc)
+}
+
+/// Creates dynamic part of the heap. Returns:
+///
+/// 1. A map from objects indices (tags) to pointers to the objects. Used to update root fields in
+///    static heap
+///
+/// 2. Pointer to the continuation table
+unsafe fn create_dynamic_heap<P: PageAlloc>(
+    space: &mut Space<P>,
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     continuation_table: &[ObjectIdx],
-    dynamic_heap: &mut [u8],
-) -> FxHashMap<ObjectIdx, usize> {
-    let heap_start = dynamic_heap.as_ptr() as usize;
+) -> (FxHashMap<ObjectIdx, SkewedPtr>, SkewedPtr) {
+    // First pass allocates objects and collects object addresses. Second pass fills the fields
+    // with addresses collected in the first pass.
 
     // Maps objects to their addresses
-    let mut object_addrs: FxHashMap<ObjectIdx, usize> = Default::default();
+    let mut object_ptrs: FxHashMap<ObjectIdx, SkewedPtr> = Default::default();
 
-    // First pass allocates objects without fields
-    {
-        let mut heap_offset = 0;
-        for (obj, refs) in refs {
-            object_addrs.insert(*obj, heap_start + heap_offset);
+    // Allocate objects
+    for (obj_idx, refs) in refs {
+        // +2 for header + tag (index)
+        let obj_size = Words(refs.len() as u32) + Words(2);
+        let obj_ptr = space.alloc_words(obj_size);
 
-            // Store object header
-            write_word(dynamic_heap, heap_offset, TAG_ARRAY);
-            heap_offset += WORD_SIZE;
+        object_ptrs.insert(*obj_idx, obj_ptr);
 
-            // Store length: idx + refs
-            write_word(
-                dynamic_heap,
-                heap_offset,
-                u32::try_from(refs.len() + 1).unwrap(),
-            );
-            heap_offset += WORD_SIZE;
+        let obj = obj_ptr.unskew() as *mut Array;
 
-            // Store object value (idx)
-            write_word(dynamic_heap, heap_offset, make_scalar(*obj));
-            heap_offset += WORD_SIZE;
+        (*obj).header.tag = TAG_ARRAY;
+        (*obj).len = refs.len() as u32 + 1; // +1 for tag (index)
+        obj.set(0, SkewedPtr(make_scalar(*obj_idx) as usize)); // tag (index)
 
-            // Leave space for the fields
-            heap_offset += refs.len() * WORD_SIZE;
-        }
+        // Pointer fields will be set in the second pass
     }
 
-    // println!("object addresses={:#?}", object_addrs);
+    // Add fields
+    for (obj_idx, refs) in refs {
+        let obj_ptr = object_ptrs.get(obj_idx).unwrap();
+        let obj = obj_ptr.unskew() as *mut Array;
 
-    // Second pass adds fields
-    for (obj, refs) in refs {
-        let obj_offset = object_addrs.get(obj).unwrap() - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
-            let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap() as u32);
-            let field_offset = obj_offset
-                + (size_of::<Array>() + Words(1 + ref_idx as u32))
-                    .to_bytes()
-                    .0 as usize;
-            write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
+            let ref_ptr = object_ptrs.get(ref_).unwrap();
+            obj.set(ref_idx as u32 + 1, *ref_ptr);
         }
     }
 
-    // Add the continuation table
-    let n_objects = refs.len();
-    // fields+1 for the scalar field (idx)
-    let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset =
-        (size_of::<Array>() * n_objects as u32).to_bytes().0 as usize + n_fields * WORD_SIZE;
+    // Allocate continuation table
+    let cont_tbl_size = continuation_table.len() + 2;
+    let cont_tbl_ptr = space.alloc_words(Words(cont_tbl_size as u32));
+    let cont_tbl = cont_tbl_ptr.unskew() as *mut Array;
+    (*cont_tbl).header.tag = TAG_ARRAY;
+    (*cont_tbl).len = continuation_table.len() as u32;
 
-    {
-        let mut heap_offset = continuation_table_offset;
-
-        write_word(dynamic_heap, continuation_table_offset, TAG_ARRAY);
-        heap_offset += WORD_SIZE;
-
-        write_word(dynamic_heap, heap_offset, continuation_table.len() as u32);
-        heap_offset += WORD_SIZE;
-
-        for idx in continuation_table {
-            let idx_ptr = *object_addrs.get(idx).unwrap();
-            write_word(dynamic_heap, heap_offset, make_pointer(idx_ptr as u32));
-            heap_offset += WORD_SIZE;
-        }
+    for (i, obj_idx) in continuation_table.iter().enumerate() {
+        let obj_ptr = object_ptrs.get(obj_idx).unwrap();
+        cont_tbl.set(i as u32, *obj_ptr);
     }
 
-    object_addrs
-}
-
-/// Given a root set (`roots`, may contain duplicates), a mapping from object indices to addresses
-/// (`object_addrs`), and the static part of the heap, initialize the static heap with the static
-/// root array.
-fn create_static_heap(
-    roots: &[ObjectIdx],
-    object_addrs: &FxHashMap<ObjectIdx, usize>,
-    continuation_table_ptr_offset: usize,
-    continuation_table_offset: usize,
-    heap: &mut [u8],
-) {
-    let root_addresses: Vec<usize> = roots
-        .iter()
-        .map(|obj| *object_addrs.get(obj).unwrap())
-        .collect();
-
-    // Create static root array. Each element of the array is a MutBox pointing to the actual
-    // root.
-    write_word(heap, 0, TAG_ARRAY);
-    write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
-
-    // Current offset in the heap for the next static roots array element
-    let mut root_addr_offset = size_of::<Array>().to_bytes().0 as usize;
-
-    // Current offset in the heap for the MutBox of the next root
-    let mut mutbox_offset = (size_of::<Array>().0 as usize + roots.len()) * WORD_SIZE;
-
-    for root_address in root_addresses {
-        // Add a MutBox for the object
-        write_word(heap, mutbox_offset, TAG_MUTBOX);
-        write_word(
-            heap,
-            mutbox_offset + WORD_SIZE,
-            make_pointer(u32::try_from(root_address).unwrap()),
-        );
-
-        let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-        write_word(
-            heap,
-            root_addr_offset,
-            make_pointer(u32::try_from(mutbox_addr).unwrap()),
-        );
-
-        root_addr_offset += WORD_SIZE;
-        mutbox_offset += size_of::<MutBox>().to_bytes().0 as usize;
-    }
-
-    // Write continuation table pointer as the last word in static heap
-    let continuation_table_ptr = continuation_table_offset as u32 + heap.as_ptr() as u32;
-    write_word(
-        heap,
-        continuation_table_ptr_offset,
-        make_pointer(continuation_table_ptr),
-    );
+    (object_ptrs, cont_tbl_ptr)
 }
