@@ -18,6 +18,7 @@ A simple, useful language for the Internet Computer (IC)
 * Structural typing with simple generics and subtyping
 * Safe arithmetic (unbounded and checked)
 * Non-nullable types by default
+* Garbage collected (no manual memory management)
 * JavaScript-like syntax but statically typed & sane
 
 Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
@@ -38,7 +39,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * less simple compiler to WebAssembly
 ** multipass with typed IR in each pass.
 ** uniform representation, unboxed arithmetic
-** two-space gc (for now), gc between messages
+** two-space gc or mark-compact gc, gc between messages (for now)
 * polymorphism by erasure
 
 == The language
@@ -57,9 +58,21 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 ....
   import Debug "mo:base/Debug";
   import Int "mo:base/Int";
+....
 
-  // ... Debug.print(...) ...
-  // ... Int.toText(...) ...
+(`import MyLib "src/MyLib"` imports a library from the local file system.)
+
+=== Libraries
+
+[source, motoko]
+....
+  import Debug "mo:base/Debug";
+  import Int "mo:base/Int";
+  import Trie "mo:base/Trie";
+
+  type Users = Trie.Trie<Text, Nat>; // reference types
+
+  Debug.print(Int.toText(7)); // reference functions/values
 ....
 
 === Blocks and declarations
@@ -83,13 +96,17 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 === Control flow
 
+* `do { … }`
 * `if (b) …`
 * `if (b) … else …`
-* `switch x { case (pat1) e1; …; case _ en }`
+* `switch e { case (pat1) e1; …; case _ en }`
 * `while (b) …`
 * `loop …`
-* `loop … while (b)`
+* `loop …  while (b)`
 * `for (pat in e) …`
+* `return`, `return e`
+* `label l …`,  `break l e`
+* `throw`, `try e catch (x) { … }`
 
 == Primitive types
 
@@ -147,8 +164,8 @@ No surprises here
 
 Unicode! No random access.
 
-* `'x'`, `'\u{6a}'`, `'☃'`,
-* `"boo"`, `"foo \u{62}ar ☃"`
+* `'x'`, `+'\u{6a}'+`, `'☃'`,
+* `"boo"`, `+"foo \u{62}ar ☃"+`
 * `"Concat" # "enation"`
 
 === Booleans
@@ -198,13 +215,13 @@ let funcs : [<T>(T) -> T] = …
 ....
 func add(x : Int, y : Int) : Int = x + y;
 
-func applyNTimes<T>(n : Nat, x : T, f : T -> ()) {
-  if (n == 0) return;
+func applyNTimes<T>(n : Int, x : T, f : T -> ()) {
+  if (n <= 0) return;
   f(x);
   applyNTimes(n-1, x, f);
 };
 
-applyNTimes<Text>(10, "Hello!", func(x) { Debug.print(x) } );
+applyNTimes<Text>(3, "Hello!", func(x) { Debug.print(x) } );
 ....
 
 * `func() { … }` short for `func() : () = { … }`
@@ -317,7 +334,31 @@ object self {
 }
 ....
 
-Different syntax, same type as records
+=== Classes
+
+
+[source, motoko]
+....
+class Employee(fst : Text, lst : Text) {
+  public let first = fst;
+  public let last = lst;
+  var salary : Nat = 0;
+  public func get() : Nat = salary;
+  public func add(bump : Nat) { salary += bump };
+}
+....
+
+Classes are factories for constructing objects. +
+A class introduces a type and a function (for constructing instances).
+
+(Roughly) equivalent to:
+
+[source.no-repl, motoko]
+....
+type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> ()`
+func Employee(fst : Text, lst : Text) : Employee = object ...`
+....
+
 ////
 === Variants
 
@@ -520,6 +561,8 @@ actor Self {
 }
 ....
 
+(assumes there is a candid file describing the interface of the import)
+
 === Principal and caller
 
 [source, motoko]
@@ -540,7 +583,35 @@ actor Self {
 }
 ....
 
-`Principal`: identity of a user or canister/actor
+
+=== Errors
+
+// breaks interpreter
+[source.no-repl, motoko]
+....
+import Principal "mo:base/Principal";
+import Error "mo:base/Error";
+
+actor Self {
+
+  public shared(context) func hello() : async Text {
+    let myself : Principal = Principal.fromActor(Self);
+    if (context.caller == myself) {
+      throw Error.reject("Talking to yourself is the first sign of madness");
+    } else {
+      "Hello, nice to see you";
+    };
+  };
+
+};
+
+async {
+  let t = try Self.hello() catch (e) { Error.message(e); }
+};
+....
+
+Similar to exceptions in other languages, +
+but _only_ available in async contexts, e.g. shared functions; async blocks
 
 == Type system
 
