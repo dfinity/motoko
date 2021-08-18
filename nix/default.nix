@@ -78,6 +78,9 @@ let
         # wasm-profiler
         (self: super: import ./wasm-profiler.nix self)
 
+        # drun
+        (self: super: import ./drun.nix self)
+
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {
           all-cabal-hashes = self.fetchurl {
