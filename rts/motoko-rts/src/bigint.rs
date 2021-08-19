@@ -249,6 +249,9 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> SkewedPtr {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_float64(j: f64) -> SkewedPtr {
+    if j < 1073741824.0 && j > -1073741825.0 {
+        return SkewedPtr(((j as i32) << 1) as usize);
+    }
     let mut i = tmp_bigint();
     mp_set_double(&mut i, j);
     persist_bigint(i)
