@@ -138,7 +138,11 @@ Inferred by default for non-negative literals
 
 Literals: `13`, `0xf4`, `1_000_000`
 
-`Nat <: Int` (`Nat` is a _subtype_ of `Int`)
+`Nat <: Int`
+
+`Nat` is a _subtype_ of `Int`
+
+(you can supply a `Nat` wherever an `Int` is expected)
 
 === Bounded numbers (trapping)
 
