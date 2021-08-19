@@ -95,14 +95,16 @@ assert (Prim.floatToInt(pi) == 3);
 assert (Prim.floatToInt(-pi) == -3);
 assert (Prim.floatToInt(pi * 40_000_000_000) == 125_663_706_143);
 assert (Prim.floatToInt(-pi * 40_000_000_000) == -125_663_706_143);
-assert (Prim.floatToInt(1073741823.8) == 1073741823); // for gauging the tiny bignum optimisation
+assert (Prim.floatToInt(1073741824.1) == 1073741824); // for gauging the tiny bignum optimisation
+assert (Prim.floatToInt(1073741823.8) == 1073741823);
 assert (Prim.floatToInt(1073741823.5) == 1073741823);
 assert (Prim.floatToInt(1073741823.1) == 1073741823);
 assert (Prim.floatToInt(1073741822.9) == 1073741822);
-assert (Prim.floatToInt(-1073741824.8) == -1073741824);
-assert (Prim.floatToInt(-1073741824.5) == -1073741824);
-assert (Prim.floatToInt(-1073741824.1) == -1073741824);
 assert (Prim.floatToInt(-1073741823.9) == -1073741823);
+assert (Prim.floatToInt(-1073741824.1) == -1073741824);
+assert (Prim.floatToInt(-1073741824.5) == -1073741824);
+assert (Prim.floatToInt(-1073741824.8) == -1073741824);
+assert (Prim.floatToInt(-1073741825.1) == -1073741825);
 
 
 assert (Prim.intToFloat(42) == 42.0);
