@@ -47,7 +47,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 === Expressions
 
 * Identifiers: +
-`x`, `foo_bar`, `test'`, `List`, `Map`
+`x`, `foo_bar`, `test123`, `List`, `Map`
 * Parentheses for grouping
 * Type annotations (to help type inference): +
 `(42 : Int)`
@@ -96,6 +96,8 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 === Control flow
 
+The usual suspects...
+
 * `do { … }`
 * `if (b) …`
 * `if (b) … else …`
@@ -106,7 +108,8 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * `for (pat in e) …`
 * `return`, `return e`
 * `label l …`,  `break l e`
-* `throw`, `try e catch (x) { … }`
+* `async e`, `await e`             _(restricted)_
+* `throw`, `try e catch (x) { … }` _(restricted)_
 
 == Primitive types
 
@@ -287,9 +290,13 @@ display(?"Test");
 [source.include_impDebugInt, motoko]
 ....
 let days = [ "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" ];
+
 assert(days.size() == 7);
+
 assert(days[1] == "Tue");
+
 // days[7] will trap (fixed size)
+
 for (d in days.vals()) { Debug.print(d) };
 ....
 
@@ -300,9 +307,14 @@ for (d in days.vals()) { Debug.print(d) };
 [source, motoko]
 ....
 let counters = [var 1, 2, 3];
+
 assert(counters.size() == 3);
+
 counters[1] := counters[1] + 1;
+
 // counters[3] will trap (fixed size)
+
+counters;
 ....
 
 === Records
@@ -312,11 +324,15 @@ counters[1] := counters[1] + 1;
 [source.include_impDebugInt, motoko]
 ....
 let employee = { first = "Boris"; last = "Johnson"; var salary = 81_932 };
+
 Debug.print(
   employee.first # " " # employee.last # " earns " #
   Int.toText(employee.salary) # " pounds."
 );
+
 employee.salary += 79_496;
+
+employee;
 ....
 
 === Objects
@@ -351,12 +367,13 @@ class Employee(fst : Text, lst : Text) {
 Classes are factories for constructing objects. +
 A class introduces a type and a function (for constructing instances).
 
-(Roughly) equivalent to:
+Just sugar for:
 
 [source.no-repl, motoko]
 ....
-type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> ()`
-func Employee(fst : Text, lst : Text) : Employee = object ...`
+type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> () }
+
+func Employee(fst : Text, lst : Text) : Employee = object { … }
 ....
 
 ////
@@ -416,7 +433,7 @@ func sort(d : Day) : { #WeekDay; #WeekEnd } {
 ....
 type List = {
   #item : { head : Text; tail : List }; // variant with payload!
-  #empty
+  #empty                     // ^^^^ recursion!
 };
 
 func reverse(l : List) : List {
@@ -434,6 +451,34 @@ func reverse(l : List) : List {
 let l = reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
 ....
 
+=== Generic types
+
+[source, motoko]
+....
+type List<T> = {
+  #item : { head : T; tail : List<T> };
+  #empty
+};
+
+func reverse<T>(l : List<T>) : List<T> {
+  func rev(l : List<T>, r : List<T>) : List<T> {
+    switch l {
+      case (#empty) { r };
+      case (#item { head; tail }) { // a nested pattern
+        rev(tail, #item {head; tail = r})
+      }
+    }
+  };
+  rev(l, #empty);
+};
+
+let s : List<Text> =
+  reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
+
+let ns : List<Nat> =
+  reverse(#item { head = 0; tail = #item { head = 1; tail = #empty }})
+....
+
 == Packages and modules
 
 === Modules
@@ -442,27 +487,41 @@ let l = reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }})
 ....
 // the type of base/Int.mo
 module {
+  type Int = Prim.Types.Int;
   toText : Int -> Text;
   abs : Int -> Nat;
   // ...
 }
 ....
 
-types and values like objects
-
-but restricted to _static_ content (pure, no state, …)
+modules contain named types and values (like objects), +
+but are restricted to _static_ content (pure, no state, …)
 
 === Module imports
 
-[source, motoko]
+[source.no-repl, motoko]
 ....
-import Debug "mo:base/Debug";
+import Debug "mo:base/Debug";  // import from package
 import Int "mo:base/Int";
+import MyLib "lib/MyLib";  // import from local file MyLib.mo
 ....
 
-`base` package provides basic features.
+`base` package provides basic features as separate modules.
 
 More libraries popping up!
+
+`MyLib.mo` _must_ contain a module or actor class, eg:
+
+[source.no-repl, motoko]
+....
+module {
+
+  public type List<T> =  …;
+
+  public func reverse<T>(l : List<T>) : List<T> { … };
+
+}
+....
 
 == Platform features
 
@@ -472,17 +531,21 @@ Like object types, but marked as `actor`:
 
 [source#actorTypes, motoko]
 ....
-type Receiver = actor {
-  recv : Text -> async Nat
-};
-
 type Broadcast = actor {
   register : Receiver -> ();
   send : Text -> async Nat;
 };
+
+type Receiver = actor {
+  recv : query Text -> async Nat
+};
 ....
 
 _sharable_ arguments and _no_ or _async_ result type.
+
+* `register` is a _oneway_ IC method (unawaitable).
+* `send` is an IC _update_ method
+* `recv` is IC _query_ method
 
 IC "canister" ≈ Motoko "actor"
 
@@ -504,10 +567,13 @@ with immutable sharable components
 
 === A complete actor
 
-[source.include_actorTypes, motoko]
+[source, motoko]
 ....
 import Array "mo:base/Array";
-actor {
+
+actor Broadcast {
+
+  type Receiver = actor { recv : query Text -> async Nat };
 
   var r : [Receiver] = [];
 
@@ -555,7 +621,7 @@ actor Self {
     Broadcast.register(Self);
   };
 
-  public func recv(msg : Text) : async Nat {
+  public query func recv(msg : Text) : async Nat {
     return count;
   }
 }
@@ -613,6 +679,35 @@ async {
 Similar to exceptions in other languages, +
 but _only_ available in async contexts, e.g. shared functions; async blocks
 
+=== Stable variables
+
+If we upgrade the `Broadcast` actor, all current registrations are lost. +
+To preserve them, declare the state variable `r` as `stable`.
+
+[source.no-repl, motoko]
+....
+import Array "mo:base/Array";
+
+actor Broadcast {
+
+  type Receiver = actor { recv : query Text -> async Nat };
+
+  stable var r : [Receiver] = []; // declare r `stable`
+
+  public func register(a : Receiver) { … }
+  public func send(t : Text) : async Nat { … }
+
+  // optional pre-upgrade action
+  system func preupgrade() { Debug.print("saving receivers"); }
+
+  // optional post-upgrade action
+  system func postupgrade() {  Debug.print("restoring receivers"); }
+}
+....
+
+stable variables must have _stable_ types (see manual) +
+`system` hooks can't send messages
+
 == Type system
 
 ////
@@ -651,7 +746,7 @@ type Stack = {
 
 let stack : Stack = #empty;
 
-let revStack = reverse(stack); // works though reverse defined on List.
+let revStack = reverse(stack); // works though reverse defined on List (not Stack)
 ....
 
 Type definitions +
@@ -660,7 +755,7 @@ but name existing types
 
 Despite their different names, `Stack` and `List` are equivalent types.
 
-=== Subtyping
+=== Subtyping (Variants)
 
 `WeekDay <: Day`
 
@@ -679,13 +774,13 @@ func toText(d : Day) : Text {
 };
 
 let mon : WeekDay = #Mon;
-let t = toText(mon); // also works
+let t = toText(mon); // also works, since WeekDay <: Day
 ....
 
 `t1 <: t2`: `t1` can be used wherever `t2` is expected
 
 [source, motoko]
-=== Subtyping
+=== Subtyping (Records)
 
 `Employee <: Person`
 
@@ -702,7 +797,7 @@ func toText(p : Person) : Text {
 let employee : Employee =
   { first = "Boris"; last = "Johnson"; var salary = 161_401};
 
-let t = toText(employee); // also works
+let t = toText(employee); // also works, since Employee <: Person
 ....
 
 ////
@@ -722,41 +817,20 @@ let h' = takeDamage(h, 100); // also works
 
 `t1 <: t2`: `t1` can be used wherever `t2` is expected
 ////
-=== Generic types
-
-[source, motoko]
-....
-type List<T> = {
-  #item : { head : T; tail : List<T> };
-  #empty
-};
-
-func reverse<T>(l : List<T>) : List<T> {
-  func rev(l : List<T>, r : List<T>) : List<T> {
-    switch l {
-      case (#empty) { r };
-      case (#item { head; tail }) { // a nested pattern
-        rev(tail, #item {head; tail = r})
-      }
-    }
-  };
-  rev(l, #empty);
-};
-
-let s : List<Text> =
-  reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
-
-let ns : List<Nat> =
-  reverse(#item { head = 0; tail = #item { head = 1; tail = #empty }})
-....
 
 == Fin
 
 === Not covered
 
 * Polymorphic functions with type bounds
-* Classes
-* Error handling (`try … catch …` & `throw …`)
+* User defined iterator objects, supporting `for` loops.
+* Actor classes
+* `debug_show` for conversion of almost any value to text.
+* `debug e` expressions for debug-only compilation
+* `do ? { … e! …  }` blocks for handling/propagating option values.
+* `assert e` expressions for conditional traps
+*  tools `mo_doc`, `vessel`, `mo_ide`.
+
 
 == Old slides
 
