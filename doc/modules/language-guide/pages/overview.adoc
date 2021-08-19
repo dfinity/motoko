@@ -48,9 +48,12 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 * Identifiers: +
 `x`, `foo_bar`, `test123`, `List`, `Map`
-* Parentheses for grouping
+* Parentheses `( … )` for grouping
+* Braces `{ … }` for scoping (and records)
+* `;` for sequencing
 * Type annotations (to help type inference): +
-`(42 : Int)`
+`(42 : Int)` +
+  (zero cost)
 
 === Libraries
 
@@ -117,6 +120,8 @@ The usual suspects...
 
 `Int`
 
+`{ ..., -2, 1, 0, 1, 2, ... }`
+
 Inferred by default for negative literals.
 
 Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
@@ -125,11 +130,15 @@ Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
 `Nat`
 
-Non-negative, trap upon underflow.
+`{ 0, 1, 2, ... }`
+
+Non-negative, trap on underflow.
 
 Inferred by default for non-negative literals
 
 Literals: `13`, `0xf4`, `1_000_000`
+
+`Nat <: Int` (`Nat` is a _subtype_ of `Int`)
 
 === Bounded numbers (trapping)
 
@@ -158,8 +167,12 @@ No surprises here
 
 `- x` +
 `a + b` +
+`a % b` +
 `a & b` +
+`a << b` +
 …
+
+`a +% b, a -% b, …` for wrapping, modular arithmetic (where appropriate)
 
 === Characters and text
 
@@ -515,10 +528,9 @@ More libraries popping up!
 ....
 module {
 
-  public type List<T> =  …;
+  public type List<T> = …;
 
   public func reverse<T>(l : List<T>) : List<T> { … };
-
 }
 ....
 
