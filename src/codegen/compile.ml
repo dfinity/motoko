@@ -757,13 +757,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
-
-
     E.add_func_import env "rts" "bigint_of_float64" [F64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_float64" [I32Type] [F64Type];
-
-
-
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
