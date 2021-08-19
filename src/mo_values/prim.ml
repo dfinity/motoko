@@ -62,6 +62,12 @@ let num_conv_trap_prim t1 t2 =
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
+
+
+  (*| T.Float, T.Int -> fun v -> Int (Int_.of_big_int (Big_int.big_int_of_int (Wasm.I_convert.trunc_f_s (as_float v))))   *)
+  | T.Int, T.Float -> fun v -> Float (Wasm.F64.of_float (Big_int.float_of_big_int (Int.to_big_int (as_int v))))
+
+
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_trap_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 (*
