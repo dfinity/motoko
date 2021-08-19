@@ -107,9 +107,9 @@ The usual suspects...
 * `loop …  while (b)`
 * `for (pat in e) …`
 * `return`, `return e`
-* `label l …`,  `break l e`
+* `label l e`,  `break l e`
 * `async e`, `await e`             _(restricted)_
-* `throw`, `try e catch (x) { … }` _(restricted)_
+* `throw`, `try … catch (x) { … }` _(restricted)_
 
 == Primitive types
 
@@ -371,7 +371,7 @@ Just sugar for:
 
 [source.no-repl, motoko]
 ....
-type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> () }
+type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> () };
 
 func Employee(fst : Text, lst : Text) : Employee = object { … }
 ....
@@ -420,9 +420,8 @@ func toText(d : Day) : Text {
 
 func sort(d : Day) : { #WeekDay; #WeekEnd } {
   switch d {
-    case (#Sun) #WeekEnd;
-    case (#Mon) #WeekEnd;
-    case _ #WeekDay;
+    case (#Sun or #Sat) #WeekEnd;  // or pattern
+    case _ #WeekDay;  // wildcard pattern
   };
 };
 ....
@@ -603,7 +602,44 @@ introduced by `async { … }` +
 (implicit in async function declaration)
 
 `await e` +
-suspends computation pending `e`’s result
+suspends computation pending `e`’s result: +
+if the result is a value, continues with that value, +
+if the result is an `Error`, ``throw``s the error.
+
+[source.no-repl, motoko]
+....
+  public func send(t : Text) : async Nat {
+    var sum = 0;
+    for (a in r.vals()) {
+      sum += await a.recv(t); // may return Nat or `throw` error
+    };
+    return sum;
+  };
+....
+
+(Errors can be handled using `try … catch …`)
+
+=== Concurrency Hazards
+
+Functions that `await` are _not_ atomic. +
+Suspension introduces _concurrency hazards_.
+
+A bad implementation of `send`:
+[source.no-repl, motoko]
+....
+  var sum = 0; // shared state!
+  public func send(t : Text) : async Nat {
+    sum := 0;
+    for (a in r.vals()) {
+      sum += await a.recv(t);
+    };
+    return sum;
+  };
+....
+
+(Concurrent ``send``s will share and clobber `sum`.)
+
+Beware of race conditions!
 
 === Actor import
 
@@ -628,6 +664,28 @@ actor Self {
 ....
 
 (assumes there is a candid file describing the interface of the import)
+
+
+=== A Candid interface file
+
+``Broadcast``'s candid file (produced by `moc --idl Broadcast.mo` compiler).
+
+Broadcast.did:
+[source, candid]
+....
+type Receiver =
+ service {
+   recv: (text) -> (nat) query;
+ };
+service : {
+  register: (Receiver) -> () oneway;
+  send: (text) -> (nat);
+}
+....
+
+A language independent interface definition.
+
+Could just as easily describe a Rust implementation of `Broadcast`.
 
 === Principal and caller
 
@@ -829,7 +887,10 @@ let h' = takeDamage(h, 100); // also works
 * `debug e` expressions for debug-only compilation
 * `do ? { … e! …  }` blocks for handling/propagating option values.
 * `assert e` expressions for conditional traps
-*  tools `mo_doc`, `vessel`, `mo_ide`.
+*  tools:
+** `mo_doc` (generates doc from doc comments),
+** `vessel` (package manager)
+** `mo_ide` (LSP language server for VSCode, emacs etc)
 
 
 == Old slides
