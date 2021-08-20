@@ -94,11 +94,11 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     mark_static_roots(mem, static_roots, heap_base);
 
-    if (*continuation_table_ptr_loc).get_ptr() >= heap_base as usize {
+    if let PtrOrScalar::Ptr(continuation_table) = (*continuation_table_ptr_loc).get() {
         // TODO: No need to check if continuation table is already marked
         mark_object(mem, *continuation_table_ptr_loc, heap_base);
-        // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so it
-        // will be readable when we unthread continuation table
+        // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
+        // it will be readable when we unthread continuation table
         thread(continuation_table_ptr_loc);
     }
 
