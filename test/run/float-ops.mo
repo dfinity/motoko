@@ -123,3 +123,6 @@ assert (Prim.intToFloat(17 * 10 ** 100) == 1700000000000000085314981653363732807
 
 Prim.debugPrint(debug_show(Prim.intToFloat(-3 ** 7777))); // -inf
 assert (Prim.intToFloat(-17 * 10 ** 100) == -170000000000000008531498165336373280720519466057626503553503085638131822882333707250541845375191351296.000000);
+
+Prim.debugPrint(debug_show(Prim.intToFloat(17 * 10 ** 307)));
+Prim.debugPrint(debug_show(Prim.intToFloat(-17 * 10 ** 307)));
