@@ -124,12 +124,17 @@ impl From<Words<u32>> for Bytes<u32> {
     }
 }
 
+/// A value in a heap slot
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
+/// A view of `Value` for analyzing the slot contents.
 pub enum PtrOrScalar {
+    /// Slot is a pointer to a boxed object
     Ptr(usize),
+
+    /// Slot is an unboxed scalar value
     Scalar(u32),
 }
 
@@ -164,6 +169,7 @@ impl Value {
         Value(raw)
     }
 
+    /// Analyzes the value.
     pub fn get(&self) -> PtrOrScalar {
         if self.0 & 0b1 == 0b1 {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
@@ -177,49 +183,65 @@ impl Value {
         self.0
     }
 
+    /// Is the value a scalar?
     pub fn is_scalar(&self) -> bool {
         self.get().is_scalar()
     }
 
+    /// Is the value a pointer?
     pub fn is_ptr(&self) -> bool {
         self.get().is_ptr()
     }
 
+    /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
+    /// the value is not a scalar.
     pub fn get_scalar(&self) -> u32 {
         debug_assert!(self.get().is_scalar());
         self.0 >> 1
     }
 
+    /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
+    /// the value is not a pointer.
     pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
         unskew(self.0 as usize)
     }
 
+    /// Get the object tag. In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         debug_assert!(self.get().is_ptr());
         (self.get_ptr() as *mut Obj).tag()
     }
 
+    /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
         self.get_ptr() as *mut Obj
     }
 
+    /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert_eq!(self.tag(), TAG_ARRAY);
         self.get_ptr() as *mut Array
     }
 
+    /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Concat`.
     pub unsafe fn as_concat(self) -> *mut Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
         self.get_ptr() as *mut Concat
     }
 
+    /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Blob`.
     pub unsafe fn as_blob(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         self.get_ptr() as *mut Blob
     }
 
+    /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
         self.get_ptr() as *mut BigInt
