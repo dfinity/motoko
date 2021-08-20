@@ -56,8 +56,8 @@ pub unsafe fn compacting_gc_internal<
     heap_base: u32,
     get_hp: GetHp,
     set_hp: SetHp,
-    static_roots: SkewedPtr,
-    continuation_table_ptr_loc: *mut SkewedPtr,
+    static_roots: Value,
+    continuation_table_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -84,8 +84,8 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     set_hp: SetHp,
     heap_base: u32,
     heap_end: u32,
-    static_roots: SkewedPtr,
-    continuation_table_ptr_loc: *mut SkewedPtr,
+    static_roots: Value,
+    continuation_table_ptr_loc: *mut Value,
 ) {
     let mem_size = Bytes(heap_end - heap_base);
 
@@ -94,7 +94,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     mark_static_roots(mem, static_roots, heap_base);
 
-    if (*continuation_table_ptr_loc).unskew() >= heap_base as usize {
+    if (*continuation_table_ptr_loc).get_ptr() >= heap_base as usize {
         // TODO: No need to check if continuation table is already marked
         mark_object(mem, *continuation_table_ptr_loc, heap_base);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so it
@@ -110,12 +110,12 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     free_bitmap();
 }
 
-unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, heap_base: u32) {
+unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_base: u32) {
     let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
-        let obj = root_array.get(i).unskew() as *mut Obj;
+        let obj = root_array.get(i).as_obj();
         // Root array should only has pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!((obj as u32) < heap_base); // check that MutBox is static
@@ -123,9 +123,9 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: SkewedPtr, hea
     }
 }
 
-unsafe fn mark_object<M: Memory>(mem: &mut M, obj: SkewedPtr, heap_base: u32) {
+unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, heap_base: u32) {
     let obj_tag = obj.tag();
-    let obj = obj.unskew() as u32;
+    let obj = obj.get_ptr() as u32;
 
     let obj_idx = (obj - heap_base) / WORD_SIZE;
 
@@ -150,7 +150,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         mark_object(mem, field_value, heap_base);
 
         // Thread if backwards or self pointer
-        if field_value.unskew() <= obj as usize {
+        if field_value.get_ptr() <= obj as usize {
             thread(field_addr);
         }
     });
@@ -211,18 +211,18 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 /// Thread forwards pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
-        if (*field_addr).unskew() > obj as usize {
+        if (*field_addr).get_ptr() > obj as usize {
             thread(field_addr)
         }
     });
 }
 
 /// Thread a pointer field
-unsafe fn thread(field: *mut SkewedPtr) {
+unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
-    let pointed = (*field).unskew() as *mut Obj;
+    let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
-    *field = SkewedPtr(pointed_header as usize);
+    *field = Value::from_raw(pointed_header);
     (*pointed).tag = field as u32;
 }
 
@@ -234,7 +234,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     while header > TAG_NULL {
         // TODO: is `header > TAG_NULL` the best way to distinguish a tag from a pointer?
         let tmp = (*(header as *mut Obj)).tag;
-        (*(header as *mut SkewedPtr)) = skew(new_loc as usize);
+        (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
     // At the end of the chain is the original header for the object

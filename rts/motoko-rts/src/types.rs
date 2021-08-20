@@ -126,49 +126,112 @@ impl From<Words<u32>> for Bytes<u32> {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SkewedPtr(pub usize);
+pub struct Value(u32);
 
-impl SkewedPtr {
+pub enum PtrOrScalar {
+    Ptr(usize),
+    Scalar(u32),
+}
+
+impl PtrOrScalar {
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, PtrOrScalar::Ptr(_))
+    }
+
+    pub fn is_scalar(&self) -> bool {
+        matches!(self, PtrOrScalar::Scalar(_))
+    }
+}
+
+impl Value {
+    /// Create a value from a pointer
+    pub const fn from_ptr(ptr: usize) -> Self {
+        // TODO: Update rustc to enable assertion
+        // debug_assert_eq!(ptr & 0b1, 0b0);
+        Value(skew(ptr) as u32)
+    }
+
+    /// Create a value from a scalar
+    pub const fn from_scalar(value: u32) -> Self {
+        // TODO: Update rustc to enable assertion
+        // debug_assert_eq!(value >> 31, 0);
+        Value(value << 1)
+    }
+
+    /// Create a value from raw representation. Useful when e.g. temporarily writing invalid values
+    /// to object fields in garbage collection.
+    pub const fn from_raw(raw: u32) -> Self {
+        Value(raw)
+    }
+
+    pub fn get(&self) -> PtrOrScalar {
+        if self.0 & 0b1 == 0b1 {
+            PtrOrScalar::Ptr((self.0 as usize).wrapping_add(1))
+        } else {
+            PtrOrScalar::Scalar(self.0 >> 1)
+        }
+    }
+
+    /// Get the raw value. Should only be used when debugging.
+    pub fn get_raw(&self) -> u32 {
+        self.0
+    }
+
+    pub fn is_scalar(&self) -> bool {
+        self.get().is_scalar()
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        self.get().is_ptr()
+    }
+
+    pub fn get_scalar(&self) -> u32 {
+        debug_assert!(self.get().is_scalar());
+        self.0 >> 1
+    }
+
+    pub fn get_ptr(self) -> usize {
+        debug_assert!(self.get().is_ptr());
+        unskew(self.0 as usize)
+    }
+
     pub unsafe fn tag(self) -> Tag {
-        (self.unskew() as *mut Obj).tag()
-    }
-
-    pub fn unskew(self) -> usize {
-        self.0.wrapping_add(1)
-    }
-
-    /// This is for sanity checking: a skewed pointer can't be a tagged scalar
-    pub fn is_tagged_scalar(&self) -> bool {
-        self.0 & 0b1 == 0
+        debug_assert!(self.get().is_ptr());
+        (self.get_ptr() as *mut Obj).tag()
     }
 
     pub unsafe fn as_obj(self) -> *mut Obj {
-        self.unskew() as *mut Obj
+        debug_assert!(self.get().is_ptr());
+        self.get_ptr() as *mut Obj
     }
 
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert_eq!(self.tag(), TAG_ARRAY);
-        self.unskew() as *mut Array
+        self.get_ptr() as *mut Array
     }
 
     pub unsafe fn as_concat(self) -> *mut Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.unskew() as *mut Concat
+        self.get_ptr() as *mut Concat
     }
 
     pub unsafe fn as_blob(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.unskew() as *mut Blob
+        self.get_ptr() as *mut Blob
     }
 
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
-        self.unskew() as *mut BigInt
+        self.get_ptr() as *mut BigInt
     }
 }
 
-pub fn skew(ptr: usize) -> SkewedPtr {
-    SkewedPtr(ptr.wrapping_sub(1))
+const fn skew(ptr: usize) -> usize {
+    ptr.wrapping_sub(1)
+}
+
+const fn unskew(value: usize) -> usize {
+    value.wrapping_add(1)
 }
 
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
@@ -227,20 +290,20 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
-        self.offset(1) as *mut SkewedPtr // skip array header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip array header
     }
 
-    pub unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+    pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
         debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *const SkewedPtr)
+        *(slot_addr as *const Value)
     }
 
-    pub unsafe fn set(self: *mut Self, idx: u32, ptr: SkewedPtr) {
+    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
         debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *mut SkewedPtr) = ptr;
+        *(slot_addr as *mut Value) = ptr;
     }
 
     pub unsafe fn len(self: *mut Self) -> u32 {
@@ -256,8 +319,8 @@ pub struct Object {
 }
 
 impl Object {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
-        self.add(1) as *mut SkewedPtr // skip object header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.add(1) as *mut Value // skip object header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
@@ -265,7 +328,7 @@ impl Object {
     }
 
     #[cfg(debug_assertions)]
-    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }
 }
@@ -273,7 +336,7 @@ impl Object {
 #[repr(packed)]
 pub struct ObjInd {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
 #[repr(packed)]
@@ -285,8 +348,8 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
-        self.offset(1) as *mut SkewedPtr // skip closure header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip closure header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
@@ -346,7 +409,7 @@ impl Blob {
 #[repr(packed)]
 pub struct FwdPtr {
     pub header: Obj,
-    pub fwd: SkewedPtr,
+    pub fwd: Value,
 }
 
 #[repr(packed)]
@@ -391,36 +454,36 @@ impl BigInt {
 #[repr(packed)]
 pub struct MutBox {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
 #[repr(packed)]
 pub struct Some {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
 #[repr(packed)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
 #[repr(packed)]
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
-    pub text1: SkewedPtr,
-    pub text2: SkewedPtr,
+    pub text1: Value,
+    pub text2: Value,
 }
 
 impl Concat {
-    pub unsafe fn text1(self: *mut Self) -> SkewedPtr {
+    pub unsafe fn text1(self: *mut Self) -> Value {
         (*self).text1
     }
 
-    pub unsafe fn text2(self: *mut Self) -> SkewedPtr {
+    pub unsafe fn text2(self: *mut Self) -> Value {
         (*self).text2
     }
 }

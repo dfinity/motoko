@@ -13,7 +13,7 @@
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
+use crate::types::{Value, TAG_BLOB, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -22,11 +22,7 @@ const TODO_LINK_IDX: u32 = 1;
 
 /// Find the left-most leaf of a text, putting all the others onto a list. Used to enforce the
 /// invariant about TEXT_ITER_BLOB to be a blob.
-unsafe fn find_leaf<M: Memory>(
-    mem: &mut M,
-    mut text: SkewedPtr,
-    todo: *mut SkewedPtr,
-) -> SkewedPtr {
+unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -> Value {
     while text.tag() == TAG_CONCAT {
         let concat = text.as_concat();
 
@@ -51,16 +47,16 @@ const ITER_TODO_IDX: u32 = 2;
 
 /// Returns a new iterator for the text
 #[ic_mem_fn]
-pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
+pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     let iter = alloc_array(mem, 3);
     let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
     let todo_addr = array.payload_addr().add(ITER_TODO_IDX as usize) as *mut _;
-    *todo_addr = SkewedPtr(0);
+    *todo_addr = Value::from_scalar(0);
 
     // Initialize position field
-    array.set(ITER_POS_IDX, SkewedPtr(0));
+    array.set(ITER_POS_IDX, Value::from_scalar(0));
 
     // Initialize blob field
     array.set(ITER_BLOB_IDX, find_leaf(mem, text, todo_addr as *mut _));
@@ -70,13 +66,13 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: SkewedPtr) -> SkewedPtr {
 
 /// Returns whether the iterator is finished
 #[no_mangle]
-pub unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn text_iter_done(iter: Value) -> u32 {
     let array = iter.as_array();
-    let pos = array.get(ITER_POS_IDX).0 >> 2;
+    let pos = array.get(ITER_POS_IDX).get_scalar() >> 1;
     let blob = array.get(ITER_BLOB_IDX).as_blob();
     let todo = array.get(ITER_TODO_IDX);
 
-    if pos >= blob.len().0 as usize && todo == SkewedPtr(0) {
+    if pos >= blob.len().0 && todo.get_scalar() == 0 {
         1
     } else {
         0
@@ -85,17 +81,17 @@ pub unsafe extern "C" fn text_iter_done(iter: SkewedPtr) -> u32 {
 
 /// Returns next character in the iterator, advances the iterator
 #[ic_mem_fn]
-pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
+pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX).as_blob();
-    let pos = (iter_array.get(ITER_POS_IDX).0 >> 2) as u32;
+    let pos = iter_array.get(ITER_POS_IDX).get_scalar() >> 1;
 
     // If we are at the end of the current blob, find the next blob
     if pos >= blob.len().0 {
         let todo = iter_array.get(ITER_TODO_IDX);
 
-        if todo == SkewedPtr(0) {
+        if todo.get_scalar() == 0 {
             // Caller should check with text_iter_done
             rts_trap_with("text_iter_next: Iter already done");
         }
@@ -109,7 +105,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
             // allocation)
             let concat = text.as_concat();
             todo_array.set(TODO_TEXT_IDX, (*concat).text2);
-            iter_array.set(ITER_POS_IDX, SkewedPtr(0));
+            iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
             iter_array.set(ITER_BLOB_IDX, find_leaf(mem, (*concat).text1, todo_addr));
             text_iter_next(mem, iter)
@@ -117,7 +113,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
             iter_array.set(ITER_BLOB_IDX, text);
-            iter_array.set(ITER_POS_IDX, SkewedPtr(0));
+            iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
             iter_array.set(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX));
             text_iter_next(mem, iter)
         }
@@ -126,7 +122,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: SkewedPtr) -> u32 {
         let blob_payload = blob.payload_addr();
         let mut step: u32 = 0;
         let char = decode_code_point(blob_payload.add(pos as usize), &mut step as *mut u32);
-        iter_array.set(ITER_POS_IDX, SkewedPtr(((pos + step) << 2) as usize));
+        iter_array.set(ITER_POS_IDX, Value::from_scalar((pos + step) << 1));
         char
     }
 }
