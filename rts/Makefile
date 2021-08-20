@@ -46,7 +46,7 @@ TOMMATH_FLAGS = \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
   -DMP_NO_FILE \
-  -D__STDC_IEC_559__ \
+  -DMP_HAS_SET_DOUBLE \
 
 #
 # Various musl flags, in particular telling it to not have long doubles
