@@ -166,7 +166,7 @@ impl Value {
 
     pub fn get(&self) -> PtrOrScalar {
         if self.0 & 0b1 == 0b1 {
-            PtrOrScalar::Ptr((self.0 as usize).wrapping_add(1))
+            PtrOrScalar::Ptr(unskew(self.0 as usize))
         } else {
             PtrOrScalar::Scalar(self.0 >> 1)
         }

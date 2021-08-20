@@ -12,7 +12,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     let iter_ptr = mem.alloc_words(size_of::<Array>() + Words(2));
 
     // NB. cannot use as_array() here as we didn't write the header yet
-    let iter_array = iter_ptr.as_ptr() as *mut Array;
+    let iter_array = iter_ptr.get_ptr() as *mut Array;
     (*iter_array).header.tag = TAG_ARRAY;
     (*iter_array).len = 2;
 

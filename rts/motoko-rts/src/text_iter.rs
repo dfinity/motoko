@@ -13,7 +13,7 @@
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{PtrOrScalar, Value, TAG_BLOB, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -68,11 +68,11 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
 #[no_mangle]
 pub unsafe extern "C" fn text_iter_done(iter: Value) -> u32 {
     let array = iter.as_array();
-    let pos = array.get(ITER_POS_IDX).get_scalar() >> 1;
+    let pos = array.get(ITER_POS_IDX).get_scalar();
     let blob = array.get(ITER_BLOB_IDX).as_blob();
     let todo = array.get(ITER_TODO_IDX);
 
-    if pos >= blob.len().0 && todo.get_scalar() == 0 {
+    if pos >= blob.len().0 && matches!(todo.get(), PtrOrScalar::Scalar(0)) {
         1
     } else {
         0
@@ -85,13 +85,13 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX).as_blob();
-    let pos = iter_array.get(ITER_POS_IDX).get_scalar() >> 1;
+    let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
     // If we are at the end of the current blob, find the next blob
     if pos >= blob.len().0 {
         let todo = iter_array.get(ITER_TODO_IDX);
 
-        if todo.get_scalar() == 0 {
+        if matches!(todo.get(), PtrOrScalar::Scalar(0)) {
             // Caller should check with text_iter_done
             rts_trap_with("text_iter_next: Iter already done");
         }
@@ -122,7 +122,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
         let blob_payload = blob.payload_addr();
         let mut step: u32 = 0;
         let char = decode_code_point(blob_payload.add(pos as usize), &mut step as *mut u32);
-        iter_array.set(ITER_POS_IDX, Value::from_scalar((pos + step) << 1));
+        iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + step));
         char
     }
 }
