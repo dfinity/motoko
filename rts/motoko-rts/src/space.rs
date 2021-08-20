@@ -52,6 +52,11 @@ impl<P: PageAlloc> Space<P> {
         self.total_alloc
     }
 
+    pub unsafe fn is_static(&self, addr: usize) -> bool {
+        // TODO: (in debug mode) Check that addr belongs to this space
+        self.page_alloc.in_static_heap(addr)
+    }
+
     pub fn iter_pages(&self) -> impl Iterator<Item = &P::Page> {
         self.pages.iter()
     }

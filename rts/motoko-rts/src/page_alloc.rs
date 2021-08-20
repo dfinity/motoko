@@ -15,6 +15,9 @@ pub trait PageAlloc: Clone {
     /// Get the page of a given address. May panic if address does not belong to a page for this
     /// allocator.
     unsafe fn get_address_page(&self, addr: usize) -> Self::Page;
+
+    /// Is the address in static heap?
+    unsafe fn in_static_heap(&self, addr: usize) -> bool;
 }
 
 /// Trait for allocation units from the underlying system (Wasm, OS, ...). Page state can be held

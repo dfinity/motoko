@@ -37,18 +37,16 @@ pub unsafe fn copying_gc_internal<
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     to_space: &mut Space<P>,
-    heap_base: u32,
+    from_space: &Space<P>,
     static_roots: SkewedPtr,
     continuation_table_loc: *mut SkewedPtr,
     _note_live_size: NoteLiveSize,
     _note_reclaimed: NoteReclaimed,
 ) {
-    let heap_base = heap_base as usize;
-
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(heap_base, to_space, static_roots);
+    evac_static_roots(from_space, to_space, static_roots);
 
     if (*continuation_table_loc).unskew() >= heap_base {
         evac(to_space, continuation_table_loc as usize);
@@ -63,7 +61,7 @@ pub unsafe fn copying_gc_internal<
 
         while p < page_end {
             let size = object_size(p);
-            scav(heap_base, to_space, p);
+            scav(from_space, to_space, p);
             p += size.to_bytes().0 as usize;
         }
 
@@ -106,10 +104,10 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     *ptr_loc = skew(obj_addr);
 }
 
-unsafe fn scav<P: PageAlloc>(heap_base: usize, to_space: &mut Space<P>, obj: usize) {
+unsafe fn scav<P: PageAlloc>(heap_base: usize, from_space: &Space<P>, to_space: &mut Space<P>, obj: usize) {
     let obj = obj as *mut Obj;
 
-    crate::visitor::visit_pointer_fields(obj, obj.tag(), heap_base, |field_addr| {
+    crate::visitor::visit_pointer_fields(from_space, obj, obj.tag(), heap_base, |field_addr| {
         evac(to_space, field_addr as usize);
     });
 }

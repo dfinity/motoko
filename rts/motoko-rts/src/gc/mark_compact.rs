@@ -126,7 +126,7 @@ unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
 ) {
     let field_addr = &mut (*mutbox).field;
     // TODO: Not sure if this check is necessary?
-    if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
+    if pointer_to_dynamic_heap(space, field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
         mark_object(space, mark_stack, *field_addr);
@@ -176,7 +176,7 @@ unsafe fn mark_fields<P: PageAlloc>(
     obj_tag: Tag,
     heap_base: u32,
 ) {
-    visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
+    visit_pointer_fields(space, obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
         mark_object(space, mark_stack, field_value);
 
@@ -242,7 +242,7 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
             }
 
             // Thread forward pointers of the object
-            thread_fwd_pointers(to_addr as *mut Obj, heap_base);
+            thread_fwd_pointers(space, to_addr as *mut Obj, heap_base);
 
             to_addr += obj_size.to_bytes().as_usize();
 
@@ -254,8 +254,8 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
 }
 
 /// Thread forwards pointers in object
-unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
+unsafe fn thread_fwd_pointers<P: PageAlloc>(space: &Space<P>, obj: *mut Obj, heap_base: u32) {
+    visit_pointer_fields(space, obj, obj.tag(), heap_base as usize, |field_addr| {
         if (*field_addr).unskew() > obj as usize {
             thread(field_addr)
         }

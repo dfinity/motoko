@@ -58,6 +58,10 @@ impl PageAlloc for IcPageAlloc {
             wasm_page_num: (addr / WASM_PAGE_SIZE.as_usize()) as u16,
         }
     }
+
+    unsafe fn in_static_heap(&self, addr: usize) -> bool {
+        addr < crate::get_heap_base() as usize
+    }
 }
 
 impl Page for IcPage {
