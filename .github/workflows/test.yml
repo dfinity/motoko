@@ -37,10 +37,16 @@ jobs:
         from="$( git merge-base origin/${{ github.base_ref}} HEAD )"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to on branch $ref"
-        nix-build --max-jobs 4 perf-delta -o perf-delta \
+        nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \
           --argstr ref "$ref" \
           --argstr from "$from" \
           --argstr to "$to"
+
+    - name: Read performance delta
+      id: perf
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: ./perf-delta.txt
 
     - name: Find performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
@@ -59,7 +65,7 @@ jobs:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
           <!-- perf comment -->
-          This is a test performance comment
+          ${{ steps.perf.outputs.content }}
         edit-mode: replace
 
     - name: "nix-build"
