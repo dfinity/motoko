@@ -15,6 +15,8 @@ jobs:
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
+        # fetch PR commit, not predicted merge commit
+        ref: ${{ github.event.pull_request.head.sha }}
     - uses: cachix/install-nix-action@v13
 
     # We are using the ic-hs-test cachix cache that is also used by
@@ -33,12 +35,12 @@ jobs:
       run: |
         ref="${{ github.head_ref }}"
         from="$( git merge-base origin/${{ github.base_ref}} HEAD )"
-        to="${{ github.sha }}"
+        to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to on branch $ref"
         nix-build --max-jobs 4 perf-delta -o perf-delta \
-          --arg-str ref "${{ github.head_ref }}" \
-          --arg-str from "$from"
-          --arg-str to "${{ github.sha }}"
+          --arg-str ref "$ref" \
+          --arg-str from "$from" \
+          --arg-str to "$to"
 
     - name: Find performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
