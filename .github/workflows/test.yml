@@ -25,6 +25,18 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
+    - name: Calculate performance delta
+      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+      run: |
+        ref="${{ github.head_ref }}"
+        from="$( git merge-base ${{ github.base_ref}} HEAD)"
+        to="${{ github.sha }}"
+        echo "Comparing changes from $from to $to on branch $ref"
+        nix-build --max-jobs 4 perf-delta -o perf-delta \
+          --arg-str ref "${{ github.head_ref }}" \
+          --arg-str from "$from"
+          --arg-str to "${{ github.sha }}"
+
     - name: Find performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       uses: peter-evans/find-comment@v1
