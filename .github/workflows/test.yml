@@ -23,6 +23,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: Find performance comment
+      if: runner.os == 'Linux'
       uses: peter-evans/find-comment@v1
       id: fc
       with:
@@ -31,6 +32,7 @@ jobs:
         body-includes: '<!-- perf comment -->'
 
     - name: Create or update performance comment
+      if: runner.os == 'Linux'
       uses: peter-evans/create-or-update-comment@v1
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
