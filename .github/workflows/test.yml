@@ -1,5 +1,8 @@
 name: "build"
-on: push
+on:
+  push:
+     branches: [ master ]
+  pull_request: {}
 jobs:
   tests:
     strategy:
@@ -23,7 +26,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: Find performance comment
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && github.event_name == 'pull_request'
       uses: peter-evans/find-comment@v1
       id: fc
       continue-on-error: true
@@ -33,7 +36,7 @@ jobs:
         body-includes: '<!-- perf comment -->'
 
     - name: Create or update performance comment
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && github.event_name == 'pull_request'
       uses: peter-evans/create-or-update-comment@v1
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
