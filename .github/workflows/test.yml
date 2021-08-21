@@ -12,6 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
+      with:
+        # fetch full history so that git merge-base works
+        fetch-depth: 0
     - uses: cachix/install-nix-action@v13
 
     # We are using the ic-hs-test cachix cache that is also used by
