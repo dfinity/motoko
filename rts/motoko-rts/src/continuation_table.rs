@@ -15,8 +15,8 @@
 //! next free item, shifted 2 bits to the left (to make the index a scalar and traverse them in
 //! GC).
 //!
-//! The last item will have value `TABLE.len() << 2`, so after adding a continuation to the last free
-//! slot `FREE_SLOT` will be `table_size`, which is when we see that the array is full.
+//! The last item will have scalar value `TABLE.len()`, so after adding a continuation to the last
+//! free slot `FREE_SLOT` will be `table_size`, which is when we see that the array is full.
 //!
 //! When the table is full, we double the size, copy the existing table, and add the second half to
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
@@ -47,7 +47,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
 
     let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
-        table.set(i, Value::from_scalar((i + 1) << 1));
+        table.set(i, Value::from_scalar(i + 1));
     }
 }
 
@@ -67,7 +67,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
     }
 
     for i in old_size..new_size {
-        new_array.set(i, Value::from_scalar((i + 1) << 1));
+        new_array.set(i, Value::from_scalar(i + 1));
     }
 }
 
@@ -92,7 +92,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     let idx = FREE_SLOT;
 
-    FREE_SLOT = TABLE.as_array().get(idx).get_scalar() >> 1;
+    FREE_SLOT = TABLE.as_array().get(idx).get_scalar();
     TABLE.as_array().set(idx, ptr);
     N_CONTINUATIONS += 1;
 
@@ -134,9 +134,7 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
 
     let ptr = TABLE.as_array().get(idx);
 
-    TABLE
-        .as_array()
-        .set(idx, Value::from_scalar(FREE_SLOT << 1));
+    TABLE.as_array().set(idx, Value::from_scalar(FREE_SLOT));
     FREE_SLOT = idx;
 
     N_CONTINUATIONS -= 1;

@@ -28,7 +28,7 @@ unsafe extern "C" fn blob_iter_done(iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
-    let pos = Bytes(iter_array.get(ITER_POS_IDX).get_scalar() >> 1);
+    let pos = Bytes(iter_array.get(ITER_POS_IDX).get_scalar());
 
     (pos >= blob.as_blob().len()).into()
 }
@@ -39,9 +39,9 @@ unsafe extern "C" fn blob_iter_next(iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
-    let pos = iter_array.get(ITER_POS_IDX).get_scalar() >> 1;
+    let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
-    iter_array.set(ITER_POS_IDX, Value::from_scalar((pos + 1) << 1));
+    iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + 1));
 
     blob.as_blob().get(pos).into()
 }
