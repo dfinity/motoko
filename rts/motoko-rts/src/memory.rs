@@ -32,6 +32,7 @@ pub trait Memory {
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
+    // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
     (*blob).len = size;

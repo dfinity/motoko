@@ -58,8 +58,13 @@ pub unsafe fn copying_gc_internal<
     // Evacuate roots
     evac_static_roots(mem, begin_from_space, begin_to_space, static_roots);
 
-    if let PtrOrScalar::Ptr(continuation_table) = (*continuation_table_ptr_loc).get() {
-        evac(mem, begin_from_space, begin_to_space, continuation_table);
+    if (*continuation_table_ptr_loc).is_ptr() {
+        evac(
+            mem,
+            begin_from_space,
+            begin_to_space,
+            continuation_table_ptr_loc as usize,
+        );
     }
 
     // Scavenge to-space
