@@ -42,6 +42,7 @@ jobs:
           --argstr to "$to"
 
     - name: Read performance delta
+      if: runner.os == 'Linux' && github.event_name == 'pull_request'
       id: perf
       uses: juliangruber/read-file-action@v1
       with:
