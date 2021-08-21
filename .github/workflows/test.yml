@@ -32,7 +32,7 @@ jobs:
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
         ref="${{ github.head_ref }}"
-        from="$( git merge-base ${{ github.base_ref}} HEAD)"
+        from="$( git merge-base origin/${{ github.base_ref}} HEAD )"
         to="${{ github.sha }}"
         echo "Comparing changes from $from to $to on branch $ref"
         nix-build --max-jobs 4 perf-delta -o perf-delta \
