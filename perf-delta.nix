@@ -1,3 +1,16 @@
+# This nix derivation calculates a comparison between the performance numbers of two commits.
+# This is used on CI (see CI.md)
+#
+# It always takes the tests from the to-revision, so that the same programs are
+# compiled. It may not work across breaking changes.
+#
+# To test locally, run something like
+#
+#    nix-build perf-delta.nix --argstr ref HEAD \
+#       --argstr from d8a0481d5850f722231ab9fe0849faa3f21fdbf \
+#       --argstr to 30261b212adb0309d7cd69526d59d7192cff9d54
+#    cat result
+
 { ref, from, to }:
 let
   nixpkgs = import ./nix { };
@@ -52,12 +65,6 @@ let
   wasm-hash-base = wasm-hash-for baseJobs.moc;
   wasm-hash-pr = wasm-hash-for prJobs.moc;
 in
-  # This job compares the performance numbers of the current revision
-  # with the mergeBase revision
-  #
-  # to test locally, use something like
-  # nix-build -A perf-delta ci-pr.nix --arg src '{ mergeBase = builtins.fetchGit { url = ./.; rev = "2a6221425d2c482208f9f3e2e2fc00d4847212e5"; }; }'
-
 nixpkgs.runCommandNoCC "perf-delta" {
   nativeBuildInputs = [ nixpkgs.coreutils diff-stats ];
 } ''
