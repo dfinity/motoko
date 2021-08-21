@@ -1,15 +1,10 @@
 # This nix derivation calculates a comparison between the performance numbers of two commits.
-# This is used on CI (see CI.md)
+# This is used on CI (see CI.md).
 #
-# It always takes the tests from the to-revision, so that the same programs are
-# compiled. It may not work across breaking changes.
+# It runs the old and the new moc on all tests files. If the output is
+# identical, it reports that no changes happened.
 #
-# To test locally, run something like
-#
-#    nix-build perf-delta.nix --argstr ref HEAD \
-#       --argstr from d8a0481d5850f722231ab9fe0849faa3f21fdbf \
-#       --argstr to 30261b212adb0309d7cd69526d59d7192cff9d54
-#    cat result
+# Else it compares the performance statistics from the `tests.perf` derivation.
 
 { ref, from, to }:
 let
