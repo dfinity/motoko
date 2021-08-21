@@ -30,6 +30,9 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
+    - name: "nix-build"
+      run: nix-build --max-jobs 4 -A all-systems-go
+
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
@@ -67,6 +70,3 @@ jobs:
           <!-- perf comment -->
           ${{ steps.perf.outputs.content }}
         edit-mode: replace
-
-    - name: "nix-build"
-      run: nix-build --max-jobs 4 -A all-systems-go
