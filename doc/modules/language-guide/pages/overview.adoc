@@ -679,12 +679,12 @@ actor Self {
 }
 ....
 
-(assumes there is a candid file describing the interface of the import)
+(assumes there is a Candid file describing the interface of the import)
 
 
 === A Candid interface file
 
-``Broadcast``'s candid file (produced by `moc --idl Broadcast.mo` compiler).
+``Broadcast``'s Candid file (produced by `moc --idl Broadcast.mo` compiler).
 
 Broadcast.did:
 [source, candid]
