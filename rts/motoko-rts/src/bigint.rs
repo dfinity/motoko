@@ -253,7 +253,7 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> SkewedPtr {
         return SkewedPtr::of_tiny(j as i32);
     }
     let mut i = tmp_bigint();
-    mp_set_double(&mut i, j);
+    check(mp_set_double(&mut i, j));
     persist_bigint(i)
 }
 
