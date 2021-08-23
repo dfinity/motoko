@@ -163,6 +163,12 @@ impl Value {
         Value(value << 1)
     }
 
+    /// Create a value from a signed scalar. The value must be obtained with `to_signed_scalar`.
+    pub fn from_signed_scalar(value: i32) -> Self {
+        debug_assert_eq!(value, value << 1 >> 1);
+        Value((value << 1) as u32)
+    }
+
     /// Create a value from raw representation. Useful when e.g. temporarily writing invalid values
     /// to object fields in garbage collection.
     pub const fn from_raw(raw: u32) -> Self {
@@ -198,6 +204,13 @@ impl Value {
     pub fn get_scalar(&self) -> u32 {
         debug_assert!(self.get().is_scalar());
         self.0 >> 1
+    }
+
+    /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
+    /// panics if the value is not a scalar.
+    pub fn get_signed_scalar(&self) -> i32 {
+        debug_assert!(self.get().is_scalar());
+        self.0 as i32 >> 1
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
@@ -245,6 +258,11 @@ impl Value {
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
         self.get_ptr() as *mut BigInt
+    }
+
+    pub fn as_tiny(self) -> i32 {
+        debug_assert!(self.is_scalar());
+        self.0 as i32 >> 1
     }
 }
 
