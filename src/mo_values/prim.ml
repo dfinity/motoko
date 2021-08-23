@@ -60,10 +60,10 @@ let num_conv_trap_prim t1 t2 =
   | T.Nat32, T.Char
   -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
-  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
+  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (bigint_of_double (as_float v)))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
 
-  | T.Float, T.Int -> fun v -> Int (Int.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v)))) (* we could divide-and-conquer *)
+  | T.Float, T.Int -> fun v -> Int (Int.of_big_int (bigint_of_double (as_float v)))
   | T.Int, T.Float -> fun v -> Float (Wasm.F64.of_float (Big_int.float_of_big_int (Int.to_big_int (as_int v))))
 
   | t1, t2 -> raise (Invalid_argument T.("Value.num_conv_trap_prim: " ^ string_of_typ (Prim t1) ^ string_of_typ (Prim t2) ))
