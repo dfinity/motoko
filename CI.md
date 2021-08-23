@@ -119,7 +119,7 @@ For every PR, the developer is told about performance changes relative to the
 merge point, via an continuously updated comment on the PR.
 
 **Implementation (external):**
- * Steps in the Github Actoin calculates the correct merge base using
+ * Steps in the Github Action calculates the correct merge base using
    `git-merge-base` (_not_ the latest version of the target branch) and passes
    the correct git revisions to the `./perf-delta.nix` nix derivation.
  * Building that derivations compares metrics and generates a report.
