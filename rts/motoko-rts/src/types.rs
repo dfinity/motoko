@@ -129,6 +129,11 @@ impl From<Words<u32>> for Bytes<u32> {
 pub struct SkewedPtr(pub usize);
 
 impl SkewedPtr {
+    pub fn of_tiny(t: i32) -> Self {
+        debug_assert_eq!(t, t << 1 >> 1);
+        Self((t << 1) as usize)
+    }
+
     pub unsafe fn tag(self) -> Tag {
         (self.unskew() as *mut Obj).tag()
     }
@@ -164,6 +169,11 @@ impl SkewedPtr {
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
         self.unskew() as *mut BigInt
+    }
+
+    pub fn as_tiny(self) -> i32 {
+        debug_assert!(self.is_tagged_scalar());
+        self.0 as i32 >> 1
     }
 }
 
