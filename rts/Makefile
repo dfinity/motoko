@@ -48,6 +48,9 @@ TOMMATH_FLAGS = \
   -DMP_NO_FILE \
   -D__STDC_IEC_559__ \
 
+# Note: the above __STDC_IEC_559__ define is somewhat of a misnomer
+#       as only IEEE 754 features are used.
+
 #
 # Various musl flags, in particular telling it to not have long doubles
 # and exclude <errno.h>, which pulls in too many dependencies
