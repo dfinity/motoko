@@ -240,21 +240,21 @@ impl Value {
     }
 
     /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Concat`.
+    /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *mut Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
         self.get_ptr() as *mut Concat
     }
 
     /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Blob`.
+    /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         self.get_ptr() as *mut Blob
     }
 
     /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `BigInt`.
+    /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
         self.get_ptr() as *mut BigInt
