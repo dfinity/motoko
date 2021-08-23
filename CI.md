@@ -42,7 +42,7 @@ Preventing `master` from breaking
 **Use-case:**
 A PR that breaks requires jobs (`all-systems-go`) cannot be merged into `master`.
 
-**Implementation (extenral):**
+**Implementation (external):**
 Github branch protection is enabled for `master`, and requires the
 Github Action jobs (Linux and Darwin) to succeed.
 
